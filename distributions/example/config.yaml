@@ -1,0 +1,18 @@
+exporters:
+  debug:
+
+extensions:
+  zpages:
+
+receivers:
+  nop:
+
+service:
+  extensions:
+    - zpages
+  pipelines:
+    logs:
+      exporters:
+        - debug
+      receivers:
+        - nop
