@@ -33,6 +33,27 @@ $(GOMODULES):
 .PHONY: for-all-target
 for-all-target: $(GOMODULES)
 
+.PHONY: gomoddownload
+gomoddownload:
+	@$(MAKE) for-all-target TARGET="moddownload"
+
+.PHONY: gotest
+gotest:
+	@$(MAKE) for-all-target TARGET="test"
+
 .PHONY: golint
 golint:
 	@$(MAKE) for-all-target TARGET="lint"
+
+.PHONY: gofmt
+gofmt:
+	@$(MAKE) for-all-target TARGET="fmt"
+
+.PHONY: gotidy
+gotidy:
+	@$(MAKE) for-all-target TARGET="tidy"
+
+.PHONY: gogenerate
+gogenerate:
+	@$(MAKE) for-all-target TARGET="generate"
+	@$(MAKE) for-all-target TARGET="fmt"

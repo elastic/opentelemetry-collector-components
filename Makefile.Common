@@ -1,6 +1,12 @@
 SHELL = /usr/bin/env bash
 
+GOTEST_TIMEOUT?=240s
+GOTEST_OPT?= -race -timeout $(GOTEST_TIMEOUT)
 GOCMD?= go
+GOTEST=$(GOCMD) test
+GOOS := $(shell $(GOCMD) env GOOS)
+GOARCH := $(shell $(GOCMD) env GOARCH)
+
 
 # SRC_ROOT is the top of the source tree.
 SRC_ROOT := $(shell git rev-parse --show-toplevel)
@@ -13,6 +19,11 @@ TOOLS_BIN_NAMES := $(addprefix $(TOOLS_BIN_DIR)/, $(notdir $(shell echo $(TOOLS_
 
 LINT         := $(TOOLS_BIN_DIR)/golangci-lint
 MISSPELL     := $(TOOLS_BIN_DIR)/misspell
+MDATAGEN     := $(TOOLS_BIN_DIR)/mdatagen
+
+.PHONY: install-tools
+install-tools: $(TOOLS_BIN_NAMES)
+
 
 
 .PHONY: install-tools
@@ -24,6 +35,27 @@ $(TOOLS_BIN_DIR):
 $(TOOLS_BIN_NAMES): $(TOOLS_BIN_DIR) $(TOOLS_MOD_DIR)/go.mod
 	cd $(TOOLS_MOD_DIR) && $(GOCMD) build -o $@ -trimpath $(filter %/$(notdir $@),$(TOOLS_PKG_NAMES))
 
+.PHONY: test
+test:
+	$(GOTEST) $(GOTEST_OPT) ./...
+
+.PHONY: fmt
+fmt:
+	gofmt -w -s ./
+
+.PHONY: tidy
+tidy:
+	rm -fr go.sum
+	$(GOCMD) mod tidy -compat=1.21.0
+
 .PHONY: lint
 lint: $(LINT)
 	$(LINT) run
+
+.PHONY: generate
+generate: $(MDATAGEN)
+	$(GOCMD) generate ./...
+
+.PHONY: moddownload
+moddownload:
+	$(GOCMD) mod download
