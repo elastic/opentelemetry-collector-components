@@ -63,7 +63,7 @@ moddownload:
 	$(GOCMD) mod download
 
 .PHONY: porto
-porto:
+porto: $(PORTO)
 	$(PORTO) -w --include-internal --skip-dirs "^cmd$$" ./
 
 .PHONY: govulncheck
