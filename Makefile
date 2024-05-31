@@ -7,21 +7,16 @@ ALL_DOC := $(shell find . \( -name "*.md" -o -name "*.yaml" \) \
 # ALL_MODULES includes ./* dirs (excludes . dir)
 ALL_MODULES := $(shell find . -type f -name "go.mod" -exec dirname {} \; | sort | grep -E '^./' )
 
+GROUP ?= all
+FOR_GROUP_TARGET=for-$(GROUP)-target
+
 .DEFAULT_GOAL := all
 
 .PHONY: all
 all: misspell
 
-.PHONY: misspell
-misspell: $(MISSPELL)
-	$(MISSPELL) -error $(ALL_DOC)
-
-.PHONY: misspell-correction
-misspell-correction: $(MISSPELL)
-	$(MISSPELL) -w $(ALL_DOC)
-
 # Append root module to all modules
-GOMODULES = $(ALL_MODULES) $(PWD)
+GOMODULES = $(ALL_MODULES)
 
 # Define a delegation target for each module
 .PHONY: $(GOMODULES)
@@ -35,25 +30,33 @@ for-all-target: $(GOMODULES)
 
 .PHONY: gomoddownload
 gomoddownload:
-	@$(MAKE) for-all-target TARGET="moddownload"
+	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="moddownload"
 
 .PHONY: gotest
 gotest:
-	@$(MAKE) for-all-target TARGET="test"
+	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="test"
 
 .PHONY: golint
 golint:
-	@$(MAKE) for-all-target TARGET="lint"
+	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="lint"
 
 .PHONY: gofmt
 gofmt:
-	@$(MAKE) for-all-target TARGET="fmt"
+	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="fmt"
 
 .PHONY: gotidy
 gotidy:
-	@$(MAKE) for-all-target TARGET="tidy"
+	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="tidy"
 
 .PHONY: gogenerate
 gogenerate:
-	@$(MAKE) for-all-target TARGET="generate"
-	@$(MAKE) for-all-target TARGET="fmt"
+	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="generate"
+	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="fmt"
+
+.PHONY: gogovulncheck
+gogovulncheck:
+	$(MAKE) $(FOR_GROUP_TARGET) TARGET="govulncheck"
+
+.PHONY: goporto
+goporto:
+	$(MAKE) $(FOR_GROUP_TARGET) TARGET="porto"

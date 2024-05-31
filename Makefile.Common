@@ -20,11 +20,8 @@ TOOLS_BIN_NAMES := $(addprefix $(TOOLS_BIN_DIR)/, $(notdir $(shell echo $(TOOLS_
 LINT         := $(TOOLS_BIN_DIR)/golangci-lint
 MISSPELL     := $(TOOLS_BIN_DIR)/misspell
 MDATAGEN     := $(TOOLS_BIN_DIR)/mdatagen
-
-.PHONY: install-tools
-install-tools: $(TOOLS_BIN_NAMES)
-
-
+GOVULNCHECK  := $(TOOLS_BIN_DIR)/govulncheck
+PORTO        := $(TOOLS_BIN_DIR)/porto
 
 .PHONY: install-tools
 install-tools: $(TOOLS_BIN_NAMES)
@@ -48,9 +45,14 @@ tidy:
 	rm -fr go.sum
 	$(GOCMD) mod tidy -compat=1.21.0
 
+.PHONY: misspell
+misspell: $(TOOLS_BIN_DIR)/misspell
+	@echo "running $(MISSPELL)"
+	@$(MISSPELL_CMD)
+
 .PHONY: lint
-lint: $(LINT)
-	$(LINT) run
+lint: $(LINT) misspell
+	$(LINT) run --allow-parallel-runners --verbose --build-tags integration --timeout=30m --path-prefix $(shell basename "$(CURDIR)")
 
 .PHONY: generate
 generate: $(MDATAGEN)
@@ -59,3 +61,11 @@ generate: $(MDATAGEN)
 .PHONY: moddownload
 moddownload:
 	$(GOCMD) mod download
+
+.PHONY: porto
+porto:
+	$(PORTO) -w --include-internal --skip-dirs "^cmd$$" ./
+
+.PHONY: govulncheck
+govulncheck: $(GOVULNCHECK)
+	$(GOVULNCHECK) ./...

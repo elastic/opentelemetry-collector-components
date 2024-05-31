@@ -5,7 +5,9 @@ go 1.22.3
 require (
 	github.com/client9/misspell v0.3.4
 	github.com/golangci/golangci-lint v1.59.0
+	github.com/jcchavezs/porto v0.6.0
 	go.opentelemetry.io/collector/cmd/mdatagen v0.101.0
+	golang.org/x/vuln v1.1.1
 )
 
 require (
@@ -197,7 +199,7 @@ require (
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
-	golang.org/x/tools v0.21.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240514024235-59d9797072e7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240401170217-c3f982113cda // indirect
 	google.golang.org/grpc v1.63.2 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
