@@ -22,6 +22,7 @@ MISSPELL     := $(TOOLS_BIN_DIR)/misspell
 MDATAGEN     := $(TOOLS_BIN_DIR)/mdatagen
 GOVULNCHECK  := $(TOOLS_BIN_DIR)/govulncheck
 PORTO        := $(TOOLS_BIN_DIR)/porto
+BUILDER      := $(TOOLS_BIN_DIR)/builder
 
 .PHONY: install-tools
 install-tools: $(TOOLS_BIN_NAMES)
