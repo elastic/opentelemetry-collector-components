@@ -1,0 +1,23 @@
+dist:
+  module: github.com/elastic/opentelemetry-collector-components
+  name: elastic-collector-components
+  description: Testing distribution to ensure Elastic's components can be used with the OCB
+  version: 0.0.1
+  output_path: ./_build
+  otelcol_version: 0.101.0
+
+extensions:
+
+connectors:
+
+converters:
+
+receivers:
+  - gomod: go.opentelemetry.io/collector/receiver/nopreceiver v0.101.0
+
+processors:
+
+exporters:
+  - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.101.0
+
+replaces:
