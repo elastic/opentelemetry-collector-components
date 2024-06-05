@@ -1,4 +1,4 @@
-package elasticprocessor
+package elasticprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elasticprocessor"
 
 import (
 	"context"
