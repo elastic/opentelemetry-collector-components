@@ -60,3 +60,8 @@ gogovulncheck:
 .PHONY: goporto
 goporto:
 	$(MAKE) $(FOR_GROUP_TARGET) TARGET="porto"
+
+# Build a collector based on the Elastic components (generate Elastic collector)
+.PHONY: genelasticcol
+genelasticcol: $(BUILDER)
+	$(BUILDER) --config ./distributions/elastic-components/manifest.yaml
