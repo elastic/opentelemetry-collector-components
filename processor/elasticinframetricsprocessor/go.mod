@@ -3,7 +3,7 @@ module github.com/ishleenk17/opentelemetry-collector-components/processor/elasti
 go 1.21.1
 
 require (
-	github.com/elastic/opentelemetry-lib v0.0.0-20240520143123-3234f90c8fca
+	github.com/elastic/opentelemetry-lib v0.0.0-20240604140721-08863a456d6c
 	go.opentelemetry.io/collector/component v0.92.0
 	go.opentelemetry.io/collector/consumer v0.92.0
 	go.opentelemetry.io/collector/pdata v1.7.0
