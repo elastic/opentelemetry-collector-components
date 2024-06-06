@@ -1,4 +1,4 @@
-package elasticinframetricsprocessor // import "github.com/ishleenk17/opentelemetry-collector-components/processor/elasticinframetricsprocessor"
+package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor"
 
 import (
 	"context"
