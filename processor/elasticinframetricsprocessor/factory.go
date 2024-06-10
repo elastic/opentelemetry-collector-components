@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	typeStr = "elastic"
+	typeStr = "elasticinframetrics"
 )
 
 var processorCapabilities = consumer.Capabilities{MutatesData: true}
