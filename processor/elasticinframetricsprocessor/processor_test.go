@@ -63,7 +63,7 @@ func TestProcessMetrics(t *testing.T) {
 			}
 
 			mockRemap := &mockRemapper{}
-			p := &ElasticProcessor{
+			p := &ElasticinframetricsProcessor{
 				cfg:       tc.cfg,
 				logger:    set.Logger,
 				remappers: []remapper{mockRemap},

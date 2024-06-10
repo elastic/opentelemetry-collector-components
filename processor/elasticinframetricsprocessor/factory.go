@@ -38,13 +38,13 @@ func createMetricsProcessor(
 	cfg component.Config,
 	nextConsumer consumer.Metrics,
 ) (processor.Metrics, error) {
-	elasticProcessor := newProcessor(set, cfg.(*Config))
+	elasticinframetricsProcessor := newProcessor(set, cfg.(*Config))
 	return processorhelper.NewMetricsProcessor(
 		ctx,
 		set,
 		cfg,
 		nextConsumer,
-		elasticProcessor.processMetrics,
+		elasticinframetricsProcessor.processMetrics,
 		processorhelper.WithCapabilities(processorCapabilities))
 }
 
@@ -54,13 +54,13 @@ func createLogsProcessor(
 	cfg component.Config,
 	nextConsumer consumer.Logs,
 ) (processor.Logs, error) {
-	elasticProcessor := newProcessor(set, cfg.(*Config))
+	elasticinframetricsProcessor := newProcessor(set, cfg.(*Config))
 	return processorhelper.NewLogsProcessor(
 		ctx,
 		set,
 		cfg,
 		nextConsumer,
-		elasticProcessor.processLogs,
+		elasticinframetricsProcessor.processLogs,
 		processorhelper.WithCapabilities(processorCapabilities))
 }
 
@@ -70,12 +70,12 @@ func createTracesProcessor(
 	cfg component.Config,
 	nextConsumer consumer.Traces,
 ) (processor.Traces, error) {
-	elasticProcessor := newProcessor(set, cfg.(*Config))
+	elasticinframetricsProcessor := newProcessor(set, cfg.(*Config))
 	return processorhelper.NewTracesProcessor(
 		ctx,
 		set,
 		cfg,
 		nextConsumer,
-		elasticProcessor.processTraces,
+		elasticinframetricsProcessor.processTraces,
 		processorhelper.WithCapabilities(processorCapabilities))
 }

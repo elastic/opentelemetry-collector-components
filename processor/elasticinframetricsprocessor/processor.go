@@ -17,13 +17,13 @@ type remapper interface {
 	Remap(pmetric.ScopeMetrics, pmetric.MetricSlice, pcommon.Resource)
 }
 
-type ElasticProcessor struct {
+type ElasticinframetricsProcessor struct {
 	cfg       *Config
 	logger    *zap.Logger
 	remappers []remapper
 }
 
-func newProcessor(set processor.CreateSettings, cfg *Config) *ElasticProcessor {
+func newProcessor(set processor.CreateSettings, cfg *Config) *ElasticinframetricsProcessor {
 	var remappers []remapper
 	// Initialize the remapper slice if AddSystemMetrics is enabled
 	if cfg.AddSystemMetrics {
@@ -31,7 +31,7 @@ func newProcessor(set processor.CreateSettings, cfg *Config) *ElasticProcessor {
 			hostmetrics.NewRemapper(set.Logger, hostmetrics.WithSystemIntegrationDataset(true)),
 		}
 	}
-	return &ElasticProcessor{
+	return &ElasticinframetricsProcessor{
 		cfg:       cfg,
 		logger:    set.Logger,
 		remappers: remappers,
@@ -39,7 +39,7 @@ func newProcessor(set processor.CreateSettings, cfg *Config) *ElasticProcessor {
 }
 
 // processMetrics processes the given metrics and applies remappers if configured.
-func (p *ElasticProcessor) processMetrics(_ context.Context, md pmetric.Metrics) (pmetric.Metrics, error) {
+func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmetric.Metrics) (pmetric.Metrics, error) {
 	for i := 0; i < md.ResourceMetrics().Len(); i++ {
 		resourceMetric := md.ResourceMetrics().At(i)
 		rm := resourceMetric.Resource()
@@ -54,10 +54,10 @@ func (p *ElasticProcessor) processMetrics(_ context.Context, md pmetric.Metrics)
 	return md, nil
 }
 
-func (p *ElasticProcessor) processLogs(_ context.Context, ld plog.Logs) (plog.Logs, error) {
+func (p *ElasticinframetricsProcessor) processLogs(_ context.Context, ld plog.Logs) (plog.Logs, error) {
 	return ld, nil
 }
 
-func (p *ElasticProcessor) processTraces(_ context.Context, td ptrace.Traces) (ptrace.Traces, error) {
+func (p *ElasticinframetricsProcessor) processTraces(_ context.Context, td ptrace.Traces) (ptrace.Traces, error) {
 	return td, nil
 }
