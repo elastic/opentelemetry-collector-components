@@ -16,8 +16,10 @@ receivers:
   - gomod: go.opentelemetry.io/collector/receiver/nopreceiver v0.101.0
 
 processors:
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.0.0
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.101.0
 
 replaces:
+  - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor => ../processor/elasticinframetricsprocessor
