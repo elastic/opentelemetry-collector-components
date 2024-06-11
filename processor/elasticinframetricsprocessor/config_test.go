@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor/internal/metadata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
@@ -18,12 +19,12 @@ func TestLoadConfig(t *testing.T) {
 	}{
 		{
 			configPath: "config.yaml",
-			id:         component.NewIDWithName("elasticinframetricsprocessor", "default"),
+			id:         component.NewIDWithName(metadata.Type, "default"),
 			expected:   &Config{AddSystemMetrics: true},
 		},
 		{
 			configPath: "config.yaml",
-			id:         component.NewIDWithName("elasticinframetricsprocessor", "with_system_metrics"),
+			id:         component.NewIDWithName(metadata.Type, "with_system_metrics"),
 			expected:   &Config{AddSystemMetrics: true},
 		},
 	}
