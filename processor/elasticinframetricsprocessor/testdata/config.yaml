@@ -1,0 +1,8 @@
+default:
+  add_system_metrics: true
+
+with_system_metrics:
+  add_system_metrics: true
+
+without_system_metrics:
+  add_system_metrics: false
