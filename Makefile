@@ -65,3 +65,8 @@ goporto:
 .PHONY: genelasticcol
 genelasticcol: $(BUILDER)
 	$(BUILDER) --config ./distributions/elastic-components/manifest.yaml
+
+# Validate that the Elastic components collector can run with the example configuration.
+.PHONY: elasticcol-validate
+elasticcol-validate: genelasticcol
+	./_build/elastic-collector-components validate --config ./distributions/elastic-components/config.yaml
