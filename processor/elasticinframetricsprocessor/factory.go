@@ -3,14 +3,11 @@ package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry
 import (
 	"context"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor/internal/metadata"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processorhelper"
-)
-
-const (
-	typeStr = "elasticinframetrics"
 )
 
 var processorCapabilities = consumer.Capabilities{MutatesData: true}
@@ -18,9 +15,9 @@ var processorCapabilities = consumer.Capabilities{MutatesData: true}
 // NewFactory returns a new factory for the Filter processor.
 func NewFactory() processor.Factory {
 	return processor.NewFactory(
-		typeStr,
+		metadata.Type,
 		createDefaultConfig,
-		processor.WithMetrics(createMetricsProcessor, component.StabilityLevelAlpha),
+		processor.WithMetrics(createMetricsProcessor, metadata.MetricsStability),
 	)
 }
 

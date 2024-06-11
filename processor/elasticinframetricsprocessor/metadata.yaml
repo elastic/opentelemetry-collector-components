@@ -1,0 +1,6 @@
+type: elasticinframetrics
+
+status:
+  class: processor
+  stability:
+    alpha: [metrics]
