@@ -21,8 +21,6 @@ func NewFactory() processor.Factory {
 		typeStr,
 		createDefaultConfig,
 		processor.WithMetrics(createMetricsProcessor, component.StabilityLevelAlpha),
-		processor.WithLogs(createLogsProcessor, component.StabilityLevelAlpha),
-		processor.WithTraces(createTracesProcessor, component.StabilityLevelAlpha),
 	)
 }
 
@@ -45,37 +43,5 @@ func createMetricsProcessor(
 		cfg,
 		nextConsumer,
 		elasticinframetricsProcessor.processMetrics,
-		processorhelper.WithCapabilities(processorCapabilities))
-}
-
-func createLogsProcessor(
-	ctx context.Context,
-	set processor.CreateSettings,
-	cfg component.Config,
-	nextConsumer consumer.Logs,
-) (processor.Logs, error) {
-	elasticinframetricsProcessor := newProcessor(set, cfg.(*Config))
-	return processorhelper.NewLogsProcessor(
-		ctx,
-		set,
-		cfg,
-		nextConsumer,
-		elasticinframetricsProcessor.processLogs,
-		processorhelper.WithCapabilities(processorCapabilities))
-}
-
-func createTracesProcessor(
-	ctx context.Context,
-	set processor.CreateSettings,
-	cfg component.Config,
-	nextConsumer consumer.Traces,
-) (processor.Traces, error) {
-	elasticinframetricsProcessor := newProcessor(set, cfg.(*Config))
-	return processorhelper.NewTracesProcessor(
-		ctx,
-		set,
-		cfg,
-		nextConsumer,
-		elasticinframetricsProcessor.processTraces,
 		processorhelper.WithCapabilities(processorCapabilities))
 }

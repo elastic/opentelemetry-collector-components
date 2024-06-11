@@ -6,39 +6,41 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 )
 
-// mockRemapper is a mock implementation of the remapper interface for testing purposes.
-type mockRemapper struct {
-	called      bool
-	scopeMetric pmetric.ScopeMetrics
-	metricSlice pmetric.MetricSlice
-	resource    pcommon.Resource
-}
-
-func (m *mockRemapper) Remap(scopeMetric pmetric.ScopeMetrics, metricSlice pmetric.MetricSlice, resource pcommon.Resource) {
-	m.called = true
-	m.scopeMetric = scopeMetric
-	m.metricSlice = metricSlice
-	m.resource = resource
-}
-
 func TestProcessMetrics(t *testing.T) {
 	testCases := []struct {
-		name                 string
-		cfg                  *Config
-		createMetrics        func() pmetric.Metrics
-		expectedRemapperCall bool
-		expectedHostname     string
-		expectedMetricName   string
+		name               string
+		cfg                *Config
+		createMetrics      func() pmetric.Metrics
+		expectedHostname   string
+		expectedMetricName string
+		expetedMetricValue int64
 	}{
 		{
-			name: "processes metrics with system metrics",
+			name: "ProcessMetrics when AddSystemMetrics is enabled",
 			cfg:  &Config{AddSystemMetrics: true},
+			createMetrics: func() pmetric.Metrics {
+				md := pmetric.NewMetrics()
+				rm := md.ResourceMetrics().AppendEmpty()
+				rm.Resource().Attributes().PutStr("host.name", "test-host")
+				sm := rm.ScopeMetrics().AppendEmpty()
+				metric := sm.Metrics().AppendEmpty()
+				metric.SetName("test.metric")
+				dp := metric.SetEmptySum().DataPoints().AppendEmpty()
+				dp.SetIntValue(10)
+				return md
+			},
+			expectedHostname:   "test-host",
+			expectedMetricName: "test.metric",
+			expetedMetricValue: 10,
+		},
+		{
+			name: "ProcessMetrics when AddSystemMetrics is disabled",
+			cfg:  &Config{AddSystemMetrics: false},
 			createMetrics: func() pmetric.Metrics {
 				md := pmetric.NewMetrics()
 				rm := md.ResourceMetrics().AppendEmpty()
@@ -48,9 +50,8 @@ func TestProcessMetrics(t *testing.T) {
 				metric.SetName("test.metric")
 				return md
 			},
-			expectedRemapperCall: true,
-			expectedHostname:     "test-host",
-			expectedMetricName:   "test.metric",
+			expectedHostname:   "",
+			expectedMetricName: "",
 		},
 	}
 
@@ -62,26 +63,32 @@ func TestProcessMetrics(t *testing.T) {
 				},
 			}
 
-			mockRemap := &mockRemapper{}
-			p := &ElasticinframetricsProcessor{
-				cfg:       tc.cfg,
-				logger:    set.Logger,
-				remappers: []remapper{mockRemap},
-			}
+			p := newProcessor(set, tc.cfg)
 
 			md := tc.createMetrics()
 			_, err := p.processMetrics(context.Background(), md)
 
 			assert.NoError(t, err)
-			assert.Equal(t, tc.expectedRemapperCall, mockRemap.called, "expected remapper call")
 
-			if tc.expectedRemapperCall {
-				hostname, ok := mockRemap.resource.Attributes().Get("host.name")
-				assert.True(t, ok, "expected attribute 'host.name'")
-				assert.Equal(t, tc.expectedHostname, hostname.Str(), "expected resource attribute to be 'test-host'")
+			// Check if remapper was initialized based on the config
+			if tc.cfg.AddSystemMetrics {
+				assert.NotEmpty(t, p.remappers, "expected remapper to be initialized")
+				// Check remapping results
+				if len(p.remappers) > 0 {
+					rm := md.ResourceMetrics().At(0)
+					resource := rm.Resource()
+					scopeMetric := rm.ScopeMetrics().At(0)
+					metric := scopeMetric.Metrics().At(0)
+					dpvalue := metric.Sum().DataPoints().At(0).IntValue()
+					hostname, ok := resource.Attributes().Get("host.name")
+					assert.True(t, ok, "expected attribute 'host.name'")
+					assert.Equal(t, tc.expectedHostname, hostname.Str(), "expected resource attribute to be 'test-host'")
+					assert.Equal(t, tc.expectedMetricName, metric.Name(), "expected metric name to be 'test.metric'")
+					assert.Equal(t, tc.expetedMetricValue, dpvalue, "expected metric value to be 10")
 
-				metricname := mockRemap.scopeMetric.Metrics().At(0).Name()
-				assert.Equal(t, tc.expectedMetricName, metricname, "expected metric name to be 'test.metric'")
+				}
+			} else {
+				assert.Empty(t, p.remappers, "expected no remapper to be initialized")
 			}
 		})
 	}

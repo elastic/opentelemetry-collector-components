@@ -5,9 +5,7 @@ import (
 
 	"github.com/elastic/opentelemetry-lib/remappers/hostmetrics"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 )
@@ -52,12 +50,4 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 		}
 	}
 	return md, nil
-}
-
-func (p *ElasticinframetricsProcessor) processLogs(_ context.Context, ld plog.Logs) (plog.Logs, error) {
-	return ld, nil
-}
-
-func (p *ElasticinframetricsProcessor) processTraces(_ context.Context, td ptrace.Traces) (ptrace.Traces, error) {
-	return td, nil
 }
