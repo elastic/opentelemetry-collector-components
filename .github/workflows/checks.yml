@@ -220,5 +220,5 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v4
-      - name: Build testing component's collector
-        run: make genelasticcol
+      - name: Build testing component's collector and validate example configuration
+        run: make elasticcol-validate

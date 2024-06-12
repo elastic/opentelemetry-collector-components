@@ -4,6 +4,8 @@ receivers:
   nop:
 
 processors:
+  elasticinframetrics:
+    add_system_metrics:
 
 exporters:
   nop:
