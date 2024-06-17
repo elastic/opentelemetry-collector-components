@@ -19,13 +19,18 @@ func TestLoadConfig(t *testing.T) {
 	}{
 		{
 			configPath: "config.yaml",
-			id:         component.NewIDWithName(metadata.Type, "default"),
-			expected:   &Config{AddSystemMetrics: true},
+			id:         component.NewID(metadata.Type),
+			expected:   &Config{AddSystemMetrics: true, AddK8sMetrics: true},
+		},
+		{
+			configPath: "config.yaml",
+			id:         component.NewIDWithName(metadata.Type, "2"),
+			expected:   &Config{AddSystemMetrics: true, AddK8sMetrics: true},
 		},
 		{
 			configPath: "config.yaml",
 			id:         component.NewIDWithName(metadata.Type, "with_system_metrics"),
-			expected:   &Config{AddSystemMetrics: true},
+			expected:   &Config{AddSystemMetrics: true, AddK8sMetrics: false},
 		},
 	}
 
