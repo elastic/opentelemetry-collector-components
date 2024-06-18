@@ -37,6 +37,11 @@ func TestLoadConfig(t *testing.T) {
 			id:         component.NewIDWithName(metadata.Type, "with_kubernetes_metrics"),
 			expected:   &Config{AddSystemMetrics: false, AddK8sMetrics: true},
 		},
+		{
+			configPath: "config.yaml",
+			id:         component.NewIDWithName(metadata.Type, "without_system_and_k8s_metrics"),
+			expected:   &Config{AddSystemMetrics: false, AddK8sMetrics: false},
+		},
 	}
 
 	for _, tt := range tests {
