@@ -23,17 +23,13 @@ type ElasticinframetricsProcessor struct {
 }
 
 func newProcessor(set processor.CreateSettings, cfg *Config) *ElasticinframetricsProcessor {
-	var remappers []remapper
-	// Initialize the remapper slice if AddSystemMetrics is enabled
+	remappers := make([]remapper, 0)
 	if cfg.AddSystemMetrics {
-		remappers = []remapper{
-			hostmetrics.NewRemapper(set.Logger, hostmetrics.WithSystemIntegrationDataset(true)),
-		}
+		remappers = append(remappers, hostmetrics.NewRemapper(set.Logger, hostmetrics.WithSystemIntegrationDataset(true)))
+
 	}
 	if cfg.AddK8sMetrics {
-		remappers = []remapper{
-			kubernetesmetrics.NewRemapper(set.Logger, kubernetesmetrics.WithKubernetesIntegrationDataset(true)),
-		}
+		remappers = append(remappers, kubernetesmetrics.NewRemapper(set.Logger, kubernetesmetrics.WithKubernetesIntegrationDataset(true)))
 	}
 	return &ElasticinframetricsProcessor{
 		cfg:       cfg,
