@@ -93,3 +93,35 @@ func TestProcessMetrics(t *testing.T) {
 		})
 	}
 }
+
+func TestRemappers(t *testing.T) {
+	testCases := []struct {
+		name              string
+		cfg               *Config
+		expectedRemappers int
+	}{
+		{
+			name:              "AddSystemMetrics and AddK8sMetrics are disabled",
+			cfg:               &Config{AddSystemMetrics: false, AddK8sMetrics: false},
+			expectedRemappers: 0,
+		},
+		{
+			name:              "AddSystemMetrics and AddK8sMetrics are enabled",
+			cfg:               &Config{AddSystemMetrics: true, AddK8sMetrics: true},
+			expectedRemappers: 2,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			set := processor.CreateSettings{
+				TelemetrySettings: component.TelemetrySettings{
+					Logger: zap.NewNop(),
+				},
+			}
+
+			p := newProcessor(set, tc.cfg)
+			assert.Equal(t, len(p.remappers), tc.expectedRemappers)
+		})
+	}
+}

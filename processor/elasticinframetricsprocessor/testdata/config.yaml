@@ -1,8 +1,16 @@
-default:
+elasticinframetrics:
+elasticinframetrics/all:
   add_system_metrics: true
+  add_k8s_metrics: true
 
-with_system_metrics:
+elasticinframetrics/with_system_metrics:
   add_system_metrics: true
+  add_k8s_metrics: false
 
-without_system_metrics:
+elasticinframetrics/without_system_and_k8s_metrics:
   add_system_metrics: false
+  add_k8s_metrics: false
+
+elasticinframetrics/with_kubernetes_metrics:
+  add_system_metrics: false
+  add_k8s_metrics: true
