@@ -16,7 +16,7 @@ The Elastic Infra Metrics Processor can be used to bridge the gap between OTEL a
 This processor uses the [elastic/opentelemtery-lib](https://github.com/elastic/opentelemetry-lib) library, which derives and adds Elastic compatible metrics from the OTEL metrics without altering the OTEL metrics. 
 The processor should be used only with the below receivers and exporter.
 
-**Receivers**: It should be used with the [Hostmetrics receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/receiver/hostmetricsreceiver/README.md), [Kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/kubeletstatsreceiver).<br>
+**Receivers**: It should be used with the [Host Metrics Receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/hostmetricsreceiver#host-metrics-receiver), [Kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/kubeletstatsreceiver).<br>
 **Exporter**: It should be used only with the Elastic Exporter. 
 
 
