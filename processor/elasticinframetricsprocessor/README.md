@@ -17,7 +17,7 @@ This processor uses the [elastic/opentelemtery-lib](https://github.com/elastic/o
 The processor should be used only with the below receivers and exporter.
 
 **Receivers**: It should be used with the [Host Metrics Receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/hostmetricsreceiver#host-metrics-receiver), [Kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/kubeletstatsreceiver).<br>
-**Exporter**: It should be used only with the Elastic Exporter. 
+**Exporter**: It should be used only with the [Elasticsearch Exporter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter#elasticsearch-exporter). 
 
 
 ## Configuration
