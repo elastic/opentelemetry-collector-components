@@ -1,6 +1,7 @@
 ---
 version: 2
 updates:
+  #TODO: Replace go directories with wildcard https://github.com/dependabot/dependabot-core/issues/2178
   - package-ecosystem: "gomod"
     directory: "/processor/elasticinframetricsprocessor/"
     schedule:
