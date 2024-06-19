@@ -1,12 +1,27 @@
 ---
 version: 2
 updates:
+  #TODO: Replace go directories with wildcard https://github.com/dependabot/dependabot-core/issues/2178
   - package-ecosystem: "gomod"
-    directory: "/"
+    directory: "/processor/elasticinframetricsprocessor/"
     schedule:
       interval: "daily"
     labels:
       - automation
+    groups:
+      otel-dependencies:
+        patterns: ["go.opentelemetry.io/*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "gomod"
+    directory: "/internal/tools/"
+    schedule:
+      interval: "daily"
+    labels:
+      - automation
+      - tools
     groups:
       otel-dependencies:
         patterns: ["go.opentelemetry.io/*"]
