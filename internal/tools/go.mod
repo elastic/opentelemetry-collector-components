@@ -4,6 +4,7 @@ go 1.22.3
 
 require (
 	github.com/client9/misspell v0.3.4
+	github.com/elastic/go-licenser v0.4.2
 	github.com/golangci/golangci-lint v1.59.1
 	github.com/jcchavezs/porto v0.6.0
 	go.opentelemetry.io/collector/cmd/builder v0.104.0
