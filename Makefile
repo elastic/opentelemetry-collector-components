@@ -40,6 +40,10 @@ gotest:
 golint:
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="lint"
 
+.PHONY: golicense
+golicense:
+	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="license-check"
+
 .PHONY: gofmt
 gofmt:
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="fmt"
