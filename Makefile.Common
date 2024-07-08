@@ -23,6 +23,7 @@ MDATAGEN     := $(TOOLS_BIN_DIR)/mdatagen
 GOVULNCHECK  := $(TOOLS_BIN_DIR)/govulncheck
 PORTO        := $(TOOLS_BIN_DIR)/porto
 BUILDER      := $(TOOLS_BIN_DIR)/builder
+LICENSER     := $(TOOLS_BIN_DIR)/go-licenser
 
 .PHONY: install-tools
 install-tools: $(TOOLS_BIN_NAMES)
@@ -46,8 +47,16 @@ tidy:
 	rm -fr go.sum
 	$(GOCMD) mod tidy -compat=1.21.0
 
+.PHONY: license-check
+license-check: $(LICENSER)
+	@$(LICENSER) -d
+
+.PHONY: license-update
+license-update: $(LICENSER)
+	@$(LICENSER)
+
 .PHONY: misspell
-misspell: $(TOOLS_BIN_DIR)/misspell
+misspell: $(MISSPELL)
 	@echo "running $(MISSPELL)"
 	@$(MISSPELL_CMD)
 
