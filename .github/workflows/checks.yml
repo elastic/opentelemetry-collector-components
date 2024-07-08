@@ -147,8 +147,7 @@ jobs:
         run: make install-tools
       - name: License
         run: |
-          make -j2 golicense
-          git diff --exit-code || (echo 'License headers are out of date, please run "make license-update" and commit the changes in this PR.' && exit 1)
+          make -j2 golicense || (echo 'License headers are out of date, please run "make license-update" and commit the changes in this PR.' && exit 1)
       - name: Porto
         run: |
           make -j2 goporto
