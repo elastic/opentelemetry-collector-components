@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/elasticin
 go 1.21.1
 
 require (
-	github.com/elastic/opentelemetry-lib v0.7.1
+	github.com/elastic/opentelemetry-lib v0.7.3
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/collector/component v0.102.1
 	go.opentelemetry.io/collector/confmap v0.102.1
