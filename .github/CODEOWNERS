@@ -2,4 +2,4 @@
 * @elastic/otel-devs
 
 # Per-component owners
-# TODO: define as needed
+processor/elastictraceprocessor    @elastic/obs-ds-intake-services
