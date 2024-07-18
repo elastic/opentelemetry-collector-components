@@ -3,8 +3,8 @@ package apmconfigextension
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
@@ -12,7 +12,6 @@ import (
 	"github.com/open-telemetry/opamp-go/server/types"
 	semconv "go.opentelemetry.io/collector/semconv/v1.25.0"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 )
 
 type configOpAMPCallbacks struct {
@@ -63,6 +62,13 @@ func updateAgentParams(params *apmconfig.Params, description *protobufs.AgentDes
 	}
 }
 
+func (rc *configConnectionCallbacks) serverError(msg string, message *protobufs.ServerToAgent, logFields ...zap.Field) *protobufs.ServerToAgent {
+	message.ErrorResponse.ErrorMessage = msg
+	message.ErrorResponse.Type = protobufs.ServerErrorResponseType_ServerErrorResponseType_Unknown
+	rc.logger.Error(message.ErrorResponse.ErrorMessage, logFields...)
+	return message
+}
+
 // OnMessage is called when a message is received from the connection. Can happen
 // only after OnConnected(). Must return a ServerToAgent message that will be sent
 // as a response to the Agent.
@@ -82,9 +88,9 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 		zap.String("service.environment", agentParams.Service.Environment),
 	}
 
+	// set msg flag to resend all data?
 	if agentParams.Service.Name == "" {
-		rc.logger.Error("unidentified agent: service.name attribute must be provided", agentUidLogField...)
-		return &serverToAgent
+		return rc.serverError("unidentified agent: service.name attribute must be provided", &serverToAgent, agentUidLogField...)
 	}
 
 	// Agent is reporting remote config status
@@ -97,23 +103,20 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 
 	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agentParams)
 	if err != nil {
-		log.Println(err)
-		return &serverToAgent
+		return rc.serverError(fmt.Sprintf("error retrieving remote configuration: %s", err), &serverToAgent)
 	} else if bytes.Equal(remoteConfig.Hash, agentParams.Config.Hash) {
 		rc.logger.Info(fmt.Sprintf("Remote config matches agent config: %v\n", remoteConfig.Hash), agentUidLogField...)
 		// Agent applied the configuration: update upstream apm-server
 		err = rc.configClient.EffectiveConfig(ctx, agentParams)
 		if err != nil {
-			rc.logger.Error(err.Error())
-			return &serverToAgent
+			return rc.serverError(fmt.Sprintf("error notifying the central config about the applied remote configuration: %s", err), &serverToAgent)
 		}
 	} else if len(remoteConfig.Attrs) > 0 {
 		rc.logger.Info(fmt.Sprintf("APM central remote configuration received: %v\n", remoteConfig), agentUidLogField...)
 
-		marshallConfig, err := yaml.Marshal(remoteConfig.Attrs)
+		marshallConfig, err := json.Marshal(remoteConfig.Attrs)
 		if err != nil {
-			rc.logger.Error(err.Error())
-			return &serverToAgent
+			return rc.serverError(fmt.Sprintf("error marshaling remote configuration: %s", err), &serverToAgent)
 		}
 		serverToAgent.RemoteConfig = &protobufs.AgentRemoteConfig{
 			ConfigHash: remoteConfig.Hash,
@@ -121,7 +124,7 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 				ConfigMap: map[string]*protobufs.AgentConfigFile{
 					"": {
 						Body:        marshallConfig,
-						ContentType: "text/yaml",
+						ContentType: "text/json",
 					},
 				},
 			},
