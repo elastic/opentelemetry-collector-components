@@ -31,6 +31,9 @@ import (
 var _ processor.Traces = (*Processor)(nil)
 
 type Processor struct {
+	component.StartFunc
+	component.ShutdownFunc
+
 	next   consumer.Traces
 	logger *zap.Logger
 }
@@ -40,14 +43,6 @@ func newProcessor(logger *zap.Logger, next consumer.Traces) *Processor {
 		next:   next,
 		logger: logger,
 	}
-}
-
-func (p *Processor) Start(context.Context, component.Host) error {
-	return nil
-}
-
-func (p *Processor) Shutdown(context.Context) error {
-	return nil
 }
 
 func (p *Processor) Capabilities() consumer.Capabilities {
