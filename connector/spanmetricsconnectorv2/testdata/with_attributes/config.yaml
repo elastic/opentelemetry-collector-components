@@ -1,0 +1,15 @@
+spanmetricsv2:
+  spans:
+    http.trace.span.duration:
+      description: Span duration for HTTP spans
+      attributes:
+        - key: http.response.status_code
+    db.trace.span.duration:
+      description: Span duration for DB spans
+      attributes:
+        - key: db.system
+    msg.trace.span.duration:
+      description: Span duration for messaging spans
+      attributes:
+        - key: messaging.system
+  

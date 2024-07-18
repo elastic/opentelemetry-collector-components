@@ -1,0 +1,6 @@
+spanmetricsv2:
+  spans:
+    404.span.duration:
+      description: Span duration with missing attribute
+      attributes:
+        - key: 404.attribute
