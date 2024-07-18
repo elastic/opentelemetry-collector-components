@@ -1,9 +1,11 @@
 module github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
 
-go 1.22.4
+go 1.21.1
+
+toolchain go1.22.4
 
 require (
-	github.com/elastic/opentelemetry-lib v0.7.3
+	github.com/elastic/opentelemetry-lib v0.7.4-0.20240718083557-8db2f04b826b
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.104.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.104.0
 	github.com/stretchr/testify v1.9.0
@@ -60,5 +62,3 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/elastic/opentelemetry-lib => /Users/lahsivjar/Projects/elastic/opentelemetry-lib
