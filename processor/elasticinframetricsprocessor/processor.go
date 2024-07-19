@@ -39,7 +39,7 @@ type ElasticinframetricsProcessor struct {
 	remappers []remapper
 }
 
-func newProcessor(set processor.CreateSettings, cfg *Config) *ElasticinframetricsProcessor {
+func newProcessor(set processor.Settings, cfg *Config) *ElasticinframetricsProcessor {
 	remappers := make([]remapper, 0)
 	if cfg.AddSystemMetrics {
 		remappers = append(remappers, hostmetrics.NewRemapper(set.Logger, hostmetrics.WithSystemIntegrationDataset(true)))
