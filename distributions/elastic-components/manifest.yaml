@@ -9,6 +9,7 @@ dist:
 extensions:
 
 connectors:
+  - gomod: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2 v0.0.0
 
 converters:
 
@@ -17,9 +18,12 @@ receivers:
 
 processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.0.0
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.105.0
 
 replaces:
   - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor => ../processor/elasticinframetricsprocessor
+  - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
+  - github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2 => ../processor/spanmetricsconnectorv2
