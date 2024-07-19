@@ -16,6 +16,19 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "gomod"
+    directory: "/processor/elastictraceprocessor/"
+    schedule:
+      interval: "daily"
+    labels:
+      - automation
+    groups:
+      otel-dependencies:
+        patterns: ["go.opentelemetry.io/*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "gomod"
     directory: "/internal/tools/"
     schedule:
       interval: "daily"
