@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package spanmetricsconnectorv2
+package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2"
 
 import (
 	"context"
