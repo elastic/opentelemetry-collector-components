@@ -3,3 +3,4 @@
 
 # Per-component owners
 processor/elastictraceprocessor    @elastic/obs-ds-intake-services
+connector/spanmetricsconnectorv2   @elastic/obs-ds-intake-services
