@@ -38,7 +38,7 @@ import (
 )
 
 func TestComponentFactoryType(t *testing.T) {
-	require.Equal(t, "elatictrace", NewFactory().Type().String())
+	require.Equal(t, "elastictrace", NewFactory().Type().String())
 }
 
 func TestComponentConfigStruct(t *testing.T) {
