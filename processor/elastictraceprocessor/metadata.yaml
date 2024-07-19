@@ -1,4 +1,4 @@
-type: elatictrace
+type: elastictrace
 scope_name: otelcol/elastictrace
 
 status:
