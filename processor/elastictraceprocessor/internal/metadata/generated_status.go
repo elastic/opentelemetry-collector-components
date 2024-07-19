@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	Type = component.MustNewType("elatictrace")
+	Type = component.MustNewType("elastictrace")
 )
 
 const (
