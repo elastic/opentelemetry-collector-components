@@ -1,0 +1,8 @@
+type: elatictrace
+scope_name: otelcol/elastictrace
+
+status:
+  class: processor
+  stability:
+    development: [traces]
+  distributions: []
