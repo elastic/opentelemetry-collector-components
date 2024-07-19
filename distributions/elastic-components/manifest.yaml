@@ -26,4 +26,4 @@ exporters:
 replaces:
   - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor => ../processor/elasticinframetricsprocessor
   - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
-  - github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2 => ../processor/spanmetricsconnectorv2
+  - github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2 => ../connector/spanmetricsconnectorv2
