@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 const (
@@ -96,9 +97,13 @@ func (i *MetricInfo) validateHistogram() error {
 }
 
 func (i *MetricInfo) validateAttributes() error {
+	tmp := pcommon.NewValueEmpty()
 	for _, attr := range i.Attributes {
 		if attr.Key == "" {
 			return fmt.Errorf("attribute key missing")
+		}
+		if err := tmp.FromRaw(attr.DefaultValue); err != nil {
+			return fmt.Errorf("invalid default value specified for attribute %s", attr.Key)
 		}
 	}
 	return nil
