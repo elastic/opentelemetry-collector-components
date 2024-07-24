@@ -67,40 +67,20 @@ func (c *explicitHistogram) update(ctx context.Context, attrs pcommon.Map, value
 	var multiError error
 	for name, md := range c.metricDefs {
 		countAttrs := pcommon.NewMap()
-		for _, attr := range md.attrs {
+		for _, attr := range md.Attributes {
 			if attrVal, ok := attrs.Get(attr.Key); ok {
-				switch typeAttr := attrVal.Type(); typeAttr {
-				case pcommon.ValueTypeInt:
-					countAttrs.PutInt(attr.Key, attrVal.Int())
-				case pcommon.ValueTypeDouble:
-					countAttrs.PutDouble(attr.Key, attrVal.Double())
-				default:
-					countAttrs.PutStr(attr.Key, attrVal.Str())
-				}
-			} else if attr.DefaultValue != nil {
-				switch v := attr.DefaultValue.(type) {
-				case string:
-					if v != "" {
-						countAttrs.PutStr(attr.Key, v)
-					}
-				case int:
-					if v != 0 {
-						countAttrs.PutInt(attr.Key, int64(v))
-					}
-				case float64:
-					if v != 0 {
-						countAttrs.PutDouble(attr.Key, float64(v))
-					}
-				}
+				attrVal.CopyTo(countAttrs.PutEmpty(attr.Key))
+			} else if attr.DefaultValue.Type() != pcommon.ValueTypeEmpty {
+				attr.DefaultValue.CopyTo(countAttrs.PutEmpty(attr.Key))
 			}
 		}
 
 		// Missing necessary attributes to be counted
-		if countAttrs.Len() != len(md.attrs) {
+		if countAttrs.Len() != len(md.Attributes) {
 			continue
 		}
-		value /= md.unitDivider
-		multiError = errors.Join(multiError, c.increment(name, countAttrs, value, md.histogram))
+		value /= md.UnitDivider
+		multiError = errors.Join(multiError, c.increment(name, countAttrs, value, md.Histogram))
 	}
 	return multiError
 }
@@ -136,7 +116,7 @@ func (c *explicitHistogram) appendMetricsTo(metricSlice pmetric.MetricSlice) {
 		}
 		destMetric := metricSlice.AppendEmpty()
 		destMetric.SetName(name)
-		destMetric.SetDescription(md.desc)
+		destMetric.SetDescription(md.Description)
 		histo := destMetric.SetEmptyHistogram()
 		// The delta value is always positive, so a value accumulated downstream is monotonic
 		histo.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)

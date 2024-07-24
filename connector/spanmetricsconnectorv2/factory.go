@@ -19,11 +19,14 @@ package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-colle
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
 )
@@ -60,11 +63,15 @@ func createTracesToMetrics(
 
 	spanMetricDefs := make(map[string]metricDef, len(c.Spans))
 	for name, info := range c.Spans {
+		attrs, err := parseAttributeConfigs(info.Attributes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse attribute config: %w", err)
+		}
 		md := metricDef{
-			desc:        info.Description,
-			unitDivider: metricUnitToDivider[info.Unit],
-			attrs:       info.Attributes,
-			histogram:   info.Histogram,
+			Description: info.Description,
+			UnitDivider: metricUnitToDivider[info.Unit],
+			Attributes:  attrs,
+			Histogram:   info.Histogram,
 		}
 		spanMetricDefs[name] = md
 	}
@@ -75,9 +82,22 @@ func createTracesToMetrics(
 	}, nil
 }
 
-type metricDef struct {
-	desc        string
-	unitDivider float64
-	attrs       []AttributeConfig
-	histogram   HistogramConfig
+func parseAttributeConfigs(cfgs []AttributeConfig) ([]keyValue, error) {
+	var errs []error
+	kvs := make([]keyValue, len(cfgs))
+	for i, attr := range cfgs {
+		val := pcommon.NewValueEmpty()
+		if err := val.FromRaw(attr.DefaultValue); err != nil {
+			errs = append(errs, err)
+		}
+		kvs[i] = keyValue{
+			Key:          attr.Key,
+			DefaultValue: val,
+		}
+	}
+
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	}
+	return kvs, nil
 }
