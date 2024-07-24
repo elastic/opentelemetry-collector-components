@@ -16,15 +16,15 @@ resourceMetrics:
                 - bucketCounts:
                     - "0"
                     - "1"
-                    - "3"
                     - "2"
-                    - "0"
+                    - "1"
+                    - "2"
                   count: "6"
                   explicitBounds:
                     - 0.001
                     - 0.1
+                    - 1
                     - 10
-                    - 100
                   sum: 30.402002808
                   timeUnixNano: "1000000"
             name: trace.span.duration

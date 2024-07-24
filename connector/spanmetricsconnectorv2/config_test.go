@@ -85,7 +85,7 @@ func TestConfig(t *testing.T) {
 						Unit:        MetricUnitS,
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
-								Buckets: []float64{0.001, 0.1, 10, 100},
+								Buckets: []float64{0.001, 0.1, 1, 10},
 							},
 						},
 					},
