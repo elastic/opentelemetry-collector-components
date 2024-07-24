@@ -26,7 +26,7 @@ type keyValue struct {
 
 type metricDef struct {
 	Description string
-	UnitDivider float64
+	Unit        MetricUnit
 	Attributes  []keyValue
 	Histogram   HistogramConfig
 }

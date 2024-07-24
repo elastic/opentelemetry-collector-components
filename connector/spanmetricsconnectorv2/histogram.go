@@ -29,7 +29,16 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 )
 
-var noAttributes = [16]byte{}
+var (
+	noAttributes = [16]byte{}
+
+	// metricUnitToDivider gives a value that could used to divide the
+	// nano precision duration to the required unit specified in config.
+	metricUnitToDivider = map[MetricUnit]float64{
+		MetricUnitMs: float64(time.Millisecond.Nanoseconds()),
+		MetricUnitS:  float64(time.Second.Nanoseconds()),
+	}
+)
 
 func newExplicitHistogram(metricDefs map[string]metricDef) *explicitHistogram {
 	return &explicitHistogram{
@@ -75,7 +84,7 @@ func newAttrExplicitHistogram(attrs pcommon.Map, bounds []float64) *attrExplicit
 	}
 }
 
-func (c *explicitHistogram) update(ctx context.Context, attrs pcommon.Map, value float64) error {
+func (c *explicitHistogram) update(ctx context.Context, attrs pcommon.Map, value time.Duration) error {
 	var multiError error
 	for name, md := range c.metricDefs {
 		countAttrs := pcommon.NewMap()
@@ -91,8 +100,8 @@ func (c *explicitHistogram) update(ctx context.Context, attrs pcommon.Map, value
 		if countAttrs.Len() != len(md.Attributes) {
 			continue
 		}
-		value /= md.UnitDivider
-		multiError = errors.Join(multiError, c.increment(name, countAttrs, value, md.Histogram))
+		finalValue := float64(value.Nanoseconds()) / metricUnitToDivider[md.Unit]
+		multiError = errors.Join(multiError, c.increment(name, countAttrs, finalValue, md.Histogram))
 	}
 	return multiError
 }

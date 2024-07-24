@@ -20,6 +20,7 @@ package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-colle
 import (
 	"context"
 	"errors"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -55,11 +56,11 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 
 			for k := 0; k < scopeSpan.Spans().Len(); k++ {
 				span := scopeSpan.Spans().At(k)
-				var durationInNs float64
+				var durationInNs time.Duration
 				startTime := span.StartTimestamp()
 				endTime := span.EndTimestamp()
 				if endTime > startTime {
-					durationInNs = float64(endTime - startTime)
+					durationInNs = time.Duration(endTime - startTime)
 				}
 				multiError = errors.Join(multiError, spansHist.update(ctx, span.Attributes(), durationInNs))
 			}

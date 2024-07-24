@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
@@ -30,13 +29,6 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
 )
-
-// metricUnitToDivider gives a value that could used to divide the
-// nano precision duration to the required unit specified in config.
-var metricUnitToDivider = map[MetricUnit]float64{
-	MetricUnitMs: float64(time.Millisecond.Nanoseconds()),
-	MetricUnitS:  float64(time.Second.Nanoseconds()),
-}
 
 // NewFactory returns a ConnectorFactory.
 func NewFactory() connector.Factory {
@@ -69,7 +61,7 @@ func createTracesToMetrics(
 		}
 		md := metricDef{
 			Description: info.Description,
-			UnitDivider: metricUnitToDivider[info.Unit],
+			Unit:        info.Unit,
 			Attributes:  attrs,
 			Histogram:   info.Histogram,
 		}
