@@ -81,6 +81,7 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 	agentUid := string(message.GetInstanceUid())
 
 	agentParams := rc.knownAgents[agentUid]
+	agentParams.AgentUiD = agentUid
 	updateAgentParams(&agentParams, message.AgentDescription)
 	agentUidLogField := []zap.Field{
 		zap.String("instance_uid", agentUid),
@@ -94,8 +95,9 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 	}
 
 	// Agent is reporting remote config status
+	var agentRemoteConfigHash []byte
 	if message.RemoteConfigStatus != nil {
-		agentParams.Config.Hash = message.RemoteConfigStatus.GetLastRemoteConfigHash()
+		agentRemoteConfigHash = message.RemoteConfigStatus.GetLastRemoteConfigHash()
 	}
 
 	// update; internal state
@@ -104,10 +106,10 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agentParams)
 	if err != nil {
 		return rc.serverError(fmt.Sprintf("error retrieving remote configuration: %s", err), &serverToAgent)
-	} else if bytes.Equal(remoteConfig.Hash, agentParams.Config.Hash) {
+	} else if len(agentRemoteConfigHash) > 0 && bytes.Equal(remoteConfig.Hash, agentRemoteConfigHash) {
 		rc.logger.Info(fmt.Sprintf("Remote config matches agent config: %v\n", remoteConfig.Hash), agentUidLogField...)
 		// Agent applied the configuration: update upstream apm-server
-		err = rc.configClient.EffectiveConfig(ctx, agentParams)
+		err = rc.configClient.LastConfig(ctx, agentParams, agentRemoteConfigHash)
 		if err != nil {
 			return rc.serverError(fmt.Sprintf("error notifying the central config about the applied remote configuration: %s", err), &serverToAgent)
 		}

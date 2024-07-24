@@ -9,13 +9,21 @@ import (
 
 	"go.elastic.co/apm/v2/apmconfig"
 	"go.elastic.co/apm/v2/transport"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 
 	otelapmconfig "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 )
 
 type APMClient struct {
-	apmconfig.Watcher
+	client apmconfig.Watcher
+
+	myCtx context.Context
+
+	logger *zap.Logger
+
+	agents            map[string]<-chan apmconfig.Change
+	agentscancelFuncs map[string]context.CancelFunc
 }
 
 func initialTransport(opts transport.HTTPTransportOptions) (transport.Transport, error) {
@@ -37,15 +45,41 @@ func configHash(encodedConfig []byte) ([]byte, error) {
 	return hasher.Sum(nil), nil
 }
 
+func (c *APMClient) agentChange(ctx context.Context, agentUid string) apmconfig.Change {
+	var change apmconfig.Change
+	if changeChan, ok := c.agents[agentUid]; ok {
+		select {
+		case change, ok = <-changeChan:
+			return change
+		case <-ctx.Done():
+		default:
+		}
+	}
+	return change
+}
+
 func (c *APMClient) RemoteConfig(ctx context.Context, agentParams otelapmconfig.Params) (otelapmconfig.RemoteConfig, error) {
 	params := apmconfig.WatchParams{}
 	params.Service.Name = fmt.Sprintf(agentParams.Service.Name)
 	params.Service.Environment = agentParams.Service.Environment
 
-	// get first remote config
-	config := <-c.WatchConfig(ctx, params)
+	var config apmconfig.Change
+	if _, ok := c.agents[agentParams.AgentUiD]; !ok {
+		ctx, cancelFn := context.WithCancel(c.myCtx)
+		c.agentscancelFuncs[agentParams.AgentUiD] = cancelFn
+		c.agents[agentParams.AgentUiD] = c.client.WatchConfig(ctx, params)
+
+		// non blocking call if already received first config
+		config = <-c.agents[agentParams.AgentUiD]
+
+	} else {
+		config = c.agentChange(ctx, agentParams.AgentUiD)
+	}
+
 	if config.Err != nil {
 		return otelapmconfig.RemoteConfig{}, config.Err
+	} else if len(config.Attrs) == 0 {
+		return otelapmconfig.RemoteConfig{}, nil
 	}
 
 	encodedConfig, err := yaml.Marshal(config.Attrs)
@@ -61,14 +95,12 @@ func (c *APMClient) RemoteConfig(ctx context.Context, agentParams otelapmconfig.
 	return otelapmconfig.RemoteConfig{Hash: configHash, Attrs: config.Attrs}, nil
 }
 
-func (c *APMClient) EffectiveConfig(context.Context, otelapmconfig.Params) error {
+func (c *APMClient) LastConfig(context.Context, otelapmconfig.Params, []byte) error {
 	// TODO: update transport to notify latest applied remote config
 	return nil
 }
 
-var _ apmconfig.Watcher = (*APMClient)(nil)
-
-func NewCentralConfigClient(urls []*url.URL, token string) (*APMClient, error) {
+func NewCentralConfigClient(urls []*url.URL, token string, logger *zap.Logger) (*APMClient, error) {
 	userAgent := fmt.Sprintf("%s (%s)", transport.DefaultUserAgent(), "apmconfigextension/0.0.1")
 	transportOpts := transport.HTTPTransportOptions{
 		UserAgent:   userAgent,
@@ -83,6 +115,10 @@ func NewCentralConfigClient(urls []*url.URL, token string) (*APMClient, error) {
 	if cw, ok := initialTransport.(apmconfig.Watcher); ok {
 		return &APMClient{
 			cw,
+			context.Background(),
+			logger,
+			make(map[string]<-chan apmconfig.Change),
+			make(map[string]context.CancelFunc),
 		}, nil
 	}
 

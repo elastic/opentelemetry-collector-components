@@ -35,7 +35,7 @@ func (op *apmConfigExtension) Start(ctx context.Context, _ component.Host) error
 		serverUrls[i] = parsedUrl
 	}
 
-	apmConfigClient, err := centralconfig.NewCentralConfigClient(serverUrls, op.extensionConfig.CentralConfig.Elastic.Apm.SecretToken)
+	apmConfigClient, err := centralconfig.NewCentralConfigClient(serverUrls, op.extensionConfig.CentralConfig.Elastic.Apm.SecretToken, op.logger)
 	if err != nil {
 		return err
 	}
