@@ -49,12 +49,12 @@ github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9G
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.104.0 h1:J4VwD+t7XpMuhdgd5KwhI5f17bOKHDD862szUW2ulVo=
-github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.104.0/go.mod h1:MYspCVghl0glPIWT/gca6hXL48fROuJxo7lkEB171Ws=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.105.0 h1:6mUcRfh2DRlU85EFf1W/9kwg9qMKg6xwu1kFC75MM0c=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.105.0/go.mod h1:MX5a4WDcyG/KowLGHJjpbNpYIlXsvpeJr7BEs22HuOA=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.104.0 h1:bgS1X1UnUuYfKXsQPq3U50jsMNpN5lI+BcDeklPJOW8=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.104.0/go.mod h1:tImy4FWNu1qpaXRVaNi2BU+TmZHtYgLO6LbB6mspZio=
-github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.104.0 h1:Pl4rXXpRG/xJuNWUS3I/w1jViHcrssMf47bGX/Ug/KY=
-github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.104.0/go.mod h1:tP4dyc5+g/qoXYb8lmNj+y+Nhphn4MkL23/np0Zhx2g=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.105.0 h1:hs7TaJClEAhHrj71XcaYqlYnIOpOYQgoHqhnnBNrOK8=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.105.0/go.mod h1:ehzaiDdkrww7l1Stvse5GCOAsAZOpFcgeIbB/2PqFs4=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
