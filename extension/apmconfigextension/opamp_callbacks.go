@@ -64,8 +64,10 @@ func updateAgentParams(params *apmconfig.Params, description *protobufs.AgentDes
 }
 
 func (rc *configConnectionCallbacks) serverError(msg string, message *protobufs.ServerToAgent, logFields ...zap.Field) *protobufs.ServerToAgent {
-	message.ErrorResponse.ErrorMessage = msg
-	message.ErrorResponse.Type = protobufs.ServerErrorResponseType_ServerErrorResponseType_Unknown
+	message.ErrorResponse = &protobufs.ServerErrorResponse{
+		ErrorMessage: msg,
+		Type:         protobufs.ServerErrorResponseType_ServerErrorResponseType_Unknown,
+	}
 	rc.logger.Error(message.ErrorResponse.ErrorMessage, logFields...)
 	return message
 }
