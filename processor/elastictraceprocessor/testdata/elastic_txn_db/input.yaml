@@ -1,0 +1,44 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: resource.required
+          value:
+            stringValue: foo
+        - key: resource.optional
+          value:
+            stringValue: bar
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: db.name
+                value:
+                  stringValue: main
+              - key: db.system
+                value:
+                  stringValue: mysql
+            endTimeUnixNano: "1581452773000000789"
+            events:
+              - attributes:
+                  - key: event.attr1
+                    value:
+                      stringValue: foo1
+                  - key: event.attr2
+                    value:
+                      stringValue: bar1
+                name: event1
+                timeUnixNano: "1581452773000000123"
+              - attributes:
+                  - key: event.attr1
+                    value:
+                      stringValue: foo2
+                  - key: event.attr2
+                    value:
+                      stringValue: bar2
+                name: event2
+                timeUnixNano: "1581452773000000123"
+              - name: event-with-no-attrs
+                timeUnixNano: "1581452773000000123"
+            name: db-elastic-txn
+            parentSpanId: ""
+            startTimeUnixNano: "1581452772000000321"

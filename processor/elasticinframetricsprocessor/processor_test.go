@@ -74,7 +74,7 @@ func TestProcessMetrics(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			set := processor.CreateSettings{
+			set := processor.Settings{
 				TelemetrySettings: component.TelemetrySettings{
 					Logger: zap.NewNop(),
 				},
@@ -131,7 +131,7 @@ func TestRemappers(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			set := processor.CreateSettings{
+			set := processor.Settings{
 				TelemetrySettings: component.TelemetrySettings{
 					Logger: zap.NewNop(),
 				},
