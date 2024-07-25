@@ -77,6 +77,7 @@ func (rc *configConnectionCallbacks) serverError(msg string, message *protobufs.
 // to the Agent the OnConnectionClose message will be called immediately.
 func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.Connection, message *protobufs.AgentToServer) *protobufs.ServerToAgent {
 	serverToAgent := protobufs.ServerToAgent{}
+	serverToAgent.Capabilities = uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig)
 	serverToAgent.InstanceUid = message.GetInstanceUid()
 
 	agentUid := hex.EncodeToString(message.GetInstanceUid())
