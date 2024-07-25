@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 
+	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/elastic/centralconfig"
 	"github.com/open-telemetry/opamp-go/server"
 	"go.opentelemetry.io/collector/component"
@@ -16,6 +17,7 @@ type apmConfigExtension struct {
 
 	extensionConfig *Config
 	opampServer     server.OpAMPServer
+	configClient    apmconfig.Client
 }
 
 var _ component.Component = (*apmConfigExtension)(nil)
@@ -35,20 +37,25 @@ func (op *apmConfigExtension) Start(ctx context.Context, _ component.Host) error
 		serverUrls[i] = parsedUrl
 	}
 
-	apmConfigClient, err := centralconfig.NewCentralConfigClient(serverUrls, op.extensionConfig.CentralConfig.Elastic.Apm.SecretToken, op.logger)
+	var err error
+	op.configClient, err = centralconfig.NewCentralConfigClient(serverUrls, op.extensionConfig.CentralConfig.Elastic.Apm.SecretToken, op.logger)
 	if err != nil {
 		return err
 	}
 
-	err = op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: newConfigOpAMPCallbacks(apmConfigClient, op.logger)}})
+	err = op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: newConfigOpAMPCallbacks(op.configClient, op.logger)}})
 	if err != nil {
 		return err
 	}
 
-	op.logger.Warn("APM config extension started")
+	op.logger.Info("APM config extension started")
 	return nil
 }
 
 func (op *apmConfigExtension) Shutdown(ctx context.Context) error {
+	err := op.configClient.Close()
+	if err != nil {
+		return err
+	}
 	return op.opampServer.Stop(ctx)
 }

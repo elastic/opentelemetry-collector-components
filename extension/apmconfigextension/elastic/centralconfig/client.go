@@ -58,31 +58,14 @@ func (c *APMClient) agentChange(ctx context.Context, agentUid string) apmconfig.
 	return change
 }
 
-func (c *APMClient) RemoteConfig(ctx context.Context, agentParams otelapmconfig.Params) (otelapmconfig.RemoteConfig, error) {
-	params := apmconfig.WatchParams{}
-	params.Service.Name = fmt.Sprintf(agentParams.Service.Name)
-	params.Service.Environment = agentParams.Service.Environment
-
-	var config apmconfig.Change
-	if _, ok := c.agents[agentParams.AgentUiD]; !ok {
-		ctx, cancelFn := context.WithCancel(c.myCtx)
-		c.agentscancelFuncs[agentParams.AgentUiD] = cancelFn
-		c.agents[agentParams.AgentUiD] = c.client.WatchConfig(ctx, params)
-
-		// non blocking call if already received first config
-		config = <-c.agents[agentParams.AgentUiD]
-
-	} else {
-		config = c.agentChange(ctx, agentParams.AgentUiD)
-	}
-
-	if config.Err != nil {
-		return otelapmconfig.RemoteConfig{}, config.Err
-	} else if len(config.Attrs) == 0 {
+func changeToConfig(change apmconfig.Change) (otelapmconfig.RemoteConfig, error) {
+	if change.Err != nil {
+		return otelapmconfig.RemoteConfig{}, change.Err
+	} else if len(change.Attrs) == 0 {
 		return otelapmconfig.RemoteConfig{}, nil
 	}
 
-	encodedConfig, err := yaml.Marshal(config.Attrs)
+	encodedConfig, err := yaml.Marshal(change.Attrs)
 	if err != nil {
 		return otelapmconfig.RemoteConfig{}, err
 	}
@@ -92,13 +75,45 @@ func (c *APMClient) RemoteConfig(ctx context.Context, agentParams otelapmconfig.
 		return otelapmconfig.RemoteConfig{}, err
 	}
 
-	return otelapmconfig.RemoteConfig{Hash: configHash, Attrs: config.Attrs}, nil
+	return otelapmconfig.RemoteConfig{Hash: configHash, Attrs: change.Attrs}, nil
 }
 
-func (c *APMClient) LastConfig(context.Context, otelapmconfig.Params, []byte) error {
-	// TODO: update transport to notify latest applied remote config
+func (c *APMClient) RemoteConfig(ctx context.Context, agentParams otelapmconfig.Params) (otelapmconfig.RemoteConfig, error) {
+	params := apmconfig.WatchParams{}
+	params.Service.Name = fmt.Sprintf(agentParams.Service.Name)
+	params.Service.Environment = agentParams.Service.Environment
+
+	var change apmconfig.Change
+	if _, ok := c.agents[agentParams.AgentUiD]; !ok {
+		if params.Service.Name == "" {
+			return otelapmconfig.RemoteConfig{}, errors.New("unidentified agent: service.name attribute must be provided")
+		}
+		ctx, cancelFn := context.WithCancel(c.myCtx)
+		c.agentscancelFuncs[agentParams.AgentUiD] = cancelFn
+		c.agents[agentParams.AgentUiD] = c.client.WatchConfig(ctx, params)
+
+		change = <-c.agents[agentParams.AgentUiD]
+
+	} else {
+		// non blocking call if already received first config
+		change = c.agentChange(ctx, agentParams.AgentUiD)
+	}
+
+	return changeToConfig(change)
+}
+
+func (c *APMClient) Close() error {
+	for i := range c.agentscancelFuncs {
+		c.agentscancelFuncs[i]()
+	}
+
 	return nil
 }
+
+// func (c *APMClient) LastConfig(context.Context, otelapmconfig.Params, []byte) error {
+// 	// TODO: update transport to notify latest applied remote config
+// 	return nil
+// }
 
 func NewCentralConfigClient(urls []*url.URL, token string, logger *zap.Logger) (*APMClient, error) {
 	userAgent := fmt.Sprintf("%s (%s)", transport.DefaultUserAgent(), "apmconfigextension/0.0.1")

@@ -16,12 +16,15 @@ type Params struct {
 	}
 }
 
-type RemoteClient interface {
+type Client interface {
 	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
 	RemoteConfig(context.Context, Params) (RemoteConfig, error)
 
-	// LastConfig notifies the upstream server about the latest applied configuration.
-	LastConfig(context.Context, Params, []byte) error
+	// // LastConfig notifies the upstream server about the latest applied configuration.
+	// LastConfig(context.Context, Params, []byte) error
+
+	// Close the client's connection
+	Close() error
 }
 
 // RemoteConfig holds an agent remote configuration.

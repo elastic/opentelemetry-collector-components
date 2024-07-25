@@ -3,6 +3,7 @@ package apmconfigextension
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,14 +16,14 @@ import (
 )
 
 type configOpAMPCallbacks struct {
-	configClient apmconfig.RemoteClient
+	configClient apmconfig.Client
 	knownAgents  map[string]apmconfig.Params
 	logger       *zap.Logger
 }
 
 var _ types.Callbacks = (*configOpAMPCallbacks)(nil)
 
-func newConfigOpAMPCallbacks(configClient apmconfig.RemoteClient, logger *zap.Logger) *configOpAMPCallbacks {
+func newConfigOpAMPCallbacks(configClient apmconfig.Client, logger *zap.Logger) *configOpAMPCallbacks {
 	knownAgents := make(map[string]apmconfig.Params)
 	return &configOpAMPCallbacks{
 		configClient,
@@ -40,7 +41,7 @@ func (op *configOpAMPCallbacks) OnConnecting(request *http.Request) types.Connec
 }
 
 type configConnectionCallbacks struct {
-	configClient apmconfig.RemoteClient
+	configClient apmconfig.Client
 	knownAgents  map[string]apmconfig.Params
 	logger       *zap.Logger
 }
@@ -78,7 +79,7 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 	serverToAgent := protobufs.ServerToAgent{}
 	serverToAgent.InstanceUid = message.GetInstanceUid()
 
-	agentUid := string(message.GetInstanceUid())
+	agentUid := hex.EncodeToString(message.GetInstanceUid())
 
 	agentParams := rc.knownAgents[agentUid]
 	agentParams.AgentUiD = agentUid
@@ -87,11 +88,6 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 		zap.String("instance_uid", agentUid),
 		zap.String("service.name", agentParams.Service.Name),
 		zap.String("service.environment", agentParams.Service.Environment),
-	}
-
-	// set msg flag to resend all data?
-	if agentParams.Service.Name == "" {
-		return rc.serverError("unidentified agent: service.name attribute must be provided", &serverToAgent, agentUidLogField...)
 	}
 
 	// Agent is reporting remote config status
@@ -109,12 +105,12 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 	} else if len(agentRemoteConfigHash) > 0 && bytes.Equal(remoteConfig.Hash, agentRemoteConfigHash) {
 		rc.logger.Info(fmt.Sprintf("Remote config matches agent config: %v\n", remoteConfig.Hash), agentUidLogField...)
 		// Agent applied the configuration: update upstream apm-server
-		err = rc.configClient.LastConfig(ctx, agentParams, agentRemoteConfigHash)
-		if err != nil {
-			return rc.serverError(fmt.Sprintf("error notifying the central config about the applied remote configuration: %s", err), &serverToAgent)
-		}
+		// err = rc.configClient.LastConfig(ctx, agentParams, agentRemoteConfigHash)
+		// if err != nil {
+		// 	return rc.serverError(fmt.Sprintf("error notifying the central config about the applied remote configuration: %s", err), &serverToAgent)
+		// }
 	} else if len(remoteConfig.Attrs) > 0 {
-		rc.logger.Info(fmt.Sprintf("APM central remote configuration received: %v\n", remoteConfig), agentUidLogField...)
+		rc.logger.Info("Received remote configuration", append(agentUidLogField, zap.String("config_hash", hex.EncodeToString(remoteConfig.Hash)))...)
 
 		marshallConfig, err := json.Marshal(remoteConfig.Attrs)
 		if err != nil {
