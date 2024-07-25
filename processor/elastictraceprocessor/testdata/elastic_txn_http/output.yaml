@@ -20,6 +20,12 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "201"
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: http-elastic-txn
               - key: transaction.type
                 value:
                   stringValue: request

@@ -17,6 +17,12 @@ resourceSpans:
               - key: db.system
                 value:
                   stringValue: mysql
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: db-elastic-txn
               - key: transaction.type
                 value:
                   stringValue: unknown
