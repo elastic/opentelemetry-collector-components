@@ -77,10 +77,10 @@ func (c *Config) Validate() error {
 			return errors.New("spans: metric unit missing")
 		}
 		if err := info.validateHistogram(); err != nil {
-			return fmt.Errorf("sapn attributes: metric %q: %w", name, err)
+			return fmt.Errorf("spans histogram validation failed: metric %q, %w", name, err)
 		}
 		if err := info.validateAttributes(); err != nil {
-			return fmt.Errorf("spans attributes: metric %q: %w", name, err)
+			return fmt.Errorf("spans attributes validation failed: metric %q: %w", name, err)
 		}
 	}
 	return nil
