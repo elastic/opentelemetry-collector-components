@@ -1,0 +1,60 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: resource.bar
+          value:
+            stringValue: bar
+        - key: resource.foo
+          value:
+            stringValue: foo
+    scopeMetrics:
+      - metrics:
+          - description: Span duration with missing attribute but default value
+            histogram:
+              aggregationTemporality: 1
+              dataPoints:
+                - attributes:
+                    - key: 404.attribute
+                      value:
+                        stringValue: undefined
+                  bucketCounts:
+                    - "0"
+                    - "1"
+                    - "0"
+                    - "0"
+                    - "0"
+                    - "0"
+                    - "0"
+                    - "0"
+                    - "0"
+                    - "1"
+                    - "1"
+                    - "1"
+                    - "0"
+                    - "0"
+                    - "0"
+                    - "1"
+                    - "1"
+                  count: "6"
+                  explicitBounds:
+                    - 2
+                    - 4
+                    - 6
+                    - 8
+                    - 10
+                    - 50
+                    - 100
+                    - 200
+                    - 400
+                    - 800
+                    - 1000
+                    - 1400
+                    - 2000
+                    - 5000
+                    - 10000
+                    - 15000
+                  sum: 30402.002807999997
+                  timeUnixNano: "1000000"
+            name: 404.span.duration
+        scope:
+          name: otelcol/spanmetricsconnectorv2

@@ -1,0 +1,8 @@
+spanmetricsv2:
+  spans:
+    trace.span.duration:
+      description: Span duration with custom histogram buckets
+      unit: "s"
+      histogram:
+        explicit:
+          buckets: [0.001, 0.1, 1, 10]

@@ -6,11 +6,13 @@ receivers:
 processors:
   elasticinframetrics:
     add_system_metrics:
+  elastictrace:
 
 exporters:
   nop:
 
 connectors:
+  spanmetricsv2:
 
 service:
   pipelines:
