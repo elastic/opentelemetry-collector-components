@@ -2,4 +2,5 @@
 * @elastic/otel-devs
 
 # Per-component owners
+processor/elasticinframetricsprocessor    @elastic/obs-infraobs-integrations
 processor/elastictraceprocessor    @elastic/obs-ds-intake-services
