@@ -5,10 +5,10 @@ go 1.21.1
 require (
 	github.com/elastic/opentelemetry-lib v0.8.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.105.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.104.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.105.0
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/collector/component v0.105.0
-	go.opentelemetry.io/collector/confmap v0.104.0
+	go.opentelemetry.io/collector/confmap v0.105.0
 	go.opentelemetry.io/collector/consumer v0.105.0
 	go.opentelemetry.io/collector/pdata v1.12.0
 	go.opentelemetry.io/collector/processor v0.105.0
@@ -42,7 +42,8 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.105.0 // indirect
-	go.opentelemetry.io/collector/featuregate v1.11.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.12.0 // indirect
+	go.opentelemetry.io/collector/internal/globalgates v0.105.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.105.0 // indirect
 	go.opentelemetry.io/collector/pdata/testdata v0.105.0 // indirect
 	go.opentelemetry.io/collector/semconv v0.105.0 // indirect
