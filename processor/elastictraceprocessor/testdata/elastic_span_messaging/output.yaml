@@ -17,6 +17,9 @@ resourceSpans:
               - key: messaging.destination.name
                 value:
                   stringValue: TestTopic
+              - key: span.name
+                value:
+                  stringValue: span-elastic-msg
               - key: event.outcome
                 value:
                   stringValue: success

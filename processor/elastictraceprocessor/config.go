@@ -17,41 +17,8 @@
 
 package elastictraceprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
 
-import (
-	"context"
+import "github.com/elastic/opentelemetry-lib/enrichments/trace/config"
 
-	"github.com/elastic/opentelemetry-lib/enrichments/trace"
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/pdata/ptrace"
-	"go.opentelemetry.io/collector/processor"
-	"go.uber.org/zap"
-)
-
-var _ processor.Traces = (*Processor)(nil)
-
-type Processor struct {
-	component.StartFunc
-	component.ShutdownFunc
-
-	next     consumer.Traces
-	enricher *trace.Enricher
-	logger   *zap.Logger
-}
-
-func newProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *Processor {
-	return &Processor{
-		next:     next,
-		logger:   logger,
-		enricher: trace.NewEnricher(cfg.Config),
-	}
-}
-
-func (p *Processor) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: true}
-}
-
-func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	p.enricher.Enrich(td)
-	return p.next.ConsumeTraces(ctx, td)
+type Config struct {
+	config.Config `mapstructure:",squash"`
 }

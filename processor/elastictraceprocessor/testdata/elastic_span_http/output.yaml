@@ -20,6 +20,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "201"
+              - key: span.name
+                value:
+                  stringValue: span-elastic-http
               - key: event.outcome
                 value:
                   stringValue: success
