@@ -73,7 +73,6 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 		processedResource := processedMetrics.ResourceMetrics().AppendEmpty()
 		resourceSpan.Resource().Attributes().CopyTo(processedResource.Resource().Attributes())
 
-		processedResource.ScopeMetrics().EnsureCapacity(resourceSpan.ScopeSpans().Len())
 		processedScope := processedResource.ScopeMetrics().AppendEmpty()
 		processedScope.Scope().SetName(scopeName)
 
