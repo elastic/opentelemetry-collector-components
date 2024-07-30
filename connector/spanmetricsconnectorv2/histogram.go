@@ -131,6 +131,13 @@ func (c *explicitHistogram) increment(
 }
 
 func (c *explicitHistogram) appendMetricsTo(metricSlice pmetric.MetricSlice) {
+	var capacity int
+	for name := range c.metricDefs {
+		if len(c.counts[name]) > 0 {
+			capacity++
+		}
+	}
+	metricSlice.EnsureCapacity(capacity)
 	for name, md := range c.metricDefs {
 		if len(c.counts[name]) == 0 {
 			continue
