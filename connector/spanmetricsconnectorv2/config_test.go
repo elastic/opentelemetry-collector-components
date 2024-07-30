@@ -107,7 +107,7 @@ func TestConfig(t *testing.T) {
 				Spans: []MetricInfo{
 					{
 						Name:        "identical.name",
-						Description: "Identical metric name x1",
+						Description: "Identical description",
 						Unit:        MetricUnitMs,
 						Attributes:  []AttributeConfig{{Key: "key.1"}},
 						Histogram: HistogramConfig{
@@ -118,7 +118,36 @@ func TestConfig(t *testing.T) {
 					},
 					{
 						Name:        "identical.name",
-						Description: "Identical metric name x2",
+						Description: "Different description",
+						Unit:        MetricUnitMs,
+						Attributes:  []AttributeConfig{{Key: "key.2"}},
+						Histogram: HistogramConfig{
+							Explicit: &ExplicitHistogramConfig{
+								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			path: "with_identical_metric_name_desc_different_attrs",
+			expected: &Config{
+				Spans: []MetricInfo{
+					{
+						Name:        "identical.name",
+						Description: "Identical description",
+						Unit:        MetricUnitMs,
+						Attributes:  []AttributeConfig{{Key: "key.1"}},
+						Histogram: HistogramConfig{
+							Explicit: &ExplicitHistogramConfig{
+								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+							},
+						},
+					},
+					{
+						Name:        "identical.name",
+						Description: "Identical description",
 						Unit:        MetricUnitMs,
 						Attributes:  []AttributeConfig{{Key: "key.2"}},
 						Histogram: HistogramConfig{

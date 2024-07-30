@@ -55,11 +55,6 @@ resourceMetrics:
                     - 15000
                   sum: 1400.000936
                   timeUnixNano: "1000000"
-            name: identical.name
-          - description: Different description
-            histogram:
-              aggregationTemporality: 1
-              dataPoints:
                 - attributes:
                     - key: key.2
                       value:
