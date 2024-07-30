@@ -1,0 +1,12 @@
+# Invalid config, should throw an error on validate
+spanmetricsv2:
+  spans:
+    - name: identical.name
+      description: Identical metric name
+      attributes:
+        - key: key.1
+    - name: identical.name
+      description: Identical metric name
+      attributes:
+        - key: key.1
+  
