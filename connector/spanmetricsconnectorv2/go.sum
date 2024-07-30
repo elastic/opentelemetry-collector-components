@@ -50,8 +50,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.105.0 h1
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.105.0/go.mod h1:MX5a4WDcyG/KowLGHJjpbNpYIlXsvpeJr7BEs22HuOA=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.105.0 h1:Zn3WKPLUXcIQTeu5K2elsi/Ncq14MBRZQPaVdJC+6cQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.105.0/go.mod h1:hzu5KvOYEH5W9OpVc+iRXUAvj7GHcLyyR4qjIH+hOhQ=
-github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.105.0 h1:hs7TaJClEAhHrj71XcaYqlYnIOpOYQgoHqhnnBNrOK8=
-github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.105.0/go.mod h1:ehzaiDdkrww7l1Stvse5GCOAsAZOpFcgeIbB/2PqFs4=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.106.0 h1:3swX+tPbGC+7tM69jkRUf5OsLxtcik1pcGjxiCdhE/g=
+github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.106.0/go.mod h1:ehzaiDdkrww7l1Stvse5GCOAsAZOpFcgeIbB/2PqFs4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/prometheus/client_golang v1.19.1 h1:wZWJDwK+NameRJuPGDhlnFgx8e8HN3XHQeLaYJFJBOE=
