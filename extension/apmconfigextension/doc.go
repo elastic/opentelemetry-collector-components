@@ -17,4 +17,4 @@
 
 //go:generate mdatagen metadata.yaml
 
-package apmconfigextension
+package apmconfigextension // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension"

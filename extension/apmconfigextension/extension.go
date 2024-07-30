@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apmconfigextension
+package apmconfigextension // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension"
 
 import (
 	"context"
