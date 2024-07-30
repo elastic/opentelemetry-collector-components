@@ -10,7 +10,8 @@ updates:
       - automation
     groups:
       otel-dependencies:
-        patterns: ["go.opentelemetry.io/*"]
+        patterns:
+          - "go.opentelemetry.io/*"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -23,7 +24,9 @@ updates:
       - automation
     groups:
       otel-dependencies:
-        patterns: ["go.opentelemetry.io/*"]
+        patterns:
+          - "go.opentelemetry.io/*"
+          - "github.com/open-telemetry/*"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -36,7 +39,9 @@ updates:
       - automation
     groups:
       otel-dependencies:
-        patterns: ["go.opentelemetry.io/*"]
+        patterns:
+          - "go.opentelemetry.io/*"
+          - "github.com/open-telemetry/*"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
