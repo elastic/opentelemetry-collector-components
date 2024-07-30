@@ -28,7 +28,6 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/open-telemetry/opamp-go/protobufs"
 	"github.com/open-telemetry/opamp-go/server/types"
-	semconv "go.opentelemetry.io/collector/semconv/v1.25.0"
 	"go.uber.org/zap"
 )
 
@@ -66,19 +65,6 @@ type configConnectionCallbacks struct {
 var _ types.ConnectionCallbacks = (*configConnectionCallbacks)(nil)
 
 func (rc *configConnectionCallbacks) OnConnected(ctx context.Context, conn types.Connection) {}
-
-func updateAgentParams(params *apmconfig.Params, description *protobufs.AgentDescription) {
-	if description != nil {
-		for i := range description.IdentifyingAttributes {
-			switch description.IdentifyingAttributes[i].Key {
-			case semconv.AttributeServiceName:
-				params.Service.Name = description.IdentifyingAttributes[i].Value.GetStringValue()
-			case semconv.AttributeDeploymentEnvironment:
-				params.Service.Environment = description.IdentifyingAttributes[i].Value.GetStringValue()
-			}
-		}
-	}
-}
 
 func (rc *configConnectionCallbacks) serverError(msg string, message *protobufs.ServerToAgent, logFields ...zap.Field) *protobufs.ServerToAgent {
 	message.ErrorResponse = &protobufs.ServerErrorResponse{
