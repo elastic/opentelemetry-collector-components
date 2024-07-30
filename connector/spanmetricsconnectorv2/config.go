@@ -44,15 +44,42 @@ const (
 
 // Config for the connector
 type Config struct {
-	Spans map[string]MetricInfo `mapstructure:"spans"`
+	Spans []MetricInfo `mapstructure:"spans"`
 }
 
 // MetricInfo for a data type
 type MetricInfo struct {
+	Name        string            `mapstructure:"name"`
 	Description string            `mapstructure:"description"`
 	Attributes  []AttributeConfig `mapstructure:"attributes"`
 	Unit        MetricUnit        `mapstructure:"unit"`
 	Histogram   HistogramConfig   `mapstructure:"histogram"`
+}
+
+// isEqual checks if two metric have a same identity. Identity of a
+// metric is defined by name and attribute.
+func (mi MetricInfo) isEqual(other MetricInfo) bool {
+	if mi.Name != other.Name {
+		return false
+	}
+	if len(mi.Attributes) != len(other.Attributes) {
+		return false
+	}
+	if len(mi.Attributes) == 0 {
+		return true
+	}
+	// Validate attribues equality
+	keyMap := make(map[string]AttributeConfig)
+	for _, attr := range mi.Attributes {
+		keyMap[attr.Key] = attr
+	}
+
+	for _, otherAttr := range other.Attributes {
+		if _, ok := keyMap[otherAttr.Key]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 type AttributeConfig struct {
@@ -69,19 +96,24 @@ type ExplicitHistogramConfig struct {
 }
 
 func (c *Config) Validate() error {
-	for name, info := range c.Spans {
-		if name == "" {
+	duplicate := make(map[string]MetricInfo)
+	for _, info := range c.Spans {
+		if old, ok := duplicate[info.Name]; ok && info.isEqual(old) {
+			return fmt.Errorf("spans: duplicate configuration found %s", info.Name)
+		}
+		if info.Name == "" {
 			return errors.New("spans: metric name missing")
 		}
 		if info.Unit == "" {
 			return errors.New("spans: metric unit missing")
 		}
 		if err := info.validateHistogram(); err != nil {
-			return fmt.Errorf("spans histogram validation failed: metric %q, %w", name, err)
+			return fmt.Errorf("spans histogram validation failed: metric %q, %w", info.Name, err)
 		}
 		if err := info.validateAttributes(); err != nil {
-			return fmt.Errorf("spans attributes validation failed: metric %q: %w", name, err)
+			return fmt.Errorf("spans attributes validation failed: metric %q: %w", info.Name, err)
 		}
+		duplicate[info.Name] = info
 	}
 	return nil
 }
@@ -98,13 +130,18 @@ func (i *MetricInfo) validateHistogram() error {
 
 func (i *MetricInfo) validateAttributes() error {
 	tmp := pcommon.NewValueEmpty()
+	duplicate := map[string]struct{}{}
 	for _, attr := range i.Attributes {
+		if _, ok := duplicate[attr.Key]; ok {
+			return fmt.Errorf("duplicate key found in attributes config: %s", attr.Key)
+		}
 		if attr.Key == "" {
 			return fmt.Errorf("attribute key missing")
 		}
 		if err := tmp.FromRaw(attr.DefaultValue); err != nil {
 			return fmt.Errorf("invalid default value specified for attribute %s", attr.Key)
 		}
+		duplicate[attr.Key] = struct{}{}
 	}
 	return nil
 }
@@ -141,9 +178,10 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 	return nil
 }
 
-func defaultSpansConfig() map[string]MetricInfo {
-	return map[string]MetricInfo{
-		defaultMetricNameSpans: {
+func defaultSpansConfig() []MetricInfo {
+	return []MetricInfo{
+		{
+			Name:        defaultMetricNameSpans,
 			Description: defaultMetricDescSpans,
 			Unit:        MetricUnitMs,
 			Histogram: HistogramConfig{

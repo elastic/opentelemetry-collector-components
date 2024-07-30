@@ -32,6 +32,7 @@ func TestConfig(t *testing.T) {
 	for _, tc := range []struct {
 		path     string // relative to testdata directory
 		expected *Config
+		errorMsg string
 	}{
 		{
 			path: "with_default",
@@ -42,8 +43,9 @@ func TestConfig(t *testing.T) {
 		{
 			path: "with_attributes",
 			expected: &Config{
-				Spans: map[string]MetricInfo{
-					"http.trace.span.duration": {
+				Spans: []MetricInfo{
+					{
+						Name:        "http.trace.span.duration",
 						Description: "Span duration for HTTP spans",
 						Unit:        MetricUnitMs,
 						Attributes:  []AttributeConfig{{Key: "http.response.status_code"}},
@@ -53,7 +55,8 @@ func TestConfig(t *testing.T) {
 							},
 						},
 					},
-					"db.trace.span.duration": {
+					{
+						Name:        "db.trace.span.duration",
 						Description: "Span duration for DB spans",
 						Unit:        MetricUnitMs,
 						Attributes:  []AttributeConfig{{Key: "db.system"}},
@@ -63,7 +66,8 @@ func TestConfig(t *testing.T) {
 							},
 						},
 					},
-					"msg.trace.span.duration": {
+					{
+						Name:        "msg.trace.span.duration",
 						Description: "Span duration for messaging spans",
 						Unit:        MetricUnitMs,
 						Attributes:  []AttributeConfig{{Key: "messaging.system"}},
@@ -79,13 +83,76 @@ func TestConfig(t *testing.T) {
 		{
 			path: "with_custom_histogram_buckets",
 			expected: &Config{
-				Spans: map[string]MetricInfo{
-					"trace.span.duration": {
+				Spans: []MetricInfo{
+					{
+						Name:        "trace.span.duration",
 						Description: "Span duration with custom histogram buckets",
 						Unit:        MetricUnitS,
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
 								Buckets: []float64{0.001, 0.1, 1, 10},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			path:     "with_identical_metric_name_identical_attrs",
+			errorMsg: "duplicate configuration found",
+		},
+		{
+			path: "with_identical_metric_name_different_attrs",
+			expected: &Config{
+				Spans: []MetricInfo{
+					{
+						Name:        "identical.name",
+						Description: "Identical description",
+						Unit:        MetricUnitMs,
+						Attributes:  []AttributeConfig{{Key: "key.1"}},
+						Histogram: HistogramConfig{
+							Explicit: &ExplicitHistogramConfig{
+								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+							},
+						},
+					},
+					{
+						Name:        "identical.name",
+						Description: "Different description",
+						Unit:        MetricUnitMs,
+						Attributes:  []AttributeConfig{{Key: "key.2"}},
+						Histogram: HistogramConfig{
+							Explicit: &ExplicitHistogramConfig{
+								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			path: "with_identical_metric_name_desc_different_attrs",
+			expected: &Config{
+				Spans: []MetricInfo{
+					{
+						Name:        "identical.name",
+						Description: "Identical description",
+						Unit:        MetricUnitMs,
+						Attributes:  []AttributeConfig{{Key: "key.1"}},
+						Histogram: HistogramConfig{
+							Explicit: &ExplicitHistogramConfig{
+								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+							},
+						},
+					},
+					{
+						Name:        "identical.name",
+						Description: "Identical description",
+						Unit:        MetricUnitMs,
+						Attributes:  []AttributeConfig{{Key: "key.2"}},
+						Histogram: HistogramConfig{
+							Explicit: &ExplicitHistogramConfig{
+								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
 							},
 						},
 					},
@@ -103,7 +170,13 @@ func TestConfig(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, sub.Unmarshal(&cfg))
 
-			assert.NoError(t, component.ValidateConfig(cfg))
+			err = component.ValidateConfig(cfg)
+			if tc.errorMsg != "" {
+				assert.ErrorContains(t, err, tc.errorMsg)
+				return
+			}
+
+			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, cfg)
 		})
 	}

@@ -35,7 +35,7 @@ type spanMetrics struct {
 	component.ShutdownFunc
 
 	next            consumer.Metrics
-	spansMetricDefs map[string]metricDef
+	spansMetricDefs []metricDef
 }
 
 func (sm *spanMetrics) Capabilities() consumer.Capabilities {
@@ -66,7 +66,7 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 			}
 		}
 
-		if len(spansHist.counts) == 0 {
+		if len(spansHist.data) == 0 {
 			continue // don't add an empty resource
 		}
 

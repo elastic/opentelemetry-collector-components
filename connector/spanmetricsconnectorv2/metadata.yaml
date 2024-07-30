@@ -10,5 +10,5 @@ status:
 tests:
   config:
     spans:
-      test.metric:
+      - name: test.metric
         description: "test metric"

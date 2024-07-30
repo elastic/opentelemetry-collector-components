@@ -53,19 +53,20 @@ func createTracesToMetrics(
 ) (connector.Traces, error) {
 	c := cfg.(*Config)
 
-	spanMetricDefs := make(map[string]metricDef, len(c.Spans))
-	for name, info := range c.Spans {
+	spanMetricDefs := make([]metricDef, 0, len(c.Spans))
+	for _, info := range c.Spans {
 		attrs, err := parseAttributeConfigs(info.Attributes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse attribute config: %w", err)
 		}
 		md := metricDef{
+			Name:        info.Name,
 			Description: info.Description,
 			Unit:        info.Unit,
 			Attributes:  attrs,
 			Histogram:   info.Histogram,
 		}
-		spanMetricDefs[name] = md
+		spanMetricDefs = append(spanMetricDefs, md)
 	}
 
 	return &spanMetrics{

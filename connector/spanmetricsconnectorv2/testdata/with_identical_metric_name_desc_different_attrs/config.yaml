@@ -1,0 +1,10 @@
+spanmetricsv2:
+  spans:
+    - name: identical.name
+      description: Identical description
+      attributes:
+        - key: key.1
+    - name: identical.name
+      description: Identical description
+      attributes:
+        - key: key.2

@@ -25,6 +25,7 @@ type keyValue struct {
 }
 
 type metricDef struct {
+	Name        string
 	Description string
 	Unit        MetricUnit
 	Attributes  []keyValue

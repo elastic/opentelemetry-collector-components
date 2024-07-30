@@ -40,18 +40,23 @@ var (
 	}
 )
 
-func newExplicitHistogram(metricDefs map[string]metricDef) *explicitHistogram {
+func newExplicitHistogram(metricDefs []metricDef) *explicitHistogram {
 	return &explicitHistogram{
 		metricDefs: metricDefs,
-		counts:     make(map[string]map[[16]byte]*attrExplicitHistogram, len(metricDefs)),
+		data:       make(map[explicitHistogramKey]map[[16]byte]*attrExplicitHistogram, len(metricDefs)),
 		timestamp:  time.Now(),
 	}
 }
 
 type explicitHistogram struct {
-	metricDefs map[string]metricDef
-	counts     map[string]map[[16]byte]*attrExplicitHistogram
+	metricDefs []metricDef
+	data       map[explicitHistogramKey]map[[16]byte]*attrExplicitHistogram
 	timestamp  time.Time
+}
+
+type explicitHistogramKey struct {
+	Name string
+	Desc string
 }
 
 type attrExplicitHistogram struct {
@@ -86,43 +91,44 @@ func newAttrExplicitHistogram(attrs pcommon.Map, bounds []float64) *attrExplicit
 
 func (c *explicitHistogram) update(ctx context.Context, attrs pcommon.Map, value time.Duration) error {
 	var multiError error
-	for name, md := range c.metricDefs {
-		countAttrs := pcommon.NewMap()
-		for _, attr := range md.Attributes {
-			if attrVal, ok := attrs.Get(attr.Key); ok {
-				attrVal.CopyTo(countAttrs.PutEmpty(attr.Key))
-			} else if attr.DefaultValue.Type() != pcommon.ValueTypeEmpty {
-				attr.DefaultValue.CopyTo(countAttrs.PutEmpty(attr.Key))
+	for _, md := range c.metricDefs {
+		definedAttrs := pcommon.NewMap()
+		for _, definedAttr := range md.Attributes {
+			if attrVal, ok := attrs.Get(definedAttr.Key); ok {
+				attrVal.CopyTo(definedAttrs.PutEmpty(definedAttr.Key))
+			} else if definedAttr.DefaultValue.Type() != pcommon.ValueTypeEmpty {
+				definedAttr.DefaultValue.CopyTo(definedAttrs.PutEmpty(definedAttr.Key))
 			}
 		}
 
 		// Missing necessary attributes to be counted
-		if countAttrs.Len() != len(md.Attributes) {
+		if definedAttrs.Len() != len(md.Attributes) {
 			continue
 		}
 		finalValue := float64(value.Nanoseconds()) / metricUnitToDivider[md.Unit]
-		multiError = errors.Join(multiError, c.increment(name, countAttrs, finalValue, md.Histogram))
+		multiError = errors.Join(multiError, c.increment(md.Name, md.Description, definedAttrs, finalValue, md.Histogram))
 	}
 	return multiError
 }
 
 func (c *explicitHistogram) increment(
-	metricName string, attrs pcommon.Map, value float64, hCfg HistogramConfig,
+	name, desc string, attrs pcommon.Map, value float64, hCfg HistogramConfig,
 ) error {
-	if _, ok := c.counts[metricName]; !ok {
-		c.counts[metricName] = make(map[[16]byte]*attrExplicitHistogram)
+	key := explicitHistogramKey{Name: name, Desc: desc}
+	if _, ok := c.data[key]; !ok {
+		c.data[key] = make(map[[16]byte]*attrExplicitHistogram)
 	}
 
-	key := noAttributes
+	attrKey := noAttributes
 	if attrs.Len() > 0 {
-		key = pdatautil.MapHash(attrs)
+		attrKey = pdatautil.MapHash(attrs)
 	}
 
-	if _, ok := c.counts[metricName][key]; !ok {
-		c.counts[metricName][key] = newAttrExplicitHistogram(attrs, hCfg.Explicit.Buckets)
+	if _, ok := c.data[key][attrKey]; !ok {
+		c.data[key][attrKey] = newAttrExplicitHistogram(attrs, hCfg.Explicit.Buckets)
 	}
 
-	hist := c.counts[metricName][key]
+	hist := c.data[key][attrKey]
 	hist.count++
 	hist.sum += value
 	index := sort.SearchFloat64s(hist.bounds, value)
@@ -131,25 +137,20 @@ func (c *explicitHistogram) increment(
 }
 
 func (c *explicitHistogram) appendMetricsTo(metricSlice pmetric.MetricSlice) {
-	var capacity int
-	for name := range c.metricDefs {
-		if len(c.counts[name]) > 0 {
-			capacity++
-		}
-	}
-	metricSlice.EnsureCapacity(capacity)
-	for name, md := range c.metricDefs {
-		if len(c.counts[name]) == 0 {
+	metricSlice.EnsureCapacity(len(c.data))
+	for _, md := range c.metricDefs {
+		key := explicitHistogramKey{Name: md.Name, Desc: md.Description}
+		if len(c.data[key]) == 0 {
 			continue
 		}
 		destMetric := metricSlice.AppendEmpty()
-		destMetric.SetName(name)
+		destMetric.SetName(md.Name)
 		destMetric.SetDescription(md.Description)
 		histo := destMetric.SetEmptyHistogram()
 		// The delta value is always positive, so a value accumulated downstream is monotonic
 		histo.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		histo.DataPoints().EnsureCapacity(len(c.counts[name]))
-		for _, dpCount := range c.counts[name] {
+		histo.DataPoints().EnsureCapacity(len(c.data[key]))
+		for _, dpCount := range c.data[key] {
 			dp := histo.DataPoints().AppendEmpty()
 			dpCount.attrs.CopyTo(dp.Attributes())
 			dp.ExplicitBounds().FromRaw(dpCount.bounds)
@@ -159,5 +160,9 @@ func (c *explicitHistogram) appendMetricsTo(metricSlice pmetric.MetricSlice) {
 			// TODO determine appropriate start time
 			dp.SetTimestamp(pcommon.NewTimestampFromTime(c.timestamp))
 		}
+		// Deleting the key prevents duplicates if same metric name and definition
+		// is used with 2 different metric definitions while putting them together
+		// in the same metric slice.
+		delete(c.data, key)
 	}
 }

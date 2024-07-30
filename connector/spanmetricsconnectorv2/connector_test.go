@@ -42,6 +42,8 @@ func TestConnector(t *testing.T) {
 		"with_missing_attribute",
 		"with_missing_attribute_default_value",
 		"with_custom_histogram_buckets",
+		"with_identical_metric_name_different_attrs",
+		"with_identical_metric_name_desc_different_attrs",
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -75,6 +77,7 @@ func TestConnector(t *testing.T) {
 			assert.NoError(t, pmetrictest.CompareMetrics(
 				expectedMetrics,
 				next.AllMetrics()[0],
+				pmetrictest.IgnoreMetricDataPointsOrder(),
 				pmetrictest.IgnoreMetricsOrder(),
 				pmetrictest.IgnoreTimestamp(),
 			))
