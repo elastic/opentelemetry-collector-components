@@ -74,15 +74,13 @@ func TestConnector(t *testing.T) {
 			require.NoError(t, err)
 
 			require.NoError(t, connector.ConsumeTraces(ctx, inputTraces))
-			if !assert.NoError(t, pmetrictest.CompareMetrics(
+			assert.NoError(t, pmetrictest.CompareMetrics(
 				expectedMetrics,
 				next.AllMetrics()[0],
 				pmetrictest.IgnoreMetricDataPointsOrder(),
 				pmetrictest.IgnoreMetricsOrder(),
 				pmetrictest.IgnoreTimestamp(),
-			)) {
-				golden.WriteMetrics(t, filepath.Join(dir, "output.yaml"), next.AllMetrics()[0])
-			}
+			))
 		})
 	}
 }
