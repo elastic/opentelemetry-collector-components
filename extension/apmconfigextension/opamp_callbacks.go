@@ -34,14 +34,14 @@ import (
 
 type configOpAMPCallbacks struct {
 	configClient apmconfig.Client
-	knownAgents  map[string]apmconfig.Params
+	knownAgents  map[string]apmconfig.RemoteConfigClient
 	logger       *zap.Logger
 }
 
 var _ types.Callbacks = (*configOpAMPCallbacks)(nil)
 
 func newConfigOpAMPCallbacks(configClient apmconfig.Client, logger *zap.Logger) *configOpAMPCallbacks {
-	knownAgents := make(map[string]apmconfig.Params)
+	knownAgents := make(map[string]apmconfig.RemoteConfigClient)
 	return &configOpAMPCallbacks{
 		configClient,
 		knownAgents,
@@ -59,7 +59,7 @@ func (op *configOpAMPCallbacks) OnConnecting(request *http.Request) types.Connec
 
 type configConnectionCallbacks struct {
 	configClient apmconfig.Client
-	knownAgents  map[string]apmconfig.Params
+	knownAgents  map[string]apmconfig.RemoteConfigClient
 	logger       *zap.Logger
 }
 
@@ -89,6 +89,25 @@ func (rc *configConnectionCallbacks) serverError(msg string, message *protobufs.
 	return message
 }
 
+func bundleJsonConfig(remoteConfig apmconfig.RemoteConfig, serverToAgent *protobufs.ServerToAgent) error {
+	marshallConfig, err := json.Marshal(remoteConfig.Attrs)
+	if err != nil {
+		return err
+	}
+	serverToAgent.RemoteConfig = &protobufs.AgentRemoteConfig{
+		ConfigHash: remoteConfig.Hash,
+		Config: &protobufs.AgentConfigMap{
+			ConfigMap: map[string]*protobufs.AgentConfigFile{
+				"": {
+					Body:        marshallConfig,
+					ContentType: "text/json",
+				},
+			},
+		},
+	}
+	return nil
+}
+
 // OnMessage is called when a message is received from the connection. Can happen
 // only after OnConnected(). Must return a ServerToAgent message that will be sent
 // as a response to the Agent.
@@ -100,52 +119,40 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 	serverToAgent.InstanceUid = message.GetInstanceUid()
 
 	agentUid := hex.EncodeToString(message.GetInstanceUid())
+	agentUidField := zap.String("instance_uid", agentUid)
 
-	agentParams := rc.knownAgents[agentUid]
-	agentParams.AgentUiD = agentUid
-	updateAgentParams(&agentParams, message.AgentDescription)
-	agentUidLogField := []zap.Field{
-		zap.String("instance_uid", agentUid),
-		zap.String("service.name", agentParams.Service.Name),
-		zap.String("service.environment", agentParams.Service.Environment),
-	}
+	_, ok := rc.knownAgents[agentUid]
 
-	// Agent is reporting remote config status
-	var agentRemoteConfigHash []byte
-	if message.RemoteConfigStatus != nil {
-		agentRemoteConfigHash = message.RemoteConfigStatus.GetLastRemoteConfigHash()
-	}
-
-	// update; internal state
-	rc.knownAgents[agentUid] = agentParams
-
-	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agentParams)
-	if err != nil {
-		return rc.serverError(fmt.Sprintf("error retrieving remote configuration: %s", err), &serverToAgent)
-	} else if len(agentRemoteConfigHash) > 0 && bytes.Equal(remoteConfig.Hash, agentRemoteConfigHash) {
-		rc.logger.Info(fmt.Sprintf("Remote config matches agent config: %v\n", remoteConfig.Hash), agentUidLogField...)
-		// Agent applied the configuration: update upstream apm-server
-		// err = rc.configClient.LastConfig(ctx, agentParams, agentRemoteConfigHash)
-		// if err != nil {
-		// 	return rc.serverError(fmt.Sprintf("error notifying the central config about the applied remote configuration: %s", err), &serverToAgent)
-		// }
-	} else if len(remoteConfig.Attrs) > 0 {
-		rc.logger.Info("Received remote configuration", append(agentUidLogField, zap.String("config_hash", hex.EncodeToString(remoteConfig.Hash)))...)
-
-		marshallConfig, err := json.Marshal(remoteConfig.Attrs)
+	// init remote config client for the corresponding agent; internal state
+	if !ok {
+		var err error
+		rc.knownAgents[agentUid], err = rc.configClient.RemoteConfigClient(ctx, message)
 		if err != nil {
-			return rc.serverError(fmt.Sprintf("error marshaling remote configuration: %s", err), &serverToAgent)
+			return rc.serverError(fmt.Sprintf("error creating the remote configuration client: %s", err), &serverToAgent)
 		}
-		serverToAgent.RemoteConfig = &protobufs.AgentRemoteConfig{
-			ConfigHash: remoteConfig.Hash,
-			Config: &protobufs.AgentConfigMap{
-				ConfigMap: map[string]*protobufs.AgentConfigFile{
-					"": {
-						Body:        marshallConfig,
-						ContentType: "text/json",
-					},
-				},
-			},
+	}
+
+	if message.GetAgentDisconnect() != nil {
+		rc.logger.Info("Disconnecting the agent from the remote configuration service", agentUidField)
+		err := rc.knownAgents[agentUid].Disconnect(ctx)
+		if err != nil {
+			return rc.serverError(fmt.Sprintf("error disconnecting the agent: %s", err), &serverToAgent)
+		}
+		delete(rc.knownAgents, agentUid)
+	} else {
+
+		remoteConfig, err := rc.knownAgents[agentUid].RemoteConfig(ctx)
+		if err != nil {
+			return rc.serverError(fmt.Sprintf("error retrieving remote configuration: %s", err), &serverToAgent)
+		} else if message.RemoteConfigStatus != nil && len(message.RemoteConfigStatus.GetLastRemoteConfigHash()) > 0 && bytes.Equal(remoteConfig.Hash, message.RemoteConfigStatus.GetLastRemoteConfigHash()) {
+			rc.logger.Info(fmt.Sprintf("Remote config matches agent config: %v\n", remoteConfig.Hash), agentUidField)
+		} else if len(remoteConfig.Attrs) > 0 {
+			rc.logger.Info("Received remote configuration", agentUidField, zap.String("config_hash", hex.EncodeToString(remoteConfig.Hash)))
+
+			err := bundleJsonConfig(remoteConfig, &serverToAgent)
+			if err != nil {
+				return rc.serverError(fmt.Sprintf("error marshaling remote configuration: %s", err), &serverToAgent)
+			}
 		}
 	}
 

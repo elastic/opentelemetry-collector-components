@@ -26,21 +26,21 @@ import (
 
 	"go.elastic.co/apm/v2/apmconfig"
 	"go.elastic.co/apm/v2/transport"
+	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 
 	otelapmconfig "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
+	"github.com/open-telemetry/opamp-go/protobufs"
 )
 
 type APMClient struct {
 	client apmconfig.Watcher
 
-	myCtx context.Context
+	agentsCtx       context.Context
+	agentsCancelCtx context.CancelFunc
 
 	logger *zap.Logger
-
-	agents            map[string]<-chan apmconfig.Change
-	agentscancelFuncs map[string]context.CancelFunc
 }
 
 func initialTransport(opts transport.HTTPTransportOptions) (transport.Transport, error) {
@@ -60,18 +60,6 @@ func configHash(encodedConfig []byte) ([]byte, error) {
 		return nil, err
 	}
 	return hasher.Sum(nil), nil
-}
-
-func (c *APMClient) agentChange(ctx context.Context, agentUid string) apmconfig.Change {
-	var change apmconfig.Change
-	if changeChan, ok := c.agents[agentUid]; ok {
-		select {
-		case change = <-changeChan:
-		case <-ctx.Done():
-		default:
-		}
-	}
-	return change
 }
 
 func changeToConfig(change apmconfig.Change) (otelapmconfig.RemoteConfig, error) {
@@ -94,42 +82,58 @@ func changeToConfig(change apmconfig.Change) (otelapmconfig.RemoteConfig, error)
 	return otelapmconfig.RemoteConfig{Hash: configHash, Attrs: change.Attrs}, nil
 }
 
-func (c *APMClient) RemoteConfig(ctx context.Context, agentParams otelapmconfig.Params) (otelapmconfig.RemoteConfig, error) {
-	params := apmconfig.WatchParams{}
-	params.Service.Name = fmt.Sprintf(agentParams.Service.Name)
-	params.Service.Environment = agentParams.Service.Environment
-
-	var change apmconfig.Change
-	if _, ok := c.agents[agentParams.AgentUiD]; !ok {
-		if params.Service.Name == "" {
-			return otelapmconfig.RemoteConfig{}, errors.New("unidentified agent: service.name attribute must be provided")
-		}
-		ctx, cancelFn := context.WithCancel(c.myCtx)
-		c.agentscancelFuncs[agentParams.AgentUiD] = cancelFn
-		c.agents[agentParams.AgentUiD] = c.client.WatchConfig(ctx, params)
-
-		change = <-c.agents[agentParams.AgentUiD]
-
-	} else {
-		// non blocking call if already received first config
-		change = c.agentChange(ctx, agentParams.AgentUiD)
-	}
-
-	return changeToConfig(change)
-}
-
 func (c *APMClient) Close() error {
-	for i := range c.agentscancelFuncs {
-		c.agentscancelFuncs[i]()
-	}
-
+	c.agentsCancelCtx()
 	return nil
 }
 
-// func (c *APMClient) LastConfig(context.Context, otelapmconfig.Params, []byte) error {
-// 	// TODO: update transport to notify latest applied remote config
-// 	return nil
-// }
+type AgentAPMClient struct {
+	cancelFunc context.CancelFunc
+	changes    <-chan apmconfig.Change
+}
+
+func NewAgentAPMClient(ctx context.Context, apmClient apmconfig.Watcher, params apmconfig.WatchParams) *AgentAPMClient {
+	ctx, cancelFn := context.WithCancel(ctx)
+	changes := apmClient.WatchConfig(ctx, params)
+
+	return &AgentAPMClient{
+		cancelFn,
+		changes,
+	}
+}
+
+func (a *AgentAPMClient) RemoteConfig(ctx context.Context) (otelapmconfig.RemoteConfig, error) {
+	select {
+	case change := <-a.changes:
+		return changeToConfig(change)
+	case <-ctx.Done():
+	default:
+	}
+	return otelapmconfig.RemoteConfig{}, nil
+}
+
+func (a *AgentAPMClient) Disconnect(ctx context.Context) error {
+	a.cancelFunc()
+	return nil
+}
+
+func (c *APMClient) RemoteConfigClient(ctx context.Context, agentMsg *protobufs.AgentToServer) (otelapmconfig.RemoteConfigClient, error) {
+	var params apmconfig.WatchParams
+	if agentMsg.AgentDescription != nil {
+		for _, attr := range agentMsg.GetAgentDescription().GetIdentifyingAttributes() {
+			switch attr.GetKey() {
+			case semconv.AttributeServiceName:
+				params.Service.Name = attr.GetValue().GetStringValue()
+			case semconv.AttributeDeploymentEnvironment:
+				params.Service.Environment = attr.GetValue().GetStringValue()
+			}
+		}
+	}
+	if params.Service.Name == "" {
+		return nil, errors.New("unidentified agent: service.name attribute must be provided")
+	}
+	return NewAgentAPMClient(c.agentsCtx, c.client, params), nil
+}
 
 func NewCentralConfigClient(urls []*url.URL, token string, logger *zap.Logger) (*APMClient, error) {
 	userAgent := fmt.Sprintf("%s (%s)", transport.DefaultUserAgent(), "apmconfigextension/0.0.1")
@@ -144,12 +148,12 @@ func NewCentralConfigClient(urls []*url.URL, token string, logger *zap.Logger) (
 	}
 
 	if cw, ok := initialTransport.(apmconfig.Watcher); ok {
+		agentsCtx, agentsCancelCtx := context.WithCancel(context.Background())
 		return &APMClient{
 			cw,
-			context.Background(),
+			agentsCtx,
+			agentsCancelCtx,
 			logger,
-			make(map[string]<-chan apmconfig.Change),
-			make(map[string]context.CancelFunc),
 		}, nil
 	}
 

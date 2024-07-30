@@ -19,6 +19,8 @@ package apmconfig
 
 import (
 	"context"
+
+	"github.com/open-telemetry/opamp-go/protobufs"
 )
 
 // Params holds parameters for watching and notifying for config changes.
@@ -34,14 +36,18 @@ type Params struct {
 }
 
 type Client interface {
-	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
-	RemoteConfig(context.Context, Params) (RemoteConfig, error)
-
-	// // LastConfig notifies the upstream server about the latest applied configuration.
-	// LastConfig(context.Context, Params, []byte) error
+	RemoteConfigClient(context.Context, *protobufs.AgentToServer) (RemoteConfigClient, error)
 
 	// Close the client's connection
 	Close() error
+}
+
+type RemoteConfigClient interface {
+	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
+	RemoteConfig(context.Context) (RemoteConfig, error)
+
+	// Disconnect stops the Agent from rerieving the remote config
+	Disconnect(context.Context) error
 }
 
 // RemoteConfig holds an agent remote configuration.
