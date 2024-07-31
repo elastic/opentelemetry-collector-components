@@ -20,7 +20,6 @@ package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-colle
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -31,9 +30,9 @@ const (
 	defaultMetricDescSpans = "Observed span duration."
 )
 
-var (
-	defaultHistogramBucketsMs = [...]float64{2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000}
-)
+var defaultHistogramBuckets = []float64{
+	2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000,
+}
 
 type MetricUnit string
 
@@ -173,7 +172,7 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 			info.Histogram.Explicit = &ExplicitHistogramConfig{}
 		}
 		if len(info.Histogram.Explicit.Buckets) == 0 {
-			info.Histogram.Explicit.Buckets = defaultExplicitHistogramBuckets(info.Unit)
+			info.Histogram.Explicit.Buckets = defaultHistogramBuckets[:]
 		}
 		c.Spans[k] = info
 	}
@@ -188,23 +187,9 @@ func defaultSpansConfig() []MetricInfo {
 			Unit:        MetricUnitMs,
 			Histogram: HistogramConfig{
 				Explicit: &ExplicitHistogramConfig{
-					Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+					Buckets: defaultHistogramBuckets[:],
 				},
 			},
 		},
 	}
-}
-
-func defaultExplicitHistogramBuckets(unit MetricUnit) []float64 {
-	switch unit {
-	case MetricUnitMs:
-		return defaultHistogramBucketsMs[:]
-	case MetricUnitS:
-		buckets := make([]float64, len(defaultHistogramBucketsMs))
-		for i := 0; i < len(buckets); i++ {
-			buckets[i] /= float64(time.Second.Milliseconds())
-		}
-		return buckets
-	}
-	return nil
 }
