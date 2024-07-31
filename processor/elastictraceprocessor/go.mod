@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/elastictr
 go 1.21.1
 
 require (
-	github.com/elastic/opentelemetry-lib v0.8.0
+	github.com/elastic/opentelemetry-lib v0.8.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.106.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.106.0
 	github.com/stretchr/testify v1.9.0
@@ -48,7 +48,7 @@ require (
 	go.opentelemetry.io/collector/internal/globalgates v0.106.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.106.0 // indirect
 	go.opentelemetry.io/collector/pdata/testdata v0.106.0 // indirect
-	go.opentelemetry.io/collector/semconv v0.105.0 // indirect
+	go.opentelemetry.io/collector/semconv v0.106.0 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
