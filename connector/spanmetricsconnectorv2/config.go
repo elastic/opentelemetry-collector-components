@@ -38,6 +38,8 @@ var (
 type MetricUnit string
 
 const (
+	MetricUnitNs MetricUnit = "ns"
+	MetricUnitUs MetricUnit = "us"
 	MetricUnitMs MetricUnit = "ms"
 	MetricUnitS  MetricUnit = "s"
 )
