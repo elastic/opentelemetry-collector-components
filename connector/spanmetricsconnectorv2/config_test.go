@@ -51,7 +51,7 @@ func TestConfig(t *testing.T) {
 						Attributes:  []AttributeConfig{{Key: "http.response.status_code"}},
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+								Buckets: defaultHistogramBuckets[:],
 							},
 						},
 					},
@@ -62,7 +62,7 @@ func TestConfig(t *testing.T) {
 						Attributes:  []AttributeConfig{{Key: "db.system"}},
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+								Buckets: defaultHistogramBuckets[:],
 							},
 						},
 					},
@@ -73,7 +73,7 @@ func TestConfig(t *testing.T) {
 						Attributes:  []AttributeConfig{{Key: "messaging.system"}},
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+								Buckets: defaultHistogramBuckets[:],
 							},
 						},
 					},
@@ -112,7 +112,7 @@ func TestConfig(t *testing.T) {
 						Attributes:  []AttributeConfig{{Key: "key.1"}},
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+								Buckets: defaultHistogramBuckets[:],
 							},
 						},
 					},
@@ -123,7 +123,7 @@ func TestConfig(t *testing.T) {
 						Attributes:  []AttributeConfig{{Key: "key.2"}},
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+								Buckets: defaultHistogramBuckets[:],
 							},
 						},
 					},
@@ -141,7 +141,7 @@ func TestConfig(t *testing.T) {
 						Attributes:  []AttributeConfig{{Key: "key.1"}},
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+								Buckets: defaultHistogramBuckets[:],
 							},
 						},
 					},
@@ -152,7 +152,7 @@ func TestConfig(t *testing.T) {
 						Attributes:  []AttributeConfig{{Key: "key.2"}},
 						Histogram: HistogramConfig{
 							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+								Buckets: defaultHistogramBuckets[:],
 							},
 						},
 					},
