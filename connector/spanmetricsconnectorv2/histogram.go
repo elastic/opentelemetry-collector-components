@@ -35,6 +35,8 @@ var (
 	// metricUnitToDivider gives a value that could used to divide the
 	// nano precision duration to the required unit specified in config.
 	metricUnitToDivider = map[MetricUnit]float64{
+		MetricUnitNs: float64(time.Nanosecond.Nanoseconds()),
+		MetricUnitUs: float64(time.Microsecond.Nanoseconds()),
 		MetricUnitMs: float64(time.Millisecond.Nanoseconds()),
 		MetricUnitS:  float64(time.Second.Nanoseconds()),
 	}
