@@ -22,7 +22,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/histogram"
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator/histogram"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"

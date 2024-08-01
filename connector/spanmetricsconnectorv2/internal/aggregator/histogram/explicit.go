@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package histogram // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/histogram"
+package histogram // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator/histogram"
 
 import (
 	"sort"
