@@ -59,11 +59,11 @@ func TestExplicitBounds(t *testing.T) {
 				},
 			},
 			input: []ptrace.Span{
-				getTestSpan(time.Minute, map[string]any{"key.1": "val.1"}),
-				getTestSpan(time.Second, map[string]any{"key.2": "val.2"}),
+				getTestSpan(t, time.Minute, map[string]any{"key.1": "val.1"}),
+				getTestSpan(t, time.Second, map[string]any{"key.2": "val.2"}),
 			},
 			expectedHistogram: getTestExplicitHistogram(
-				pmetric.NewMetricSlice(),
+				t, pmetric.NewMetricSlice(),
 				"metric.1", "metric desc 1",
 				[]createHist{
 					{
@@ -89,11 +89,11 @@ func TestExplicitBounds(t *testing.T) {
 				},
 			},
 			input: []ptrace.Span{
-				getTestSpan(time.Minute, map[string]any{"key.1": "val.1"}),
-				getTestSpan(time.Second, map[string]any{"key.2": "val.2"}),
+				getTestSpan(t, time.Minute, map[string]any{"key.1": "val.1"}),
+				getTestSpan(t, time.Second, map[string]any{"key.2": "val.2"}),
 			},
 			expectedHistogram: getTestExplicitHistogram(
-				pmetric.NewMetricSlice(),
+				t, pmetric.NewMetricSlice(),
 				"metric.1", "metric desc 1",
 				[]createHist{
 					{
@@ -120,11 +120,11 @@ func TestExplicitBounds(t *testing.T) {
 				},
 			},
 			input: []ptrace.Span{
-				getTestSpan(time.Minute, map[string]any{"key.1": "val.1"}),
-				getTestSpan(time.Second, map[string]any{"key.2": "val.2"}),
+				getTestSpan(t, time.Minute, map[string]any{"key.1": "val.1"}),
+				getTestSpan(t, time.Second, map[string]any{"key.2": "val.2"}),
 			},
 			expectedHistogram: getTestExplicitHistogram(
-				pmetric.NewMetricSlice(),
+				t, pmetric.NewMetricSlice(),
 				"metric.1", "metric desc 1",
 				[]createHist{
 					{
@@ -167,12 +167,16 @@ func TestExplicitBounds(t *testing.T) {
 	}
 }
 
-func getTestSpan(duration time.Duration, attrs map[string]any) ptrace.Span {
+func getTestSpan(t *testing.T, duration time.Duration, attrs map[string]any) ptrace.Span {
+	t.Helper()
+
 	now := time.Now().UTC()
 	span := ptrace.NewSpan()
 	span.SetEndTimestamp(pcommon.NewTimestampFromTime(now))
 	span.SetStartTimestamp(pcommon.NewTimestampFromTime(now.Add(-1 * duration)))
-	span.Attributes().FromRaw(attrs)
+	if err := span.Attributes().FromRaw(attrs); err != nil {
+		t.Fatalf("failed to parse test attributes: %s", err)
+	}
 	return span
 }
 
@@ -185,10 +189,13 @@ type createHist struct {
 }
 
 func getTestExplicitHistogram(
+	t *testing.T,
 	slice pmetric.MetricSlice,
 	name, desc string,
 	hists []createHist,
 ) pmetric.MetricSlice {
+	t.Helper()
+
 	metric := slice.AppendEmpty()
 	metric.SetName(name)
 	metric.SetDescription(desc)
@@ -196,7 +203,9 @@ func getTestExplicitHistogram(
 	destHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 	for _, hist := range hists {
 		dp := destHist.DataPoints().AppendEmpty()
-		dp.Attributes().FromRaw(hist.attrs)
+		if err := dp.Attributes().FromRaw(hist.attrs); err != nil {
+			t.Fatalf("failed to parse test attributes: %s", err)
+		}
 		dp.ExplicitBounds().FromRaw(hist.buckets)
 		dp.BucketCounts().FromRaw(hist.counts)
 		dp.SetCount(hist.count)
