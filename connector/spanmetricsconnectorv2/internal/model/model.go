@@ -15,19 +15,22 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2"
+package model // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 
-import "go.opentelemetry.io/collector/pdata/pcommon"
+import (
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+)
 
-type keyValue struct {
+type AttributeKeyValue struct {
 	Key          string
 	DefaultValue pcommon.Value
 }
 
-type metricDef struct {
+type MetricDef struct {
 	Name        string
 	Description string
-	Unit        MetricUnit
-	Attributes  []keyValue
-	Histogram   HistogramConfig
+	Unit        config.MetricUnit
+	Attributes  []AttributeKeyValue
+	Histogram   config.Histogram
 }
