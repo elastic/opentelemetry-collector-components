@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2"
+package config // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 
 import (
 	"errors"
@@ -50,11 +50,11 @@ type Config struct {
 
 // MetricInfo for a data type
 type MetricInfo struct {
-	Name        string            `mapstructure:"name"`
-	Description string            `mapstructure:"description"`
-	Attributes  []AttributeConfig `mapstructure:"attributes"`
-	Unit        MetricUnit        `mapstructure:"unit"`
-	Histogram   HistogramConfig   `mapstructure:"histogram"`
+	Name        string      `mapstructure:"name"`
+	Description string      `mapstructure:"description"`
+	Attributes  []Attribute `mapstructure:"attributes"`
+	Unit        MetricUnit  `mapstructure:"unit"`
+	Histogram   Histogram   `mapstructure:"histogram"`
 }
 
 // isEqual checks if two metric have a same identity. Identity of a
@@ -70,7 +70,7 @@ func (mi MetricInfo) isEqual(other MetricInfo) bool {
 		return true
 	}
 	// Validate attribues equality
-	keyMap := make(map[string]AttributeConfig)
+	keyMap := make(map[string]Attribute)
 	for _, attr := range mi.Attributes {
 		keyMap[attr.Key] = attr
 	}
@@ -83,16 +83,16 @@ func (mi MetricInfo) isEqual(other MetricInfo) bool {
 	return true
 }
 
-type AttributeConfig struct {
+type Attribute struct {
 	Key          string `mapstructure:"key"`
 	DefaultValue any    `mapstructure:"default_value"`
 }
 
-type HistogramConfig struct {
-	Explicit *ExplicitHistogramConfig `mapstructure:"explicit"`
+type Histogram struct {
+	Explicit *ExplicitHistogram `mapstructure:"explicit"`
 }
 
-type ExplicitHistogramConfig struct {
+type ExplicitHistogram struct {
 	Buckets []float64 `mapstructure:"buckets"`
 }
 
@@ -169,7 +169,7 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 			info.Unit = MetricUnitMs
 		}
 		if info.Histogram.Explicit == nil {
-			info.Histogram.Explicit = &ExplicitHistogramConfig{}
+			info.Histogram.Explicit = &ExplicitHistogram{}
 		}
 		if len(info.Histogram.Explicit.Buckets) == 0 {
 			info.Histogram.Explicit.Buckets = defaultHistogramBuckets[:]
@@ -185,8 +185,8 @@ func defaultSpansConfig() []MetricInfo {
 			Name:        defaultMetricNameSpans,
 			Description: defaultMetricDescSpans,
 			Unit:        MetricUnitMs,
-			Histogram: HistogramConfig{
-				Explicit: &ExplicitHistogramConfig{
+			Histogram: Histogram{
+				Explicit: &ExplicitHistogram{
 					Buckets: defaultHistogramBuckets[:],
 				},
 			},

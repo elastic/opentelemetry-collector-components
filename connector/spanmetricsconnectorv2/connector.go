@@ -22,6 +22,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator/histogram"
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -34,8 +36,8 @@ type spanMetrics struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next            consumer.Metrics
-	spansMetricDefs []metricDef
+	next       consumer.Metrics
+	metricDefs []model.MetricDef
 }
 
 func (sm *spanMetrics) Capabilities() consumer.Capabilities {
@@ -46,11 +48,11 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(td.ResourceSpans().Len())
+	// TODO (lahsivjar): add support for exponential histogram and summary
+	hist := histogram.NewExplicitBounds()
 	for i := 0; i < td.ResourceSpans().Len(); i++ {
+		hist.Reset()
 		resourceSpan := td.ResourceSpans().At(i)
-		// TODO (lahsivjar): add support for exponential histogram and summary
-		spansHist := newExplicitHistogram(sm.spansMetricDefs)
-
 		for j := 0; j < resourceSpan.ScopeSpans().Len(); j++ {
 			scopeSpan := resourceSpan.ScopeSpans().At(j)
 
@@ -62,21 +64,25 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 				if endTime > startTime {
 					duration = time.Duration(endTime - startTime)
 				}
-				multiError = errors.Join(multiError, spansHist.update(ctx, span.Attributes(), duration))
+				spanAttrs := span.Attributes()
+				for _, md := range sm.metricDefs {
+					multiError = errors.Join(multiError, hist.Add(md, spanAttrs, duration))
+				}
 			}
 		}
 
-		if len(spansHist.data) == 0 {
+		if hist.Size() == 0 {
 			continue // don't add an empty resource
 		}
 
 		processedResource := processedMetrics.ResourceMetrics().AppendEmpty()
 		resourceSpan.Resource().Attributes().CopyTo(processedResource.Resource().Attributes())
-
 		processedScope := processedResource.ScopeMetrics().AppendEmpty()
 		processedScope.Scope().SetName(scopeName)
-
-		spansHist.appendMetricsTo(processedScope.Metrics())
+		destMetric := processedScope.Metrics()
+		for _, md := range sm.metricDefs {
+			hist.Move(md, destMetric)
+		}
 	}
 	if multiError != nil {
 		return multiError
