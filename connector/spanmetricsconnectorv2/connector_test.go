@@ -22,15 +22,19 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector/connectortest"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 )
@@ -82,5 +86,78 @@ func TestConnector(t *testing.T) {
 				pmetrictest.IgnoreTimestamp(),
 			))
 		})
+	}
+}
+
+func BenchmarkConnector(b *testing.B) {
+	factory := NewFactory()
+	settings := connectortest.NewNopSettings()
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(b, zaptest.Level(zapcore.DebugLevel))
+	next, err := consumer.NewMetrics(func(context.Context, pmetric.Metrics) error {
+		return nil
+	})
+	require.NoError(b, err)
+
+	cfg := &config.Config{
+		Spans: []config.MetricInfo{
+			{
+				Name:        "http.trace.span.duration",
+				Description: "Span duration for HTTP spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "http.response.status_code",
+					},
+				},
+			},
+			{
+				Name:        "db.trace.span.duration",
+				Description: "Span duration for DB spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "msg.trace.span.duration",
+					},
+				},
+			},
+			{
+				Name:        "msg.trace.span.duration",
+				Description: "Span duration for DB spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "messaging.system",
+					},
+				},
+			},
+			{
+				Name:        "404.span.duration",
+				Description: "Span duration for missing attribute in input",
+				Attributes: []config.Attribute{
+					{
+						Key: "404.attribute",
+					},
+				},
+			},
+			{
+				Name:        "404.span.duration.default",
+				Description: "Span duration with attribute default configured in input",
+				Attributes: []config.Attribute{
+					{
+						Key:          "404.attribute.default",
+						DefaultValue: "any",
+					},
+				},
+			},
+		},
+	}
+	require.NoError(b, cfg.Unmarshal(confmap.New())) // set required fields to default
+	require.NoError(b, cfg.Validate())
+	connector, err := factory.CreateTracesToMetrics(context.Background(), settings, cfg, next)
+	require.NoError(b, err)
+	inputTraces, err := golden.ReadTraces("testdata/traces.yaml")
+	require.NoError(b, err)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		require.NoError(b, connector.ConsumeTraces(context.Background(), inputTraces))
 	}
 }
