@@ -22,7 +22,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator/histogram"
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -49,9 +49,9 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(td.ResourceSpans().Len())
 	// TODO (lahsivjar): add support for exponential histogram and summary
-	hist := histogram.NewExplicitBounds()
+	aggregator := aggregator.NewAggregator()
 	for i := 0; i < td.ResourceSpans().Len(); i++ {
-		hist.Reset()
+		aggregator.Reset()
 		resourceSpan := td.ResourceSpans().At(i)
 		for j := 0; j < resourceSpan.ScopeSpans().Len(); j++ {
 			scopeSpan := resourceSpan.ScopeSpans().At(j)
@@ -66,12 +66,12 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 				}
 				spanAttrs := span.Attributes()
 				for _, md := range sm.metricDefs {
-					multiError = errors.Join(multiError, hist.Add(md, spanAttrs, duration))
+					multiError = errors.Join(multiError, aggregator.Add(md, spanAttrs, duration))
 				}
 			}
 		}
 
-		if hist.Size() == 0 {
+		if aggregator.Size() == 0 {
 			continue // don't add an empty resource
 		}
 
@@ -81,7 +81,7 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 		processedScope.Scope().SetName(scopeName)
 		destMetric := processedScope.Metrics()
 		for _, md := range sm.metricDefs {
-			hist.Move(md, destMetric)
+			aggregator.Move(md, destMetric)
 		}
 	}
 	if multiError != nil {
