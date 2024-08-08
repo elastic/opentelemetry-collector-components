@@ -18,7 +18,6 @@
 package aggregator // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 
 import (
-	"sort"
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
@@ -28,29 +27,29 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-// explicitHistogram is a representation of explict bound histogram for
-// calculating histograms for span durations.
-type explicitHistogram struct {
+// summary represents a summary metric which calculates count and sum over
+// span duration.
+type summary struct {
 	// TODO (lahsivjar): Attribute hash collisions are not considered
-	datapoints map[model.MetricKey]map[[16]byte]*explicitHistogramDP
+	datapoints map[model.MetricKey]map[[16]byte]*summaryDP
 	timestamp  time.Time
 }
 
-func newExplicitBounds() *explicitHistogram {
-	return &explicitHistogram{
-		datapoints: make(map[model.MetricKey]map[[16]byte]*explicitHistogramDP),
+func newSummary() *summary {
+	return &summary{
+		datapoints: make(map[model.MetricKey]map[[16]byte]*summaryDP),
 		timestamp:  time.Now(),
 	}
 }
 
-func (h *explicitHistogram) Add(
+func (s *summary) Add(
 	key model.MetricKey,
 	value float64,
 	attributes pcommon.Map,
-	histoCfg config.ExplicitHistogram,
+	histoCfg config.Summary,
 ) error {
-	if _, ok := h.datapoints[key]; !ok {
-		h.datapoints[key] = make(map[[16]byte]*explicitHistogramDP)
+	if _, ok := s.datapoints[key]; !ok {
+		s.datapoints[key] = make(map[[16]byte]*summaryDP)
 	}
 
 	var attrKey [16]byte
@@ -58,22 +57,21 @@ func (h *explicitHistogram) Add(
 		attrKey = pdatautil.MapHash(attributes)
 	}
 
-	if _, ok := h.datapoints[key][attrKey]; !ok {
-		h.datapoints[key][attrKey] = newExplicitHistogramDP(attributes, histoCfg.Buckets)
+	if _, ok := s.datapoints[key][attrKey]; !ok {
+		s.datapoints[key][attrKey] = newSummaryDP(attributes)
 	}
 
-	dp := h.datapoints[key][attrKey]
+	dp := s.datapoints[key][attrKey]
 	dp.sum += value
 	dp.count++
-	dp.counts[sort.SearchFloat64s(dp.bounds, value)]++
 	return nil
 }
 
-func (h *explicitHistogram) Move(
+func (s *summary) Move(
 	key model.MetricKey,
 	dest pmetric.MetricSlice,
 ) {
-	srcDps, ok := h.datapoints[key]
+	srcDps, ok := s.datapoints[key]
 	if !ok || len(srcDps) == 0 {
 		return
 	}
@@ -81,59 +79,39 @@ func (h *explicitHistogram) Move(
 	destMetric := dest.AppendEmpty()
 	destMetric.SetName(key.Name)
 	destMetric.SetDescription(key.Description)
-	destHist := destMetric.SetEmptyHistogram()
-	destHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-	destHist.DataPoints().EnsureCapacity(len(srcDps))
+	destSummary := destMetric.SetEmptySummary()
+	destSummary.DataPoints().EnsureCapacity(len(srcDps))
 	for _, srcDp := range srcDps {
-		destDp := destHist.DataPoints().AppendEmpty()
+		destDp := destSummary.DataPoints().AppendEmpty()
 		srcDp.attrs.CopyTo(destDp.Attributes())
-		destDp.ExplicitBounds().FromRaw(srcDp.bounds)
-		destDp.BucketCounts().FromRaw(srcDp.counts)
 		destDp.SetCount(srcDp.count)
 		destDp.SetSum(srcDp.sum)
 		// TODO determine appropriate start time
-		destDp.SetTimestamp(pcommon.NewTimestampFromTime(h.timestamp))
+		destDp.SetTimestamp(pcommon.NewTimestampFromTime(s.timestamp))
 	}
 	// If there are two metric defined with the same key required by metricKey
 	// then they will be aggregated within the same histogram and produced
 	// together. Deleting the key ensures this while preventing duplicates.
-	delete(h.datapoints, key)
+	delete(s.datapoints, key)
 }
 
-func (h *explicitHistogram) Size() int {
-	return len(h.datapoints)
+func (s *summary) Size() int {
+	return len(s.datapoints)
 }
 
-func (h *explicitHistogram) Reset() {
-	clear(h.datapoints)
+func (s *summary) Reset() {
+	clear(s.datapoints)
 }
 
-type explicitHistogramDP struct {
+type summaryDP struct {
 	attrs pcommon.Map
 
 	sum   float64
 	count uint64
-
-	// bounds represents the explicitly defined boundaries for the histogram
-	// bucket. The boundaries for a bucket at index i are:
-	//
-	// (-Inf, bounds[i]] for i == 0
-	// (bounds[i-1], bounds[i]] for 0 < i < len(bounds)
-	// (bounds[i-1], +Inf) for i == len(bounds)
-	//
-	// Based on above representation, a bounds of length n represents n+1 buckets.
-	bounds []float64
-
-	// counts represents the count values of histogram for each bucket. The sum of
-	// counts across all buckets must be equal to the count variable. The length of
-	// counts must be one greather than the length of bounds slice.
-	counts []uint64
 }
 
-func newExplicitHistogramDP(attrs pcommon.Map, bounds []float64) *explicitHistogramDP {
-	return &explicitHistogramDP{
-		attrs:  attrs,
-		bounds: bounds,
-		counts: make([]uint64, len(bounds)+1),
+func newSummaryDP(attrs pcommon.Map) *summaryDP {
+	return &summaryDP{
+		attrs: attrs,
 	}
 }

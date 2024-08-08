@@ -32,6 +32,7 @@ type MetricDef struct {
 	Unit              config.MetricUnit
 	Attributes        []AttributeKeyValue
 	ExplicitHistogram *config.ExplicitHistogram
+	Summary           *config.Summary
 }
 
 type MetricKey struct {

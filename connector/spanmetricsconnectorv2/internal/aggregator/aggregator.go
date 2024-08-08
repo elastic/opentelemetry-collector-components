@@ -36,14 +36,20 @@ var metricUnitToDivider = map[config.MetricUnit]float64{
 	config.MetricUnitS:  float64(time.Second.Nanoseconds()),
 }
 
+// Aggregator provides a single interface to update all metrics
+// datastructures. The required datastructure is selected using
+// the metric definition.
 type Aggregator struct {
 	explicitBounds *explicitHistogram
+	summary        *summary
 }
 
+// NewAggregator creates a new instance of aggregator.
 func NewAggregator() *Aggregator {
 	return &Aggregator{}
 }
 
+// Add adds a span duration into the configured metrics.
 func (a *Aggregator) Add(
 	md model.MetricDef,
 	srcAttrs pcommon.Map,
@@ -79,6 +85,14 @@ func (a *Aggregator) Add(
 			errs = append(errs, err)
 		}
 	}
+	if md.Summary != nil {
+		if a.summary == nil {
+			a.summary = newSummary()
+		}
+		if err := a.summary.Add(md.Key, value, filteredAttrs, *md.Summary); err != nil {
+			errs = append(errs, err)
+		}
+	}
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
@@ -86,29 +100,38 @@ func (a *Aggregator) Add(
 	return nil
 }
 
+// Move moves the metrics for a given metric definition to a metric slice.
+// Note that move also deletes the the cached data after moving.
 func (a *Aggregator) Move(
 	md model.MetricDef,
 	dest pmetric.MetricSlice,
 ) {
-	if md.ExplicitHistogram != nil {
-		if a.explicitBounds == nil {
-			// nothing is added, return
-			return
-		}
+	if md.ExplicitHistogram != nil && a.explicitBounds != nil {
 		a.explicitBounds.Move(md.Key, dest)
+	}
+	if md.Summary != nil && a.summary != nil {
+		a.summary.Move(md.Key, dest)
 	}
 }
 
+// Size returns the number of datapoints in all the metrics representations.
 func (a *Aggregator) Size() int {
 	var size int
 	if a.explicitBounds != nil {
 		size += a.explicitBounds.Size()
 	}
+	if a.summary != nil {
+		size += a.summary.Size()
+	}
 	return size
 }
 
+// Reset resets all the metrics definitions for another usage.
 func (a *Aggregator) Reset() {
 	if a.explicitBounds != nil {
 		a.explicitBounds.Reset()
+	}
+	if a.summary != nil {
+		a.summary.Reset()
 	}
 }

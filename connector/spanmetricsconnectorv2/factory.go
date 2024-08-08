@@ -69,6 +69,7 @@ func createTracesToMetrics(
 			Unit:              info.Unit,
 			Attributes:        attrs,
 			ExplicitHistogram: info.Histogram.Explicit,
+			Summary:           info.Summary,
 		}
 		metricDefs = append(metricDefs, md)
 	}

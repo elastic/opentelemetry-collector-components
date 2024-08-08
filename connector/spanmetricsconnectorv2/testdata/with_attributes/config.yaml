@@ -12,4 +12,3 @@ spanmetricsv2:
       description: Span duration for messaging spans
       attributes:
         - key: messaging.system
-  
