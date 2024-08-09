@@ -55,6 +55,7 @@ type MetricInfo struct {
 	Attributes  []Attribute `mapstructure:"attributes"`
 	Unit        MetricUnit  `mapstructure:"unit"`
 	Histogram   Histogram   `mapstructure:"histogram"`
+	Summary     *Summary    `mapstructure:"summary"`
 }
 
 // isEqual checks if two metric have a same identity. Identity of a
@@ -96,6 +97,8 @@ type ExplicitHistogram struct {
 	Buckets []float64 `mapstructure:"buckets"`
 }
 
+type Summary struct{}
+
 func (c *Config) Validate() error {
 	duplicate := make(map[string]MetricInfo)
 	for _, info := range c.Spans {
@@ -107,6 +110,9 @@ func (c *Config) Validate() error {
 		}
 		if info.Unit == "" {
 			return errors.New("spans: metric unit missing")
+		}
+		if info.Histogram.Explicit == nil && info.Summary == nil {
+			return errors.New("metric definition missing, either histogram or summary required")
 		}
 		if err := info.validateHistogram(); err != nil {
 			return fmt.Errorf("spans histogram validation failed: metric %q, %w", info.Name, err)
@@ -121,7 +127,7 @@ func (c *Config) Validate() error {
 
 func (i *MetricInfo) validateHistogram() error {
 	if i.Histogram.Explicit == nil {
-		return errors.New("histogram definition missing")
+		return nil
 	}
 	if len(i.Histogram.Explicit.Buckets) == 0 {
 		return errors.New("histogram buckets missing")
@@ -168,11 +174,16 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 		if info.Unit == "" {
 			info.Unit = MetricUnitMs
 		}
-		if info.Histogram.Explicit == nil {
+		if info.Histogram.Explicit == nil && info.Summary == nil {
+			// Default to explicit bound histogram
+			// TODO: change default to exp histogram once available
 			info.Histogram.Explicit = &ExplicitHistogram{}
 		}
-		if len(info.Histogram.Explicit.Buckets) == 0 {
-			info.Histogram.Explicit.Buckets = defaultHistogramBuckets[:]
+		if info.Histogram.Explicit != nil {
+			// Add default buckets if explicit histogram is defined
+			if len(info.Histogram.Explicit.Buckets) == 0 {
+				info.Histogram.Explicit.Buckets = defaultHistogramBuckets[:]
+			}
 		}
 		c.Spans[k] = info
 	}
@@ -186,6 +197,7 @@ func defaultSpansConfig() []MetricInfo {
 			Description: defaultMetricDescSpans,
 			Unit:        MetricUnitMs,
 			Histogram: Histogram{
+				// TODO: change default to exp histogram once available
 				Explicit: &ExplicitHistogram{
 					Buckets: defaultHistogramBuckets[:],
 				},

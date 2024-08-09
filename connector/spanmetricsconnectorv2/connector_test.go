@@ -48,6 +48,7 @@ func TestConnector(t *testing.T) {
 		"with_custom_histogram_buckets",
 		"with_identical_metric_name_different_attrs",
 		"with_identical_metric_name_desc_different_attrs",
+		"with_summary",
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -67,6 +68,7 @@ func TestConnector(t *testing.T) {
 			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
 			require.NoError(t, err)
 			require.NoError(t, sub.Unmarshal(&cfg))
+			require.NoError(t, component.ValidateConfig(cfg))
 
 			connector, err := factory.CreateTracesToMetrics(ctx, settings, cfg, next)
 			require.NoError(t, err)

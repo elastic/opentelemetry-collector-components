@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package histogram
+package aggregator
 
 import (
 	"testing"
@@ -32,10 +32,8 @@ import (
 )
 
 func TestExplicitBounds(t *testing.T) {
-	histogramCfg := config.Histogram{
-		Explicit: &config.ExplicitHistogram{
-			Buckets: []float64{1, 10, 100, 1000},
-		},
+	histogramCfg := &config.ExplicitHistogram{
+		Buckets: []float64{1, 10, 100, 1000},
 	}
 	for _, tc := range []struct {
 		name              string
@@ -51,11 +49,13 @@ func TestExplicitBounds(t *testing.T) {
 			name: "no_attribute_configured",
 			metricDefs: []model.MetricDef{
 				{
-					Name:        "metric.1",
-					Description: "metric desc 1",
-					Attributes:  nil,
-					Unit:        config.MetricUnitS,
-					Histogram:   histogramCfg,
+					Key: model.MetricKey{
+						Name:        "metric.1",
+						Description: "metric desc 1",
+					},
+					Unit:              config.MetricUnitS,
+					Attributes:        nil,
+					ExplicitHistogram: histogramCfg,
 				},
 			},
 			input: []ptrace.Span{
@@ -67,7 +67,7 @@ func TestExplicitBounds(t *testing.T) {
 				"metric.1", "metric desc 1",
 				[]createHist{
 					{
-						buckets: histogramCfg.Explicit.Buckets,
+						buckets: histogramCfg.Buckets,
 						counts:  []uint64{1, 0, 1, 0, 0},
 						count:   2,
 						sum:     61, // 1 minute + 1 second to seconds
@@ -79,13 +79,15 @@ func TestExplicitBounds(t *testing.T) {
 			name: "attribute_configured",
 			metricDefs: []model.MetricDef{
 				{
-					Name:        "metric.1",
-					Description: "metric desc 1",
+					Key: model.MetricKey{
+						Name:        "metric.1",
+						Description: "metric desc 1",
+					},
 					Attributes: []model.AttributeKeyValue{
 						{Key: "key.1", DefaultValue: pcommon.NewValueEmpty()},
 					},
-					Unit:      config.MetricUnitS,
-					Histogram: histogramCfg,
+					Unit:              config.MetricUnitS,
+					ExplicitHistogram: histogramCfg,
 				},
 			},
 			input: []ptrace.Span{
@@ -97,7 +99,7 @@ func TestExplicitBounds(t *testing.T) {
 				"metric.1", "metric desc 1",
 				[]createHist{
 					{
-						buckets: histogramCfg.Explicit.Buckets,
+						buckets: histogramCfg.Buckets,
 						attrs:   map[string]any{"key.1": "val.1"},
 						counts:  []uint64{0, 0, 1, 0, 0},
 						count:   1,
@@ -110,13 +112,15 @@ func TestExplicitBounds(t *testing.T) {
 			name: "default_attribute_configured",
 			metricDefs: []model.MetricDef{
 				{
-					Name:        "metric.1",
-					Description: "metric desc 1",
+					Key: model.MetricKey{
+						Name:        "metric.1",
+						Description: "metric desc 1",
+					},
 					Attributes: []model.AttributeKeyValue{
 						{Key: "key.3", DefaultValue: pcommon.NewValueStr("val.3")},
 					},
-					Unit:      config.MetricUnitS,
-					Histogram: histogramCfg,
+					Unit:              config.MetricUnitS,
+					ExplicitHistogram: histogramCfg,
 				},
 			},
 			input: []ptrace.Span{
@@ -128,7 +132,7 @@ func TestExplicitBounds(t *testing.T) {
 				"metric.1", "metric desc 1",
 				[]createHist{
 					{
-						buckets: histogramCfg.Explicit.Buckets,
+						buckets: histogramCfg.Buckets,
 						attrs:   map[string]any{"key.3": "val.3"},
 						counts:  []uint64{1, 0, 1, 0, 0},
 						count:   2,
@@ -139,18 +143,18 @@ func TestExplicitBounds(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			hist := NewExplicitBounds()
-			require.NotNil(t, hist)
+			agg := NewAggregator()
+			require.NotNil(t, agg)
 			actual := pmetric.NewMetricSlice()
 			for _, span := range tc.input {
 				duration := time.Duration(span.EndTimestamp() - span.StartTimestamp())
 				for _, md := range tc.metricDefs {
-					require.NoError(t, hist.Add(md, span.Attributes(), duration))
+					require.NoError(t, agg.Add(md, span.Attributes(), duration))
 				}
 			}
-			require.Equal(t, hist.Size(), tc.expectedHistogram.Len())
+			require.Equal(t, agg.Size(), tc.expectedHistogram.Len())
 			for _, md := range tc.metricDefs {
-				hist.Move(md, actual)
+				agg.Move(md, actual)
 			}
 			require.Equal(t, tc.expectedHistogram.Len(), actual.Len())
 
@@ -161,8 +165,8 @@ func TestExplicitBounds(t *testing.T) {
 			actual.CopyTo(actualM.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics())
 			assert.NoError(t, pmetrictest.CompareMetrics(expectedM, actualM, pmetrictest.IgnoreTimestamp()))
 
-			hist.Reset()
-			assert.Equal(t, 0, hist.Size())
+			agg.Reset()
+			assert.Equal(t, 0, agg.Size())
 		})
 	}
 }

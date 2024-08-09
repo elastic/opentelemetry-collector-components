@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package histogram // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator/histogram"
+package aggregator // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 
 import (
 	"sort"
@@ -28,69 +28,40 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-// metricUnitToDivider gives a value that could used to divide the
-// nano precision duration to the required unit specified in config.
-var metricUnitToDivider = map[config.MetricUnit]float64{
-	config.MetricUnitNs: float64(time.Nanosecond.Nanoseconds()),
-	config.MetricUnitUs: float64(time.Microsecond.Nanoseconds()),
-	config.MetricUnitMs: float64(time.Millisecond.Nanoseconds()),
-	config.MetricUnitS:  float64(time.Second.Nanoseconds()),
-}
-
-// ExplicitBounds is a representation of explict bound histogram for
+// explicitHistogram is a representation of explict bound histogram for
 // calculating histograms for span durations.
-type ExplicitBounds struct {
+type explicitHistogram struct {
 	// TODO (lahsivjar): Attribute hash collisions are not considered
-	datapoints map[metricKey]map[[16]byte]*explicitHistogramDP
+	datapoints map[model.MetricKey]map[[16]byte]*explicitHistogramDP
 	timestamp  time.Time
 }
 
-// NewExplicitBounds creates a new instance of explicit bounds histogram.
-func NewExplicitBounds() *ExplicitBounds {
-	return &ExplicitBounds{
-		datapoints: make(map[metricKey]map[[16]byte]*explicitHistogramDP),
+func newExplicitBounds() *explicitHistogram {
+	return &explicitHistogram{
+		datapoints: make(map[model.MetricKey]map[[16]byte]*explicitHistogramDP),
 		timestamp:  time.Now(),
 	}
 }
 
-// Add adds a datapoint for a given metric definition to the histogram.
-func (h *ExplicitBounds) Add(
-	md model.MetricDef,
-	srcAttrs pcommon.Map,
-	spanDuration time.Duration,
+func (h *explicitHistogram) Add(
+	key model.MetricKey,
+	value float64,
+	attributes pcommon.Map,
+	histoCfg config.ExplicitHistogram,
 ) error {
-	filteredAttrs := pcommon.NewMap()
-	for _, definedAttr := range md.Attributes {
-		if srcAttr, ok := srcAttrs.Get(definedAttr.Key); ok {
-			srcAttr.CopyTo(filteredAttrs.PutEmpty(definedAttr.Key))
-			continue
-		}
-		if definedAttr.DefaultValue.Type() != pcommon.ValueTypeEmpty {
-			definedAttr.DefaultValue.CopyTo(filteredAttrs.PutEmpty(definedAttr.Key))
-		}
-	}
-
-	// If all the configured attributes are not present in source
-	// metric then don't count them.
-	if filteredAttrs.Len() != len(md.Attributes) {
-		return nil
-	}
-
-	key := metricKey{Name: md.Name, Desc: md.Description}
 	if _, ok := h.datapoints[key]; !ok {
 		h.datapoints[key] = make(map[[16]byte]*explicitHistogramDP)
 	}
 
 	var attrKey [16]byte
-	if filteredAttrs.Len() > 0 {
-		attrKey = pdatautil.MapHash(filteredAttrs)
+	if attributes.Len() > 0 {
+		attrKey = pdatautil.MapHash(attributes)
 	}
 
 	if _, ok := h.datapoints[key][attrKey]; !ok {
-		h.datapoints[key][attrKey] = newExplicitHistogramDP(filteredAttrs, md.Histogram.Explicit.Buckets)
+		h.datapoints[key][attrKey] = newExplicitHistogramDP(attributes, histoCfg.Buckets)
 	}
 
-	value := float64(spanDuration.Nanoseconds()) / metricUnitToDivider[md.Unit]
 	dp := h.datapoints[key][attrKey]
 	dp.sum += value
 	dp.count++
@@ -98,21 +69,18 @@ func (h *ExplicitBounds) Add(
 	return nil
 }
 
-// Move moves the histogram for a given metric definition to a metric slice.
-// Note that move also deletes the histogram representation after moving.
-func (h *ExplicitBounds) Move(
-	md model.MetricDef,
+func (h *explicitHistogram) Move(
+	key model.MetricKey,
 	dest pmetric.MetricSlice,
 ) {
-	key := metricKey{Name: md.Name, Desc: md.Description}
 	srcDps, ok := h.datapoints[key]
 	if !ok || len(srcDps) == 0 {
 		return
 	}
 
 	destMetric := dest.AppendEmpty()
-	destMetric.SetName(md.Name)
-	destMetric.SetDescription(md.Description)
+	destMetric.SetName(key.Name)
+	destMetric.SetDescription(key.Description)
 	destHist := destMetric.SetEmptyHistogram()
 	destHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 	destHist.DataPoints().EnsureCapacity(len(srcDps))
@@ -132,20 +100,12 @@ func (h *ExplicitBounds) Move(
 	delete(h.datapoints, key)
 }
 
-// Size returns the number of datapoints in the histogram representation.
-func (h *ExplicitBounds) Size() int {
+func (h *explicitHistogram) Size() int {
 	return len(h.datapoints)
 }
 
-// Reset resets the histogram for another usage. Note that timestamp is
-// not updated as part of the reset.
-func (h *ExplicitBounds) Reset() {
+func (h *explicitHistogram) Reset() {
 	clear(h.datapoints)
-}
-
-type metricKey struct {
-	Name string
-	Desc string
 }
 
 type explicitHistogramDP struct {

@@ -159,6 +159,34 @@ func TestConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			path: "with_summary",
+			expected: &Config{
+				Spans: []MetricInfo{
+					{
+						Name:        "http.trace.span.summary",
+						Description: "Summary for HTTP spans",
+						Unit:        MetricUnitMs,
+						Attributes:  []Attribute{{Key: "http.response.status_code"}},
+						Summary:     &Summary{},
+					},
+					{
+						Name:        "db.trace.span.summary",
+						Description: "Summary for DB spans",
+						Unit:        MetricUnitMs,
+						Attributes:  []Attribute{{Key: "db.system"}},
+						Summary:     &Summary{},
+					},
+					{
+						Name:        "msg.trace.span.summary",
+						Description: "Summary for messaging spans",
+						Unit:        MetricUnitMs,
+						Attributes:  []Attribute{{Key: "messaging.system"}},
+						Summary:     &Summary{},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			dir := filepath.Join("../testdata", tc.path)

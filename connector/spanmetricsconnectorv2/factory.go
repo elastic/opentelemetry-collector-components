@@ -62,11 +62,14 @@ func createTracesToMetrics(
 			return nil, fmt.Errorf("failed to parse attribute config: %w", err)
 		}
 		md := model.MetricDef{
-			Name:        info.Name,
-			Description: info.Description,
-			Unit:        info.Unit,
-			Attributes:  attrs,
-			Histogram:   info.Histogram,
+			Key: model.MetricKey{
+				Name:        info.Name,
+				Description: info.Description,
+			},
+			Unit:              info.Unit,
+			Attributes:        attrs,
+			ExplicitHistogram: info.Histogram.Explicit,
+			Summary:           info.Summary,
 		}
 		metricDefs = append(metricDefs, md)
 	}

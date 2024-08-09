@@ -5,3 +5,5 @@ spanmetricsv2:
       attributes:
         - key: 404.attribute
           default_value: undefined
+      histogram:
+        explicit: {}

@@ -28,9 +28,14 @@ type AttributeKeyValue struct {
 }
 
 type MetricDef struct {
+	Key               MetricKey
+	Unit              config.MetricUnit
+	Attributes        []AttributeKeyValue
+	ExplicitHistogram *config.ExplicitHistogram
+	Summary           *config.Summary
+}
+
+type MetricKey struct {
 	Name        string
 	Description string
-	Unit        config.MetricUnit
-	Attributes  []AttributeKeyValue
-	Histogram   config.Histogram
 }
