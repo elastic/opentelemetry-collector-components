@@ -3,16 +3,16 @@ module github.com/elastic/opentelemetry-collector-components/connector/spanmetri
 go 1.21.0
 
 require (
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.106.1
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.106.1
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.106.1
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.107.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.107.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.107.0
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/collector/component v0.106.1
 	go.opentelemetry.io/collector/confmap v0.106.1
 	go.opentelemetry.io/collector/connector v0.106.1
 	go.opentelemetry.io/collector/consumer v0.106.1
 	go.opentelemetry.io/collector/consumer/consumertest v0.106.1
-	go.opentelemetry.io/collector/pdata v1.12.0
+	go.opentelemetry.io/collector/pdata v1.13.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
 )
