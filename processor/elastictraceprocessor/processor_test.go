@@ -55,7 +55,7 @@ func TestProcessor(t *testing.T) {
 			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 			next := &consumertest.TracesSink{}
 
-			tp, err := factory.CreateTracesProcessor(ctx, settings, struct{}{}, next)
+			tp, err := factory.CreateTracesProcessor(ctx, settings, createDefaultConfig(), next)
 
 			require.NoError(t, err)
 			require.IsType(t, &Processor{}, tp)

@@ -1,0 +1,9 @@
+spanmetricsv2:
+  spans:
+    - name: 404.span.duration
+      description: Span duration with missing attribute but default value
+      attributes:
+        - key: 404.attribute
+          default_value: undefined
+      histogram:
+        explicit: {}

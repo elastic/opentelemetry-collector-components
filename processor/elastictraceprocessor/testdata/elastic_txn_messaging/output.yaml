@@ -17,6 +17,12 @@ resourceSpans:
               - key: messaging.destination.name
                 value:
                   stringValue: TestTopic
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: msg-elastic-txn
               - key: transaction.type
                 value:
                   stringValue: messaging

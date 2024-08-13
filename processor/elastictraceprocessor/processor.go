@@ -34,14 +34,16 @@ type Processor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next   consumer.Traces
-	logger *zap.Logger
+	next     consumer.Traces
+	enricher *trace.Enricher
+	logger   *zap.Logger
 }
 
-func newProcessor(logger *zap.Logger, next consumer.Traces) *Processor {
+func newProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *Processor {
 	return &Processor{
-		next:   next,
-		logger: logger,
+		next:     next,
+		logger:   logger,
+		enricher: trace.NewEnricher(cfg.Config),
 	}
 }
 
@@ -50,6 +52,6 @@ func (p *Processor) Capabilities() consumer.Capabilities {
 }
 
 func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	trace.Enrich(td)
+	p.enricher.Enrich(td)
 	return p.next.ConsumeTraces(ctx, td)
 }
