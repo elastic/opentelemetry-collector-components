@@ -110,6 +110,11 @@ func BenchmarkConnector(b *testing.B) {
 						Key: "http.response.status_code",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 			{
 				Name:        "db.trace.span.duration",
@@ -119,6 +124,11 @@ func BenchmarkConnector(b *testing.B) {
 						Key: "msg.trace.span.duration",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 			{
 				Name:        "msg.trace.span.duration",
@@ -128,6 +138,11 @@ func BenchmarkConnector(b *testing.B) {
 						Key: "messaging.system",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 			{
 				Name:        "404.span.duration",
@@ -137,6 +152,11 @@ func BenchmarkConnector(b *testing.B) {
 						Key: "404.attribute",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 			{
 				Name:        "404.span.duration.default",
@@ -147,6 +167,11 @@ func BenchmarkConnector(b *testing.B) {
 						DefaultValue: "any",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 		},
 	}
