@@ -70,7 +70,7 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 			}
 		}
 
-		if aggregator.Size() == 0 {
+		if aggregator.Empty() {
 			continue // don't add an empty resource
 		}
 

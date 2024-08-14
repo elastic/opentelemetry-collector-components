@@ -20,114 +20,49 @@ package aggregator // import "github.com/elastic/opentelemetry-collector-compone
 import (
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
-	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 	"github.com/lightstep/go-expohisto/structure"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-// exponentialHistogram is a representation of exponential histogram for
-// calculating histograms for span durations.
-type exponentialHistogram struct {
-	// TODO (lahsivjar): Attribute hash collisions are not considered
-	datapoints map[model.MetricKey]map[[16]byte]*exponentialHistogramDP
-	timestamp  time.Time
-}
-
-func newExponentialHistogram() *exponentialHistogram {
-	return &exponentialHistogram{
-		datapoints: make(map[model.MetricKey]map[[16]byte]*exponentialHistogramDP),
-		timestamp:  time.Now(),
-	}
-}
-
-func (h *exponentialHistogram) Add(
-	key model.MetricKey,
-	value float64,
-	attributes pcommon.Map,
-	histoCfg config.ExponentialHistogram,
-) error {
-	if _, ok := h.datapoints[key]; !ok {
-		h.datapoints[key] = make(map[[16]byte]*exponentialHistogramDP)
-	}
-
-	var attrKey [16]byte
-	if attributes.Len() > 0 {
-		attrKey = pdatautil.MapHash(attributes)
-	}
-
-	if _, ok := h.datapoints[key][attrKey]; !ok {
-		h.datapoints[key][attrKey] = newExponentialHistogramDP(attributes, histoCfg.MaxSize)
-	}
-
-	dp := h.datapoints[key][attrKey]
-	dp.Update(value)
-	return nil
-}
-
-func (h *exponentialHistogram) Move(
-	key model.MetricKey,
-	dest pmetric.MetricSlice,
-) {
-	srcDps, ok := h.datapoints[key]
-	if !ok || len(srcDps) == 0 {
-		return
-	}
-
-	destMetric := dest.AppendEmpty()
-	destMetric.SetName(key.Name)
-	destMetric.SetDescription(key.Description)
-	destHist := destMetric.SetEmptyExponentialHistogram()
-	destHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-	destHist.DataPoints().EnsureCapacity(len(srcDps))
-	for _, srcDp := range srcDps {
-		destDp := destHist.DataPoints().AppendEmpty()
-		srcDp.attrs.CopyTo(destDp.Attributes())
-		destDp.SetZeroCount(srcDp.ZeroCount())
-		destDp.SetScale(srcDp.Scale())
-		destDp.SetCount(srcDp.Count())
-		destDp.SetSum(srcDp.Sum())
-		if srcDp.Count() > 0 {
-			destDp.SetMin(srcDp.Min())
-			destDp.SetMax(srcDp.Max())
-		}
-		// TODO determine appropriate start time
-		destDp.SetTimestamp(pcommon.NewTimestampFromTime(h.timestamp))
-
-		copyBucketRange(srcDp.Positive(), destDp.Positive())
-		copyBucketRange(srcDp.Negative(), destDp.Negative())
-	}
-	// If there are two metric defined with the same key required by metricKey
-	// then they will be aggregated within the same histogram and produced
-	// together. Deleting the key ensures this while preventing duplicates.
-	delete(h.datapoints, key)
-}
-
-func (h *exponentialHistogram) Size() int {
-	return len(h.datapoints)
-}
-
-func (h *exponentialHistogram) Reset() {
-	clear(h.datapoints)
-}
-
 type exponentialHistogramDP struct {
 	attrs pcommon.Map
-
-	*structure.Histogram[float64]
+	data  *structure.Histogram[float64]
 }
 
 func newExponentialHistogramDP(attrs pcommon.Map, maxSize int32) *exponentialHistogramDP {
 	return &exponentialHistogramDP{
 		attrs: attrs,
-		Histogram: structure.NewFloat64(
+		data: structure.NewFloat64(
 			// If config is not valid then it defaults to the closest
 			// valid configuration.
 			structure.NewConfig(structure.WithMaxSize(maxSize)),
 		),
 	}
+}
+
+func (dp *exponentialHistogramDP) Add(value float64) {
+	dp.data.Update(value)
+}
+
+func (dp *exponentialHistogramDP) Copy(
+	timestamp time.Time,
+	dest pmetric.ExponentialHistogramDataPoint,
+) {
+	dp.attrs.CopyTo(dest.Attributes())
+	dest.SetZeroCount(dp.data.ZeroCount())
+	dest.SetScale(dp.data.Scale())
+	dest.SetCount(dp.data.Count())
+	dest.SetSum(dp.data.Sum())
+	if dp.data.Count() > 0 {
+		dest.SetMin(dp.data.Min())
+		dest.SetMax(dp.data.Max())
+	}
+	// TODO determine appropriate start time
+	dest.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
+
+	copyBucketRange(dp.data.Positive(), dest.Positive())
+	copyBucketRange(dp.data.Negative(), dest.Negative())
 }
 
 // copyBucketRange copies a bucket range from exponential histogram

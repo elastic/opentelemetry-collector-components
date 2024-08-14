@@ -21,92 +21,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
-	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
-
-// explicitHistogram is a representation of explict bound histogram for
-// calculating histograms for span durations.
-type explicitHistogram struct {
-	// TODO (lahsivjar): Attribute hash collisions are not considered
-	datapoints map[model.MetricKey]map[[16]byte]*explicitHistogramDP
-	timestamp  time.Time
-}
-
-func newExplicitBounds() *explicitHistogram {
-	return &explicitHistogram{
-		datapoints: make(map[model.MetricKey]map[[16]byte]*explicitHistogramDP),
-		timestamp:  time.Now(),
-	}
-}
-
-func (h *explicitHistogram) Add(
-	key model.MetricKey,
-	value float64,
-	attributes pcommon.Map,
-	histoCfg config.ExplicitHistogram,
-) error {
-	if _, ok := h.datapoints[key]; !ok {
-		h.datapoints[key] = make(map[[16]byte]*explicitHistogramDP)
-	}
-
-	var attrKey [16]byte
-	if attributes.Len() > 0 {
-		attrKey = pdatautil.MapHash(attributes)
-	}
-
-	if _, ok := h.datapoints[key][attrKey]; !ok {
-		h.datapoints[key][attrKey] = newExplicitHistogramDP(attributes, histoCfg.Buckets)
-	}
-
-	dp := h.datapoints[key][attrKey]
-	dp.sum += value
-	dp.count++
-	dp.counts[sort.SearchFloat64s(dp.bounds, value)]++
-	return nil
-}
-
-func (h *explicitHistogram) Move(
-	key model.MetricKey,
-	dest pmetric.MetricSlice,
-) {
-	srcDps, ok := h.datapoints[key]
-	if !ok || len(srcDps) == 0 {
-		return
-	}
-
-	destMetric := dest.AppendEmpty()
-	destMetric.SetName(key.Name)
-	destMetric.SetDescription(key.Description)
-	destHist := destMetric.SetEmptyHistogram()
-	destHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-	destHist.DataPoints().EnsureCapacity(len(srcDps))
-	for _, srcDp := range srcDps {
-		destDp := destHist.DataPoints().AppendEmpty()
-		srcDp.attrs.CopyTo(destDp.Attributes())
-		destDp.ExplicitBounds().FromRaw(srcDp.bounds)
-		destDp.BucketCounts().FromRaw(srcDp.counts)
-		destDp.SetCount(srcDp.count)
-		destDp.SetSum(srcDp.sum)
-		// TODO determine appropriate start time
-		destDp.SetTimestamp(pcommon.NewTimestampFromTime(h.timestamp))
-	}
-	// If there are two metric defined with the same key required by metricKey
-	// then they will be aggregated within the same histogram and produced
-	// together. Deleting the key ensures this while preventing duplicates.
-	delete(h.datapoints, key)
-}
-
-func (h *explicitHistogram) Size() int {
-	return len(h.datapoints)
-}
-
-func (h *explicitHistogram) Reset() {
-	clear(h.datapoints)
-}
 
 type explicitHistogramDP struct {
 	attrs pcommon.Map
@@ -136,4 +53,23 @@ func newExplicitHistogramDP(attrs pcommon.Map, bounds []float64) *explicitHistog
 		bounds: bounds,
 		counts: make([]uint64, len(bounds)+1),
 	}
+}
+
+func (dp *explicitHistogramDP) Add(value float64) {
+	dp.sum += value
+	dp.count++
+	dp.counts[sort.SearchFloat64s(dp.bounds, value)]++
+}
+
+func (dp *explicitHistogramDP) Copy(
+	timestamp time.Time,
+	dest pmetric.HistogramDataPoint,
+) {
+	dp.attrs.CopyTo(dest.Attributes())
+	dest.ExplicitBounds().FromRaw(dp.bounds)
+	dest.BucketCounts().FromRaw(dp.counts)
+	dest.SetCount(dp.count)
+	dest.SetSum(dp.sum)
+	// TODO determine appropriate start time
+	dest.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 }

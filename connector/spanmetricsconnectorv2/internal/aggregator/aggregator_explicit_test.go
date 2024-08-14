@@ -152,7 +152,6 @@ func TestExplicitBounds(t *testing.T) {
 					require.NoError(t, agg.Add(md, span.Attributes(), duration))
 				}
 			}
-			require.Equal(t, agg.Size(), tc.expectedHistogram.Len())
 			for _, md := range tc.metricDefs {
 				agg.Move(md, actual)
 			}
@@ -166,7 +165,7 @@ func TestExplicitBounds(t *testing.T) {
 			assert.NoError(t, pmetrictest.CompareMetrics(expectedM, actualM, pmetrictest.IgnoreTimestamp()))
 
 			agg.Reset()
-			assert.Equal(t, 0, agg.Size())
+			require.True(t, agg.Empty())
 		})
 	}
 }

@@ -80,6 +80,7 @@ func TestConnector(t *testing.T) {
 			require.NoError(t, err)
 
 			require.NoError(t, connector.ConsumeTraces(ctx, inputTraces))
+			require.Len(t, next.AllMetrics(), 1)
 			assert.NoError(t, pmetrictest.CompareMetrics(
 				expectedMetrics,
 				next.AllMetrics()[0],
