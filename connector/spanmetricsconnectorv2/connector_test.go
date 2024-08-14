@@ -45,7 +45,7 @@ func TestConnector(t *testing.T) {
 		"with_attributes",
 		"with_missing_attribute",
 		"with_missing_attribute_default_value",
-		"with_custom_histogram_buckets",
+		"with_custom_histogram_configs",
 		"with_identical_metric_name_different_attrs",
 		"with_identical_metric_name_desc_different_attrs",
 		"with_summary",

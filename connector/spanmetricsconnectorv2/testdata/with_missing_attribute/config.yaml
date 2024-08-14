@@ -6,3 +6,4 @@ spanmetricsv2:
         - key: 404.attribute
       histogram:
         explicit: {}
+        exponential: {}

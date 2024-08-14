@@ -41,6 +41,7 @@ var metricUnitToDivider = map[config.MetricUnit]float64{
 // the metric definition.
 type Aggregator struct {
 	explicitBounds *explicitHistogram
+	expHistogram   *exponentialHistogram
 	summary        *summary
 }
 
@@ -75,6 +76,16 @@ func (a *Aggregator) Add(
 	value := float64(spanDuration.Nanoseconds()) / metricUnitToDivider[md.Unit]
 
 	var errs []error
+	if md.ExponentialHistogram != nil {
+		if a.expHistogram == nil {
+			a.expHistogram = newExponentialHistogram()
+		}
+		if err := a.expHistogram.Add(
+			md.Key, value, filteredAttrs, *md.ExponentialHistogram,
+		); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	if md.ExplicitHistogram != nil {
 		if a.explicitBounds == nil {
 			a.explicitBounds = newExplicitBounds()
@@ -106,6 +117,9 @@ func (a *Aggregator) Move(
 	md model.MetricDef,
 	dest pmetric.MetricSlice,
 ) {
+	if md.ExponentialHistogram != nil && a.expHistogram != nil {
+		a.expHistogram.Move(md.Key, dest)
+	}
 	if md.ExplicitHistogram != nil && a.explicitBounds != nil {
 		a.explicitBounds.Move(md.Key, dest)
 	}
@@ -117,6 +131,9 @@ func (a *Aggregator) Move(
 // Size returns the number of datapoints in all the metrics representations.
 func (a *Aggregator) Size() int {
 	var size int
+	if a.expHistogram != nil {
+		size += a.expHistogram.Size()
+	}
 	if a.explicitBounds != nil {
 		size += a.explicitBounds.Size()
 	}
@@ -128,6 +145,9 @@ func (a *Aggregator) Size() int {
 
 // Reset resets all the metrics definitions for another usage.
 func (a *Aggregator) Reset() {
+	if a.expHistogram != nil {
+		a.expHistogram.Reset()
+	}
 	if a.explicitBounds != nil {
 		a.explicitBounds.Reset()
 	}

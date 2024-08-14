@@ -10,6 +10,23 @@ resourceMetrics:
     scopeMetrics:
       - metrics:
           - description: Span duration with custom histogram buckets
+            exponentialHistogram:
+              aggregationTemporality: 1
+              dataPoints:
+                - count: "6"
+                  max: 17.000000468
+                  min: 0.002000468
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "3"
+                      - "3"
+                    offset: -1
+                  scale: -4
+                  sum: 30.402002808
+                  timeUnixNano: "1000000"
+            name: trace.span.duration
+          - description: Span duration with custom histogram buckets
             histogram:
               aggregationTemporality: 1
               dataPoints:

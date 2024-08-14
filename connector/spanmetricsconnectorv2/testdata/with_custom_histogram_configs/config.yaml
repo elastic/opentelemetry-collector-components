@@ -6,3 +6,5 @@ spanmetricsv2:
       histogram:
         explicit:
           buckets: [0.001, 0.1, 1, 10]
+        exponential:
+          max_size: 2
