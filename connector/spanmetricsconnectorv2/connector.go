@@ -117,10 +117,9 @@ func calculateAdjustedCount(tracestate string) uint64 {
 	}
 	var p uint64
 	for _, kv := range otTraceState.ExtraValues() {
-		switch kv.Key {
-		// If p-value is present then calculate the adjusted count as per
-		// the consistent probability sampling specs.
-		case "p":
+		if kv.Key == "p" {
+			// If p-value is present then calculate the adjusted count as per
+			// the consistent probability sampling specs.
 			if kv.Value != "" {
 				// p-value is represented as unsigned decimal integers
 				// requiring at most 6 bits of information. We parse to
