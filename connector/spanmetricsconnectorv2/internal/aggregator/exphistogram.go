@@ -39,8 +39,8 @@ func newExponentialHistogramDP(attrs pcommon.Map, maxSize int32) *exponentialHis
 	}
 }
 
-func (dp *exponentialHistogramDP) Add(value float64) {
-	dp.data.Update(value)
+func (dp *exponentialHistogramDP) Add(value float64, count uint64) {
+	dp.data.UpdateByIncr(value, count)
 }
 
 func (dp *exponentialHistogramDP) Copy(

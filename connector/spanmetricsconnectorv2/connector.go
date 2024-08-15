@@ -65,7 +65,7 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 				}
 				spanAttrs := span.Attributes()
 				for _, md := range sm.metricDefs {
-					multiError = errors.Join(multiError, aggregator.Add(md, spanAttrs, duration))
+					multiError = errors.Join(multiError, aggregator.Add(md, spanAttrs, duration, 1))
 				}
 			}
 		}

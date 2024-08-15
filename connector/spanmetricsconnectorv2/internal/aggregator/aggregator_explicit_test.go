@@ -149,7 +149,7 @@ func TestExplicitBounds(t *testing.T) {
 			for _, span := range tc.input {
 				duration := time.Duration(span.EndTimestamp() - span.StartTimestamp())
 				for _, md := range tc.metricDefs {
-					require.NoError(t, agg.Add(md, span.Attributes(), duration))
+					require.NoError(t, agg.Add(md, span.Attributes(), duration, 1))
 				}
 			}
 			for _, md := range tc.metricDefs {

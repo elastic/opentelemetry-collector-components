@@ -55,10 +55,10 @@ func newExplicitHistogramDP(attrs pcommon.Map, bounds []float64) *explicitHistog
 	}
 }
 
-func (dp *explicitHistogramDP) Add(value float64) {
-	dp.sum += value
-	dp.count++
-	dp.counts[sort.SearchFloat64s(dp.bounds, value)]++
+func (dp *explicitHistogramDP) Add(value float64, count uint64) {
+	dp.sum += value * float64(count)
+	dp.count += count
+	dp.counts[sort.SearchFloat64s(dp.bounds, value)] += count
 }
 
 func (dp *explicitHistogramDP) Copy(

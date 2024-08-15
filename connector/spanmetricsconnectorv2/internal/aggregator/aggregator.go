@@ -52,11 +52,16 @@ func NewAggregator() *Aggregator {
 	}
 }
 
-// Add adds a span duration into the configured metrics.
+// Add adds a span duration into the configured metrics. It also takes
+// `adjustedCount` parameter to denote the total number of spans in the
+// population that are represented by an individually sampled span.
+// The adjusted count is is calculated as per:
+// https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling/#adjusted-count
 func (a *Aggregator) Add(
 	md model.MetricDef,
 	srcAttrs pcommon.Map,
 	spanDuration time.Duration,
+	adjustedCount uint64,
 ) error {
 	filteredAttrs := pcommon.NewMap()
 	for _, definedAttr := range md.Attributes {
@@ -88,7 +93,7 @@ func (a *Aggregator) Add(
 		a.datapoints[md.Key][attrKey] = newAggregatorDP(md, filteredAttrs)
 	}
 	value := float64(spanDuration.Nanoseconds()) / metricUnitToDivider[md.Unit]
-	a.datapoints[md.Key][attrKey].Add(value)
+	a.datapoints[md.Key][attrKey].Add(value, adjustedCount)
 	return nil
 }
 
@@ -179,15 +184,15 @@ func newAggregatorDP(
 	return &dp
 }
 
-func (dp *aggregatorDP) Add(value float64) {
+func (dp *aggregatorDP) Add(value float64, count uint64) {
 	if dp.expHistogramDP != nil {
-		dp.expHistogramDP.Add(value)
+		dp.expHistogramDP.Add(value, count)
 	}
 	if dp.explicitHistogramDP != nil {
-		dp.explicitHistogramDP.Add(value)
+		dp.explicitHistogramDP.Add(value, count)
 	}
 	if dp.summaryDP != nil {
-		dp.summaryDP.Add(value)
+		dp.summaryDP.Add(value, count)
 	}
 }
 
