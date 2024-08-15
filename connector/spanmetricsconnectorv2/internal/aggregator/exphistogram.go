@@ -34,8 +34,6 @@ func newExponentialHistogramDP(attrs pcommon.Map, maxSize int32) *exponentialHis
 	return &exponentialHistogramDP{
 		attrs: attrs,
 		data: structure.NewFloat64(
-			// If config is not valid then it defaults to the closest
-			// valid configuration.
 			structure.NewConfig(structure.WithMaxSize(maxSize)),
 		),
 	}

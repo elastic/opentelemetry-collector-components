@@ -53,7 +53,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
-							Exponential: &ExponentialHistogram{},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 					{
@@ -65,7 +67,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
-							Exponential: &ExponentialHistogram{},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 					{
@@ -77,7 +81,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
-							Exponential: &ExponentialHistogram{},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 				},
@@ -120,7 +126,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
-							Exponential: &ExponentialHistogram{},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 					{
@@ -132,7 +140,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
-							Exponential: &ExponentialHistogram{},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 				},
@@ -151,7 +161,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
-							Exponential: &ExponentialHistogram{},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 					{
@@ -163,7 +175,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
-							Exponential: &ExponentialHistogram{},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 				},

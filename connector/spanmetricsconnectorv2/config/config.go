@@ -29,6 +29,14 @@ import (
 const (
 	defaultMetricNameSpans = "trace.span.duration"
 	defaultMetricDescSpans = "Observed span duration."
+
+	// defaultExponentialHistogramMaxSize is the default maximum number
+	// of buckets per positive or negative number range. 160 buckets
+	// default supports a high-resolution histogram able to cover a
+	// long-tail latency distribution from 1ms to 100s with a relative
+	// error of less than 5%.
+	// Ref: https://opentelemetry.io/docs/specs/otel/metrics/sdk/#base2-exponential-bucket-histogram-aggregation
+	defaultExponentialHistogramMaxSize = 160
 )
 
 var defaultHistogramBuckets = []float64{
@@ -187,12 +195,19 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 			info.Unit = MetricUnitMs
 		}
 		if info.Histogram.Exponential == nil && info.Histogram.Explicit == nil && info.Summary == nil {
-			info.Histogram.Exponential = &ExponentialHistogram{}
+			info.Histogram.Exponential = &ExponentialHistogram{
+				MaxSize: defaultExponentialHistogramMaxSize,
+			}
 		}
 		if info.Histogram.Explicit != nil {
 			// Add default buckets if explicit histogram is defined
 			if len(info.Histogram.Explicit.Buckets) == 0 {
 				info.Histogram.Explicit.Buckets = defaultHistogramBuckets[:]
+			}
+		}
+		if info.Histogram.Exponential != nil {
+			if info.Histogram.Exponential.MaxSize == 0 {
+				info.Histogram.Exponential.MaxSize = defaultExponentialHistogramMaxSize
 			}
 		}
 		c.Spans[k] = info
@@ -207,7 +222,9 @@ func defaultSpansConfig() []MetricInfo {
 			Description: defaultMetricDescSpans,
 			Unit:        MetricUnitMs,
 			Histogram: Histogram{
-				Exponential: &ExponentialHistogram{},
+				Exponential: &ExponentialHistogram{
+					MaxSize: defaultExponentialHistogramMaxSize,
+				},
 			},
 		},
 	}
