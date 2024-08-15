@@ -48,7 +48,6 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(td.ResourceSpans().Len())
-	// TODO (lahsivjar): add support for exponential histogram
 	aggregator := aggregator.NewAggregator()
 	for i := 0; i < td.ResourceSpans().Len(); i++ {
 		aggregator.Reset()
@@ -71,7 +70,7 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 			}
 		}
 
-		if aggregator.Size() == 0 {
+		if aggregator.Empty() {
 			continue // don't add an empty resource
 		}
 

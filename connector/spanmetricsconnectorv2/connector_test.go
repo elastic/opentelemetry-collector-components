@@ -45,7 +45,7 @@ func TestConnector(t *testing.T) {
 		"with_attributes",
 		"with_missing_attribute",
 		"with_missing_attribute_default_value",
-		"with_custom_histogram_buckets",
+		"with_custom_histogram_configs",
 		"with_identical_metric_name_different_attrs",
 		"with_identical_metric_name_desc_different_attrs",
 		"with_summary",
@@ -80,6 +80,7 @@ func TestConnector(t *testing.T) {
 			require.NoError(t, err)
 
 			require.NoError(t, connector.ConsumeTraces(ctx, inputTraces))
+			require.Len(t, next.AllMetrics(), 1)
 			assert.NoError(t, pmetrictest.CompareMetrics(
 				expectedMetrics,
 				next.AllMetrics()[0],
@@ -110,6 +111,11 @@ func BenchmarkConnector(b *testing.B) {
 						Key: "http.response.status_code",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 			{
 				Name:        "db.trace.span.duration",
@@ -119,6 +125,11 @@ func BenchmarkConnector(b *testing.B) {
 						Key: "msg.trace.span.duration",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 			{
 				Name:        "msg.trace.span.duration",
@@ -128,6 +139,11 @@ func BenchmarkConnector(b *testing.B) {
 						Key: "messaging.system",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 			{
 				Name:        "404.span.duration",
@@ -137,6 +153,11 @@ func BenchmarkConnector(b *testing.B) {
 						Key: "404.attribute",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 			{
 				Name:        "404.span.duration.default",
@@ -147,6 +168,11 @@ func BenchmarkConnector(b *testing.B) {
 						DefaultValue: "any",
 					},
 				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
 			},
 		},
 	}

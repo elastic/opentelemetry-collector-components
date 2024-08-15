@@ -20,35 +20,58 @@ package aggregator // import "github.com/elastic/opentelemetry-collector-compone
 import (
 	"time"
 
+	"github.com/lightstep/go-expohisto/structure"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-type summaryDP struct {
+type exponentialHistogramDP struct {
 	attrs pcommon.Map
-
-	sum   float64
-	count uint64
+	data  *structure.Histogram[float64]
 }
 
-func newSummaryDP(attrs pcommon.Map) *summaryDP {
-	return &summaryDP{
+func newExponentialHistogramDP(attrs pcommon.Map, maxSize int32) *exponentialHistogramDP {
+	return &exponentialHistogramDP{
 		attrs: attrs,
+		data: structure.NewFloat64(
+			structure.NewConfig(structure.WithMaxSize(maxSize)),
+		),
 	}
 }
 
-func (dp *summaryDP) Add(value float64) {
-	dp.sum += value
-	dp.count++
+func (dp *exponentialHistogramDP) Add(value float64) {
+	dp.data.Update(value)
 }
 
-func (dp *summaryDP) Copy(
+func (dp *exponentialHistogramDP) Copy(
 	timestamp time.Time,
-	dest pmetric.SummaryDataPoint,
+	dest pmetric.ExponentialHistogramDataPoint,
 ) {
 	dp.attrs.CopyTo(dest.Attributes())
-	dest.SetCount(dp.count)
-	dest.SetSum(dp.sum)
+	dest.SetZeroCount(dp.data.ZeroCount())
+	dest.SetScale(dp.data.Scale())
+	dest.SetCount(dp.data.Count())
+	dest.SetSum(dp.data.Sum())
+	if dp.data.Count() > 0 {
+		dest.SetMin(dp.data.Min())
+		dest.SetMax(dp.data.Max())
+	}
 	// TODO determine appropriate start time
 	dest.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
+
+	copyBucketRange(dp.data.Positive(), dest.Positive())
+	copyBucketRange(dp.data.Negative(), dest.Negative())
+}
+
+// copyBucketRange copies a bucket range from exponential histogram
+// datastructure to the OTel representation.
+func copyBucketRange(
+	src *structure.Buckets,
+	dest pmetric.ExponentialHistogramDataPointBuckets,
+) {
+	dest.SetOffset(src.Offset())
+	dest.BucketCounts().EnsureCapacity(int(src.Len()))
+	for i := uint32(0); i < src.Len(); i++ {
+		dest.BucketCounts().Append(src.At(i))
+	}
 }

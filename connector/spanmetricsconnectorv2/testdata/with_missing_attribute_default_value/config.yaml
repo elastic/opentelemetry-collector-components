@@ -7,3 +7,4 @@ spanmetricsv2:
           default_value: undefined
       histogram:
         explicit: {}
+        exponential: {}

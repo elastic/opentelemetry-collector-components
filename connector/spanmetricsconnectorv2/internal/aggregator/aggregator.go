@@ -18,11 +18,11 @@
 package aggregator // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 
 import (
-	"errors"
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
@@ -40,13 +40,16 @@ var metricUnitToDivider = map[config.MetricUnit]float64{
 // datastructures. The required datastructure is selected using
 // the metric definition.
 type Aggregator struct {
-	explicitBounds *explicitHistogram
-	summary        *summary
+	datapoints map[model.MetricKey]map[[16]byte]*aggregatorDP
+	timestamp  time.Time
 }
 
 // NewAggregator creates a new instance of aggregator.
 func NewAggregator() *Aggregator {
-	return &Aggregator{}
+	return &Aggregator{
+		datapoints: make(map[model.MetricKey]map[[16]byte]*aggregatorDP),
+		timestamp:  time.Now(),
+	}
 }
 
 // Add adds a span duration into the configured metrics.
@@ -72,31 +75,20 @@ func (a *Aggregator) Add(
 		return nil
 	}
 
+	if _, ok := a.datapoints[md.Key]; !ok {
+		a.datapoints[md.Key] = make(map[[16]byte]*aggregatorDP)
+	}
+
+	var attrKey [16]byte
+	if filteredAttrs.Len() > 0 {
+		attrKey = pdatautil.MapHash(filteredAttrs)
+	}
+
+	if _, ok := a.datapoints[md.Key][attrKey]; !ok {
+		a.datapoints[md.Key][attrKey] = newAggregatorDP(md, filteredAttrs)
+	}
 	value := float64(spanDuration.Nanoseconds()) / metricUnitToDivider[md.Unit]
-
-	var errs []error
-	if md.ExplicitHistogram != nil {
-		if a.explicitBounds == nil {
-			a.explicitBounds = newExplicitBounds()
-		}
-		if err := a.explicitBounds.Add(
-			md.Key, value, filteredAttrs, *md.ExplicitHistogram,
-		); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if md.Summary != nil {
-		if a.summary == nil {
-			a.summary = newSummary()
-		}
-		if err := a.summary.Add(md.Key, value, filteredAttrs, *md.Summary); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
+	a.datapoints[md.Key][attrKey].Add(value)
 	return nil
 }
 
@@ -106,32 +98,112 @@ func (a *Aggregator) Move(
 	md model.MetricDef,
 	dest pmetric.MetricSlice,
 ) {
-	if md.ExplicitHistogram != nil && a.explicitBounds != nil {
-		a.explicitBounds.Move(md.Key, dest)
+	srcDPs, ok := a.datapoints[md.Key]
+	if !ok || len(srcDPs) == 0 {
+		return
 	}
-	if md.Summary != nil && a.summary != nil {
-		a.summary.Move(md.Key, dest)
+
+	var (
+		destExpHist      pmetric.ExponentialHistogram
+		destExplicitHist pmetric.Histogram
+		destSummary      pmetric.Summary
+	)
+	if md.ExponentialHistogram != nil {
+		destMetric := dest.AppendEmpty()
+		destMetric.SetName(md.Key.Name)
+		destMetric.SetDescription(md.Key.Description)
+		destExpHist = destMetric.SetEmptyExponentialHistogram()
+		destExpHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		destExpHist.DataPoints().EnsureCapacity(len(srcDPs))
 	}
+	if md.ExplicitHistogram != nil {
+		destMetric := dest.AppendEmpty()
+		destMetric.SetName(md.Key.Name)
+		destMetric.SetDescription(md.Key.Description)
+		destExplicitHist = destMetric.SetEmptyHistogram()
+		destExplicitHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		destExplicitHist.DataPoints().EnsureCapacity(len(srcDPs))
+	}
+	if md.Summary != nil {
+		destMetric := dest.AppendEmpty()
+		destMetric.SetName(md.Key.Name)
+		destMetric.SetDescription(md.Key.Description)
+		destSummary = destMetric.SetEmptySummary()
+		destSummary.DataPoints().EnsureCapacity(len(srcDPs))
+	}
+
+	for _, srcDP := range srcDPs {
+		srcDP.Copy(a.timestamp, destExpHist, destExplicitHist, destSummary)
+	}
+
+	// If there are two metric defined with the same key required by metricKey
+	// then they will be aggregated within the same histogram and produced
+	// together. Deleting the key ensures this while preventing duplicates.
+	delete(a.datapoints, md.Key)
 }
 
-// Size returns the number of datapoints in all the metrics representations.
-func (a *Aggregator) Size() int {
-	var size int
-	if a.explicitBounds != nil {
-		size += a.explicitBounds.Size()
-	}
-	if a.summary != nil {
-		size += a.summary.Size()
-	}
-	return size
+// Empty returns true if there are no aggregations available.
+func (a *Aggregator) Empty() bool {
+	return len(a.datapoints) == 0
 }
 
-// Reset resets all the metrics definitions for another usage.
+// Reset resets the aggregator for another usage.
 func (a *Aggregator) Reset() {
-	if a.explicitBounds != nil {
-		a.explicitBounds.Reset()
+	clear(a.datapoints)
+}
+
+type aggregatorDP struct {
+	expHistogramDP      *exponentialHistogramDP
+	explicitHistogramDP *explicitHistogramDP
+	summaryDP           *summaryDP
+}
+
+func newAggregatorDP(
+	md model.MetricDef,
+	attrs pcommon.Map,
+) *aggregatorDP {
+	var dp aggregatorDP
+	if md.ExponentialHistogram != nil {
+		dp.expHistogramDP = newExponentialHistogramDP(
+			attrs, md.ExponentialHistogram.MaxSize,
+		)
 	}
-	if a.summary != nil {
-		a.summary.Reset()
+	if md.ExplicitHistogram != nil {
+		dp.explicitHistogramDP = newExplicitHistogramDP(
+			attrs, md.ExplicitHistogram.Buckets,
+		)
+	}
+	if md.Summary != nil {
+		dp.summaryDP = newSummaryDP(attrs)
+	}
+	return &dp
+}
+
+func (dp *aggregatorDP) Add(value float64) {
+	if dp.expHistogramDP != nil {
+		dp.expHistogramDP.Add(value)
+	}
+	if dp.explicitHistogramDP != nil {
+		dp.explicitHistogramDP.Add(value)
+	}
+	if dp.summaryDP != nil {
+		dp.summaryDP.Add(value)
+	}
+}
+
+func (dp *aggregatorDP) Copy(
+	timestamp time.Time,
+	destExpHist pmetric.ExponentialHistogram,
+	destExplicitHist pmetric.Histogram,
+	destSummary pmetric.Summary,
+) {
+	if dp.expHistogramDP != nil {
+		dp.expHistogramDP.Copy(timestamp, destExpHist.DataPoints().AppendEmpty())
+	}
+	if dp.explicitHistogramDP != nil {
+		dp.explicitHistogramDP.Copy(timestamp, destExplicitHist.DataPoints().AppendEmpty())
+	}
+	if dp.summaryDP != nil {
+		dp.summaryDP.Copy(timestamp, destSummary.DataPoints().AppendEmpty())
 	}
 }

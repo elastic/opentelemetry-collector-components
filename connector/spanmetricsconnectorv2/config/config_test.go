@@ -53,6 +53,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 					{
@@ -63,6 +66,9 @@ func TestConfig(t *testing.T) {
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
@@ -75,13 +81,16 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 				},
 			},
 		},
 		{
-			path: "with_custom_histogram_buckets",
+			path: "with_custom_histogram_configs",
 			expected: &Config{
 				Spans: []MetricInfo{
 					{
@@ -91,6 +100,9 @@ func TestConfig(t *testing.T) {
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: []float64{0.001, 0.1, 1, 10},
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: 2,
 							},
 						},
 					},
@@ -114,6 +126,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 					{
@@ -124,6 +139,9 @@ func TestConfig(t *testing.T) {
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
@@ -143,6 +161,9 @@ func TestConfig(t *testing.T) {
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
 							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
 						},
 					},
 					{
@@ -153,6 +174,9 @@ func TestConfig(t *testing.T) {
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/lightstep/go-expohisto/structure"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
@@ -28,6 +29,14 @@ import (
 const (
 	defaultMetricNameSpans = "trace.span.duration"
 	defaultMetricDescSpans = "Observed span duration."
+
+	// defaultExponentialHistogramMaxSize is the default maximum number
+	// of buckets per positive or negative number range. 160 buckets
+	// default supports a high-resolution histogram able to cover a
+	// long-tail latency distribution from 1ms to 100s with a relative
+	// error of less than 5%.
+	// Ref: https://opentelemetry.io/docs/specs/otel/metrics/sdk/#base2-exponential-bucket-histogram-aggregation
+	defaultExponentialHistogramMaxSize = 160
 )
 
 var defaultHistogramBuckets = []float64{
@@ -90,11 +99,16 @@ type Attribute struct {
 }
 
 type Histogram struct {
-	Explicit *ExplicitHistogram `mapstructure:"explicit"`
+	Explicit    *ExplicitHistogram    `mapstructure:"explicit"`
+	Exponential *ExponentialHistogram `mapstructure:"exponential"`
 }
 
 type ExplicitHistogram struct {
 	Buckets []float64 `mapstructure:"buckets"`
+}
+
+type ExponentialHistogram struct {
+	MaxSize int32 `mapstructure:"max_size"`
 }
 
 type Summary struct{}
@@ -111,7 +125,7 @@ func (c *Config) Validate() error {
 		if info.Unit == "" {
 			return errors.New("spans: metric unit missing")
 		}
-		if info.Histogram.Explicit == nil && info.Summary == nil {
+		if info.Histogram.Exponential == nil && info.Histogram.Explicit == nil && info.Summary == nil {
 			return errors.New("metric definition missing, either histogram or summary required")
 		}
 		if err := info.validateHistogram(); err != nil {
@@ -126,11 +140,17 @@ func (c *Config) Validate() error {
 }
 
 func (i *MetricInfo) validateHistogram() error {
-	if i.Histogram.Explicit == nil {
-		return nil
+	if i.Histogram.Explicit != nil {
+		if len(i.Histogram.Explicit.Buckets) == 0 {
+			return errors.New("histogram buckets missing")
+		}
 	}
-	if len(i.Histogram.Explicit.Buckets) == 0 {
-		return errors.New("histogram buckets missing")
+	if i.Histogram.Exponential != nil {
+		if _, err := structure.NewConfig(
+			structure.WithMaxSize(i.Histogram.Exponential.MaxSize),
+		).Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -174,15 +194,20 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 		if info.Unit == "" {
 			info.Unit = MetricUnitMs
 		}
-		if info.Histogram.Explicit == nil && info.Summary == nil {
-			// Default to explicit bound histogram
-			// TODO: change default to exp histogram once available
-			info.Histogram.Explicit = &ExplicitHistogram{}
+		if info.Histogram.Exponential == nil && info.Histogram.Explicit == nil && info.Summary == nil {
+			info.Histogram.Exponential = &ExponentialHistogram{
+				MaxSize: defaultExponentialHistogramMaxSize,
+			}
 		}
 		if info.Histogram.Explicit != nil {
 			// Add default buckets if explicit histogram is defined
 			if len(info.Histogram.Explicit.Buckets) == 0 {
 				info.Histogram.Explicit.Buckets = defaultHistogramBuckets[:]
+			}
+		}
+		if info.Histogram.Exponential != nil {
+			if info.Histogram.Exponential.MaxSize == 0 {
+				info.Histogram.Exponential.MaxSize = defaultExponentialHistogramMaxSize
 			}
 		}
 		c.Spans[k] = info
@@ -197,9 +222,8 @@ func defaultSpansConfig() []MetricInfo {
 			Description: defaultMetricDescSpans,
 			Unit:        MetricUnitMs,
 			Histogram: Histogram{
-				// TODO: change default to exp histogram once available
-				Explicit: &ExplicitHistogram{
-					Buckets: defaultHistogramBuckets[:],
+				Exponential: &ExponentialHistogram{
+					MaxSize: defaultExponentialHistogramMaxSize,
 				},
 			},
 		},
