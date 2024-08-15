@@ -20,10 +20,13 @@ package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-colle
 import (
 	"context"
 	"errors"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -64,8 +67,9 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 					duration = time.Duration(endTime - startTime)
 				}
 				spanAttrs := span.Attributes()
+				adjustedCount := calculateAdjustedCount(span.TraceState().AsRaw())
 				for _, md := range sm.metricDefs {
-					multiError = errors.Join(multiError, aggregator.Add(md, spanAttrs, duration, 1))
+					multiError = errors.Join(multiError, aggregator.Add(md, spanAttrs, duration, adjustedCount))
 				}
 			}
 		}
@@ -87,4 +91,59 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 		return multiError
 	}
 	return sm.next.ConsumeMetrics(ctx, processedMetrics)
+}
+
+// calculateAdjustedCount calculates the adjusted count which represents
+// the number of spans in the population that are represented by the
+// individually sampled span. If the span is not-sampled OR if a non-
+// probability sampler is used then adjusted count defaults to 1.
+// https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling/#adjusted-count
+func calculateAdjustedCount(tracestate string) uint64 {
+	w3cTraceState, err := sampling.NewW3CTraceState(tracestate)
+	if err != nil {
+		return 1
+	}
+	otTraceState := w3cTraceState.OTelValue()
+	if otTraceState == nil {
+		return 1
+	}
+	// For proabilistic sampling, calculate the adjusted count based on
+	// t-value (`th`).
+	if len(otTraceState.TValue()) != 0 {
+		// TODO (lahsivjar): Should we handle fractional adjusted count?
+		// One way to do this would be to scale the values in the histograms
+		// for some precision.
+		return uint64(otTraceState.AdjustedCount())
+	}
+	var p uint64
+	for _, kv := range otTraceState.ExtraValues() {
+		switch kv.Key {
+		// If p-value is present then calculate the adjusted count as per
+		// the consistent probability sampling specs.
+		case "p":
+			if kv.Value != "" {
+				// p-value is represented as unsigned decimal integers
+				// requiring at most 6 bits of information. We parse to
+				// 7 bits as 63 holds a special meaning and thus needs
+				// to be distinguished w.r.t. other invalid >63 values.
+				p, _ = strconv.ParseUint(kv.Value, 10, 7)
+			}
+			break
+		}
+	}
+	switch {
+	case p == 0:
+		return 1
+	case p == 63:
+		// p-value == 63 represents zero adjusted count
+		return 0
+	case p > 63:
+		// Invalid value, default to 1
+		return 1
+	default:
+		// TODO (lahsivjar): Should we handle fractional adjusted count?
+		// One way to do this would be to scale the values in the histograms
+		// for some precision.
+		return uint64(math.Pow(2, float64(p)))
+	}
 }

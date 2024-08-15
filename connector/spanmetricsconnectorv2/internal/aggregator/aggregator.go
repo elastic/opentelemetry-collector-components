@@ -63,6 +63,10 @@ func (a *Aggregator) Add(
 	spanDuration time.Duration,
 	adjustedCount uint64,
 ) error {
+	if adjustedCount == 0 {
+		// Nothing to do as the span represents `0` spans
+		return nil
+	}
 	filteredAttrs := pcommon.NewMap()
 	for _, definedAttr := range md.Attributes {
 		if srcAttr, ok := srcAttrs.Get(definedAttr.Key); ok {

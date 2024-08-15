@@ -92,6 +92,27 @@ func TestConnector(t *testing.T) {
 	}
 }
 
+func TestCalculateAdjustedCount(t *testing.T) {
+	for _, tc := range []struct {
+		tracestate string
+		expected   uint64
+	}{
+		{"", 1},
+		{"invalid=p:8;th:8", 1},
+		{"ot=404:8", 1},
+		{"ot=th:0", 1}, // 100% sampling
+		{"ot=th:8", 2}, // 50% sampling
+		{"ot=th:c", 4}, // 25% sampling
+		{"ot=p:8;r:4", 256},
+		{"ot=p:63;r:4", 0}, // p==63 represents zero adjusted count
+		{"ot=p:64;r:4", 1}, // p-value invalid, defaulting to 1
+	} {
+		t.Run("tracestate/"+tc.tracestate, func(t *testing.T) {
+			assert.Equal(t, tc.expected, calculateAdjustedCount(tc.tracestate))
+		})
+	}
+}
+
 func BenchmarkConnector(b *testing.B) {
 	factory := NewFactory()
 	settings := connectortest.NewNopSettings()

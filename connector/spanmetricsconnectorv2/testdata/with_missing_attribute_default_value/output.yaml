@@ -17,7 +17,7 @@ resourceMetrics:
                     - key: 404.attribute
                       value:
                         stringValue: undefined
-                  count: "6"
+                  count: "25"
                   max: 17000.000468
                   min: 2.000468
                   negative: {}
@@ -86,7 +86,7 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "0"
-                      - "1"
+                      - "20"
                       - "0"
                       - "0"
                       - "0"
@@ -130,7 +130,7 @@ resourceMetrics:
                       - "1"
                     offset: 8
                   scale: 3
-                  sum: 30402.002807999997
+                  sum: 39902.010432999996
                   timeUnixNano: "1000000"
             name: 404.span.duration
           - description: Span duration with missing attribute but default value
@@ -151,7 +151,7 @@ resourceMetrics:
                     - "0"
                     - "0"
                     - "0"
-                    - "1"
+                    - "20"
                     - "1"
                     - "1"
                     - "0"
@@ -159,7 +159,7 @@ resourceMetrics:
                     - "0"
                     - "1"
                     - "1"
-                  count: "6"
+                  count: "25"
                   explicitBounds:
                     - 2
                     - 4
@@ -177,7 +177,7 @@ resourceMetrics:
                     - 5000
                     - 10000
                     - 15000
-                  sum: 30402.002807999997
+                  sum: 39902.010432999996
                   timeUnixNano: "1000000"
             name: 404.span.duration
         scope:

@@ -82,3 +82,51 @@ resourceSpans:
             name: msg-span-2
             parentSpanId: "bcff497b5a47310f"
             startTimeUnixNano: "1581452772000000321"
+          - attributes:
+              - key: db.name
+                value:
+                  stringValue: main
+              - key: db.system
+                value:
+                  stringValue: mysql
+            endTimeUnixNano: "1581452772500000795"
+            name: invalid-p-value # will be counted as 1 span
+            parentSpanId: ""
+            startTimeUnixNano: "1581452772000000400"
+            traceState: "ot=r:3;p:64"
+          - attributes:
+              - key: db.name
+                value:
+                  stringValue: main
+              - key: db.system
+                value:
+                  stringValue: mysql
+            endTimeUnixNano: "1581452772500000799"
+            name: p-value-63 # will be ignored, adusted_count=0
+            parentSpanId: ""
+            startTimeUnixNano: "1581452772000000402"
+            traceState: "ot=r:3;p:63"
+          - attributes:
+              - key: db.name
+                value:
+                  stringValue: main
+              - key: db.system
+                value:
+                  stringValue: mysql
+            endTimeUnixNano: "1581452772500000800"
+            name: p-value-4 # represents 16 sampled spans
+            parentSpanId: ""
+            startTimeUnixNano: "1581452772000000401"
+            traceState: "ot=r:3;p:4"
+          - attributes:
+              - key: db.name
+                value:
+                  stringValue: main
+              - key: db.system
+                value:
+                  stringValue: mysql
+            endTimeUnixNano: "1581452772500000804"
+            name: th-value-8 # represents 2 sampled spans
+            parentSpanId: ""
+            startTimeUnixNano: "1581452772000000381"
+            traceState: "ot=th:8"
