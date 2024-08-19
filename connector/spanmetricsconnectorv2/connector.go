@@ -107,14 +107,15 @@ func calculateAdjustedCount(tracestate string) uint64 {
 	if otTraceState == nil {
 		return 1
 	}
-	// For proabilistic sampling, calculate the adjusted count based on
-	// t-value (`th`).
+	// For probability sampler, calculate the adjusted count based on t-value (`th`).
 	if len(otTraceState.TValue()) != 0 {
 		// TODO (lahsivjar): Should we handle fractional adjusted count?
 		// One way to do this would be to scale the values in the histograms
 		// for some precision.
 		return uint64(otTraceState.AdjustedCount())
 	}
+	// For consistent probablity sampler, calculate the adjusted count based on
+	// p-value, negative base-2 logarithm of sampling probability
 	var p uint64
 	for _, kv := range otTraceState.ExtraValues() {
 		if kv.Key == "p" {
