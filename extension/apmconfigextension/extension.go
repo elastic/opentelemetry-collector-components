@@ -70,9 +70,11 @@ func (op *apmConfigExtension) Start(ctx context.Context, _ component.Host) error
 }
 
 func (op *apmConfigExtension) Shutdown(ctx context.Context) error {
-	err := op.configClient.Close()
-	if err != nil {
-		return err
+	if op.configClient != nil {
+		err := op.configClient.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return op.opampServer.Stop(ctx)
 }
