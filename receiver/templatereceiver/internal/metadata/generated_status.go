@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	Type      = component.MustNewType("elasticinframetrics")
+	Type      = component.MustNewType("template")
 	ScopeName = "github.com/elastic/opentelemetry-collector-components/receiver/templatereceiver"
 )
 

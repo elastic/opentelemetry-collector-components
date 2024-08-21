@@ -1,4 +1,4 @@
-type: elasticinframetrics
+type: template
 
 status:
   class: receiver
