@@ -29,7 +29,7 @@ var (
 )
 
 const (
-	extensionStability = component.StabilityLevelAlpha
+	extensionStability = component.StabilityLevelDevelopment
 )
 
 // NewFactory creates a factory for ack extension.

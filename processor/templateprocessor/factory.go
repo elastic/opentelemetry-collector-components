@@ -33,9 +33,9 @@ func NewFactory() processor.Factory {
 	return processor.NewFactory(
 		typeStr,
 		createDefaultConfig,
-		processor.WithLogs(createLogsProcessor, component.StabilityLevelAlpha),
-		processor.WithMetrics(createMetricsProcessor, component.StabilityLevelAlpha),
-		processor.WithTraces(createTracesProcessor, component.StabilityLevelAlpha),
+		processor.WithLogs(createLogsProcessor, component.StabilityLevelDevelopment),
+		processor.WithMetrics(createMetricsProcessor, component.StabilityLevelDevelopment),
+		processor.WithTraces(createTracesProcessor, component.StabilityLevelDevelopment),
 	)
 }
 
