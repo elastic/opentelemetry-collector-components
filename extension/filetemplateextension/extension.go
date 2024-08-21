@@ -28,7 +28,7 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
 
-	"github.com/elastic/opentelemetry-collector-components/pkg/templates"
+	"github.com/elastic/opentelemetry-collector-components/internal/templates"
 )
 
 type fileTemplateExtension struct {

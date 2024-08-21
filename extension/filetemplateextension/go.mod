@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/filetempl
 go 1.22.1
 
 require (
-	github.com/elastic/opentelemetry-collector-components/pkg/templates v0.0.0
+	github.com/elastic/opentelemetry-collector-components/internal/templates v0.0.0
 	go.opentelemetry.io/collector/component v0.105.0
 	go.opentelemetry.io/collector/confmap v0.105.0
 	go.opentelemetry.io/collector/confmap/provider/fileprovider v0.105.0
@@ -40,4 +40,4 @@ require (
 
 replace github.com/elastic/opentelemetry-collector-components/receiver/templatereceiver => ../../receiver/templatereceiver
 
-replace github.com/elastic/opentelemetry-collector-components/pkg/templates => ../../pkg/templates
+replace github.com/elastic/opentelemetry-collector-components/internal/templates => ../../internal/templates

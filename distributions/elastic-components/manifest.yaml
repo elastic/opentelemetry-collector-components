@@ -34,5 +34,5 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
   - github.com/elastic/opentelemetry-collector-components/processor/templateprocessor => ../processor/templateprocessor
   - github.com/elastic/opentelemetry-collector-components/receiver/templatereceiver => ../receiver/templatereceiver
-  - github.com/elastic/opentelemetry-collector-components/pkg/templates => ../pkg/templates
+  - github.com/elastic/opentelemetry-collector-components/internal/templates => ../internal/templates
 

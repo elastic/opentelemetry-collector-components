@@ -33,7 +33,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
 
-	"github.com/elastic/opentelemetry-collector-components/pkg/templates"
+	"github.com/elastic/opentelemetry-collector-components/internal/templates"
 )
 
 type templateProcessor struct {

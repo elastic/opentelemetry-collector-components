@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/templatep
 go 1.22.1
 
 require (
-	github.com/elastic/opentelemetry-collector-components/pkg/templates v0.0.0
+	github.com/elastic/opentelemetry-collector-components/internal/templates v0.0.0
 	go.opentelemetry.io/collector/component v0.105.0
 	go.opentelemetry.io/collector/confmap v0.105.0
 	go.opentelemetry.io/collector/consumer v0.105.0
@@ -41,4 +41,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/elastic/opentelemetry-collector-components/pkg/templates => ../../pkg/templates
+replace github.com/elastic/opentelemetry-collector-components/internal/templates => ../../internal/templates

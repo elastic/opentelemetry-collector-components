@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package templates // import "github.com/elastic/opentelemetry-collector-components/pkg/templates"
+package templates // import "github.com/elastic/opentelemetry-collector-components/internal/templates"
 
 import (
 	"context"
