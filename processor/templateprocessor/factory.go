@@ -23,19 +23,17 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
-)
 
-var (
-	typeStr = component.MustNewType("template")
+	"github.com/elastic/opentelemetry-collector-components/processor/templateprocessor/internal/metadata"
 )
 
 func NewFactory() processor.Factory {
 	return processor.NewFactory(
-		typeStr,
+		metadata.Type,
 		createDefaultConfig,
-		processor.WithLogs(createLogsProcessor, component.StabilityLevelDevelopment),
-		processor.WithMetrics(createMetricsProcessor, component.StabilityLevelDevelopment),
-		processor.WithTraces(createTracesProcessor, component.StabilityLevelDevelopment),
+		processor.WithLogs(createLogsProcessor, metadata.LogsStability),
+		processor.WithMetrics(createMetricsProcessor, metadata.MetricsStability),
+		processor.WithTraces(createTracesProcessor, metadata.TracesStability),
 	)
 }
 

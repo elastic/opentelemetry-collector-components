@@ -1,8 +1,7 @@
 type: file_templates
-
 status:
   class: extension
   stability:
-    development: [logs, metrics, traces]
+    development: [extension]
   codeowners:
     active: [jsoriano]

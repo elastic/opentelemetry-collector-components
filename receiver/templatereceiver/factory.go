@@ -23,19 +23,17 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
-)
 
-var (
-	typeStr = component.MustNewType("template")
+	"github.com/elastic/opentelemetry-collector-components/receiver/templatereceiver/internal/metadata"
 )
 
 func NewFactory() receiver.Factory {
 	return receiver.NewFactory(
-		typeStr,
+		metadata.Type,
 		createDefaultConfig,
-		receiver.WithLogs(createLogsReceiver, component.StabilityLevelDevelopment),
-		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
-		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
+		receiver.WithLogs(createLogsReceiver, metadata.LogsStability),
+		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability),
+		receiver.WithTraces(createTracesReceiver, metadata.TracesStability),
 	)
 }
 

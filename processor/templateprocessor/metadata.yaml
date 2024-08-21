@@ -1,4 +1,4 @@
-type: templateprocessor
+type: template
 
 status:
   class: processor

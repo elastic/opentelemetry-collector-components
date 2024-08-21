@@ -22,23 +22,17 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
-)
 
-var (
-	extensionType = component.MustNewType("file_templates")
-)
-
-const (
-	extensionStability = component.StabilityLevelDevelopment
+	"github.com/elastic/opentelemetry-collector-components/extension/filetemplateextension/internal/metadata"
 )
 
 // NewFactory creates a factory for ack extension.
 func NewFactory() extension.Factory {
 	return extension.NewFactory(
-		extensionType,
+		metadata.Type,
 		createDefaultConfig,
 		createExtension,
-		extensionStability,
+		metadata.ExtensionStability,
 	)
 }
 
