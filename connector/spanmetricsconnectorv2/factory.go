@@ -27,7 +27,9 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 )
 
 // NewFactory returns a ConnectorFactory.
@@ -41,7 +43,7 @@ func NewFactory() connector.Factory {
 
 // createDefaultConfig creates the default configuration.
 func createDefaultConfig() component.Config {
-	return &Config{}
+	return &config.Config{}
 }
 
 // createTracesToMetrics creates a traces to metrics connector based on provided config.
@@ -51,39 +53,43 @@ func createTracesToMetrics(
 	cfg component.Config,
 	nextConsumer consumer.Metrics,
 ) (connector.Traces, error) {
-	c := cfg.(*Config)
+	c := cfg.(*config.Config)
 
-	spanMetricDefs := make([]metricDef, 0, len(c.Spans))
+	metricDefs := make([]model.MetricDef, 0, len(c.Spans))
 	for _, info := range c.Spans {
 		attrs, err := parseAttributeConfigs(info.Attributes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse attribute config: %w", err)
 		}
-		md := metricDef{
-			Name:        info.Name,
-			Description: info.Description,
-			Unit:        info.Unit,
-			Attributes:  attrs,
-			Histogram:   info.Histogram,
+		md := model.MetricDef{
+			Key: model.MetricKey{
+				Name:        info.Name,
+				Description: info.Description,
+			},
+			Unit:                 info.Unit,
+			Attributes:           attrs,
+			ExplicitHistogram:    info.Histogram.Explicit,
+			ExponentialHistogram: info.Histogram.Exponential,
+			Summary:              info.Summary,
 		}
-		spanMetricDefs = append(spanMetricDefs, md)
+		metricDefs = append(metricDefs, md)
 	}
 
 	return &spanMetrics{
-		next:            nextConsumer,
-		spansMetricDefs: spanMetricDefs,
+		next:       nextConsumer,
+		metricDefs: metricDefs,
 	}, nil
 }
 
-func parseAttributeConfigs(cfgs []AttributeConfig) ([]keyValue, error) {
+func parseAttributeConfigs(cfgs []config.Attribute) ([]model.AttributeKeyValue, error) {
 	var errs []error
-	kvs := make([]keyValue, len(cfgs))
+	kvs := make([]model.AttributeKeyValue, len(cfgs))
 	for i, attr := range cfgs {
 		val := pcommon.NewValueEmpty()
 		if err := val.FromRaw(attr.DefaultValue); err != nil {
 			errs = append(errs, err)
 		}
-		kvs[i] = keyValue{
+		kvs[i] = model.AttributeKeyValue{
 			Key:          attr.Key,
 			DefaultValue: val,
 		}

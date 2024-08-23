@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package spanmetricsconnectorv2
+package config
 
 import (
 	"path/filepath"
@@ -48,10 +48,13 @@ func TestConfig(t *testing.T) {
 						Name:        "http.trace.span.duration",
 						Description: "Span duration for HTTP spans",
 						Unit:        MetricUnitMs,
-						Attributes:  []AttributeConfig{{Key: "http.response.status_code"}},
-						Histogram: HistogramConfig{
-							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+						Attributes:  []Attribute{{Key: "http.response.status_code"}},
+						Histogram: Histogram{
+							Explicit: &ExplicitHistogram{
+								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
@@ -59,10 +62,13 @@ func TestConfig(t *testing.T) {
 						Name:        "db.trace.span.duration",
 						Description: "Span duration for DB spans",
 						Unit:        MetricUnitMs,
-						Attributes:  []AttributeConfig{{Key: "db.system"}},
-						Histogram: HistogramConfig{
-							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+						Attributes:  []Attribute{{Key: "db.system"}},
+						Histogram: Histogram{
+							Explicit: &ExplicitHistogram{
+								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
@@ -70,10 +76,13 @@ func TestConfig(t *testing.T) {
 						Name:        "msg.trace.span.duration",
 						Description: "Span duration for messaging spans",
 						Unit:        MetricUnitMs,
-						Attributes:  []AttributeConfig{{Key: "messaging.system"}},
-						Histogram: HistogramConfig{
-							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+						Attributes:  []Attribute{{Key: "messaging.system"}},
+						Histogram: Histogram{
+							Explicit: &ExplicitHistogram{
+								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
@@ -81,16 +90,19 @@ func TestConfig(t *testing.T) {
 			},
 		},
 		{
-			path: "with_custom_histogram_buckets",
+			path: "with_custom_histogram_configs",
 			expected: &Config{
 				Spans: []MetricInfo{
 					{
 						Name:        "trace.span.duration",
 						Description: "Span duration with custom histogram buckets",
 						Unit:        MetricUnitS,
-						Histogram: HistogramConfig{
-							Explicit: &ExplicitHistogramConfig{
+						Histogram: Histogram{
+							Explicit: &ExplicitHistogram{
 								Buckets: []float64{0.001, 0.1, 1, 10},
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: 2,
 							},
 						},
 					},
@@ -109,10 +121,13 @@ func TestConfig(t *testing.T) {
 						Name:        "identical.name",
 						Description: "Identical description",
 						Unit:        MetricUnitMs,
-						Attributes:  []AttributeConfig{{Key: "key.1"}},
-						Histogram: HistogramConfig{
-							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+						Attributes:  []Attribute{{Key: "key.1"}},
+						Histogram: Histogram{
+							Explicit: &ExplicitHistogram{
+								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
@@ -120,10 +135,13 @@ func TestConfig(t *testing.T) {
 						Name:        "identical.name",
 						Description: "Different description",
 						Unit:        MetricUnitMs,
-						Attributes:  []AttributeConfig{{Key: "key.2"}},
-						Histogram: HistogramConfig{
-							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+						Attributes:  []Attribute{{Key: "key.2"}},
+						Histogram: Histogram{
+							Explicit: &ExplicitHistogram{
+								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
@@ -138,10 +156,13 @@ func TestConfig(t *testing.T) {
 						Name:        "identical.name",
 						Description: "Identical description",
 						Unit:        MetricUnitMs,
-						Attributes:  []AttributeConfig{{Key: "key.1"}},
-						Histogram: HistogramConfig{
-							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+						Attributes:  []Attribute{{Key: "key.1"}},
+						Histogram: Histogram{
+							Explicit: &ExplicitHistogram{
+								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
@@ -149,20 +170,51 @@ func TestConfig(t *testing.T) {
 						Name:        "identical.name",
 						Description: "Identical description",
 						Unit:        MetricUnitMs,
-						Attributes:  []AttributeConfig{{Key: "key.2"}},
-						Histogram: HistogramConfig{
-							Explicit: &ExplicitHistogramConfig{
-								Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+						Attributes:  []Attribute{{Key: "key.2"}},
+						Histogram: Histogram{
+							Explicit: &ExplicitHistogram{
+								Buckets: defaultHistogramBuckets[:],
+							},
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
 							},
 						},
 					},
 				},
 			},
 		},
+		{
+			path: "with_summary",
+			expected: &Config{
+				Spans: []MetricInfo{
+					{
+						Name:        "http.trace.span.summary",
+						Description: "Summary for HTTP spans",
+						Unit:        MetricUnitMs,
+						Attributes:  []Attribute{{Key: "http.response.status_code"}},
+						Summary:     &Summary{},
+					},
+					{
+						Name:        "db.trace.span.summary",
+						Description: "Summary for DB spans",
+						Unit:        MetricUnitMs,
+						Attributes:  []Attribute{{Key: "db.system"}},
+						Summary:     &Summary{},
+					},
+					{
+						Name:        "msg.trace.span.summary",
+						Description: "Summary for messaging spans",
+						Unit:        MetricUnitMs,
+						Attributes:  []Attribute{{Key: "messaging.system"}},
+						Summary:     &Summary{},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
-			dir := filepath.Join("testdata", tc.path)
-			cfg := createDefaultConfig()
+			dir := filepath.Join("../testdata", tc.path)
+			cfg := &Config{}
 			cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
 			require.NoError(t, err)
 

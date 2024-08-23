@@ -4,3 +4,6 @@ spanmetricsv2:
       description: Span duration with missing attribute
       attributes:
         - key: 404.attribute
+      histogram:
+        explicit: {}
+        exponential: {}

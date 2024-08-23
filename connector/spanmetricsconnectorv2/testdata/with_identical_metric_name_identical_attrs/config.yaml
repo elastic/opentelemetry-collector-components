@@ -5,8 +5,12 @@ spanmetricsv2:
       description: Identical metric name
       attributes:
         - key: key.1
+      histogram:
+        explicit: {}
     - name: identical.name
       description: Identical metric name
       attributes:
         - key: key.1
+      histogram:
+        explicit: {}
   

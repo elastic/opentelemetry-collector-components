@@ -22,15 +22,19 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector/connectortest"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 )
@@ -41,9 +45,10 @@ func TestConnector(t *testing.T) {
 		"with_attributes",
 		"with_missing_attribute",
 		"with_missing_attribute_default_value",
-		"with_custom_histogram_buckets",
+		"with_custom_histogram_configs",
 		"with_identical_metric_name_different_attrs",
 		"with_identical_metric_name_desc_different_attrs",
+		"with_summary",
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -63,6 +68,7 @@ func TestConnector(t *testing.T) {
 			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
 			require.NoError(t, err)
 			require.NoError(t, sub.Unmarshal(&cfg))
+			require.NoError(t, component.ValidateConfig(cfg))
 
 			connector, err := factory.CreateTracesToMetrics(ctx, settings, cfg, next)
 			require.NoError(t, err)
@@ -74,6 +80,7 @@ func TestConnector(t *testing.T) {
 			require.NoError(t, err)
 
 			require.NoError(t, connector.ConsumeTraces(ctx, inputTraces))
+			require.Len(t, next.AllMetrics(), 1)
 			assert.NoError(t, pmetrictest.CompareMetrics(
 				expectedMetrics,
 				next.AllMetrics()[0],
@@ -82,5 +89,103 @@ func TestConnector(t *testing.T) {
 				pmetrictest.IgnoreTimestamp(),
 			))
 		})
+	}
+}
+
+func BenchmarkConnector(b *testing.B) {
+	factory := NewFactory()
+	settings := connectortest.NewNopSettings()
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(b, zaptest.Level(zapcore.DebugLevel))
+	next, err := consumer.NewMetrics(func(context.Context, pmetric.Metrics) error {
+		return nil
+	})
+	require.NoError(b, err)
+
+	cfg := &config.Config{
+		Spans: []config.MetricInfo{
+			{
+				Name:        "http.trace.span.duration",
+				Description: "Span duration for HTTP spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "http.response.status_code",
+					},
+				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
+			},
+			{
+				Name:        "db.trace.span.duration",
+				Description: "Span duration for DB spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "msg.trace.span.duration",
+					},
+				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
+			},
+			{
+				Name:        "msg.trace.span.duration",
+				Description: "Span duration for DB spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "messaging.system",
+					},
+				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
+			},
+			{
+				Name:        "404.span.duration",
+				Description: "Span duration for missing attribute in input",
+				Attributes: []config.Attribute{
+					{
+						Key: "404.attribute",
+					},
+				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
+			},
+			{
+				Name:        "404.span.duration.default",
+				Description: "Span duration with attribute default configured in input",
+				Attributes: []config.Attribute{
+					{
+						Key:          "404.attribute.default",
+						DefaultValue: "any",
+					},
+				},
+				Histogram: config.Histogram{
+					Explicit:    &config.ExplicitHistogram{},
+					Exponential: &config.ExponentialHistogram{},
+				},
+				Summary: &config.Summary{},
+			},
+		},
+	}
+	require.NoError(b, cfg.Unmarshal(confmap.New())) // set required fields to default
+	require.NoError(b, cfg.Validate())
+	connector, err := factory.CreateTracesToMetrics(context.Background(), settings, cfg, next)
+	require.NoError(b, err)
+	inputTraces, err := golden.ReadTraces("testdata/traces.yaml")
+	require.NoError(b, err)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		require.NoError(b, connector.ConsumeTraces(context.Background(), inputTraces))
 	}
 }

@@ -15,13 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2"
+package config // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 
 import (
 	"errors"
 	"fmt"
-	"time"
 
+	"github.com/lightstep/go-expohisto/structure"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
@@ -29,15 +29,25 @@ import (
 const (
 	defaultMetricNameSpans = "trace.span.duration"
 	defaultMetricDescSpans = "Observed span duration."
+
+	// defaultExponentialHistogramMaxSize is the default maximum number
+	// of buckets per positive or negative number range. 160 buckets
+	// default supports a high-resolution histogram able to cover a
+	// long-tail latency distribution from 1ms to 100s with a relative
+	// error of less than 5%.
+	// Ref: https://opentelemetry.io/docs/specs/otel/metrics/sdk/#base2-exponential-bucket-histogram-aggregation
+	defaultExponentialHistogramMaxSize = 160
 )
 
-var (
-	defaultHistogramBucketsMs = [...]float64{2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000}
-)
+var defaultHistogramBuckets = []float64{
+	2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000,
+}
 
 type MetricUnit string
 
 const (
+	MetricUnitNs MetricUnit = "ns"
+	MetricUnitUs MetricUnit = "us"
 	MetricUnitMs MetricUnit = "ms"
 	MetricUnitS  MetricUnit = "s"
 )
@@ -49,11 +59,12 @@ type Config struct {
 
 // MetricInfo for a data type
 type MetricInfo struct {
-	Name        string            `mapstructure:"name"`
-	Description string            `mapstructure:"description"`
-	Attributes  []AttributeConfig `mapstructure:"attributes"`
-	Unit        MetricUnit        `mapstructure:"unit"`
-	Histogram   HistogramConfig   `mapstructure:"histogram"`
+	Name        string      `mapstructure:"name"`
+	Description string      `mapstructure:"description"`
+	Attributes  []Attribute `mapstructure:"attributes"`
+	Unit        MetricUnit  `mapstructure:"unit"`
+	Histogram   Histogram   `mapstructure:"histogram"`
+	Summary     *Summary    `mapstructure:"summary"`
 }
 
 // isEqual checks if two metric have a same identity. Identity of a
@@ -69,7 +80,7 @@ func (mi MetricInfo) isEqual(other MetricInfo) bool {
 		return true
 	}
 	// Validate attribues equality
-	keyMap := make(map[string]AttributeConfig)
+	keyMap := make(map[string]Attribute)
 	for _, attr := range mi.Attributes {
 		keyMap[attr.Key] = attr
 	}
@@ -82,18 +93,25 @@ func (mi MetricInfo) isEqual(other MetricInfo) bool {
 	return true
 }
 
-type AttributeConfig struct {
+type Attribute struct {
 	Key          string `mapstructure:"key"`
 	DefaultValue any    `mapstructure:"default_value"`
 }
 
-type HistogramConfig struct {
-	Explicit *ExplicitHistogramConfig `mapstructure:"explicit"`
+type Histogram struct {
+	Explicit    *ExplicitHistogram    `mapstructure:"explicit"`
+	Exponential *ExponentialHistogram `mapstructure:"exponential"`
 }
 
-type ExplicitHistogramConfig struct {
+type ExplicitHistogram struct {
 	Buckets []float64 `mapstructure:"buckets"`
 }
+
+type ExponentialHistogram struct {
+	MaxSize int32 `mapstructure:"max_size"`
+}
+
+type Summary struct{}
 
 func (c *Config) Validate() error {
 	duplicate := make(map[string]MetricInfo)
@@ -107,6 +125,9 @@ func (c *Config) Validate() error {
 		if info.Unit == "" {
 			return errors.New("spans: metric unit missing")
 		}
+		if info.Histogram.Exponential == nil && info.Histogram.Explicit == nil && info.Summary == nil {
+			return errors.New("metric definition missing, either histogram or summary required")
+		}
 		if err := info.validateHistogram(); err != nil {
 			return fmt.Errorf("spans histogram validation failed: metric %q, %w", info.Name, err)
 		}
@@ -119,11 +140,17 @@ func (c *Config) Validate() error {
 }
 
 func (i *MetricInfo) validateHistogram() error {
-	if i.Histogram.Explicit == nil {
-		return errors.New("histogram definition missing")
+	if i.Histogram.Explicit != nil {
+		if len(i.Histogram.Explicit.Buckets) == 0 {
+			return errors.New("histogram buckets missing")
+		}
 	}
-	if len(i.Histogram.Explicit.Buckets) == 0 {
-		return errors.New("histogram buckets missing")
+	if i.Histogram.Exponential != nil {
+		if _, err := structure.NewConfig(
+			structure.WithMaxSize(i.Histogram.Exponential.MaxSize),
+		).Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -167,11 +194,21 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 		if info.Unit == "" {
 			info.Unit = MetricUnitMs
 		}
-		if info.Histogram.Explicit == nil {
-			info.Histogram.Explicit = &ExplicitHistogramConfig{}
+		if info.Histogram.Exponential == nil && info.Histogram.Explicit == nil && info.Summary == nil {
+			info.Histogram.Exponential = &ExponentialHistogram{
+				MaxSize: defaultExponentialHistogramMaxSize,
+			}
 		}
-		if len(info.Histogram.Explicit.Buckets) == 0 {
-			info.Histogram.Explicit.Buckets = defaultExplicitHistogramBuckets(info.Unit)
+		if info.Histogram.Explicit != nil {
+			// Add default buckets if explicit histogram is defined
+			if len(info.Histogram.Explicit.Buckets) == 0 {
+				info.Histogram.Explicit.Buckets = defaultHistogramBuckets[:]
+			}
+		}
+		if info.Histogram.Exponential != nil {
+			if info.Histogram.Exponential.MaxSize == 0 {
+				info.Histogram.Exponential.MaxSize = defaultExponentialHistogramMaxSize
+			}
 		}
 		c.Spans[k] = info
 	}
@@ -184,25 +221,11 @@ func defaultSpansConfig() []MetricInfo {
 			Name:        defaultMetricNameSpans,
 			Description: defaultMetricDescSpans,
 			Unit:        MetricUnitMs,
-			Histogram: HistogramConfig{
-				Explicit: &ExplicitHistogramConfig{
-					Buckets: defaultExplicitHistogramBuckets(MetricUnitMs),
+			Histogram: Histogram{
+				Exponential: &ExponentialHistogram{
+					MaxSize: defaultExponentialHistogramMaxSize,
 				},
 			},
 		},
 	}
-}
-
-func defaultExplicitHistogramBuckets(unit MetricUnit) []float64 {
-	switch unit {
-	case MetricUnitMs:
-		return defaultHistogramBucketsMs[:]
-	case MetricUnitS:
-		buckets := make([]float64, len(defaultHistogramBucketsMs))
-		for i := 0; i < len(buckets); i++ {
-			buckets[i] /= float64(time.Second.Milliseconds())
-		}
-		return buckets
-	}
-	return nil
 }

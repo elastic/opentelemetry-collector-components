@@ -15,19 +15,40 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2"
+package aggregator // import "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 
-import "go.opentelemetry.io/collector/pdata/pcommon"
+import (
+	"time"
 
-type keyValue struct {
-	Key          string
-	DefaultValue pcommon.Value
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+)
+
+type summaryDP struct {
+	attrs pcommon.Map
+
+	sum   float64
+	count uint64
 }
 
-type metricDef struct {
-	Name        string
-	Description string
-	Unit        MetricUnit
-	Attributes  []keyValue
-	Histogram   HistogramConfig
+func newSummaryDP(attrs pcommon.Map) *summaryDP {
+	return &summaryDP{
+		attrs: attrs,
+	}
+}
+
+func (dp *summaryDP) Add(value float64) {
+	dp.sum += value
+	dp.count++
+}
+
+func (dp *summaryDP) Copy(
+	timestamp time.Time,
+	dest pmetric.SummaryDataPoint,
+) {
+	dp.attrs.CopyTo(dest.Attributes())
+	dest.SetCount(dp.count)
+	dest.SetSum(dp.sum)
+	// TODO determine appropriate start time
+	dest.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 }
