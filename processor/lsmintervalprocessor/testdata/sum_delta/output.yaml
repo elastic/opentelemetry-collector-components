@@ -1,0 +1,31 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+        - key: metricset.interval
+          value:
+            stringValue: 1s
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - name: delta.monotonic.sum
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 999
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                  timeUnixNano: "80"
+              isMonotonic: true
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3
