@@ -27,7 +27,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 )
 
-// TODO: Think about multitenancy, should be part of the key
+// TODO (lahsivjar): Think about multitenancy, should be part of the key
 type Key struct {
 	Interval       time.Duration
 	ProcessingTime time.Time
@@ -93,8 +93,8 @@ type Value struct {
 }
 
 func (v *Value) SizeBinary() int {
-	// TODO: Possible optimization, can take marshaler as input
-	// and reuse with MarshalProto if this causes allocations.
+	// TODO (lahsivjar): Possible optimization, can take marshaler
+	// as input and reuse with MarshalProto if this causes allocations.
 	var marshaler pmetric.ProtoMarshaler
 	return marshaler.MetricsSize(v.Metrics)
 }
@@ -161,7 +161,7 @@ func (v *Value) MergeMetric(
 			m.Histogram().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeExponentialHistogram:
-		// TODO: implement
+		// TODO (lahsivjar): implement exponential histogram merge
 	}
 }
 
@@ -195,7 +195,6 @@ func (v *Value) buildDynamicMaps() {
 				metric := metrics.At(k)
 				imetric := identity.OfMetric(iscope, metric)
 
-				// TODO: Can unify the dps logic below using generics
 				switch metric.Type() {
 				case pmetric.MetricTypeSum:
 					dps := metric.Sum().DataPoints()
@@ -368,16 +367,18 @@ func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
 	// Explicit bounds histogram should have same pre-defined buckets.
 	// However, it is possible that the boundaries got updated. In such
 	// scenarios we can't calculate the histogram for conflicting
-	// boundaries. In practical situations, we should not see such
-	// cases because if the service restarts to apply the new boundaries
-	// then some of the resource attributes will change which will change
-	// the identification for the metric, however, we still protect
-	// against the cases by checking the size of the counts slice. This
-	// way our code will not panic on such cases but it would still
-	// produce inconsistent results if the bounds have been changed.
-	// TODO: Should we make the bounds as a parameter for histogram ID?
-	// fromCounts := fromDP.BucketCounts()
-	// toCounts := toDP.BucketCounts()
+	// boundaries without assuming the distribution of the bucket. In
+	// practical situations, we should not see such cases because if the
+	// service restarts to apply the new boundaries then some of the
+	// resource attributes will change which will change the identification
+	// for the metric, however, it is possible to observe such cases if the
+	// service has multiple replicas and we are aggregating the replicas.
+	// A rolling update with a change in the histogram definition will
+	// trigger this situation.
+	//
+	// Here we protect our code by checking the size of the counts slices.
+	// TODO (lahsivjar): merge histograms with conflicting boundaries by
+	// assuming the distribution of the bucket.
 	fromCounts := from.BucketCounts()
 	toCounts := to.BucketCounts()
 	if fromCounts.Len() != toCounts.Len() {

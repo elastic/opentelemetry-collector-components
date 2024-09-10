@@ -32,12 +32,13 @@ type Config struct {
 	// Intervals is a list of time durations that the processor will
 	// aggregate over. The intervals must be in increasing order and the
 	// all interval values must be a factor of the smallest interval.
-	// TODO: Make specifying interval easier. We can just optimize the
-	// timer to run on differnt times.
+	// TODO (lahsivjar): Make specifying interval easier. We can just
+	// optimize the timer to run on differnt times and remove any
+	// restriction on different interval configuration.
 	Intervals []time.Duration `mapstructure:"intervals"`
 }
 
 func (config *Config) Validate() error {
-	// TODO: Add validation for interval duration
+	// TODO (lahsivjar): Add validation for interval duration
 	return nil
 }

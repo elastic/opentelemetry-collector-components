@@ -38,7 +38,7 @@ import (
 var _ processor.Metrics = (*Processor)(nil)
 var zeroTime = time.Unix(0, 0).UTC()
 
-// TODO: Optimize pebble
+// TODO (lahsivjar): Optimize pebble
 const batchCommitThreshold = 16 << 20 // 16MB
 
 type Processor struct {
@@ -210,12 +210,15 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
 				switch t := m.Type(); t {
 				case pmetric.MetricTypeEmpty, pmetric.MetricTypeGauge, pmetric.MetricTypeSummary:
+					// TODO (lahsivjar): implement support for gauges and summaries.
+					// For summaries, we can simply drop the quantiles if delta
+					// temporality is encountered.
 					return false
 				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram:
 					v.MergeMetric(rm, sm, m)
 					return true
 				case pmetric.MetricTypeExponentialHistogram:
-					// TODO implement for parity with intervalprocessor
+					// TODO (lahsivjar): implement support for exponential histogram
 					return false
 				default:
 					// All metric types are handled, this is unexpected
@@ -247,7 +250,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	}
 
 	if p.batch == nil {
-		// TODO possible optimization by using NewBatchWithSize
+		// TODO (lahsivjar): investigate possible optimization by using NewBatchWithSize
 		p.batch = p.db.NewBatch()
 	}
 
