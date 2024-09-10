@@ -241,6 +241,8 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 
 	keys := make([][]byte, len(p.intervals))
 	for i, ivl := range p.intervals {
+		// TODO (lahsivjar): If key ends up being independent of any other dimensions
+		// then we can simply cache the marshaled key while updating them on each harvest
 		key := merger.NewKey(ivl, p.processingTime)
 		keys[i], err = key.Marshal()
 		if err != nil {
