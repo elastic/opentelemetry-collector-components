@@ -7,6 +7,12 @@ resourceSpans:
         - key: resource.optional
           value:
             stringValue: bar
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
     scopeSpans:
       - scope: {}
         spans:
@@ -20,12 +26,30 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "201"
+              - key: timestamp.us
+                value:
+                  intValue: "1581452772000000"
+              - key: transaction.sampled
+                value:
+                  boolValue: true
+              - key: transaction.id
+                value:
+                  stringValue: ""
               - key: transaction.root
                 value:
                   boolValue: true
               - key: transaction.name
                 value:
                   stringValue: http-elastic-txn
+              - key: processor.event
+                value:
+                  stringValue: transaction
+              - key: transaction.representative_count
+                value:
+                  doubleValue: 1
+              - key: transaction.duration.us
+                value:
+                  intValue: "1000000"
               - key: transaction.type
                 value:
                   stringValue: request
@@ -35,6 +59,9 @@ resourceSpans:
               - key: event.outcome
                 value:
                   stringValue: success
+              - key: event.success_count
+                value:
+                  intValue: "1"
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
@@ -44,6 +71,9 @@ resourceSpans:
                   - key: event.attr2
                     value:
                       stringValue: bar1
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
                 name: event1
                 timeUnixNano: "1581452773000000123"
               - attributes:
@@ -53,9 +83,16 @@ resourceSpans:
                   - key: event.attr2
                     value:
                       stringValue: bar2
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
                 name: event2
                 timeUnixNano: "1581452773000000123"
-              - name: event-with-no-attrs
+              - attributes:
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
+                name: event-with-no-attrs
                 timeUnixNano: "1581452773000000123"
             name: http-elastic-txn
             parentSpanId: ""

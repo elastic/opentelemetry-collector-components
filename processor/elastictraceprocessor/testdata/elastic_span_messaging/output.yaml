@@ -7,6 +7,12 @@ resourceSpans:
         - key: resource.optional
           value:
             stringValue: bar
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
     scopeSpans:
       - scope: {}
         spans:
@@ -17,18 +23,42 @@ resourceSpans:
               - key: messaging.destination.name
                 value:
                   stringValue: TestTopic
+              - key: timestamp.us
+                value:
+                  intValue: "1581452772000000"
               - key: span.name
                 value:
                   stringValue: span-elastic-msg
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.type
+                value:
+                  stringValue: messaging
+              - key: span.subtype
+                value:
+                  stringValue: kafka
               - key: event.outcome
                 value:
                   stringValue: success
+              - key: event.success_count
+                value:
+                  intValue: "1"
+              - key: span.duration.us
+                value:
+                  intValue: "1000000"
               - key: service.target.type
                 value:
                   stringValue: kafka
               - key: service.target.name
                 value:
                   stringValue: TestTopic
+              - key: span.destination.service.resource
+                value:
+                  stringValue: kafka/TestTopic
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
@@ -38,6 +68,9 @@ resourceSpans:
                   - key: event.attr2
                     value:
                       stringValue: bar1
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
                 name: event1
                 timeUnixNano: "1581452773000000123"
               - attributes:
@@ -47,9 +80,16 @@ resourceSpans:
                   - key: event.attr2
                     value:
                       stringValue: bar2
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
                 name: event2
                 timeUnixNano: "1581452773000000123"
-              - name: event-with-no-attrs
+              - attributes:
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
+                name: event-with-no-attrs
                 timeUnixNano: "1581452773000000123"
             name: span-elastic-msg
             parentSpanId: bcff497b5a47310f
