@@ -4,7 +4,7 @@ dist:
   description: Testing distribution to ensure Elastic's components can be used with the OCB
   version: 0.0.1
   output_path: ./_build
-  otelcol_version: 0.109.0
+  otelcol_version: 0.108.1
 
 extensions:
 
