@@ -159,7 +159,8 @@ jobs:
       - name: CodeGen
         run: |
           pwd
-          make -j2 generate
+          make --debug -j2 generate
+          echo $?
           pwd
           git status
           if [[ -n $(git status -s) ]]; then
