@@ -1,18 +1,19 @@
 module github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
 
 go 1.21.0
+toolchain go1.22.5
 
 require (
 	github.com/cockroachdb/pebble v1.1.2
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.107.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.107.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.107.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.108.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.108.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.108.0
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/collector/component v0.107.0
 	go.opentelemetry.io/collector/confmap v0.107.0
 	go.opentelemetry.io/collector/consumer v0.107.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.107.0
-	go.opentelemetry.io/collector/pdata v1.13.0
+	go.opentelemetry.io/collector/pdata v1.14.1
 	go.opentelemetry.io/collector/processor v0.107.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
