@@ -159,6 +159,7 @@ jobs:
       - name: CodeGen
         run: |
           pwd
+          ls
           make --debug -j2 generate
           echo $?
           pwd
