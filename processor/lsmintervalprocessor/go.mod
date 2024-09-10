@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/lsminterv
 go 1.21.0
 
 require (
-	github.com/cockroachdb/pebble v1.1.1
+	github.com/cockroachdb/pebble v1.1.2
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.107.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.107.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.107.0
