@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
 
-go 1.21.0
+go 1.22.0
 
 require (
 	github.com/cockroachdb/pebble v1.1.2

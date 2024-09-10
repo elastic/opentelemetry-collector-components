@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2
 
-go 1.21.0
+go 1.22.0
 
 require (
 	github.com/lightstep/go-expohisto v1.0.0
