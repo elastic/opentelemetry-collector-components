@@ -1,0 +1,14 @@
+type: lsminterval
+scope_name: otelcol/lsminterval
+
+status:
+  class: processor
+  stability:
+    development: [metrics]
+  distributions: []
+  warnings: [Statefulness]
+  codeowners:
+    active: []
+tests:
+  config:
+
