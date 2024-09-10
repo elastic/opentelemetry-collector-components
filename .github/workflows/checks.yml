@@ -158,7 +158,10 @@ jobs:
           git diff --exit-code || (echo 'go.mod/go.sum deps changes detected, please run "make gotidy" and commit the changes in this PR.' && exit 1)
       - name: CodeGen
         run: |
+          pwd
           make -j2 generate
+          pwd
+          git status
           if [[ -n $(git status -s) ]]; then
             echo 'Generated code is out of date, please run "make generate" and commit the changes in this PR.'
             exit 1
