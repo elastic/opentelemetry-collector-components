@@ -103,9 +103,6 @@ func TestCalculateAdjustedCount(t *testing.T) {
 		{"ot=th:0", 1}, // 100% sampling
 		{"ot=th:8", 2}, // 50% sampling
 		{"ot=th:c", 4}, // 25% sampling
-		{"ot=p:8;r:4", 256},
-		{"ot=p:63;r:4", 0}, // p==63 represents zero adjusted count
-		{"ot=p:64;r:4", 1}, // p-value invalid, defaulting to 1
 	} {
 		t.Run("tracestate/"+tc.tracestate, func(t *testing.T) {
 			assert.Equal(t, tc.expected, calculateAdjustedCount(tc.tracestate))

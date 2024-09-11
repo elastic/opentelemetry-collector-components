@@ -20,8 +20,6 @@ package spanmetricsconnectorv2 // import "github.com/elastic/opentelemetry-colle
 import (
 	"context"
 	"errors"
-	"math"
-	"strconv"
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
@@ -107,43 +105,11 @@ func calculateAdjustedCount(tracestate string) uint64 {
 	if otTraceState == nil {
 		return 1
 	}
-	// For probability sampler, calculate the adjusted count based on t-value (`th`).
-	if len(otTraceState.TValue()) != 0 {
-		// TODO (lahsivjar): Should we handle fractional adjusted count?
-		// One way to do this would be to scale the values in the histograms
-		// for some precision.
-		return uint64(otTraceState.AdjustedCount())
-	}
-	// For consistent probablity sampler, calculate the adjusted count based on
-	// p-value, negative base-2 logarithm of sampling probability
-	var p uint64
-	for _, kv := range otTraceState.ExtraValues() {
-		if kv.Key == "p" {
-			// If p-value is present then calculate the adjusted count as per
-			// the consistent probability sampling specs.
-			if kv.Value != "" {
-				// p-value is represented as unsigned decimal integers
-				// requiring at most 6 bits of information. We parse to
-				// 7 bits as 63 holds a special meaning and thus needs
-				// to be distinguished w.r.t. other invalid >63 values.
-				p, _ = strconv.ParseUint(kv.Value, 10, 7)
-			}
-			break
-		}
-	}
-	switch {
-	case p == 0:
+	if len(otTraceState.TValue()) == 0 {
+		// For non-probabilistic sampler OR always sampling threshold, default to 1
 		return 1
-	case p == 63:
-		// p-value == 63 represents zero adjusted count
-		return 0
-	case p > 63:
-		// Invalid value, default to 1
-		return 1
-	default:
-		// TODO (lahsivjar): Should we handle fractional adjusted count?
-		// One way to do this would be to scale the values in the histograms
-		// for some precision.
-		return uint64(math.Pow(2, float64(p)))
 	}
+	// TODO (lahsivjar): Handle fractional adjusted count. One way to do this
+	// would be to scale the values in the histograms for some precision.
+	return uint64(otTraceState.AdjustedCount())
 }
