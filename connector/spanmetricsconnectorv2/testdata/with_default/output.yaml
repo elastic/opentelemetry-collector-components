@@ -13,7 +13,7 @@ resourceMetrics:
             exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
-                - count: "25"
+                - count: "8"
                   max: 17000.000468
                   min: 2.000468
                   negative: {}
@@ -82,7 +82,7 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "0"
-                      - "20"
+                      - "3"
                       - "0"
                       - "0"
                       - "0"
@@ -126,7 +126,7 @@ resourceMetrics:
                       - "1"
                     offset: 8
                   scale: 3
-                  sum: 39902.010432999996
+                  sum: 31402.003653999996
                   timeUnixNano: "1000000"
             name: trace.span.duration
         scope:

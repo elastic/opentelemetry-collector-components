@@ -28,8 +28,8 @@ resourceMetrics:
                     - key: db.system
                       value:
                         stringValue: mysql
-                  count: "21"
-                  sum: 11000.008561
+                  count: "4"
+                  sum: 2500.001782
                   timeUnixNano: "1000000"
           - description: Summary for messaging spans
             name: msg.trace.span.summary
