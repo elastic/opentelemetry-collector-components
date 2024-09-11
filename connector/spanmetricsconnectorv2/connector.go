@@ -95,7 +95,7 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 // the number of spans in the population that are represented by the
 // individually sampled span. If the span is not-sampled OR if a non-
 // probability sampler is used then adjusted count defaults to 1.
-// https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling/#adjusted-count
+// https://github.com/open-telemetry/oteps/blob/main/text/trace/0235-sampling-threshold-in-trace-state.md
 func calculateAdjustedCount(tracestate string) uint64 {
 	w3cTraceState, err := sampling.NewW3CTraceState(tracestate)
 	if err != nil {
