@@ -1,0 +1,42 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+        - key: metricset.interval
+          value:
+            stringValue: 1s
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - histogram:
+              aggregationTemporality: 1
+              dataPoints:
+                - attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                  bucketCounts:
+                    - "25"
+                    - "15"
+                    - "22"
+                    - "33"
+                    - "18"
+                    - "79"
+                  explicitBounds:
+                    - 0.01
+                    - 0.1
+                    - 1
+                    - 10
+                    - 100
+                  timeUnixNano: "80"
+            name: delta.histogram.test
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3
