@@ -4,9 +4,9 @@ go 1.22.0
 
 require (
 	github.com/cockroachdb/pebble v1.1.2
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.107.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.107.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.107.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.109.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.109.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.109.0
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/collector/component v0.109.0
 	go.opentelemetry.io/collector/confmap v0.107.0
