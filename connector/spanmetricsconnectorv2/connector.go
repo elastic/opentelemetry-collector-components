@@ -24,6 +24,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -64,8 +65,9 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 					duration = time.Duration(endTime - startTime)
 				}
 				spanAttrs := span.Attributes()
+				adjustedCount := calculateAdjustedCount(span.TraceState().AsRaw())
 				for _, md := range sm.metricDefs {
-					multiError = errors.Join(multiError, aggregator.Add(md, spanAttrs, duration))
+					multiError = errors.Join(multiError, aggregator.Add(md, spanAttrs, duration, adjustedCount))
 				}
 			}
 		}
@@ -87,4 +89,27 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 		return multiError
 	}
 	return sm.next.ConsumeMetrics(ctx, processedMetrics)
+}
+
+// calculateAdjustedCount calculates the adjusted count which represents
+// the number of spans in the population that are represented by the
+// individually sampled span. If the span is not-sampled OR if a non-
+// probability sampler is used then adjusted count defaults to 1.
+// https://github.com/open-telemetry/oteps/blob/main/text/trace/0235-sampling-threshold-in-trace-state.md
+func calculateAdjustedCount(tracestate string) uint64 {
+	w3cTraceState, err := sampling.NewW3CTraceState(tracestate)
+	if err != nil {
+		return 1
+	}
+	otTraceState := w3cTraceState.OTelValue()
+	if otTraceState == nil {
+		return 1
+	}
+	if len(otTraceState.TValue()) == 0 {
+		// For non-probabilistic sampler OR always sampling threshold, default to 1
+		return 1
+	}
+	// TODO (lahsivjar): Handle fractional adjusted count. One way to do this
+	// would be to scale the values in the histograms for some precision.
+	return uint64(otTraceState.AdjustedCount())
 }
