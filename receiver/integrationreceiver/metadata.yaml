@@ -1,0 +1,8 @@
+type: integration
+
+status:
+  class: receiver
+  stability:
+    development: [logs, metrics, traces]
+  codeowners:
+    active: [jsoriano]

@@ -1,0 +1,8 @@
+type: integration
+
+status:
+  class: processor
+  stability:
+    development: [logs, metrics, traces]
+  codeowners:
+    active: [jsoriano]

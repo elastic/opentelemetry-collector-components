@@ -1,7 +1,0 @@
-type: file_templates
-status:
-  class: extension
-  stability:
-    development: [extension]
-  codeowners:
-    active: [jsoriano]
