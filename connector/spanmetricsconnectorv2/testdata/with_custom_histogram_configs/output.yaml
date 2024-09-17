@@ -13,17 +13,17 @@ resourceMetrics:
             exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
-                - count: "6"
+                - count: "8"
                   max: 17.000000468
                   min: 0.002000468
                   negative: {}
                   positive:
                     bucketCounts:
-                      - "3"
+                      - "5"
                       - "3"
                     offset: -1
                   scale: -4
-                  sum: 30.402002808
+                  sum: 31.402003653999998
                   timeUnixNano: "1000000"
             name: trace.span.duration
           - description: Span duration with custom histogram buckets
@@ -33,16 +33,16 @@ resourceMetrics:
                 - bucketCounts:
                     - "0"
                     - "1"
-                    - "2"
+                    - "4"
                     - "1"
                     - "2"
-                  count: "6"
+                  count: "8"
                   explicitBounds:
                     - 0.001
                     - 0.1
                     - 1
                     - 10
-                  sum: 30.402002808
+                  sum: 31.402003653999998
                   timeUnixNano: "1000000"
             name: trace.span.duration
         scope:

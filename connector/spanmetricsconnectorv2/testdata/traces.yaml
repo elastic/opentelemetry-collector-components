@@ -82,3 +82,15 @@ resourceSpans:
             name: msg-span-2
             parentSpanId: "bcff497b5a47310f"
             startTimeUnixNano: "1581452772000000321"
+          - attributes:
+              - key: db.name
+                value:
+                  stringValue: main
+              - key: db.system
+                value:
+                  stringValue: mysql
+            endTimeUnixNano: "1581452772500000804"
+            name: th-value-8 # represents 2 sampled spans
+            parentSpanId: ""
+            startTimeUnixNano: "1581452772000000381"
+            traceState: "ot=th:8"
