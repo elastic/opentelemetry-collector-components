@@ -15,29 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension"
+//go:generate mdatagen metadata.yaml
 
-import (
-	"errors"
-	"fmt"
-	"os"
-)
-
-type Config struct {
-	Path string `mapstructure:"path"`
-}
-
-func (c *Config) Validate() error {
-	if c.Path == "" {
-		return errors.New("path is required")
-	}
-	info, err := os.Stat(c.Path)
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("path (%s) must be a directory", c.Path)
-	}
-
-	return nil
-}
+// Package configintegrationextension provides a source of integrations that obtain them from a local directory.
+package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension"

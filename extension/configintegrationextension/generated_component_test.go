@@ -30,7 +30,7 @@ import (
 )
 
 func TestComponentFactoryType(t *testing.T) {
-	require.Equal(t, "file_integrations", NewFactory().Type().String())
+	require.Equal(t, "config_integrations", NewFactory().Type().String())
 }
 
 func TestComponentConfigStruct(t *testing.T) {

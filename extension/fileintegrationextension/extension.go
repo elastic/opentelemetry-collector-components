@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package fileintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension"
+package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension"
 
 import (
 	"context"

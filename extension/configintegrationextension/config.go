@@ -15,29 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension"
-
-import (
-	"errors"
-	"fmt"
-	"os"
-)
+package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension"
 
 type Config struct {
-	Path string `mapstructure:"path"`
+	Integrations map[string]string `mapstructure:"integrations"`
 }
 
 func (c *Config) Validate() error {
-	if c.Path == "" {
-		return errors.New("path is required")
-	}
-	info, err := os.Stat(c.Path)
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("path (%s) must be a directory", c.Path)
-	}
-
 	return nil
 }

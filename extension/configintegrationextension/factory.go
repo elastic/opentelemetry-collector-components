@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension"
+package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension"
 
 import (
 	"context"
@@ -37,11 +37,9 @@ func NewFactory() extension.Factory {
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{
-		Path: "integrations",
-	}
+	return &Config{}
 }
 
 func createExtension(_ context.Context, _ extension.Settings, cfg component.Config) (extension.Extension, error) {
-	return newFileTemplateExtension(cfg.(*Config)), nil
+	return newConfigTemplateExtension(cfg.(*Config)), nil
 }
