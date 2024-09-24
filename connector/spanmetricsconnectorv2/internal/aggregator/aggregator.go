@@ -113,9 +113,11 @@ func (a *Aggregator) Move(
 	}
 
 	var (
-		destExpHist      pmetric.ExponentialHistogram
-		destExplicitHist pmetric.Histogram
-		destSummary      pmetric.Summary
+		destExpHist       pmetric.ExponentialHistogram
+		destExplicitHist  pmetric.Histogram
+		destSummary       pmetric.Summary
+		destCountersSum   pmetric.Sum
+		destCountersCount pmetric.Sum
 	)
 	if md.ExponentialHistogram != nil {
 		destMetric := dest.AppendEmpty()
@@ -140,9 +142,32 @@ func (a *Aggregator) Move(
 		destSummary = destMetric.SetEmptySummary()
 		destSummary.DataPoints().EnsureCapacity(len(srcDPs))
 	}
+	if md.Counters != nil {
+		destMetricSum := dest.AppendEmpty()
+		// counter metric for sum
+		destMetricSum.SetName(md.Key.Name + md.Counters.SumSuffix)
+		destMetricSum.SetDescription(md.Key.Description)
+		destCountersSum = destMetricSum.SetEmptySum()
+		destCountersSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		destCountersSum.DataPoints().EnsureCapacity(len(srcDPs))
+		// counter metric for count
+		destMetricCount := dest.AppendEmpty()
+		destMetricCount.SetName(md.Key.Name + md.Counters.CountSuffix)
+		destMetricCount.SetDescription(md.Key.Description)
+		destCountersCount = destMetricCount.SetEmptySum()
+		destCountersCount.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		destCountersCount.DataPoints().EnsureCapacity(len(srcDPs))
+	}
 
 	for _, srcDP := range srcDPs {
-		srcDP.Copy(a.timestamp, destExpHist, destExplicitHist, destSummary)
+		srcDP.Copy(
+			a.timestamp,
+			destExpHist,
+			destExplicitHist,
+			destSummary,
+			destCountersSum,
+			destCountersCount,
+		)
 	}
 
 	// If there are two metric defined with the same key required by metricKey
@@ -165,6 +190,7 @@ type aggregatorDP struct {
 	expHistogramDP      *exponentialHistogramDP
 	explicitHistogramDP *explicitHistogramDP
 	summaryDP           *summaryDP
+	countersDP          *countersDP
 }
 
 func newAggregatorDP(
@@ -185,6 +211,9 @@ func newAggregatorDP(
 	if md.Summary != nil {
 		dp.summaryDP = newSummaryDP(attrs)
 	}
+	if md.Counters != nil {
+		dp.countersDP = newCountersDP(attrs)
+	}
 	return &dp
 }
 
@@ -198,6 +227,9 @@ func (dp *aggregatorDP) Add(value float64, count uint64) {
 	if dp.summaryDP != nil {
 		dp.summaryDP.Add(value, count)
 	}
+	if dp.countersDP != nil {
+		dp.countersDP.Add(value, count)
+	}
 }
 
 func (dp *aggregatorDP) Copy(
@@ -205,6 +237,8 @@ func (dp *aggregatorDP) Copy(
 	destExpHist pmetric.ExponentialHistogram,
 	destExplicitHist pmetric.Histogram,
 	destSummary pmetric.Summary,
+	destCountersSum pmetric.Sum,
+	destCountersCount pmetric.Sum,
 ) {
 	if dp.expHistogramDP != nil {
 		dp.expHistogramDP.Copy(timestamp, destExpHist.DataPoints().AppendEmpty())
@@ -214,5 +248,12 @@ func (dp *aggregatorDP) Copy(
 	}
 	if dp.summaryDP != nil {
 		dp.summaryDP.Copy(timestamp, destSummary.DataPoints().AppendEmpty())
+	}
+	if dp.countersDP != nil {
+		dp.countersDP.Copy(
+			timestamp,
+			destCountersSum.DataPoints().AppendEmpty(),
+			destCountersCount.DataPoints().AppendEmpty(),
+		)
 	}
 }
