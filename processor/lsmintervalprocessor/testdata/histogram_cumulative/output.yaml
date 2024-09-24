@@ -7,6 +7,9 @@ resourceMetrics:
         - key: custom_res_attr
           value:
             stringValue: res
+        - key: dependent_attr
+          value:
+            stringValue: bbb-dependent
     schemaUrl: https://test-res-schema.com/schema
     scopeMetrics:
       - metrics:
@@ -33,7 +36,7 @@ resourceMetrics:
                     - 1
                     - 10
                     - 100
-                  timeUnixNano: "80"
+                  timeUnixNano: "1000000"
             name: cumulative.histogram.test
         schemaUrl: https://test-scope-schema.com/schema
         scope:

@@ -56,6 +56,7 @@ func TestAggregation(t *testing.T) {
 				`set(resource.attributes["custom_res_attr"], "res")`,
 				`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
 				`set(attributes["custom_dp_attr"], "dp")`,
+				`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
 			},
 		},
 	}}
