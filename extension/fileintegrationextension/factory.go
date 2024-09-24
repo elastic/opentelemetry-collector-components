@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension"
+package fileintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension"
 
 import (
 	"context"
@@ -23,7 +23,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
 
-	"github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension/internal/metadata"
 )
 
 // NewFactory creates a factory for ack extension.

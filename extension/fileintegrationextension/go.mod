@@ -1,4 +1,4 @@
-module github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension
+module github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension
 
 go 1.22.1
 

@@ -25,7 +25,7 @@ import (
 
 var (
 	Type      = component.MustNewType("file_integrations")
-	ScopeName = "github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension"
+	ScopeName = "github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension"
 )
 
 const (
