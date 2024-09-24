@@ -134,7 +134,8 @@ func BenchmarkConnector(b *testing.B) {
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary: &config.Summary{},
+				Summary:  &config.Summary{},
+				Counters: &config.Counters{},
 			},
 			{
 				Name:        "db.trace.span.duration",
@@ -148,7 +149,8 @@ func BenchmarkConnector(b *testing.B) {
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary: &config.Summary{},
+				Summary:  &config.Summary{},
+				Counters: &config.Counters{},
 			},
 			{
 				Name:        "msg.trace.span.duration",
@@ -162,7 +164,8 @@ func BenchmarkConnector(b *testing.B) {
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary: &config.Summary{},
+				Summary:  &config.Summary{},
+				Counters: &config.Counters{},
 			},
 			{
 				Name:        "404.span.duration",
@@ -176,7 +179,8 @@ func BenchmarkConnector(b *testing.B) {
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary: &config.Summary{},
+				Summary:  &config.Summary{},
+				Counters: &config.Counters{},
 			},
 			{
 				Name:        "404.span.duration.default",
@@ -191,7 +195,8 @@ func BenchmarkConnector(b *testing.B) {
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary: &config.Summary{},
+				Summary:  &config.Summary{},
+				Counters: &config.Counters{},
 			},
 		},
 	}
