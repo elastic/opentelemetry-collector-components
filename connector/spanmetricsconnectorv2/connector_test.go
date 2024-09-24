@@ -49,6 +49,7 @@ func TestConnector(t *testing.T) {
 		"with_identical_metric_name_different_attrs",
 		"with_identical_metric_name_desc_different_attrs",
 		"with_summary",
+		"with_counters",
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

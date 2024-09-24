@@ -71,6 +71,7 @@ func createTracesToMetrics(
 			ExplicitHistogram:    info.Histogram.Explicit,
 			ExponentialHistogram: info.Histogram.Exponential,
 			Summary:              info.Summary,
+			Counters:             info.Counters,
 		}
 		metricDefs = append(metricDefs, md)
 	}
