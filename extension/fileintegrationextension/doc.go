@@ -18,4 +18,4 @@
 //go:generate mdatagen metadata.yaml
 
 // Package configintegrationextension provides a source of integrations that obtain them from a local directory.
-package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension"
+package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension"
