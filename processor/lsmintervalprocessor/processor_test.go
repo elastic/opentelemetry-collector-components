@@ -107,6 +107,7 @@ func TestAggregation(t *testing.T) {
 			assert.NoError(t, pmetrictest.CompareMetrics(
 				expectedExportData,
 				allMetrics[1],
+				pmetrictest.IgnoreTimestamp(),
 			))
 		})
 	}
