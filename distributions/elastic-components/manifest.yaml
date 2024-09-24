@@ -8,7 +8,7 @@ dist:
 
 extensions:
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension v0.0.0
 
 connectors:
   - gomod: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2 v0.0.0
@@ -40,7 +40,7 @@ providers:
 replaces:
   - github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2 => ../connector/spanmetricsconnectorv2
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension => ../extension/configintegrationextension
-  - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension => ../extension/fileintegrationextension
+  - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension => ../extension/fileintegrationextension
   - github.com/elastic/opentelemetry-collector-components/internal/integrations => ../internal/integrations
   - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor => ../processor/elasticinframetricsprocessor
   - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
