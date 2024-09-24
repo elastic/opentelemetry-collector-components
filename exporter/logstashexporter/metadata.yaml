@@ -1,0 +1,11 @@
+type: logstash
+#github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: exporter
+  stability:
+    beta: [traces, logs]
+    development: [metrics]
+  distributions: [contrib]
+  codeowners:
+    active: [andsel, kaisecheng, edmocosta]
