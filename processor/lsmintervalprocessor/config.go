@@ -41,7 +41,11 @@ type Config struct {
 type IntervalConfig struct {
 	Duration time.Duration `mapstructure:"duration"`
 	// Statements are a list of OTTL statements to be executed on the
-	// metrics produced for a given interval.
+	// metrics produced for a given interval. The list of available
+	// OTTL paths for datapoints can be checked at:
+	// https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint#section-readme
+	// The list of available OTTL editors can be checked at:
+	// https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs#section-readme
 	Statements []string `mapstructure:"statements"`
 }
 
