@@ -29,13 +29,20 @@ type Config struct {
 	// Directory is the data directory used by the database to store files.
 	// If the directory is empty in-memory storage is used.
 	Directory string `mapstructure:"directory"`
-	// Intervals is a list of time durations that the processor will
-	// aggregate over. The intervals must be in increasing order and the
-	// all interval values must be a factor of the smallest interval.
+	// Intervals is a list of interval configuration that the processor
+	// will aggregate over. The interval duration must be in increasing
+	// order and must be a factor of the smallest interval duration.
 	// TODO (lahsivjar): Make specifying interval easier. We can just
 	// optimize the timer to run on differnt times and remove any
 	// restriction on different interval configuration.
-	Intervals []time.Duration `mapstructure:"intervals"`
+	Intervals []IntervalConfig `mapstructure:"intervals"`
+}
+
+type IntervalConfig struct {
+	Duration time.Duration `mapstructure:"duration"`
+	// Statements are a list of OTTL statements to be executed on the
+	// metrics produced for a given interval.
+	Statements []string `mapstructure:"statements"`
 }
 
 func (config *Config) Validate() error {

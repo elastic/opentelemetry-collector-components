@@ -4,9 +4,9 @@ resourceMetrics:
         - key: asdf
           value:
             stringValue: foo
-        - key: metricset.interval
+        - key: custom_res_attr
           value:
-            stringValue: 1s
+            stringValue: res
     schemaUrl: https://test-res-schema.com/schema
     scopeMetrics:
       - metrics:
@@ -19,11 +19,17 @@ resourceMetrics:
                     - key: aaa
                       value:
                         stringValue: bbb
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
                   timeUnixNano: "80"
               isMonotonic: true
         schemaUrl: https://test-scope-schema.com/schema
         scope:
           attributes:
+            - key: custom_scope_attr
+              value:
+                stringValue: scope
             - key: foo
               value:
                 stringValue: bar

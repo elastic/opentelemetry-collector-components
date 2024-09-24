@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
@@ -48,7 +49,16 @@ func TestAggregation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config := &Config{Intervals: []time.Duration{time.Second}}
+	config := &Config{Intervals: []IntervalConfig{
+		{
+			Duration: time.Second,
+			Statements: []string{
+				`set(resource.attributes["custom_res_attr"], "res")`,
+				`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
+				`set(attributes["custom_dp_attr"], "dp")`,
+			},
+		},
+	}}
 
 	for _, tc := range testCases {
 		testName := tc
@@ -94,7 +104,10 @@ func TestAggregation(t *testing.T) {
 
 			expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 			require.NoError(t, err)
-			require.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
+			assert.NoError(t, pmetrictest.CompareMetrics(
+				expectedExportData,
+				allMetrics[1],
+			))
 		})
 	}
 }
