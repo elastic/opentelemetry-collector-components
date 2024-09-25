@@ -34,6 +34,7 @@ type MetricDef struct {
 	ExponentialHistogram *config.ExponentialHistogram
 	ExplicitHistogram    *config.ExplicitHistogram
 	Summary              *config.Summary
+	Counters             *config.Counters
 }
 
 type MetricKey struct {

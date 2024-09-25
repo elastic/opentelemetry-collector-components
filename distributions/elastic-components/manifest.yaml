@@ -4,7 +4,7 @@ dist:
   description: Testing distribution to ensure Elastic's components can be used with the OCB
   version: 0.0.1
   output_path: ./_build
-  otelcol_version: 0.109.0
+  otelcol_version: 0.110.0
 
 extensions:
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.0
@@ -17,7 +17,7 @@ converters:
 
 receivers:
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver v0.0.0
-  - gomod: go.opentelemetry.io/collector/receiver/nopreceiver v0.109.0
+  - gomod: go.opentelemetry.io/collector/receiver/nopreceiver v0.110.0
 
 processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.0.0
@@ -26,16 +26,16 @@ processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.0
 
 exporters:
-  - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.109.0
-  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.109.0
+  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.110.0
+  - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.110.0
 
-# workaround known issue https://github.com/open-telemetry/opentelemetry-collector/releases/tag/v0.109.0
+# workaround known issue https://github.com/open-telemetry/opentelemetry-collector/releases/tag/v0.110.0
 providers:
-  - gomod: go.opentelemetry.io/collector/confmap/provider/envprovider v1.15.0
-  - gomod: go.opentelemetry.io/collector/confmap/provider/fileprovider v1.15.0
-  - gomod: go.opentelemetry.io/collector/confmap/provider/httpprovider v0.109.0
-  - gomod: go.opentelemetry.io/collector/confmap/provider/httpsprovider v0.109.0
-  - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v0.109.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/envprovider v1.16.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/fileprovider v1.16.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/httpprovider v0.110.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/httpsprovider v0.110.0
+  - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v0.110.0
 
 replaces:
   - github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2 => ../connector/spanmetricsconnectorv2
