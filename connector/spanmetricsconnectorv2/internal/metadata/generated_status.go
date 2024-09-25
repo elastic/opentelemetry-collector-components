@@ -24,7 +24,8 @@ import (
 )
 
 var (
-	Type = component.MustNewType("spanmetricsv2")
+	Type      = component.MustNewType("spanmetricsv2")
+	ScopeName = "otelcol/spanmetricsconnectorv2"
 )
 
 const (
