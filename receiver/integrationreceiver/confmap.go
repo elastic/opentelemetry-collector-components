@@ -44,7 +44,7 @@ type variablesProvider struct {
 }
 
 func (p *variablesProvider) Retrieve(ctx context.Context, uri string, _ confmap.WatcherFunc) (*confmap.Retrieved, error) {
-	key := strings.TrimLeft(uri, varProviderScheme+":")
+	key := strings.TrimPrefix(uri, varProviderScheme+":")
 	value, found := p.variables[key]
 	if !found {
 		return nil, fmt.Errorf("variable %q not found", key)
