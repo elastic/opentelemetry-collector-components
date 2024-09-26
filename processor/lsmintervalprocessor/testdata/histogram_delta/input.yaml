@@ -19,21 +19,21 @@ resourceMetrics:
             histogram:
               aggregationTemporality: 1
               dataPoints:
-                - timeUnixNano: 50
+                - timeUnixNano: 5000000
                   explicitBounds: [0.01, 0.1, 1, 10, 100]
                   bucketCounts: [9, 4, 7, 9, 6, 25]
                   attributes:
                     - key: aaa
                       value:
                         stringValue: bbb
-                - timeUnixNano: 20
+                - timeUnixNano: 2000000
                   explicitBounds: [0.01, 0.1, 1, 10, 100]
                   bucketCounts: [5, 2, 3, 7, 4, 20]
                   attributes:
                     - key: aaa
                       value:
                         stringValue: bbb
-                - timeUnixNano: 80
+                - timeUnixNano: 8000000
                   explicitBounds: [0.01, 0.1, 1, 10, 100]
                   bucketCounts: [11, 9, 12, 17, 8, 34]
                   attributes:

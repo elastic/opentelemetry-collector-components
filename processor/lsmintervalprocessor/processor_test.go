@@ -115,11 +115,7 @@ func TestAggregation(t *testing.T) {
 
 			expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 			require.NoError(t, err)
-			assert.NoError(t, pmetrictest.CompareMetrics(
-				expectedExportData,
-				allMetrics[1],
-				pmetrictest.IgnoreTimestamp(),
-			))
+			assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
 		})
 	}
 }
