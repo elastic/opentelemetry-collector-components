@@ -19,6 +19,7 @@ package integrationreceiver // import "github.com/elastic/opentelemetry-collecto
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -27,6 +28,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/consumer"
+	otelpipeline "go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
 
@@ -196,24 +198,42 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 	params.Logger = params.Logger.With(zap.String("name", params.ID.String()))
 	if consumerChain.logs != nil {
 		logs, err := receiverFactory.CreateLogsReceiver(ctx, params, preparedConfig, consumerChain.logs)
-		if err != nil {
-			return fmt.Errorf("failed to create logs processor %s: %w", params.ID, err)
+		switch {
+		case err == nil:
+			r.components = append(r.components, logs)
+		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
+			r.params.Logger.Debug("receiver does not support logs telemetry type",
+				zap.String("integration", r.params.ID.String()),
+				zap.String("receiver", params.ID.String()))
+		default:
+			return fmt.Errorf("failed to create logs receiver %s: %w", params.ID, err)
 		}
-		r.components = append(r.components, logs)
 	}
 	if consumerChain.metrics != nil {
 		metrics, err := receiverFactory.CreateMetricsReceiver(ctx, params, preparedConfig, consumerChain.metrics)
-		if err != nil {
-			return fmt.Errorf("failed to create metrics processor %s: %w", params.ID, err)
+		switch {
+		case err == nil:
+			r.components = append(r.components, metrics)
+		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
+			r.params.Logger.Debug("receiver does not support metrics telemetry type",
+				zap.String("integration", r.params.ID.String()),
+				zap.String("receiver", params.ID.String()))
+		default:
+			return fmt.Errorf("failed to create metrics receiver %s: %w", params.ID, err)
 		}
-		r.components = append(r.components, metrics)
 	}
 	if consumerChain.traces != nil {
 		traces, err := receiverFactory.CreateTracesReceiver(ctx, params, preparedConfig, consumerChain.traces)
-		if err != nil {
-			return fmt.Errorf("failed to create traces processor %s: %w", params.ID, err)
+		switch {
+		case err == nil:
+			r.components = append(r.components, traces)
+		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
+			r.params.Logger.Debug("receiver does not support traces telemetry type",
+				zap.String("integration", r.params.ID.String()),
+				zap.String("receiver", params.ID.String()))
+		default:
+			return fmt.Errorf("failed to create traces receiver %s: %w", params.ID, err)
 		}
-		r.components = append(r.components, traces)
 	}
 
 	for _, component := range r.components {
