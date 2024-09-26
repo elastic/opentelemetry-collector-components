@@ -8,6 +8,7 @@ require (
 	go.opentelemetry.io/collector/component v0.105.0
 	go.opentelemetry.io/collector/confmap v0.105.0
 	go.opentelemetry.io/collector/consumer v0.105.0
+	go.opentelemetry.io/collector/pipeline v0.110.0
 	go.opentelemetry.io/collector/processor v0.105.0
 	go.opentelemetry.io/collector/receiver v0.105.0
 	go.uber.org/goleak v1.3.0
@@ -42,6 +43,7 @@ require (
 	go.opentelemetry.io/collector/config/configtelemetry v0.105.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.13.0 // indirect
 	go.opentelemetry.io/collector/internal/globalgates v0.105.0 // indirect
+	go.opentelemetry.io/collector/internal/globalsignal v0.110.0 // indirect
 	go.opentelemetry.io/collector/pdata v1.13.0 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0 // indirect

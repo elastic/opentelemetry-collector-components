@@ -146,6 +146,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		return fmt.Errorf("could not compose receiver config for %s: %w", pipeline.Receiver.String(), err)
 	}
 
+	var components []component.Component
 	processors := slices.Clone(pipeline.Processors)
 	slices.Reverse(processors)
 	for i, id := range processors {
@@ -173,7 +174,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 				return fmt.Errorf("failed to create logs processor %s: %w", params.ID, err)
 			}
 			consumerChain.logs = logs
-			r.components = append(r.components, logs)
+			components = append(components, logs)
 		}
 		if consumerChain.metrics != nil {
 			metrics, err := factory.CreateMetricsProcessor(ctx, params, config, consumerChain.metrics)
@@ -181,7 +182,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 				return fmt.Errorf("failed to create metrics processor %s: %w", params.ID, err)
 			}
 			consumerChain.metrics = metrics
-			r.components = append(r.components, metrics)
+			components = append(components, metrics)
 		}
 		if consumerChain.traces != nil {
 			traces, err := factory.CreateTracesProcessor(ctx, params, config, consumerChain.traces)
@@ -189,18 +190,20 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 				return fmt.Errorf("failed to create traces processor %s: %w", params.ID, err)
 			}
 			consumerChain.traces = traces
-			r.components = append(r.components, traces)
+			components = append(components, traces)
 		}
 	}
 
 	params := r.params
 	params.ID = component.NewIDWithName(receiverFactory.Type(), fmt.Sprintf("%s-receiver", pipelineID))
 	params.Logger = params.Logger.With(zap.String("name", params.ID.String()))
+	receiversCreated := 0
 	if consumerChain.logs != nil {
 		logs, err := receiverFactory.CreateLogsReceiver(ctx, params, preparedConfig, consumerChain.logs)
 		switch {
 		case err == nil:
-			r.components = append(r.components, logs)
+			components = append(components, logs)
+			receiversCreated += 1
 		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
 			r.params.Logger.Debug("receiver does not support logs telemetry type",
 				zap.String("integration", r.params.ID.String()),
@@ -213,7 +216,8 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		metrics, err := receiverFactory.CreateMetricsReceiver(ctx, params, preparedConfig, consumerChain.metrics)
 		switch {
 		case err == nil:
-			r.components = append(r.components, metrics)
+			components = append(components, metrics)
+			receiversCreated += 1
 		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
 			r.params.Logger.Debug("receiver does not support metrics telemetry type",
 				zap.String("integration", r.params.ID.String()),
@@ -226,7 +230,8 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		traces, err := receiverFactory.CreateTracesReceiver(ctx, params, preparedConfig, consumerChain.traces)
 		switch {
 		case err == nil:
-			r.components = append(r.components, traces)
+			components = append(components, traces)
+			receiversCreated += 1
 		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
 			r.params.Logger.Debug("receiver does not support traces telemetry type",
 				zap.String("integration", r.params.ID.String()),
@@ -236,20 +241,36 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		}
 	}
 
-	for _, component := range r.components {
+	// If no receiver has been created the rest of the pipeline won't be used, so don't keep it.
+	if receiversCreated == 0 {
+		// Shutting down created components out of kindness, because they haven't been started yet.
+		if err := shutdownComponents(ctx, components); err != nil {
+			r.params.Logger.Error("failed to cleanup processors after receiver was not created",
+				zap.String("integration", r.params.ID.String()),
+				zap.String("receiver", params.ID.String()))
+		}
+		return nil
+	}
+
+	for _, component := range components {
 		err := component.Start(ctx, host)
 		if err != nil {
 			return fmt.Errorf("failed to start component %q: %w", component, err)
 		}
 	}
+	r.components = append(r.components, components...)
 
 	return nil
 }
 
 func (r *integrationReceiver) Shutdown(ctx context.Context) error {
+	return shutdownComponents(ctx, r.components)
+}
+
+func shutdownComponents(ctx context.Context, components []component.Component) error {
 	// Shutdown them in reverse order as they were created.
-	components := slices.Clone(r.components)
-	slices.Reverse(r.components)
+	components = slices.Clone(components)
+	slices.Reverse(components)
 	for _, c := range components {
 		err := c.Shutdown(ctx)
 		if err != nil {
