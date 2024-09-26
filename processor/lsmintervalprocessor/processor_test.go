@@ -44,6 +44,7 @@ func TestAggregation(t *testing.T) {
 		"sum_delta",
 		"histogram_cumulative",
 		"histogram_delta",
+		"summary_enabled",
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

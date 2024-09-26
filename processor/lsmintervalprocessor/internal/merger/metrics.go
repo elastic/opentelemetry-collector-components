@@ -29,7 +29,7 @@ type DataPointSlice[DP DataPoint[DP]] interface {
 }
 
 type DataPoint[Self any] interface {
-	pmetric.NumberDataPoint | pmetric.HistogramDataPoint | pmetric.ExponentialHistogramDataPoint
+	pmetric.NumberDataPoint | pmetric.SummaryDataPoint | pmetric.HistogramDataPoint | pmetric.ExponentialHistogramDataPoint
 
 	Timestamp() pcommon.Timestamp
 	SetTimestamp(pcommon.Timestamp)

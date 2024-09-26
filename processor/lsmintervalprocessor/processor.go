@@ -209,12 +209,10 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
 			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
 				switch t := m.Type(); t {
-				case pmetric.MetricTypeEmpty, pmetric.MetricTypeGauge, pmetric.MetricTypeSummary:
-					// TODO (lahsivjar): implement support for gauges and summaries.
-					// For summaries, we can simply drop the quantiles if delta
-					// temporality is encountered.
+				case pmetric.MetricTypeEmpty, pmetric.MetricTypeGauge:
+					// TODO (lahsivjar): implement support for gauges
 					return false
-				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram:
+				case pmetric.MetricTypeSum, pmetric.MetricTypeSummary, pmetric.MetricTypeHistogram:
 					v.MergeMetric(rm, sm, m)
 					return true
 				case pmetric.MetricTypeExponentialHistogram:
