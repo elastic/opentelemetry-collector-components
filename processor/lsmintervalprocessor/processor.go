@@ -43,6 +43,8 @@ var zeroTime = time.Unix(0, 0).UTC()
 const batchCommitThreshold = 16 << 20 // 16MB
 
 type Processor struct {
+	passthrough PassThrough
+
 	db      *pebble.DB
 	dataDir string
 	dbOpts  *pebble.Options
@@ -61,7 +63,7 @@ type Processor struct {
 	logger        *zap.Logger
 }
 
-func newProcessor(dataDir string, ivlDefs []intervalDef, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
+func newProcessor(cfg *Config, ivlDefs []intervalDef, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
 	dbOpts := &pebble.Options{
 		Merger: &pebble.Merger{
 			Name: "pmetrics_merger",
@@ -75,6 +77,7 @@ func newProcessor(dataDir string, ivlDefs []intervalDef, log *zap.Logger, next c
 		},
 	}
 	writeOpts := pebble.Sync
+	dataDir := cfg.Directory
 	if dataDir == "" {
 		log.Info("no directory specified, switching to in-memory mode")
 		dbOpts.FS = vfs.NewMem()
@@ -85,6 +88,7 @@ func newProcessor(dataDir string, ivlDefs []intervalDef, log *zap.Logger, next c
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Processor{
+		passthrough:    cfg.PassThrough,
 		dataDir:        dataDir,
 		dbOpts:         dbOpts,
 		wOpts:          writeOpts,
@@ -212,7 +216,13 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 				case pmetric.MetricTypeEmpty, pmetric.MetricTypeGauge:
 					// TODO (lahsivjar): implement support for gauges
 					return false
-				case pmetric.MetricTypeSum, pmetric.MetricTypeSummary, pmetric.MetricTypeHistogram:
+				case pmetric.MetricTypeSummary:
+					if p.passthrough.Summary {
+						return false
+					}
+					v.MergeMetric(rm, sm, m)
+					return true
+				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram:
 					v.MergeMetric(rm, sm, m)
 					return true
 				case pmetric.MetricTypeExponentialHistogram:
