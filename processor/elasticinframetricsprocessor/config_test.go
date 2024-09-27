@@ -59,6 +59,11 @@ func TestLoadConfig(t *testing.T) {
 			id:         component.NewIDWithName(metadata.Type, "without_system_and_k8s_metrics"),
 			expected:   &Config{AddSystemMetrics: false, AddK8sMetrics: false},
 		},
+		{
+			configPath: "config.yaml",
+			id:         component.NewIDWithName(metadata.Type, "all_and_override"),
+			expected:   &Config{AddSystemMetrics: true, AddK8sMetrics: true, Override: true},
+		},
 	}
 
 	for _, tt := range tests {

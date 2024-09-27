@@ -19,6 +19,7 @@ package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry
 
 import (
 	"context"
+	"strings"
 
 	"github.com/elastic/opentelemetry-lib/remappers/hostmetrics"
 	"github.com/elastic/opentelemetry-lib/remappers/kubernetesmetrics"
@@ -57,10 +58,12 @@ func newProcessor(set processor.Settings, cfg *Config) *ElasticinframetricsProce
 
 // processMetrics processes the given metrics and applies remappers if configured.
 func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmetric.Metrics) (pmetric.Metrics, error) {
+	newmetic := pmetric.NewMetrics()
+	rmnew := newmetic.ResourceMetrics().AppendEmpty()
+	rmscope := rmnew.ScopeMetrics().AppendEmpty()
 	for i := 0; i < md.ResourceMetrics().Len(); i++ {
 		resourceMetric := md.ResourceMetrics().At(i)
 		rm := resourceMetric.Resource()
-
 		for j := 0; j < resourceMetric.ScopeMetrics().Len(); j++ {
 			scopeMetric := resourceMetric.ScopeMetrics().At(j)
 			for _, r := range p.remappers {
@@ -68,5 +71,25 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 			}
 		}
 	}
+
+	if p.cfg.Override {
+		for i := 0; i < md.ResourceMetrics().Len(); i++ {
+			resourceMetric := md.ResourceMetrics().At(i)
+
+			for j := 0; j < resourceMetric.ScopeMetrics().Len(); j++ {
+				scopeMetric := resourceMetric.ScopeMetrics().At(j)
+				for l := 0; l < scopeMetric.Metrics().Len(); l++ {
+					metric := scopeMetric.Metrics().At(l)
+					p.logger.Info("See", zap.String("NAME:", metric.Name()), zap.Int("I:", i), zap.Int("J:", j), zap.Int("L:", l), zap.String("Length:", scopeMetric.Scope().Name()))
+					if strings.HasPrefix(metric.Name(), "kubernetes.pod") {
+						scopeMetric.Metrics().MoveAndAppendTo(rmscope.Metrics())
+					}
+				}
+
+			}
+		}
+		return newmetic, nil
+	}
+
 	return md, nil
 }
