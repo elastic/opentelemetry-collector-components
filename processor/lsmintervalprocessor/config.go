@@ -46,19 +46,9 @@ type Config struct {
 // are or aggregated.
 type PassThrough struct {
 	// Summary is a flag that determines whether summary metrics should
-	// be passed through as they are or aggregated. For merging summaries,
-	// quantiles are not merged but instead the latest observed quantiles
-	// are kept. Summary metrics also don't have a corresponding temporality.
-	// Due to this, the logic to merge sum and count are as follows:
-	//
-	// 1. If start timestamp is not set then assume delta temporality.
-	// 2. If start timestamp is set then merge non-overlapping timeranges
-	//    as delta temporality.
-	// 3. If start timestamp is set then replace the merged summary with
-	//    the latest of the overlapping timeranges.
-	//
-	// For all merges, the start timestamp and timestamp are updated to
-	// include the timerange of all the datapoints covered.
+	// be passed through as they are or aggregated. Since summaries don't
+	// have an associated temporality, we assume that summaries are
+	// always cumulative.
 	Summary bool `mapstructure:"summary"`
 }
 

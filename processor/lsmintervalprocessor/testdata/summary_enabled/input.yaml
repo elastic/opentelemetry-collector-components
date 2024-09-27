@@ -40,6 +40,7 @@ resourceMetrics:
                     - key: aaa
                       value:
                         stringValue: bbb
+                # Only the latest datapoint will be kept, rest all will be ignored.
                 - timeUnixNano: 8000000
                   startTimeUnixNano: 5000000
                   sum: 310
@@ -51,7 +52,6 @@ resourceMetrics:
                     - key: aaa
                       value:
                         stringValue: bbb
-                # Will be ignored as the timerange is conflicting
                 - timeUnixNano: 7000000
                   startTimeUnixNano: 3000000
                   sum: 240

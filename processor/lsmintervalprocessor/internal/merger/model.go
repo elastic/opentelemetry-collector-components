@@ -159,10 +159,8 @@ func (v *Value) MergeMetric(
 			mClone.Summary().DataPoints(),
 			metricID,
 			v.summaryLookup,
-			// We assume summary to be delta temporality by default
-			// but merge summary datapoints based on the timerange
-			// indicated by start timestamp and timestamp.
-			pmetric.AggregationTemporalityDelta,
+			// Assume summary to be cumulative temporality
+			pmetric.AggregationTemporalityCumulative,
 		)
 	case pmetric.MetricTypeHistogram:
 		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
@@ -365,8 +363,11 @@ func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
 			mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
 		case pmetric.HistogramDataPoint:
 			mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
-		case pmetric.SummaryDataPoint:
-			mergeSummaryDP(fromDP, any(toDP).(pmetric.SummaryDataPoint))
+		}
+
+		// Keep the highest timestamp for the aggregated metric
+		if fromDP.Timestamp() > toDP.Timestamp() {
+			toDP.SetTimestamp(fromDP.Timestamp())
 		}
 	}
 }
@@ -377,11 +378,6 @@ func mergeDeltaSumDP(from, to pmetric.NumberDataPoint) {
 		to.SetIntValue(to.IntValue() + from.IntValue())
 	case pmetric.NumberDataPointValueTypeDouble:
 		to.SetDoubleValue(to.DoubleValue() + from.DoubleValue())
-	}
-
-	// Keep the highest timestamp for the aggregated metric
-	if from.Timestamp() > to.Timestamp() {
-		to.SetTimestamp(from.Timestamp())
 	}
 }
 
@@ -408,73 +404,5 @@ func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
 	}
 	for i := 0; i < toCounts.Len(); i++ {
 		toCounts.SetAt(i, fromCounts.At(i)+toCounts.At(i))
-	}
-
-	// Keep the highest timestamp for the aggregated metric
-	if from.Timestamp() > to.Timestamp() {
-		to.SetTimestamp(from.Timestamp())
-	}
-}
-
-// mergeSummary will merge summaries. Since computed quantiles cannot
-// be merged, the latest observed quantiles are kept. Note that this
-// works because as per the summary metric spec: quantile values do
-// not need to represent values observed between start_time_unix_nano
-// and time_unix_nano and are expected to be calculated against recent
-// time windows, typically the last 5-10 minutes.
-//
-// Summary metrics don't have a corresponding temporality. Due to this,
-// the logic utilizes the timerange covered by the datapoint calculated
-// using start timestamp and timestamp to deduce the operation required
-// for the merge (empty start timestamp is considered equal to timestamp):
-//   - If the incoming timerange is a subset of the merged timerange then
-//     drop the incoming timerange as temporality is unknown.
-//   - If the incoming timerange is mutually exclusive with the merged
-//     timerange then add sum and count.
-//   - All other cases, replace with the datapoint that includes the latest
-//     time recorded (highest timestamp value).
-func mergeSummaryDP(from, to pmetric.SummaryDataPoint) {
-	// Handle quantiles
-	if from.Timestamp() > to.Timestamp() {
-		// Since the new value refers to the higher timestamp, replace
-		// all quantile values. Quantiles always refer to the recent time
-		// window and don't need to obey start timestamp or timestamp.
-		// This assumes that the quantiles recorded for a higher timestamp
-		// are fresher than the ones recorded for the lower timestamp.
-		from.QuantileValues().CopyTo(to.QuantileValues())
-	}
-
-	// Handle sum and count
-	if from.StartTimestamp() == 0 && from.StartTimestamp() == to.StartTimestamp() {
-		// Start timestamp is not set, consider delta temporality
-		to.SetCount(from.Count() + to.Count())
-		to.SetSum(from.Sum() + to.Sum())
-		return
-	}
-	if from.Timestamp() > to.Timestamp() {
-		switch {
-		case from.StartTimestamp() >= to.Timestamp():
-			// Either start timestamp is not set at all or the time
-			// range is disjoint.
-			to.SetCount(from.Count() + to.Count())
-			to.SetSum(from.Sum() + to.Sum())
-		default:
-			// Since from is latest and cannot be merged, keep it
-			to.SetCount(from.Count())
-			to.SetSum(from.Sum())
-		}
-	} else if from.Timestamp() <= to.StartTimestamp() {
-		// Merge if disjoint, all other cases prefer merged
-		to.SetCount(from.Count() + to.Count())
-		to.SetSum(from.Sum() + to.Sum())
-	}
-
-	// Update start timestamp to be the lower of the 2 dps
-	if to.StartTimestamp() > from.StartTimestamp() {
-		to.SetStartTimestamp(from.StartTimestamp())
-	}
-	// Keep the highest timestamp for the aggregated metric
-	if from.Timestamp() > to.Timestamp() {
-		to.SetTimestamp(from.Timestamp())
 	}
 }
