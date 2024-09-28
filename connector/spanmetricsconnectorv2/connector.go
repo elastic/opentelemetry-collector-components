@@ -39,6 +39,8 @@ type spanMetrics struct {
 
 	next       consumer.Metrics
 	metricDefs []model.MetricDef
+
+	ephemeralID string
 }
 
 func (sm *spanMetrics) Capabilities() consumer.Capabilities {
@@ -49,7 +51,7 @@ func (sm *spanMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(td.ResourceSpans().Len())
-	aggregator := aggregator.NewAggregator(processedMetrics)
+	aggregator := aggregator.NewAggregator(processedMetrics, sm.ephemeralID)
 	for i := 0; i < td.ResourceSpans().Len(); i++ {
 		resourceSpan := td.ResourceSpans().At(i)
 		resourceAttrs := resourceSpan.Resource().Attributes()

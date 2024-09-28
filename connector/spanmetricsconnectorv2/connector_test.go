@@ -89,6 +89,18 @@ func TestConnector(t *testing.T) {
 				pmetrictest.IgnoreMetricDataPointsOrder(),
 				pmetrictest.IgnoreMetricsOrder(),
 				pmetrictest.IgnoreTimestamp(),
+				pmetrictest.ChangeResourceAttributeValue("spanmetricsv2_ephemeral_id", func(v string) string {
+					// Since ephemeral ID is randomly generated, we only want to check
+					// if it is non-empty. If it is, then we will replace it with const
+					// `random` else we will fail the test. Replacing with random will
+					// always pass the test as it overrides the actual value comparision
+					// for the attribute.
+					if v != "" {
+						return "random"
+					}
+					t.Fatal("ephemeral ID must not be empty")
+					return ""
+				}),
 			))
 		})
 	}
@@ -129,6 +141,11 @@ func BenchmarkConnector(b *testing.B) {
 				Attributes: []config.Attribute{
 					{
 						Key: "http.response.status_code",
+					},
+				},
+				IncludeResourceAttributes: []config.Attribute{
+					{
+						Key: "resource.foo",
 					},
 				},
 				Histogram: config.Histogram{

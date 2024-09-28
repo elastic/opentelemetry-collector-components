@@ -27,7 +27,10 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-const scopeName = "otelcol/spanmetricsconnectorv2"
+const (
+	scopeName            = "otelcol/spanmetricsconnectorv2"
+	ephemeralResourceKey = "spanmetricsv2_ephemeral_id"
+)
 
 // metricUnitToDivider gives a value that could used to divide the
 // nano precision duration to the required unit specified in config.
@@ -42,7 +45,8 @@ var metricUnitToDivider = map[config.MetricUnit]float64{
 // datastructures. The required datastructure is selected using
 // the metric definition.
 type Aggregator struct {
-	result pmetric.Metrics
+	result      pmetric.Metrics
+	ephemeralID string
 	// smLookup maps resourceID against scope metrics since the aggregator
 	// always produces a single scope.
 	smLookup   map[[16]byte]pmetric.ScopeMetrics
@@ -51,12 +55,13 @@ type Aggregator struct {
 }
 
 // NewAggregator creates a new instance of aggregator.
-func NewAggregator(metrics pmetric.Metrics) *Aggregator {
+func NewAggregator(metrics pmetric.Metrics, ephemeralID string) *Aggregator {
 	return &Aggregator{
-		result:     metrics,
-		smLookup:   make(map[[16]byte]pmetric.ScopeMetrics),
-		datapoints: make(map[model.MetricKey]map[[16]byte]map[[16]byte]*aggregatorDP),
-		timestamp:  time.Now(),
+		result:      metrics,
+		ephemeralID: ephemeralID,
+		smLookup:    make(map[[16]byte]pmetric.ScopeMetrics),
+		datapoints:  make(map[model.MetricKey]map[[16]byte]map[[16]byte]*aggregatorDP),
+		timestamp:   time.Now(),
 	}
 }
 
@@ -89,11 +94,16 @@ func (a *Aggregator) Add(
 	}
 	resID := pdatautil.MapHash(resAttrs)
 	if _, ok := a.smLookup[resID]; !ok {
-		rm := a.result.ResourceMetrics().AppendEmpty()
-		resAttrs.CopyTo(rm.Resource().Attributes())
-		sm := rm.ScopeMetrics().AppendEmpty()
-		sm.Scope().SetName(scopeName)
-		a.smLookup[resID] = sm
+		destResourceMetric := a.result.ResourceMetrics().AppendEmpty()
+		destResAttrs := destResourceMetric.Resource().Attributes()
+		destResAttrs.EnsureCapacity(resAttrs.Len() + 1)
+		resAttrs.CopyTo(destResAttrs)
+		if md.EphemeralResourceAttribute {
+			destResAttrs.PutStr(ephemeralResourceKey, a.ephemeralID)
+		}
+		destScopeMetric := destResourceMetric.ScopeMetrics().AppendEmpty()
+		destScopeMetric.Scope().SetName(scopeName)
+		a.smLookup[resID] = destScopeMetric
 	}
 
 	if _, ok := a.datapoints[md.Key]; !ok {

@@ -23,6 +23,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
+	"github.com/google/uuid"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -144,7 +145,7 @@ func TestExplicitBounds(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			actual := pmetric.NewMetrics()
-			agg := NewAggregator(actual)
+			agg := NewAggregator(actual, uuid.NewString())
 			require.NotNil(t, agg)
 			for _, span := range tc.input {
 				duration := time.Duration(span.EndTimestamp() - span.StartTimestamp())

@@ -253,14 +253,34 @@ func TestConfig(t *testing.T) {
 			expected: &Config{
 				Spans: []MetricInfo{
 					{
-						Name:                      "with_resource_attribute_filtering",
-						Description:               "Output with resource attribute filtering",
-						Unit:                      MetricUnitMs,
-						IncludeResourceAttributes: []Attribute{{Key: "resource.foo"}},
-						Histogram: Histogram{
-							Exponential: &ExponentialHistogram{
-								MaxSize: defaultExponentialHistogramMaxSize,
-							},
+						Name:                       "with_resource_attribute_filtering_foo",
+						Description:                "Output with resource attribute filtering on foo",
+						Unit:                       MetricUnitMs,
+						EphemeralResourceAttribute: true,
+						IncludeResourceAttributes:  []Attribute{{Key: "resource.foo"}},
+						Counters: &Counters{
+							SumSuffix:   ".sum",
+							CountSuffix: ".count",
+						},
+					},
+					{
+						Name:                       "with_resource_attribute_filtering_bar",
+						Description:                "Output with resource attribute filtering on bar",
+						Unit:                       MetricUnitMs,
+						EphemeralResourceAttribute: true,
+						IncludeResourceAttributes:  []Attribute{{Key: "resource.bar"}},
+						Counters: &Counters{
+							SumSuffix:   ".sum",
+							CountSuffix: ".count",
+						},
+					},
+					{
+						Name:        "without_resource_attribute_filtering",
+						Description: "Output with no resource attribute filtering",
+						Unit:        MetricUnitMs,
+						Counters: &Counters{
+							SumSuffix:   ".sum",
+							CountSuffix: ".count",
 						},
 					},
 				},

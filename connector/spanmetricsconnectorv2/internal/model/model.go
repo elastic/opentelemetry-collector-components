@@ -28,14 +28,15 @@ type AttributeKeyValue struct {
 }
 
 type MetricDef struct {
-	Key                       MetricKey
-	Unit                      config.MetricUnit
-	IncludeResourceAttributes []AttributeKeyValue
-	Attributes                []AttributeKeyValue
-	ExponentialHistogram      *config.ExponentialHistogram
-	ExplicitHistogram         *config.ExplicitHistogram
-	Summary                   *config.Summary
-	Counters                  *config.Counters
+	Key                        MetricKey
+	Unit                       config.MetricUnit
+	EphemeralResourceAttribute bool
+	IncludeResourceAttributes  []AttributeKeyValue
+	Attributes                 []AttributeKeyValue
+	ExponentialHistogram       *config.ExponentialHistogram
+	ExplicitHistogram          *config.ExplicitHistogram
+	Summary                    *config.Summary
+	Counters                   *config.Counters
 }
 
 type MetricKey struct {

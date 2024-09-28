@@ -1,130 +1,79 @@
 resourceMetrics:
   - resource:
       attributes:
+        - key: resource.bar
+          value:
+            stringValue: bar
         - key: resource.foo
           value:
             stringValue: foo
     scopeMetrics:
       - metrics:
-          - description: Output with resource attribute filtering
-            exponentialHistogram:
+          - description: Output with no resource attribute filtering
+            name: without_resource_attribute_filtering.sum
+            sum:
               aggregationTemporality: 1
               dataPoints:
-                - count: "8"
-                  max: 17000.000468
-                  min: 2.000468
-                  negative: {}
-                  positive:
-                    bucketCounts:
-                      - "1"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "3"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "1"
-                      - "1"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "1"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "1"
-                    offset: 8
-                  scale: 3
-                  sum: 31402.003653999996
+                - asDouble: 31402.003653999996
                   timeUnixNano: "1000000"
-            name: with_resource_attribute_filtering
+          - description: Output with no resource attribute filtering
+            name: without_resource_attribute_filtering.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 8
+                  timeUnixNano: "1000000"
+        scope:
+          name: otelcol/spanmetricsconnectorv2
+  - resource:
+      attributes:
+        - key: resource.bar
+          value:
+            stringValue: bar
+        - key: spanmetricsv2_ephemeral_id
+          value:
+            stringValue: 8100554c-f558-4077-a874-e309d2cda157
+    scopeMetrics:
+      - metrics:
+          - description: Output with resource attribute filtering on bar
+            name: with_resource_attribute_filtering_bar.sum
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 31402.003653999996
+                  timeUnixNano: "1000000"
+          - description: Output with resource attribute filtering on bar
+            name: with_resource_attribute_filtering_bar.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 8
+                  timeUnixNano: "1000000"
+        scope:
+          name: otelcol/spanmetricsconnectorv2
+  - resource:
+      attributes:
+        - key: resource.foo
+          value:
+            stringValue: foo
+        - key: spanmetricsv2_ephemeral_id
+          value:
+            stringValue: 8100554c-f558-4077-a874-e309d2cda157
+    scopeMetrics:
+      - metrics:
+          - description: Output with resource attribute filtering on foo
+            name: with_resource_attribute_filtering_foo.sum
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 31402.003653999996
+                  timeUnixNano: "1000000"
+          - description: Output with resource attribute filtering on foo
+            name: with_resource_attribute_filtering_foo.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 8
+                  timeUnixNano: "1000000"
         scope:
           name: otelcol/spanmetricsconnectorv2
