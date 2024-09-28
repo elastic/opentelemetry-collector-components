@@ -1,23 +1,23 @@
 resourceMetrics:
   - resource:
       attributes:
-        - key: resource.bar
-          value:
-            stringValue: bar
         - key: resource.foo
           value:
             stringValue: foo
+        - key: spanmetricsv2_ephemeral_id
+          value:
+            stringValue: ff294b13-3d4d-48d4-aede-1a3d160b50ba
     scopeMetrics:
       - metrics:
-          - description: Output with no resource attribute filtering
-            name: without_resource_attribute_filtering.sum
+          - description: Output with resource attribute filtering on foo
+            name: with_resource_attribute_filtering_foo.sum
             sum:
               aggregationTemporality: 1
               dataPoints:
                 - asDouble: 31402.003653999996
                   timeUnixNano: "1000000"
-          - description: Output with no resource attribute filtering
-            name: without_resource_attribute_filtering.count
+          - description: Output with resource attribute filtering on foo
+            name: with_resource_attribute_filtering_foo.count
             sum:
               aggregationTemporality: 1
               dataPoints:
@@ -32,7 +32,7 @@ resourceMetrics:
             stringValue: bar
         - key: spanmetricsv2_ephemeral_id
           value:
-            stringValue: 8100554c-f558-4077-a874-e309d2cda157
+            stringValue: ff294b13-3d4d-48d4-aede-1a3d160b50ba
     scopeMetrics:
       - metrics:
           - description: Output with resource attribute filtering on bar
@@ -53,23 +53,23 @@ resourceMetrics:
           name: otelcol/spanmetricsconnectorv2
   - resource:
       attributes:
+        - key: resource.bar
+          value:
+            stringValue: bar
         - key: resource.foo
           value:
             stringValue: foo
-        - key: spanmetricsv2_ephemeral_id
-          value:
-            stringValue: 8100554c-f558-4077-a874-e309d2cda157
     scopeMetrics:
       - metrics:
-          - description: Output with resource attribute filtering on foo
-            name: with_resource_attribute_filtering_foo.sum
+          - description: Output with no resource attribute filtering
+            name: without_resource_attribute_filtering.sum
             sum:
               aggregationTemporality: 1
               dataPoints:
                 - asDouble: 31402.003653999996
                   timeUnixNano: "1000000"
-          - description: Output with resource attribute filtering on foo
-            name: with_resource_attribute_filtering_foo.count
+          - description: Output with no resource attribute filtering
+            name: without_resource_attribute_filtering.count
             sum:
               aggregationTemporality: 1
               dataPoints:
