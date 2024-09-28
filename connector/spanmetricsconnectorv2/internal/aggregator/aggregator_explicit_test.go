@@ -213,11 +213,3 @@ func getTestExplicitHistogram(
 	}
 	return slice
 }
-
-func dataPointCount(ms pmetric.MetricSlice) (count int) {
-	for i := 0; i < ms.Len(); i++ {
-		count += ms.At(i).Histogram().DataPoints().Len()
-		count += ms.At(i).ExponentialHistogram().DataPoints().Len()
-	}
-	return
-}

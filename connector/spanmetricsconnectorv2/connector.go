@@ -31,8 +31,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
-const scopeName = "otelcol/spanmetricsconnectorv2"
-
 type spanMetrics struct {
 	component.StartFunc
 	component.ShutdownFunc
