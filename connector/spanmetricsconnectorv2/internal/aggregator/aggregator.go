@@ -27,6 +27,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
+const scopeName = "otelcol/spanmetricsconnectorv2"
+
 // metricUnitToDivider gives a value that could used to divide the
 // nano precision duration to the required unit specified in config.
 var metricUnitToDivider = map[config.MetricUnit]float64{
@@ -40,14 +42,20 @@ var metricUnitToDivider = map[config.MetricUnit]float64{
 // datastructures. The required datastructure is selected using
 // the metric definition.
 type Aggregator struct {
-	datapoints map[model.MetricKey]map[[16]byte]*aggregatorDP
+	result pmetric.Metrics
+	// smLookup maps resourceID against scope metrics since the aggregator
+	// always produces a single scope.
+	smLookup   map[[16]byte]pmetric.ScopeMetrics
+	datapoints map[model.MetricKey]map[[16]byte]map[[16]byte]*aggregatorDP
 	timestamp  time.Time
 }
 
 // NewAggregator creates a new instance of aggregator.
-func NewAggregator() *Aggregator {
+func NewAggregator(metrics pmetric.Metrics) *Aggregator {
 	return &Aggregator{
-		datapoints: make(map[model.MetricKey]map[[16]byte]*aggregatorDP),
+		result:     metrics,
+		smLookup:   make(map[[16]byte]pmetric.ScopeMetrics),
+		datapoints: make(map[model.MetricKey]map[[16]byte]map[[16]byte]*aggregatorDP),
 		timestamp:  time.Now(),
 	}
 }
@@ -59,7 +67,7 @@ func NewAggregator() *Aggregator {
 // https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling/#adjusted-count
 func (a *Aggregator) Add(
 	md model.MetricDef,
-	srcAttrs pcommon.Map,
+	resAttrs, srcAttrs pcommon.Map,
 	spanDuration time.Duration,
 	adjustedCount uint64,
 ) error {
@@ -67,123 +75,107 @@ func (a *Aggregator) Add(
 		// Nothing to do as the span represents `0` spans
 		return nil
 	}
-	filteredAttrs := pcommon.NewMap()
-	for _, definedAttr := range md.Attributes {
-		if srcAttr, ok := srcAttrs.Get(definedAttr.Key); ok {
-			srcAttr.CopyTo(filteredAttrs.PutEmpty(definedAttr.Key))
-			continue
-		}
-		if definedAttr.DefaultValue.Type() != pcommon.ValueTypeEmpty {
-			definedAttr.DefaultValue.CopyTo(filteredAttrs.PutEmpty(definedAttr.Key))
-		}
-	}
 
+	srcAttrs = getFilteredAttributes(srcAttrs, md.Attributes)
 	// If all the configured attributes are not present in source
 	// metric then don't count them.
-	if filteredAttrs.Len() != len(md.Attributes) {
+	if srcAttrs.Len() != len(md.Attributes) {
 		return nil
+	}
+	attrID := pdatautil.MapHash(srcAttrs)
+
+	if len(md.IncludeResourceAttributes) > 0 {
+		resAttrs = getFilteredAttributes(resAttrs, md.IncludeResourceAttributes)
+	}
+	resID := pdatautil.MapHash(resAttrs)
+	if _, ok := a.smLookup[resID]; !ok {
+		rm := a.result.ResourceMetrics().AppendEmpty()
+		resAttrs.CopyTo(rm.Resource().Attributes())
+		sm := rm.ScopeMetrics().AppendEmpty()
+		sm.Scope().SetName(scopeName)
+		a.smLookup[resID] = sm
 	}
 
 	if _, ok := a.datapoints[md.Key]; !ok {
-		a.datapoints[md.Key] = make(map[[16]byte]*aggregatorDP)
+		a.datapoints[md.Key] = make(map[[16]byte]map[[16]byte]*aggregatorDP)
 	}
-
-	var attrKey [16]byte
-	if filteredAttrs.Len() > 0 {
-		attrKey = pdatautil.MapHash(filteredAttrs)
+	if _, ok := a.datapoints[md.Key][resID]; !ok {
+		a.datapoints[md.Key][resID] = make(map[[16]byte]*aggregatorDP)
 	}
-
-	if _, ok := a.datapoints[md.Key][attrKey]; !ok {
-		a.datapoints[md.Key][attrKey] = newAggregatorDP(md, filteredAttrs)
+	if _, ok := a.datapoints[md.Key][resID][attrID]; !ok {
+		a.datapoints[md.Key][resID][attrID] = newAggregatorDP(md, srcAttrs)
 	}
 	value := float64(spanDuration.Nanoseconds()) / metricUnitToDivider[md.Unit]
-	a.datapoints[md.Key][attrKey].Add(value, adjustedCount)
+	a.datapoints[md.Key][resID][attrID].Add(value, adjustedCount)
 	return nil
 }
 
-// Move moves the metrics for a given metric definition to a metric slice.
-// Note that move also deletes the the cached data after moving.
-func (a *Aggregator) Move(
-	md model.MetricDef,
-	dest pmetric.MetricSlice,
-) {
-	srcDPs, ok := a.datapoints[md.Key]
-	if !ok || len(srcDPs) == 0 {
-		return
+func (a *Aggregator) Finalize(mds []model.MetricDef) {
+	for _, md := range mds {
+		for resID, dpMap := range a.datapoints[md.Key] {
+			metrics := a.smLookup[resID].Metrics()
+			var (
+				destExpHist       pmetric.ExponentialHistogram
+				destExplicitHist  pmetric.Histogram
+				destSummary       pmetric.Summary
+				destCountersSum   pmetric.Sum
+				destCountersCount pmetric.Sum
+			)
+			if md.ExponentialHistogram != nil {
+				destMetric := metrics.AppendEmpty()
+				destMetric.SetName(md.Key.Name)
+				destMetric.SetDescription(md.Key.Description)
+				destExpHist = destMetric.SetEmptyExponentialHistogram()
+				destExpHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+				destExpHist.DataPoints().EnsureCapacity(len(dpMap))
+			}
+			if md.ExplicitHistogram != nil {
+				destMetric := metrics.AppendEmpty()
+				destMetric.SetName(md.Key.Name)
+				destMetric.SetDescription(md.Key.Description)
+				destExplicitHist = destMetric.SetEmptyHistogram()
+				destExplicitHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+				destExplicitHist.DataPoints().EnsureCapacity(len(dpMap))
+			}
+			if md.Summary != nil {
+				destMetric := metrics.AppendEmpty()
+				destMetric.SetName(md.Key.Name)
+				destMetric.SetDescription(md.Key.Description)
+				destSummary = destMetric.SetEmptySummary()
+				destSummary.DataPoints().EnsureCapacity(len(dpMap))
+			}
+			if md.Counters != nil {
+				destMetricSum := metrics.AppendEmpty()
+				// counter metric for sum
+				destMetricSum.SetName(md.Key.Name + md.Counters.SumSuffix)
+				destMetricSum.SetDescription(md.Key.Description)
+				destCountersSum = destMetricSum.SetEmptySum()
+				destCountersSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+				destCountersSum.DataPoints().EnsureCapacity(len(dpMap))
+				// counter metric for count
+				destMetricCount := metrics.AppendEmpty()
+				destMetricCount.SetName(md.Key.Name + md.Counters.CountSuffix)
+				destMetricCount.SetDescription(md.Key.Description)
+				destCountersCount = destMetricCount.SetEmptySum()
+				destCountersCount.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+				destCountersCount.DataPoints().EnsureCapacity(len(dpMap))
+			}
+			for _, dp := range dpMap {
+				dp.Copy(
+					a.timestamp,
+					destExpHist,
+					destExplicitHist,
+					destSummary,
+					destCountersSum,
+					destCountersCount,
+				)
+			}
+		}
+		// If there are two metric defined with the same key required by metricKey
+		// then they will be aggregated within the same histogram and produced
+		// together. Deleting the key ensures this while preventing duplicates.
+		delete(a.datapoints, md.Key)
 	}
-
-	var (
-		destExpHist       pmetric.ExponentialHistogram
-		destExplicitHist  pmetric.Histogram
-		destSummary       pmetric.Summary
-		destCountersSum   pmetric.Sum
-		destCountersCount pmetric.Sum
-	)
-	if md.ExponentialHistogram != nil {
-		destMetric := dest.AppendEmpty()
-		destMetric.SetName(md.Key.Name)
-		destMetric.SetDescription(md.Key.Description)
-		destExpHist = destMetric.SetEmptyExponentialHistogram()
-		destExpHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		destExpHist.DataPoints().EnsureCapacity(len(srcDPs))
-	}
-	if md.ExplicitHistogram != nil {
-		destMetric := dest.AppendEmpty()
-		destMetric.SetName(md.Key.Name)
-		destMetric.SetDescription(md.Key.Description)
-		destExplicitHist = destMetric.SetEmptyHistogram()
-		destExplicitHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		destExplicitHist.DataPoints().EnsureCapacity(len(srcDPs))
-	}
-	if md.Summary != nil {
-		destMetric := dest.AppendEmpty()
-		destMetric.SetName(md.Key.Name)
-		destMetric.SetDescription(md.Key.Description)
-		destSummary = destMetric.SetEmptySummary()
-		destSummary.DataPoints().EnsureCapacity(len(srcDPs))
-	}
-	if md.Counters != nil {
-		destMetricSum := dest.AppendEmpty()
-		// counter metric for sum
-		destMetricSum.SetName(md.Key.Name + md.Counters.SumSuffix)
-		destMetricSum.SetDescription(md.Key.Description)
-		destCountersSum = destMetricSum.SetEmptySum()
-		destCountersSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		destCountersSum.DataPoints().EnsureCapacity(len(srcDPs))
-		// counter metric for count
-		destMetricCount := dest.AppendEmpty()
-		destMetricCount.SetName(md.Key.Name + md.Counters.CountSuffix)
-		destMetricCount.SetDescription(md.Key.Description)
-		destCountersCount = destMetricCount.SetEmptySum()
-		destCountersCount.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		destCountersCount.DataPoints().EnsureCapacity(len(srcDPs))
-	}
-
-	for _, srcDP := range srcDPs {
-		srcDP.Copy(
-			a.timestamp,
-			destExpHist,
-			destExplicitHist,
-			destSummary,
-			destCountersSum,
-			destCountersCount,
-		)
-	}
-
-	// If there are two metric defined with the same key required by metricKey
-	// then they will be aggregated within the same histogram and produced
-	// together. Deleting the key ensures this while preventing duplicates.
-	delete(a.datapoints, md.Key)
-}
-
-// Empty returns true if there are no aggregations available.
-func (a *Aggregator) Empty() bool {
-	return len(a.datapoints) == 0
-}
-
-// Reset resets the aggregator for another usage.
-func (a *Aggregator) Reset() {
-	clear(a.datapoints)
 }
 
 type aggregatorDP struct {
@@ -256,4 +248,18 @@ func (dp *aggregatorDP) Copy(
 			destCountersCount.DataPoints().AppendEmpty(),
 		)
 	}
+}
+
+func getFilteredAttributes(attrs pcommon.Map, filters []model.AttributeKeyValue) pcommon.Map {
+	filteredAttrs := pcommon.NewMap()
+	for _, filter := range filters {
+		if attr, ok := attrs.Get(filter.Key); ok {
+			attr.CopyTo(filteredAttrs.PutEmpty(filter.Key))
+			continue
+		}
+		if filter.DefaultValue.Type() != pcommon.ValueTypeEmpty {
+			filter.DefaultValue.CopyTo(filteredAttrs.PutEmpty(filter.Key))
+		}
+	}
+	return filteredAttrs
 }

@@ -248,6 +248,24 @@ func TestConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			path: "with_include_resource_attributes",
+			expected: &Config{
+				Spans: []MetricInfo{
+					{
+						Name:                      "with_resource_attribute_filtering",
+						Description:               "Output with resource attribute filtering",
+						Unit:                      MetricUnitMs,
+						IncludeResourceAttributes: []Attribute{{Key: "resource.foo"}},
+						Histogram: Histogram{
+							Exponential: &ExponentialHistogram{
+								MaxSize: defaultExponentialHistogramMaxSize,
+							},
+						},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			dir := filepath.Join("../testdata", tc.path)

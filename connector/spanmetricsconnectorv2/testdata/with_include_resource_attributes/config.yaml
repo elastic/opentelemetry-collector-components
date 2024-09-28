@@ -1,0 +1,6 @@
+spanmetricsv2:
+  spans:
+    - name: with_resource_attribute_filtering
+      description: Output with resource attribute filtering
+      include_resource_attributes:
+        - key: resource.foo

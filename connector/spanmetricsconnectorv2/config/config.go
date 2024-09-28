@@ -138,13 +138,17 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 
 // MetricInfo for a data type
 type MetricInfo struct {
-	Name        string      `mapstructure:"name"`
-	Description string      `mapstructure:"description"`
-	Attributes  []Attribute `mapstructure:"attributes"`
-	Unit        MetricUnit  `mapstructure:"unit"`
-	Histogram   Histogram   `mapstructure:"histogram"`
-	Summary     *Summary    `mapstructure:"summary"`
-	Counters    *Counters   `mapstructure:"counters"`
+	Name        string `mapstructure:"name"`
+	Description string `mapstructure:"description"`
+	// IncludeResourceAttributes is a list of resource attributes that
+	// needs to be included in the generated metric. If no resource
+	// attribute is included in the list then all attributes are included.
+	IncludeResourceAttributes []Attribute `mapstructure:"include_resource_attributes"`
+	Attributes                []Attribute `mapstructure:"attributes"`
+	Unit                      MetricUnit  `mapstructure:"unit"`
+	Histogram                 Histogram   `mapstructure:"histogram"`
+	Summary                   *Summary    `mapstructure:"summary"`
+	Counters                  *Counters   `mapstructure:"counters"`
 }
 
 // noAggregatorDefined returns true if none of the required
