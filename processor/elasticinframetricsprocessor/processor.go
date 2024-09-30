@@ -77,11 +77,14 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 		rmscope := rmnew.ScopeMetrics().AppendEmpty()
 		for i := 0; i < md.ResourceMetrics().Len(); i++ {
 			resourceMetric := md.ResourceMetrics().At(i)
-
 			for j := 0; j < resourceMetric.ScopeMetrics().Len(); j++ {
+				//We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
+				resourceMetric.Resource().Attributes().CopyTo(rmnew.Resource().Attributes())
 				scopeMetric := resourceMetric.ScopeMetrics().At(j)
+				// Iterate over the metrics
 				for l := 0; l < scopeMetric.Metrics().Len(); l++ {
 					metric := scopeMetric.Metrics().At(l)
+
 					if metric.Type().String() == "Gauge" {
 						for m := 0; m < metric.Gauge().DataPoints().Len(); m++ {
 							if oTelRemappedLabel, ok := metric.Gauge().DataPoints().At(m).Attributes().Get(OTelRemappedLabel); ok {
@@ -94,6 +97,7 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 						for m := 0; m < metric.Sum().DataPoints().Len(); m++ {
 							if oTelRemappedLabel, ok := metric.Sum().DataPoints().At(m).Attributes().Get(OTelRemappedLabel); ok {
 								if oTelRemappedLabel.Bool() {
+									resourceMetric.Resource().Attributes().CopyTo(rmnew.Resource().Attributes())
 									metric.CopyTo(rmscope.Metrics().AppendEmpty())
 								}
 							}
