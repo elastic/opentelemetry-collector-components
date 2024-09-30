@@ -72,14 +72,14 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 	// override=True will keep only the metrics that have been remapped based on the presense of OTelRemappedLabel label.
 	// See  https://github.com/elastic/opentelemetry-lib/blob/6d89cbad4221429570107eb4a4968cf8a2ff919f/remappers/common/const.go#L31
 	if p.cfg.Override {
-		newmetic := pmetric.NewMetrics()
-		rmnew := newmetic.ResourceMetrics().AppendEmpty()
-		rmscope := rmnew.ScopeMetrics().AppendEmpty()
+		newMetic := pmetric.NewMetrics()
+		rmNew := newMetic.ResourceMetrics().AppendEmpty()
+		rmScope := rmNew.ScopeMetrics().AppendEmpty()
 		for i := 0; i < md.ResourceMetrics().Len(); i++ {
 			resourceMetric := md.ResourceMetrics().At(i)
 			for j := 0; j < resourceMetric.ScopeMetrics().Len(); j++ {
 				//We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
-				resourceMetric.Resource().Attributes().CopyTo(rmnew.Resource().Attributes())
+				resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
 				scopeMetric := resourceMetric.ScopeMetrics().At(j)
 				// Iterate over the metrics
 				for l := 0; l < scopeMetric.Metrics().Len(); l++ {
@@ -89,7 +89,7 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 						for m := 0; m < metric.Gauge().DataPoints().Len(); m++ {
 							if oTelRemappedLabel, ok := metric.Gauge().DataPoints().At(m).Attributes().Get(OTelRemappedLabel); ok {
 								if oTelRemappedLabel.Bool() {
-									metric.CopyTo(rmscope.Metrics().AppendEmpty())
+									metric.CopyTo(rmScope.Metrics().AppendEmpty())
 								}
 							}
 						}
@@ -97,8 +97,8 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 						for m := 0; m < metric.Sum().DataPoints().Len(); m++ {
 							if oTelRemappedLabel, ok := metric.Sum().DataPoints().At(m).Attributes().Get(OTelRemappedLabel); ok {
 								if oTelRemappedLabel.Bool() {
-									resourceMetric.Resource().Attributes().CopyTo(rmnew.Resource().Attributes())
-									metric.CopyTo(rmscope.Metrics().AppendEmpty())
+									resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
+									metric.CopyTo(rmScope.Metrics().AppendEmpty())
 								}
 							}
 						}
@@ -107,7 +107,7 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 				}
 			}
 		}
-		return newmetic, nil
+		return newMetic, nil
 	}
 
 	return md, nil
