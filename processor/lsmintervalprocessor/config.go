@@ -29,9 +29,9 @@ type Config struct {
 	// Directory is the data directory used by the database to store files.
 	// If the directory is empty in-memory storage is used.
 	Directory string `mapstructure:"directory"`
-	// PassThrough is a configuration that determines whether gauge and
-	// summary metrics should be passed through as they are or aggregated.
-	// This is because they lead to lossy aggregations.
+	// PassThrough is a configuration that determines whether summary
+	// metrics should be passed through as they are or aggregated. This
+	// is because they lead to lossy aggregations.
 	PassThrough PassThrough `mapstructure:"pass_through"`
 	// Intervals is a list of interval configuration that the processor
 	// will aggregate over. The interval duration must be in increasing
