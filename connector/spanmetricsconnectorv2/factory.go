@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
@@ -57,6 +58,10 @@ func createTracesToMetrics(
 
 	metricDefs := make([]model.MetricDef, 0, len(c.Spans))
 	for _, info := range c.Spans {
+		resAttrs, err := parseAttributeConfigs(info.IncludeResourceAttributes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse resource attribute config: %w", err)
+		}
 		attrs, err := parseAttributeConfigs(info.Attributes)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse attribute config: %w", err)
@@ -66,19 +71,22 @@ func createTracesToMetrics(
 				Name:        info.Name,
 				Description: info.Description,
 			},
-			Unit:                 info.Unit,
-			Attributes:           attrs,
-			ExplicitHistogram:    info.Histogram.Explicit,
-			ExponentialHistogram: info.Histogram.Exponential,
-			Summary:              info.Summary,
-			Counters:             info.Counters,
+			Unit:                       info.Unit,
+			EphemeralResourceAttribute: info.EphemeralResourceAttribute,
+			IncludeResourceAttributes:  resAttrs,
+			Attributes:                 attrs,
+			ExplicitHistogram:          info.Histogram.Explicit,
+			ExponentialHistogram:       info.Histogram.Exponential,
+			Summary:                    info.Summary,
+			Counters:                   info.Counters,
 		}
 		metricDefs = append(metricDefs, md)
 	}
 
 	return &spanMetrics{
-		next:       nextConsumer,
-		metricDefs: metricDefs,
+		next:        nextConsumer,
+		metricDefs:  metricDefs,
+		ephemeralID: uuid.NewString(),
 	}, nil
 }
 

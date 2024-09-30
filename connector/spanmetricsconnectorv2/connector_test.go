@@ -24,6 +24,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
+	"github.com/google/uuid"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
@@ -50,6 +51,7 @@ func TestConnector(t *testing.T) {
 		"with_identical_metric_name_desc_different_attrs",
 		"with_summary",
 		"with_counters",
+		"with_include_resource_attributes",
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -82,9 +84,22 @@ func TestConnector(t *testing.T) {
 
 			require.NoError(t, connector.ConsumeTraces(ctx, inputTraces))
 			require.Len(t, next.AllMetrics(), 1)
+			// Assert that ephemeral ID
 			assert.NoError(t, pmetrictest.CompareMetrics(
 				expectedMetrics,
 				next.AllMetrics()[0],
+				pmetrictest.ChangeResourceAttributeValue("spanmetricsv2_ephemeral_id", func(v string) string {
+					// Since ephemeral ID is randomly generated, we only want to check
+					// if it is a non-empty valid v4 UUID. If it is, then we will replace
+					// it with const `random` else we will fail the test. Replacing with
+					// random will always pass the test as it overrides the actual value
+					// comparision for the attribute.
+					if _, err := uuid.Parse(v); err != nil {
+						t.Fatal("ephemeral ID must be non-empty valid v4 UUID")
+						return ""
+					}
+					return "random"
+				}),
 				pmetrictest.IgnoreMetricDataPointsOrder(),
 				pmetrictest.IgnoreMetricsOrder(),
 				pmetrictest.IgnoreTimestamp(),
@@ -128,6 +143,11 @@ func BenchmarkConnector(b *testing.B) {
 				Attributes: []config.Attribute{
 					{
 						Key: "http.response.status_code",
+					},
+				},
+				IncludeResourceAttributes: []config.Attribute{
+					{
+						Key: "resource.foo",
 					},
 				},
 				Histogram: config.Histogram{
