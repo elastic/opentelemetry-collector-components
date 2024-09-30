@@ -4,9 +4,12 @@ resourceMetrics:
         - key: asdf
           value:
             stringValue: foo
-        - key: metricset.interval
+        - key: custom_res_attr
           value:
-            stringValue: 1s
+            stringValue: res
+        - key: dependent_attr
+          value:
+            stringValue: bbb-dependent
     schemaUrl: https://test-res-schema.com/schema
     scopeMetrics:
       - metrics:
@@ -17,6 +20,9 @@ resourceMetrics:
                     - key: aaa
                       value:
                         stringValue: bbb
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
                   bucketCounts:
                     - "25"
                     - "15"
@@ -30,11 +36,14 @@ resourceMetrics:
                     - 1
                     - 10
                     - 100
-                  timeUnixNano: "80"
+                  timeUnixNano: "1000000"
             name: delta.histogram.test
         schemaUrl: https://test-scope-schema.com/schema
         scope:
           attributes:
+            - key: custom_scope_attr
+              value:
+                stringValue: scope
             - key: foo
               value:
                 stringValue: bar

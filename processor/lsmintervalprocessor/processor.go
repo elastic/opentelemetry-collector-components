@@ -26,6 +26,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/vfs"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -47,7 +48,7 @@ type Processor struct {
 	dbOpts  *pebble.Options
 	wOpts   *pebble.WriteOptions
 
-	intervals []time.Duration
+	intervals []intervalDef
 	next      consumer.Metrics
 
 	mu             sync.Mutex
@@ -60,7 +61,7 @@ type Processor struct {
 	logger        *zap.Logger
 }
 
-func newProcessor(cfg *Config, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
+func newProcessor(dataDir string, ivlDefs []intervalDef, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
 	dbOpts := &pebble.Options{
 		Merger: &pebble.Merger{
 			Name: "pmetrics_merger",
@@ -73,7 +74,6 @@ func newProcessor(cfg *Config, log *zap.Logger, next consumer.Metrics) (*Process
 			},
 		},
 	}
-	dataDir := cfg.Directory
 	writeOpts := pebble.Sync
 	if dataDir == "" {
 		log.Info("no directory specified, switching to in-memory mode")
@@ -88,9 +88,9 @@ func newProcessor(cfg *Config, log *zap.Logger, next consumer.Metrics) (*Process
 		dataDir:        dataDir,
 		dbOpts:         dbOpts,
 		wOpts:          writeOpts,
-		intervals:      cfg.Intervals,
+		intervals:      ivlDefs,
 		next:           next,
-		processingTime: time.Now().UTC().Truncate(cfg.Intervals[0]),
+		processingTime: time.Now().UTC().Truncate(ivlDefs[0].Duration),
 		ctx:            ctx,
 		cancel:         cancel,
 		logger:         log,
@@ -114,7 +114,7 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 
 	go func() {
 		defer close(p.exportStopped)
-		to := p.processingTime.Add(p.intervals[0])
+		to := p.processingTime.Add(p.intervals[0].Duration)
 		timer := time.NewTimer(time.Until(to))
 		defer timer.Stop()
 
@@ -136,7 +136,7 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 				p.logger.Warn("failed to export", zap.Error(err), zap.Time("end_time", to))
 			}
 
-			to = to.Add(p.intervals[0])
+			to = to.Add(p.intervals[0].Duration)
 			timer.Reset(time.Until(to))
 		}
 	}()
@@ -179,10 +179,10 @@ func (p *Processor) Shutdown(ctx context.Context) error {
 			// At any particular time there will be 1 export candidate for
 			// each aggregation interval. We will align the end time and
 			// process each of these.
-			to := p.processingTime.Truncate(ivl).Add(ivl)
+			to := p.processingTime.Truncate(ivl.Duration).Add(ivl.Duration)
 			if err := p.export(ctx, to); err != nil {
 				errs = append(errs, fmt.Errorf(
-					"failed to export metrics for interval %s: %w", ivl, err),
+					"failed to export metrics for interval %s: %w", ivl.Duration, err),
 				)
 			}
 		}
@@ -243,10 +243,10 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	for i, ivl := range p.intervals {
 		// TODO (lahsivjar): If key ends up being independent of any other dimensions
 		// then we can simply cache the marshaled key while updating them on each harvest
-		key := merger.NewKey(ivl, p.processingTime)
+		key := merger.NewKey(ivl.Duration, p.processingTime)
 		keys[i], err = key.Marshal()
 		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl, err))
+			errs = append(errs, fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err))
 			continue
 		}
 	}
@@ -312,15 +312,15 @@ func (p *Processor) export(ctx context.Context, end time.Time) error {
 	var errs []error
 	for _, ivl := range p.intervals {
 		// Check if the given aggregation interval needs to be exported now
-		if end.Truncate(ivl).Equal(end) {
+		if end.Truncate(ivl.Duration).Equal(end) {
 			exportedCount, err := p.exportForInterval(ctx, snap, end, ivl)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("failed to export interval %s for end time %d: %w", ivl, end.Unix(), err))
+				errs = append(errs, fmt.Errorf("failed to export interval %s for end time %d: %w", ivl.Duration, end.Unix(), err))
 			}
 			p.logger.Debug(
 				"Finished exporting metrics",
 				zap.Int("exported_datapoints", exportedCount),
-				zap.Duration("interval", ivl),
+				zap.Duration("interval", ivl.Duration),
 				zap.Time("exported_till(exclusive)", end),
 				zap.Error(err),
 			)
@@ -333,15 +333,15 @@ func (p *Processor) exportForInterval(
 	ctx context.Context,
 	snap *pebble.Snapshot,
 	end time.Time,
-	ivl time.Duration,
+	ivl intervalDef,
 ) (int, error) {
-	from := merger.NewKey(ivl, zeroTime)
+	from := merger.NewKey(ivl.Duration, zeroTime)
 	lb, err := from.Marshal()
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode range: %w", err)
 	}
 
-	to := merger.NewKey(ivl, end)
+	to := merger.NewKey(ivl.Duration, end)
 	ub, err := to.Marshal()
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode range: %w", err)
@@ -359,16 +359,59 @@ func (p *Processor) exportForInterval(
 
 	var errs []error
 	var exportedDPCount int
-	ivlStr := formatDuration(ivl)
 	for iter.First(); iter.Valid(); iter.Next() {
 		var v merger.Value
 		if err := v.UnmarshalProto(iter.Value()); err != nil {
 			errs = append(errs, fmt.Errorf("failed to decode binary from database: %w", err))
 			continue
 		}
-		for i := 0; i < v.Metrics.ResourceMetrics().Len(); i++ {
-			res := v.Metrics.ResourceMetrics().At(i)
-			res.Resource().Attributes().PutStr("metricset.interval", ivlStr)
+		resourceMetrics := v.Metrics.ResourceMetrics()
+		if ivl.Statements != nil {
+			for i := 0; i < resourceMetrics.Len(); i++ {
+				res := resourceMetrics.At(i)
+				scopeMetrics := res.ScopeMetrics()
+				for j := 0; j < scopeMetrics.Len(); j++ {
+					scope := scopeMetrics.At(j)
+					metrics := scope.Metrics()
+					for k := 0; k < metrics.Len(); k++ {
+						metric := metrics.At(k)
+						executeTransform := func(dp any) {
+							dCtx := ottldatapoint.NewTransformContext(dp, metric, metrics, scope.Scope(), res.Resource(), scope, res)
+							if err := ivl.Statements.Execute(ctx, dCtx); err != nil {
+								errs = append(errs, fmt.Errorf("failed to execute ottl statement for interval %s: %w", ivl.Duration, err))
+							}
+						}
+						// TODO (lahsivjar): add exhaustive:enforce lint rule
+						switch metric.Type() {
+						case pmetric.MetricTypeGauge:
+							dps := metric.Gauge().DataPoints()
+							for l := 0; l < dps.Len(); l++ {
+								executeTransform(dps.At(l))
+							}
+						case pmetric.MetricTypeSum:
+							dps := metric.Sum().DataPoints()
+							for l := 0; l < dps.Len(); l++ {
+								executeTransform(dps.At(l))
+							}
+						case pmetric.MetricTypeSummary:
+							dps := metric.Summary().DataPoints()
+							for l := 0; l < dps.Len(); l++ {
+								executeTransform(dps.At(l))
+							}
+						case pmetric.MetricTypeHistogram:
+							dps := metric.Histogram().DataPoints()
+							for l := 0; l < dps.Len(); l++ {
+								executeTransform(dps.At(l))
+							}
+						case pmetric.MetricTypeExponentialHistogram:
+							dps := metric.ExponentialHistogram().DataPoints()
+							for l := 0; l < dps.Len(); l++ {
+								executeTransform(dps.At(l))
+							}
+						}
+					}
+				}
+			}
 		}
 		if err := p.next.ConsumeMetrics(ctx, v.Metrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
@@ -383,11 +426,4 @@ func (p *Processor) exportForInterval(
 		return exportedDPCount, errors.Join(errs...)
 	}
 	return exportedDPCount, nil
-}
-
-func formatDuration(d time.Duration) string {
-	if duration := d.Minutes(); duration >= 1 {
-		return fmt.Sprintf("%.0fm", duration)
-	}
-	return fmt.Sprintf("%.0fs", d.Seconds())
 }

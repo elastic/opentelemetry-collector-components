@@ -211,6 +211,43 @@ func TestConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			path: "with_counters",
+			expected: &Config{
+				Spans: []MetricInfo{
+					{
+						Name:        "http.trace.span.counter",
+						Description: "Counters for HTTP spans with default metric suffixes",
+						Unit:        MetricUnitMs,
+						Attributes:  []Attribute{{Key: "http.response.status_code"}},
+						Counters: &Counters{
+							SumSuffix:   ".sum",
+							CountSuffix: ".count",
+						},
+					},
+					{
+						Name:        "db.trace.span.counter",
+						Description: "Counters for DB spans with default metric suffixes",
+						Unit:        MetricUnitMs,
+						Attributes:  []Attribute{{Key: "db.system"}},
+						Counters: &Counters{
+							SumSuffix:   ".sum",
+							CountSuffix: ".count",
+						},
+					},
+					{
+						Name:        "msg.trace.span.counter",
+						Description: "Counters for messaging spans with custom metric suffixes",
+						Unit:        MetricUnitUs,
+						Attributes:  []Attribute{{Key: "messaging.system"}},
+						Counters: &Counters{
+							SumSuffix:   ".sum.us",
+							CountSuffix: ".count",
+						},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			dir := filepath.Join("../testdata", tc.path)

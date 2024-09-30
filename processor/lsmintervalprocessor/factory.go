@@ -27,6 +27,9 @@ import (
 	"go.opentelemetry.io/collector/processor"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs"
 )
 
 // NewFactory returns a new factory for the Metrics Generation processor.
@@ -39,15 +42,58 @@ func NewFactory() processor.Factory {
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		Intervals: []time.Duration{60 * time.Second},
+		Intervals: []IntervalConfig{
+			{Duration: 60 * time.Second},
+		},
 	}
 }
 
-func createMetricsProcessor(_ context.Context, set processor.Settings, cfg component.Config, nextConsumer consumer.Metrics) (processor.Metrics, error) {
+func createMetricsProcessor(
+	_ context.Context,
+	set processor.Settings,
+	cfg component.Config,
+	nextConsumer consumer.Metrics,
+) (processor.Metrics, error) {
 	processorConfig, ok := cfg.(*Config)
 	if !ok {
 		return nil, fmt.Errorf("configuration parsing error")
 	}
 
-	return newProcessor(processorConfig, set.Logger, nextConsumer)
+	intervalDefs := make([]intervalDef, 0, len(processorConfig.Intervals))
+	for _, ivl := range processorConfig.Intervals {
+		ivlDef := intervalDef{Duration: ivl.Duration}
+		if len(ivl.Statements) > 0 {
+			parser, err := ottldatapoint.NewParser(
+				ottlfuncs.StandardFuncs[ottldatapoint.TransformContext](),
+				set.TelemetrySettings,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to create ottl parser for interval %s: %w",
+					ivl.Duration, err,
+				)
+			}
+			statements, err := parser.ParseStatements(ivl.Statements)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to parse ottl statements for interval %s: %w",
+					ivl.Duration, err,
+				)
+			}
+			statementSeqs := ottldatapoint.NewStatementSequence(
+				statements,
+				set.TelemetrySettings,
+				ottldatapoint.WithStatementSequenceErrorMode(ottl.PropagateError),
+			)
+			ivlDef.Statements = &statementSeqs
+		}
+		intervalDefs = append(intervalDefs, ivlDef)
+	}
+
+	return newProcessor(processorConfig.Directory, intervalDefs, set.Logger, nextConsumer)
+}
+
+type intervalDef struct {
+	Duration   time.Duration
+	Statements *ottl.StatementSequence[ottldatapoint.TransformContext]
 }
