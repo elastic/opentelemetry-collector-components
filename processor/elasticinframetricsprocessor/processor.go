@@ -19,7 +19,6 @@ package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry
 
 import (
 	"context"
-	"strings"
 
 	"github.com/elastic/opentelemetry-lib/remappers/hostmetrics"
 	"github.com/elastic/opentelemetry-lib/remappers/kubernetesmetrics"
@@ -28,6 +27,8 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 )
+
+const OTelRemappedLabel = "otel_remapped"
 
 // remapper interface defines the Remap method that should be implemented by different remappers
 type remapper interface {
@@ -58,9 +59,6 @@ func newProcessor(set processor.Settings, cfg *Config) *ElasticinframetricsProce
 
 // processMetrics processes the given metrics and applies remappers if configured.
 func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmetric.Metrics) (pmetric.Metrics, error) {
-	newmetic := pmetric.NewMetrics()
-	rmnew := newmetic.ResourceMetrics().AppendEmpty()
-	rmscope := rmnew.ScopeMetrics().AppendEmpty()
 	for i := 0; i < md.ResourceMetrics().Len(); i++ {
 		resourceMetric := md.ResourceMetrics().At(i)
 		rm := resourceMetric.Resource()
@@ -71,8 +69,12 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 			}
 		}
 	}
-
+	// override=True will keep only the metrics that have been remapped based on the presense of OTelRemappedLabel label.
+	// See  https://github.com/elastic/opentelemetry-lib/blob/6d89cbad4221429570107eb4a4968cf8a2ff919f/remappers/common/const.go#L31
 	if p.cfg.Override {
+		newmetic := pmetric.NewMetrics()
+		rmnew := newmetic.ResourceMetrics().AppendEmpty()
+		rmscope := rmnew.ScopeMetrics().AppendEmpty()
 		for i := 0; i < md.ResourceMetrics().Len(); i++ {
 			resourceMetric := md.ResourceMetrics().At(i)
 
@@ -80,12 +82,25 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 				scopeMetric := resourceMetric.ScopeMetrics().At(j)
 				for l := 0; l < scopeMetric.Metrics().Len(); l++ {
 					metric := scopeMetric.Metrics().At(l)
-					p.logger.Info("See", zap.String("NAME:", metric.Name()), zap.Int("I:", i), zap.Int("J:", j), zap.Int("L:", l), zap.String("Length:", scopeMetric.Scope().Name()))
-					if strings.HasPrefix(metric.Name(), "kubernetes.pod") {
-						scopeMetric.Metrics().MoveAndAppendTo(rmscope.Metrics())
+					if metric.Type().String() == "Gauge" {
+						for m := 0; m < metric.Gauge().DataPoints().Len(); m++ {
+							if oTelRemappedLabel, ok := metric.Gauge().DataPoints().At(m).Attributes().Get(OTelRemappedLabel); ok {
+								if oTelRemappedLabel.Bool() {
+									metric.CopyTo(rmscope.Metrics().AppendEmpty())
+								}
+							}
+						}
+					} else if metric.Type().String() == "Sum" {
+						for m := 0; m < metric.Sum().DataPoints().Len(); m++ {
+							if oTelRemappedLabel, ok := metric.Sum().DataPoints().At(m).Attributes().Get(OTelRemappedLabel); ok {
+								if oTelRemappedLabel.Bool() {
+									metric.CopyTo(rmscope.Metrics().AppendEmpty())
+								}
+							}
+						}
 					}
-				}
 
+				}
 			}
 		}
 		return newmetic, nil
