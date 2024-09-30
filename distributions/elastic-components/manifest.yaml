@@ -23,7 +23,6 @@ processors:
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.109.0
-  
 
 # workaround known issue https://github.com/open-telemetry/opentelemetry-collector/releases/tag/v0.109.0
 providers:
