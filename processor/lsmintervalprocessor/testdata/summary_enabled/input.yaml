@@ -1,0 +1,65 @@
+resourceMetrics:
+  - schemaUrl: https://test-res-schema.com/schema
+    resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+    scopeMetrics:
+      - schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          name: MyTestInstrument
+          version: "1.2.3"
+          attributes:
+            - key: foo
+              value:
+                stringValue: bar
+        metrics:
+          - name: summary.test
+            summary:
+              dataPoints:
+                - timeUnixNano: 5000000
+                  startTimeUnixNano: 4000000
+                  sum: 199
+                  count: 20
+                  quantileValues:
+                    - quantile: 0.95
+                      value: 10
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                - timeUnixNano: 2000000
+                  startTimeUnixNano: 1000000
+                  sum: 95
+                  count: 5
+                  quantileValues:
+                    - quantile: 0.95
+                      value: 5
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                # Only the latest datapoint will be kept, rest all will be ignored.
+                - timeUnixNano: 8000000
+                  startTimeUnixNano: 5000000
+                  sum: 310
+                  count: 25
+                  quantileValues:
+                    - quantile: 0.95
+                      value: 15
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                - timeUnixNano: 7000000
+                  startTimeUnixNano: 3000000
+                  sum: 240
+                  count: 35
+                  quantileValues:
+                    - quantile: 0.95
+                      value: 13
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb

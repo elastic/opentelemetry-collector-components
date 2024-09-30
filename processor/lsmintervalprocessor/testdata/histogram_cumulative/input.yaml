@@ -19,7 +19,7 @@ resourceMetrics:
             histogram:
               aggregationTemporality: 2
               dataPoints:
-                - timeUnixNano: 50
+                - timeUnixNano: 5000000
                   explicitBounds: [0.01, 0.1, 1, 10, 100]
                   bucketCounts: [9, 4, 7, 9, 6, 25]
                   attributes:
@@ -28,7 +28,7 @@ resourceMetrics:
                         stringValue: bbb
                 # This data point is out of order
                 # The aggregator should ignore it since the first data point has a newer timestamp
-                - timeUnixNano: 20
+                - timeUnixNano: 2000000
                   explicitBounds: [0.01, 0.1, 1, 10, 100]
                   bucketCounts: [5, 2, 3, 7, 4, 20]
                   attributes:
@@ -36,7 +36,7 @@ resourceMetrics:
                       value:
                         stringValue: bbb
                 # This one is the newest, so it should be the one stored
-                - timeUnixNano: 80
+                - timeUnixNano: 8000000
                   explicitBounds: [0.01, 0.1, 1, 10, 100]
                   bucketCounts: [11, 9, 12, 17, 8, 34]
                   attributes:

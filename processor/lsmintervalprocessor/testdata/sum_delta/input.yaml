@@ -20,7 +20,7 @@ resourceMetrics:
               aggregationTemporality: 1
               isMonotonic: true
               dataPoints:
-                - timeUnixNano: 50
+                - timeUnixNano: 5000000
                   asDouble: 333
                   attributes:
                     - key: aaa
@@ -28,14 +28,14 @@ resourceMetrics:
                         stringValue: bbb
                 # This data point is out of order
                 # The aggregator should ignore it since the first data point has a newer timestamp
-                - timeUnixNano: 20
+                - timeUnixNano: 2000000
                   asDouble: 222
                   attributes:
                     - key: aaa
                       value:
                         stringValue: bbb
                 # This one is the newest, so it should be the one stored
-                - timeUnixNano: 80
+                - timeUnixNano: 8000000
                   asDouble: 444
                   attributes:
                     - key: aaa
