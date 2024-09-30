@@ -67,12 +67,9 @@ func TestAggregation(t *testing.T) {
 					},
 				},
 			},
-			PassThrough: func() (pc PassThrough) {
-				if tc.passThrough {
-					pc.Summary = true
-				}
-				return
-			}(),
+			PassThrough: PassThrough{
+				Summary: tc.passThrough,
+			},
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
