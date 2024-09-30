@@ -120,10 +120,10 @@ func (a *Aggregator) Add(
 	return nil
 }
 
-// Finalize finalizezs the aggregations performed by the aggregator so far into
-// the pmetric.Metrics used to create this instance of the aggregator. The current
-// design of aggregator is not meant to be used once and should not be used after
-// Finalize is called.
+// Finalize finalizes the aggregations performed by the aggregator so far into
+// the pmetric.Metrics used to create this instance of the aggregator. Finalize
+// should be called once per aggregator instance and the aggregator instance
+// should not be used after Finalize is called.
 func (a *Aggregator) Finalize(mds []model.MetricDef) {
 	for _, md := range mds {
 		for resID, dpMap := range a.datapoints[md.Key] {
