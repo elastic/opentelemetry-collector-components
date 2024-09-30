@@ -20,7 +20,7 @@ package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry
 type Config struct {
 	AddSystemMetrics bool `mapstructure:"add_system_metrics"`
 	AddK8sMetrics    bool `mapstructure:"add_k8s_metrics"`
-	Override         bool `mapstructure:"override"`
+	DropOriginal     bool `mapstructure:"drop_original"`
 }
 
 func (c *Config) Validate() error {

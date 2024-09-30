@@ -61,8 +61,8 @@ func TestLoadConfig(t *testing.T) {
 		},
 		{
 			configPath: "config.yaml",
-			id:         component.NewIDWithName(metadata.Type, "all_and_override"),
-			expected:   &Config{AddSystemMetrics: true, AddK8sMetrics: true, Override: true},
+			id:         component.NewIDWithName(metadata.Type, "all_and_drop_original"),
+			expected:   &Config{AddSystemMetrics: true, AddK8sMetrics: true, DropOriginal: true},
 		},
 	}
 

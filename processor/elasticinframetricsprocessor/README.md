@@ -33,5 +33,5 @@ processors:
     # Defines if all Metrics -both initial and remapped- are going to be kept. 
     # If enabled, then only the remapped metrics are ingested. 
     # default = false
-    override : {true,false}
+    drop_original : {true,false}
 ```

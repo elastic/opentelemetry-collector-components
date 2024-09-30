@@ -59,43 +59,45 @@ func newProcessor(set processor.Settings, cfg *Config) *ElasticinframetricsProce
 
 // processMetrics processes the given metrics and applies remappers if configured.
 func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmetric.Metrics) (pmetric.Metrics, error) {
-	for i := 0; i < md.ResourceMetrics().Len(); i++ {
-		resourceMetric := md.ResourceMetrics().At(i)
+	for resIndex := range md.ResourceMetrics().Len() {
+		resourceMetric := md.ResourceMetrics().At(resIndex)
 		rm := resourceMetric.Resource()
-		for j := 0; j < resourceMetric.ScopeMetrics().Len(); j++ {
-			scopeMetric := resourceMetric.ScopeMetrics().At(j)
+		for scopeIndex := range resourceMetric.ScopeMetrics().Len() {
+			scopeMetric := resourceMetric.ScopeMetrics().At(scopeIndex)
 			for _, r := range p.remappers {
 				r.Remap(scopeMetric, scopeMetric.Metrics(), rm)
 			}
 		}
 	}
-	// override=True will keep only the metrics that have been remapped based on the presense of OTelRemappedLabel label.
+	// drop_original=true will keep only the metrics that have been remapped based on the presense of OTelRemappedLabel label.
 	// See  https://github.com/elastic/opentelemetry-lib/blob/6d89cbad4221429570107eb4a4968cf8a2ff919f/remappers/common/const.go#L31
-	if p.cfg.Override {
+	if p.cfg.DropOriginal {
 		newMetic := pmetric.NewMetrics()
-		rmNew := newMetic.ResourceMetrics().AppendEmpty()
-		rmScope := rmNew.ScopeMetrics().AppendEmpty()
-		for i := 0; i < md.ResourceMetrics().Len(); i++ {
-			resourceMetric := md.ResourceMetrics().At(i)
-			for j := 0; j < resourceMetric.ScopeMetrics().Len(); j++ {
-				//We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
-				resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
-				scopeMetric := resourceMetric.ScopeMetrics().At(j)
+		for resIndex := range md.ResourceMetrics().Len() {
+			resourceMetric := md.ResourceMetrics().At(resIndex)
+			rmNew := newMetic.ResourceMetrics().AppendEmpty()
+
+			//We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
+			resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
+			for scopeIndex := range resourceMetric.ScopeMetrics().Len() {
+				scopeMetric := resourceMetric.ScopeMetrics().At(scopeIndex)
+				rmScope := rmNew.ScopeMetrics().AppendEmpty()
+
 				// Iterate over the metrics
-				for l := 0; l < scopeMetric.Metrics().Len(); l++ {
-					metric := scopeMetric.Metrics().At(l)
+				for metricIndex := range scopeMetric.Metrics().Len() {
+					metric := scopeMetric.Metrics().At(metricIndex)
 
 					if metric.Type().String() == "Gauge" {
-						for m := 0; m < metric.Gauge().DataPoints().Len(); m++ {
-							if oTelRemappedLabel, ok := metric.Gauge().DataPoints().At(m).Attributes().Get(OTelRemappedLabel); ok {
+						for dataPointIndex := range metric.Gauge().DataPoints().Len() {
+							if oTelRemappedLabel, ok := metric.Gauge().DataPoints().At(dataPointIndex).Attributes().Get(OTelRemappedLabel); ok {
 								if oTelRemappedLabel.Bool() {
 									metric.CopyTo(rmScope.Metrics().AppendEmpty())
 								}
 							}
 						}
 					} else if metric.Type().String() == "Sum" {
-						for m := 0; m < metric.Sum().DataPoints().Len(); m++ {
-							if oTelRemappedLabel, ok := metric.Sum().DataPoints().At(m).Attributes().Get(OTelRemappedLabel); ok {
+						for dataPointIndex := range metric.Sum().DataPoints().Len() {
+							if oTelRemappedLabel, ok := metric.Sum().DataPoints().At(dataPointIndex).Attributes().Get(OTelRemappedLabel); ok {
 								if oTelRemappedLabel.Bool() {
 									resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
 									metric.CopyTo(rmScope.Metrics().AppendEmpty())
