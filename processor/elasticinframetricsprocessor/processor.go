@@ -19,7 +19,6 @@ package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/elastic/opentelemetry-lib/remappers/common"
 	"github.com/elastic/opentelemetry-lib/remappers/hostmetrics"
@@ -67,9 +66,6 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 			scopeMetric := resourceMetric.ScopeMetrics().At(scopeIndex)
 			for _, r := range p.remappers {
 				r.Remap(scopeMetric, scopeMetric.Metrics(), rm)
-			}
-			for metric := range scopeMetric.Metrics().Len() {
-				fmt.Println(scopeMetric.Metrics().At(metric).Name())
 			}
 		}
 	}

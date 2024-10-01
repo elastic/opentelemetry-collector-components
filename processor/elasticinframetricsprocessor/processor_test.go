@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
@@ -55,8 +56,8 @@ func TestProcessorK8sMetrics(t *testing.T) {
 			inputMetrics, err := golden.ReadMetrics(filepath.Join(dir, "input-metrics.yaml"))
 			require.NoError(t, err)
 
-			// expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output-metrics.yaml"))
-			// require.NoError(t, err)
+			expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output-metrics.yaml"))
+			require.NoError(t, err)
 
 			set := processor.Settings{
 				TelemetrySettings: component.TelemetrySettings{
@@ -69,8 +70,8 @@ func TestProcessorK8sMetrics(t *testing.T) {
 			actualMetrics, err := p.processMetrics(context.Background(), inputMetrics)
 
 			assert.NoError(t, err)
-			golden.WriteMetrics(t, filepath.Join(dir, "output-metrics.yaml"), actualMetrics)
-			// require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics))
+			// golden.WriteMetrics(t, filepath.Join(dir, "output-metrics.yaml"), actualMetrics)
+			require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics))
 		})
 	}
 }
