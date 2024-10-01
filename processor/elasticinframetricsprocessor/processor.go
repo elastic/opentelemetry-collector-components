@@ -87,7 +87,7 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 				for metricIndex := range scopeMetric.Metrics().Len() {
 					metric := scopeMetric.Metrics().At(metricIndex)
 
-					if metric.Type().String() == "Gauge" {
+					if metric.Type() == pmetric.MetricTypeGauge {
 						for dataPointIndex := range metric.Gauge().DataPoints().Len() {
 							if oTelRemappedLabel, ok := metric.Gauge().DataPoints().At(dataPointIndex).Attributes().Get(OTelRemappedLabel); ok {
 								if oTelRemappedLabel.Bool() {
