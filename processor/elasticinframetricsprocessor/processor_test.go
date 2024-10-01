@@ -123,41 +123,41 @@ func TestDropOriginalMetrics(t *testing.T) {
 		expetedMetricValue     float64
 		expetedLengthOfMetrics int
 	}{
-		// {
-		// 	name: "ProcessMetrics when AddK8sMetrics is enabled and DropOriginal is enabled",
-		// 	cfg:  &Config{AddK8sMetrics: true, DropOriginal: true},
-		// 	createMetrics: func() pmetric.Metrics {
-		// 		md := pmetric.NewMetrics()
-		// 		rm := md.ResourceMetrics().AppendEmpty()
-		// 		rm.Resource().Attributes().PutStr("k8s.pod.name", "test-pod")
-		// 		sm := rm.ScopeMetrics().AppendEmpty()
-		// 		sm.Scope().SetName("github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver")
-		// 		// Creating first metric
-		// 		metric1 := sm.Metrics().AppendEmpty()
-		// 		metric1.SetName("k8s.pod.cpu_limit_utilization")
-		// 		t1 := metric1.SetEmptyGauge()
-		// 		t1DP := t1.DataPoints().AppendEmpty()
-		// 		t1DP.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
-		// 		t1DP.SetDoubleValue(0.5)
-		// 		t1DP.Attributes().PutBool("test", true)
+		{
+			name: "ProcessMetrics when AddK8sMetrics is enabled and DropOriginal is enabled",
+			cfg:  &Config{AddK8sMetrics: true, DropOriginal: true},
+			createMetrics: func() pmetric.Metrics {
+				md := pmetric.NewMetrics()
+				rm := md.ResourceMetrics().AppendEmpty()
+				rm.Resource().Attributes().PutStr("k8s.pod.name", "test-pod")
+				sm := rm.ScopeMetrics().AppendEmpty()
+				sm.Scope().SetName("github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver")
+				// Creating first metric
+				metric1 := sm.Metrics().AppendEmpty()
+				metric1.SetName("k8s.pod.cpu_limit_utilization")
+				t1 := metric1.SetEmptyGauge()
+				t1DP := t1.DataPoints().AppendEmpty()
+				t1DP.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
+				t1DP.SetDoubleValue(0.5)
+				t1DP.Attributes().PutBool("test", true)
 
-		// 		//dp1.Attributes().PutBool("otel_remapped", true)
-		// 		//Creating second metric
-		// 		// This metric does not have the otel_remapped:true attribute set, so it should be dropped
-		// 		metric2 := sm.Metrics().AppendEmpty()
-		// 		metric2.SetName("k8s.volume.capacity")
-		// 		t2 := metric2.SetEmptyGauge()
-		// 		t2DP := t2.DataPoints().AppendEmpty()
-		// 		t2DP.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
-		// 		t2DP.SetIntValue(50)
-		// 		t2DP.Attributes().PutBool("test", true)
-		// 		return md
-		// 	},
-		// 	expectedPodname:        "test-pod",
-		// 	expectedMetricName:     "kubernetes.pod.cpu.usage.limit.pct",
-		// 	expetedMetricValue:     0.5,
-		// 	expetedLengthOfMetrics: 6,
-		// },
+				//dp1.Attributes().PutBool("otel_remapped", true)
+				//Creating second metric
+				// This metric does not have the otel_remapped:true attribute set, so it should be dropped
+				metric2 := sm.Metrics().AppendEmpty()
+				metric2.SetName("k8s.volume.capacity")
+				t2 := metric2.SetEmptyGauge()
+				t2DP := t2.DataPoints().AppendEmpty()
+				t2DP.SetTimestamp(pcommon.NewTimestampFromTime(time.Now()))
+				t2DP.SetIntValue(50)
+				t2DP.Attributes().PutBool("test", true)
+				return md
+			},
+			expectedPodname:        "test-pod",
+			expectedMetricName:     "kubernetes.pod.cpu.usage.limit.pct",
+			expetedMetricValue:     0.5,
+			expetedLengthOfMetrics: 6,
+		},
 		{
 			name: "ProcessMetrics when AddK8sMetrics is enabled and DropOriginal is disabled",
 			cfg:  &Config{AddK8sMetrics: true, DropOriginal: false},
