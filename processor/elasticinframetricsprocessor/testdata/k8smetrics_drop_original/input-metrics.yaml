@@ -1,0 +1,22 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: k8s.pod.name
+          value:
+            stringValue: test-pod
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 345
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                  timeUnixNano: "1000000"
+            name: k8s.pod.cpu_limit_utilization
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
+          version: 1.2.3

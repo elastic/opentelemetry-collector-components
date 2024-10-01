@@ -19,6 +19,7 @@ package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/elastic/opentelemetry-lib/remappers/common"
 	"github.com/elastic/opentelemetry-lib/remappers/hostmetrics"
@@ -46,7 +47,6 @@ func newProcessor(set processor.Settings, cfg *Config) *ElasticinframetricsProce
 	remappers := make([]remapper, 0)
 	if cfg.AddSystemMetrics {
 		remappers = append(remappers, hostmetrics.NewRemapper(set.Logger, hostmetrics.WithSystemIntegrationDataset(true)))
-
 	}
 	if cfg.AddK8sMetrics {
 		remappers = append(remappers, kubernetesmetrics.NewRemapper(set.Logger, kubernetesmetrics.WithKubernetesIntegrationDataset(true)))
@@ -68,6 +68,9 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 			for _, r := range p.remappers {
 				r.Remap(scopeMetric, scopeMetric.Metrics(), rm)
 			}
+			for metric := range scopeMetric.Metrics().Len() {
+				fmt.Println(scopeMetric.Metrics().At(metric).Name())
+			}
 		}
 	}
 	// drop_original=true will keep only the metrics that have been remapped based on the presense of OTelRemappedLabel label.
@@ -78,7 +81,7 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 			resourceMetric := md.ResourceMetrics().At(resIndex)
 			rmNew := newMetic.ResourceMetrics().AppendEmpty()
 
-			//We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
+			// We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
 			resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
 			for scopeIndex := range resourceMetric.ScopeMetrics().Len() {
 				scopeMetric := resourceMetric.ScopeMetrics().At(scopeIndex)
