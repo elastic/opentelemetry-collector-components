@@ -1,4 +1,3 @@
-# This manifest was used to build EDOT Collector with local elasticinframetricsprocessor
 dist:
   module: github.com/elastic/opentelemetry-collector-components
   name: elastic-collector-components
