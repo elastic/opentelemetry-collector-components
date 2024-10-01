@@ -23,6 +23,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
+	"github.com/google/uuid"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -143,29 +144,25 @@ func TestExplicitBounds(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			agg := NewAggregator()
+			actual := pmetric.NewMetrics()
+			agg := NewAggregator(actual, uuid.NewString())
 			require.NotNil(t, agg)
-			actual := pmetric.NewMetricSlice()
 			for _, span := range tc.input {
 				duration := time.Duration(span.EndTimestamp() - span.StartTimestamp())
 				for _, md := range tc.metricDefs {
-					require.NoError(t, agg.Add(md, span.Attributes(), duration, 1))
+					require.NoError(t, agg.Add(md, pcommon.NewMap(), span.Attributes(), duration, 1))
 				}
 			}
-			for _, md := range tc.metricDefs {
-				agg.Move(md, actual)
-			}
-			require.Equal(t, tc.expectedHistogram.Len(), actual.Len())
+			agg.Finalize(tc.metricDefs)
 
 			// Copy into comparable structures and compare
-			expectedM := pmetric.NewMetrics()
-			tc.expectedHistogram.CopyTo(expectedM.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics())
-			actualM := pmetric.NewMetrics()
-			actual.CopyTo(actualM.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics())
-			assert.NoError(t, pmetrictest.CompareMetrics(expectedM, actualM, pmetrictest.IgnoreTimestamp()))
-
-			agg.Reset()
-			require.True(t, agg.Empty())
+			expected := pmetric.NewMetrics()
+			if tc.expectedHistogram.Len() > 0 {
+				expectedScope := expected.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
+				expectedScope.Scope().SetName(scopeName)
+				tc.expectedHistogram.CopyTo(expectedScope.Metrics())
+			}
+			assert.NoError(t, pmetrictest.CompareMetrics(expected, actual, pmetrictest.IgnoreTimestamp()))
 		})
 	}
 }

@@ -88,6 +88,7 @@ type Value struct {
 	scopeLookup     map[identity.Scope]pmetric.ScopeMetrics
 	metricLookup    map[identity.Metric]pmetric.Metric
 	numberLookup    map[identity.Stream]pmetric.NumberDataPoint
+	summaryLookup   map[identity.Stream]pmetric.SummaryDataPoint
 	histoLookup     map[identity.Stream]pmetric.HistogramDataPoint
 	expHistoLookup  map[identity.Stream]pmetric.ExponentialHistogramDataPoint
 }
@@ -151,6 +152,16 @@ func (v *Value) MergeMetric(
 			v.numberLookup,
 			m.Sum().AggregationTemporality(),
 		)
+	case pmetric.MetricTypeSummary:
+		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
+		merge(
+			m.Summary().DataPoints(),
+			mClone.Summary().DataPoints(),
+			metricID,
+			v.summaryLookup,
+			// Assume summary to be cumulative temporality
+			pmetric.AggregationTemporalityCumulative,
+		)
 	case pmetric.MetricTypeHistogram:
 		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
 		merge(
@@ -175,6 +186,7 @@ func (v *Value) buildDynamicMaps() {
 	v.scopeLookup = make(map[identity.Scope]pmetric.ScopeMetrics)
 	v.metricLookup = make(map[identity.Metric]pmetric.Metric)
 	v.numberLookup = make(map[identity.Stream]pmetric.NumberDataPoint)
+	v.summaryLookup = make(map[identity.Stream]pmetric.SummaryDataPoint)
 	v.histoLookup = make(map[identity.Stream]pmetric.HistogramDataPoint)
 	v.expHistoLookup = make(map[identity.Stream]pmetric.ExponentialHistogramDataPoint)
 
@@ -201,6 +213,12 @@ func (v *Value) buildDynamicMaps() {
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
 						v.numberLookup[identity.OfStream(imetric, dp)] = dp
+					}
+				case pmetric.MetricTypeSummary:
+					dps := metric.Summary().DataPoints()
+					for l := 0; l < dps.Len(); l++ {
+						dp := dps.At(l)
+						v.summaryLookup[identity.OfStream(imetric, dp)] = dp
 					}
 				case pmetric.MetricTypeHistogram:
 					dps := metric.Histogram().DataPoints()

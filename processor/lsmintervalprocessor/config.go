@@ -29,6 +29,10 @@ type Config struct {
 	// Directory is the data directory used by the database to store files.
 	// If the directory is empty in-memory storage is used.
 	Directory string `mapstructure:"directory"`
+	// PassThrough is a configuration that determines whether summary
+	// metrics should be passed through as they are or aggregated. This
+	// is because they lead to lossy aggregations.
+	PassThrough PassThrough `mapstructure:"pass_through"`
 	// Intervals is a list of interval configuration that the processor
 	// will aggregate over. The interval duration must be in increasing
 	// order and must be a factor of the smallest interval duration.
@@ -36,6 +40,16 @@ type Config struct {
 	// optimize the timer to run on differnt times and remove any
 	// restriction on different interval configuration.
 	Intervals []IntervalConfig `mapstructure:"intervals"`
+}
+
+// PassThrough determines whether metrics should be passed through as they
+// are or aggregated.
+type PassThrough struct {
+	// Summary is a flag that determines whether summary metrics should
+	// be passed through as they are or aggregated. Since summaries don't
+	// have an associated temporality, we assume that summaries are
+	// always cumulative.
+	Summary bool `mapstructure:"summary"`
 }
 
 type IntervalConfig struct {

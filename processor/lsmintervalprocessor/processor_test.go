@@ -39,32 +39,39 @@ import (
 func TestAggregation(t *testing.T) {
 	t.Parallel()
 
-	testCases := []string{
-		"sum_cumulative",
-		"sum_delta",
-		"histogram_cumulative",
-		"histogram_delta",
+	testCases := []struct {
+		name        string
+		passThrough bool
+	}{
+		{name: "sum_cumulative"},
+		{name: "sum_delta"},
+		{name: "histogram_cumulative"},
+		{name: "histogram_delta"},
+		{name: "summary_enabled"},
+		{name: "summary_passthrough", passThrough: true},
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	config := &Config{Intervals: []IntervalConfig{
-		{
-			Duration: time.Second,
-			Statements: []string{
-				`set(resource.attributes["custom_res_attr"], "res")`,
-				`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
-				`set(attributes["custom_dp_attr"], "dp")`,
-				`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
-			},
-		},
-	}}
-
 	for _, tc := range testCases {
-		testName := tc
-
-		t.Run(testName, func(t *testing.T) {
+		config := &Config{
+			Intervals: []IntervalConfig{
+				{
+					Duration: time.Second,
+					Statements: []string{
+						`set(resource.attributes["custom_res_attr"], "res")`,
+						`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
+						`set(attributes["custom_dp_attr"], "dp")`,
+						`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
+					},
+				},
+			},
+			PassThrough: PassThrough{
+				Summary: tc.passThrough,
+			},
+		}
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			next := &consumertest.MetricsSink{}
@@ -82,7 +89,7 @@ func TestAggregation(t *testing.T) {
 			require.IsType(t, &Processor{}, mgp)
 			t.Cleanup(func() { require.NoError(t, mgp.Shutdown(context.Background())) })
 
-			dir := filepath.Join("testdata", testName)
+			dir := filepath.Join("testdata", tc.name)
 			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
 
@@ -101,15 +108,11 @@ func TestAggregation(t *testing.T) {
 
 			expectedNextData, err := golden.ReadMetrics(filepath.Join(dir, "next.yaml"))
 			require.NoError(t, err)
-			require.NoError(t, pmetrictest.CompareMetrics(expectedNextData, allMetrics[0]))
+			assert.NoError(t, pmetrictest.CompareMetrics(expectedNextData, allMetrics[0]))
 
 			expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 			require.NoError(t, err)
-			assert.NoError(t, pmetrictest.CompareMetrics(
-				expectedExportData,
-				allMetrics[1],
-				pmetrictest.IgnoreTimestamp(),
-			))
+			assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
 		})
 	}
 }

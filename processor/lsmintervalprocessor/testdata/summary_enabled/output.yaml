@@ -13,8 +13,8 @@ resourceMetrics:
     schemaUrl: https://test-res-schema.com/schema
     scopeMetrics:
       - metrics:
-          - histogram:
-              aggregationTemporality: 1
+          - name: summary.test
+            summary:
               dataPoints:
                 - attributes:
                     - key: aaa
@@ -23,21 +23,13 @@ resourceMetrics:
                     - key: custom_dp_attr
                       value:
                         stringValue: dp
-                  bucketCounts:
-                    - "25"
-                    - "15"
-                    - "22"
-                    - "33"
-                    - "18"
-                    - "79"
-                  explicitBounds:
-                    - 0.01
-                    - 0.1
-                    - 1
-                    - 10
-                    - 100
+                  count: "25"
+                  quantileValues:
+                    - quantile: 0.95
+                      value: 15
+                  startTimeUnixNano: "5000000"
+                  sum: 310
                   timeUnixNano: "8000000"
-            name: delta.histogram.test
         schemaUrl: https://test-scope-schema.com/schema
         scope:
           attributes:
