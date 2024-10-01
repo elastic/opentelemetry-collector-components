@@ -46,7 +46,6 @@ func newProcessor(set processor.Settings, cfg *Config) *ElasticinframetricsProce
 	remappers := make([]remapper, 0)
 	if cfg.AddSystemMetrics {
 		remappers = append(remappers, hostmetrics.NewRemapper(set.Logger, hostmetrics.WithSystemIntegrationDataset(true)))
-
 	}
 	if cfg.AddK8sMetrics {
 		remappers = append(remappers, kubernetesmetrics.NewRemapper(set.Logger, kubernetesmetrics.WithKubernetesIntegrationDataset(true)))
@@ -78,7 +77,7 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 			resourceMetric := md.ResourceMetrics().At(resIndex)
 			rmNew := newMetic.ResourceMetrics().AppendEmpty()
 
-			//We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
+			// We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
 			resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
 			for scopeIndex := range resourceMetric.ScopeMetrics().Len() {
 				scopeMetric := resourceMetric.ScopeMetrics().At(scopeIndex)
