@@ -95,7 +95,7 @@ func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmet
 								}
 							}
 						}
-					} else if metric.Type().String() == "Sum" {
+					} else if metric.Type() == pmetric.MetricTypeSum {
 						for dataPointIndex := range metric.Sum().DataPoints().Len() {
 							if oTelRemappedLabel, ok := metric.Sum().DataPoints().At(dataPointIndex).Attributes().Get(OTelRemappedLabel); ok {
 								if oTelRemappedLabel.Bool() {
