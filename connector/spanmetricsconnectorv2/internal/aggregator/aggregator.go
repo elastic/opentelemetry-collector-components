@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -28,7 +29,6 @@ import (
 )
 
 const (
-	scopeName            = "otelcol/spanmetricsconnectorv2"
 	ephemeralResourceKey = "spanmetricsv2_ephemeral_id"
 )
 
@@ -102,7 +102,7 @@ func (a *Aggregator) Add(
 			destResAttrs.PutStr(ephemeralResourceKey, a.ephemeralID)
 		}
 		destScopeMetric := destResourceMetric.ScopeMetrics().AppendEmpty()
-		destScopeMetric.Scope().SetName(scopeName)
+		destScopeMetric.Scope().SetName(metadata.ScopeName)
 		a.smLookup[resID] = destScopeMetric
 	}
 

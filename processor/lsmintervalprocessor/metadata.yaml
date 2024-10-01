@@ -1,5 +1,5 @@
 type: lsminterval
-scope_name: otelcol/lsminterval
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
 
 status:
   class: processor

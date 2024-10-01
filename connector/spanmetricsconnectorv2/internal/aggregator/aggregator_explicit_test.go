@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 	"github.com/google/uuid"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
@@ -159,7 +160,7 @@ func TestExplicitBounds(t *testing.T) {
 			expected := pmetric.NewMetrics()
 			if tc.expectedHistogram.Len() > 0 {
 				expectedScope := expected.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
-				expectedScope.Scope().SetName(scopeName)
+				expectedScope.Scope().SetName(metadata.ScopeName)
 				tc.expectedHistogram.CopyTo(expectedScope.Metrics())
 			}
 			assert.NoError(t, pmetrictest.CompareMetrics(expected, actual, pmetrictest.IgnoreTimestamp()))
