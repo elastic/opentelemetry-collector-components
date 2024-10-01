@@ -111,6 +111,85 @@ func TestProcessMetrics(t *testing.T) {
 	}
 }
 
+func TestDropOriginalMetrics(t *testing.T) {
+	testCases := []struct {
+		name                   string
+		cfg                    *Config
+		createMetrics          func() pmetric.Metrics
+		expectedPodname        string
+		expectedMetricName     string
+		expetedMetricValue     float64
+		expetedLengthOfMetrics int
+	}{
+		{
+			name: "ProcessMetrics when AddK8sMetrics is enabled and DropOriginal is enabled",
+			cfg:  &Config{AddK8sMetrics: true, DropOriginal: true},
+			createMetrics: func() pmetric.Metrics {
+				md := pmetric.NewMetrics()
+				rm := md.ResourceMetrics().AppendEmpty()
+				rm.Resource().Attributes().PutStr("k8s.pod.name", "test-pod")
+				sm := rm.ScopeMetrics().AppendEmpty()
+				// Creating first metric
+				metric1 := sm.Metrics().AppendEmpty()
+				metric1.SetName("k8s.pod.cpu_limit_utilization")
+				dp1 := metric1.SetEmptyGauge().DataPoints().AppendEmpty()
+				dp1.Attributes().PutBool("otel_remapped", true)
+				dp1.SetDoubleValue(0.5)
+				//Creating second metric
+				// This metric does not have the otel_remapped:true attribute set, so it should be dropped
+				metric2 := sm.Metrics().AppendEmpty()
+				metric2.SetName("k8s.test")
+				dp2 := metric2.SetEmptyGauge().DataPoints().AppendEmpty()
+				dp2.SetDoubleValue(0.5)
+				return md
+			},
+			expectedPodname:        "test-pod",
+			expectedMetricName:     "k8s.pod.cpu_limit_utilization",
+			expetedMetricValue:     0.5,
+			expetedLengthOfMetrics: 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			set := processor.Settings{
+				TelemetrySettings: component.TelemetrySettings{
+					Logger: zap.NewNop(),
+				},
+			}
+
+			p := newProcessor(set, tc.cfg)
+
+			md := tc.createMetrics()
+			md1, err := p.processMetrics(context.Background(), md)
+
+			assert.NoError(t, err)
+
+			// Check if remapper was initialized based on the config
+			if tc.cfg.AddK8sMetrics && tc.cfg.DropOriginal {
+				assert.NotEmpty(t, p.remappers, "expected remapper to be initialized")
+				// Check remapping results
+				if len(p.remappers) > 0 {
+					rm := md1.ResourceMetrics().At(0)
+					resource := rm.Resource()
+					scopeMetric := rm.ScopeMetrics().At(0)
+					metric := scopeMetric.Metrics().At(0)
+					dpvalue := metric.Gauge().DataPoints().At(0).DoubleValue()
+					podname, ok := resource.Attributes().Get("k8s.pod.name")
+					assert.True(t, ok, "expected attribute 'k8s.pod.name'")
+					assert.Equal(t, tc.expectedPodname, podname.Str(), "expected resource attribute to be 'test-pod'")
+					assert.Equal(t, tc.expectedMetricName, metric.Name(), "expected metric name to be 'k8s.pod.cpu_limit_utilization'")
+					assert.Equal(t, tc.expetedMetricValue, dpvalue, "expected metric value to be 0.5")
+					assert.Equal(t, tc.expetedLengthOfMetrics, scopeMetric.Metrics().Len(), "expected metrics returned to be 1 ")
+
+				}
+			} else {
+				assert.Empty(t, p.remappers, "expected no remapper to be initialized")
+			}
+		})
+	}
+}
+
 func TestRemappers(t *testing.T) {
 	testCases := []struct {
 		name              string
