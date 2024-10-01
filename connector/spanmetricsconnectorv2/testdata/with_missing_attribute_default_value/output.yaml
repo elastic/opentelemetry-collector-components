@@ -181,4 +181,4 @@ resourceMetrics:
                   timeUnixNano: "1000000"
             name: 404.span.duration
         scope:
-          name: otelcol/spanmetricsconnectorv2
+          name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2

@@ -43,4 +43,4 @@ resourceMetrics:
                   sum: 17002.000935999997
                   timeUnixNano: "1000000"
         scope:
-          name: otelcol/spanmetricsconnectorv2
+          name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2

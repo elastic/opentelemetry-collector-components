@@ -25,7 +25,7 @@ import (
 
 var (
 	Type      = component.MustNewType("spanmetricsv2")
-	ScopeName = "otelcol/spanmetricsconnectorv2"
+	ScopeName = "github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2"
 )
 
 const (
