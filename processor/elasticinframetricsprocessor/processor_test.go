@@ -40,12 +40,12 @@ func TestProcessorK8sMetrics(t *testing.T) {
 		{
 			name:       "K8s metrics remapper enabled",
 			goldenTest: "k8smetrics",
-			cfg:        &Config{AddSystemMetrics: true},
+			cfg:        &Config{AddK8sMetrics: true, DropOriginal: false},
 		},
 		{
 			name:       "K8s metrics remapper enabled, drop original",
 			goldenTest: "k8smetrics_drop_original",
-			cfg:        &Config{AddSystemMetrics: true, DropOriginal: true},
+			cfg:        &Config{AddK8sMetrics: true, DropOriginal: true},
 		},
 	}
 
@@ -64,7 +64,7 @@ func TestProcessorK8sMetrics(t *testing.T) {
 				},
 			}
 
-			p := newProcessor(set, &Config{AddK8sMetrics: true})
+			p := newProcessor(set, tc.cfg)
 
 			actualMetrics, err := p.processMetrics(context.Background(), inputMetrics)
 

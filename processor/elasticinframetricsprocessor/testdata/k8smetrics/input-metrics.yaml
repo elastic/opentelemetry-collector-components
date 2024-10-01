@@ -10,10 +10,6 @@ resourceMetrics:
           - gauge:
               dataPoints:
                 - asDouble: 345
-                  attributes:
-                    - key: aaa
-                      value:
-                        stringValue: bbb
                   timeUnixNano: "1000000"
             name: k8s.pod.cpu_limit_utilization
         schemaUrl: https://test-scope-schema.com/schema
