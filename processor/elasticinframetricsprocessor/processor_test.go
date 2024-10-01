@@ -129,6 +129,7 @@ func TestDropOriginalMetrics(t *testing.T) {
 				rm := md.ResourceMetrics().AppendEmpty()
 				rm.Resource().Attributes().PutStr("k8s.pod.name", "test-pod")
 				sm := rm.ScopeMetrics().AppendEmpty()
+				sm.Scope().SetName("/receiver/kubeletstatsreceiver")
 				// Creating first metric
 				metric1 := sm.Metrics().AppendEmpty()
 				metric1.SetName("k8s.pod.cpu_limit_utilization")
@@ -138,15 +139,42 @@ func TestDropOriginalMetrics(t *testing.T) {
 				//Creating second metric
 				// This metric does not have the otel_remapped:true attribute set, so it should be dropped
 				metric2 := sm.Metrics().AppendEmpty()
-				metric2.SetName("k8s.test")
+				metric2.SetName("k8s.volume.capacity")
 				dp2 := metric2.SetEmptyGauge().DataPoints().AppendEmpty()
-				dp2.SetDoubleValue(0.5)
+				dp2.SetIntValue(50)
 				return md
 			},
 			expectedPodname:        "test-pod",
 			expectedMetricName:     "k8s.pod.cpu_limit_utilization",
 			expetedMetricValue:     0.5,
 			expetedLengthOfMetrics: 1,
+		},
+		{
+			name: "ProcessMetrics when AddK8sMetrics is enabled and DropOriginal is disabled",
+			cfg:  &Config{AddK8sMetrics: true, DropOriginal: false},
+			createMetrics: func() pmetric.Metrics {
+				md := pmetric.NewMetrics()
+				rm := md.ResourceMetrics().AppendEmpty()
+				rm.Resource().Attributes().PutStr("k8s.pod.name", "test-pod")
+				sm := rm.ScopeMetrics().AppendEmpty()
+				sm.Scope().SetName("otelcol/kubeletstatsreceiver")
+				// Creating first metric
+				metric1 := sm.Metrics().AppendEmpty()
+				metric1.SetName("k8s.pod.cpu_limit_utilization")
+				dp1 := metric1.SetEmptyGauge().DataPoints().AppendEmpty()
+				dp1.SetDoubleValue(0.5)
+				//Creating second metric
+				// This metric should also be in the return of the remapp, because DropOriginal=false
+				metric2 := sm.Metrics().AppendEmpty()
+				metric2.SetName("k8s.volume.capacity")
+				dp2 := metric2.SetEmptyGauge().DataPoints().AppendEmpty()
+				dp2.SetIntValue(50)
+				return md
+			},
+			expectedPodname:        "test-pod",
+			expectedMetricName:     "k8s.pod.cpu_limit_utilization",
+			expetedMetricValue:     0.5,
+			expetedLengthOfMetrics: 2,
 		},
 	}
 
@@ -166,7 +194,7 @@ func TestDropOriginalMetrics(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Check if remapper was initialized based on the config
-			if tc.cfg.AddK8sMetrics && tc.cfg.DropOriginal {
+			if tc.cfg.AddK8sMetrics {
 				assert.NotEmpty(t, p.remappers, "expected remapper to be initialized")
 				// Check remapping results
 				if len(p.remappers) > 0 {
@@ -178,7 +206,7 @@ func TestDropOriginalMetrics(t *testing.T) {
 					podname, ok := resource.Attributes().Get("k8s.pod.name")
 					assert.True(t, ok, "expected attribute 'k8s.pod.name'")
 					assert.Equal(t, tc.expectedPodname, podname.Str(), "expected resource attribute to be 'test-pod'")
-					assert.Equal(t, tc.expectedMetricName, metric.Name(), "expected metric name to be 'k8s.pod.cpu_limit_utilization'")
+					assert.Equal(t, tc.expectedMetricName, metric.Name(), "expected metric name to be 'kubernetes.pod.cpu.usage.limit.pct'")
 					assert.Equal(t, tc.expetedMetricValue, dpvalue, "expected metric value to be 0.5")
 					assert.Equal(t, tc.expetedLengthOfMetrics, scopeMetric.Metrics().Len(), "expected metrics returned to be 1 ")
 

@@ -20,6 +20,7 @@ package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry
 import (
 	"context"
 
+	"github.com/elastic/opentelemetry-lib/remappers/common"
 	"github.com/elastic/opentelemetry-lib/remappers/hostmetrics"
 	"github.com/elastic/opentelemetry-lib/remappers/kubernetesmetrics"
 	"go.opentelemetry.io/collector/pdata/pcommon"
