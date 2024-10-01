@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const OTelRemappedLabel = "otel_remapped"
+const OTelRemappedLabel = common.OTelRemappedLabel
 
 // remapper interface defines the Remap method that should be implemented by different remappers
 type remapper interface {
