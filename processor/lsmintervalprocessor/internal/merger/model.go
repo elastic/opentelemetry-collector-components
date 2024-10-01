@@ -468,7 +468,6 @@ func mergeExponentialHistogramBuckets(from, to pmetric.ExponentialHistogramDataP
 		to.SetOffset(from.Offset())
 
 		toBuckets = to.BucketCounts()
-		toSize = int(to.Offset()) + toBuckets.Len()
 	} else if fromSize > toSize {
 		toBuckets.Append(make([]uint64, fromSize-toSize)...)
 	}
