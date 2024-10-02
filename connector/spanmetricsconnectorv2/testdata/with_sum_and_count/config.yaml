@@ -1,0 +1,20 @@
+spanmetricsv2:
+  spans:
+    - name: http.trace.span.sumcount
+      description: Sum and count for HTTP spans with default metric suffixes
+      attributes:
+        - key: http.response.status_code
+      sum_and_count: {}
+    - name: db.trace.span.sumcount
+      description: Sum and count for DB spans with default metric suffixes
+      attributes:
+        - key: db.system
+      sum_and_count: {}
+    - name: msg.trace.span.sumcount
+      description: Sum and count for messaging spans with custom metric suffixes
+      attributes:
+        - key: messaging.system
+      sum_and_count:
+        sum_suffix: .sum.us
+        count_suffix: .count
+      unit: us

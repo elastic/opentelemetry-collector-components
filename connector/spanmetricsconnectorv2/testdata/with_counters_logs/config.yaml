@@ -1,0 +1,12 @@
+spanmetricsv2:
+  logs:
+    - name: total.logs
+      description: Count total number of logs
+    - name: log.foo.metrics
+      description: Count total number of logs as per log.foo attribute
+      attributes:
+        - key: log.foo
+    - name: log.bar.metrics
+      description: Count total number of logs as per log.bar attribute
+      attributes:
+        - key: log.bar

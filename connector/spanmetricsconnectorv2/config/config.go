@@ -27,9 +27,6 @@ import (
 )
 
 const (
-	defaultMetricNameSpans = "trace.span.duration"
-	defaultMetricDescSpans = "Observed span duration."
-
 	// defaultExponentialHistogramMaxSize is the default maximum number
 	// of buckets per positive or negative number range. 160 buckets
 	// default supports a high-resolution histogram able to cover a
@@ -38,8 +35,8 @@ const (
 	// Ref: https://opentelemetry.io/docs/specs/otel/metrics/sdk/#base2-exponential-bucket-histogram-aggregation
 	defaultExponentialHistogramMaxSize = 160
 
-	defaultCountersSumSuffix   = ".sum"
-	defaultCountersCountSuffix = ".count"
+	defaultSumAndCountSumSuffix   = ".sum"
+	defaultSumAndCountCountSuffix = ".count"
 )
 
 var defaultHistogramBuckets = []float64{
@@ -55,35 +52,37 @@ const (
 	MetricUnitS  MetricUnit = "s"
 )
 
-// Config for the connector
+// Config for the connector. The connector can convert all signal types to metrics.
+//
+// For spans, the connector can count the number of span events or aggregate them
+// based on their durations in histograms, summaries, or as 2 sum metrics.
+//
+// For all other event types, the connector can count the number of events.
+//
+// All metrics produced by the connector are in delta temporality.
 type Config struct {
-	Spans []MetricInfo `mapstructure:"spans"`
+	Spans      []SpanMetricInfo `mapstructure:"spans"`
+	Datapoints []MetricInfo     `mapstructure:"datapoints"`
+	Logs       []MetricInfo     `mapstructure:"logs"`
 }
 
 var _ confmap.Unmarshaler = (*Config)(nil)
 
 func (c *Config) Validate() error {
-	duplicate := make(map[string]MetricInfo)
-	for _, info := range c.Spans {
-		if old, ok := duplicate[info.Name]; ok && info.isEqual(old) {
-			return fmt.Errorf("spans: duplicate configuration found %s", info.Name)
-		}
-		if info.Name == "" {
-			return errors.New("spans: metric name missing")
-		}
-		if info.Unit == "" {
-			return errors.New("spans: metric unit missing")
-		}
-		if err := info.validateAttributes(); err != nil {
-			return fmt.Errorf("spans attributes validation failed: metric %q: %w", info.Name, err)
-		}
-		if info.noAggregatorDefined() {
-			return errors.New("metric definition missing, either histogram, summary, or counters required")
-		}
-		if err := info.validateHistogram(); err != nil {
-			return fmt.Errorf("spans histogram validation failed: metric %q, %w", info.Name, err)
-		}
-		duplicate[info.Name] = info
+	if len(c.Spans) == 0 && len(c.Datapoints) == 0 && len(c.Logs) == 0 {
+		return fmt.Errorf("no configuration provided, at least one should be specified")
+	}
+	// Validate spans
+	if err := validateSpanMetricInfo(c.Spans); err != nil {
+		return fmt.Errorf("failed to validate spans config: %w", err)
+	}
+	// Validate metrics
+	if err := validateMetricInfo(c.Datapoints); err != nil {
+		return fmt.Errorf("failed to validate metrics config: %w", err)
+	}
+	// Validate logs
+	if err := validateMetricInfo(c.Logs); err != nil {
+		return fmt.Errorf("failed to validate logs config: %w", err)
 	}
 	return nil
 }
@@ -99,18 +98,12 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 	if err := componentParser.Unmarshal(c, confmap.WithIgnoreUnused()); err != nil {
 		return err
 	}
-	if !componentParser.IsSet("spans") {
-		c.Spans = defaultSpansConfig()
-		return nil
-	}
-	for k, info := range c.Spans {
+	for i, info := range c.Spans {
 		if info.Unit == "" {
 			info.Unit = MetricUnitMs
 		}
 		if info.noAggregatorDefined() {
-			info.Histogram.Exponential = &ExponentialHistogram{
-				MaxSize: defaultExponentialHistogramMaxSize,
-			}
+			info.Counter = &Counter{}
 		}
 		if info.Histogram.Explicit != nil {
 			// Add default buckets if explicit histogram is defined
@@ -123,15 +116,95 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 				info.Histogram.Exponential.MaxSize = defaultExponentialHistogramMaxSize
 			}
 		}
-		if info.Counters != nil {
-			if info.Counters.SumSuffix == "" {
-				info.Counters.SumSuffix = defaultCountersSumSuffix
+		if info.SumAndCount != nil {
+			if info.SumAndCount.SumSuffix == "" {
+				info.SumAndCount.SumSuffix = defaultSumAndCountSumSuffix
 			}
-			if info.Counters.CountSuffix == "" {
-				info.Counters.CountSuffix = defaultCountersCountSuffix
+			if info.SumAndCount.CountSuffix == "" {
+				info.SumAndCount.CountSuffix = defaultSumAndCountCountSuffix
 			}
 		}
-		c.Spans[k] = info
+		c.Spans[i] = info
+	}
+	for i, info := range c.Datapoints {
+		if info.Counter == nil {
+			info.Counter = &Counter{}
+		}
+		c.Datapoints[i] = info
+	}
+	for i, info := range c.Logs {
+		if info.Counter == nil {
+			info.Counter = &Counter{}
+		}
+		c.Logs[i] = info
+	}
+	return nil
+}
+
+func validateSpanMetricInfo(smis []SpanMetricInfo) error {
+	mis := make([]MetricInfo, 0, len(smis))
+	for _, smi := range smis {
+		if smi.Unit == "" {
+			return errors.New("metric unit missing")
+		}
+		if smi.noAggregatorDefined() {
+			return fmt.Errorf("metric definition missing, either histogram or summary required: metric %s", smi.Name)
+		}
+		if err := smi.validateHistogram(); err != nil {
+			return fmt.Errorf("failed histogram validation: metric %s, %w", smi.Name, err)
+		}
+		mis = append(mis, smi.MetricInfo)
+	}
+	return validateMetricInfo(mis)
+}
+
+func validateMetricInfo(mis []MetricInfo) error {
+	duplicate := make(map[string]MetricInfo)
+	for _, info := range mis {
+		if old, ok := duplicate[info.Name]; ok && info.isEqual(old) {
+			return fmt.Errorf("duplicate configuration found %s", info.Name)
+		}
+		if info.Name == "" {
+			return errors.New("metric name missing")
+		}
+		if err := info.validateAttributes(); err != nil {
+			return fmt.Errorf("failed attributes validation: metric %s: %w", info.Name, err)
+		}
+		duplicate[info.Name] = info
+	}
+	return nil
+}
+
+type SpanMetricInfo struct {
+	MetricInfo  `mapstructure:",squash"`
+	Unit        MetricUnit   `mapstructure:"unit"`
+	Histogram   Histogram    `mapstructure:"histogram"`
+	Summary     *Summary     `mapstructure:"summary"`
+	SumAndCount *SumAndCount `mapstructure:"sum_and_count"`
+}
+
+// noAggregatorDefined returns true if none of the required
+// aggregators are defined for a MetricInfo.
+func (mi *SpanMetricInfo) noAggregatorDefined() bool {
+	return mi.Histogram.Exponential == nil &&
+		mi.Histogram.Explicit == nil &&
+		mi.Summary == nil &&
+		mi.SumAndCount == nil &&
+		mi.Counter == nil
+}
+
+func (mi *SpanMetricInfo) validateHistogram() error {
+	if mi.Histogram.Explicit != nil {
+		if len(mi.Histogram.Explicit.Buckets) == 0 {
+			return errors.New("histogram buckets missing")
+		}
+	}
+	if mi.Histogram.Exponential != nil {
+		if _, err := structure.NewConfig(
+			structure.WithMaxSize(mi.Histogram.Exponential.MaxSize),
+		).Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -152,19 +225,7 @@ type MetricInfo struct {
 	// `ephemeral_resource_attribute`.
 	IncludeResourceAttributes []Attribute `mapstructure:"include_resource_attributes"`
 	Attributes                []Attribute `mapstructure:"attributes"`
-	Unit                      MetricUnit  `mapstructure:"unit"`
-	Histogram                 Histogram   `mapstructure:"histogram"`
-	Summary                   *Summary    `mapstructure:"summary"`
-	Counters                  *Counters   `mapstructure:"counters"`
-}
-
-// noAggregatorDefined returns true if none of the required
-// aggregators are defined for a MetricInfo.
-func (mi *MetricInfo) noAggregatorDefined() bool {
-	return mi.Histogram.Exponential == nil &&
-		mi.Histogram.Explicit == nil &&
-		mi.Summary == nil &&
-		mi.Counters == nil
+	Counter                   *Counter    `mapstructure:"counter"`
 }
 
 // isEqual checks if two metric have a same identity. Identity of a
@@ -193,6 +254,24 @@ func (mi MetricInfo) isEqual(other MetricInfo) bool {
 	return true
 }
 
+func (i *MetricInfo) validateAttributes() error {
+	tmp := pcommon.NewValueEmpty()
+	duplicate := map[string]struct{}{}
+	for _, attr := range i.Attributes {
+		if _, ok := duplicate[attr.Key]; ok {
+			return fmt.Errorf("duplicate key found in attributes config: %s", attr.Key)
+		}
+		if attr.Key == "" {
+			return fmt.Errorf("attribute key missing")
+		}
+		if err := tmp.FromRaw(attr.DefaultValue); err != nil {
+			return fmt.Errorf("invalid default value specified for attribute %s", attr.Key)
+		}
+		duplicate[attr.Key] = struct{}{}
+	}
+	return nil
+}
+
 type Attribute struct {
 	Key          string `mapstructure:"key"`
 	DefaultValue any    `mapstructure:"default_value"`
@@ -213,59 +292,13 @@ type ExponentialHistogram struct {
 
 type Summary struct{}
 
-// Counters aggregate spans as 2 cummulative sum metric with delta temporality.
+// SunAndCount aggregate spans as 2 cummulative sum metric with delta temporality.
 // The configs allow adding suffixes to the metric names, the suffix defaults to
 // `.sum` for sum metric and `.count` for count metric.
-type Counters struct {
+type SumAndCount struct {
 	SumSuffix   string `mapstructure:"sum_suffix"`
 	CountSuffix string `mapstructure:"count_suffix"`
 }
 
-func (i *MetricInfo) validateHistogram() error {
-	if i.Histogram.Explicit != nil {
-		if len(i.Histogram.Explicit.Buckets) == 0 {
-			return errors.New("histogram buckets missing")
-		}
-	}
-	if i.Histogram.Exponential != nil {
-		if _, err := structure.NewConfig(
-			structure.WithMaxSize(i.Histogram.Exponential.MaxSize),
-		).Validate(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (i *MetricInfo) validateAttributes() error {
-	tmp := pcommon.NewValueEmpty()
-	duplicate := map[string]struct{}{}
-	for _, attr := range i.Attributes {
-		if _, ok := duplicate[attr.Key]; ok {
-			return fmt.Errorf("duplicate key found in attributes config: %s", attr.Key)
-		}
-		if attr.Key == "" {
-			return fmt.Errorf("attribute key missing")
-		}
-		if err := tmp.FromRaw(attr.DefaultValue); err != nil {
-			return fmt.Errorf("invalid default value specified for attribute %s", attr.Key)
-		}
-		duplicate[attr.Key] = struct{}{}
-	}
-	return nil
-}
-
-func defaultSpansConfig() []MetricInfo {
-	return []MetricInfo{
-		{
-			Name:        defaultMetricNameSpans,
-			Description: defaultMetricDescSpans,
-			Unit:        MetricUnitMs,
-			Histogram: Histogram{
-				Exponential: &ExponentialHistogram{
-					MaxSize: defaultExponentialHistogramMaxSize,
-				},
-			},
-		},
-	}
-}
+// Counter counts the number of spans
+type Counter struct{}

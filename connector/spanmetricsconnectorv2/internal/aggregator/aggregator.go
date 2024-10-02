@@ -28,10 +28,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-const (
-	ephemeralResourceKey = "spanmetricsv2_ephemeral_id"
-)
-
 // metricUnitToDivider gives a value that could used to divide the
 // nano precision duration to the required unit specified in config.
 var metricUnitToDivider = map[config.MetricUnit]float64{
@@ -45,78 +41,83 @@ var metricUnitToDivider = map[config.MetricUnit]float64{
 // datastructures. The required datastructure is selected using
 // the metric definition.
 type Aggregator struct {
-	result      pmetric.Metrics
-	ephemeralID string
+	result pmetric.Metrics
 	// smLookup maps resourceID against scope metrics since the aggregator
 	// always produces a single scope.
-	smLookup   map[[16]byte]pmetric.ScopeMetrics
-	datapoints map[model.MetricKey]map[[16]byte]map[[16]byte]*aggregatorDP
-	timestamp  time.Time
+	smLookup      map[[16]byte]pmetric.ScopeMetrics
+	spanDurations map[model.MetricKey]map[[16]byte]map[[16]byte]*spanDurationDP
+	counters      map[model.MetricKey]map[[16]byte]map[[16]byte]*counterDP
+	timestamp     time.Time
 }
 
 // NewAggregator creates a new instance of aggregator.
-func NewAggregator(metrics pmetric.Metrics, ephemeralID string) *Aggregator {
+func NewAggregator(metrics pmetric.Metrics) *Aggregator {
 	return &Aggregator{
-		result:      metrics,
-		ephemeralID: ephemeralID,
-		smLookup:    make(map[[16]byte]pmetric.ScopeMetrics),
-		datapoints:  make(map[model.MetricKey]map[[16]byte]map[[16]byte]*aggregatorDP),
-		timestamp:   time.Now(),
+		result:        metrics,
+		smLookup:      make(map[[16]byte]pmetric.ScopeMetrics),
+		spanDurations: make(map[model.MetricKey]map[[16]byte]map[[16]byte]*spanDurationDP),
+		counters:      make(map[model.MetricKey]map[[16]byte]map[[16]byte]*counterDP),
+		timestamp:     time.Now(),
 	}
 }
 
-// Add adds a span duration into the configured metrics. It also takes
-// `adjustedCount` parameter to denote the total number of spans in the
-// population that are represented by an individually sampled span.
-// The adjusted count is is calculated as per:
-// https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling/#adjusted-count
-func (a *Aggregator) Add(
+// Count aggregates the number of events of a specific type into the
+// configured metrics. For spans, it takes `adjustedCount` parameter
+// to denote the total number of spans in the population that are
+// represented by an individually sampled span.
+func (a *Aggregator) Count(
+	md model.MetricDef,
+	resAttrs, srcAttrs pcommon.Map,
+	adjustedCount uint64,
+) error {
+	if !md.CountDefined() || adjustedCount == 0 {
+		// Nothing to do as the count is `0` or no counter is defined.
+		return nil
+	}
+
+	resID := a.getResourceID(resAttrs)
+	attrID := pdatautil.MapHash(srcAttrs)
+	if _, ok := a.counters[md.Key]; !ok {
+		a.counters[md.Key] = make(map[[16]byte]map[[16]byte]*counterDP)
+	}
+	if _, ok := a.counters[md.Key][resID]; !ok {
+		a.counters[md.Key][resID] = make(map[[16]byte]*counterDP)
+	}
+	if _, ok := a.counters[md.Key][resID][attrID]; !ok {
+		a.counters[md.Key][resID][attrID] = newCounterDP(srcAttrs)
+	}
+	a.counters[md.Key][resID][attrID].Count(int64(adjustedCount))
+	return nil
+}
+
+// SpanDuration aggregates a span duration into the configured metrics. It
+// also takes `adjustedCount` parameter to denote the total number of spans
+// in the population that are represented by an individually sampled span.
+func (a *Aggregator) SpanDuration(
 	md model.MetricDef,
 	resAttrs, srcAttrs pcommon.Map,
 	spanDuration time.Duration,
 	adjustedCount uint64,
 ) error {
-	if adjustedCount == 0 {
-		// Nothing to do as the span represents `0` spans
+	if !md.SpanDurationDefined() || adjustedCount == 0 {
+		// Nothing to do as the span represents `0` spans or does not
+		// define span aggregations.
 		return nil
 	}
 
-	srcAttrs = getFilteredAttributes(srcAttrs, md.Attributes)
-	// If all the configured attributes are not present in source
-	// metric then don't count them.
-	if srcAttrs.Len() != len(md.Attributes) {
-		return nil
-	}
+	resID := a.getResourceID(resAttrs)
 	attrID := pdatautil.MapHash(srcAttrs)
-
-	if len(md.IncludeResourceAttributes) > 0 {
-		resAttrs = getFilteredAttributes(resAttrs, md.IncludeResourceAttributes)
+	if _, ok := a.spanDurations[md.Key]; !ok {
+		a.spanDurations[md.Key] = make(map[[16]byte]map[[16]byte]*spanDurationDP)
 	}
-	resID := pdatautil.MapHash(resAttrs)
-	if _, ok := a.smLookup[resID]; !ok {
-		destResourceMetric := a.result.ResourceMetrics().AppendEmpty()
-		destResAttrs := destResourceMetric.Resource().Attributes()
-		destResAttrs.EnsureCapacity(resAttrs.Len() + 1)
-		resAttrs.CopyTo(destResAttrs)
-		if md.EphemeralResourceAttribute {
-			destResAttrs.PutStr(ephemeralResourceKey, a.ephemeralID)
-		}
-		destScopeMetric := destResourceMetric.ScopeMetrics().AppendEmpty()
-		destScopeMetric.Scope().SetName(metadata.ScopeName)
-		a.smLookup[resID] = destScopeMetric
+	if _, ok := a.spanDurations[md.Key][resID]; !ok {
+		a.spanDurations[md.Key][resID] = make(map[[16]byte]*spanDurationDP)
 	}
-
-	if _, ok := a.datapoints[md.Key]; !ok {
-		a.datapoints[md.Key] = make(map[[16]byte]map[[16]byte]*aggregatorDP)
+	if _, ok := a.spanDurations[md.Key][resID][attrID]; !ok {
+		a.spanDurations[md.Key][resID][attrID] = newSpanDurationDP(md.SpanDuration, srcAttrs)
 	}
-	if _, ok := a.datapoints[md.Key][resID]; !ok {
-		a.datapoints[md.Key][resID] = make(map[[16]byte]*aggregatorDP)
-	}
-	if _, ok := a.datapoints[md.Key][resID][attrID]; !ok {
-		a.datapoints[md.Key][resID][attrID] = newAggregatorDP(md, srcAttrs)
-	}
-	value := float64(spanDuration.Nanoseconds()) / metricUnitToDivider[md.Unit]
-	a.datapoints[md.Key][resID][attrID].Add(value, adjustedCount)
+	value := float64(spanDuration.Nanoseconds()) / metricUnitToDivider[md.SpanDuration.Unit]
+	a.spanDurations[md.Key][resID][attrID].Aggregate(value, adjustedCount)
 	return nil
 }
 
@@ -126,16 +127,16 @@ func (a *Aggregator) Add(
 // should not be used after Finalize is called.
 func (a *Aggregator) Finalize(mds []model.MetricDef) {
 	for _, md := range mds {
-		for resID, dpMap := range a.datapoints[md.Key] {
+		for resID, dpMap := range a.spanDurations[md.Key] {
 			metrics := a.smLookup[resID].Metrics()
 			var (
-				destExpHist       pmetric.ExponentialHistogram
-				destExplicitHist  pmetric.Histogram
-				destSummary       pmetric.Summary
-				destCountersSum   pmetric.Sum
-				destCountersCount pmetric.Sum
+				destExpHist      pmetric.ExponentialHistogram
+				destExplicitHist pmetric.Histogram
+				destSummary      pmetric.Summary
+				destSum          pmetric.Sum
+				destCount        pmetric.Sum
 			)
-			if md.ExponentialHistogram != nil {
+			if md.SpanDuration.ExponentialHistogram != nil {
 				destMetric := metrics.AppendEmpty()
 				destMetric.SetName(md.Key.Name)
 				destMetric.SetDescription(md.Key.Description)
@@ -143,7 +144,7 @@ func (a *Aggregator) Finalize(mds []model.MetricDef) {
 				destExpHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 				destExpHist.DataPoints().EnsureCapacity(len(dpMap))
 			}
-			if md.ExplicitHistogram != nil {
+			if md.SpanDuration.ExplicitHistogram != nil {
 				destMetric := metrics.AppendEmpty()
 				destMetric.SetName(md.Key.Name)
 				destMetric.SetDescription(md.Key.Description)
@@ -151,28 +152,28 @@ func (a *Aggregator) Finalize(mds []model.MetricDef) {
 				destExplicitHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 				destExplicitHist.DataPoints().EnsureCapacity(len(dpMap))
 			}
-			if md.Summary != nil {
+			if md.SpanDuration.Summary != nil {
 				destMetric := metrics.AppendEmpty()
 				destMetric.SetName(md.Key.Name)
 				destMetric.SetDescription(md.Key.Description)
 				destSummary = destMetric.SetEmptySummary()
 				destSummary.DataPoints().EnsureCapacity(len(dpMap))
 			}
-			if md.Counters != nil {
+			if md.SpanDuration.SumAndCount != nil {
 				destMetricSum := metrics.AppendEmpty()
-				// counter metric for sum
-				destMetricSum.SetName(md.Key.Name + md.Counters.SumSuffix)
+				// sum_and_count metric for sum
+				destMetricSum.SetName(md.Key.Name + md.SpanDuration.SumAndCount.SumSuffix)
 				destMetricSum.SetDescription(md.Key.Description)
-				destCountersSum = destMetricSum.SetEmptySum()
-				destCountersSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-				destCountersSum.DataPoints().EnsureCapacity(len(dpMap))
-				// counter metric for count
+				destSum = destMetricSum.SetEmptySum()
+				destSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+				destSum.DataPoints().EnsureCapacity(len(dpMap))
+				// sum_and_count metric for count
 				destMetricCount := metrics.AppendEmpty()
-				destMetricCount.SetName(md.Key.Name + md.Counters.CountSuffix)
+				destMetricCount.SetName(md.Key.Name + md.SpanDuration.SumAndCount.CountSuffix)
 				destMetricCount.SetDescription(md.Key.Description)
-				destCountersCount = destMetricCount.SetEmptySum()
-				destCountersCount.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-				destCountersCount.DataPoints().EnsureCapacity(len(dpMap))
+				destCount = destMetricCount.SetEmptySum()
+				destCount.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+				destCount.DataPoints().EnsureCapacity(len(dpMap))
 			}
 			for _, dp := range dpMap {
 				dp.Copy(
@@ -180,100 +181,43 @@ func (a *Aggregator) Finalize(mds []model.MetricDef) {
 					destExpHist,
 					destExplicitHist,
 					destSummary,
-					destCountersSum,
-					destCountersCount,
+					destSum,
+					destCount,
 				)
 			}
 		}
+		for resID, dpMap := range a.counters[md.Key] {
+			if md.Counter == nil {
+				continue
+			}
+			metrics := a.smLookup[resID].Metrics()
+			destMetric := metrics.AppendEmpty()
+			destMetric.SetName(md.Key.Name)
+			destMetric.SetDescription(md.Key.Description)
+			destCounter := destMetric.SetEmptySum()
+			destCounter.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+			destCounter.DataPoints().EnsureCapacity(len(dpMap))
+			for _, dp := range dpMap {
+				dp.Copy(a.timestamp, destCounter.DataPoints().AppendEmpty())
+			}
+		}
 		// If there are two metric defined with the same key required by metricKey
-		// then they will be aggregated within the same histogram and produced
+		// then they will be aggregated within the same metric and produced
 		// together. Deleting the key ensures this while preventing duplicates.
-		delete(a.datapoints, md.Key)
+		delete(a.spanDurations, md.Key)
 	}
 }
 
-type aggregatorDP struct {
-	expHistogramDP      *exponentialHistogramDP
-	explicitHistogramDP *explicitHistogramDP
-	summaryDP           *summaryDP
-	countersDP          *countersDP
-}
-
-func newAggregatorDP(
-	md model.MetricDef,
-	attrs pcommon.Map,
-) *aggregatorDP {
-	var dp aggregatorDP
-	if md.ExponentialHistogram != nil {
-		dp.expHistogramDP = newExponentialHistogramDP(
-			attrs, md.ExponentialHistogram.MaxSize,
-		)
+func (a *Aggregator) getResourceID(resourceAttrs pcommon.Map) [16]byte {
+	resID := pdatautil.MapHash(resourceAttrs)
+	if _, ok := a.smLookup[resID]; !ok {
+		destResourceMetric := a.result.ResourceMetrics().AppendEmpty()
+		destResAttrs := destResourceMetric.Resource().Attributes()
+		destResAttrs.EnsureCapacity(resourceAttrs.Len() + 1)
+		resourceAttrs.CopyTo(destResAttrs)
+		destScopeMetric := destResourceMetric.ScopeMetrics().AppendEmpty()
+		destScopeMetric.Scope().SetName(metadata.ScopeName)
+		a.smLookup[resID] = destScopeMetric
 	}
-	if md.ExplicitHistogram != nil {
-		dp.explicitHistogramDP = newExplicitHistogramDP(
-			attrs, md.ExplicitHistogram.Buckets,
-		)
-	}
-	if md.Summary != nil {
-		dp.summaryDP = newSummaryDP(attrs)
-	}
-	if md.Counters != nil {
-		dp.countersDP = newCountersDP(attrs)
-	}
-	return &dp
-}
-
-func (dp *aggregatorDP) Add(value float64, count uint64) {
-	if dp.expHistogramDP != nil {
-		dp.expHistogramDP.Add(value, count)
-	}
-	if dp.explicitHistogramDP != nil {
-		dp.explicitHistogramDP.Add(value, count)
-	}
-	if dp.summaryDP != nil {
-		dp.summaryDP.Add(value, count)
-	}
-	if dp.countersDP != nil {
-		dp.countersDP.Add(value, count)
-	}
-}
-
-func (dp *aggregatorDP) Copy(
-	timestamp time.Time,
-	destExpHist pmetric.ExponentialHistogram,
-	destExplicitHist pmetric.Histogram,
-	destSummary pmetric.Summary,
-	destCountersSum pmetric.Sum,
-	destCountersCount pmetric.Sum,
-) {
-	if dp.expHistogramDP != nil {
-		dp.expHistogramDP.Copy(timestamp, destExpHist.DataPoints().AppendEmpty())
-	}
-	if dp.explicitHistogramDP != nil {
-		dp.explicitHistogramDP.Copy(timestamp, destExplicitHist.DataPoints().AppendEmpty())
-	}
-	if dp.summaryDP != nil {
-		dp.summaryDP.Copy(timestamp, destSummary.DataPoints().AppendEmpty())
-	}
-	if dp.countersDP != nil {
-		dp.countersDP.Copy(
-			timestamp,
-			destCountersSum.DataPoints().AppendEmpty(),
-			destCountersCount.DataPoints().AppendEmpty(),
-		)
-	}
-}
-
-func getFilteredAttributes(attrs pcommon.Map, filters []model.AttributeKeyValue) pcommon.Map {
-	filteredAttrs := pcommon.NewMap()
-	for _, filter := range filters {
-		if attr, ok := attrs.Get(filter.Key); ok {
-			attr.CopyTo(filteredAttrs.PutEmpty(filter.Key))
-			continue
-		}
-		if filter.DefaultValue.Type() != pcommon.ValueTypeEmpty {
-			filter.DefaultValue.CopyTo(filteredAttrs.PutEmpty(filter.Key))
-		}
-	}
-	return filteredAttrs
+	return resID
 }

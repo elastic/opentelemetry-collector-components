@@ -27,19 +27,39 @@ type AttributeKeyValue struct {
 	DefaultValue pcommon.Value
 }
 
-type MetricDef struct {
-	Key                        MetricKey
-	Unit                       config.MetricUnit
-	EphemeralResourceAttribute bool
-	IncludeResourceAttributes  []AttributeKeyValue
-	Attributes                 []AttributeKeyValue
-	ExponentialHistogram       *config.ExponentialHistogram
-	ExplicitHistogram          *config.ExplicitHistogram
-	Summary                    *config.Summary
-	Counters                   *config.Counters
-}
-
 type MetricKey struct {
 	Name        string
 	Description string
+}
+
+type MetricDef struct {
+	Key                        MetricKey
+	EphemeralResourceAttribute bool
+	IncludeResourceAttributes  []AttributeKeyValue
+	Attributes                 []AttributeKeyValue
+	SpanDuration               SpanDuration
+	Counter                    *config.Counter
+}
+
+func (m MetricDef) CountDefined() bool {
+	return m.Counter != nil
+}
+
+func (m MetricDef) SpanDurationDefined() bool {
+	return m.SpanDuration.defined()
+}
+
+type SpanDuration struct {
+	Unit                 config.MetricUnit
+	ExponentialHistogram *config.ExponentialHistogram
+	ExplicitHistogram    *config.ExplicitHistogram
+	Summary              *config.Summary
+	SumAndCount          *config.SumAndCount
+}
+
+func (a SpanDuration) defined() bool {
+	return a.ExponentialHistogram != nil ||
+		a.ExplicitHistogram != nil ||
+		a.Summary != nil ||
+		a.SumAndCount != nil
 }

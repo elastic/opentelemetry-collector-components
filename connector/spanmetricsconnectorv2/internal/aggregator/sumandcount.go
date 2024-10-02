@@ -24,28 +24,28 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-// countersDP records sum and count of span duration as two counter metrics.
-// Both counters are assumed to be delta temporality cumulative counters
+// sumAndCountDP records sum and count of span duration as two counter metrics.
+// Both sumAndCount are assumed to be delta temporality cumulative sumAndCount
 // accepting double values.
-type countersDP struct {
+type sumAndCountDP struct {
 	attrs pcommon.Map
 
 	sum   float64
 	count uint64
 }
 
-func newCountersDP(attrs pcommon.Map) *countersDP {
-	return &countersDP{
+func newsumAndCountDP(attrs pcommon.Map) *sumAndCountDP {
+	return &sumAndCountDP{
 		attrs: attrs,
 	}
 }
 
-func (dp *countersDP) Add(value float64, count uint64) {
+func (dp *sumAndCountDP) Aggregate(value float64, count uint64) {
 	dp.sum += value * float64(count)
 	dp.count += count
 }
 
-func (dp *countersDP) Copy(
+func (dp *sumAndCountDP) Copy(
 	timestamp time.Time,
 	destSum pmetric.NumberDataPoint,
 	destCount pmetric.NumberDataPoint,

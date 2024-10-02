@@ -32,6 +32,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
@@ -40,9 +41,8 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-func TestConnector(t *testing.T) {
+func TestConnectorWithTraces(t *testing.T) {
 	testCases := []string{
-		"with_default",
 		"with_attributes",
 		"with_missing_attribute",
 		"with_missing_attribute_default_value",
@@ -50,8 +50,9 @@ func TestConnector(t *testing.T) {
 		"with_identical_metric_name_different_attrs",
 		"with_identical_metric_name_desc_different_attrs",
 		"with_summary",
-		"with_counters",
 		"with_include_resource_attributes",
+		"with_sum_and_count",
+		"with_counters_traces",
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -59,23 +60,11 @@ func TestConnector(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc, func(t *testing.T) {
-			factory := NewFactory()
-			settings := connectortest.NewNopSettings()
-			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 			next := &consumertest.MetricsSink{}
-
-			dir := filepath.Join("testdata", tc)
-			cfg := createDefaultConfig()
-			cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
-			require.NoError(t, err)
-			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
-			require.NoError(t, err)
-			require.NoError(t, sub.Unmarshal(&cfg))
-			require.NoError(t, component.ValidateConfig(cfg))
-
+			factory, settings, cfg, dir := setupConnector(t, tc)
 			connector, err := factory.CreateTracesToMetrics(ctx, settings, cfg, next)
 			require.NoError(t, err)
-			require.IsType(t, &spanMetrics{}, connector)
+			require.IsType(t, &signalToMetrics{}, connector)
 
 			inputTraces, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
@@ -84,26 +73,63 @@ func TestConnector(t *testing.T) {
 
 			require.NoError(t, connector.ConsumeTraces(ctx, inputTraces))
 			require.Len(t, next.AllMetrics(), 1)
-			// Assert that ephemeral ID
-			assert.NoError(t, pmetrictest.CompareMetrics(
-				expectedMetrics,
-				next.AllMetrics()[0],
-				pmetrictest.ChangeResourceAttributeValue("spanmetricsv2_ephemeral_id", func(v string) string {
-					// Since ephemeral ID is randomly generated, we only want to check
-					// if it is a non-empty valid v4 UUID. If it is, then we will replace
-					// it with const `random` else we will fail the test. Replacing with
-					// random will always pass the test as it overrides the actual value
-					// comparision for the attribute.
-					if _, err := uuid.Parse(v); err != nil {
-						t.Fatal("ephemeral ID must be non-empty valid v4 UUID")
-						return ""
-					}
-					return "random"
-				}),
-				pmetrictest.IgnoreMetricDataPointsOrder(),
-				pmetrictest.IgnoreMetricsOrder(),
-				pmetrictest.IgnoreTimestamp(),
-			))
+			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
+		})
+	}
+}
+
+func TestConnectorWithMetrics(t *testing.T) {
+	testCases := []string{
+		"with_counters_metrics",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range testCases {
+		t.Run(tc, func(t *testing.T) {
+			next := &consumertest.MetricsSink{}
+			factory, settings, cfg, dir := setupConnector(t, tc)
+			connector, err := factory.CreateMetricsToMetrics(ctx, settings, cfg, next)
+			require.NoError(t, err)
+			require.IsType(t, &signalToMetrics{}, connector)
+
+			inputMetrics, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+			require.NoError(t, err)
+			expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
+			require.NoError(t, err)
+
+			require.NoError(t, connector.ConsumeMetrics(ctx, inputMetrics))
+			require.Len(t, next.AllMetrics(), 1)
+			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
+		})
+	}
+}
+
+func TestConnectorWithLogs(t *testing.T) {
+	testCases := []string{
+		"with_counters_logs",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range testCases {
+		t.Run(tc, func(t *testing.T) {
+			next := &consumertest.MetricsSink{}
+			factory, settings, cfg, dir := setupConnector(t, tc)
+			connector, err := factory.CreateLogsToMetrics(ctx, settings, cfg, next)
+			require.NoError(t, err)
+			require.IsType(t, &signalToMetrics{}, connector)
+
+			inputLogs, err := golden.ReadLogs(filepath.Join(dir, "input.yaml"))
+			require.NoError(t, err)
+			expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
+			require.NoError(t, err)
+
+			require.NoError(t, connector.ConsumeLogs(ctx, inputLogs))
+			require.Len(t, next.AllMetrics(), 1)
+			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
 		})
 	}
 }
@@ -136,87 +162,102 @@ func BenchmarkConnector(b *testing.B) {
 	require.NoError(b, err)
 
 	cfg := &config.Config{
-		Spans: []config.MetricInfo{
+		Spans: []config.SpanMetricInfo{
 			{
-				Name:        "http.trace.span.duration",
-				Description: "Span duration for HTTP spans",
-				Attributes: []config.Attribute{
-					{
-						Key: "http.response.status_code",
+				MetricInfo: config.MetricInfo{
+					Name:        "http.trace.span.duration",
+					Description: "Span duration for HTTP spans",
+					Attributes: []config.Attribute{
+						{
+							Key: "http.response.status_code",
+						},
 					},
-				},
-				IncludeResourceAttributes: []config.Attribute{
-					{
-						Key: "resource.foo",
+					IncludeResourceAttributes: []config.Attribute{
+						{
+							Key: "resource.foo",
+						},
 					},
+					Counter: &config.Counter{},
 				},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary:  &config.Summary{},
-				Counters: &config.Counters{},
+				Summary:     &config.Summary{},
+				SumAndCount: &config.SumAndCount{},
 			},
 			{
-				Name:        "db.trace.span.duration",
-				Description: "Span duration for DB spans",
-				Attributes: []config.Attribute{
-					{
-						Key: "msg.trace.span.duration",
+				MetricInfo: config.MetricInfo{
+					Name:        "db.trace.span.duration",
+					Description: "Span duration for DB spans",
+					Attributes: []config.Attribute{
+						{
+							Key: "msg.trace.span.duration",
+						},
 					},
+					Counter: &config.Counter{},
 				},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary:  &config.Summary{},
-				Counters: &config.Counters{},
+				Summary:     &config.Summary{},
+				SumAndCount: &config.SumAndCount{},
 			},
 			{
-				Name:        "msg.trace.span.duration",
-				Description: "Span duration for DB spans",
-				Attributes: []config.Attribute{
-					{
-						Key: "messaging.system",
+				MetricInfo: config.MetricInfo{
+					Name:        "msg.trace.span.duration",
+					Description: "Span duration for DB spans",
+					Attributes: []config.Attribute{
+						{
+							Key: "messaging.system",
+						},
 					},
+					Counter: &config.Counter{},
 				},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary:  &config.Summary{},
-				Counters: &config.Counters{},
+				Summary:     &config.Summary{},
+				SumAndCount: &config.SumAndCount{},
 			},
 			{
-				Name:        "404.span.duration",
-				Description: "Span duration for missing attribute in input",
-				Attributes: []config.Attribute{
-					{
-						Key: "404.attribute",
+				MetricInfo: config.MetricInfo{
+					Name:        "404.span.duration",
+					Description: "Span duration for missing attribute in input",
+					Attributes: []config.Attribute{
+						{
+							Key: "404.attribute",
+						},
 					},
+					Counter: &config.Counter{},
 				},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary:  &config.Summary{},
-				Counters: &config.Counters{},
+				Summary:     &config.Summary{},
+				SumAndCount: &config.SumAndCount{},
 			},
 			{
-				Name:        "404.span.duration.default",
-				Description: "Span duration with attribute default configured in input",
-				Attributes: []config.Attribute{
-					{
-						Key:          "404.attribute.default",
-						DefaultValue: "any",
+				MetricInfo: config.MetricInfo{
+					Name:        "404.span.duration.default",
+					Description: "Span duration with attribute default configured in input",
+					Attributes: []config.Attribute{
+						{
+							Key:          "404.attribute.default",
+							DefaultValue: "any",
+						},
 					},
+					Counter: &config.Counter{},
 				},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
 				},
-				Summary:  &config.Summary{},
-				Counters: &config.Counters{},
+				Summary:     &config.Summary{},
+				SumAndCount: &config.SumAndCount{},
 			},
 		},
 	}
@@ -232,4 +273,46 @@ func BenchmarkConnector(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		require.NoError(b, connector.ConsumeTraces(context.Background(), inputTraces))
 	}
+}
+
+func setupConnector(
+	t *testing.T, testFilePath string,
+) (connector.Factory, connector.Settings, component.Config, string) {
+	t.Helper()
+	factory := NewFactory()
+	settings := connectortest.NewNopSettings()
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+
+	dir := filepath.Join("testdata", testFilePath)
+	cfg := createDefaultConfig()
+	cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
+	require.NoError(t, err)
+	sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
+	require.NoError(t, err)
+	require.NoError(t, sub.Unmarshal(&cfg))
+	require.NoError(t, component.ValidateConfig(cfg))
+
+	return factory, settings, cfg, dir
+}
+
+func assertAggregatedMetrics(t *testing.T, expected, actual pmetric.Metrics) {
+	t.Helper()
+	assert.NoError(t, pmetrictest.CompareMetrics(
+		expected, actual,
+		pmetrictest.ChangeResourceAttributeValue("spanmetricsv2_ephemeral_id", func(v string) string {
+			// Since ephemeral ID is randomly generated, we only want to check
+			// if it is a non-empty valid v4 UUID. If it is, then we will replace
+			// it with const `random` else we will fail the test. Replacing with
+			// random will always pass the test as it overrides the actual value
+			// comparision for the attribute.
+			if _, err := uuid.Parse(v); err != nil {
+				t.Fatal("ephemeral ID must be non-empty valid v4 UUID")
+				return ""
+			}
+			return "random"
+		}),
+		pmetrictest.IgnoreMetricDataPointsOrder(),
+		pmetrictest.IgnoreMetricsOrder(),
+		pmetrictest.IgnoreTimestamp(),
+	))
 }

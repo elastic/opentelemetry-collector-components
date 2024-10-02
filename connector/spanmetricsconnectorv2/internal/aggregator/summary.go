@@ -37,7 +37,7 @@ func newSummaryDP(attrs pcommon.Map) *summaryDP {
 	}
 }
 
-func (dp *summaryDP) Add(value float64, count uint64) {
+func (dp *summaryDP) Aggregate(value float64, count uint64) {
 	dp.sum += value * float64(count)
 	dp.count += count
 }

@@ -6,22 +6,15 @@ resourceMetrics:
             stringValue: foo
         - key: spanmetricsv2_ephemeral_id
           value:
-            stringValue: ff294b13-3d4d-48d4-aede-1a3d160b50ba
+            stringValue: a70152bc-ab62-47f2-a309-53d5539156da
     scopeMetrics:
       - metrics:
           - description: Output with resource attribute filtering on foo
-            name: with_resource_attribute_filtering_foo.sum
-            sum:
-              aggregationTemporality: 1
+            name: with_resource_attribute_filtering_foo
+            summary:
               dataPoints:
-                - asDouble: 31402.003653999996
-                  timeUnixNano: "1000000"
-          - description: Output with resource attribute filtering on foo
-            name: with_resource_attribute_filtering_foo.count
-            sum:
-              aggregationTemporality: 1
-              dataPoints:
-                - asDouble: 8
+                - count: "8"
+                  sum: 31402.003653999996
                   timeUnixNano: "1000000"
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2
@@ -32,22 +25,15 @@ resourceMetrics:
             stringValue: bar
         - key: spanmetricsv2_ephemeral_id
           value:
-            stringValue: ff294b13-3d4d-48d4-aede-1a3d160b50ba
+            stringValue: a70152bc-ab62-47f2-a309-53d5539156da
     scopeMetrics:
       - metrics:
           - description: Output with resource attribute filtering on bar
-            name: with_resource_attribute_filtering_bar.sum
-            sum:
-              aggregationTemporality: 1
+            name: with_resource_attribute_filtering_bar
+            summary:
               dataPoints:
-                - asDouble: 31402.003653999996
-                  timeUnixNano: "1000000"
-          - description: Output with resource attribute filtering on bar
-            name: with_resource_attribute_filtering_bar.count
-            sum:
-              aggregationTemporality: 1
-              dataPoints:
-                - asDouble: 8
+                - count: "8"
+                  sum: 31402.003653999996
                   timeUnixNano: "1000000"
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2
@@ -62,18 +48,11 @@ resourceMetrics:
     scopeMetrics:
       - metrics:
           - description: Output with no resource attribute filtering
-            name: without_resource_attribute_filtering.sum
-            sum:
-              aggregationTemporality: 1
+            name: without_resource_attribute_filtering
+            summary:
               dataPoints:
-                - asDouble: 31402.003653999996
-                  timeUnixNano: "1000000"
-          - description: Output with no resource attribute filtering
-            name: without_resource_attribute_filtering.count
-            sum:
-              aggregationTemporality: 1
-              dataPoints:
-                - asDouble: 8
+                - count: "8"
+                  sum: 31402.003653999996
                   timeUnixNano: "1000000"
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2

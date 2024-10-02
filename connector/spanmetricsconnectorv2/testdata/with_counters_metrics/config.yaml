@@ -1,0 +1,12 @@
+spanmetricsv2:
+  datapoints:
+    - name: total.metrics
+      description: Count total number of datapoints
+    - name: datapoint.foo.metrics
+      description: Count total number of datapoints as per datapoint.foo attribute
+      attributes:
+        - key: datapoint.foo
+    - name: datapoint.bar.metrics
+      description: Count total number of datapoints as per datapoint.bar attribute
+      attributes:
+        - key: datapoint.bar

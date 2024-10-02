@@ -39,6 +39,8 @@ func NewFactory() connector.Factory {
 		metadata.Type,
 		createDefaultConfig,
 		connector.WithTracesToMetrics(createTracesToMetrics, metadata.TracesToMetricsStability),
+		connector.WithMetricsToMetrics(createMetricsToMetrics, metadata.MetricsToMetricsStability),
+		connector.WithLogsToMetrics(createLogsToMetrics, metadata.LogsToMetricsStability),
 	)
 }
 
@@ -71,19 +73,98 @@ func createTracesToMetrics(
 				Name:        info.Name,
 				Description: info.Description,
 			},
-			Unit:                       info.Unit,
 			EphemeralResourceAttribute: info.EphemeralResourceAttribute,
 			IncludeResourceAttributes:  resAttrs,
 			Attributes:                 attrs,
-			ExplicitHistogram:          info.Histogram.Explicit,
-			ExponentialHistogram:       info.Histogram.Exponential,
-			Summary:                    info.Summary,
-			Counters:                   info.Counters,
+			Counter:                    info.Counter,
+			SpanDuration: model.SpanDuration{
+				Unit:                 info.Unit,
+				ExplicitHistogram:    info.Histogram.Explicit,
+				ExponentialHistogram: info.Histogram.Exponential,
+				Summary:              info.Summary,
+				SumAndCount:          info.SumAndCount,
+			},
 		}
 		metricDefs = append(metricDefs, md)
 	}
 
-	return &spanMetrics{
+	return &signalToMetrics{
+		next:        nextConsumer,
+		metricDefs:  metricDefs,
+		ephemeralID: uuid.NewString(),
+	}, nil
+}
+
+func createMetricsToMetrics(
+	_ context.Context,
+	set connector.Settings,
+	cfg component.Config,
+	nextConsumer consumer.Metrics,
+) (connector.Metrics, error) {
+	c := cfg.(*config.Config)
+
+	metricDefs := make([]model.MetricDef, 0, len(c.Datapoints))
+	for _, info := range c.Datapoints {
+		resAttrs, err := parseAttributeConfigs(info.IncludeResourceAttributes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse resource attribute config: %w", err)
+		}
+		attrs, err := parseAttributeConfigs(info.Attributes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse attribute config: %w", err)
+		}
+		md := model.MetricDef{
+			Key: model.MetricKey{
+				Name:        info.Name,
+				Description: info.Description,
+			},
+			EphemeralResourceAttribute: info.EphemeralResourceAttribute,
+			IncludeResourceAttributes:  resAttrs,
+			Attributes:                 attrs,
+			Counter:                    info.Counter,
+		}
+		metricDefs = append(metricDefs, md)
+	}
+
+	return &signalToMetrics{
+		next:        nextConsumer,
+		metricDefs:  metricDefs,
+		ephemeralID: uuid.NewString(),
+	}, nil
+}
+
+func createLogsToMetrics(
+	_ context.Context,
+	set connector.Settings,
+	cfg component.Config,
+	nextConsumer consumer.Metrics,
+) (connector.Logs, error) {
+	c := cfg.(*config.Config)
+
+	metricDefs := make([]model.MetricDef, 0, len(c.Logs))
+	for _, info := range c.Logs {
+		resAttrs, err := parseAttributeConfigs(info.IncludeResourceAttributes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse resource attribute config: %w", err)
+		}
+		attrs, err := parseAttributeConfigs(info.Attributes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse attribute config: %w", err)
+		}
+		md := model.MetricDef{
+			Key: model.MetricKey{
+				Name:        info.Name,
+				Description: info.Description,
+			},
+			EphemeralResourceAttribute: info.EphemeralResourceAttribute,
+			IncludeResourceAttributes:  resAttrs,
+			Attributes:                 attrs,
+			Counter:                    info.Counter,
+		}
+		metricDefs = append(metricDefs, md)
+	}
+
+	return &signalToMetrics{
 		next:        nextConsumer,
 		metricDefs:  metricDefs,
 		ephemeralID: uuid.NewString(),

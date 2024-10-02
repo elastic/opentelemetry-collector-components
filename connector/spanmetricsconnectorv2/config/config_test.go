@@ -35,20 +35,21 @@ func TestConfig(t *testing.T) {
 		errorMsg string
 	}{
 		{
-			path: "with_default",
-			expected: &Config{
-				Spans: defaultSpansConfig(),
-			},
+			path:     "with_empty",
+			expected: &Config{},
+			errorMsg: "no configuration provided",
 		},
 		{
 			path: "with_attributes",
 			expected: &Config{
-				Spans: []MetricInfo{
+				Spans: []SpanMetricInfo{
 					{
-						Name:        "http.trace.span.duration",
-						Description: "Span duration for HTTP spans",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "http.response.status_code"}},
+						MetricInfo: MetricInfo{
+							Name:        "http.trace.span.duration",
+							Description: "Span duration for HTTP spans",
+							Attributes:  []Attribute{{Key: "http.response.status_code"}},
+						},
+						Unit: MetricUnitMs,
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
@@ -59,10 +60,12 @@ func TestConfig(t *testing.T) {
 						},
 					},
 					{
-						Name:        "db.trace.span.duration",
-						Description: "Span duration for DB spans",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "db.system"}},
+						MetricInfo: MetricInfo{
+							Name:        "db.trace.span.duration",
+							Description: "Span duration for DB spans",
+							Attributes:  []Attribute{{Key: "db.system"}},
+						},
+						Unit: MetricUnitMs,
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
@@ -73,10 +76,12 @@ func TestConfig(t *testing.T) {
 						},
 					},
 					{
-						Name:        "msg.trace.span.duration",
-						Description: "Span duration for messaging spans",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "messaging.system"}},
+						MetricInfo: MetricInfo{
+							Name:        "msg.trace.span.duration",
+							Description: "Span duration for messaging spans",
+							Attributes:  []Attribute{{Key: "messaging.system"}},
+						},
+						Unit: MetricUnitMs,
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
@@ -92,11 +97,13 @@ func TestConfig(t *testing.T) {
 		{
 			path: "with_custom_histogram_configs",
 			expected: &Config{
-				Spans: []MetricInfo{
+				Spans: []SpanMetricInfo{
 					{
-						Name:        "trace.span.duration",
-						Description: "Span duration with custom histogram buckets",
-						Unit:        MetricUnitS,
+						MetricInfo: MetricInfo{
+							Name:        "trace.span.duration",
+							Description: "Span duration with custom histogram buckets",
+						},
+						Unit: MetricUnitS,
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: []float64{0.001, 0.1, 1, 10},
@@ -116,12 +123,14 @@ func TestConfig(t *testing.T) {
 		{
 			path: "with_identical_metric_name_different_attrs",
 			expected: &Config{
-				Spans: []MetricInfo{
+				Spans: []SpanMetricInfo{
 					{
-						Name:        "identical.name",
-						Description: "Identical description",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "key.1"}},
+						MetricInfo: MetricInfo{
+							Name:        "identical.name",
+							Description: "Identical description",
+							Attributes:  []Attribute{{Key: "key.1"}},
+						},
+						Unit: MetricUnitMs,
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
@@ -132,10 +141,12 @@ func TestConfig(t *testing.T) {
 						},
 					},
 					{
-						Name:        "identical.name",
-						Description: "Different description",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "key.2"}},
+						MetricInfo: MetricInfo{
+							Name:        "identical.name",
+							Description: "Different description",
+							Attributes:  []Attribute{{Key: "key.2"}},
+						},
+						Unit: MetricUnitMs,
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
@@ -151,12 +162,14 @@ func TestConfig(t *testing.T) {
 		{
 			path: "with_identical_metric_name_desc_different_attrs",
 			expected: &Config{
-				Spans: []MetricInfo{
+				Spans: []SpanMetricInfo{
 					{
-						Name:        "identical.name",
-						Description: "Identical description",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "key.1"}},
+						MetricInfo: MetricInfo{
+							Name:        "identical.name",
+							Description: "Identical description",
+							Attributes:  []Attribute{{Key: "key.1"}},
+						},
+						Unit: MetricUnitMs,
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
@@ -167,10 +180,12 @@ func TestConfig(t *testing.T) {
 						},
 					},
 					{
-						Name:        "identical.name",
-						Description: "Identical description",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "key.2"}},
+						MetricInfo: MetricInfo{
+							Name:        "identical.name",
+							Description: "Identical description",
+							Attributes:  []Attribute{{Key: "key.2"}},
+						},
+						Unit: MetricUnitMs,
 						Histogram: Histogram{
 							Explicit: &ExplicitHistogram{
 								Buckets: defaultHistogramBuckets[:],
@@ -186,64 +201,33 @@ func TestConfig(t *testing.T) {
 		{
 			path: "with_summary",
 			expected: &Config{
-				Spans: []MetricInfo{
+				Spans: []SpanMetricInfo{
 					{
-						Name:        "http.trace.span.summary",
-						Description: "Summary for HTTP spans",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "http.response.status_code"}},
-						Summary:     &Summary{},
-					},
-					{
-						Name:        "db.trace.span.summary",
-						Description: "Summary for DB spans",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "db.system"}},
-						Summary:     &Summary{},
-					},
-					{
-						Name:        "msg.trace.span.summary",
-						Description: "Summary for messaging spans",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "messaging.system"}},
-						Summary:     &Summary{},
-					},
-				},
-			},
-		},
-		{
-			path: "with_counters",
-			expected: &Config{
-				Spans: []MetricInfo{
-					{
-						Name:        "http.trace.span.counter",
-						Description: "Counters for HTTP spans with default metric suffixes",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "http.response.status_code"}},
-						Counters: &Counters{
-							SumSuffix:   ".sum",
-							CountSuffix: ".count",
+						MetricInfo: MetricInfo{
+							Name:        "http.trace.span.summary",
+							Description: "Summary for HTTP spans",
+							Attributes:  []Attribute{{Key: "http.response.status_code"}},
 						},
+						Unit:    MetricUnitMs,
+						Summary: &Summary{},
 					},
 					{
-						Name:        "db.trace.span.counter",
-						Description: "Counters for DB spans with default metric suffixes",
-						Unit:        MetricUnitMs,
-						Attributes:  []Attribute{{Key: "db.system"}},
-						Counters: &Counters{
-							SumSuffix:   ".sum",
-							CountSuffix: ".count",
+						MetricInfo: MetricInfo{
+							Name:        "db.trace.span.summary",
+							Description: "Summary for DB spans",
+							Attributes:  []Attribute{{Key: "db.system"}},
 						},
+						Unit:    MetricUnitMs,
+						Summary: &Summary{},
 					},
 					{
-						Name:        "msg.trace.span.counter",
-						Description: "Counters for messaging spans with custom metric suffixes",
-						Unit:        MetricUnitUs,
-						Attributes:  []Attribute{{Key: "messaging.system"}},
-						Counters: &Counters{
-							SumSuffix:   ".sum.us",
-							CountSuffix: ".count",
+						MetricInfo: MetricInfo{
+							Name:        "msg.trace.span.summary",
+							Description: "Summary for messaging spans",
+							Attributes:  []Attribute{{Key: "messaging.system"}},
 						},
+						Unit:    MetricUnitMs,
+						Summary: &Summary{},
 					},
 				},
 			},
@@ -251,35 +235,76 @@ func TestConfig(t *testing.T) {
 		{
 			path: "with_include_resource_attributes",
 			expected: &Config{
-				Spans: []MetricInfo{
+				Spans: []SpanMetricInfo{
 					{
-						Name:                       "with_resource_attribute_filtering_foo",
-						Description:                "Output with resource attribute filtering on foo",
-						Unit:                       MetricUnitMs,
-						EphemeralResourceAttribute: true,
-						IncludeResourceAttributes:  []Attribute{{Key: "resource.foo"}},
-						Counters: &Counters{
+
+						MetricInfo: MetricInfo{
+							Name:                       "with_resource_attribute_filtering_foo",
+							Description:                "Output with resource attribute filtering on foo",
+							EphemeralResourceAttribute: true,
+							IncludeResourceAttributes:  []Attribute{{Key: "resource.foo"}},
+						},
+						Unit:    MetricUnitMs,
+						Summary: &Summary{},
+					},
+					{
+						MetricInfo: MetricInfo{
+							Name:                       "with_resource_attribute_filtering_bar",
+							Description:                "Output with resource attribute filtering on bar",
+							EphemeralResourceAttribute: true,
+							IncludeResourceAttributes:  []Attribute{{Key: "resource.bar"}},
+						},
+						Unit:    MetricUnitMs,
+						Summary: &Summary{},
+					},
+					{
+						MetricInfo: MetricInfo{
+							Name:        "without_resource_attribute_filtering",
+							Description: "Output with no resource attribute filtering",
+						},
+						Unit:    MetricUnitMs,
+						Summary: &Summary{},
+					},
+				},
+			},
+		},
+		{
+			path: "with_sum_and_count",
+			expected: &Config{
+				Spans: []SpanMetricInfo{
+					{
+						MetricInfo: MetricInfo{
+							Name:        "http.trace.span.sumcount",
+							Description: "Sum and count for HTTP spans with default metric suffixes",
+							Attributes:  []Attribute{{Key: "http.response.status_code"}},
+						},
+						Unit: MetricUnitMs,
+						SumAndCount: &SumAndCount{
 							SumSuffix:   ".sum",
 							CountSuffix: ".count",
 						},
 					},
 					{
-						Name:                       "with_resource_attribute_filtering_bar",
-						Description:                "Output with resource attribute filtering on bar",
-						Unit:                       MetricUnitMs,
-						EphemeralResourceAttribute: true,
-						IncludeResourceAttributes:  []Attribute{{Key: "resource.bar"}},
-						Counters: &Counters{
+						MetricInfo: MetricInfo{
+							Name:        "db.trace.span.sumcount",
+							Description: "Sum and count for DB spans with default metric suffixes",
+							Attributes:  []Attribute{{Key: "db.system"}},
+						},
+						Unit: MetricUnitMs,
+						SumAndCount: &SumAndCount{
 							SumSuffix:   ".sum",
 							CountSuffix: ".count",
 						},
 					},
 					{
-						Name:        "without_resource_attribute_filtering",
-						Description: "Output with no resource attribute filtering",
-						Unit:        MetricUnitMs,
-						Counters: &Counters{
-							SumSuffix:   ".sum",
+						MetricInfo: MetricInfo{
+							Name:        "msg.trace.span.sumcount",
+							Description: "Sum and count for messaging spans with custom metric suffixes",
+							Attributes:  []Attribute{{Key: "messaging.system"}},
+						},
+						Unit: MetricUnitUs,
+						SumAndCount: &SumAndCount{
+							SumSuffix:   ".sum.us",
 							CountSuffix: ".count",
 						},
 					},

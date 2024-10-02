@@ -24,7 +24,6 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
-	"github.com/google/uuid"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,21 +47,22 @@ func TestExplicitBounds(t *testing.T) {
 			expectedHistogram: pmetric.NewMetricSlice(),
 		},
 		{
-			name: "no_attribute_configured",
+			name: "same_attrs",
 			metricDefs: []model.MetricDef{
 				{
 					Key: model.MetricKey{
 						Name:        "metric.1",
 						Description: "metric desc 1",
 					},
-					Unit:              config.MetricUnitS,
-					Attributes:        nil,
-					ExplicitHistogram: histogramCfg,
+					SpanDuration: model.SpanDuration{
+						Unit:              config.MetricUnitS,
+						ExplicitHistogram: histogramCfg,
+					},
 				},
 			},
 			input: []ptrace.Span{
 				getTestSpan(t, time.Minute, map[string]any{"key.1": "val.1"}),
-				getTestSpan(t, time.Second, map[string]any{"key.2": "val.2"}),
+				getTestSpan(t, time.Second, map[string]any{"key.1": "val.1"}),
 			},
 			expectedHistogram: getTestExplicitHistogram(
 				t, pmetric.NewMetricSlice(),
@@ -73,28 +73,31 @@ func TestExplicitBounds(t *testing.T) {
 						counts:  []uint64{1, 0, 1, 0, 0},
 						count:   2,
 						sum:     61, // 1 minute + 1 second to seconds
+						attrs:   map[string]any{"key.1": "val.1"},
 					},
 				},
 			),
 		},
 		{
-			name: "attribute_configured",
+			name: "different_attrs",
 			metricDefs: []model.MetricDef{
 				{
 					Key: model.MetricKey{
 						Name:        "metric.1",
 						Description: "metric desc 1",
 					},
-					Attributes: []model.AttributeKeyValue{
-						{Key: "key.1", DefaultValue: pcommon.NewValueEmpty()},
+					SpanDuration: model.SpanDuration{
+						Unit:              config.MetricUnitS,
+						ExplicitHistogram: histogramCfg,
 					},
-					Unit:              config.MetricUnitS,
-					ExplicitHistogram: histogramCfg,
 				},
 			},
 			input: []ptrace.Span{
-				getTestSpan(t, time.Minute, map[string]any{"key.1": "val.1"}),
-				getTestSpan(t, time.Second, map[string]any{"key.2": "val.2"}),
+				getTestSpan(t, time.Minute, map[string]any{"key.2": "val.2", "key.1": "val.1"}),
+				getTestSpan(t, 10*time.Second, map[string]any{"key.1": "val.1"}),
+				getTestSpan(t, 11*time.Second, map[string]any{"key.1": "val.1", "key.2": "val.2"}),
+				getTestSpan(t, 12*time.Second, map[string]any{"key.1": "val.1"}),
+				getTestSpan(t, 13*time.Second, map[string]any{"key.2": "val.2"}),
 			},
 			expectedHistogram: getTestExplicitHistogram(
 				t, pmetric.NewMetricSlice(),
@@ -102,43 +105,24 @@ func TestExplicitBounds(t *testing.T) {
 				[]createHist{
 					{
 						buckets: histogramCfg.Buckets,
+						counts:  []uint64{0, 1, 1, 0, 0},
+						count:   2,
+						sum:     22,
 						attrs:   map[string]any{"key.1": "val.1"},
+					},
+					{
+						buckets: histogramCfg.Buckets,
 						counts:  []uint64{0, 0, 1, 0, 0},
 						count:   1,
-						sum:     60, // 1 minute to seconds
+						sum:     13,
+						attrs:   map[string]any{"key.2": "val.2"},
 					},
-				},
-			),
-		},
-		{
-			name: "default_attribute_configured",
-			metricDefs: []model.MetricDef{
-				{
-					Key: model.MetricKey{
-						Name:        "metric.1",
-						Description: "metric desc 1",
-					},
-					Attributes: []model.AttributeKeyValue{
-						{Key: "key.3", DefaultValue: pcommon.NewValueStr("val.3")},
-					},
-					Unit:              config.MetricUnitS,
-					ExplicitHistogram: histogramCfg,
-				},
-			},
-			input: []ptrace.Span{
-				getTestSpan(t, time.Minute, map[string]any{"key.1": "val.1"}),
-				getTestSpan(t, time.Second, map[string]any{"key.2": "val.2"}),
-			},
-			expectedHistogram: getTestExplicitHistogram(
-				t, pmetric.NewMetricSlice(),
-				"metric.1", "metric desc 1",
-				[]createHist{
 					{
 						buckets: histogramCfg.Buckets,
-						attrs:   map[string]any{"key.3": "val.3"},
-						counts:  []uint64{1, 0, 1, 0, 0},
+						counts:  []uint64{0, 0, 2, 0, 0},
 						count:   2,
-						sum:     61, // 1 minute + 1 second to seconds
+						sum:     71,
+						attrs:   map[string]any{"key.1": "val.1", "key.2": "val.2"},
 					},
 				},
 			),
@@ -146,12 +130,12 @@ func TestExplicitBounds(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			actual := pmetric.NewMetrics()
-			agg := NewAggregator(actual, uuid.NewString())
+			agg := NewAggregator(actual)
 			require.NotNil(t, agg)
 			for _, span := range tc.input {
 				duration := time.Duration(span.EndTimestamp() - span.StartTimestamp())
 				for _, md := range tc.metricDefs {
-					require.NoError(t, agg.Add(md, pcommon.NewMap(), span.Attributes(), duration, 1))
+					require.NoError(t, agg.SpanDuration(md, pcommon.NewMap(), span.Attributes(), duration, 1))
 				}
 			}
 			agg.Finalize(tc.metricDefs)
@@ -163,7 +147,7 @@ func TestExplicitBounds(t *testing.T) {
 				expectedScope.Scope().SetName(metadata.ScopeName)
 				tc.expectedHistogram.CopyTo(expectedScope.Metrics())
 			}
-			assert.NoError(t, pmetrictest.CompareMetrics(expected, actual, pmetrictest.IgnoreTimestamp()))
+			assert.NoError(t, pmetrictest.CompareMetrics(expected, actual, pmetrictest.IgnoreTimestamp(), pmetrictest.IgnoreMetricDataPointsOrder()))
 		})
 	}
 }

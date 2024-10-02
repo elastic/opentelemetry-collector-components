@@ -9,8 +9,8 @@ resourceMetrics:
             stringValue: foo
     scopeMetrics:
       - metrics:
-          - description: Counters for HTTP spans with default metric suffixes
-            name: http.trace.span.counter.sum
+          - description: Sum and count for HTTP spans with default metric suffixes
+            name: http.trace.span.sumcount.sum
             sum:
               aggregationTemporality: 1
               dataPoints:
@@ -20,8 +20,8 @@ resourceMetrics:
                       value:
                         intValue: "201"
                   timeUnixNano: "1000000"
-          - description: Counters for HTTP spans with default metric suffixes
-            name: http.trace.span.counter.count
+          - description: Sum and count for HTTP spans with default metric suffixes
+            name: http.trace.span.sumcount.count
             sum:
               aggregationTemporality: 1
               dataPoints:
@@ -31,8 +31,8 @@ resourceMetrics:
                       value:
                         intValue: "201"
                   timeUnixNano: "1000000"
-          - description: Counters for DB spans with default metric suffixes
-            name: db.trace.span.counter.sum
+          - description: Sum and count for DB spans with default metric suffixes
+            name: db.trace.span.sumcount.sum
             sum:
               aggregationTemporality: 1
               dataPoints:
@@ -42,8 +42,8 @@ resourceMetrics:
                       value:
                         stringValue: mysql
                   timeUnixNano: "1000000"
-          - description: Counters for DB spans with default metric suffixes
-            name: db.trace.span.counter.count
+          - description: Sum and count for DB spans with default metric suffixes
+            name: db.trace.span.sumcount.count
             sum:
               aggregationTemporality: 1
               dataPoints:
@@ -53,8 +53,8 @@ resourceMetrics:
                       value:
                         stringValue: mysql
                   timeUnixNano: "1000000"
-          - description: Counters for messaging spans with custom metric suffixes
-            name: msg.trace.span.counter.sum.us
+          - description: Sum and count for messaging spans with custom metric suffixes
+            name: msg.trace.span.sumcount.sum.us
             sum:
               aggregationTemporality: 1
               dataPoints:
@@ -64,8 +64,8 @@ resourceMetrics:
                       value:
                         stringValue: kafka
                   timeUnixNano: "1000000"
-          - description: Counters for messaging spans with custom metric suffixes
-            name: msg.trace.span.counter.count
+          - description: Sum and count for messaging spans with custom metric suffixes
+            name: msg.trace.span.sumcount.count
             sum:
               aggregationTemporality: 1
               dataPoints:
