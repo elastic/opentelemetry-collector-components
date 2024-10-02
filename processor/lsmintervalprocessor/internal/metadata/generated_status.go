@@ -24,7 +24,8 @@ import (
 )
 
 var (
-	Type = component.MustNewType("lsminterval")
+	Type      = component.MustNewType("lsminterval")
+	ScopeName = "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor"
 )
 
 const (

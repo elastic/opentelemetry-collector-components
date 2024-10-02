@@ -1,5 +1,5 @@
 type: spanmetricsv2
-scope_name: otelcol/spanmetricsconnectorv2
+scope_name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2
 
 status:
   class: connector

@@ -24,7 +24,7 @@ resourceMetrics:
                 - asDouble: 8
                   timeUnixNano: "1000000"
         scope:
-          name: otelcol/spanmetricsconnectorv2
+          name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2
   - resource:
       attributes:
         - key: resource.bar
@@ -50,7 +50,7 @@ resourceMetrics:
                 - asDouble: 8
                   timeUnixNano: "1000000"
         scope:
-          name: otelcol/spanmetricsconnectorv2
+          name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2
   - resource:
       attributes:
         - key: resource.bar
@@ -76,4 +76,4 @@ resourceMetrics:
                 - asDouble: 8
                   timeUnixNano: "1000000"
         scope:
-          name: otelcol/spanmetricsconnectorv2
+          name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2

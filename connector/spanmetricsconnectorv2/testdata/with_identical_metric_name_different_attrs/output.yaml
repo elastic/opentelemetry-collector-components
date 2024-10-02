@@ -380,4 +380,4 @@ resourceMetrics:
                   timeUnixNano: "1000000"
             name: identical.name
         scope:
-          name: otelcol/spanmetricsconnectorv2
+          name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2

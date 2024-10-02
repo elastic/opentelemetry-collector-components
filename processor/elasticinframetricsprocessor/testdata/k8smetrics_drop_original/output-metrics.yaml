@@ -1,0 +1,117 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: k8s.pod.name
+          value:
+            stringValue: test-pod
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 345
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: event.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: service.type
+                      value:
+                        stringValue: kubernetes
+                  timeUnixNano: "1000000"
+            name: kubernetes.pod.cpu.usage.limit.pct
+          - gauge:
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: event.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: service.type
+                      value:
+                        stringValue: kubernetes
+                  timeUnixNano: "1000000"
+            name: kubernetes.pod.cpu.usage.node.pct
+          - gauge:
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: event.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: service.type
+                      value:
+                        stringValue: kubernetes
+                  timeUnixNano: "1000000"
+            name: kubernetes.pod.memory.usage.node.pct
+          - gauge:
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: event.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: service.type
+                      value:
+                        stringValue: kubernetes
+                  timeUnixNano: "1000000"
+            name: kubernetes.pod.memory.usage.limit.pct
+          - name: kubernetes.pod.network.tx.bytes
+            sum:
+              dataPoints:
+                - asInt: "0"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: event.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: service.type
+                      value:
+                        stringValue: kubernetes
+                  timeUnixNano: "1000000"
+          - name: kubernetes.pod.network.rx.bytes
+            sum:
+              dataPoints:
+                - asInt: "0"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: event.dataset
+                      value:
+                        stringValue: kubernetes.pod
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: service.type
+                      value:
+                        stringValue: kubernetes
+                  timeUnixNano: "1000000"
+        scope: {}
