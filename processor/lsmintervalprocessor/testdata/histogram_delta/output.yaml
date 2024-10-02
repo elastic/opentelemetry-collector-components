@@ -37,6 +37,8 @@ resourceMetrics:
                     - 10
                     - 100
                   timeUnixNano: "8000000"
+                  count: 192
+                  sum: 8380
             name: delta.histogram.test
         schemaUrl: https://test-scope-schema.com/schema
         scope:

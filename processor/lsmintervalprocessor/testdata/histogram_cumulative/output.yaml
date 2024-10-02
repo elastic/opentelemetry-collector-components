@@ -37,6 +37,8 @@ resourceMetrics:
                     - 10
                     - 100
                   timeUnixNano: "8000000"
+                  sum: 3600
+                  count: 91
             name: cumulative.histogram.test
         schemaUrl: https://test-scope-schema.com/schema
         scope:
