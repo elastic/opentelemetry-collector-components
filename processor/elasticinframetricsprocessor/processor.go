@@ -20,6 +20,7 @@ package elasticinframetricsprocessor // import "github.com/elastic/opentelemetry
 import (
 	"context"
 
+	"github.com/elastic/opentelemetry-lib/remappers/common"
 	"github.com/elastic/opentelemetry-lib/remappers/hostmetrics"
 	"github.com/elastic/opentelemetry-lib/remappers/kubernetesmetrics"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -27,6 +28,8 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 )
+
+const OTelRemappedLabel = common.OTelRemappedLabel
 
 // remapper interface defines the Remap method that should be implemented by different remappers
 type remapper interface {
@@ -43,7 +46,6 @@ func newProcessor(set processor.Settings, cfg *Config) *ElasticinframetricsProce
 	remappers := make([]remapper, 0)
 	if cfg.AddSystemMetrics {
 		remappers = append(remappers, hostmetrics.NewRemapper(set.Logger, hostmetrics.WithSystemIntegrationDataset(true)))
-
 	}
 	if cfg.AddK8sMetrics {
 		remappers = append(remappers, kubernetesmetrics.NewRemapper(set.Logger, kubernetesmetrics.WithKubernetesIntegrationDataset(true)))
@@ -57,16 +59,58 @@ func newProcessor(set processor.Settings, cfg *Config) *ElasticinframetricsProce
 
 // processMetrics processes the given metrics and applies remappers if configured.
 func (p *ElasticinframetricsProcessor) processMetrics(_ context.Context, md pmetric.Metrics) (pmetric.Metrics, error) {
-	for i := 0; i < md.ResourceMetrics().Len(); i++ {
-		resourceMetric := md.ResourceMetrics().At(i)
+	for resIndex := range md.ResourceMetrics().Len() {
+		resourceMetric := md.ResourceMetrics().At(resIndex)
 		rm := resourceMetric.Resource()
-
-		for j := 0; j < resourceMetric.ScopeMetrics().Len(); j++ {
-			scopeMetric := resourceMetric.ScopeMetrics().At(j)
+		for scopeIndex := range resourceMetric.ScopeMetrics().Len() {
+			scopeMetric := resourceMetric.ScopeMetrics().At(scopeIndex)
 			for _, r := range p.remappers {
 				r.Remap(scopeMetric, scopeMetric.Metrics(), rm)
 			}
 		}
 	}
+	// drop_original=true will keep only the metrics that have been remapped based on the presense of OTelRemappedLabel label.
+	// See  https://github.com/elastic/opentelemetry-lib/blob/6d89cbad4221429570107eb4a4968cf8a2ff919f/remappers/common/const.go#L31
+	if p.cfg.DropOriginal {
+		newMetic := pmetric.NewMetrics()
+		for resIndex := range md.ResourceMetrics().Len() {
+			resourceMetric := md.ResourceMetrics().At(resIndex)
+			rmNew := newMetic.ResourceMetrics().AppendEmpty()
+
+			// We need to copy Resource().Attributes() because those inlcude additional attributes of the metrics
+			resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
+			for scopeIndex := range resourceMetric.ScopeMetrics().Len() {
+				scopeMetric := resourceMetric.ScopeMetrics().At(scopeIndex)
+				rmScope := rmNew.ScopeMetrics().AppendEmpty()
+
+				// Iterate over the metrics
+				for metricIndex := range scopeMetric.Metrics().Len() {
+					metric := scopeMetric.Metrics().At(metricIndex)
+
+					if metric.Type() == pmetric.MetricTypeGauge {
+						for dataPointIndex := range metric.Gauge().DataPoints().Len() {
+							if oTelRemappedLabel, ok := metric.Gauge().DataPoints().At(dataPointIndex).Attributes().Get(OTelRemappedLabel); ok {
+								if oTelRemappedLabel.Bool() {
+									metric.CopyTo(rmScope.Metrics().AppendEmpty())
+								}
+							}
+						}
+					} else if metric.Type() == pmetric.MetricTypeSum {
+						for dataPointIndex := range metric.Sum().DataPoints().Len() {
+							if oTelRemappedLabel, ok := metric.Sum().DataPoints().At(dataPointIndex).Attributes().Get(OTelRemappedLabel); ok {
+								if oTelRemappedLabel.Bool() {
+									resourceMetric.Resource().Attributes().CopyTo(rmNew.Resource().Attributes())
+									metric.CopyTo(rmScope.Metrics().AppendEmpty())
+								}
+							}
+						}
+					}
+
+				}
+			}
+		}
+		return newMetic, nil
+	}
+
 	return md, nil
 }

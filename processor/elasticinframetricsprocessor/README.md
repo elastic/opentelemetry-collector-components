@@ -30,4 +30,8 @@ processors:
     # Defines if K8s Infra Metrics compatibility should be enabled
     # default = true
     add_k8s_metrics: {true,false}
+    # Defines if all Metrics -both initial and remapped- are going to be kept. 
+    # If enabled, then only the remapped metrics are ingested. 
+    # default = false
+    drop_original : {true,false}
 ```

@@ -14,3 +14,9 @@ elasticinframetrics/without_system_and_k8s_metrics:
 elasticinframetrics/with_kubernetes_metrics:
   add_system_metrics: false
   add_k8s_metrics: true
+
+
+elasticinframetrics/all_and_drop_original:
+  add_system_metrics: true
+  add_k8s_metrics: true
+  drop_original: true
