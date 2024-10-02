@@ -22,9 +22,9 @@ import (
 	"errors"
 	"time"
 
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 )
 
@@ -426,110 +426,8 @@ func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataP
 		return
 	}
 
-	// Since min/max are optional, set them only when both have it, else reset it
-	if to.HasMin() && from.HasMin() {
-		to.SetMin(min(to.Min(), from.Min()))
-	} else {
-		to.RemoveMin()
-	}
-	if to.HasMax() && from.HasMax() {
-		to.SetMax(max(to.Max(), from.Max()))
-	} else {
-		to.RemoveMax()
-	}
-	to.SetSum(to.Sum() + from.Sum())
-	to.SetCount(to.Count() + from.Count())
-	// TODO (lahsivjar): Zero count depends on the value of zero threshold.
-	// If zero threshold are not the same then we can't merge them directly,
-	// instead, we will need to expand the zero threshold to be inclusive
-	// of the smaller zero count. If a zero threshold encroaches a bucket,
-	// then we will need to expand the zero count till the end of the bucket.
-	to.SetZeroCount(to.ZeroCount() + from.ZeroCount())
+	toDP := data.ExpHistogram{DataPoint: to}
+	fromDP := data.ExpHistogram{DataPoint: from}
 
-	// Downscale the resolution and use perfect-subsetting
-	minScale := min(to.Scale(), from.Scale())
-	maybeScaleDownHistogram(to, minScale)
-	maybeScaleDownHistogram(from, minScale)
-
-	// All histogram buckets are now on same scale, merge them
-	mergeExponentialHistogramBuckets(from.Positive(), to.Positive())
-	mergeExponentialHistogramBuckets(from.Negative(), to.Negative())
-}
-
-func mergeExponentialHistogramBuckets(from, to pmetric.ExponentialHistogramDataPointBuckets) {
-	fromBuckets := from.BucketCounts()
-	toBuckets := to.BucketCounts()
-	fromSize := int(from.Offset()) + fromBuckets.Len()
-	toSize := int(to.Offset()) + toBuckets.Len()
-
-	if to.Offset() > from.Offset() {
-		// Expand `to` to accomodate the merged buckets with offset as `from.Offset()`
-		newBucketsSize := max(fromSize, toSize) - int(from.Offset())
-		newBuckets := pcommon.NewUInt64Slice()
-		newBuckets.Append(make([]uint64, newBucketsSize)...)
-
-		// Copy `to` to the new bucket
-		for i := 0; i < toBuckets.Len(); i++ {
-			newBuckets.SetAt(int(to.Offset())+i, toBuckets.At(i))
-		}
-		newBuckets.MoveTo(to.BucketCounts())
-		to.SetOffset(from.Offset())
-
-		toBuckets = to.BucketCounts()
-	} else if fromSize > toSize {
-		toBuckets.Append(make([]uint64, fromSize-toSize)...)
-	}
-	for i := 0; i < fromBuckets.Len(); i++ {
-		toOffset := int(from.Offset()-to.Offset()) + i
-		toBuckets.SetAt(toOffset, toBuckets.At(toOffset)+fromBuckets.At(i))
-	}
-}
-
-// maybeScaleDownHistogram attempts to scale down histgram if the proper scale is passed.
-func maybeScaleDownHistogram(hist pmetric.ExponentialHistogramDataPoint, newScale int32) {
-	diff := hist.Scale() - newScale
-	switch {
-	case diff < 0:
-		panic("unexpected state, histogram cannot be upscaled")
-	case diff == 0:
-		return
-	}
-
-	scaleDownHistogramBuckets(hist.Positive(), diff)
-	scaleDownHistogramBuckets(hist.Negative(), diff)
-}
-
-// scaleDownHistogramBuckets scales down the histogram buckets by collapsing 2^(scaleDiff)
-// number of buckets into one bucket while handling the offset as required.
-// TODO (lahsivjar): Currently we don't trim the trailing zero entries from the buckets.
-// This is because OTel doesn't expose the data-model to efficiently slice the buckets,
-// instead, trimming trailing zero entries will require reallocation of the whole slice.
-// Is it worth it? (See test cases)
-func scaleDownHistogramBuckets(hist pmetric.ExponentialHistogramDataPointBuckets, scaleDiff int32) {
-	if scaleDiff == 0 {
-		return
-	}
-
-	// collapse is the number of buckets to collapse into lower scale bucket
-	// per higher scale bucket for downscaling
-	collapse := int64(1) << scaleDiff
-	buckets := hist.BucketCounts()
-
-	// higher represents the index position in the buckets count slice for higher
-	// scale histogram and lower represents the same for lower scale histogram
-	var higher, lower int
-	for higher < buckets.Len() {
-		// count represents number of higher buckets that will be collpased
-		// depending on the current index (may differ from `collapse` due to offset)
-		count := (int64(hist.Offset()) + int64(higher)) % collapse
-		for i := int64(count); i < collapse && higher < buckets.Len(); i++ {
-			if lower != higher {
-				buckets.SetAt(lower, buckets.At(higher)+buckets.At(lower))
-				buckets.SetAt(higher, 0)
-			}
-			higher++
-		}
-		lower++
-	}
-	hist.SetOffset(hist.Offset() >> scaleDiff)
+	toDP.Add(fromDP)
 }

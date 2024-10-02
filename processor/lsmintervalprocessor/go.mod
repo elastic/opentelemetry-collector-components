@@ -4,6 +4,7 @@ go 1.22.0
 
 require (
 	github.com/cockroachdb/pebble v1.1.2
+	github.com/google/go-cmp v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.110.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.110.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.110.0
