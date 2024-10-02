@@ -24,6 +24,7 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 )
 
@@ -172,7 +173,14 @@ func (v *Value) MergeMetric(
 			m.Histogram().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeExponentialHistogram:
-		// TODO (lahsivjar): implement exponential histogram merge
+		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
+		merge(
+			m.ExponentialHistogram().DataPoints(),
+			mClone.ExponentialHistogram().DataPoints(),
+			metricID,
+			v.expHistoLookup,
+			m.ExponentialHistogram().AggregationTemporality(),
+		)
 	}
 }
 
@@ -363,6 +371,8 @@ func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
 			mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
 		case pmetric.HistogramDataPoint:
 			mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
+		case pmetric.ExponentialHistogramDataPoint:
+			mergeDeltaExponentialHistogramDP(fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint))
 		}
 
 		// Keep the highest timestamp for the aggregated metric
@@ -405,4 +415,19 @@ func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
 	for i := 0; i < toCounts.Len(); i++ {
 		toCounts.SetAt(i, fromCounts.At(i)+toCounts.At(i))
 	}
+}
+
+func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataPoint) {
+	if from.Count() == 0 {
+		return
+	}
+	if to.Count() == 0 {
+		from.CopyTo(to)
+		return
+	}
+
+	toDP := data.ExpHistogram{DataPoint: to}
+	fromDP := data.ExpHistogram{DataPoint: from}
+
+	toDP.Add(fromDP)
 }

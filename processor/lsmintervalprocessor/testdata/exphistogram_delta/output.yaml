@@ -1,0 +1,58 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+        - key: custom_res_attr
+          value:
+            stringValue: res
+        - key: dependent_attr
+          value:
+            stringValue: bbb-dependent
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - exponentialHistogram:
+              aggregationTemporality: 1
+              dataPoints:
+                - attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
+                  count: "300"
+                  negative:
+                    bucketCounts:
+                      - "8"
+                      - "42"
+                      - "19"
+                      - "40"
+                      - "12"
+                    offset: 6
+                  positive:
+                    bucketCounts:
+                      - "15"
+                      - "22"
+                      - "33"
+                      - "18"
+                      - "79"
+                    offset: 2
+                  scale: 4
+                  sum: 3.1
+                  timeUnixNano: "8000000"
+                  zeroCount: "12"
+            name: cumulative.exphistogram.test
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: custom_scope_attr
+              value:
+                stringValue: scope
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3

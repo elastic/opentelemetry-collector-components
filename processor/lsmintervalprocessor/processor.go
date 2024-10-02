@@ -222,12 +222,9 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 					}
 					v.MergeMetric(rm, sm, m)
 					return true
-				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram:
+				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram, pmetric.MetricTypeExponentialHistogram:
 					v.MergeMetric(rm, sm, m)
 					return true
-				case pmetric.MetricTypeExponentialHistogram:
-					// TODO (lahsivjar): implement support for exponential histogram
-					return false
 				default:
 					// All metric types are handled, this is unexpected
 					errs = append(errs, fmt.Errorf("unexpected metric type, dropping: %d", t))

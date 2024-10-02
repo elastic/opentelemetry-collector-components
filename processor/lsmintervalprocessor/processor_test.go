@@ -47,6 +47,8 @@ func TestAggregation(t *testing.T) {
 		{name: "sum_delta"},
 		{name: "histogram_cumulative"},
 		{name: "histogram_delta"},
+		{name: "exphistogram_cumulative"},
+		{name: "exphistogram_delta"},
 		{name: "summary_enabled"},
 		{name: "summary_passthrough", passThrough: true},
 	}
