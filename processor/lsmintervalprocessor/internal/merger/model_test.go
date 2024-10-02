@@ -158,6 +158,54 @@ func TestMergeDeltaExponentialHistogram(t *testing.T) {
 		expected pmetric.ExponentialHistogramDataPoint
 	}{
 		{
+			name: "from_empty",
+			from: pmetric.NewExponentialHistogramDataPoint(),
+			to: func() pmetric.ExponentialHistogramDataPoint {
+				dp := pmetric.NewExponentialHistogramDataPoint()
+				dp.SetCount(18)
+				dp.SetSum(18)
+				dp.SetMin(1.01)
+				dp.SetMax(1.11)
+				dp.SetScale(5)
+				dp.Positive().BucketCounts().FromRaw([]uint64{5, 7, 4, 0, 2})
+				return dp
+			}(),
+			expected: func() pmetric.ExponentialHistogramDataPoint {
+				dp := pmetric.NewExponentialHistogramDataPoint()
+				dp.SetCount(18)
+				dp.SetSum(18)
+				dp.SetMin(1.01)
+				dp.SetMax(1.11)
+				dp.SetScale(5)
+				dp.Positive().BucketCounts().FromRaw([]uint64{5, 7, 4, 0, 2})
+				return dp
+			}(),
+		},
+		{
+			name: "to_empty",
+			from: func() pmetric.ExponentialHistogramDataPoint {
+				dp := pmetric.NewExponentialHistogramDataPoint()
+				dp.SetCount(18)
+				dp.SetSum(18)
+				dp.SetMin(1.01)
+				dp.SetMax(1.11)
+				dp.SetScale(5)
+				dp.Positive().BucketCounts().FromRaw([]uint64{5, 7, 4, 0, 2})
+				return dp
+			}(),
+			to: pmetric.NewExponentialHistogramDataPoint(),
+			expected: func() pmetric.ExponentialHistogramDataPoint {
+				dp := pmetric.NewExponentialHistogramDataPoint()
+				dp.SetCount(18)
+				dp.SetSum(18)
+				dp.SetMin(1.01)
+				dp.SetMax(1.11)
+				dp.SetScale(5)
+				dp.Positive().BucketCounts().FromRaw([]uint64{5, 7, 4, 0, 2})
+				return dp
+			}(),
+		},
+		{
 			name: "no_offset_scaledown",
 			from: func() pmetric.ExponentialHistogramDataPoint {
 				dp := pmetric.NewExponentialHistogramDataPoint()

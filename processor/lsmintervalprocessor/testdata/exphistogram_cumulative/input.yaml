@@ -22,6 +22,8 @@ resourceMetrics:
                 - timeUnixNano: 5000000
                   scale: 4
                   zeroCount: 5
+                  sum: 2.5
+                  count: 94
                   positive:
                     offset: 2
                     bucketCounts: [4, 7, 9, 6, 25]
@@ -32,11 +34,11 @@ resourceMetrics:
                     - key: aaa
                       value:
                         stringValue: bbb
-                # This data point is out of order
-                # The aggregator should ignore it since the first data point has a newer timestamp
                 - timeUnixNano: 2000000
                   scale: 4
                   zeroCount: 2
+                  sum: -1.5
+                  count: 59
                   positive:
                     offset: 2
                     bucketCounts: [2, 3, 7, 4, 20]
@@ -51,6 +53,8 @@ resourceMetrics:
                 - timeUnixNano: 8000000
                   scale: 4
                   zeroCount: 5
+                  sum: 2.1
+                  count: 147
                   positive:
                     offset: 2
                     bucketCounts: [9, 12, 17, 8, 34]

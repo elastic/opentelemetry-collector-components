@@ -23,8 +23,7 @@ resourceMetrics:
                     - key: custom_dp_attr
                       value:
                         stringValue: dp
-                  max: 0
-                  min: 0
+                  count: "300"
                   negative:
                     bucketCounts:
                       - "8"
@@ -42,7 +41,7 @@ resourceMetrics:
                       - "79"
                     offset: 2
                   scale: 4
-                  sum: 0
+                  sum: 3.1
                   timeUnixNano: "8000000"
                   zeroCount: "12"
             name: cumulative.exphistogram.test

@@ -418,16 +418,25 @@ func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
 }
 
 func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataPoint) {
+	if from.Count() == 0 {
+		return
+	}
 	if to.Count() == 0 {
-		// Take min max from `from` as `to` is empty
-		to.SetMin(from.Min())
-		to.SetMax(from.Max())
-	} else if from.Count() != 0 {
-		// If both `to` and `from` are not empty then calculate
-		to.SetMin(min(to.Min(), from.Min()))
-		to.SetMax(max(to.Max(), from.Max()))
+		from.CopyTo(to)
+		return
 	}
 
+	// Since min/max are optional, set them only when both have it, else reset it
+	if to.HasMin() && from.HasMin() {
+		to.SetMin(min(to.Min(), from.Min()))
+	} else {
+		to.RemoveMin()
+	}
+	if to.HasMax() && from.HasMax() {
+		to.SetMax(max(to.Max(), from.Max()))
+	} else {
+		to.RemoveMax()
+	}
 	to.SetSum(to.Sum() + from.Sum())
 	to.SetCount(to.Count() + from.Count())
 	// TODO (lahsivjar): Zero count depends on the value of zero threshold.
