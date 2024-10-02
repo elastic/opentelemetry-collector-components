@@ -24,7 +24,6 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	"golang.org/x/exp/constraints"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 )
@@ -524,18 +523,4 @@ func scaleDownHistogramBuckets(hist pmetric.ExponentialHistogramDataPointBuckets
 		lower++
 	}
 	hist.SetOffset(hist.Offset() >> scaleDiff)
-}
-
-func min[V constraints.Integer | constraints.Float](a, b V) V {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max[V constraints.Integer | constraints.Float](a, b V) V {
-	if a > b {
-		return a
-	}
-	return b
 }
