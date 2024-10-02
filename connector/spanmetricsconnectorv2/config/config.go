@@ -149,7 +149,7 @@ type MetricInfo struct {
 	// attribute is included in the list then all attributes are included.
 	// Note that configuring this setting might cause the produced metric
 	// to lose its identity or cause identity conflict. Check out the
-	// `include_ephemeral_resource_attribute`.
+	// `ephemeral_resource_attribute`.
 	IncludeResourceAttributes []Attribute `mapstructure:"include_resource_attributes"`
 	Attributes                []Attribute `mapstructure:"attributes"`
 	Unit                      MetricUnit  `mapstructure:"unit"`
