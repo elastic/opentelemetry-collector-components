@@ -1,0 +1,32 @@
+signaltometrics:
+  spans:
+    - name: with_resource_foo_only
+      description: Spans with resource attribute white listing for resource.foo as a exponential histogram metric
+      include_resource_attributes:
+        - key: resource.foo
+      exponential_histogram:
+        value: Milliseconds(end_time - start_time)
+    - name: with_custom_count
+      description: Spans with custom count OTTL expression as a exponential histogram metric
+      exponential_histogram:
+        value: Milliseconds(end_time - start_time)
+        count: "2" # count each span twice
+    - name: http.trace.span.duration
+      description: Span duration for HTTP spans as a exponential histogram metric
+      attributes:
+        - key: http.response.status_code
+      exponential_histogram:
+        value: Milliseconds(end_time - start_time)
+    - name: db.trace.span.duration
+      description: Span duration for DB spans as a exponential histogram metric
+      attributes:
+        - key: db.system
+      exponential_histogram:
+        value: Milliseconds(end_time - start_time)
+    - name: msg.trace.span.duration
+      description: Span duration for messaging spans as a exponential histogram metric
+      attributes:
+        - key: messaging.system
+      exponential_histogram:
+        value: Milliseconds(end_time - start_time)
+
