@@ -383,38 +383,25 @@ func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
 }
 
 func mergeDeltaSumDP(from, to pmetric.NumberDataPoint) {
-	switch from.ValueType() {
-	case pmetric.NumberDataPointValueTypeInt:
-		to.SetIntValue(to.IntValue() + from.IntValue())
-	case pmetric.NumberDataPointValueTypeDouble:
-		to.SetDoubleValue(to.DoubleValue() + from.DoubleValue())
-	}
+	toDP := data.Number{NumberDataPoint: to}
+	fromDP := data.Number{NumberDataPoint: from}
+
+	toDP.Add(fromDP)
 }
 
 func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
-	// Explicit bounds histogram should have same pre-defined buckets.
-	// However, it is possible that the boundaries got updated. In such
-	// scenarios we can't calculate the histogram for conflicting
-	// boundaries without assuming the distribution of the bucket. In
-	// practical situations, we should not see such cases because if the
-	// service restarts to apply the new boundaries then some of the
-	// resource attributes will change which will change the identification
-	// for the metric, however, it is possible to observe such cases if the
-	// service has multiple replicas and we are aggregating the replicas.
-	// A rolling update with a change in the histogram definition will
-	// trigger this situation.
-	//
-	// Here we protect our code by checking the size of the counts slices.
-	// TODO (lahsivjar): merge histograms with conflicting boundaries by
-	// assuming the distribution of the bucket.
-	fromCounts := from.BucketCounts()
-	toCounts := to.BucketCounts()
-	if fromCounts.Len() != toCounts.Len() {
+	if from.Count() == 0 {
 		return
 	}
-	for i := 0; i < toCounts.Len(); i++ {
-		toCounts.SetAt(i, fromCounts.At(i)+toCounts.At(i))
+	if to.Count() == 0 {
+		from.CopyTo(to)
+		return
 	}
+
+	toDP := data.Histogram{HistogramDataPoint: to}
+	fromDP := data.Histogram{HistogramDataPoint: from}
+
+	toDP.Add(fromDP)
 }
 
 func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataPoint) {
