@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
@@ -70,7 +71,7 @@ func (sm *signalToMetrics) Capabilities() consumer.Capabilities {
 }
 
 func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	var multiError error
+	var multiError, err error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(td.ResourceSpans().Len())
 	aggregator := aggregator.NewAggregator[ottlspan.TransformContext](processedMetrics)
@@ -105,44 +106,17 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 					var value float64
 					count := adjustedCount
 					tCtx := ottlspan.NewTransformContext(span, scopeSpan.Scope(), resourceSpan.Resource(), scopeSpan, resourceSpan)
-					// Count can be nil, but Value must be non-nil
+					// Count can be nil, but Value must be non-nil for spans
 					if md.ValueCountMetric.CountStatement != nil {
-						raw, _, err := md.ValueCountMetric.CountStatement.Execute(ctx, tCtx)
+						count, err = getCountFromOTTL(ctx, tCtx, md.ValueCountMetric)
 						if err != nil {
-							multiError = errors.Join(
-								multiError,
-								fmt.Errorf("failed to calculate count from ottl statement: %w", err),
-							)
+							multiError = errors.Join(multiError, err)
 							continue
 						}
-						rawInt64, ok := raw.(int64)
-						if !ok {
-							multiError = errors.Join(
-								multiError,
-								errors.New("failed to cast count OTTL result to int64"),
-							)
-							continue
-						}
-						count = uint64(rawInt64)
 					}
-					raw, _, err := md.ValueCountMetric.ValueStatement.Execute(ctx, tCtx)
+					value, err = getValueFromOTTL(ctx, tCtx, md.ValueCountMetric)
 					if err != nil {
-						multiError = errors.Join(
-							multiError,
-							fmt.Errorf("failed to calculate value from ottl statement: %w", err),
-						)
-						continue
-					}
-					switch raw.(type) {
-					case float64:
-						value = raw.(float64)
-					case int64:
-						value = float64(raw.(int64))
-					default:
-						multiError = errors.Join(
-							multiError,
-							errors.New("failed to cast value OTTL result to float64"),
-						)
+						multiError = errors.Join(multiError, err)
 						continue
 					}
 					multiError = errors.Join(
@@ -172,7 +146,8 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 		for j := 0; j < resourceMetric.ScopeMetrics().Len(); j++ {
 			scopeMetric := resourceMetric.ScopeMetrics().At(j)
 			for k := 0; k < scopeMetric.Metrics().Len(); k++ {
-				metric := scopeMetric.Metrics().At(k)
+				metrics := scopeMetric.Metrics()
+				metric := metrics.At(k)
 				for _, md := range sm.dpMetricDefs {
 					var filteredResAttrs pcommon.Map
 					if len(md.IncludeResourceAttributes) > 0 {
@@ -184,6 +159,28 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 					}
 					if md.EphemeralResourceAttribute {
 						filteredResAttrs.PutStr(ephemeralResourceKey, sm.ephemeralID)
+					}
+					aggregate := func(dp any, dpAttrs pcommon.Map) error {
+						tCtx := ottldatapoint.NewTransformContext(dp, metric, metrics, scopeMetric.Scope(), resourceMetric.Resource(), scopeMetric, resourceMetric)
+						count := uint64(1)
+						if md.ValueCountMetric.CountStatement != nil {
+							var err error
+							count, err = getCountFromOTTL(ctx, tCtx, md.ValueCountMetric)
+							if err != nil {
+								return err
+							}
+						}
+						if err := aggregator.Count(md, filteredResAttrs, dpAttrs, count); err != nil {
+							return err
+						}
+						if md.ValueCountMetric.ValueStatement != nil {
+							value, err := getValueFromOTTL(ctx, tCtx, md.ValueCountMetric)
+							if err != nil {
+								return err
+							}
+							return aggregator.ValueCount(md, filteredResAttrs, dpAttrs, value, count)
+						}
+						return nil
 					}
 					//exhaustive:enforce
 					switch metric.Type() {
@@ -197,10 +194,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 								// source metric then don't count them.
 								continue
 							}
-							multiError = errors.Join(
-								multiError,
-								aggregator.Count(md, filteredResAttrs, filteredDPAttrs, 1),
-							)
+							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
 						}
 					case pmetric.MetricTypeSum:
 						dps := metric.Sum().DataPoints()
@@ -212,10 +206,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 								// source metric then don't count them.
 								continue
 							}
-							multiError = errors.Join(
-								multiError,
-								aggregator.Count(md, filteredResAttrs, filteredDPAttrs, 1),
-							)
+							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
 						}
 					case pmetric.MetricTypeSummary:
 						dps := metric.Summary().DataPoints()
@@ -227,10 +218,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 								// source metric then don't count them.
 								continue
 							}
-							multiError = errors.Join(
-								multiError,
-								aggregator.Count(md, filteredResAttrs, filteredDPAttrs, 1),
-							)
+							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
 						}
 					case pmetric.MetricTypeHistogram:
 						dps := metric.Histogram().DataPoints()
@@ -242,10 +230,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 								// source metric then don't count them.
 								continue
 							}
-							multiError = errors.Join(
-								multiError,
-								aggregator.Count(md, filteredResAttrs, filteredDPAttrs, 1),
-							)
+							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
 						}
 					case pmetric.MetricTypeExponentialHistogram:
 						dps := metric.ExponentialHistogram().DataPoints()
@@ -257,10 +242,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 								// source metric then don't count them.
 								continue
 							}
-							multiError = errors.Join(
-								multiError,
-								aggregator.Count(md, filteredResAttrs, filteredDPAttrs, 1),
-							)
+							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
 						}
 					case pmetric.MetricTypeEmpty:
 						multiError = errors.Join(multiError, fmt.Errorf("metric %q: invalid metric type: %v", metric.Name(), metric.Type()))
@@ -307,10 +289,25 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 					if md.EphemeralResourceAttribute {
 						filteredResAttrs.PutStr(ephemeralResourceKey, sm.ephemeralID)
 					}
-					multiError = errors.Join(
-						multiError,
-						aggregator.Count(md, filteredResAttrs, filteredLogAttrs, 1),
-					)
+					count := uint64(1)
+					tCtx := ottllog.NewTransformContext(log, scopeLog.Scope(), resourceLog.Resource(), scopeLog, resourceLog)
+					if md.ValueCountMetric.CountStatement != nil {
+						var err error
+						count, err = getCountFromOTTL(ctx, tCtx, md.ValueCountMetric)
+						if err != nil {
+							multiError = errors.Join(multiError, err)
+							continue
+						}
+					}
+					multiError = errors.Join(multiError, aggregator.Count(md, filteredResAttrs, filteredLogAttrs, count))
+					if md.ValueCountMetric.ValueStatement != nil {
+						value, err := getValueFromOTTL(ctx, tCtx, md.ValueCountMetric)
+						if err != nil {
+							multiError = errors.Join(multiError, err)
+							continue
+						}
+						multiError = errors.Join(multiError, aggregator.ValueCount(md, filteredResAttrs, filteredLogAttrs, value, count))
+					}
 				}
 			}
 		}
@@ -357,4 +354,44 @@ func getFilteredAttributes(attrs pcommon.Map, filters []model.AttributeKeyValue)
 		}
 	}
 	return filteredAttrs
+}
+
+func getCountFromOTTL[K any](
+	ctx context.Context,
+	tCtx K,
+	md model.ValueCountMetric[K],
+) (uint64, error) {
+	raw, _, err := md.CountStatement.Execute(ctx, tCtx)
+	if err != nil {
+		return 0, err
+	}
+	rawInt64, ok := raw.(int64)
+	if !ok {
+		return 0, fmt.Errorf("failed to parse count OTTL statement value to int")
+	}
+	return uint64(rawInt64), nil
+}
+
+func getValueFromOTTL[K any](
+	ctx context.Context,
+	tCtx K,
+	md model.ValueCountMetric[K],
+) (float64, error) {
+	raw, _, err := md.ValueStatement.Execute(ctx, tCtx)
+	if err != nil {
+		return 0, err
+	}
+	switch raw.(type) {
+	case float64:
+		return raw.(float64), nil
+	case int64:
+		return float64(raw.(int64)), nil
+	case string:
+		v, err := strconv.ParseFloat(raw.(string), 64)
+		if err != nil {
+			return 0, errors.New("failed to parse count OTTL statement value to float")
+		}
+		return v, nil
+	}
+	return 0, errors.New("failed to parse count OTTL statement value to float")
 }

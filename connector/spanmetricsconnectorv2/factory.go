@@ -109,7 +109,6 @@ func createTracesToMetrics(
 				return nil, fmt.Errorf("failed to parse value OTTL statement: %w", err)
 			}
 		}
-		fmt.Println(md.ValueCountMetric.ValueStatement, info.Statements.Value)
 		metricDefs = append(metricDefs, md)
 	}
 
