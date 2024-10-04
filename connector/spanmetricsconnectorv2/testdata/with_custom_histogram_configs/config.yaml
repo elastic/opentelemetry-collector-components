@@ -2,7 +2,8 @@ spanmetricsv2:
   spans:
     - name: trace.span.duration
       description: Span duration with custom histogram buckets
-      unit: "s"
+      statements:
+        value: get(Seconds(end_time - start_time))
       histogram:
         explicit:
           buckets: [0.001, 0.1, 1, 10]

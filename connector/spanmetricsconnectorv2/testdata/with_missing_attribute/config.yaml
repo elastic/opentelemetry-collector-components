@@ -4,6 +4,8 @@ spanmetricsv2:
       description: Span duration with missing attribute
       attributes:
         - key: 404.attribute
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       histogram:
         explicit: {}
         exponential: {}

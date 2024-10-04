@@ -6,7 +6,7 @@ resourceMetrics:
             stringValue: foo
         - key: spanmetricsv2_ephemeral_id
           value:
-            stringValue: a70152bc-ab62-47f2-a309-53d5539156da
+            stringValue: d3cc263b-4042-4aa4-92e1-85201adfbc9f
     scopeMetrics:
       - metrics:
           - description: Output with resource attribute filtering on foo
@@ -14,7 +14,7 @@ resourceMetrics:
             summary:
               dataPoints:
                 - count: "8"
-                  sum: 31402.003653999996
+                  sum: 31402
                   timeUnixNano: "1000000"
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2
@@ -25,7 +25,7 @@ resourceMetrics:
             stringValue: bar
         - key: spanmetricsv2_ephemeral_id
           value:
-            stringValue: a70152bc-ab62-47f2-a309-53d5539156da
+            stringValue: d3cc263b-4042-4aa4-92e1-85201adfbc9f
     scopeMetrics:
       - metrics:
           - description: Output with resource attribute filtering on bar
@@ -33,7 +33,7 @@ resourceMetrics:
             summary:
               dataPoints:
                 - count: "8"
-                  sum: 31402.003653999996
+                  sum: 31402
                   timeUnixNano: "1000000"
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2
@@ -52,7 +52,7 @@ resourceMetrics:
             summary:
               dataPoints:
                 - count: "8"
-                  sum: 31402.003653999996
+                  sum: 31402
                   timeUnixNano: "1000000"
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2

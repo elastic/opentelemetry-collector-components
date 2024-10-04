@@ -4,6 +4,8 @@ spanmetricsv2:
       description: Span duration for HTTP spans
       attributes:
         - key: http.response.status_code
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       histogram:
         explicit: {}
         exponential: {}
@@ -11,6 +13,8 @@ spanmetricsv2:
       description: Span duration for DB spans
       attributes:
         - key: db.system
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       histogram:
         explicit: {}
         exponential: {}
@@ -18,6 +22,8 @@ spanmetricsv2:
       description: Span duration for messaging spans
       attributes:
         - key: messaging.system
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       histogram:
         explicit: {}
         exponential: {}

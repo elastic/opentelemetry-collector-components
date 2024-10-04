@@ -18,12 +18,13 @@ resourceMetrics:
                       value:
                         stringValue: undefined
                   count: "8"
-                  max: 17000.000468
-                  min: 2.000468
+                  max: 17000
+                  min: 2
                   negative: {}
                   positive:
                     bucketCounts:
                       - "1"
+                      - "0"
                       - "0"
                       - "0"
                       - "0"
@@ -128,9 +129,9 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "1"
-                    offset: 8
+                    offset: 7
                   scale: 3
-                  sum: 31402.003653999996
+                  sum: 31402
                   timeUnixNano: "1000000"
             name: 404.span.duration
           - description: Span duration with missing attribute but default value
@@ -142,8 +143,8 @@ resourceMetrics:
                       value:
                         stringValue: undefined
                   bucketCounts:
-                    - "0"
                     - "1"
+                    - "0"
                     - "0"
                     - "0"
                     - "0"
@@ -152,8 +153,8 @@ resourceMetrics:
                     - "0"
                     - "0"
                     - "3"
-                    - "1"
-                    - "1"
+                    - "2"
+                    - "0"
                     - "0"
                     - "0"
                     - "0"
@@ -177,7 +178,7 @@ resourceMetrics:
                     - 5000
                     - 10000
                     - 15000
-                  sum: 31402.003653999996
+                  sum: 31402
                   timeUnixNano: "1000000"
             name: 404.span.duration
         scope:

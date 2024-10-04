@@ -4,14 +4,20 @@ spanmetricsv2:
       description: Summary for HTTP spans
       attributes:
         - key: http.response.status_code
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       summary: {}
     - name: db.trace.span.summary
       description: Summary for DB spans
       attributes:
         - key: db.system
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       summary: {}
     - name: msg.trace.span.summary
       description: Summary for messaging spans
       attributes:
         - key: messaging.system
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       summary: {}

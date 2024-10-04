@@ -31,8 +31,8 @@ type spanDurationDP struct {
 	sumAndCountDP       *sumAndCountDP
 }
 
-func newSpanDurationDP(
-	md model.SpanDuration,
+func newSpanDurationDP[K any](
+	md model.ValueCountMetric[K],
 	attrs pcommon.Map,
 ) *spanDurationDP {
 	var dp spanDurationDP

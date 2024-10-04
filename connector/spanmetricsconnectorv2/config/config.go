@@ -22,8 +22,14 @@ import (
 	"fmt"
 
 	"github.com/lightstep/go-expohisto/structure"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottlspan"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.uber.org/zap"
 )
 
 const (
@@ -61,9 +67,9 @@ const (
 //
 // All metrics produced by the connector are in delta temporality.
 type Config struct {
-	Spans      []SpanMetricInfo `mapstructure:"spans"`
-	Datapoints []MetricInfo     `mapstructure:"datapoints"`
-	Logs       []MetricInfo     `mapstructure:"logs"`
+	Spans      []MetricInfo `mapstructure:"spans"`
+	Datapoints []MetricInfo `mapstructure:"datapoints"`
+	Logs       []MetricInfo `mapstructure:"logs"`
 }
 
 var _ confmap.Unmarshaler = (*Config)(nil)
@@ -72,18 +78,7 @@ func (c *Config) Validate() error {
 	if len(c.Spans) == 0 && len(c.Datapoints) == 0 && len(c.Logs) == 0 {
 		return fmt.Errorf("no configuration provided, at least one should be specified")
 	}
-	// Validate spans
-	if err := validateSpanMetricInfo(c.Spans); err != nil {
-		return fmt.Errorf("failed to validate spans config: %w", err)
-	}
-	// Validate metrics
-	if err := validateMetricInfo(c.Datapoints); err != nil {
-		return fmt.Errorf("failed to validate metrics config: %w", err)
-	}
-	// Validate logs
-	if err := validateMetricInfo(c.Logs); err != nil {
-		return fmt.Errorf("failed to validate logs config: %w", err)
-	}
+	// TODO: Add validation for the struct
 	return nil
 }
 
@@ -141,40 +136,6 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 	return nil
 }
 
-func validateSpanMetricInfo(smis []SpanMetricInfo) error {
-	mis := make([]MetricInfo, 0, len(smis))
-	for _, smi := range smis {
-		if smi.Unit == "" {
-			return errors.New("metric unit missing")
-		}
-		if smi.noAggregatorDefined() {
-			return fmt.Errorf("metric definition missing, either histogram or summary required: metric %s", smi.Name)
-		}
-		if err := smi.validateHistogram(); err != nil {
-			return fmt.Errorf("failed histogram validation: metric %s, %w", smi.Name, err)
-		}
-		mis = append(mis, smi.MetricInfo)
-	}
-	return validateMetricInfo(mis)
-}
-
-func validateMetricInfo(mis []MetricInfo) error {
-	duplicate := make(map[string]MetricInfo)
-	for _, info := range mis {
-		if old, ok := duplicate[info.Name]; ok && info.isEqual(old) {
-			return fmt.Errorf("duplicate configuration found %s", info.Name)
-		}
-		if info.Name == "" {
-			return errors.New("metric name missing")
-		}
-		if err := info.validateAttributes(); err != nil {
-			return fmt.Errorf("failed attributes validation: metric %s: %w", info.Name, err)
-		}
-		duplicate[info.Name] = info
-	}
-	return nil
-}
-
 type SpanMetricInfo struct {
 	MetricInfo  `mapstructure:",squash"`
 	Unit        MetricUnit   `mapstructure:"unit"`
@@ -193,22 +154,6 @@ func (mi *SpanMetricInfo) noAggregatorDefined() bool {
 		mi.Counter == nil
 }
 
-func (mi *SpanMetricInfo) validateHistogram() error {
-	if mi.Histogram.Explicit != nil {
-		if len(mi.Histogram.Explicit.Buckets) == 0 {
-			return errors.New("histogram buckets missing")
-		}
-	}
-	if mi.Histogram.Exponential != nil {
-		if _, err := structure.NewConfig(
-			structure.WithMaxSize(mi.Histogram.Exponential.MaxSize),
-		).Validate(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // MetricInfo for a data type
 type MetricInfo struct {
 	Name        string `mapstructure:"name"`
@@ -223,9 +168,24 @@ type MetricInfo struct {
 	// Note that configuring this setting might cause the produced metric
 	// to lose its identity or cause identity conflict. Check out the
 	// `ephemeral_resource_attribute`.
-	IncludeResourceAttributes []Attribute `mapstructure:"include_resource_attributes"`
-	Attributes                []Attribute `mapstructure:"attributes"`
-	Counter                   *Counter    `mapstructure:"counter"`
+	IncludeResourceAttributes []Attribute  `mapstructure:"include_resource_attributes"`
+	Attributes                []Attribute  `mapstructure:"attributes"`
+	Counter                   *Counter     `mapstructure:"counter"`
+	Statements                Statements   `mapstructure:"statements"`
+	Unit                      MetricUnit   `mapstructure:"unit"`
+	Histogram                 Histogram    `mapstructure:"histogram"`
+	Summary                   *Summary     `mapstructure:"summary"`
+	SumAndCount               *SumAndCount `mapstructure:"sum_and_count"`
+}
+
+// noAggregatorDefined returns true if none of the required
+// aggregators are defined for a MetricInfo.
+func (mi *MetricInfo) noAggregatorDefined() bool {
+	return mi.Histogram.Exponential == nil &&
+		mi.Histogram.Explicit == nil &&
+		mi.Summary == nil &&
+		mi.SumAndCount == nil &&
+		mi.Counter == nil
 }
 
 // isEqual checks if two metric have a same identity. Identity of a
@@ -272,10 +232,80 @@ func (i *MetricInfo) validateAttributes() error {
 	return nil
 }
 
+func (mi *MetricInfo) validateHistogram() error {
+	if mi.Histogram.Explicit != nil {
+		if len(mi.Histogram.Explicit.Buckets) == 0 {
+			return errors.New("histogram buckets missing")
+		}
+	}
+	if mi.Histogram.Exponential != nil {
+		if _, err := structure.NewConfig(
+			structure.WithMaxSize(mi.Histogram.Exponential.MaxSize),
+		).Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateSpanOTTLStatement(s Statements) error {
+	parser, err := ottlspan.NewParser(
+		ottlfuncs.StandardFuncs[ottlspan.TransformContext](),
+		component.TelemetrySettings{Logger: zap.NewNop()},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to validate span statements: %w", err)
+	}
+	if _, err := parser.ParseStatement(s.Count); err != nil {
+		return fmt.Errorf("failed to parse span count statement: %w", err)
+	}
+	if _, err := parser.ParseStatement(s.Value); err != nil {
+		return fmt.Errorf("failed to parse span value statement: %w", err)
+	}
+	return nil
+}
+
+func validateDatapointOTTLStatement(s Statements) error {
+	parser, err := ottldatapoint.NewParser(
+		ottlfuncs.StandardFuncs[ottldatapoint.TransformContext](),
+		component.TelemetrySettings{Logger: zap.NewNop()},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to validate datapoint statements: %w", err)
+	}
+	if _, err := parser.ParseStatement(s.Count); err != nil {
+		return fmt.Errorf("failed to parse datapoint count statement: %w", err)
+	}
+	if _, err := parser.ParseStatement(s.Value); err != nil {
+		return fmt.Errorf("failed to parse datapoint value statement: %w", err)
+	}
+	return nil
+}
+
+func validateLogOTTLStatement(s Statements) error {
+	parser, err := ottllog.NewParser(
+		ottlfuncs.StandardFuncs[ottllog.TransformContext](),
+		component.TelemetrySettings{Logger: zap.NewNop()},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to validate log statements: %w", err)
+	}
+	if _, err := parser.ParseStatement(s.Count); err != nil {
+		return fmt.Errorf("failed to parse log count statement: %w", err)
+	}
+	if _, err := parser.ParseStatement(s.Value); err != nil {
+		return fmt.Errorf("failed to parse log value statement: %w", err)
+	}
+	return nil
+}
+
 type Attribute struct {
 	Key          string `mapstructure:"key"`
 	DefaultValue any    `mapstructure:"default_value"`
 }
+
+// Counter counts the number of spans
+type Counter struct{}
 
 type Histogram struct {
 	Explicit    *ExplicitHistogram    `mapstructure:"explicit"`
@@ -300,5 +330,9 @@ type SumAndCount struct {
 	CountSuffix string `mapstructure:"count_suffix"`
 }
 
-// Counter counts the number of spans
-type Counter struct{}
+// Statements are OTTL statements that could extract the relevant value from
+// signals to be recorded as a metric by the connector.
+type Statements struct {
+	Value string `mapstructure:"value"`
+	Count string `mapstructure:"count"`
+}

@@ -2,18 +2,26 @@ spanmetricsv2:
   spans:
     - name: total.spans
       description: Count total number of spans
+      statements:
+        value: get(Milliseconds(end_time - start_time))
     - name: http.trace.span.counter
       description: Count total number of spans as per their status code
       attributes:
         - key: http.response.status_code
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       counters: {}
     - name: db.trace.span.counter
       description: Count total number of spans as per the db system attribute
       attributes:
         - key: db.system
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       counters: {}
     - name: msg.trace.span.counter
       description: Count total number of messaging spans as per the messaging.system attribute
       attributes:
         - key: messaging.system
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       counters: {}

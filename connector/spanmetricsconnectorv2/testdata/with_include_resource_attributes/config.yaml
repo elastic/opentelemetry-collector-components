@@ -5,13 +5,19 @@ spanmetricsv2:
       ephemeral_resource_attribute: true
       include_resource_attributes:
         - key: resource.foo
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       summary: {} # Using summary to have a simpler comparision
     - name: with_resource_attribute_filtering_bar
       description: Output with resource attribute filtering on bar
       ephemeral_resource_attribute: true
       include_resource_attributes:
         - key: resource.bar
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       summary: {} # Using summary to have a simpler comparision
     - name: without_resource_attribute_filtering
       description: Output with no resource attribute filtering
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       summary: {} # Using summary to have a simpler comparision

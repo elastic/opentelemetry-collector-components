@@ -18,7 +18,7 @@ resourceMetrics:
                       value:
                         intValue: "201"
                   count: "2"
-                  sum: 11900.000936
+                  sum: 11900
                   timeUnixNano: "1000000"
           - description: Summary for DB spans
             name: db.trace.span.summary
@@ -29,7 +29,7 @@ resourceMetrics:
                       value:
                         stringValue: mysql
                   count: "4"
-                  sum: 2500.001782
+                  sum: 2500
                   timeUnixNano: "1000000"
           - description: Summary for messaging spans
             name: msg.trace.span.summary
@@ -40,7 +40,7 @@ resourceMetrics:
                       value:
                         stringValue: kafka
                   count: "2"
-                  sum: 17002.000935999997
+                  sum: 17002
                   timeUnixNano: "1000000"
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2

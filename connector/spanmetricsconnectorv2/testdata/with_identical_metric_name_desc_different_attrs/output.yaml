@@ -18,8 +18,8 @@ resourceMetrics:
                       value:
                         stringValue: key1
                   count: "2"
-                  max: 900.000468
-                  min: 500.000468
+                  max: 900
+                  min: 500
                   negative: {}
                   positive:
                     bucketCounts:
@@ -135,15 +135,15 @@ resourceMetrics:
                       - "1"
                     offset: 1147
                   scale: 7
-                  sum: 1400.000936
+                  sum: 1400
                   timeUnixNano: "1000000"
                 - attributes:
                     - key: key.2
                       value:
                         stringValue: key2
                   count: "2"
-                  max: 500.000468
-                  min: 2.000468
+                  max: 500
+                  min: 2
                   negative: {}
                   positive:
                     bucketCounts:
@@ -274,10 +274,11 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "0"
+                      - "0"
                       - "1"
-                    offset: 16
+                    offset: 15
                   scale: 4
-                  sum: 502.000936
+                  sum: 502
                   timeUnixNano: "1000000"
             name: identical.name
           - description: Identical description
@@ -324,15 +325,15 @@ resourceMetrics:
                     - 5000
                     - 10000
                     - 15000
-                  sum: 1400.000936
+                  sum: 1400
                   timeUnixNano: "1000000"
                 - attributes:
                     - key: key.2
                       value:
                         stringValue: key2
                   bucketCounts:
-                    - "0"
                     - "1"
+                    - "0"
                     - "0"
                     - "0"
                     - "0"
@@ -366,7 +367,7 @@ resourceMetrics:
                     - 5000
                     - 10000
                     - 15000
-                  sum: 502.000936
+                  sum: 502
                   timeUnixNano: "1000000"
             name: identical.name
         scope:

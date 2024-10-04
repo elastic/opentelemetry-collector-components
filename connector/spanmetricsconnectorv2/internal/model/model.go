@@ -19,6 +19,7 @@ package model // import "github.com/elastic/opentelemetry-collector-components/c
 
 import (
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
@@ -32,34 +33,21 @@ type MetricKey struct {
 	Description string
 }
 
-type MetricDef struct {
+type MetricDef[K any] struct {
 	Key                        MetricKey
 	EphemeralResourceAttribute bool
 	IncludeResourceAttributes  []AttributeKeyValue
 	Attributes                 []AttributeKeyValue
-	SpanDuration               SpanDuration
 	Counter                    *config.Counter
+	ValueCountMetric           ValueCountMetric[K]
 }
 
-func (m MetricDef) CountDefined() bool {
-	return m.Counter != nil
-}
-
-func (m MetricDef) SpanDurationDefined() bool {
-	return m.SpanDuration.defined()
-}
-
-type SpanDuration struct {
+type ValueCountMetric[K any] struct {
 	Unit                 config.MetricUnit
+	ValueStatement       *ottl.Statement[K]
+	CountStatement       *ottl.Statement[K]
 	ExponentialHistogram *config.ExponentialHistogram
 	ExplicitHistogram    *config.ExplicitHistogram
 	Summary              *config.Summary
 	SumAndCount          *config.SumAndCount
-}
-
-func (a SpanDuration) defined() bool {
-	return a.ExponentialHistogram != nil ||
-		a.ExplicitHistogram != nil ||
-		a.Summary != nil ||
-		a.SumAndCount != nil
 }

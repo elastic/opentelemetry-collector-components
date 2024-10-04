@@ -23,8 +23,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottlspan"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -38,12 +42,24 @@ const (
 	ephemeralResourceKey = "spanmetricsv2_ephemeral_id"
 )
 
+// TODO (lahsivjar): will be removed after full ottl support
+// metricUnitToDivider gives a value that could used to divide the
+// nano precision duration to the required unit specified in config.
+var metricUnitToDivider = map[config.MetricUnit]float64{
+	config.MetricUnitNs: float64(time.Nanosecond.Nanoseconds()),
+	config.MetricUnitUs: float64(time.Microsecond.Nanoseconds()),
+	config.MetricUnitMs: float64(time.Millisecond.Nanoseconds()),
+	config.MetricUnitS:  float64(time.Second.Nanoseconds()),
+}
+
 type signalToMetrics struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next       consumer.Metrics
-	metricDefs []model.MetricDef
+	next           consumer.Metrics
+	spanMetricDefs []model.MetricDef[ottlspan.TransformContext]
+	dpMetricDefs   []model.MetricDef[ottldatapoint.TransformContext]
+	logMetricDefs  []model.MetricDef[ottllog.TransformContext]
 
 	// ephemeralID will be removed, see: https://github.com/elastic/opentelemetry-collector-components/issues/159
 	ephemeralID string
@@ -57,24 +73,18 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(td.ResourceSpans().Len())
-	aggregator := aggregator.NewAggregator(processedMetrics)
+	aggregator := aggregator.NewAggregator[ottlspan.TransformContext](processedMetrics)
+
 	for i := 0; i < td.ResourceSpans().Len(); i++ {
 		resourceSpan := td.ResourceSpans().At(i)
 		resourceAttrs := resourceSpan.Resource().Attributes()
 		for j := 0; j < resourceSpan.ScopeSpans().Len(); j++ {
 			scopeSpan := resourceSpan.ScopeSpans().At(j)
-
 			for k := 0; k < scopeSpan.Spans().Len(); k++ {
 				span := scopeSpan.Spans().At(k)
-				var duration time.Duration
-				startTime := span.StartTimestamp()
-				endTime := span.EndTimestamp()
-				if endTime > startTime {
-					duration = time.Duration(endTime - startTime)
-				}
 				spanAttrs := span.Attributes()
 				adjustedCount := calculateAdjustedCount(span.TraceState().AsRaw())
-				for _, md := range sm.metricDefs {
+				for _, md := range sm.spanMetricDefs {
 					filteredSpanAttrs := getFilteredAttributes(spanAttrs, md.Attributes)
 					if filteredSpanAttrs.Len() != len(md.Attributes) {
 						// If all the configured attributes are not present in
@@ -92,10 +102,53 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 					if md.EphemeralResourceAttribute {
 						filteredResAttrs.PutStr(ephemeralResourceKey, sm.ephemeralID)
 					}
+					var value float64
+					count := adjustedCount
+					tCtx := ottlspan.NewTransformContext(span, scopeSpan.Scope(), resourceSpan.Resource(), scopeSpan, resourceSpan)
+					// Count can be nil, but Value must be non-nil
+					if md.ValueCountMetric.CountStatement != nil {
+						raw, _, err := md.ValueCountMetric.CountStatement.Execute(ctx, tCtx)
+						if err != nil {
+							multiError = errors.Join(
+								multiError,
+								fmt.Errorf("failed to calculate count from ottl statement: %w", err),
+							)
+							continue
+						}
+						rawInt64, ok := raw.(int64)
+						if !ok {
+							multiError = errors.Join(
+								multiError,
+								errors.New("failed to cast count OTTL result to int64"),
+							)
+							continue
+						}
+						count = uint64(rawInt64)
+					}
+					raw, _, err := md.ValueCountMetric.ValueStatement.Execute(ctx, tCtx)
+					if err != nil {
+						multiError = errors.Join(
+							multiError,
+							fmt.Errorf("failed to calculate value from ottl statement: %w", err),
+						)
+						continue
+					}
+					switch raw.(type) {
+					case float64:
+						value = raw.(float64)
+					case int64:
+						value = float64(raw.(int64))
+					default:
+						multiError = errors.Join(
+							multiError,
+							errors.New("failed to cast value OTTL result to float64"),
+						)
+						continue
+					}
 					multiError = errors.Join(
 						multiError,
-						aggregator.SpanDuration(md, filteredResAttrs, filteredSpanAttrs, duration, adjustedCount),
-						aggregator.Count(md, filteredResAttrs, filteredSpanAttrs, adjustedCount),
+						aggregator.ValueCount(md, filteredResAttrs, filteredSpanAttrs, value, count),
+						aggregator.Count(md, filteredResAttrs, filteredSpanAttrs, count),
 					)
 				}
 			}
@@ -104,7 +157,7 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 	if multiError != nil {
 		return multiError
 	}
-	aggregator.Finalize(sm.metricDefs)
+	aggregator.Finalize(sm.spanMetricDefs)
 	return sm.next.ConsumeMetrics(ctx, processedMetrics)
 }
 
@@ -112,7 +165,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(m.ResourceMetrics().Len())
-	aggregator := aggregator.NewAggregator(processedMetrics)
+	aggregator := aggregator.NewAggregator[ottldatapoint.TransformContext](processedMetrics)
 	for i := 0; i < m.ResourceMetrics().Len(); i++ {
 		resourceMetric := m.ResourceMetrics().At(i)
 		resourceAttrs := resourceMetric.Resource().Attributes()
@@ -120,7 +173,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 			scopeMetric := resourceMetric.ScopeMetrics().At(j)
 			for k := 0; k < scopeMetric.Metrics().Len(); k++ {
 				metric := scopeMetric.Metrics().At(k)
-				for _, md := range sm.metricDefs {
+				for _, md := range sm.dpMetricDefs {
 					var filteredResAttrs pcommon.Map
 					if len(md.IncludeResourceAttributes) > 0 {
 						filteredResAttrs = getFilteredAttributes(resourceAttrs, md.IncludeResourceAttributes)
@@ -219,7 +272,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 	if multiError != nil {
 		return multiError
 	}
-	aggregator.Finalize(sm.metricDefs)
+	aggregator.Finalize(sm.dpMetricDefs)
 	return sm.next.ConsumeMetrics(ctx, processedMetrics)
 }
 
@@ -227,7 +280,7 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(logs.ResourceLogs().Len())
-	aggregator := aggregator.NewAggregator(processedMetrics)
+	aggregator := aggregator.NewAggregator[ottllog.TransformContext](processedMetrics)
 	for i := 0; i < logs.ResourceLogs().Len(); i++ {
 		resourceLog := logs.ResourceLogs().At(i)
 		resourceAttrs := resourceLog.Resource().Attributes()
@@ -236,7 +289,7 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 			for k := 0; k < scopeLog.LogRecords().Len(); k++ {
 				log := scopeLog.LogRecords().At(k)
 				logAttrs := log.Attributes()
-				for _, md := range sm.metricDefs {
+				for _, md := range sm.logMetricDefs {
 					filteredLogAttrs := getFilteredAttributes(logAttrs, md.Attributes)
 					if filteredLogAttrs.Len() != len(md.Attributes) {
 						// If all the configured attributes are not present in
@@ -265,7 +318,7 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 	if multiError != nil {
 		return multiError
 	}
-	aggregator.Finalize(sm.metricDefs)
+	aggregator.Finalize(sm.logMetricDefs)
 	return sm.next.ConsumeMetrics(ctx, processedMetrics)
 }
 

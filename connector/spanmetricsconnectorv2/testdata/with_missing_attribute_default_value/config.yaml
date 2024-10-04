@@ -5,6 +5,8 @@ spanmetricsv2:
       attributes:
         - key: 404.attribute
           default_value: undefined
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       histogram:
         explicit: {}
         exponential: {}

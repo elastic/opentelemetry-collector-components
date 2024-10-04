@@ -4,6 +4,8 @@ spanmetricsv2:
       description: Identical description
       attributes:
         - key: key.1
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       histogram:
         explicit: {}
         exponential: {}
@@ -11,6 +13,8 @@ spanmetricsv2:
       description: Different description
       attributes:
         - key: key.2
+      statements:
+        value: get(Milliseconds(end_time - start_time))
       histogram:
         explicit: {}
         exponential: {}

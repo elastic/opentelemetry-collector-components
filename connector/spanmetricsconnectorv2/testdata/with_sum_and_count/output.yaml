@@ -14,7 +14,7 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asDouble: 11900.000936
+                - asDouble: 11900
                   attributes:
                     - key: http.response.status_code
                       value:
@@ -36,7 +36,7 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asDouble: 2500.001782
+                - asDouble: 2500
                   attributes:
                     - key: db.system
                       value:
@@ -58,7 +58,7 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asDouble: 1.7002000935999997e+07
+                - asDouble: 1.7002e+07
                   attributes:
                     - key: messaging.system
                       value:

@@ -18,8 +18,8 @@ resourceMetrics:
                       value:
                         intValue: "201"
                   count: "2"
-                  max: 11000.000468
-                  min: 900.000468
+                  max: 11000
+                  min: 900
                   negative: {}
                   positive:
                     bucketCounts:
@@ -141,7 +141,7 @@ resourceMetrics:
                       - "1"
                     offset: 314
                   scale: 5
-                  sum: 11900.000936
+                  sum: 11900
                   timeUnixNano: "1000000"
             name: http.trace.span.duration
           - description: Span duration for HTTP spans
@@ -188,7 +188,7 @@ resourceMetrics:
                     - 5000
                     - 10000
                     - 15000
-                  sum: 11900.000936
+                  sum: 11900
                   timeUnixNano: "1000000"
             name: http.trace.span.duration
           - description: Span duration for DB spans
@@ -200,8 +200,8 @@ resourceMetrics:
                       value:
                         stringValue: mysql
                   count: "4"
-                  max: 1000.000468
-                  min: 500.000423
+                  max: 1000
+                  min: 500
                   negative: {}
                   positive:
                     bucketCounts:
@@ -336,7 +336,7 @@ resourceMetrics:
                       - "1"
                     offset: 1147
                   scale: 7
-                  sum: 2500.001782
+                  sum: 2500
                   timeUnixNano: "1000000"
             name: db.trace.span.duration
           - description: Span duration for DB spans
@@ -358,8 +358,8 @@ resourceMetrics:
                     - "0"
                     - "0"
                     - "3"
-                    - "0"
                     - "1"
+                    - "0"
                     - "0"
                     - "0"
                     - "0"
@@ -383,7 +383,7 @@ resourceMetrics:
                     - 5000
                     - 10000
                     - 15000
-                  sum: 2500.001782
+                  sum: 2500
                   timeUnixNano: "1000000"
             name: db.trace.span.duration
           - description: Span duration for messaging spans
@@ -395,8 +395,8 @@ resourceMetrics:
                       value:
                         stringValue: kafka
                   count: "2"
-                  max: 17000.000468
-                  min: 2.000468
+                  max: 17000
+                  min: 2
                   negative: {}
                   positive:
                     bucketCounts:
@@ -504,10 +504,11 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "0"
+                      - "0"
                       - "1"
-                    offset: 8
+                    offset: 7
                   scale: 3
-                  sum: 17002.000935999997
+                  sum: 17002
                   timeUnixNano: "1000000"
             name: msg.trace.span.duration
           - description: Span duration for messaging spans
@@ -519,8 +520,8 @@ resourceMetrics:
                       value:
                         stringValue: kafka
                   bucketCounts:
-                    - "0"
                     - "1"
+                    - "0"
                     - "0"
                     - "0"
                     - "0"
@@ -554,7 +555,7 @@ resourceMetrics:
                     - 5000
                     - 10000
                     - 15000
-                  sum: 17002.000935999997
+                  sum: 17002
                   timeUnixNano: "1000000"
             name: msg.trace.span.duration
         scope:

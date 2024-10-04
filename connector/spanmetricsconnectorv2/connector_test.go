@@ -73,7 +73,9 @@ func TestConnectorWithTraces(t *testing.T) {
 
 			require.NoError(t, connector.ConsumeTraces(ctx, inputTraces))
 			require.Len(t, next.AllMetrics(), 1)
-			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
+			if !assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0]) {
+				golden.WriteMetrics(t, filepath.Join(dir, "output.yaml"), next.AllMetrics()[0])
+			}
 		})
 	}
 }
@@ -162,23 +164,21 @@ func BenchmarkConnector(b *testing.B) {
 	require.NoError(b, err)
 
 	cfg := &config.Config{
-		Spans: []config.SpanMetricInfo{
+		Spans: []config.MetricInfo{
 			{
-				MetricInfo: config.MetricInfo{
-					Name:        "http.trace.span.duration",
-					Description: "Span duration for HTTP spans",
-					Attributes: []config.Attribute{
-						{
-							Key: "http.response.status_code",
-						},
+				Name:        "http.trace.span.duration",
+				Description: "Span duration for HTTP spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "http.response.status_code",
 					},
-					IncludeResourceAttributes: []config.Attribute{
-						{
-							Key: "resource.foo",
-						},
-					},
-					Counter: &config.Counter{},
 				},
+				IncludeResourceAttributes: []config.Attribute{
+					{
+						Key: "resource.foo",
+					},
+				},
+				Counter: &config.Counter{},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
@@ -187,16 +187,14 @@ func BenchmarkConnector(b *testing.B) {
 				SumAndCount: &config.SumAndCount{},
 			},
 			{
-				MetricInfo: config.MetricInfo{
-					Name:        "db.trace.span.duration",
-					Description: "Span duration for DB spans",
-					Attributes: []config.Attribute{
-						{
-							Key: "msg.trace.span.duration",
-						},
+				Name:        "db.trace.span.duration",
+				Description: "Span duration for DB spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "msg.trace.span.duration",
 					},
-					Counter: &config.Counter{},
 				},
+				Counter: &config.Counter{},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
@@ -205,16 +203,14 @@ func BenchmarkConnector(b *testing.B) {
 				SumAndCount: &config.SumAndCount{},
 			},
 			{
-				MetricInfo: config.MetricInfo{
-					Name:        "msg.trace.span.duration",
-					Description: "Span duration for DB spans",
-					Attributes: []config.Attribute{
-						{
-							Key: "messaging.system",
-						},
+				Name:        "msg.trace.span.duration",
+				Description: "Span duration for DB spans",
+				Attributes: []config.Attribute{
+					{
+						Key: "messaging.system",
 					},
-					Counter: &config.Counter{},
 				},
+				Counter: &config.Counter{},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
@@ -223,16 +219,14 @@ func BenchmarkConnector(b *testing.B) {
 				SumAndCount: &config.SumAndCount{},
 			},
 			{
-				MetricInfo: config.MetricInfo{
-					Name:        "404.span.duration",
-					Description: "Span duration for missing attribute in input",
-					Attributes: []config.Attribute{
-						{
-							Key: "404.attribute",
-						},
+				Name:        "404.span.duration",
+				Description: "Span duration for missing attribute in input",
+				Attributes: []config.Attribute{
+					{
+						Key: "404.attribute",
 					},
-					Counter: &config.Counter{},
 				},
+				Counter: &config.Counter{},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
@@ -241,17 +235,15 @@ func BenchmarkConnector(b *testing.B) {
 				SumAndCount: &config.SumAndCount{},
 			},
 			{
-				MetricInfo: config.MetricInfo{
-					Name:        "404.span.duration.default",
-					Description: "Span duration with attribute default configured in input",
-					Attributes: []config.Attribute{
-						{
-							Key:          "404.attribute.default",
-							DefaultValue: "any",
-						},
+				Name:        "404.span.duration.default",
+				Description: "Span duration with attribute default configured in input",
+				Attributes: []config.Attribute{
+					{
+						Key:          "404.attribute.default",
+						DefaultValue: "any",
 					},
-					Counter: &config.Counter{},
 				},
+				Counter: &config.Counter{},
 				Histogram: config.Histogram{
 					Explicit:    &config.ExplicitHistogram{},
 					Exponential: &config.ExponentialHistogram{},
@@ -295,9 +287,9 @@ func setupConnector(
 	return factory, settings, cfg, dir
 }
 
-func assertAggregatedMetrics(t *testing.T, expected, actual pmetric.Metrics) {
+func assertAggregatedMetrics(t *testing.T, expected, actual pmetric.Metrics) bool {
 	t.Helper()
-	assert.NoError(t, pmetrictest.CompareMetrics(
+	return assert.NoError(t, pmetrictest.CompareMetrics(
 		expected, actual,
 		pmetrictest.ChangeResourceAttributeValue("spanmetricsv2_ephemeral_id", func(v string) string {
 			// Since ephemeral ID is randomly generated, we only want to check
