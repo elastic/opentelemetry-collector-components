@@ -73,9 +73,7 @@ func TestConnectorWithTraces(t *testing.T) {
 
 			require.NoError(t, connector.ConsumeTraces(ctx, inputTraces))
 			require.Len(t, next.AllMetrics(), 1)
-			if !assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0]) {
-				golden.WriteMetrics(t, filepath.Join(dir, "output.yaml"), next.AllMetrics()[0])
-			}
+			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
 		})
 	}
 }

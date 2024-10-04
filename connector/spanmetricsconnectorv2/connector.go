@@ -22,9 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/aggregator"
 	"github.com/elastic/opentelemetry-collector-components/connector/spanmetricsconnectorv2/internal/model"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
@@ -42,16 +40,6 @@ import (
 const (
 	ephemeralResourceKey = "spanmetricsv2_ephemeral_id"
 )
-
-// TODO (lahsivjar): will be removed after full ottl support
-// metricUnitToDivider gives a value that could used to divide the
-// nano precision duration to the required unit specified in config.
-var metricUnitToDivider = map[config.MetricUnit]float64{
-	config.MetricUnitNs: float64(time.Nanosecond.Nanoseconds()),
-	config.MetricUnitUs: float64(time.Microsecond.Nanoseconds()),
-	config.MetricUnitMs: float64(time.Millisecond.Nanoseconds()),
-	config.MetricUnitS:  float64(time.Second.Nanoseconds()),
-}
 
 type signalToMetrics struct {
 	component.StartFunc
@@ -103,10 +91,8 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 					if md.EphemeralResourceAttribute {
 						filteredResAttrs.PutStr(ephemeralResourceKey, sm.ephemeralID)
 					}
-					var value float64
 					count := adjustedCount
 					tCtx := ottlspan.NewTransformContext(span, scopeSpan.Scope(), resourceSpan.Resource(), scopeSpan, resourceSpan)
-					// Count can be nil, but Value must be non-nil for spans
 					if md.ValueCountMetric.CountStatement != nil {
 						count, err = getCountFromOTTL(ctx, tCtx, md.ValueCountMetric)
 						if err != nil {
@@ -114,16 +100,15 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 							continue
 						}
 					}
-					value, err = getValueFromOTTL(ctx, tCtx, md.ValueCountMetric)
-					if err != nil {
-						multiError = errors.Join(multiError, err)
-						continue
+					multiError = errors.Join(multiError, aggregator.Count(md, filteredResAttrs, filteredSpanAttrs, count))
+					if md.ValueCountMetric.ValueStatement != nil {
+						value, err := getValueFromOTTL(ctx, tCtx, md.ValueCountMetric)
+						if err != nil {
+							multiError = errors.Join(multiError, err)
+							continue
+						}
+						multiError = errors.Join(multiError, aggregator.ValueCount(md, filteredResAttrs, filteredSpanAttrs, value, count))
 					}
-					multiError = errors.Join(
-						multiError,
-						aggregator.ValueCount(md, filteredResAttrs, filteredSpanAttrs, value, count),
-						aggregator.Count(md, filteredResAttrs, filteredSpanAttrs, count),
-					)
 				}
 			}
 		}
@@ -381,17 +366,17 @@ func getValueFromOTTL[K any](
 	if err != nil {
 		return 0, err
 	}
-	switch raw.(type) {
+	switch v := raw.(type) {
 	case float64:
-		return raw.(float64), nil
+		return v, nil
 	case int64:
-		return float64(raw.(int64)), nil
+		return float64(v), nil
 	case string:
-		v, err := strconv.ParseFloat(raw.(string), 64)
+		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			return 0, errors.New("failed to parse count OTTL statement value to float")
 		}
-		return v, nil
+		return f, nil
 	}
 	return 0, errors.New("failed to parse count OTTL statement value to float")
 }
