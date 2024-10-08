@@ -302,8 +302,12 @@ func getIntFromOTTL[K any](
 		return v, nil
 	case float64:
 		return int64(v), nil
+	default:
+		return 0, fmt.Errorf(
+			"failed to parse int OTTL value, expression returned value of type %T: %v",
+			v, v,
+		)
 	}
-	return 0, errors.New("failed to parse double OTTL value")
 }
 
 func getDoubleFromOTTL[K any](
@@ -323,6 +327,10 @@ func getDoubleFromOTTL[K any](
 		return v, nil
 	case int64:
 		return float64(v), nil
+	default:
+		return 0, fmt.Errorf(
+			"failed to parse double OTTL value, expression returned value of type %T: %v",
+			v, v,
+		)
 	}
-	return 0, errors.New("failed to parse int OTTL value")
 }

@@ -71,61 +71,65 @@ func TestConnectorWithTraces(t *testing.T) {
 	}
 }
 
-// func TestConnectorWithMetrics(t *testing.T) {
-// 	testCases := []string{
-// 		"with_counters_metrics",
-// 	}
+//	func TestConnectorWithMetrics(t *testing.T) {
+//		testCases := []string{
+//			"with_counters_metrics",
+//		}
 //
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
+//		ctx, cancel := context.WithCancel(context.Background())
+//		defer cancel()
 //
-// 	for _, tc := range testCases {
-// 		t.Run(tc, func(t *testing.T) {
-// 			next := &consumertest.MetricsSink{}
-// 			factory, settings, cfg, dir := setupConnector(t, tc)
-// 			connector, err := factory.CreateMetricsToMetrics(ctx, settings, cfg, next)
-// 			require.NoError(t, err)
-// 			require.IsType(t, &signalToMetrics{}, connector)
+//		for _, tc := range testCases {
+//			t.Run(tc, func(t *testing.T) {
+//				next := &consumertest.MetricsSink{}
+//				factory, settings, cfg, dir := setupConnector(t, tc)
+//				connector, err := factory.CreateMetricsToMetrics(ctx, settings, cfg, next)
+//				require.NoError(t, err)
+//				require.IsType(t, &signalToMetrics{}, connector)
 //
-// 			inputMetrics, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
-// 			require.NoError(t, err)
-// 			expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
-// 			require.NoError(t, err)
+//				inputMetrics, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+//				require.NoError(t, err)
+//				expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
+//				require.NoError(t, err)
 //
-// 			require.NoError(t, connector.ConsumeMetrics(ctx, inputMetrics))
-// 			require.Len(t, next.AllMetrics(), 1)
-// 			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
-// 		})
-// 	}
-// }
-//
-// func TestConnectorWithLogs(t *testing.T) {
-// 	testCases := []string{
-// 		"with_counters_logs",
-// 	}
-//
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
-//
-// 	for _, tc := range testCases {
-// 		t.Run(tc, func(t *testing.T) {
-// 			next := &consumertest.MetricsSink{}
-// 			factory, settings, cfg, dir := setupConnector(t, tc)
-// 			connector, err := factory.CreateLogsToMetrics(ctx, settings, cfg, next)
-// 			require.NoError(t, err)
-// 			require.IsType(t, &signalToMetrics{}, connector)
-//
-// 			inputLogs, err := golden.ReadLogs(filepath.Join(dir, "input.yaml"))
-// 			require.NoError(t, err)
-// 			expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
-// 			require.NoError(t, err)
-//
-// 			require.NoError(t, connector.ConsumeLogs(ctx, inputLogs))
-// 			require.Len(t, next.AllMetrics(), 1)
-// 			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
-// 		})
-// 	}
-// }
+//				require.NoError(t, connector.ConsumeMetrics(ctx, inputMetrics))
+//				require.Len(t, next.AllMetrics(), 1)
+//				assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
+//			})
+//		}
+//	}
+
+func TestConnectorWithLogs(t *testing.T) {
+	testCases := []string{
+		"sum",
+		"histograms",
+		"exponential_histograms",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range testCases {
+		t.Run(tc, func(t *testing.T) {
+			logTestDataDir := filepath.Join(testDataDir, "logs")
+			inputLogs, err := golden.ReadLogs(filepath.Join(logTestDataDir, "logs.yaml"))
+			// require.NoError(t, err)
+
+			next := &consumertest.MetricsSink{}
+			tcTestDataDir := filepath.Join(logTestDataDir, tc)
+			factory, settings, cfg := setupConnector(t, tcTestDataDir)
+			connector, err := factory.CreateLogsToMetrics(ctx, settings, cfg, next)
+			require.NoError(t, err)
+			require.IsType(t, &signalToMetrics{}, connector)
+			expectedMetrics, err := golden.ReadMetrics(filepath.Join(tcTestDataDir, "output.yaml"))
+			require.NoError(t, err)
+
+			require.NoError(t, connector.ConsumeLogs(ctx, inputLogs))
+			require.Len(t, next.AllMetrics(), 1)
+			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
+		})
+	}
+}
 
 func TestCalculateAdjustedCount(t *testing.T) {
 	for _, tc := range []struct {

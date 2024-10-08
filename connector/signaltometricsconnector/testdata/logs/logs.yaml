@@ -16,6 +16,9 @@ resourceLogs:
               - key: log.bar
                 value:
                   stringValue: bar
+              - key: log.duration
+                value:
+                  doubleValue: 101.5
             body:
               stringValue: This is a log message
             spanId: ""
@@ -28,6 +31,9 @@ resourceLogs:
               - key: log.bar
                 value:
                   stringValue: notbar
+              - key: log.duration
+                value:
+                  doubleValue: 11.4
             body:
               stringValue: This is a log message
             spanId: ""
@@ -37,12 +43,19 @@ resourceLogs:
               - key: log.foo
                 value:
                   stringValue: notfoo
+              - key: log.duration
+                value:
+                  doubleValue: 8.1
             body:
               stringValue: This is a log message
             spanId: ""
             timeUnixNano: "1581452773000000789"
             traceId: ""
-          - body:
+          - attributes:
+              - key: log.duration
+                value:
+                  doubleValue: 7
+            body:
               stringValue: This is a log message
             spanId: ""
             timeUnixNano: "1581452773000000789"
