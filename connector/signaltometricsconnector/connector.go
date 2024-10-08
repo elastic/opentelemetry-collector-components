@@ -34,11 +34,14 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.uber.org/zap"
 )
 
 type signalToMetrics struct {
 	component.StartFunc
 	component.ShutdownFunc
+
+	logger *zap.Logger
 
 	next           consumer.Metrics
 	spanMetricDefs []model.MetricDef[ottlspan.TransformContext]
@@ -84,17 +87,16 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 						filteredResAttrs = pcommon.NewMap()
 						resourceAttrs.CopyTo(filteredResAttrs)
 					}
+					// The transform context is created from orginal attributes so that the
+					// OTTL expressions are also applied on the original attributes.
 					tCtx := ottlspan.NewTransformContext(span, scopeSpan.Scope(), resourceSpan.Resource(), scopeSpan, resourceSpan)
 					multiError = errors.Join(multiError, aggregator.Aggregate(ctx, tCtx, md, filteredResAttrs, filteredSpanAttrs, adjustedCount))
 				}
 			}
 		}
 	}
-	if multiError != nil {
-		return multiError
-	}
 	aggregator.Finalize(sm.spanMetricDefs)
-	return sm.next.ConsumeMetrics(ctx, processedMetrics)
+	return sm.processNext(ctx, processedMetrics, multiError)
 }
 
 func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics) error {
@@ -124,6 +126,8 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 						resourceAttrs.CopyTo(filteredResAttrs)
 					}
 					aggregate := func(dp any, dpAttrs pcommon.Map) error {
+						// The transform context is created from orginal attributes so that the
+						// OTTL expressions are also applied on the original attributes.
 						tCtx := ottldatapoint.NewTransformContext(dp, metric, metrics, scopeMetric.Scope(), resourceMetric.Resource(), scopeMetric, resourceMetric)
 						return aggregator.Aggregate(ctx, tCtx, md, filteredResAttrs, dpAttrs, 1)
 					}
@@ -196,11 +200,8 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 			}
 		}
 	}
-	if multiError != nil {
-		return multiError
-	}
 	aggregator.Finalize(sm.dpMetricDefs)
-	return sm.next.ConsumeMetrics(ctx, processedMetrics)
+	return sm.processNext(ctx, processedMetrics, multiError)
 }
 
 func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) error {
@@ -235,17 +236,36 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 						filteredResAttrs = pcommon.NewMap()
 						resourceAttrs.CopyTo(filteredResAttrs)
 					}
+					// The transform context is created from orginal attributes so that the
+					// OTTL expressions are also applied on the original attributes.
 					tCtx := ottllog.NewTransformContext(log, scopeLog.Scope(), resourceLog.Resource(), scopeLog, resourceLog)
 					multiError = errors.Join(multiError, aggregator.Aggregate(ctx, tCtx, md, filteredResAttrs, filteredLogAttrs, 1))
 				}
 			}
 		}
 	}
-	if multiError != nil {
-		return multiError
-	}
 	aggregator.Finalize(sm.logMetricDefs)
-	return sm.next.ConsumeMetrics(ctx, processedMetrics)
+	return sm.processNext(ctx, processedMetrics, multiError)
+}
+
+// processNext is a helper method for all the Consume* methods to do error handling,
+// logging, and sending the processed metrics to the next consumer in the pipeline.
+func (sm *signalToMetrics) processNext(ctx context.Context, m pmetric.Metrics, err error) error {
+	if err != nil {
+		dpCount := m.DataPointCount()
+		if dpCount == 0 {
+			// No signals were consumed so return an error
+			return fmt.Errorf("failed to consume signal: %w", err)
+		}
+		// At least some signals were partially consumed, so log the error
+		// and pass the processed metrics to the next consumer.
+		sm.logger.Warn(
+			"failed to consume all signals, some signals were partially processed",
+			zap.Error(err),
+			zap.Int("successful_data_points", dpCount),
+		)
+	}
+	return sm.next.ConsumeMetrics(ctx, m)
 }
 
 // calculateAdjustedCount calculates the adjusted count which represents

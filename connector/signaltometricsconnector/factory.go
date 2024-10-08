@@ -76,6 +76,7 @@ func createTracesToMetrics(
 	}
 
 	return &signalToMetrics{
+		logger:         set.Logger,
 		next:           nextConsumer,
 		spanMetricDefs: metricDefs,
 	}, nil
@@ -106,6 +107,7 @@ func createMetricsToMetrics(
 	}
 
 	return &signalToMetrics{
+		logger:       set.Logger,
 		next:         nextConsumer,
 		dpMetricDefs: metricDefs,
 	}, nil
@@ -136,6 +138,7 @@ func createLogsToMetrics(
 	}
 
 	return &signalToMetrics{
+		logger:        set.Logger,
 		next:          nextConsumer,
 		logMetricDefs: metricDefs,
 	}, nil
