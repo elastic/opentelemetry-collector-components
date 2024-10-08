@@ -71,33 +71,35 @@ func TestConnectorWithTraces(t *testing.T) {
 	}
 }
 
-//	func TestConnectorWithMetrics(t *testing.T) {
-//		testCases := []string{
-//			"with_counters_metrics",
-//		}
-//
-//		ctx, cancel := context.WithCancel(context.Background())
-//		defer cancel()
-//
-//		for _, tc := range testCases {
-//			t.Run(tc, func(t *testing.T) {
-//				next := &consumertest.MetricsSink{}
-//				factory, settings, cfg, dir := setupConnector(t, tc)
-//				connector, err := factory.CreateMetricsToMetrics(ctx, settings, cfg, next)
-//				require.NoError(t, err)
-//				require.IsType(t, &signalToMetrics{}, connector)
-//
-//				inputMetrics, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
-//				require.NoError(t, err)
-//				expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
-//				require.NoError(t, err)
-//
-//				require.NoError(t, connector.ConsumeMetrics(ctx, inputMetrics))
-//				require.Len(t, next.AllMetrics(), 1)
-//				assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
-//			})
-//		}
-//	}
+func TestConnectorWithMetrics(t *testing.T) {
+	testCases := []string{
+		"sum",
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range testCases {
+		t.Run(tc, func(t *testing.T) {
+			metricTestDataDir := filepath.Join(testDataDir, "metrics")
+			inputMetrics, err := golden.ReadMetrics(filepath.Join(metricTestDataDir, "metrics.yaml"))
+			require.NoError(t, err)
+
+			next := &consumertest.MetricsSink{}
+			tcTestDataDir := filepath.Join(metricTestDataDir, tc)
+			factory, settings, cfg := setupConnector(t, tcTestDataDir)
+			connector, err := factory.CreateMetricsToMetrics(ctx, settings, cfg, next)
+			require.NoError(t, err)
+			require.IsType(t, &signalToMetrics{}, connector)
+			expectedMetrics, err := golden.ReadMetrics(filepath.Join(tcTestDataDir, "output.yaml"))
+			require.NoError(t, err)
+
+			require.NoError(t, connector.ConsumeMetrics(ctx, inputMetrics))
+			require.Len(t, next.AllMetrics(), 1)
+			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
+		})
+	}
+}
 
 func TestConnectorWithLogs(t *testing.T) {
 	testCases := []string{

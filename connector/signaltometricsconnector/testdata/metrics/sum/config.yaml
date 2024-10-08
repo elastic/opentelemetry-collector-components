@@ -1,0 +1,18 @@
+signaltometrics:
+  datapoints:
+    - name: total.datapoint.sum
+      description: Count total number of datapoints
+      sum:
+        value: Int(1)
+    - name: datapoint.foo.sum
+      description: Count total number of datapoints as per datapoint.foo attribute
+      attributes:
+        - key: datapoint.foo
+      sum:
+        value: Int(1)
+    - name: datapoint.bar.sum
+      description: Count total number of datapoints as per datapoint.bar attribute
+      attributes:
+        - key: datapoint.bar
+      sum:
+        value: Int(1)
