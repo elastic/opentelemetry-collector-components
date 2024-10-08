@@ -44,7 +44,7 @@ type ExplicitHistogram[K any] struct {
 }
 
 func (h *ExplicitHistogram[K]) fromConfig(
-	mi *config.ExplicitHistogram,
+	mi *config.Histogram,
 	parser ottl.Parser[K],
 ) error {
 	if mi == nil {
@@ -170,15 +170,15 @@ func (md *MetricDef[K]) FromMetricInfo(
 	if err != nil {
 		return fmt.Errorf("failed to parse attribute config: %w", err)
 	}
-	if mi.Explicit != nil {
+	if mi.Histogram != nil {
 		md.ExplicitHistogram = new(ExplicitHistogram[K])
-		if err := md.ExplicitHistogram.fromConfig(mi.Explicit, parser); err != nil {
+		if err := md.ExplicitHistogram.fromConfig(mi.Histogram, parser); err != nil {
 			return fmt.Errorf("failed to parse histogram config: %w", err)
 		}
 	}
-	if mi.Exponential != nil {
+	if mi.ExponentialHistogram != nil {
 		md.ExponentialHistogram = new(ExponentialHistogram[K])
-		if err := md.ExponentialHistogram.fromConfig(mi.Exponential, parser); err != nil {
+		if err := md.ExponentialHistogram.fromConfig(mi.ExponentialHistogram, parser); err != nil {
 			return fmt.Errorf("failed to parse histogram config: %w", err)
 		}
 	}

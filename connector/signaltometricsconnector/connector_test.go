@@ -118,7 +118,7 @@ func TestConnectorWithLogs(t *testing.T) {
 		t.Run(tc, func(t *testing.T) {
 			logTestDataDir := filepath.Join(testDataDir, "logs")
 			inputLogs, err := golden.ReadLogs(filepath.Join(logTestDataDir, "logs.yaml"))
-			// require.NoError(t, err)
+			require.NoError(t, err)
 
 			next := &consumertest.MetricsSink{}
 			tcTestDataDir := filepath.Join(logTestDataDir, tc)
@@ -250,7 +250,7 @@ func testMetricInfo(b *testing.B) []config.MetricInfo {
 					Key: "http.response.status_code",
 				},
 			},
-			Explicit: &config.ExplicitHistogram{
+			Histogram: &config.Histogram{
 				Buckets: []float64{2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000},
 				Value:   "Double(1.4)",
 			},
@@ -273,7 +273,7 @@ func testMetricInfo(b *testing.B) []config.MetricInfo {
 					Key: "http.response.status_code",
 				},
 			},
-			Exponential: &config.ExponentialHistogram{
+			ExponentialHistogram: &config.ExponentialHistogram{
 				Value:   "Double(2.4)",
 				MaxSize: 160,
 			},

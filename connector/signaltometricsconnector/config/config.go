@@ -153,36 +153,10 @@ type MetricInfo struct {
 	// to lose its identity or cause identity conflict.
 	IncludeResourceAttributes []Attribute           `mapstructure:"include_resource_attributes"`
 	Attributes                []Attribute           `mapstructure:"attributes"`
-	Explicit                  *ExplicitHistogram    `mapstructure:"histogram"`
-	Exponential               *ExponentialHistogram `mapstructure:"exponential_histogram"`
+	Histogram                 *Histogram            `mapstructure:"histogram"`
+	ExponentialHistogram      *ExponentialHistogram `mapstructure:"exponential_histogram"`
 	Summary                   *Summary              `mapstructure:"summary"`
 	Sum                       *Sum                  `mapstructure:"sum"`
-}
-
-// isEqual checks if two metric have a same identity. Identity of a
-// metric is defined by name and attribute.
-func (mi *MetricInfo) isEqual(other MetricInfo) bool {
-	if mi.Name != other.Name {
-		return false
-	}
-	if len(mi.Attributes) != len(other.Attributes) {
-		return false
-	}
-	if len(mi.Attributes) == 0 {
-		return true
-	}
-	// Validate attribues equality
-	keyMap := make(map[string]Attribute)
-	for _, attr := range mi.Attributes {
-		keyMap[attr.Key] = attr
-	}
-
-	for _, otherAttr := range other.Attributes {
-		if _, ok := keyMap[otherAttr.Key]; !ok {
-			return false
-		}
-	}
-	return true
 }
 
 func (mi *MetricInfo) validateAttributes() error {
@@ -204,21 +178,21 @@ func (mi *MetricInfo) validateAttributes() error {
 }
 
 func (mi *MetricInfo) validateHistogram() error {
-	if mi.Explicit != nil {
-		if len(mi.Explicit.Buckets) == 0 {
+	if mi.Histogram != nil {
+		if len(mi.Histogram.Buckets) == 0 {
 			return errors.New("histogram buckets missing")
 		}
-		if mi.Explicit.Value == "" {
+		if mi.Histogram.Value == "" {
 			return errors.New("value OTTL statement is required")
 		}
 	}
-	if mi.Exponential != nil {
+	if mi.ExponentialHistogram != nil {
 		if _, err := structure.NewConfig(
-			structure.WithMaxSize(mi.Exponential.MaxSize),
+			structure.WithMaxSize(mi.ExponentialHistogram.MaxSize),
 		).Validate(); err != nil {
 			return err
 		}
-		if mi.Exponential.Value == "" {
+		if mi.ExponentialHistogram.Value == "" {
 			return errors.New("value OTTL statement is required")
 		}
 	}
@@ -244,15 +218,15 @@ func (mi *MetricInfo) validateSum() error {
 }
 
 func (mi *MetricInfo) ensureDefaults() {
-	if mi.Explicit != nil {
+	if mi.Histogram != nil {
 		// Add default buckets if explicit histogram is defined
-		if len(mi.Explicit.Buckets) == 0 {
-			mi.Explicit.Buckets = defaultHistogramBuckets[:]
+		if len(mi.Histogram.Buckets) == 0 {
+			mi.Histogram.Buckets = defaultHistogramBuckets[:]
 		}
 	}
-	if mi.Exponential != nil {
-		if mi.Exponential.MaxSize == 0 {
-			mi.Exponential.MaxSize = defaultExponentialHistogramMaxSize
+	if mi.ExponentialHistogram != nil {
+		if mi.ExponentialHistogram.MaxSize == 0 {
+			mi.ExponentialHistogram.MaxSize = defaultExponentialHistogramMaxSize
 		}
 	}
 }
@@ -281,21 +255,29 @@ func validateMetricInfo[K any](mi MetricInfo, parser ottl.Parser[K]) error {
 		metricsDefinedCount int
 		statements          []string
 	)
-	if mi.Explicit != nil {
+	if mi.Histogram != nil {
 		metricsDefinedCount++
-		statements = append(statements, mi.Explicit.Count, mi.Explicit.Value)
+		if mi.Histogram.Count != "" {
+			statements = append(statements, ottlget.ConvertToStatement(mi.Histogram.Count))
+		}
+		statements = append(statements, ottlget.ConvertToStatement(mi.Histogram.Value))
 	}
-	if mi.Exponential != nil {
+	if mi.ExponentialHistogram != nil {
 		metricsDefinedCount++
-		statements = append(statements, mi.Exponential.Count, mi.Exponential.Value)
+		if mi.ExponentialHistogram.Count != "" {
+			statements = append(statements, ottlget.ConvertToStatement(mi.ExponentialHistogram.Count))
+		}
+		statements = append(statements, ottlget.ConvertToStatement(mi.ExponentialHistogram.Value))
 	}
 	if mi.Summary != nil {
 		metricsDefinedCount++
-		statements = append(statements, mi.Summary.Count, mi.Summary.Value)
+		if mi.Summary.Count != "" {
+			statements = append(statements, ottlget.ConvertToStatement(mi.Summary.Count))
+		}
 	}
 	if mi.Sum != nil {
 		metricsDefinedCount++
-		statements = append(statements, mi.Sum.Value)
+		statements = append(statements, ottlget.ConvertToStatement(mi.Sum.Value))
 	}
 	if metricsDefinedCount != 1 {
 		return fmt.Errorf("exactly one of the metrics must be defined, %d found", metricsDefinedCount)
@@ -314,7 +296,7 @@ type Attribute struct {
 	DefaultValue any    `mapstructure:"default_value"`
 }
 
-type ExplicitHistogram struct {
+type Histogram struct {
 	Buckets []float64 `mapstructure:"buckets"`
 	Count   string    `mapstructure:"count"`
 	Value   string    `mapstructure:"value"`
