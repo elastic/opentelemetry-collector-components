@@ -3,7 +3,6 @@ module github.com/elastic/opentelemetry-collector-components/connector/signaltom
 go 1.22.0
 
 require (
-	github.com/google/uuid v1.6.0
 	github.com/lightstep/go-expohisto v1.0.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.110.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.110.0
@@ -34,6 +33,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
