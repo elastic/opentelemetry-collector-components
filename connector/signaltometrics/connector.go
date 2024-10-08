@@ -36,10 +36,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
-const (
-	ephemeralResourceKey = "signaltometrics_ephemeral_id"
-)
-
 type signalToMetrics struct {
 	component.StartFunc
 	component.ShutdownFunc
@@ -48,9 +44,6 @@ type signalToMetrics struct {
 	spanMetricDefs []model.MetricDef[ottlspan.TransformContext]
 	dpMetricDefs   []model.MetricDef[ottldatapoint.TransformContext]
 	logMetricDefs  []model.MetricDef[ottllog.TransformContext]
-
-	// ephemeralID will be removed, see: https://github.com/elastic/opentelemetry-collector-components/issues/159
-	ephemeralID string
 }
 
 func (sm *signalToMetrics) Capabilities() consumer.Capabilities {

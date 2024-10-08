@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottlspan"
@@ -79,7 +78,6 @@ func createTracesToMetrics(
 	return &signalToMetrics{
 		next:           nextConsumer,
 		spanMetricDefs: metricDefs,
-		ephemeralID:    uuid.NewString(),
 	}, nil
 }
 
@@ -110,7 +108,6 @@ func createMetricsToMetrics(
 	return &signalToMetrics{
 		next:         nextConsumer,
 		dpMetricDefs: metricDefs,
-		ephemeralID:  uuid.NewString(),
 	}, nil
 }
 
@@ -141,6 +138,5 @@ func createLogsToMetrics(
 	return &signalToMetrics{
 		next:          nextConsumer,
 		logMetricDefs: metricDefs,
-		ephemeralID:   uuid.NewString(),
 	}, nil
 }

@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/metadata"
-	"github.com/google/uuid"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
@@ -281,18 +280,6 @@ func assertAggregatedMetrics(t *testing.T, expected, actual pmetric.Metrics) boo
 	t.Helper()
 	return assert.NoError(t, pmetrictest.CompareMetrics(
 		expected, actual,
-		pmetrictest.ChangeResourceAttributeValue("signaltometrics_ephemeral_id", func(v string) string {
-			// Since ephemeral ID is randomly generated, we only want to check
-			// if it is a non-empty valid v4 UUID. If it is, then we will replace
-			// it with const `random` else we will fail the test. Replacing with
-			// random will always pass the test as it overrides the actual value
-			// comparision for the attribute.
-			if _, err := uuid.Parse(v); err != nil {
-				t.Fatal("ephemeral ID must be non-empty valid v4 UUID")
-				return ""
-			}
-			return "random"
-		}),
 		pmetrictest.IgnoreMetricDataPointsOrder(),
 		pmetrictest.IgnoreMetricsOrder(),
 		pmetrictest.IgnoreTimestamp(),

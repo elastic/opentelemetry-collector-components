@@ -121,8 +121,7 @@ type MetricInfo struct {
 	// needs to be included in the generated metric. If no resource
 	// attribute is included in the list then all attributes are included.
 	// Note that configuring this setting might cause the produced metric
-	// to lose its identity or cause identity conflict. Check out the
-	// `ephemeral_resource_attribute`.
+	// to lose its identity or cause identity conflict.
 	IncludeResourceAttributes []Attribute           `mapstructure:"include_resource_attributes"`
 	Attributes                []Attribute           `mapstructure:"attributes"`
 	Explicit                  *ExplicitHistogram    `mapstructure:"histogram"`
