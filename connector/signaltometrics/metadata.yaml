@@ -22,9 +22,9 @@ tests:
       - name: logrecord.count
         description: "Count of log record"
         sum:
-          int: "1" # Count each log record as 1
+          value: Int("1") # Count each log record as 1
     metrics:
       - name: datapoint.count
         description: "Count of datapoint"
         sum:
-          int: "1" # Count each data point as 1
+          value: Int("1") # Count each data point as 1
