@@ -24,6 +24,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
+// valueCountDP is a wrapper DP to aggregate all datapoints that record
+// value and count.
 type valueCountDP struct {
 	expHistogramDP      *exponentialHistogramDP
 	explicitHistogramDP *explicitHistogramDP

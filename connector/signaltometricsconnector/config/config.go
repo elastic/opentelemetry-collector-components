@@ -23,6 +23,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
 	"github.com/lightstep/go-expohisto/structure"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottlspan"
@@ -66,22 +67,50 @@ func (c *Config) Validate() error {
 	if len(c.Spans) == 0 && len(c.Datapoints) == 0 && len(c.Logs) == 0 {
 		return fmt.Errorf("no configuration provided, at least one should be specified")
 	}
-	for _, span := range c.Spans {
-		if err := span.validate(); err != nil {
-			return fmt.Errorf("failed to validate spans configuration: %w", err)
+	var multiError error // collect all errors at once
+	if len(c.Spans) > 0 {
+		parser, err := ottlspan.NewParser(
+			ottlget.CustomFuncs[ottlspan.TransformContext](),
+			component.TelemetrySettings{Logger: zap.NewNop()},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create parser for OTTL spans: %w", err)
+		}
+		for _, span := range c.Spans {
+			if err := validateMetricInfo(span, parser); err != nil {
+				multiError = errors.Join(multiError, fmt.Errorf("failed to validate spans configuration: %w", err))
+			}
 		}
 	}
-	for _, dp := range c.Datapoints {
-		if err := dp.validate(); err != nil {
-			return fmt.Errorf("failed to validate spans configuration: %w", err)
+	if len(c.Datapoints) > 0 {
+		parser, err := ottldatapoint.NewParser(
+			ottlget.CustomFuncs[ottldatapoint.TransformContext](),
+			component.TelemetrySettings{Logger: zap.NewNop()},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create parser for OTTL datapoints: %w", err)
+		}
+		for _, dp := range c.Datapoints {
+			if err := validateMetricInfo(dp, parser); err != nil {
+				multiError = errors.Join(multiError, fmt.Errorf("failed to validate datapoints configuration: %w", err))
+			}
 		}
 	}
-	for _, log := range c.Logs {
-		if err := log.validate(); err != nil {
-			return fmt.Errorf("failed to validate spans configuration: %w", err)
+	if len(c.Logs) > 0 {
+		parser, err := ottllog.NewParser(
+			ottlget.CustomFuncs[ottllog.TransformContext](),
+			component.TelemetrySettings{Logger: zap.NewNop()},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create parser for OTTL logs: %w", err)
+		}
+		for _, log := range c.Logs {
+			if err := validateMetricInfo(log, parser); err != nil {
+				multiError = errors.Join(multiError, fmt.Errorf("failed to validate logs configuration: %w", err))
+			}
 		}
 	}
-	return nil
+	return multiError
 }
 
 // Unmarshal with custom logic to set default values.
@@ -156,53 +185,15 @@ func (mi *MetricInfo) isEqual(other MetricInfo) bool {
 	return true
 }
 
-// TODO (lahsivjar): Add validation for OTTL statements.
-func (mi *MetricInfo) validate() error {
-	if mi.Name == "" {
-		return errors.New("missing required metric name configuration")
-	}
-	if err := mi.validateAttributes(); err != nil {
-		return fmt.Errorf("attributes validation failed: %w", err)
-	}
-	if err := mi.validateHistogram(); err != nil {
-		return fmt.Errorf("histogram validation failed: %w", err)
-	}
-	if err := mi.validateSummary(); err != nil {
-		return fmt.Errorf("summary validation failed: %w", err)
-	}
-	if err := mi.validateSum(); err != nil {
-		return fmt.Errorf("sum validation failed: %w", err)
-	}
-
-	// Exactly one metric should be defined
-	var metricsDefinedCount int
-	if mi.Explicit != nil {
-		metricsDefinedCount++
-	}
-	if mi.Exponential != nil {
-		metricsDefinedCount++
-	}
-	if mi.Summary != nil {
-		metricsDefinedCount++
-	}
-	if mi.Sum != nil {
-		metricsDefinedCount++
-	}
-	if metricsDefinedCount != 1 {
-		return fmt.Errorf("exactly one of the metrics must be defined, %d found", metricsDefinedCount)
-	}
-	return nil
-}
-
 func (mi *MetricInfo) validateAttributes() error {
 	tmp := pcommon.NewValueEmpty()
 	duplicate := map[string]struct{}{}
 	for _, attr := range mi.Attributes {
-		if _, ok := duplicate[attr.Key]; ok {
-			return fmt.Errorf("duplicate key found in attributes config: %s", attr.Key)
-		}
 		if attr.Key == "" {
 			return fmt.Errorf("attribute key missing")
+		}
+		if _, ok := duplicate[attr.Key]; ok {
+			return fmt.Errorf("duplicate key found in attributes config: %s", attr.Key)
 		}
 		if err := tmp.FromRaw(attr.DefaultValue); err != nil {
 			return fmt.Errorf("invalid default value specified for attribute %s", attr.Key)
@@ -266,44 +257,54 @@ func (mi *MetricInfo) ensureDefaults() {
 	}
 }
 
-func validateSpanOTTLStatement(statements []string) error {
-	parser, err := ottlspan.NewParser(
-		ottlget.CustomFuncs[ottlspan.TransformContext](),
-		component.TelemetrySettings{Logger: zap.NewNop()},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create parser for OTTL spans: %w", err)
+// validateMetricInfo validates the metric info including the ottl statements.
+// Defined without a receiver to accomodate OTTL parser validation.
+func validateMetricInfo[K any](mi MetricInfo, parser ottl.Parser[K]) error {
+	if mi.Name == "" {
+		return errors.New("missing required metric name configuration")
 	}
-	if _, err := parser.ParseStatements(statements); err != nil {
-		return fmt.Errorf("failed to parse span OTTL statements: %w", err)
+	if err := mi.validateAttributes(); err != nil {
+		return fmt.Errorf("attributes validation failed: %w", err)
 	}
-	return nil
-}
+	if err := mi.validateHistogram(); err != nil {
+		return fmt.Errorf("histogram validation failed: %w", err)
+	}
+	if err := mi.validateSummary(); err != nil {
+		return fmt.Errorf("summary validation failed: %w", err)
+	}
+	if err := mi.validateSum(); err != nil {
+		return fmt.Errorf("sum validation failed: %w", err)
+	}
 
-func validateDatapointOTTLStatement(statements []string) error {
-	parser, err := ottldatapoint.NewParser(
-		ottlget.CustomFuncs[ottldatapoint.TransformContext](),
-		component.TelemetrySettings{Logger: zap.NewNop()},
+	// Exactly one metric should be defined
+	var (
+		metricsDefinedCount int
+		statements          []string
 	)
-	if err != nil {
-		return fmt.Errorf("failed to create parser for OTTL datapoints: %w", err)
+	if mi.Explicit != nil {
+		metricsDefinedCount++
+		statements = append(statements, mi.Explicit.Count, mi.Explicit.Value)
 	}
-	if _, err := parser.ParseStatements(statements); err != nil {
-		return fmt.Errorf("failed to parse datapoint OTTL statements: %w", err)
+	if mi.Exponential != nil {
+		metricsDefinedCount++
+		statements = append(statements, mi.Exponential.Count, mi.Exponential.Value)
 	}
-	return nil
-}
+	if mi.Summary != nil {
+		metricsDefinedCount++
+		statements = append(statements, mi.Summary.Count, mi.Summary.Value)
+	}
+	if mi.Sum != nil {
+		metricsDefinedCount++
+		statements = append(statements, mi.Sum.Value)
+	}
+	if metricsDefinedCount != 1 {
+		return fmt.Errorf("exactly one of the metrics must be defined, %d found", metricsDefinedCount)
+	}
 
-func validateLogOTTLStatement(statements []string) error {
-	parser, err := ottllog.NewParser(
-		ottlget.CustomFuncs[ottllog.TransformContext](),
-		component.TelemetrySettings{Logger: zap.NewNop()},
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create parser for OTTL logs: %w", err)
-	}
+	// validate OTTL statements, note that, here we only evalaute if statements
+	// are valid. Check for required statements is left to the other validations.
 	if _, err := parser.ParseStatements(statements); err != nil {
-		return fmt.Errorf("failed to parse log OTTL statements: %w", err)
+		return fmt.Errorf("failed to parse OTTL statements: %w", err)
 	}
 	return nil
 }

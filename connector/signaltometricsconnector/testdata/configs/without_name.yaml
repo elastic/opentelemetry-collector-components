@@ -1,0 +1,10 @@
+signaltometrics:
+  spans:
+    - sum:
+        value: Int(1)
+  datapoints:
+    - sum:
+        value: Int(1)
+  logs:
+    - sum:
+        value: Int(1)
