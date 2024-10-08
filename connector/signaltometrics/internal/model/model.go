@@ -123,8 +123,7 @@ func (s *Summary[K]) fromConfig(
 }
 
 type Sum[K any] struct {
-	Int    *ottl.Statement[K]
-	Double *ottl.Statement[K]
+	Value *ottl.Statement[K]
 }
 
 func (s *Sum[K]) fromConfig(
@@ -136,16 +135,9 @@ func (s *Sum[K]) fromConfig(
 	}
 
 	var err error
-	switch {
-	case mi.Double != "":
-		s.Double, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Double))
-	case mi.Int != "":
-		s.Int, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Int))
-	default:
-		return errors.New("OTTL expression not found for sum, please define one of int or double expression")
-	}
+	s.Value, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Value))
 	if err != nil {
-		return fmt.Errorf("failed to parse double statement for sum: %w", err)
+		return fmt.Errorf("failed to parse value statement for sum: %w", err)
 	}
 	return nil
 }

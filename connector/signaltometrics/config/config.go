@@ -243,11 +243,8 @@ func (mi *MetricInfo) validateSummary() error {
 
 func (mi *MetricInfo) validateSum() error {
 	if mi.Sum != nil {
-		if mi.Sum.Double != "" && mi.Sum.Int != "" {
-			return errors.New("only one of double or int must be defined for sum metrics")
-		}
-		if mi.Sum.Double == "" && mi.Sum.Int == "" {
-			return errors.New("one of double or int must be defined for sum metrics")
+		if mi.Sum.Value == "" {
+			return errors.New("value must be defined for sum metrics")
 		}
 	}
 	return nil
@@ -332,6 +329,5 @@ type Summary struct {
 }
 
 type Sum struct {
-	Double string `mapstructure:"double"`
-	Int    string `mapstructure:"int"`
+	Value string `mapstructure:"value"`
 }

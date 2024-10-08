@@ -96,21 +96,18 @@ func (a *Aggregator[K]) Aggregate(
 			return err
 		}
 		return a.aggregateValueCount(md, resAttrs, srcAttrs, val, count)
-	case md.Sum != nil:
-		switch {
-		case md.Sum.Double != nil:
-			val, err := getDoubleFromOTTL(ctx, tCtx, md.Sum.Double)
-			if err != nil {
-				return err
-			}
-			return a.aggregateDouble(md, resAttrs, srcAttrs, val)
-		case md.Sum.Int != nil:
-			val, err := getIntFromOTTL(ctx, tCtx, md.Sum.Int)
-			if err != nil {
-				return err
-			}
-			return a.aggregateInt(md, resAttrs, srcAttrs, val)
+	case md.Sum != nil && md.Sum.Value != nil:
+		raw, _, err := md.Sum.Value.Execute(ctx, tCtx)
+		if err != nil {
+			return fmt.Errorf("failed to execute OTTL value for sum: %w", err)
 		}
+		switch v := raw.(type) {
+		case int64:
+			return a.aggregateInt(md, resAttrs, srcAttrs, v)
+		case float64:
+			return a.aggregateDouble(md, resAttrs, srcAttrs, v)
+		}
+		return errors.New("failed to parse sum OTTL value into int64 or float64")
 	}
 	return nil
 }
