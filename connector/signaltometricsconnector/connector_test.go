@@ -22,15 +22,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/zap/zapcore"
@@ -151,117 +154,176 @@ func TestCalculateAdjustedCount(t *testing.T) {
 	}
 }
 
-// func BenchmarkConnector(b *testing.B) {
-// 	factory := NewFactory()
-// 	settings := connectortest.NewNopSettings()
-// 	settings.TelemetrySettings.Logger = zaptest.NewLogger(b, zaptest.Level(zapcore.DebugLevel))
-// 	next, err := consumer.NewMetrics(func(context.Context, pmetric.Metrics) error {
-// 		return nil
-// 	})
-// 	require.NoError(b, err)
-//
-// 	cfg := &config.Config{
-// 		Spans: []config.MetricInfo{
-// 			{
-// 				Name:        "http.trace.span.duration",
-// 				Description: "Span duration for HTTP spans",
-// 				Attributes: []config.Attribute{
-// 					{
-// 						Key: "http.response.status_code",
-// 					},
-// 				},
-// 				IncludeResourceAttributes: []config.Attribute{
-// 					{
-// 						Key: "resource.foo",
-// 					},
-// 				},
-// 				Histogram: config.Histogram{
-// 					Explicit:    &config.ExplicitHistogram{},
-// 					Exponential: &config.ExponentialHistogram{},
-// 				},
-// 				Summary: &config.Summary{},
-// 				Sum:     &config.Sum{},
-// 			},
-// 			{
-// 				Name:        "db.trace.span.duration",
-// 				Description: "Span duration for DB spans",
-// 				Attributes: []config.Attribute{
-// 					{
-// 						Key: "msg.trace.span.duration",
-// 					},
-// 				},
-// 				Counter: &config.Counter{},
-// 				Histogram: config.Histogram{
-// 					Explicit:    &config.ExplicitHistogram{},
-// 					Exponential: &config.ExponentialHistogram{},
-// 				},
-// 				Summary: &config.Summary{},
-// 				Sum:     &config.Sum{},
-// 			},
-// 			{
-// 				Name:        "msg.trace.span.duration",
-// 				Description: "Span duration for DB spans",
-// 				Attributes: []config.Attribute{
-// 					{
-// 						Key: "messaging.system",
-// 					},
-// 				},
-// 				Counter: &config.Counter{},
-// 				Histogram: config.Histogram{
-// 					Explicit:    &config.ExplicitHistogram{},
-// 					Exponential: &config.ExponentialHistogram{},
-// 				},
-// 				Summary: &config.Summary{},
-// 				Sum:     &config.Sum{},
-// 			},
-// 			{
-// 				Name:        "404.span.duration",
-// 				Description: "Span duration for missing attribute in input",
-// 				Attributes: []config.Attribute{
-// 					{
-// 						Key: "404.attribute",
-// 					},
-// 				},
-// 				Counter: &config.Counter{},
-// 				Histogram: config.Histogram{
-// 					Explicit:    &config.ExplicitHistogram{},
-// 					Exponential: &config.ExponentialHistogram{},
-// 				},
-// 				Summary: &config.Summary{},
-// 				Sum:     &config.Sum{},
-// 			},
-// 			{
-// 				Name:        "404.span.duration.default",
-// 				Description: "Span duration with attribute default configured in input",
-// 				Attributes: []config.Attribute{
-// 					{
-// 						Key:          "404.attribute.default",
-// 						DefaultValue: "any",
-// 					},
-// 				},
-// 				Counter: &config.Counter{},
-// 				Histogram: config.Histogram{
-// 					Explicit:    &config.ExplicitHistogram{},
-// 					Exponential: &config.ExponentialHistogram{},
-// 				},
-// 				Summary: &config.Summary{},
-// 				Sum:     &config.Sum{},
-// 			},
-// 		},
-// 	}
-// 	require.NoError(b, cfg.Unmarshal(confmap.New())) // set required fields to default
-// 	require.NoError(b, cfg.Validate())
-// 	connector, err := factory.CreateTracesToMetrics(context.Background(), settings, cfg, next)
-// 	require.NoError(b, err)
-// 	inputTraces, err := golden.ReadTraces("testdata/traces.yaml")
-// 	require.NoError(b, err)
-//
-// 	b.ReportAllocs()
-// 	b.ResetTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		require.NoError(b, connector.ConsumeTraces(context.Background(), inputTraces))
-// 	}
-// }
+func BenchmarkConnectorWithTraces(b *testing.B) {
+	factory := NewFactory()
+	settings := connectortest.NewNopSettings()
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(b, zaptest.Level(zapcore.DebugLevel))
+	next, err := consumer.NewMetrics(func(context.Context, pmetric.Metrics) error {
+		return nil
+	})
+	require.NoError(b, err)
+
+	cfg := &config.Config{Spans: testMetricInfo(b)}
+	require.NoError(b, cfg.Unmarshal(confmap.New())) // set required fields to default
+	require.NoError(b, cfg.Validate())
+	connector, err := factory.CreateTracesToMetrics(context.Background(), settings, cfg, next)
+	require.NoError(b, err)
+	inputTraces, err := golden.ReadTraces("testdata/traces/traces.yaml")
+	require.NoError(b, err)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		require.NoError(b, connector.ConsumeTraces(context.Background(), inputTraces))
+	}
+}
+
+func BenchmarkConnectorWithMetrics(b *testing.B) {
+	factory := NewFactory()
+	settings := connectortest.NewNopSettings()
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(b, zaptest.Level(zapcore.DebugLevel))
+	next, err := consumer.NewMetrics(func(context.Context, pmetric.Metrics) error {
+		return nil
+	})
+	require.NoError(b, err)
+
+	cfg := &config.Config{Datapoints: testMetricInfo(b)}
+	require.NoError(b, cfg.Unmarshal(confmap.New())) // set required fields to default
+	require.NoError(b, cfg.Validate())
+	connector, err := factory.CreateMetricsToMetrics(context.Background(), settings, cfg, next)
+	require.NoError(b, err)
+	inputMetrics, err := golden.ReadMetrics("testdata/metrics/metrics.yaml")
+	require.NoError(b, err)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		require.NoError(b, connector.ConsumeMetrics(context.Background(), inputMetrics))
+	}
+}
+
+func BenchmarkConnectorWithLogs(b *testing.B) {
+	factory := NewFactory()
+	settings := connectortest.NewNopSettings()
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(b, zaptest.Level(zapcore.DebugLevel))
+	next, err := consumer.NewMetrics(func(context.Context, pmetric.Metrics) error {
+		return nil
+	})
+	require.NoError(b, err)
+
+	cfg := &config.Config{Logs: testMetricInfo(b)}
+	require.NoError(b, cfg.Unmarshal(confmap.New())) // set required fields to default
+	require.NoError(b, cfg.Validate())
+	connector, err := factory.CreateLogsToMetrics(context.Background(), settings, cfg, next)
+	require.NoError(b, err)
+	inputLogs, err := golden.ReadLogs("testdata/logs/logs.yaml")
+	require.NoError(b, err)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		require.NoError(b, connector.ConsumeLogs(context.Background(), inputLogs))
+	}
+}
+
+// testMetricInfo creates a metric info with all metric types that could be used
+// for all the supported signals. To do this, it uses common OTTL funcs and literals.
+func testMetricInfo(b *testing.B) []config.MetricInfo {
+	b.Helper()
+
+	return []config.MetricInfo{
+		{
+			Name:        "test.histogram",
+			Description: "Test histogram",
+			Unit:        "ms",
+			IncludeResourceAttributes: []config.Attribute{
+				{
+					Key: "resource.foo",
+				},
+				{
+					Key:          "404.attribute",
+					DefaultValue: "test_404_attribute",
+				},
+			},
+			Attributes: []config.Attribute{
+				{
+					Key: "http.response.status_code",
+				},
+			},
+			Explicit: &config.ExplicitHistogram{
+				Buckets: []float64{2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000},
+				Value:   "Double(1.4)",
+			},
+		},
+		{
+			Name:        "test.exphistogram",
+			Description: "Test exponential histogram",
+			Unit:        "ms",
+			IncludeResourceAttributes: []config.Attribute{
+				{
+					Key: "resource.foo",
+				},
+				{
+					Key:          "404.attribute",
+					DefaultValue: "test_404_attribute",
+				},
+			},
+			Attributes: []config.Attribute{
+				{
+					Key: "http.response.status_code",
+				},
+			},
+			Exponential: &config.ExponentialHistogram{
+				Value:   "Double(2.4)",
+				MaxSize: 160,
+			},
+		},
+		{
+			Name:        "test.sum",
+			Description: "Test sum",
+			Unit:        "ms",
+			IncludeResourceAttributes: []config.Attribute{
+				{
+					Key: "resource.foo",
+				},
+				{
+					Key:          "404.attribute",
+					DefaultValue: "test_404_attribute",
+				},
+			},
+			Attributes: []config.Attribute{
+				{
+					Key: "http.response.status_code",
+				},
+			},
+			Sum: &config.Sum{
+				Value: "Double(5.4)",
+			},
+		},
+		{
+			Name:        "test.summary",
+			Description: "Test summary",
+			Unit:        "ms",
+			IncludeResourceAttributes: []config.Attribute{
+				{
+					Key: "resource.foo",
+				},
+				{
+					Key:          "404.attribute",
+					DefaultValue: "test_404_attribute",
+				},
+			},
+			Attributes: []config.Attribute{
+				{
+					Key: "http.response.status_code",
+				},
+			},
+			Summary: &config.Summary{
+				Value: "Double(5.3)",
+			},
+		},
+	}
+}
 
 func setupConnector(
 	t *testing.T, testFilePath string,
