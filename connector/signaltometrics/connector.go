@@ -58,6 +58,10 @@ func (sm *signalToMetrics) Capabilities() consumer.Capabilities {
 }
 
 func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+	if len(sm.spanMetricDefs) == 0 {
+		return nil
+	}
+
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(td.ResourceSpans().Len())
@@ -101,6 +105,10 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 }
 
 func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics) error {
+	if len(sm.dpMetricDefs) == 0 {
+		return nil
+	}
+
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(m.ResourceMetrics().Len())
@@ -203,6 +211,10 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 }
 
 func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) error {
+	if len(sm.logMetricDefs) == 0 {
+		return nil
+	}
+
 	var multiError error
 	processedMetrics := pmetric.NewMetrics()
 	processedMetrics.ResourceMetrics().EnsureCapacity(logs.ResourceLogs().Len())

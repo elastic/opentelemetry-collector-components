@@ -13,6 +13,7 @@ resourceMetrics:
               dataPoints:
                 - asInt: "29"
                   timeUnixNano: "1000000"
+            unit: s
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
   - resource:
@@ -36,6 +37,7 @@ resourceMetrics:
                       value:
                         intValue: "201"
                   timeUnixNano: "1000000"
+            unit: s
           - description: Span duration for DB spans as a int sum metric
             name: db.trace.span.duration
             sum:
@@ -47,6 +49,7 @@ resourceMetrics:
                       value:
                         stringValue: mysql
                   timeUnixNano: "1000000"
+            unit: s
           - description: Span duration for messaging spans as a double sum metric
             name: msg.trace.span.duration
             sum:
@@ -58,5 +61,6 @@ resourceMetrics:
                       value:
                         stringValue: kafka
                   timeUnixNano: "1000000"
+            unit: s
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector

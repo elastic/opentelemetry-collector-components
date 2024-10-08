@@ -144,6 +144,7 @@ func (s *Sum[K]) fromConfig(
 
 type MetricDef[K any] struct {
 	Key                       MetricKey
+	Unit                      string
 	IncludeResourceAttributes []AttributeKeyValue
 	Attributes                []AttributeKeyValue
 	ExponentialHistogram      *ExponentialHistogram[K]
@@ -158,6 +159,7 @@ func (md *MetricDef[K]) FromMetricInfo(
 ) error {
 	md.Key.Name = mi.Name
 	md.Key.Description = mi.Description
+	md.Unit = mi.Unit
 
 	var err error
 	md.IncludeResourceAttributes, err = parseAttributeConfigs(mi.IncludeResourceAttributes)

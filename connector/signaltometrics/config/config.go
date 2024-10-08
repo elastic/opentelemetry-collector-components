@@ -114,6 +114,9 @@ func (c *Config) Unmarshal(componentParser *confmap.Conf) error {
 type MetricInfo struct {
 	Name        string `mapstructure:"name"`
 	Description string `mapstructure:"description"`
+	// Unit, if not-empty, will set the unit associated with the metric.
+	// See: https://github.com/open-telemetry/opentelemetry-collector/blob/b06236cc794982916cc956f20828b3e18eb33264/pdata/pmetric/generated_metric.go#L72-L81
+	Unit string `mapstructure:"unit"`
 	// IncludeResourceAttributes is a list of resource attributes that
 	// needs to be included in the generated metric. If no resource
 	// attribute is included in the list then all attributes are included.

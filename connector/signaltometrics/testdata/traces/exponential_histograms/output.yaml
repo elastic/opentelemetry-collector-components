@@ -127,6 +127,7 @@ resourceMetrics:
                   sum: 31402
                   timeUnixNano: "1000000"
             name: with_resource_foo_only
+            unit: ms
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
   - resource:
@@ -260,6 +261,7 @@ resourceMetrics:
                   sum: 61804
                   timeUnixNano: "1000000"
             name: with_custom_count
+            unit: ms
           - description: Span duration for HTTP spans as a exponential histogram metric
             exponentialHistogram:
               aggregationTemporality: 1
@@ -395,6 +397,7 @@ resourceMetrics:
                   sum: 11900
                   timeUnixNano: "1000000"
             name: http.trace.span.duration
+            unit: ms
           - description: Span duration for DB spans as a exponential histogram metric
             exponentialHistogram:
               aggregationTemporality: 1
@@ -543,6 +546,7 @@ resourceMetrics:
                   sum: 2500
                   timeUnixNano: "1000000"
             name: db.trace.span.duration
+            unit: ms
           - description: Span duration for messaging spans as a exponential histogram metric
             exponentialHistogram:
               aggregationTemporality: 1
@@ -668,5 +672,6 @@ resourceMetrics:
                   sum: 17002
                   timeUnixNano: "1000000"
             name: msg.trace.span.duration
+            unit: ms
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
