@@ -84,7 +84,7 @@ func (a *Aggregator[K]) Aggregate(
 			return err
 		}
 		return a.aggregateValueCount(md, resAttrs, srcAttrs, val, count)
-	case md.Sum != nil && md.Sum.Value != nil:
+	case md.Sum != nil:
 		raw, _, err := md.Sum.Value.Execute(ctx, tCtx)
 		if err != nil {
 			return fmt.Errorf("failed to execute OTTL value for sum: %w", err)
