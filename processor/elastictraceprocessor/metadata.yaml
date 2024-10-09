@@ -4,5 +4,5 @@ scope_name: github.com/elastic/opentelemetry-collector-components/processor/elas
 status:
   class: processor
   stability:
-    development: [traces]
+    alpha: [traces]
   distributions: []
