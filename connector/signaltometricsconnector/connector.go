@@ -75,7 +75,7 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 				for _, md := range sm.spanMetricDefs {
 					filteredSpanAttrs := getFilteredAttributes(spanAttrs, md.Attributes)
 					if filteredSpanAttrs.Len() != len(md.Attributes) {
-						// If all the configured attributes are not present in
+						// If any of the configured attributes is not present in
 						// source metric then don't count them.
 						continue
 					}

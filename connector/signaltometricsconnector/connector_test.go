@@ -174,7 +174,9 @@ func BenchmarkConnectorWithTraces(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		require.NoError(b, connector.ConsumeTraces(context.Background(), inputTraces))
+		if err := connector.ConsumeTraces(context.Background(), inputTraces); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -198,7 +200,9 @@ func BenchmarkConnectorWithMetrics(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		require.NoError(b, connector.ConsumeMetrics(context.Background(), inputMetrics))
+		if err := connector.ConsumeMetrics(context.Background(), inputMetrics); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -222,7 +226,9 @@ func BenchmarkConnectorWithLogs(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		require.NoError(b, connector.ConsumeLogs(context.Background(), inputLogs))
+		if err := connector.ConsumeLogs(context.Background(), inputLogs); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -252,7 +258,7 @@ func testMetricInfo(b *testing.B) []config.MetricInfo {
 			},
 			Histogram: &config.Histogram{
 				Buckets: []float64{2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000},
-				Value:   "Double(1.4)",
+				Value:   "1.4",
 			},
 		},
 		{
@@ -274,7 +280,7 @@ func testMetricInfo(b *testing.B) []config.MetricInfo {
 				},
 			},
 			ExponentialHistogram: &config.ExponentialHistogram{
-				Value:   "Double(2.4)",
+				Value:   "2.4",
 				MaxSize: 160,
 			},
 		},
@@ -297,7 +303,7 @@ func testMetricInfo(b *testing.B) []config.MetricInfo {
 				},
 			},
 			Sum: &config.Sum{
-				Value: "Double(5.4)",
+				Value: "5.4",
 			},
 		},
 		{
@@ -319,7 +325,7 @@ func testMetricInfo(b *testing.B) []config.MetricInfo {
 				},
 			},
 			Summary: &config.Summary{
-				Value: "Double(5.3)",
+				Value: "5.3",
 			},
 		},
 	}

@@ -4,34 +4,34 @@ signaltometrics:
       attributes:
         - key: key.1
       sum:
-        value: Int(1)
+        value: "1"
       summary:
-        value: Int(1)
+        value: "1"
       histogram:
-        value: Int(1)
+        value: "1"
       exponential_histogram:
-        value: Int(1)
+        value: "1"
   datapoints:
     - name: dp.sum
       attributes:
         - key: key.1
       sum:
-        value: Int(1)
+        value: "1"
       summary:
-        value: Int(1)
+        value: "1"
       histogram:
-        value: Int(1)
+        value: "1"
       exponential_histogram:
-        value: Int(1)
+        value: "1"
   logs:
     - name: log.sum
       attributes:
         - key: key.1
       sum:
-        value: Int(1)
+        value: "1"
       summary:
-        value: Int(1)
+        value: "1"
       histogram:
-        value: Int(1)
+        value: "1"
       exponential_histogram:
-        value: Int(1)
+        value: "1"

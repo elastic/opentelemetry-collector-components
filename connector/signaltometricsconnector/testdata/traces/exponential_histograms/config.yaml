@@ -12,7 +12,7 @@ signaltometrics:
       unit: ms
       exponential_histogram:
         value: Milliseconds(end_time - start_time)
-        count: Int("2") # count each span twice
+        count: "2" # count each span twice
     - name: http.trace.span.duration
       description: Span duration for HTTP spans as a exponential histogram metric
       unit: ms

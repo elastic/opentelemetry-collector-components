@@ -17,5 +17,5 @@
 
 //go:generate mdatagen metadata.yaml
 
-// Package signaltometricsconnector provides a stateless span metrics connector similar to the upstream span metrics connector.
+// Package signaltometricsconnector provides a stateless connector for generating metrics from raw signals.
 package signaltometricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector"

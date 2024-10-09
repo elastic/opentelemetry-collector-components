@@ -3,22 +3,22 @@ signaltometrics:
     - name: total.logrecords.histogram
       description: Logrecords as histogram with log.duration from attributes
       histogram:
-        count: Int("1")
-        value: Double(attributes["log.duration"])
+        count: "1"
+        value: attributes["log.duration"]
         buckets: [1, 10, 50, 100, 200]
     - name: log.foo.histogram
       description: Count total number of log records as per log.foo attribute as histogram with log.duration from attributes
       attributes:
         - key: log.foo
       histogram:
-        count: Int("1")
-        value: Double(attributes["log.duration"])
+        count: "1"
+        value: attributes["log.duration"]
         buckets: [1, 10, 50, 100, 200]
     - name: log.bar.histogram
       description: Count total number of log records as per log.bar attribute as histogram with log.duration from attributes
       attributes:
         - key: log.bar
       histogram:
-        count: Int("1")
-        value: Double(attributes["log.duration"])
+        count: "1"
+        value: attributes["log.duration"]
         buckets: [1, 10, 50, 100, 200]

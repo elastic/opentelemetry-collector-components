@@ -3,16 +3,16 @@ signaltometrics:
     - name: total.logrecords.sum
       description: Count total number of log records
       sum:
-        value: Int("1")
+        value: "1"
     - name: log.foo.sum
       description: Count total number of log records as per log.foo attribute
       attributes:
         - key: log.foo
       sum:
-        value: Int("1")
+        value: "1"
     - name: log.bar.sum
       description: Count total number of log records as per log.bar attribute
       attributes:
         - key: log.bar
       sum:
-        value: Int("1")
+        value: "1"

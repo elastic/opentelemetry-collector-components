@@ -3,19 +3,19 @@ signaltometrics:
     - name: total.logrecords.exphistogram
       description: Logrecords as exponential histogram with log.duration from attributes
       exponential_histogram:
-        count: Int(1)
-        value: Double(attributes["log.duration"])
+        count: "1"
+        value: attributes["log.duration"]
     - name: log.foo.exphistogram
       description: Count total number of log records as per log.foo attribute as exponential histogram with log.duration from attributes
       attributes:
         - key: log.foo
       exponential_histogram:
-        count: Int(1)
-        value: Double(attributes["log.duration"])
+        count: "1"
+        value: attributes["log.duration"]
     - name: log.bar.exphistogram
       description: Count total number of log records as per log.bar attribute as exponential histogram with log.duration from attributes
       attributes:
         - key: log.bar
       exponential_histogram:
-        count: Int(1)
-        value: Double(attributes["log.duration"])
+        count: "1"
+        value: attributes["log.duration"]

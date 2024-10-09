@@ -12,19 +12,21 @@ tests:
     spans:
       - name: span.duration.histogram
         description: "Span duration as histogram"
+        unit: ms
         histogram:
           value: Microseconds(end_time - start_time)
       - name: span.duration.exponential_histogram
         description: "Span duration as exponential histogram"
+        unit: ms
         exponential_histogram:
           value: Microseconds(end_time - start_time)
     logs:
       - name: logrecord.count
         description: "Count of log record"
         sum:
-          value: Int("1") # Count each log record as 1
+          value: "1" # Count each log record as 1, has to be a string
     metrics:
       - name: datapoint.count
         description: "Count of datapoint"
         sum:
-          value: Int("1") # Count each data point as 1
+          value: Int(1) # Count each data point as 1, can also use the Int converter
