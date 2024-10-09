@@ -145,11 +145,15 @@ type MetricInfo struct {
 	// attribute is included in the list then all attributes are included.
 	// Note that configuring this setting might cause the produced metric
 	// to lose its identity or cause identity conflict.
-	IncludeResourceAttributes []Attribute           `mapstructure:"include_resource_attributes"`
-	Attributes                []Attribute           `mapstructure:"attributes"`
-	Histogram                 *Histogram            `mapstructure:"histogram"`
-	ExponentialHistogram      *ExponentialHistogram `mapstructure:"exponential_histogram"`
-	Sum                       *Sum                  `mapstructure:"sum"`
+	IncludeResourceAttributes []Attribute `mapstructure:"include_resource_attributes"`
+	Attributes                []Attribute `mapstructure:"attributes"`
+	// Conditions are a set of OTTL condtions with either AND or OR operator.
+	// Data is processed into metrics only if the sequence evaluates to true.
+	// The condition operator defaults to OR if none specified.
+	ConditionSequence    ConditionSequence     `mapstructure:"condition_sequence"`
+	Histogram            *Histogram            `mapstructure:"histogram"`
+	ExponentialHistogram *ExponentialHistogram `mapstructure:"exponential_histogram"`
+	Sum                  *Sum                  `mapstructure:"sum"`
 }
 
 func (mi *MetricInfo) validateAttributes() error {
@@ -202,6 +206,9 @@ func (mi *MetricInfo) validateSum() error {
 }
 
 func (mi *MetricInfo) ensureDefaults() {
+	if mi.ConditionSequence.Operator == "" {
+		mi.ConditionSequence.Operator = ottl.Or
+	}
 	if mi.Histogram != nil {
 		// Add default buckets if explicit histogram is defined
 		if len(mi.Histogram.Buckets) == 0 {
@@ -263,6 +270,10 @@ func validateMetricInfo[K any](mi MetricInfo, parser ottl.Parser[K]) error {
 	if _, err := parser.ParseStatements(statements); err != nil {
 		return fmt.Errorf("failed to parse OTTL statements: %w", err)
 	}
+	// validate OTTL conditions
+	if _, err := parser.ParseConditions(mi.ConditionSequence.Conditions); err != nil {
+		return fmt.Errorf("failed to parse OTTL conditions: %w", err)
+	}
 	return nil
 }
 
@@ -285,4 +296,9 @@ type ExponentialHistogram struct {
 
 type Sum struct {
 	Value string `mapstructure:"value"`
+}
+
+type ConditionSequence struct {
+	Operator   ottl.LogicOperation `mapstructure:"operator"`
+	Conditions []string            `mapstructure:"conditions"`
 }

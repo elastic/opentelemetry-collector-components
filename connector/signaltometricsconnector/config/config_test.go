@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
@@ -101,6 +102,96 @@ func TestConfig(t *testing.T) {
 				fullErrorForSignal(t, "spans", "failed to parse OTTL statements"),
 				fullErrorForSignal(t, "datapoints", "failed to parse OTTL statements"),
 				fullErrorForSignal(t, "logs", "failed to parse OTTL statements"),
+			},
+		},
+		{
+			path: "invalid_ottl_conditions",
+			errorMsgs: []string{
+				fullErrorForSignal(t, "spans", "failed to parse OTTL conditions"),
+				fullErrorForSignal(t, "datapoints", "failed to parse OTTL conditions"),
+				fullErrorForSignal(t, "logs", "failed to parse OTTL conditions"),
+			},
+		},
+		{
+			path: "valid_full",
+			expected: &Config{
+				Spans: []MetricInfo{
+					{
+						Name:                      "span.exp_histogram",
+						Description:               "Exponential histogram",
+						Unit:                      "us",
+						IncludeResourceAttributes: []Attribute{{Key: "key.1", DefaultValue: "foo"}},
+						Attributes:                []Attribute{{Key: "key.2", DefaultValue: "bar"}},
+						ConditionSequence: ConditionSequence{
+							Operator: ottl.Or,
+							Conditions: []string{
+								`attributes["some.optional.1"] != nil`,
+								`resource.attributes["some.optional.2"] != nil`,
+							},
+						},
+						ExponentialHistogram: &ExponentialHistogram{
+							MaxSize: 10,
+							Count:   "1",
+							Value:   "Microseconds(end_time - start_time)",
+						},
+					},
+					{
+						Name:                      "span.histogram",
+						Description:               "Histogram",
+						Unit:                      "us",
+						IncludeResourceAttributes: []Attribute{{Key: "key.1", DefaultValue: "foo"}},
+						Attributes:                []Attribute{{Key: "key.2", DefaultValue: "bar"}},
+						ConditionSequence: ConditionSequence{
+							Operator: ottl.Or,
+							Conditions: []string{
+								`attributes["some.optional.1"] != nil`,
+								`resource.attributes["some.optional.2"] != nil`,
+							},
+						},
+						Histogram: &Histogram{
+							Buckets: []float64{1.1, 11.1, 111.1},
+							Count:   "1",
+							Value:   "Microseconds(end_time - start_time)",
+						},
+					},
+				},
+				Datapoints: []MetricInfo{
+					{
+						Name:                      "dp.sum",
+						Description:               "Sum",
+						Unit:                      "ms",
+						IncludeResourceAttributes: []Attribute{{Key: "key.1", DefaultValue: "foo"}},
+						Attributes:                []Attribute{{Key: "key.2", DefaultValue: "bar"}},
+						ConditionSequence: ConditionSequence{
+							Operator: ottl.And,
+							Conditions: []string{
+								`attributes["some.optional.1"] != nil`,
+								`IsDouble(attributes["some.optional.1"])`,
+							},
+						},
+						Sum: &Sum{
+							Value: `attributes["some.optional.1"]`,
+						},
+					},
+				},
+				Logs: []MetricInfo{
+					{
+						Name:                      "log.sum",
+						Description:               "Sum",
+						Unit:                      "1",
+						IncludeResourceAttributes: []Attribute{{Key: "key.1", DefaultValue: "foo"}},
+						Attributes:                []Attribute{{Key: "key.2", DefaultValue: "bar"}},
+						ConditionSequence: ConditionSequence{
+							Operator: ottl.Or,
+							Conditions: []string{
+								`attributes["some.optional.1"] != nil`,
+							},
+						},
+						Sum: &Sum{
+							Value: "1",
+						},
+					},
+				},
 			},
 		},
 	} {

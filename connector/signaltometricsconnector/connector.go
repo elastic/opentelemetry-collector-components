@@ -79,6 +79,22 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 						// source metric then don't count them.
 						continue
 					}
+
+					// The transform context is created from orginal attributes so that the
+					// OTTL expressions are also applied on the original attributes.
+					tCtx := ottlspan.NewTransformContext(span, scopeSpan.Scope(), resourceSpan.Resource(), scopeSpan, resourceSpan)
+					if md.Conditions != nil {
+						match, err := md.Conditions.Eval(ctx, tCtx)
+						if err != nil {
+							multiError = errors.Join(multiError, fmt.Errorf("failed to evaluate conditions, skipping: %w", err))
+							continue
+						}
+						if !match {
+							sm.logger.Debug("condition not matched, skipping", zap.String("name", md.Key.Name))
+							continue
+						}
+					}
+
 					var filteredResAttrs pcommon.Map
 					if len(md.IncludeResourceAttributes) > 0 {
 						filteredResAttrs = getFilteredAttributes(resourceAttrs, md.IncludeResourceAttributes)
@@ -87,9 +103,6 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 						filteredResAttrs = pcommon.NewMap()
 						resourceAttrs.CopyTo(filteredResAttrs)
 					}
-					// The transform context is created from orginal attributes so that the
-					// OTTL expressions are also applied on the original attributes.
-					tCtx := ottlspan.NewTransformContext(span, scopeSpan.Scope(), resourceSpan.Resource(), scopeSpan, resourceSpan)
 					multiError = errors.Join(multiError, aggregator.Aggregate(ctx, tCtx, md, filteredResAttrs, filteredSpanAttrs, adjustedCount))
 				}
 			}
@@ -125,12 +138,25 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 						filteredResAttrs = pcommon.NewMap()
 						resourceAttrs.CopyTo(filteredResAttrs)
 					}
+
 					aggregate := func(dp any, dpAttrs pcommon.Map) error {
 						// The transform context is created from orginal attributes so that the
 						// OTTL expressions are also applied on the original attributes.
 						tCtx := ottldatapoint.NewTransformContext(dp, metric, metrics, scopeMetric.Scope(), resourceMetric.Resource(), scopeMetric, resourceMetric)
+						if md.Conditions != nil {
+							match, err := md.Conditions.Eval(ctx, tCtx)
+							if err != nil {
+								multiError = errors.Join(multiError, fmt.Errorf("failed to evaluate conditions, skipping: %w", err))
+								return nil
+							}
+							if !match {
+								sm.logger.Debug("condition not matched, skipping", zap.String("name", md.Key.Name))
+								return nil
+							}
+						}
 						return aggregator.Aggregate(ctx, tCtx, md, filteredResAttrs, dpAttrs, 1)
 					}
+
 					//exhaustive:enforce
 					switch metric.Type() {
 					case pmetric.MetricTypeGauge:
@@ -228,6 +254,22 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 						// source metric then don't count them.
 						continue
 					}
+
+					// The transform context is created from orginal attributes so that the
+					// OTTL expressions are also applied on the original attributes.
+					tCtx := ottllog.NewTransformContext(log, scopeLog.Scope(), resourceLog.Resource(), scopeLog, resourceLog)
+					if md.Conditions != nil {
+						match, err := md.Conditions.Eval(ctx, tCtx)
+						if err != nil {
+							multiError = errors.Join(multiError, fmt.Errorf("failed to evaluate conditions, skipping: %w", err))
+							continue
+						}
+						if !match {
+							sm.logger.Debug("condition not matched, skipping", zap.String("name", md.Key.Name))
+							continue
+						}
+					}
+
 					var filteredResAttrs pcommon.Map
 					if len(md.IncludeResourceAttributes) > 0 {
 						filteredResAttrs = getFilteredAttributes(resourceAttrs, md.IncludeResourceAttributes)
@@ -236,9 +278,6 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 						filteredResAttrs = pcommon.NewMap()
 						resourceAttrs.CopyTo(filteredResAttrs)
 					}
-					// The transform context is created from orginal attributes so that the
-					// OTTL expressions are also applied on the original attributes.
-					tCtx := ottllog.NewTransformContext(log, scopeLog.Scope(), resourceLog.Resource(), scopeLog, resourceLog)
 					multiError = errors.Join(multiError, aggregator.Aggregate(ctx, tCtx, md, filteredResAttrs, filteredLogAttrs, 1))
 				}
 			}
