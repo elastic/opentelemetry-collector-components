@@ -85,17 +85,6 @@ func (a *Aggregator[K]) Aggregate(
 			return err
 		}
 		return a.aggregateValueCount(md, resAttrs, srcAttrs, val, count)
-	case md.Summary != nil:
-		val, count, err := getValueCount(
-			ctx, tCtx,
-			md.Summary.Value,
-			md.Summary.Count,
-			defaultCount,
-		)
-		if err != nil {
-			return err
-		}
-		return a.aggregateValueCount(md, resAttrs, srcAttrs, val, count)
 	case md.Sum != nil && md.Sum.Value != nil:
 		raw, _, err := md.Sum.Value.Execute(ctx, tCtx)
 		if err != nil {
@@ -123,9 +112,9 @@ func (a *Aggregator[K]) Finalize(mds []model.MetricDef[K]) {
 			var (
 				destExpHist      pmetric.ExponentialHistogram
 				destExplicitHist pmetric.Histogram
-				destSummary      pmetric.Summary
 			)
-			if md.ExponentialHistogram != nil {
+			switch {
+			case md.ExponentialHistogram != nil:
 				destMetric := metrics.AppendEmpty()
 				destMetric.SetName(md.Key.Name)
 				destMetric.SetDescription(md.Key.Description)
@@ -133,8 +122,7 @@ func (a *Aggregator[K]) Finalize(mds []model.MetricDef[K]) {
 				destExpHist = destMetric.SetEmptyExponentialHistogram()
 				destExpHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 				destExpHist.DataPoints().EnsureCapacity(len(dpMap))
-			}
-			if md.ExplicitHistogram != nil {
+			case md.ExplicitHistogram != nil:
 				destMetric := metrics.AppendEmpty()
 				destMetric.SetName(md.Key.Name)
 				destMetric.SetDescription(md.Key.Description)
@@ -143,20 +131,11 @@ func (a *Aggregator[K]) Finalize(mds []model.MetricDef[K]) {
 				destExplicitHist.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 				destExplicitHist.DataPoints().EnsureCapacity(len(dpMap))
 			}
-			if md.Summary != nil {
-				destMetric := metrics.AppendEmpty()
-				destMetric.SetName(md.Key.Name)
-				destMetric.SetDescription(md.Key.Description)
-				destMetric.SetUnit(md.Unit)
-				destSummary = destMetric.SetEmptySummary()
-				destSummary.DataPoints().EnsureCapacity(len(dpMap))
-			}
 			for _, dp := range dpMap {
 				dp.Copy(
 					a.timestamp,
 					destExpHist,
 					destExplicitHist,
-					destSummary,
 				)
 			}
 		}

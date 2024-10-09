@@ -5,8 +5,6 @@ signaltometrics:
         - key: key.1
       sum:
         value: "1"
-      summary:
-        value: "1"
       histogram:
         value: "1"
       exponential_histogram:
@@ -17,8 +15,6 @@ signaltometrics:
         - key: key.1
       sum:
         value: "1"
-      summary:
-        value: "1"
       histogram:
         value: "1"
       exponential_histogram:
@@ -28,8 +24,6 @@ signaltometrics:
       attributes:
         - key: key.1
       sum:
-        value: "1"
-      summary:
         value: "1"
       histogram:
         value: "1"

@@ -29,7 +29,6 @@ import (
 type valueCountDP struct {
 	expHistogramDP      *exponentialHistogramDP
 	explicitHistogramDP *explicitHistogramDP
-	summaryDP           *summaryDP
 }
 
 func newValueCountDP[K any](
@@ -47,9 +46,6 @@ func newValueCountDP[K any](
 			attrs, md.ExplicitHistogram.Buckets,
 		)
 	}
-	if md.Summary != nil {
-		dp.summaryDP = newSummaryDP(attrs)
-	}
 	return &dp
 }
 
@@ -60,24 +56,17 @@ func (dp *valueCountDP) Aggregate(value float64, count int64) {
 	if dp.explicitHistogramDP != nil {
 		dp.explicitHistogramDP.Aggregate(value, count)
 	}
-	if dp.summaryDP != nil {
-		dp.summaryDP.Aggregate(value, count)
-	}
 }
 
 func (dp *valueCountDP) Copy(
 	timestamp time.Time,
 	destExpHist pmetric.ExponentialHistogram,
 	destExplicitHist pmetric.Histogram,
-	destSummary pmetric.Summary,
 ) {
 	if dp.expHistogramDP != nil {
 		dp.expHistogramDP.Copy(timestamp, destExpHist.DataPoints().AppendEmpty())
 	}
 	if dp.explicitHistogramDP != nil {
 		dp.explicitHistogramDP.Copy(timestamp, destExplicitHist.DataPoints().AppendEmpty())
-	}
-	if dp.summaryDP != nil {
-		dp.summaryDP.Copy(timestamp, destSummary.DataPoints().AppendEmpty())
 	}
 }

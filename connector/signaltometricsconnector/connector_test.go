@@ -306,28 +306,6 @@ func testMetricInfo(b *testing.B) []config.MetricInfo {
 				Value: "5.4",
 			},
 		},
-		{
-			Name:        "test.summary",
-			Description: "Test summary",
-			Unit:        "ms",
-			IncludeResourceAttributes: []config.Attribute{
-				{
-					Key: "resource.foo",
-				},
-				{
-					Key:          "404.attribute",
-					DefaultValue: "test_404_attribute",
-				},
-			},
-			Attributes: []config.Attribute{
-				{
-					Key: "http.response.status_code",
-				},
-			},
-			Summary: &config.Summary{
-				Value: "5.3",
-			},
-		},
 	}
 }
 

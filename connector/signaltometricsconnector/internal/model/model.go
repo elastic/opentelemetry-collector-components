@@ -95,33 +95,6 @@ func (h *ExponentialHistogram[K]) fromConfig(
 	return nil
 }
 
-type Summary[K any] struct {
-	Count *ottl.Statement[K]
-	Value *ottl.Statement[K]
-}
-
-func (s *Summary[K]) fromConfig(
-	mi *config.Summary,
-	parser ottl.Parser[K],
-) error {
-	if mi == nil {
-		return nil
-	}
-
-	var err error
-	if mi.Count != "" {
-		s.Count, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Count))
-		if err != nil {
-			return fmt.Errorf("failed to parse count statement for summary: %w", err)
-		}
-	}
-	s.Value, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Value))
-	if err != nil {
-		return fmt.Errorf("failed to parse value statement for summary: %w", err)
-	}
-	return nil
-}
-
 type Sum[K any] struct {
 	Value *ottl.Statement[K]
 }
@@ -149,7 +122,6 @@ type MetricDef[K any] struct {
 	Attributes                []AttributeKeyValue
 	ExponentialHistogram      *ExponentialHistogram[K]
 	ExplicitHistogram         *ExplicitHistogram[K]
-	Summary                   *Summary[K]
 	Sum                       *Sum[K]
 }
 
@@ -180,12 +152,6 @@ func (md *MetricDef[K]) FromMetricInfo(
 		md.ExponentialHistogram = new(ExponentialHistogram[K])
 		if err := md.ExponentialHistogram.fromConfig(mi.ExponentialHistogram, parser); err != nil {
 			return fmt.Errorf("failed to parse histogram config: %w", err)
-		}
-	}
-	if mi.Summary != nil {
-		md.Summary = new(Summary[K])
-		if err := md.Summary.fromConfig(mi.Summary, parser); err != nil {
-			return fmt.Errorf("failed to parse summary config: %w", err)
 		}
 	}
 	if mi.Sum != nil {

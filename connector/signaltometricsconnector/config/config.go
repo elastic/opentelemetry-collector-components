@@ -48,12 +48,6 @@ var defaultHistogramBuckets = []float64{
 }
 
 // Config for the connector. The connector can convert all signal types to metrics.
-//
-// For spans, the connector can count the number of span events or aggregate them
-// based on their durations in histograms, summaries, or as 2 sum metrics.
-//
-// For all other event types, the connector can count the number of events.
-//
 // All metrics produced by the connector are in delta temporality.
 type Config struct {
 	Spans      []MetricInfo `mapstructure:"spans"`
@@ -155,7 +149,6 @@ type MetricInfo struct {
 	Attributes                []Attribute           `mapstructure:"attributes"`
 	Histogram                 *Histogram            `mapstructure:"histogram"`
 	ExponentialHistogram      *ExponentialHistogram `mapstructure:"exponential_histogram"`
-	Summary                   *Summary              `mapstructure:"summary"`
 	Sum                       *Sum                  `mapstructure:"sum"`
 }
 
@@ -199,15 +192,6 @@ func (mi *MetricInfo) validateHistogram() error {
 	return nil
 }
 
-func (mi *MetricInfo) validateSummary() error {
-	if mi.Summary != nil {
-		if mi.Summary.Value == "" {
-			return errors.New("value OTTL statement is required")
-		}
-	}
-	return nil
-}
-
 func (mi *MetricInfo) validateSum() error {
 	if mi.Sum != nil {
 		if mi.Sum.Value == "" {
@@ -243,9 +227,6 @@ func validateMetricInfo[K any](mi MetricInfo, parser ottl.Parser[K]) error {
 	if err := mi.validateHistogram(); err != nil {
 		return fmt.Errorf("histogram validation failed: %w", err)
 	}
-	if err := mi.validateSummary(); err != nil {
-		return fmt.Errorf("summary validation failed: %w", err)
-	}
 	if err := mi.validateSum(); err != nil {
 		return fmt.Errorf("sum validation failed: %w", err)
 	}
@@ -268,12 +249,6 @@ func validateMetricInfo[K any](mi MetricInfo, parser ottl.Parser[K]) error {
 			statements = append(statements, ottlget.ConvertToStatement(mi.ExponentialHistogram.Count))
 		}
 		statements = append(statements, ottlget.ConvertToStatement(mi.ExponentialHistogram.Value))
-	}
-	if mi.Summary != nil {
-		metricsDefinedCount++
-		if mi.Summary.Count != "" {
-			statements = append(statements, ottlget.ConvertToStatement(mi.Summary.Count))
-		}
 	}
 	if mi.Sum != nil {
 		metricsDefinedCount++
@@ -306,11 +281,6 @@ type ExponentialHistogram struct {
 	MaxSize int32  `mapstructure:"max_size"`
 	Count   string `mapstructure:"count"`
 	Value   string `mapstructure:"value"`
-}
-
-type Summary struct {
-	Count string `mapstructure:"count"`
-	Value string `mapstructure:"value"`
 }
 
 type Sum struct {

@@ -80,14 +80,6 @@ func TestConfig(t *testing.T) {
 			},
 		},
 		{
-			path: "invalid_summary",
-			errorMsgs: []string{
-				fullErrorForSignal(t, "spans", "summary validation failed"),
-				fullErrorForSignal(t, "datapoints", "summary validation failed"),
-				fullErrorForSignal(t, "logs", "summary validation failed"),
-			},
-		},
-		{
 			path: "invalid_sum",
 			errorMsgs: []string{
 				fullErrorForSignal(t, "spans", "sum validation failed"),
