@@ -12,12 +12,12 @@ tests:
     spans:
       - name: span.duration.histogram
         description: "Span duration as histogram"
-        unit: ms
+        unit: us
         histogram:
           value: Microseconds(end_time - start_time)
       - name: span.duration.exponential_histogram
         description: "Span duration as exponential histogram"
-        unit: ms
+        unit: us
         exponential_histogram:
           value: Microseconds(end_time - start_time)
     logs:
