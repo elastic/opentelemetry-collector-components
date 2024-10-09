@@ -152,7 +152,6 @@ func (a *Aggregator[K]) Finalize(mds []model.MetricDef[K]) {
 			destCounter.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 			destCounter.DataPoints().EnsureCapacity(len(dpMap))
 			for _, dp := range dpMap {
-				// TODO (lahsivjar): Before merge: differentiate float vs int
 				dp.Copy(a.timestamp, destCounter.DataPoints().AppendEmpty())
 			}
 		}
