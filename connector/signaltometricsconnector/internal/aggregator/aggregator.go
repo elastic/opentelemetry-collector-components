@@ -19,7 +19,6 @@ package aggregator // import "github.com/elastic/opentelemetry-collector-compone
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -95,8 +94,12 @@ func (a *Aggregator[K]) Aggregate(
 			return a.aggregateInt(md, resAttrs, srcAttrs, v)
 		case float64:
 			return a.aggregateDouble(md, resAttrs, srcAttrs, v)
+		default:
+			return fmt.Errorf(
+				"failed to parse sum OTTL value of type %T into int64 or float64: %v",
+				v, v,
+			)
 		}
-		return errors.New("failed to parse sum OTTL value into int64 or float64")
 	}
 	return nil
 }
