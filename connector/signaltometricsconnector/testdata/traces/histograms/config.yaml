@@ -3,6 +3,7 @@ signaltometrics:
     - name: with_resource_foo_only
       description: Spans with resource attribute white listing for resource.foo as a histogram metric
       unit: ms
+      collector_info_as_resource_attributes: true
       include_resource_attributes:
         - key: resource.foo
       histogram:

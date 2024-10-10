@@ -41,7 +41,8 @@ type signalToMetrics struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	logger *zap.Logger
+	collectorInstanceInfo *model.CollectorInstanceInfo
+	logger                *zap.Logger
 
 	next           consumer.Metrics
 	spanMetricDefs []model.MetricDef[ottlspan.TransformContext]
@@ -73,10 +74,8 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 				spanAttrs := span.Attributes()
 				adjustedCount := calculateAdjustedCount(span.TraceState().AsRaw())
 				for _, md := range sm.spanMetricDefs {
-					filteredSpanAttrs := getFilteredAttributes(spanAttrs, md.Attributes)
-					if filteredSpanAttrs.Len() != len(md.Attributes) {
-						// If any of the configured attributes is not present in
-						// source metric then don't count them.
+					filteredSpanAttrs, ok := md.FilterAttributes(spanAttrs)
+					if !ok {
 						continue
 					}
 
@@ -95,14 +94,7 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 						}
 					}
 
-					var filteredResAttrs pcommon.Map
-					if len(md.IncludeResourceAttributes) > 0 {
-						filteredResAttrs = getFilteredAttributes(resourceAttrs, md.IncludeResourceAttributes)
-					} else {
-						// Copy resource attrs to avoid mutating data
-						filteredResAttrs = pcommon.NewMap()
-						resourceAttrs.CopyTo(filteredResAttrs)
-					}
+					filteredResAttrs := md.FilterResourceAttributes(resourceAttrs, sm.collectorInstanceInfo)
 					multiError = errors.Join(multiError, aggregator.Aggregate(ctx, tCtx, md, filteredResAttrs, filteredSpanAttrs, adjustedCount))
 				}
 			}
@@ -130,15 +122,7 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 				metrics := scopeMetric.Metrics()
 				metric := metrics.At(k)
 				for _, md := range sm.dpMetricDefs {
-					var filteredResAttrs pcommon.Map
-					if len(md.IncludeResourceAttributes) > 0 {
-						filteredResAttrs = getFilteredAttributes(resourceAttrs, md.IncludeResourceAttributes)
-					} else {
-						// Copy resource attrs to avoid mutating data
-						filteredResAttrs = pcommon.NewMap()
-						resourceAttrs.CopyTo(filteredResAttrs)
-					}
-
+					filteredResAttrs := md.FilterResourceAttributes(resourceAttrs, sm.collectorInstanceInfo)
 					aggregate := func(dp any, dpAttrs pcommon.Map) error {
 						// The transform context is created from orginal attributes so that the
 						// OTTL expressions are also applied on the original attributes.
@@ -163,10 +147,8 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 						dps := metric.Gauge().DataPoints()
 						for l := 0; l < dps.Len(); l++ {
 							dp := dps.At(l)
-							filteredDPAttrs := getFilteredAttributes(dp.Attributes(), md.Attributes)
-							if filteredDPAttrs.Len() != len(md.Attributes) {
-								// If all the configured attributes are not present in
-								// source metric then don't count them.
+							filteredDPAttrs, ok := md.FilterAttributes(dp.Attributes())
+							if !ok {
 								continue
 							}
 							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
@@ -175,10 +157,8 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 						dps := metric.Sum().DataPoints()
 						for l := 0; l < dps.Len(); l++ {
 							dp := dps.At(l)
-							filteredDPAttrs := getFilteredAttributes(dp.Attributes(), md.Attributes)
-							if filteredDPAttrs.Len() != len(md.Attributes) {
-								// If all the configured attributes are not present in
-								// source metric then don't count them.
+							filteredDPAttrs, ok := md.FilterAttributes(dp.Attributes())
+							if !ok {
 								continue
 							}
 							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
@@ -187,10 +167,8 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 						dps := metric.Summary().DataPoints()
 						for l := 0; l < dps.Len(); l++ {
 							dp := dps.At(l)
-							filteredDPAttrs := getFilteredAttributes(dp.Attributes(), md.Attributes)
-							if filteredDPAttrs.Len() != len(md.Attributes) {
-								// If all the configured attributes are not present in
-								// source metric then don't count them.
+							filteredDPAttrs, ok := md.FilterAttributes(dp.Attributes())
+							if !ok {
 								continue
 							}
 							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
@@ -199,10 +177,8 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 						dps := metric.Histogram().DataPoints()
 						for l := 0; l < dps.Len(); l++ {
 							dp := dps.At(l)
-							filteredDPAttrs := getFilteredAttributes(dp.Attributes(), md.Attributes)
-							if filteredDPAttrs.Len() != len(md.Attributes) {
-								// If all the configured attributes are not present in
-								// source metric then don't count them.
+							filteredDPAttrs, ok := md.FilterAttributes(dp.Attributes())
+							if !ok {
 								continue
 							}
 							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
@@ -211,10 +187,8 @@ func (sm *signalToMetrics) ConsumeMetrics(ctx context.Context, m pmetric.Metrics
 						dps := metric.ExponentialHistogram().DataPoints()
 						for l := 0; l < dps.Len(); l++ {
 							dp := dps.At(l)
-							filteredDPAttrs := getFilteredAttributes(dp.Attributes(), md.Attributes)
-							if filteredDPAttrs.Len() != len(md.Attributes) {
-								// If all the configured attributes are not present in
-								// source metric then don't count them.
+							filteredDPAttrs, ok := md.FilterAttributes(dp.Attributes())
+							if !ok {
 								continue
 							}
 							multiError = errors.Join(multiError, aggregate(dp, filteredDPAttrs))
@@ -248,10 +222,8 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 				log := scopeLog.LogRecords().At(k)
 				logAttrs := log.Attributes()
 				for _, md := range sm.logMetricDefs {
-					filteredLogAttrs := getFilteredAttributes(logAttrs, md.Attributes)
-					if filteredLogAttrs.Len() != len(md.Attributes) {
-						// If all the configured attributes are not present in
-						// source metric then don't count them.
+					filteredLogAttrs, ok := md.FilterAttributes(logAttrs)
+					if !ok {
 						continue
 					}
 
@@ -270,14 +242,7 @@ func (sm *signalToMetrics) ConsumeLogs(ctx context.Context, logs plog.Logs) erro
 						}
 					}
 
-					var filteredResAttrs pcommon.Map
-					if len(md.IncludeResourceAttributes) > 0 {
-						filteredResAttrs = getFilteredAttributes(resourceAttrs, md.IncludeResourceAttributes)
-					} else {
-						// Copy resource attrs to avoid mutating data
-						filteredResAttrs = pcommon.NewMap()
-						resourceAttrs.CopyTo(filteredResAttrs)
-					}
+					filteredResAttrs := md.FilterResourceAttributes(resourceAttrs, sm.collectorInstanceInfo)
 					multiError = errors.Join(multiError, aggregator.Aggregate(ctx, tCtx, md, filteredResAttrs, filteredLogAttrs, 1))
 				}
 			}
@@ -328,18 +293,4 @@ func calculateAdjustedCount(tracestate string) int64 {
 	// TODO (lahsivjar): Handle fractional adjusted count. One way to do this
 	// would be to scale the values in the histograms for some precision.
 	return int64(otTraceState.AdjustedCount())
-}
-
-func getFilteredAttributes(attrs pcommon.Map, filters []model.AttributeKeyValue) pcommon.Map {
-	filteredAttrs := pcommon.NewMap()
-	for _, filter := range filters {
-		if attr, ok := attrs.Get(filter.Key); ok {
-			attr.CopyTo(filteredAttrs.PutEmpty(filter.Key))
-			continue
-		}
-		if filter.DefaultValue.Type() != pcommon.ValueTypeEmpty {
-			filter.DefaultValue.CopyTo(filteredAttrs.PutEmpty(filter.Key))
-		}
-	}
-	return filteredAttrs
 }

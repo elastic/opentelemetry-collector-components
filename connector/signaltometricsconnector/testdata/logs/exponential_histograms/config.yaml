@@ -5,6 +5,14 @@ signaltometrics:
       exponential_histogram:
         count: "1"
         value: attributes["log.duration"]
+    - name: total.logrecords.resource.foo.exphistogram
+      description: Logrecords with resource attribute foo as exponential histogram with log.duration from attributes
+      collector_info_as_resource_attributes: true
+      include_resource_attributes:
+        - key: resource.foo
+      exponential_histogram:
+        count: "1"
+        value: attributes["log.duration"]
     - name: log.foo.exphistogram
       description: Count total number of log records as per log.foo attribute as exponential histogram with log.duration from attributes
       attributes:
