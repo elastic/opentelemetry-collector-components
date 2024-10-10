@@ -6,9 +6,8 @@ signaltometrics:
         - key: resource.foo
       attributes:
         - key: datapoint.foo
-      condition_sequence:
-        conditions:
-          - metric.type == 1 # select all gauges
+      conditions:
+        - metric.type == 1 # select all gauges
       exponential_histogram:
         count: "1" # 1 count for each datapoint
         value: Double(value_int) + value_double # handle both int and double

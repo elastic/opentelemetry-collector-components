@@ -145,15 +145,15 @@ func (md *MetricDef[K]) FromMetricInfo(
 	if err != nil {
 		return fmt.Errorf("failed to parse attribute config: %w", err)
 	}
-	if len(mi.ConditionSequence.Conditions) > 0 {
-		conditions, err := parser.ParseConditions(mi.ConditionSequence.Conditions)
+	if len(mi.Conditions) > 0 {
+		conditions, err := parser.ParseConditions(mi.Conditions)
 		if err != nil {
 			return fmt.Errorf("failed to parse OTTL conditions: %w", err)
 		}
 		condSeq := ottl.NewConditionSequence(
 			conditions,
 			telemetrySettings,
-			ottl.WithLogicOperation[K](mi.ConditionSequence.Operator),
+			ottl.WithLogicOperation[K](mi.ConditionLogicOperation),
 		)
 		md.Conditions = &condSeq
 	}

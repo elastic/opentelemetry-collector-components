@@ -24,11 +24,10 @@ signaltometrics:
     - name: msg.trace.span.duration
       description: Span duration for messaging spans as a double sum metric
       unit: s
-      condition_sequence: # will evaluate to true
-        operator: or
-        conditions:
-          - resource.attributes["404.attribute"] != nil
-          - resource.attributes["resource.foo"] != nil
+      conditions: # Will evaluate to true
+        - resource.attributes["404.attribute"] != nil
+        - resource.attributes["resource.foo"] != nil
+      condition_logic_operation: or
       attributes:
         - key: messaging.system
       sum:
@@ -36,10 +35,9 @@ signaltometrics:
     - name: ignored.sum
       description: Will be ignored due to conditions evaluating to false
       unit: s
-      condition_sequence: # will evaluate to false
-        operator: or
-        conditions:
-          - resource.attributes["404.attribute"] != nil
+      conditions: # Will evaluate to false
+        - resource.attributes["404.attribute"] != nil
+      condition_logic_operation: or
       attributes:
         - key: messaging.system
       sum:

@@ -3,29 +3,25 @@ signaltometrics:
     - name: span.sum
       attributes:
         - key: key.1
-      condition_sequence:
-        operator: and
-        conditions:
-          - bad_condition
+      conditions:
+        - bad_condition
       sum:
         value: "1"
   datapoints:
     - name: dp.sum
       attributes:
         - key: key.1
-      condition_sequence:
-        operator: and
-        conditions:
-          - bad_condition
+      conditions:
+        - bad_condition
+      condition_logic_operation: and
       sum:
         value: "1"
   logs:
     - name: log.sum
       attributes:
         - key: key.1
-      condition_sequence:
-        operator: and
-        conditions:
-          - bad_condition
+      conditions:
+        - bad_condition
+      condition_logic_operation: or
       sum:
         value: "1"

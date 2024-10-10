@@ -14,11 +14,10 @@ signaltometrics:
         value: attributes["log.duration"]
     - name: log.bar.exphistogram
       description: Count total number of log records as per log.bar attribute as exponential histogram with log.duration from attributes
-      condition_sequence: # will evaluate to true
-        operator: or
-        conditions:
-          - resource.attributes["404.attribute"] != nil
-          - resource.attributes["resource.foo"] != nil
+      conditions: # Will evaluate to true
+        - resource.attributes["404.attribute"] != nil
+        - resource.attributes["resource.foo"] != nil
+      condition_logic_operation: or
       attributes:
         - key: log.bar
       exponential_histogram:
@@ -26,10 +25,9 @@ signaltometrics:
         value: attributes["log.duration"]
     - name: ignored.exphistogram
       description: Will be ignored due to conditions evaluating to false
-      condition_sequence: # will evaluate to false
-        operator: or
-        conditions:
-          - resource.attributes["404.attribute"] != nil
+      conditions: # Will evaluate to false
+        - resource.attributes["404.attribute"] != nil
+      condition_logic_operation: or
       attributes:
         - key: log.bar
       exponential_histogram:

@@ -122,13 +122,11 @@ func TestConfig(t *testing.T) {
 						Unit:                      "us",
 						IncludeResourceAttributes: []Attribute{{Key: "key.1", DefaultValue: "foo"}},
 						Attributes:                []Attribute{{Key: "key.2", DefaultValue: "bar"}},
-						ConditionSequence: ConditionSequence{
-							Operator: ottl.Or,
-							Conditions: []string{
-								`attributes["some.optional.1"] != nil`,
-								`resource.attributes["some.optional.2"] != nil`,
-							},
+						Conditions: []string{
+							`attributes["some.optional.1"] != nil`,
+							`resource.attributes["some.optional.2"] != nil`,
 						},
+						ConditionLogicOperation: ottl.Or,
 						ExponentialHistogram: &ExponentialHistogram{
 							MaxSize: 10,
 							Count:   "1",
@@ -141,13 +139,11 @@ func TestConfig(t *testing.T) {
 						Unit:                      "us",
 						IncludeResourceAttributes: []Attribute{{Key: "key.1", DefaultValue: "foo"}},
 						Attributes:                []Attribute{{Key: "key.2", DefaultValue: "bar"}},
-						ConditionSequence: ConditionSequence{
-							Operator: ottl.Or,
-							Conditions: []string{
-								`attributes["some.optional.1"] != nil`,
-								`resource.attributes["some.optional.2"] != nil`,
-							},
+						Conditions: []string{
+							`attributes["some.optional.1"] != nil`,
+							`resource.attributes["some.optional.2"] != nil`,
 						},
+						ConditionLogicOperation: ottl.Or,
 						Histogram: &Histogram{
 							Buckets: []float64{1.1, 11.1, 111.1},
 							Count:   "1",
@@ -162,13 +158,11 @@ func TestConfig(t *testing.T) {
 						Unit:                      "ms",
 						IncludeResourceAttributes: []Attribute{{Key: "key.1", DefaultValue: "foo"}},
 						Attributes:                []Attribute{{Key: "key.2", DefaultValue: "bar"}},
-						ConditionSequence: ConditionSequence{
-							Operator: ottl.And,
-							Conditions: []string{
-								`attributes["some.optional.1"] != nil`,
-								`IsDouble(attributes["some.optional.1"])`,
-							},
+						Conditions: []string{
+							`attributes["some.optional.1"] != nil`,
+							`IsDouble(attributes["some.optional.1"])`,
 						},
+						ConditionLogicOperation: ottl.And,
 						Sum: &Sum{
 							Value: `attributes["some.optional.1"]`,
 						},
@@ -181,12 +175,10 @@ func TestConfig(t *testing.T) {
 						Unit:                      "1",
 						IncludeResourceAttributes: []Attribute{{Key: "key.1", DefaultValue: "foo"}},
 						Attributes:                []Attribute{{Key: "key.2", DefaultValue: "bar"}},
-						ConditionSequence: ConditionSequence{
-							Operator: ottl.Or,
-							Conditions: []string{
-								`attributes["some.optional.1"] != nil`,
-							},
+						Conditions: []string{
+							`attributes["some.optional.1"] != nil`,
 						},
+						ConditionLogicOperation: ottl.Or,
 						Sum: &Sum{
 							Value: "1",
 						},

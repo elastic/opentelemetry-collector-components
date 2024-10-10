@@ -6,9 +6,8 @@ signaltometrics:
         - key: resource.foo
       attributes:
         - key: datapoint.foo
-      condition_sequence:
-        conditions:
-          - metric.type == 1 # select all gauges
+      conditions:
+        - metric.type == 1 # select all gauges
       histogram:
         buckets: [1, 4, 5, 8, 200, 500, 1000]
         count: "1" # 1 count for each datapoint
