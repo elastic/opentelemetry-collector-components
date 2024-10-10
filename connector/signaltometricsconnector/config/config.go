@@ -140,6 +140,12 @@ type MetricInfo struct {
 	// Unit, if not-empty, will set the unit associated with the metric.
 	// See: https://github.com/open-telemetry/opentelemetry-collector/blob/b06236cc794982916cc956f20828b3e18eb33264/pdata/pmetric/generated_metric.go#L72-L81
 	Unit string `mapstructure:"unit"`
+	// CollectorInfoAsResourceAttributes (experimental) appends the
+	// collector instance information, retrieved from the telemetry
+	// settings, as resource attributes to the produced metric if set
+	// to true. This is important to ensure single-writer if resource
+	// attributes are whitelisted using `include_resource_attributes`.
+	CollectorInfoAsResourceAttributes bool `mapstructure:"collector_info_as_resource_attributes"`
 	// IncludeResourceAttributes is a list of resource attributes that
 	// needs to be included in the generated metric. If no resource
 	// attribute is included in the list then all attributes are included.

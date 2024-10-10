@@ -117,14 +117,15 @@ func (s *Sum[K]) fromConfig(
 }
 
 type MetricDef[K any] struct {
-	Key                       MetricKey
-	Unit                      string
-	IncludeResourceAttributes []AttributeKeyValue
-	Attributes                []AttributeKeyValue
-	Conditions                *ottl.ConditionSequence[K]
-	ExponentialHistogram      *ExponentialHistogram[K]
-	ExplicitHistogram         *ExplicitHistogram[K]
-	Sum                       *Sum[K]
+	Key                               MetricKey
+	Unit                              string
+	CollectorInfoAsResourceAttributes bool
+	IncludeResourceAttributes         []AttributeKeyValue
+	Attributes                        []AttributeKeyValue
+	Conditions                        *ottl.ConditionSequence[K]
+	ExponentialHistogram              *ExponentialHistogram[K]
+	ExplicitHistogram                 *ExplicitHistogram[K]
+	Sum                               *Sum[K]
 }
 
 func (md *MetricDef[K]) FromMetricInfo(
@@ -135,6 +136,7 @@ func (md *MetricDef[K]) FromMetricInfo(
 	md.Key.Name = mi.Name
 	md.Key.Description = mi.Description
 	md.Unit = mi.Unit
+	md.CollectorInfoAsResourceAttributes = mi.CollectorInfoAsResourceAttributes
 
 	var err error
 	md.IncludeResourceAttributes, err = parseAttributeConfigs(mi.IncludeResourceAttributes)
@@ -176,6 +178,71 @@ func (md *MetricDef[K]) FromMetricInfo(
 		}
 	}
 	return nil
+}
+
+// FilterResourceAttributes filteres resource attributes based on the
+// `IncludeResourceAttributes` white list for the metric definition. Resource
+// attributes are only filtered if the white list is specified, otherwise
+// all the resource attributes are used for creating the metrics from the
+// metric definition.
+func (md *MetricDef[K]) FilterResourceAttributes(
+	attrs pcommon.Map,
+	collectorInfo *CollectorInstanceInfo,
+) pcommon.Map {
+	if len(md.IncludeResourceAttributes) == 0 {
+		// No resource attributes are whitelisted, return all as a copy.
+		// Copy is performed to avoid mutating the data.
+		m := pcommon.NewMap()
+		attrs.CopyTo(m)
+		return m
+	}
+	expectedLen := len(md.IncludeResourceAttributes)
+	if md.CollectorInfoAsResourceAttributes {
+		expectedLen += collectorInfo.Size()
+	}
+	filteredAttributes := filterAttributes(attrs, md.IncludeResourceAttributes, expectedLen)
+	if md.CollectorInfoAsResourceAttributes {
+		collectorInfo.Copy(filteredAttributes)
+	}
+	return filteredAttributes
+}
+
+// FilterAttributes filters event attributes (datapoint, logrecord, spans)
+// based on the `Attributes` selected for the metric definition. If no
+// attributes are selected then an empty `pcommon.Map` is returned. Note
+// that, this filtering differs from resource attribute filtering as
+// in attribute filtering if any of the configured attributes is not present
+// in the data being processed then that metric definition is not processed.
+// The method returns a bool signaling if the filter was successful and metric
+// should be processed. If the bool value is false then the returned map
+// should not be used.
+func (md *MetricDef[K]) FilterAttributes(attrs pcommon.Map) (pcommon.Map, bool) {
+	// Figure out if all the attributes are available, saves allocation
+	for _, filter := range md.Attributes {
+		if filter.DefaultValue.Type() != pcommon.ValueTypeEmpty {
+			// will always add an attribute
+			continue
+		}
+		if _, ok := attrs.Get(filter.Key); !ok {
+			return pcommon.Map{}, false
+		}
+	}
+	return filterAttributes(attrs, md.Attributes, len(md.Attributes)), true
+}
+
+func filterAttributes(attrs pcommon.Map, filters []AttributeKeyValue, expectedLen int) pcommon.Map {
+	filteredAttrs := pcommon.NewMap()
+	filteredAttrs.EnsureCapacity(expectedLen)
+	for _, filter := range filters {
+		if attr, ok := attrs.Get(filter.Key); ok {
+			attr.CopyTo(filteredAttrs.PutEmpty(filter.Key))
+			continue
+		}
+		if filter.DefaultValue.Type() != pcommon.ValueTypeEmpty {
+			filter.DefaultValue.CopyTo(filteredAttrs.PutEmpty(filter.Key))
+		}
+	}
+	return filteredAttrs
 }
 
 func parseAttributeConfigs(cfgs []config.Attribute) ([]AttributeKeyValue, error) {

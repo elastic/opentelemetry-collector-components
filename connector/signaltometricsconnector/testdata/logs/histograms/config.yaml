@@ -6,6 +6,15 @@ signaltometrics:
         count: "1"
         value: attributes["log.duration"]
         buckets: [1, 10, 50, 100, 200]
+    - name: total.logrecords.resource.foo.histogram
+      description: Logrecords with resource attribute foo as histogram with log.duration from attributes
+      collector_info_as_resource_attributes: true
+      include_resource_attributes:
+        - key: resource.foo
+      histogram:
+        count: "1"
+        value: attributes["log.duration"]
+        buckets: [1, 10, 50, 100, 200]
     - name: log.foo.histogram
       description: Count total number of log records as per log.foo attribute as histogram with log.duration from attributes
       attributes:

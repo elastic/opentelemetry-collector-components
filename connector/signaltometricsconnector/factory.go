@@ -34,6 +34,8 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
 )
 
+const collectorInstanceResourceAttributePrefix = "observer"
+
 // NewFactory returns a ConnectorFactory.
 func NewFactory() connector.Factory {
 	return connector.NewFactory(
@@ -76,7 +78,11 @@ func createTracesToMetrics(
 	}
 
 	return &signalToMetrics{
-		logger:         set.Logger,
+		logger: set.Logger,
+		collectorInstanceInfo: model.NewCollectorInstanceInfo(
+			collectorInstanceResourceAttributePrefix,
+			set.TelemetrySettings,
+		),
 		next:           nextConsumer,
 		spanMetricDefs: metricDefs,
 	}, nil
@@ -107,7 +113,11 @@ func createMetricsToMetrics(
 	}
 
 	return &signalToMetrics{
-		logger:       set.Logger,
+		logger: set.Logger,
+		collectorInstanceInfo: model.NewCollectorInstanceInfo(
+			collectorInstanceResourceAttributePrefix,
+			set.TelemetrySettings,
+		),
 		next:         nextConsumer,
 		dpMetricDefs: metricDefs,
 	}, nil
@@ -138,7 +148,11 @@ func createLogsToMetrics(
 	}
 
 	return &signalToMetrics{
-		logger:        set.Logger,
+		logger: set.Logger,
+		collectorInstanceInfo: model.NewCollectorInstanceInfo(
+			collectorInstanceResourceAttributePrefix,
+			set.TelemetrySettings,
+		),
 		next:          nextConsumer,
 		logMetricDefs: metricDefs,
 	}, nil

@@ -35,7 +35,9 @@ import (
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	semconv "go.opentelemetry.io/collector/semconv/v1.26.0"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 )
@@ -317,6 +319,7 @@ func setupConnector(
 	t.Helper()
 	factory := NewFactory()
 	settings := connectortest.NewNopSettings()
+	telemetryResource(t).CopyTo(settings.TelemetrySettings.Resource)
 	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 
 	cfg := createDefaultConfig()
@@ -328,6 +331,16 @@ func setupConnector(
 	require.NoError(t, component.ValidateConfig(cfg))
 
 	return factory, settings, cfg
+}
+
+func telemetryResource(t *testing.T) pcommon.Resource {
+	t.Helper()
+
+	r := pcommon.NewResource()
+	r.Attributes().PutStr(semconv.AttributeServiceInstanceID, "627cc493-f310-47de-96bd-71410b7dec09")
+	r.Attributes().PutStr(semconv.AttributeServiceName, "signaltometrics")
+	r.Attributes().PutStr(semconv.AttributeServiceNamespace, "test")
+	return r
 }
 
 func assertAggregatedMetrics(t *testing.T, expected, actual pmetric.Metrics) bool {
