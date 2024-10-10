@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package ottlget // import "github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
+package customottl // import "github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/customottl"
 
 import (
 	"context"

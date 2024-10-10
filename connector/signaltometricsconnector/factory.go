@@ -29,9 +29,9 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/config"
+	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/customottl"
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/model"
-	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
 )
 
 // NewFactory returns a ConnectorFactory.
@@ -58,10 +58,7 @@ func createTracesToMetrics(
 	nextConsumer consumer.Metrics,
 ) (connector.Traces, error) {
 	c := cfg.(*config.Config)
-	parser, err := ottlspan.NewParser(
-		ottlget.CustomFuncs[ottlspan.TransformContext](),
-		set.TelemetrySettings,
-	)
+	parser, err := ottlspan.NewParser(customottl.SpanFuncs(), set.TelemetrySettings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OTTL statement parser for datapoints: %w", err)
 	}
@@ -89,10 +86,7 @@ func createMetricsToMetrics(
 	nextConsumer consumer.Metrics,
 ) (connector.Metrics, error) {
 	c := cfg.(*config.Config)
-	parser, err := ottldatapoint.NewParser(
-		ottlget.CustomFuncs[ottldatapoint.TransformContext](),
-		set.TelemetrySettings,
-	)
+	parser, err := ottldatapoint.NewParser(customottl.DatapointFuncs(), set.TelemetrySettings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OTTL statement parser for datapoints: %w", err)
 	}
@@ -120,10 +114,7 @@ func createLogsToMetrics(
 	nextConsumer consumer.Metrics,
 ) (connector.Logs, error) {
 	c := cfg.(*config.Config)
-	parser, err := ottllog.NewParser(
-		ottlget.CustomFuncs[ottllog.TransformContext](),
-		set.TelemetrySettings,
-	)
+	parser, err := ottllog.NewParser(customottl.LogFuncs(), set.TelemetrySettings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OTTL statement parser for datapoints: %w", err)
 	}

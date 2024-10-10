@@ -15,16 +15,28 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package ottlget // import "github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
+package trace // import "github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/trace"
 
 import (
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func CustomFuncs[K any]() map[string]ottl.Factory[K] {
-	getFactory := NewGetFactory[K]()
-	standard := ottlfuncs.StandardFuncs[K]()
-	standard[getFactory.Name()] = getFactory
-	return standard
+func TestCalculateAdjustedCount(t *testing.T) {
+	for _, tc := range []struct {
+		tracestate string
+		expected   int64
+	}{
+		{"", 1},
+		{"invalid=p:8;th:8", 1},
+		{"ot=404:8", 1},
+		{"ot=th:0", 1}, // 100% sampling
+		{"ot=th:8", 2}, // 50% sampling
+		{"ot=th:c", 4}, // 25% sampling
+	} {
+		t.Run("tracestate/"+tc.tracestate, func(t *testing.T) {
+			assert.Equal(t, tc.expected, CalculateAdjustedCount(tc.tracestate))
+		})
+	}
 }
