@@ -13,7 +13,6 @@ signaltometrics:
         - key: key.1
       conditions:
         - bad_condition
-      condition_logic_operation: and
       sum:
         value: "1"
   logs:
@@ -22,6 +21,5 @@ signaltometrics:
         - key: key.1
       conditions:
         - bad_condition
-      condition_logic_operation: or
       sum:
         value: "1"

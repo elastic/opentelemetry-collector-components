@@ -147,17 +147,12 @@ type MetricInfo struct {
 	// to lose its identity or cause identity conflict.
 	IncludeResourceAttributes []Attribute `mapstructure:"include_resource_attributes"`
 	Attributes                []Attribute `mapstructure:"attributes"`
-	// Conditions are a set of OTTL condtions with either AND or OR operator
-	// (defined using the `condition_logic_operation` config). Data is
+	// Conditions are a set of OTTL condtions which are ORd. Data is
 	// processed into metrics only if the sequence evaluates to true.
-	Conditions []string `mapstructure:"conditions"`
-	// ConditionLogicOperation is the logic operation to perform between the
-	// configured conditions. The condition operator defaults to OR if none
-	// specified.
-	ConditionLogicOperation ottl.LogicOperation   `mapstructure:"condition_logic_operation"`
-	Histogram               *Histogram            `mapstructure:"histogram"`
-	ExponentialHistogram    *ExponentialHistogram `mapstructure:"exponential_histogram"`
-	Sum                     *Sum                  `mapstructure:"sum"`
+	Conditions           []string              `mapstructure:"conditions"`
+	Histogram            *Histogram            `mapstructure:"histogram"`
+	ExponentialHistogram *ExponentialHistogram `mapstructure:"exponential_histogram"`
+	Sum                  *Sum                  `mapstructure:"sum"`
 }
 
 func (mi *MetricInfo) validateAttributes() error {
@@ -210,9 +205,6 @@ func (mi *MetricInfo) validateSum() error {
 }
 
 func (mi *MetricInfo) ensureDefaults() {
-	if mi.ConditionLogicOperation == "" {
-		mi.ConditionLogicOperation = ottl.Or
-	}
 	if mi.Histogram != nil {
 		// Add default buckets if explicit histogram is defined
 		if len(mi.Histogram.Buckets) == 0 {

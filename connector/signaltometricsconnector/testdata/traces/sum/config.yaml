@@ -27,7 +27,6 @@ signaltometrics:
       conditions: # Will evaluate to true
         - resource.attributes["404.attribute"] != nil
         - resource.attributes["resource.foo"] != nil
-      condition_logic_operation: or
       attributes:
         - key: messaging.system
       sum:
@@ -37,7 +36,6 @@ signaltometrics:
       unit: s
       conditions: # Will evaluate to false
         - resource.attributes["404.attribute"] != nil
-      condition_logic_operation: or
       attributes:
         - key: messaging.system
       sum:

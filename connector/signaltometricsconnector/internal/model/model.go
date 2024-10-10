@@ -153,7 +153,7 @@ func (md *MetricDef[K]) FromMetricInfo(
 		condSeq := ottl.NewConditionSequence(
 			conditions,
 			telemetrySettings,
-			ottl.WithLogicOperation[K](mi.ConditionLogicOperation),
+			ottl.WithLogicOperation[K](ottl.Or),
 		)
 		md.Conditions = &condSeq
 	}

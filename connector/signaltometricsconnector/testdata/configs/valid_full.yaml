@@ -12,7 +12,6 @@ signaltometrics:
       conditions:
         - attributes["some.optional.1"] != nil
         - resource.attributes["some.optional.2"] != nil
-      condition_logic_operation: or
       exponential_histogram:
         max_size: 10
         value: Microseconds(end_time - start_time)
@@ -29,7 +28,6 @@ signaltometrics:
       conditions:
         - attributes["some.optional.1"] != nil
         - resource.attributes["some.optional.2"] != nil
-      condition_logic_operation: or
       histogram:
         buckets: [1.1, 11.1, 111.1]
         value: Microseconds(end_time - start_time)
@@ -47,7 +45,6 @@ signaltometrics:
       conditions:
         - attributes["some.optional.1"] != nil
         - IsDouble(attributes["some.optional.1"])
-      condition_logic_operation: and
       sum:
         value: attributes["some.optional.1"]
   logs:

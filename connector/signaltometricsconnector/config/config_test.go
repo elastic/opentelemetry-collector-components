@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/metadata"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
@@ -126,7 +125,6 @@ func TestConfig(t *testing.T) {
 							`attributes["some.optional.1"] != nil`,
 							`resource.attributes["some.optional.2"] != nil`,
 						},
-						ConditionLogicOperation: ottl.Or,
 						ExponentialHistogram: &ExponentialHistogram{
 							MaxSize: 10,
 							Count:   "1",
@@ -143,7 +141,6 @@ func TestConfig(t *testing.T) {
 							`attributes["some.optional.1"] != nil`,
 							`resource.attributes["some.optional.2"] != nil`,
 						},
-						ConditionLogicOperation: ottl.Or,
 						Histogram: &Histogram{
 							Buckets: []float64{1.1, 11.1, 111.1},
 							Count:   "1",
@@ -162,7 +159,6 @@ func TestConfig(t *testing.T) {
 							`attributes["some.optional.1"] != nil`,
 							`IsDouble(attributes["some.optional.1"])`,
 						},
-						ConditionLogicOperation: ottl.And,
 						Sum: &Sum{
 							Value: `attributes["some.optional.1"]`,
 						},
@@ -178,7 +174,6 @@ func TestConfig(t *testing.T) {
 						Conditions: []string{
 							`attributes["some.optional.1"] != nil`,
 						},
-						ConditionLogicOperation: ottl.Or,
 						Sum: &Sum{
 							Value: "1",
 						},
