@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/config"
-	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
+	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/customottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
@@ -54,12 +54,12 @@ func (h *ExplicitHistogram[K]) fromConfig(
 	var err error
 	h.Buckets = mi.Buckets
 	if mi.Count != "" {
-		h.Count, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Count))
+		h.Count, err = parser.ParseStatement(customottl.ConvertToStatement(mi.Count))
 		if err != nil {
 			return fmt.Errorf("failed to parse count statement for explicit histogram: %w", err)
 		}
 	}
-	h.Value, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Value))
+	h.Value, err = parser.ParseStatement(customottl.ConvertToStatement(mi.Value))
 	if err != nil {
 		return fmt.Errorf("failed to parse value statement for explicit histogram: %w", err)
 	}
@@ -83,12 +83,12 @@ func (h *ExponentialHistogram[K]) fromConfig(
 	var err error
 	h.MaxSize = mi.MaxSize
 	if mi.Count != "" {
-		h.Count, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Count))
+		h.Count, err = parser.ParseStatement(customottl.ConvertToStatement(mi.Count))
 		if err != nil {
 			return fmt.Errorf("failed to parse count statement for exponential histogram: %w", err)
 		}
 	}
-	h.Value, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Value))
+	h.Value, err = parser.ParseStatement(customottl.ConvertToStatement(mi.Value))
 	if err != nil {
 		return fmt.Errorf("failed to parse value statement for exponential histogram: %w", err)
 	}
@@ -108,7 +108,7 @@ func (s *Sum[K]) fromConfig(
 	}
 
 	var err error
-	s.Value, err = parser.ParseStatement(ottlget.ConvertToStatement(mi.Value))
+	s.Value, err = parser.ParseStatement(customottl.ConvertToStatement(mi.Value))
 	if err != nil {
 		return fmt.Errorf("failed to parse value statement for sum: %w", err)
 	}
