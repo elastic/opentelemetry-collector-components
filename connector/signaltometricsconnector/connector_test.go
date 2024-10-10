@@ -77,6 +77,8 @@ func TestConnectorWithTraces(t *testing.T) {
 func TestConnectorWithMetrics(t *testing.T) {
 	testCases := []string{
 		"sum",
+		"histograms",
+		"exponential_histograms",
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
