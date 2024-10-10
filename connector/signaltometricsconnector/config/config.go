@@ -140,16 +140,25 @@ type MetricInfo struct {
 	// Unit, if not-empty, will set the unit associated with the metric.
 	// See: https://github.com/open-telemetry/opentelemetry-collector/blob/b06236cc794982916cc956f20828b3e18eb33264/pdata/pmetric/generated_metric.go#L72-L81
 	Unit string `mapstructure:"unit"`
+	// CollectorInfoAsResourceAttributes (experimental) appends the
+	// collector instance information, retrieved from the telemetry
+	// settings, as resource attributes to the produced metric if set
+	// to true. This is important to ensure single-writer if resource
+	// attributes are whitelisted using `include_resource_attributes`.
+	CollectorInfoAsResourceAttributes bool `mapstructure:"collector_info_as_resource_attributes"`
 	// IncludeResourceAttributes is a list of resource attributes that
 	// needs to be included in the generated metric. If no resource
 	// attribute is included in the list then all attributes are included.
 	// Note that configuring this setting might cause the produced metric
 	// to lose its identity or cause identity conflict.
-	IncludeResourceAttributes []Attribute           `mapstructure:"include_resource_attributes"`
-	Attributes                []Attribute           `mapstructure:"attributes"`
-	Histogram                 *Histogram            `mapstructure:"histogram"`
-	ExponentialHistogram      *ExponentialHistogram `mapstructure:"exponential_histogram"`
-	Sum                       *Sum                  `mapstructure:"sum"`
+	IncludeResourceAttributes []Attribute `mapstructure:"include_resource_attributes"`
+	Attributes                []Attribute `mapstructure:"attributes"`
+	// Conditions are a set of OTTL condtions which are ORd. Data is
+	// processed into metrics only if the sequence evaluates to true.
+	Conditions           []string              `mapstructure:"conditions"`
+	Histogram            *Histogram            `mapstructure:"histogram"`
+	ExponentialHistogram *ExponentialHistogram `mapstructure:"exponential_histogram"`
+	Sum                  *Sum                  `mapstructure:"sum"`
 }
 
 func (mi *MetricInfo) validateAttributes() error {
@@ -262,6 +271,10 @@ func validateMetricInfo[K any](mi MetricInfo, parser ottl.Parser[K]) error {
 	// are valid. Check for required statements is left to the other validations.
 	if _, err := parser.ParseStatements(statements); err != nil {
 		return fmt.Errorf("failed to parse OTTL statements: %w", err)
+	}
+	// validate OTTL conditions
+	if _, err := parser.ParseConditions(mi.Conditions); err != nil {
+		return fmt.Errorf("failed to parse OTTL conditions: %w", err)
 	}
 	return nil
 }

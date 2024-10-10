@@ -1,165 +1,22 @@
 resourceMetrics:
   - resource:
       attributes:
-        - key: resource.bar
-          value:
-            stringValue: bar
         - key: resource.foo
           value:
             stringValue: foo
     scopeMetrics:
       - metrics:
-          - description: Logrecords as exponential histogram with log.duration from attributes
-            exponentialHistogram:
-              aggregationTemporality: 1
-              dataPoints:
-                - count: "4"
-                  max: 101.5
-                  min: 7
-                  negative: {}
-                  positive:
-                    bucketCounts:
-                      - "1"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "1"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "1"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "1"
-                    offset: 89
-                  scale: 5
-                  sum: 128
-                  timeUnixNano: "1000000"
-            name: total.logrecords.exphistogram
-          - description: Count total number of log records as per log.foo attribute as exponential histogram with log.duration from attributes
+          - description: An exponential histogram created from gague values
             exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
                 - attributes:
-                    - key: log.foo
+                    - key: datapoint.foo
                       value:
                         stringValue: foo
-                  count: "2"
-                  max: 101.5
-                  min: 11.4
+                  count: "4"
+                  max: 456
+                  min: 1.23
                   negative: {}
                   positive:
                     bucketCounts:
@@ -194,6 +51,12 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "0"
+                      - "1"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
                       - "0"
                       - "0"
                       - "0"
@@ -265,86 +128,47 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "1"
-                    offset: 112
-                  scale: 5
-                  sum: 112.9
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "1"
+                    offset: 4
+                  scale: 4
+                  sum: 584.79
                   timeUnixNano: "1000000"
                 - attributes:
-                    - key: log.foo
+                    - key: datapoint.foo
                       value:
                         stringValue: notfoo
-                  count: "1"
-                  max: 8.1
-                  min: 8.1
-                  negative: {}
-                  positive:
-                    bucketCounts:
-                      - "1"
-                    offset: 3.16452e+06
-                  scale: 20
-                  sum: 8.1
-                  timeUnixNano: "1000000"
-            name: log.foo.exphistogram
-          - description: Count total number of log records as per log.bar attribute as exponential histogram with log.duration from attributes
-            exponentialHistogram:
-              aggregationTemporality: 1
-              dataPoints:
-                - attributes:
-                    - key: log.bar
-                      value:
-                        stringValue: bar
-                  count: "1"
-                  max: 101.5
-                  min: 101.5
-                  negative: {}
-                  positive:
-                    bucketCounts:
-                      - "1"
-                    offset: 6.989111e+06
-                  scale: 20
-                  sum: 101.5
-                  timeUnixNano: "1000000"
-                - attributes:
-                    - key: log.bar
-                      value:
-                        stringValue: notbar
-                  count: "1"
-                  max: 11.4
-                  min: 11.4
-                  negative: {}
-                  positive:
-                    bucketCounts:
-                      - "1"
-                    offset: 3.68151e+06
-                  scale: 20
-                  sum: 11.4
-                  timeUnixNano: "1000000"
-            name: log.bar.exphistogram
-        scope:
-          name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
-  - resource:
-      attributes:
-        - key: observer.service.instance.id
-          value:
-            stringValue: 627cc493-f310-47de-96bd-71410b7dec09
-        - key: observer.service.name
-          value:
-            stringValue: signaltometrics
-        - key: observer.service.namespace
-          value:
-            stringValue: test
-        - key: resource.foo
-          value:
-            stringValue: foo
-    scopeMetrics:
-      - metrics:
-          - description: Logrecords with resource attribute foo as exponential histogram with log.duration from attributes
-            exponentialHistogram:
-              aggregationTemporality: 1
-              dataPoints:
-                - count: "4"
-                  max: 101.5
-                  min: 7
+                  count: "2"
+                  max: 789
+                  min: 7.89
                   negative: {}
                   positive:
                     bucketCounts:
@@ -355,24 +179,6 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "0"
-                      - "1"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "0"
-                      - "1"
-                      - "0"
                       - "0"
                       - "0"
                       - "0"
@@ -473,10 +279,10 @@ resourceMetrics:
                       - "0"
                       - "0"
                       - "1"
-                    offset: 89
-                  scale: 5
-                  sum: 128
+                    offset: 47
+                  scale: 4
+                  sum: 796.89
                   timeUnixNano: "1000000"
-            name: total.logrecords.resource.foo.exphistogram
+            name: gauge.to.exphistogram
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector

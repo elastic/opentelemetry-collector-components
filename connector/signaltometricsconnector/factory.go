@@ -34,6 +34,8 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
 )
 
+const collectorInstanceResourceAttributePrefix = "observer"
+
 // NewFactory returns a ConnectorFactory.
 func NewFactory() connector.Factory {
 	return connector.NewFactory(
@@ -69,14 +71,18 @@ func createTracesToMetrics(
 	metricDefs := make([]model.MetricDef[ottlspan.TransformContext], 0, len(c.Spans))
 	for _, info := range c.Spans {
 		var md model.MetricDef[ottlspan.TransformContext]
-		if err := md.FromMetricInfo(info, parser); err != nil {
+		if err := md.FromMetricInfo(info, parser, set.TelemetrySettings); err != nil {
 			return nil, fmt.Errorf("failed to parse provided metric information; %w", err)
 		}
 		metricDefs = append(metricDefs, md)
 	}
 
 	return &signalToMetrics{
-		logger:         set.Logger,
+		logger: set.Logger,
+		collectorInstanceInfo: model.NewCollectorInstanceInfo(
+			collectorInstanceResourceAttributePrefix,
+			set.TelemetrySettings,
+		),
 		next:           nextConsumer,
 		spanMetricDefs: metricDefs,
 	}, nil
@@ -100,14 +106,18 @@ func createMetricsToMetrics(
 	metricDefs := make([]model.MetricDef[ottldatapoint.TransformContext], 0, len(c.Datapoints))
 	for _, info := range c.Datapoints {
 		var md model.MetricDef[ottldatapoint.TransformContext]
-		if err := md.FromMetricInfo(info, parser); err != nil {
+		if err := md.FromMetricInfo(info, parser, set.TelemetrySettings); err != nil {
 			return nil, fmt.Errorf("failed to parse provided metric information; %w", err)
 		}
 		metricDefs = append(metricDefs, md)
 	}
 
 	return &signalToMetrics{
-		logger:       set.Logger,
+		logger: set.Logger,
+		collectorInstanceInfo: model.NewCollectorInstanceInfo(
+			collectorInstanceResourceAttributePrefix,
+			set.TelemetrySettings,
+		),
 		next:         nextConsumer,
 		dpMetricDefs: metricDefs,
 	}, nil
@@ -131,14 +141,18 @@ func createLogsToMetrics(
 	metricDefs := make([]model.MetricDef[ottllog.TransformContext], 0, len(c.Logs))
 	for _, info := range c.Logs {
 		var md model.MetricDef[ottllog.TransformContext]
-		if err := md.FromMetricInfo(info, parser); err != nil {
+		if err := md.FromMetricInfo(info, parser, set.TelemetrySettings); err != nil {
 			return nil, fmt.Errorf("failed to parse provided metric information; %w", err)
 		}
 		metricDefs = append(metricDefs, md)
 	}
 
 	return &signalToMetrics{
-		logger:        set.Logger,
+		logger: set.Logger,
+		collectorInstanceInfo: model.NewCollectorInstanceInfo(
+			collectorInstanceResourceAttributePrefix,
+			set.TelemetrySettings,
+		),
 		next:          nextConsumer,
 		logMetricDefs: metricDefs,
 	}, nil
