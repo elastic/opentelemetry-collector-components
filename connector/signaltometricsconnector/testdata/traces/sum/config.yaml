@@ -1,0 +1,30 @@
+signaltometrics:
+  spans:
+    - name: with_resource_foo_only
+      description: Spans with resource attribute white listing for resource.foo as a int sum metric
+      unit: s
+      include_resource_attributes:
+        - key: resource.foo
+      sum:
+        value: Int(Seconds(end_time - start_time))
+    - name: http.trace.span.duration
+      description: Span duration for HTTP spans as a int sum metric
+      unit: s
+      attributes:
+        - key: http.response.status_code
+      sum:
+        value: Int(Seconds(end_time - start_time))
+    - name: db.trace.span.duration
+      description: Span duration for DB spans as a int sum metric
+      unit: s
+      attributes:
+        - key: db.system
+      sum:
+        value: Int(Seconds(end_time - start_time))
+    - name: msg.trace.span.duration
+      description: Span duration for messaging spans as a double sum metric
+      unit: s
+      attributes:
+        - key: messaging.system
+      sum:
+        value: Double(Seconds(end_time - start_time))
