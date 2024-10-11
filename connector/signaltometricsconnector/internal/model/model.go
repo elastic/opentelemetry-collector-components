@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/config"
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
@@ -120,6 +121,7 @@ type MetricDef[K any] struct {
 	Unit                      string
 	IncludeResourceAttributes []AttributeKeyValue
 	Attributes                []AttributeKeyValue
+	Conditions                *ottl.ConditionSequence[K]
 	ExponentialHistogram      *ExponentialHistogram[K]
 	ExplicitHistogram         *ExplicitHistogram[K]
 	Sum                       *Sum[K]
@@ -128,6 +130,7 @@ type MetricDef[K any] struct {
 func (md *MetricDef[K]) FromMetricInfo(
 	mi config.MetricInfo,
 	parser ottl.Parser[K],
+	telemetrySettings component.TelemetrySettings,
 ) error {
 	md.Key.Name = mi.Name
 	md.Key.Description = mi.Description
@@ -141,6 +144,18 @@ func (md *MetricDef[K]) FromMetricInfo(
 	md.Attributes, err = parseAttributeConfigs(mi.Attributes)
 	if err != nil {
 		return fmt.Errorf("failed to parse attribute config: %w", err)
+	}
+	if len(mi.Conditions) > 0 {
+		conditions, err := parser.ParseConditions(mi.Conditions)
+		if err != nil {
+			return fmt.Errorf("failed to parse OTTL conditions: %w", err)
+		}
+		condSeq := ottl.NewConditionSequence(
+			conditions,
+			telemetrySettings,
+			ottl.WithLogicOperation[K](ottl.Or),
+		)
+		md.Conditions = &condSeq
 	}
 	if mi.Histogram != nil {
 		md.ExplicitHistogram = new(ExplicitHistogram[K])
