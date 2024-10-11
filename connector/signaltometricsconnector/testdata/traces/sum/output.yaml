@@ -35,6 +35,14 @@ resourceMetrics:
             stringValue: foo
     scopeMetrics:
       - metrics:
+          - description: Adjusted count for the span as a sum metric
+            name: span_adjusted_count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "8"
+                  timeUnixNano: "1000000"
+            unit: s
           - description: Span duration for HTTP spans as a int sum metric
             name: http.trace.span.duration
             sum:
