@@ -7,6 +7,11 @@ signaltometrics:
         - key: resource.foo
       sum:
         value: Int(Seconds(end_time - start_time))
+    - name: span_adjusted_count
+      description: Adjusted count for the span as a sum metric
+      unit: s
+      sum:
+        value: Int(AdjustedCount())
     - name: http.trace.span.duration
       description: Span duration for HTTP spans as a int sum metric
       unit: s

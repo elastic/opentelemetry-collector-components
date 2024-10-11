@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/ottlget"
+	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/customottl"
 	"github.com/lightstep/go-expohisto/structure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
@@ -64,7 +64,7 @@ func (c *Config) Validate() error {
 	var multiError error // collect all errors at once
 	if len(c.Spans) > 0 {
 		parser, err := ottlspan.NewParser(
-			ottlget.CustomFuncs[ottlspan.TransformContext](),
+			customottl.SpanFuncs(),
 			component.TelemetrySettings{Logger: zap.NewNop()},
 		)
 		if err != nil {
@@ -78,7 +78,7 @@ func (c *Config) Validate() error {
 	}
 	if len(c.Datapoints) > 0 {
 		parser, err := ottldatapoint.NewParser(
-			ottlget.CustomFuncs[ottldatapoint.TransformContext](),
+			customottl.DatapointFuncs(),
 			component.TelemetrySettings{Logger: zap.NewNop()},
 		)
 		if err != nil {
@@ -92,7 +92,7 @@ func (c *Config) Validate() error {
 	}
 	if len(c.Logs) > 0 {
 		parser, err := ottllog.NewParser(
-			ottlget.CustomFuncs[ottllog.TransformContext](),
+			customottl.LogFuncs(),
 			component.TelemetrySettings{Logger: zap.NewNop()},
 		)
 		if err != nil {
@@ -242,20 +242,20 @@ func validateMetricInfo[K any](mi MetricInfo, parser ottl.Parser[K]) error {
 	if mi.Histogram != nil {
 		metricsDefinedCount++
 		if mi.Histogram.Count != "" {
-			statements = append(statements, ottlget.ConvertToStatement(mi.Histogram.Count))
+			statements = append(statements, customottl.ConvertToStatement(mi.Histogram.Count))
 		}
-		statements = append(statements, ottlget.ConvertToStatement(mi.Histogram.Value))
+		statements = append(statements, customottl.ConvertToStatement(mi.Histogram.Value))
 	}
 	if mi.ExponentialHistogram != nil {
 		metricsDefinedCount++
 		if mi.ExponentialHistogram.Count != "" {
-			statements = append(statements, ottlget.ConvertToStatement(mi.ExponentialHistogram.Count))
+			statements = append(statements, customottl.ConvertToStatement(mi.ExponentialHistogram.Count))
 		}
-		statements = append(statements, ottlget.ConvertToStatement(mi.ExponentialHistogram.Value))
+		statements = append(statements, customottl.ConvertToStatement(mi.ExponentialHistogram.Value))
 	}
 	if mi.Sum != nil {
 		metricsDefinedCount++
-		statements = append(statements, ottlget.ConvertToStatement(mi.Sum.Value))
+		statements = append(statements, customottl.ConvertToStatement(mi.Sum.Value))
 	}
 	if metricsDefinedCount != 1 {
 		return fmt.Errorf("exactly one of the metrics must be defined, %d found", metricsDefinedCount)

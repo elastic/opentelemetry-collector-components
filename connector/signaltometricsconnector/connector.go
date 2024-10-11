@@ -24,10 +24,10 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/aggregator"
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/model"
+	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/trace"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottllog"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottlspan"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -71,7 +71,7 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 			for k := 0; k < scopeSpan.Spans().Len(); k++ {
 				span := scopeSpan.Spans().At(k)
 				spanAttrs := span.Attributes()
-				adjustedCount := calculateAdjustedCount(span.TraceState().AsRaw())
+				adjustedCount := int64(trace.CalculateAdjustedCount(span.TraceState().AsRaw()))
 				for _, md := range sm.spanMetricDefs {
 					filteredSpanAttrs := getFilteredAttributes(spanAttrs, md.Attributes)
 					if filteredSpanAttrs.Len() != len(md.Attributes) {
@@ -305,29 +305,6 @@ func (sm *signalToMetrics) processNext(ctx context.Context, m pmetric.Metrics, e
 		)
 	}
 	return sm.next.ConsumeMetrics(ctx, m)
-}
-
-// calculateAdjustedCount calculates the adjusted count which represents
-// the number of spans in the population that are represented by the
-// individually sampled span. If the span is not-sampled OR if a non-
-// probability sampler is used then adjusted count defaults to 1.
-// https://github.com/open-telemetry/oteps/blob/main/text/trace/0235-sampling-threshold-in-trace-state.md
-func calculateAdjustedCount(tracestate string) int64 {
-	w3cTraceState, err := sampling.NewW3CTraceState(tracestate)
-	if err != nil {
-		return 1
-	}
-	otTraceState := w3cTraceState.OTelValue()
-	if otTraceState == nil {
-		return 1
-	}
-	if len(otTraceState.TValue()) == 0 {
-		// For non-probabilistic sampler OR always sampling threshold, default to 1
-		return 1
-	}
-	// TODO (lahsivjar): Handle fractional adjusted count. One way to do this
-	// would be to scale the values in the histograms for some precision.
-	return int64(otTraceState.AdjustedCount())
 }
 
 func getFilteredAttributes(attrs pcommon.Map, filters []model.AttributeKeyValue) pcommon.Map {
