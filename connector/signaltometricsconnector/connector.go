@@ -71,7 +71,7 @@ func (sm *signalToMetrics) ConsumeTraces(ctx context.Context, td ptrace.Traces) 
 			for k := 0; k < scopeSpan.Spans().Len(); k++ {
 				span := scopeSpan.Spans().At(k)
 				spanAttrs := span.Attributes()
-				adjustedCount := trace.CalculateAdjustedCount(span.TraceState().AsRaw())
+				adjustedCount := int64(trace.CalculateAdjustedCount(span.TraceState().AsRaw()))
 				for _, md := range sm.spanMetricDefs {
 					filteredSpanAttrs := getFilteredAttributes(spanAttrs, md.Attributes)
 					if filteredSpanAttrs.Len() != len(md.Attributes) {

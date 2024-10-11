@@ -26,7 +26,7 @@ import (
 // individually sampled span. If the span is not-sampled OR if a non-
 // probability sampler is used then adjusted count defaults to 1.
 // https://github.com/open-telemetry/oteps/blob/main/text/trace/0235-sampling-threshold-in-trace-state.md
-func CalculateAdjustedCount(tracestate string) int64 {
+func CalculateAdjustedCount(tracestate string) float64 {
 	w3cTraceState, err := sampling.NewW3CTraceState(tracestate)
 	if err != nil {
 		return 1
@@ -41,5 +41,5 @@ func CalculateAdjustedCount(tracestate string) int64 {
 	}
 	// TODO (lahsivjar): Handle fractional adjusted count. One way to do this
 	// would be to scale the values in the histograms for some precision.
-	return int64(otTraceState.AdjustedCount())
+	return otTraceState.AdjustedCount()
 }

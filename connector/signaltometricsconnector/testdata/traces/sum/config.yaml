@@ -11,7 +11,7 @@ signaltometrics:
       description: Adjusted count for the span as a sum metric
       unit: s
       sum:
-        value: AdjustedCount()
+        value: Int(AdjustedCount())
     - name: http.trace.span.duration
       description: Span duration for HTTP spans as a int sum metric
       unit: s

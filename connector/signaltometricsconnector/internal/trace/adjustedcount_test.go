@@ -26,7 +26,7 @@ import (
 func TestCalculateAdjustedCount(t *testing.T) {
 	for _, tc := range []struct {
 		tracestate string
-		expected   int64
+		expected   float64
 	}{
 		{"", 1},
 		{"invalid=p:8;th:8", 1},
