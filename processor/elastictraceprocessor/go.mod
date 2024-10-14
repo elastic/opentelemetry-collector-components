@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/elastictr
 go 1.22.0
 
 require (
-	github.com/elastic/opentelemetry-lib v0.11.0
+	github.com/elastic/opentelemetry-lib v0.12.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.111.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.111.0
 	github.com/stretchr/testify v1.9.0
