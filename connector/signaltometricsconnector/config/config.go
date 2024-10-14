@@ -144,7 +144,7 @@ type MetricInfo struct {
 	// collector instance information, retrieved from the telemetry
 	// settings, as resource attributes to the produced metric if set
 	// to true. This is important to ensure single-writer if resource
-	// attributes are whitelisted using `include_resource_attributes`.
+	// attributes are included using `include_resource_attributes`.
 	CollectorInfoAsResourceAttributes bool `mapstructure:"collector_info_as_resource_attributes"`
 	// IncludeResourceAttributes is a list of resource attributes that
 	// needs to be included in the generated metric. If no resource
