@@ -34,7 +34,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/model"
 )
 
-const collectorInstanceResourceAttributePrefix = "observer"
+var collectorInstanceResourceAttributePrefix = metadata.Type.String()
 
 // NewFactory returns a ConnectorFactory.
 func NewFactory() connector.Factory {
