@@ -140,17 +140,14 @@ type MetricInfo struct {
 	// Unit, if not-empty, will set the unit associated with the metric.
 	// See: https://github.com/open-telemetry/opentelemetry-collector/blob/b06236cc794982916cc956f20828b3e18eb33264/pdata/pmetric/generated_metric.go#L72-L81
 	Unit string `mapstructure:"unit"`
-	// CollectorInfoAsResourceAttributes (experimental) appends the
-	// collector instance information, retrieved from the telemetry
-	// settings, as resource attributes to the produced metric if set
-	// to true. This is important to ensure single-writer if resource
-	// attributes are included using `include_resource_attributes`.
-	CollectorInfoAsResourceAttributes bool `mapstructure:"collector_info_as_resource_attributes"`
 	// IncludeResourceAttributes is a list of resource attributes that
 	// needs to be included in the generated metric. If no resource
 	// attribute is included in the list then all attributes are included.
-	// Note that configuring this setting might cause the produced metric
-	// to lose its identity or cause identity conflict.
+	// Metric data streams MUST obey single-writer. The component produces
+	// metrics from non-metric signals as well as alters resource attributes
+	// from the source signals. To keep the single-writer valid, the
+	// component adds collector information as resource attribute with the
+	// component name as the prefix of the resource attributes.
 	IncludeResourceAttributes []Attribute `mapstructure:"include_resource_attributes"`
 	Attributes                []Attribute `mapstructure:"attributes"`
 	// Conditions are a set of OTTL condtions which are ORd. Data is

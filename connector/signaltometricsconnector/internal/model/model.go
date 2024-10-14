@@ -117,15 +117,14 @@ func (s *Sum[K]) fromConfig(
 }
 
 type MetricDef[K any] struct {
-	Key                               MetricKey
-	Unit                              string
-	CollectorInfoAsResourceAttributes bool
-	IncludeResourceAttributes         []AttributeKeyValue
-	Attributes                        []AttributeKeyValue
-	Conditions                        *ottl.ConditionSequence[K]
-	ExponentialHistogram              *ExponentialHistogram[K]
-	ExplicitHistogram                 *ExplicitHistogram[K]
-	Sum                               *Sum[K]
+	Key                       MetricKey
+	Unit                      string
+	IncludeResourceAttributes []AttributeKeyValue
+	Attributes                []AttributeKeyValue
+	Conditions                *ottl.ConditionSequence[K]
+	ExponentialHistogram      *ExponentialHistogram[K]
+	ExplicitHistogram         *ExplicitHistogram[K]
+	Sum                       *Sum[K]
 }
 
 func (md *MetricDef[K]) FromMetricInfo(
@@ -136,7 +135,6 @@ func (md *MetricDef[K]) FromMetricInfo(
 	md.Key.Name = mi.Name
 	md.Key.Description = mi.Description
 	md.Unit = mi.Unit
-	md.CollectorInfoAsResourceAttributes = mi.CollectorInfoAsResourceAttributes
 
 	var err error
 	md.IncludeResourceAttributes, err = parseAttributeConfigs(mi.IncludeResourceAttributes)
@@ -189,21 +187,17 @@ func (md *MetricDef[K]) FilterResourceAttributes(
 	attrs pcommon.Map,
 	collectorInfo *CollectorInstanceInfo,
 ) pcommon.Map {
-	if len(md.IncludeResourceAttributes) == 0 {
-		// No resource attributes are specified, return all as a copy.
-		// Copy is performed to avoid mutating the data.
-		m := pcommon.NewMap()
-		attrs.CopyTo(m)
-		return m
+	var filteredAttributes pcommon.Map
+	switch {
+	case len(md.IncludeResourceAttributes) == 0:
+		filteredAttributes = pcommon.NewMap()
+		filteredAttributes.EnsureCapacity(attrs.Len() + collectorInfo.Size())
+		attrs.CopyTo(filteredAttributes)
+	default:
+		expectedLen := len(md.IncludeResourceAttributes) + collectorInfo.Size()
+		filteredAttributes = filterAttributes(attrs, md.IncludeResourceAttributes, expectedLen)
 	}
-	expectedLen := len(md.IncludeResourceAttributes)
-	if md.CollectorInfoAsResourceAttributes {
-		expectedLen += collectorInfo.Size()
-	}
-	filteredAttributes := filterAttributes(attrs, md.IncludeResourceAttributes, expectedLen)
-	if md.CollectorInfoAsResourceAttributes {
-		collectorInfo.Copy(filteredAttributes)
-	}
+	collectorInfo.Copy(filteredAttributes)
 	return filteredAttributes
 }
 

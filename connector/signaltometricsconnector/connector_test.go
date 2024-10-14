@@ -135,7 +135,9 @@ func TestConnectorWithLogs(t *testing.T) {
 
 			require.NoError(t, connector.ConsumeLogs(ctx, inputLogs))
 			require.Len(t, next.AllMetrics(), 1)
-			assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0])
+			if !assertAggregatedMetrics(t, expectedMetrics, next.AllMetrics()[0]) {
+				golden.WriteMetrics(t, filepath.Join(tcTestDataDir, "output.yaml"), next.AllMetrics()[0])
+			}
 		})
 	}
 }

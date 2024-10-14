@@ -7,7 +7,6 @@ signaltometrics:
         value: attributes["log.duration"]
     - name: total.logrecords.resource.foo.exphistogram
       description: Logrecords with resource attribute foo as exponential histogram with log.duration from attributes
-      collector_info_as_resource_attributes: true
       include_resource_attributes:
         - key: resource.foo
       exponential_histogram:

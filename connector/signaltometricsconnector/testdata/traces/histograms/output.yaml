@@ -15,7 +15,7 @@ resourceMetrics:
             stringValue: foo
     scopeMetrics:
       - metrics:
-          - description: Spans with resource attribute white listing for resource.foo as a histogram metric
+          - description: Spans with resource attribute including resource.foo as a histogram metric
             histogram:
               aggregationTemporality: 1
               dataPoints:
@@ -63,6 +63,15 @@ resourceMetrics:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
   - resource:
       attributes:
+        - key: observer.service.instance.id
+          value:
+            stringValue: 627cc493-f310-47de-96bd-71410b7dec09
+        - key: observer.service.name
+          value:
+            stringValue: signaltometrics
+        - key: observer.service.namespace
+          value:
+            stringValue: test
         - key: resource.bar
           value:
             stringValue: bar
