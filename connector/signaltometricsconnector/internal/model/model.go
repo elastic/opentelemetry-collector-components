@@ -180,17 +180,17 @@ func (md *MetricDef[K]) FromMetricInfo(
 	return nil
 }
 
-// FilterResourceAttributes filteres resource attributes based on the
-// `IncludeResourceAttributes` white list for the metric definition. Resource
-// attributes are only filtered if the white list is specified, otherwise
-// all the resource attributes are used for creating the metrics from the
-// metric definition.
+// FilterResourceAttributes filters resource attributes based on the
+// `IncludeResourceAttributes` list for the metric definition. Resource
+// attributes are only filtered if the list is specified, otherwise all the
+// resource attributes are used for creating the metrics from the metric
+// definition.
 func (md *MetricDef[K]) FilterResourceAttributes(
 	attrs pcommon.Map,
 	collectorInfo *CollectorInstanceInfo,
 ) pcommon.Map {
 	if len(md.IncludeResourceAttributes) == 0 {
-		// No resource attributes are whitelisted, return all as a copy.
+		// No resource attributes are specified, return all as a copy.
 		// Copy is performed to avoid mutating the data.
 		m := pcommon.NewMap()
 		attrs.CopyTo(m)
