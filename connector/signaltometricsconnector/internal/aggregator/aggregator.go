@@ -162,6 +162,7 @@ func (a *Aggregator[K]) Finalize(mds []model.MetricDef[K]) {
 		// then they will be aggregated within the same metric and produced
 		// together. Deleting the key ensures this while preventing duplicates.
 		delete(a.valueCounts, md.Key)
+		delete(a.sums, md.Key)
 	}
 }
 
