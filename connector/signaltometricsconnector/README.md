@@ -25,12 +25,13 @@ Signal to metrics connector produces metrics from all signal types (traces, logs
 
 ## Configuration
 
-The component requires a configuration section to work. The component can produce
-metrics from spans, datapoints (for metrics), and logs. Atleast one of the metrics
-for one signal type MUST be specified for the component to work. All signal types
-can be configured to produce metrics with the same configuration structure. For
-example, the below configuration will produce delta temporality counters for
-counting number of events for each of the configured signal:
+The component can produce metrics from spans, datapoints (for metrics), and logs.
+Atleast one of the metrics for one signal type MUST be specified correctly for
+the component to work.
+
+All signal types can be configured to produce metrics with the same configuration
+structure. For example, the below configuration will produce delta temporality counters
+for counting number of events for each of the configured signals:
 
 ```yaml
 signaltometrics:
@@ -51,10 +52,10 @@ signaltometrics:
         value: "1" # increment by 1 for each log record
 ```
 
-### Metics types
+### Metrics types
 
 `signaltometrics` produces a variety of metric types by utilizing [OTTL](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/pkg/ottl/README.md)
-to extract the relevant data for a metric type from the underlying telemetry. The
+to extract the relevant data for a metric type from the incoming data. The
 component can produce the following metric types for each signal types:
 
 - [Sum](https://opentelemetry.io/docs/specs/otel/metrics/data-model/#sums)
@@ -70,8 +71,8 @@ sum:
   value: <ottl_value_expression>
 ```
 
-- [Required] `value` represents an OTTL expression to extract a value from the
-  underlying telemetry. Only OTTL expressions that return a value are accepted. The
+- [**Required**] `value` represents an OTTL expression to extract a value from the
+  incoming data. Only OTTL expressions that return a value are accepted. The
   returned value determines the value type of the `sum` metric (`int` or `double`).
   [OTTL converters](https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs#readme-converters) can be used to transform the data.
 
@@ -86,19 +87,19 @@ histogram:
   value: <ottl_value_expression>
 ```
 
-- [Optional] `buckets` represents the buckets to be used for the histogram. If no
+- [**Optional**] `buckets` represents the buckets to be used for the histogram. If no
   buckets are configured then it defaults to:
 
   ```go
   []float64{2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10_000, 15_000}
   ```
 
-- [Optional] `count` represents an OTTL expression to extract the count to be recorded
-  in the histogram from the underlying telemetry. If no expression is provided then it
+- [**Optional**] `count` represents an OTTL expression to extract the count to be recorded
+  in the histogram from the incoming data. If no expression is provided then it
   defaults to the count of the signal i.e. [adjusted count](https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling-experimental/#adjusted-count) for spans and count for others.
   [OTTL converters](https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs#readme-converters) can be used to transform the data.
-- [Required] `value` represents an OTTL expression to extract the value to be recorded
-  in the histogram from the underlying telemetry.
+- [**Required**] `value` represents an OTTL expression to extract the value to be recorded
+  in the histogram from the incoming data.
   [OTTL converters](https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs#readme-converters) can be used to transform the data.
 
 #### Exponential Histogram
@@ -112,15 +113,15 @@ exponential_histogram:
   value: <ottl_value_expression>
 ```
 
-- [Optional] `max_size` represents the maximum number of buckets per positive or
+- [**Optional**] `max_size` represents the maximum number of buckets per positive or
   negative number range. Defaults to `160`.
-- [Optional] `count` represents an OTTL expression to extract the count to be recorded
-  in the exponential histogram from the underlying telemetry. If no expression is
-  provided then it defaults to the count of the signal i.e. [adjusted count](https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling-experimental/#adjusted-count)
+- [**Optional**] `count` represents an OTTL expression to extract the count to be recorded
+  in the exponential histogram from the incoming data. If no expression is provided
+  then it defaults to the count of the signal i.e. [adjusted count](https://opentelemetry.io/docs/specs/otel/trace/tracestate-probability-sampling-experimental/#adjusted-count)
   for spans and count for others.
   [OTTL converters](https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs#readme-converters) can be used to transform the data.
-- [Required] `value` represents an OTTL expression to extract the value to be recorded
-  in the exponential histogram from the underlying telemetry.
+- [**Required**] `value` represents an OTTL expression to extract the value to be recorded
+  in the exponential histogram from the incoming data.
   [OTTL converters](https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs#readme-converters) can be used to transform the data.
 
 ### Attributes
