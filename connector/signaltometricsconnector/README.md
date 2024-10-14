@@ -26,7 +26,7 @@ Signal to metrics connector produces metrics from all signal types (traces, logs
 ## Configuration
 
 The component can produce metrics from spans, datapoints (for metrics), and logs.
-Atleast one of the metrics for one signal type MUST be specified correctly for
+At least one of the metrics for one signal type MUST be specified correctly for
 the component to work.
 
 All signal types can be configured to produce metrics with the same configuration
@@ -189,12 +189,12 @@ resource attributes specified in the list:
 
 ### Single writer
 
-Metrics data streams MUST obey [single-writer](https://opentelemetry.io/docs/specs/otel/metrics/data-model/#single-writer) principal. However,
+Metrics data streams MUST obey [single-writer](https://opentelemetry.io/docs/specs/otel/metrics/data-model/#single-writer) principle. However,
 since `signaltometrics` component produces metrics from all signal types and also
 allows customizing the resource attributes, there is a possibility of violating the
-single-writer principal. To keep the single-writer principal entact, the component adds
-collector instance information as resource attributes. The following resource attributes 
-are added to each produced metrics:
+single-writer principle. To keep the single-writer principle intact, the component
+adds collector instance information as resource attributes. The following resource
+attributes are added to each produced metrics:
 
 ```yaml
 signaltometrics.service.name: <service_name_of_the_otel_collector>
