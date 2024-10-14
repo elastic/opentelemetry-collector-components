@@ -50,7 +50,7 @@ func TestCollectorInstanceInfo(t *testing.T) {
 			expected: func() pcommon.Map {
 				m := pcommon.NewMap()
 				m.PutStr(
-					"test."+semconv.AttributeServiceInstanceID,
+					"signaltometrics."+semconv.AttributeServiceInstanceID,
 					"627cc493-f310-47de-96bd-71410b7dec09",
 				)
 				return m
@@ -68,15 +68,15 @@ func TestCollectorInstanceInfo(t *testing.T) {
 			expected: func() pcommon.Map {
 				m := pcommon.NewMap()
 				m.PutStr(
-					"test."+semconv.AttributeServiceInstanceID,
+					"signaltometrics."+semconv.AttributeServiceInstanceID,
 					"627cc493-f310-47de-96bd-71410b7dec09",
 				)
 				m.PutStr(
-					"test."+semconv.AttributeServiceName,
+					"signaltometrics."+semconv.AttributeServiceName,
 					"signaltometrics",
 				)
 				m.PutStr(
-					"test."+semconv.AttributeServiceNamespace,
+					"signaltometrics."+semconv.AttributeServiceNamespace,
 					"test",
 				)
 				return m
@@ -84,7 +84,7 @@ func TestCollectorInstanceInfo(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ci := NewCollectorInstanceInfo("test", tc.input)
+			ci := NewCollectorInstanceInfo(tc.input)
 			require.NotNil(t, ci)
 
 			actual := pcommon.NewMap()

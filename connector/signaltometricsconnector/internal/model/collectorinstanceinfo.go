@@ -18,18 +18,19 @@
 package model // import "github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/model"
 
 import (
+	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/internal/metadata"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/collector/semconv/v1.26.0"
 )
+
+var prefix = metadata.Type.String()
 
 // CollectorInstanceInfo holds the attributes that could uniquely identify
 // the current collector instance. These attributes are initialized from the
 // telemetry settings. The CollectorInstanceInfo can copy these attributes,
 // with a given prefix, to a provided map.
 type CollectorInstanceInfo struct {
-	prefix string
-
 	size              int
 	serviceInstanceID string
 	serviceName       string
@@ -37,10 +38,9 @@ type CollectorInstanceInfo struct {
 }
 
 func NewCollectorInstanceInfo(
-	prefix string,
 	set component.TelemetrySettings,
 ) *CollectorInstanceInfo {
-	info := CollectorInstanceInfo{prefix: prefix}
+	var info CollectorInstanceInfo
 	set.Resource.Attributes().Range(func(k string, v pcommon.Value) bool {
 		switch k {
 		case semconv.AttributeServiceInstanceID:
@@ -73,19 +73,16 @@ func (info CollectorInstanceInfo) Size() int {
 func (info CollectorInstanceInfo) Copy(to pcommon.Map) {
 	to.EnsureCapacity(info.Size())
 	if info.serviceInstanceID != "" {
-		to.PutStr(keyWithPrefix(info.prefix, semconv.AttributeServiceInstanceID), info.serviceInstanceID)
+		to.PutStr(keyWithPrefix(semconv.AttributeServiceInstanceID), info.serviceInstanceID)
 	}
 	if info.serviceName != "" {
-		to.PutStr(keyWithPrefix(info.prefix, semconv.AttributeServiceName), info.serviceName)
+		to.PutStr(keyWithPrefix(semconv.AttributeServiceName), info.serviceName)
 	}
 	if info.serviceNamespace != "" {
-		to.PutStr(keyWithPrefix(info.prefix, semconv.AttributeServiceNamespace), info.serviceNamespace)
+		to.PutStr(keyWithPrefix(semconv.AttributeServiceNamespace), info.serviceNamespace)
 	}
 }
 
-func keyWithPrefix(prefix, key string) string {
-	if prefix == "" {
-		return key
-	}
+func keyWithPrefix(key string) string {
 	return prefix + "." + key
 }
