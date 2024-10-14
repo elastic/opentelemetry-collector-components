@@ -178,6 +178,67 @@ func (md *MetricDef[K]) FromMetricInfo(
 	return nil
 }
 
+// FilterResourceAttributes filters resource attributes based on the
+// `IncludeResourceAttributes` list for the metric definition. Resource
+// attributes are only filtered if the list is specified, otherwise all the
+// resource attributes are used for creating the metrics from the metric
+// definition.
+func (md *MetricDef[K]) FilterResourceAttributes(
+	attrs pcommon.Map,
+	collectorInfo *CollectorInstanceInfo,
+) pcommon.Map {
+	var filteredAttributes pcommon.Map
+	switch {
+	case len(md.IncludeResourceAttributes) == 0:
+		filteredAttributes = pcommon.NewMap()
+		filteredAttributes.EnsureCapacity(attrs.Len() + collectorInfo.Size())
+		attrs.CopyTo(filteredAttributes)
+	default:
+		expectedLen := len(md.IncludeResourceAttributes) + collectorInfo.Size()
+		filteredAttributes = filterAttributes(attrs, md.IncludeResourceAttributes, expectedLen)
+	}
+	collectorInfo.Copy(filteredAttributes)
+	return filteredAttributes
+}
+
+// FilterAttributes filters event attributes (datapoint, logrecord, spans)
+// based on the `Attributes` selected for the metric definition. If no
+// attributes are selected then an empty `pcommon.Map` is returned. Note
+// that, this filtering differs from resource attribute filtering as
+// in attribute filtering if any of the configured attributes is not present
+// in the data being processed then that metric definition is not processed.
+// The method returns a bool signaling if the filter was successful and metric
+// should be processed. If the bool value is false then the returned map
+// should not be used.
+func (md *MetricDef[K]) FilterAttributes(attrs pcommon.Map) (pcommon.Map, bool) {
+	// Figure out if all the attributes are available, saves allocation
+	for _, filter := range md.Attributes {
+		if filter.DefaultValue.Type() != pcommon.ValueTypeEmpty {
+			// will always add an attribute
+			continue
+		}
+		if _, ok := attrs.Get(filter.Key); !ok {
+			return pcommon.Map{}, false
+		}
+	}
+	return filterAttributes(attrs, md.Attributes, len(md.Attributes)), true
+}
+
+func filterAttributes(attrs pcommon.Map, filters []AttributeKeyValue, expectedLen int) pcommon.Map {
+	filteredAttrs := pcommon.NewMap()
+	filteredAttrs.EnsureCapacity(expectedLen)
+	for _, filter := range filters {
+		if attr, ok := attrs.Get(filter.Key); ok {
+			attr.CopyTo(filteredAttrs.PutEmpty(filter.Key))
+			continue
+		}
+		if filter.DefaultValue.Type() != pcommon.ValueTypeEmpty {
+			filter.DefaultValue.CopyTo(filteredAttrs.PutEmpty(filter.Key))
+		}
+	}
+	return filteredAttrs
+}
+
 func parseAttributeConfigs(cfgs []config.Attribute) ([]AttributeKeyValue, error) {
 	var errs []error
 	kvs := make([]AttributeKeyValue, len(cfgs))

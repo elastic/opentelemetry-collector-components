@@ -1,7 +1,7 @@
 signaltometrics:
   spans:
     - name: with_resource_foo_only
-      description: Spans with resource attribute white listing for resource.foo as a int sum metric
+      description: Spans with resource attribute including resource.foo as a int sum metric
       unit: s
       include_resource_attributes:
         - key: resource.foo

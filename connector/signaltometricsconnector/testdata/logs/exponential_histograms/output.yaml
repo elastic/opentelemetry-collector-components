@@ -1,6 +1,15 @@
 resourceMetrics:
   - resource:
       attributes:
+        - key: signaltometrics.service.instance.id
+          value:
+            stringValue: 627cc493-f310-47de-96bd-71410b7dec09
+        - key: signaltometrics.service.name
+          value:
+            stringValue: signaltometrics
+        - key: signaltometrics.service.namespace
+          value:
+            stringValue: test
         - key: resource.bar
           value:
             stringValue: bar
@@ -320,5 +329,163 @@ resourceMetrics:
                   sum: 11.4
                   timeUnixNano: "1000000"
             name: log.bar.exphistogram
+        scope:
+          name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
+  - resource:
+      attributes:
+        - key: signaltometrics.service.instance.id
+          value:
+            stringValue: 627cc493-f310-47de-96bd-71410b7dec09
+        - key: signaltometrics.service.name
+          value:
+            stringValue: signaltometrics
+        - key: signaltometrics.service.namespace
+          value:
+            stringValue: test
+        - key: resource.foo
+          value:
+            stringValue: foo
+    scopeMetrics:
+      - metrics:
+          - description: Logrecords with resource attribute foo as exponential histogram with log.duration from attributes
+            exponentialHistogram:
+              aggregationTemporality: 1
+              dataPoints:
+                - count: "4"
+                  max: 101.5
+                  min: 7
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "1"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "1"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "1"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "0"
+                      - "1"
+                    offset: 89
+                  scale: 5
+                  sum: 128
+                  timeUnixNano: "1000000"
+            name: total.logrecords.resource.foo.exphistogram
         scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector

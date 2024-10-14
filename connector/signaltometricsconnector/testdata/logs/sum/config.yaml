@@ -4,6 +4,12 @@ signaltometrics:
       description: Count total number of log records
       sum:
         value: "1"
+    - name: total.logrecords.resource.foo.sum
+      description: Count total number of log records with resource attribute foo
+      include_resource_attributes:
+        - key: resource.foo
+      sum:
+        value: "1"
     - name: log.foo.sum
       description: Count total number of log records as per log.foo attribute
       attributes:

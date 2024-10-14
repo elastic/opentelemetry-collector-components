@@ -1,12 +1,21 @@
 resourceMetrics:
   - resource:
       attributes:
+        - key: signaltometrics.service.instance.id
+          value:
+            stringValue: 627cc493-f310-47de-96bd-71410b7dec09
+        - key: signaltometrics.service.name
+          value:
+            stringValue: signaltometrics
+        - key: signaltometrics.service.namespace
+          value:
+            stringValue: test
         - key: resource.foo
           value:
             stringValue: foo
     scopeMetrics:
       - metrics:
-          - description: Spans with resource attribute white listing for resource.foo as a exponential histogram metric
+          - description: Spans with resource attribute including resource.foo as a exponential histogram metric
             exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
@@ -132,6 +141,15 @@ resourceMetrics:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
   - resource:
       attributes:
+        - key: signaltometrics.service.instance.id
+          value:
+            stringValue: 627cc493-f310-47de-96bd-71410b7dec09
+        - key: signaltometrics.service.name
+          value:
+            stringValue: signaltometrics
+        - key: signaltometrics.service.namespace
+          value:
+            stringValue: test
         - key: resource.bar
           value:
             stringValue: bar
