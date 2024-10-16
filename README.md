@@ -26,7 +26,7 @@ In order to build a collector with a custom component, e.g. for testing purposes
    GOOS=linux CGO_ENABLED=0 make genelasticcol
    ```
    The resulting binary will be placed in the `_build` directory.
-3. I order to build a Docker image with the collector, run the `builddocker` target of the root [Makefile](Makefile). 
+3. In order to build a Docker image with the collector, run the `builddocker` target of the root [Makefile](Makefile). 
    This target requires the environment variable `TAG` to be set. The resulting image will be tagged as `elastic-collector-components:<TAG>`.
    You may also specify the `USERNAME` environment variable to name the image as `<USERNAME>/elastic-collector-components:<TAG>`. For example:
    ```shell
