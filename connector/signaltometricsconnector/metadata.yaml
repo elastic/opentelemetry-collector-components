@@ -26,7 +26,7 @@ tests:
         description: "Count of log record"
         sum:
           value: "1" # Count each log record as 1, has to be a string
-    metrics:
+    datapoints:
       - name: datapoint.count
         description: "Count of datapoint"
         sum:
