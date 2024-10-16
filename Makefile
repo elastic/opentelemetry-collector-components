@@ -78,7 +78,15 @@ elasticcol-validate: genelasticcol
 .PHONY: builddocker
 builddocker:
 	@if [ -z "$(TAG)" ]; then \
-		echo "TAG is not set. Please provide a tag using 'make build-docker TAG=<tag>'"; \
+		echo "TAG is not set. Please provide a tag using 'make builddocker TAG=<tag>'"; \
 		exit 1; \
 	fi
-	docker build -t elastic-collector-components:$(TAG) -f distributions/elastic-components/Dockerfile .
+	@if [ ! -f "_build/elastic-collector-components" ]; then \
+		GOOS=linux $(MAKE) genelasticcol; \
+	fi
+	@if [ -n "$(USERNAME)" ]; then \
+		IMAGE_NAME=$(USERNAME)/elastic-collector-components:$(TAG); \
+	else \
+		IMAGE_NAME=elastic-collector-components:$(TAG); \
+	fi; \
+	docker build -t $$IMAGE_NAME -f distributions/elastic-components/Dockerfile .
