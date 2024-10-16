@@ -19,7 +19,7 @@ In order to build a collector with a custom component, e.g. for testing purposes
    - If you are testing a non-published version of the component, add an entry to the `replace` section, pointing to the local path of 
      the component's source.
 2. Build the collector through the `genelasticcol` target of the root [Makefile](Makefile). 
-   Make sure to provide GOOS and/or GOARCH environment variables if you are building for a different platform. 
+   Make sure to provide `GOOS` and/or `GOARCH` environment variables if you are building for a different platform. 
    For example, when building on macOS in order to run through the Linux Docker image that is built by the `builddocker` make target 
    (see next bullet) - use the following command:
    ```shell
