@@ -202,6 +202,14 @@ signaltometrics.service.namespace: <service_namespace_of_the_otel_collector>
 signaltometrics.service.instance.id: <service_instance_id_of_the_otel_collector>
 ```
 
+### Custom OTTL functions
+
+The component implements a couple of custom OTTL functions:
+
+1. `AdjustedCount`: a converter capable of calculating [adjusted count for a span](https://github.com/open-telemetry/oteps/blob/main/text/trace/0235-sampling-threshold-in-trace-state.md).
+2. `get`: a temporary solution to parse OTTL expressions with only values. This should
+not be used explicitly and is a stopgap measure ([see this for more details](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/35621)).
+
 ### Examples
 
 More examples for using this component are available in the [testdata](./testdata) directory.
