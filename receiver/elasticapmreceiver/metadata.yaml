@@ -1,0 +1,8 @@
+type: elasticapm
+
+status:
+  class: receiver
+  stability:
+    alpha: [metrics, logs, traces]
+  #codeowners:
+  #  active: []
