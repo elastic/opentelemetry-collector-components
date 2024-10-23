@@ -3,8 +3,8 @@ module github.com/elastic/opentelemetry-collector-components/processor/elastictr
 go 1.22.0
 
 require (
-	github.com/elastic/opentelemetry-lib v0.12.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.111.0
+	github.com/elastic/opentelemetry-lib v0.13.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.111.0
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/collector/component v0.112.0
@@ -34,7 +34,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.111.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.112.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	go.opentelemetry.io/collector/component/componentstatus v0.112.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.112.0 // indirect
@@ -43,7 +43,7 @@ require (
 	go.opentelemetry.io/collector/pdata/testdata v0.112.0 // indirect
 	go.opentelemetry.io/collector/pipeline v0.112.0 // indirect
 	go.opentelemetry.io/collector/processor/processorprofiles v0.112.0 // indirect
-	go.opentelemetry.io/collector/semconv v0.111.0 // indirect
+	go.opentelemetry.io/collector/semconv v0.112.0 // indirect
 	go.opentelemetry.io/otel v1.31.0 // indirect
 	go.opentelemetry.io/otel/metric v1.31.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.31.0 // indirect
