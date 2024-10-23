@@ -155,16 +155,10 @@ func (r *elasticAPMReceiver) newElasticAPMEventsHandler() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		statusCode := http.StatusAccepted
-		baseEvent := &modelpb.APMEvent{}
-		baseEvent.Event = &modelpb.Event{}
-		baseEvent.Event.Received = modelpb.FromTime(time.Now())
-
-		var result struct {
-			Accepted int         `json:"accepted"`
-			Errors   []jsonError `json:"errors,omitempty"`
-		}
 
 		var elasticapmResult elasticapm.Result
+		baseEvent := &modelpb.APMEvent{}
+		baseEvent.Event = &modelpb.Event{}
 		streamErr := elasticapmProcessor.HandleStream(
 			r.Context(),
 			baseEvent,
@@ -176,6 +170,10 @@ func (r *elasticAPMReceiver) newElasticAPMEventsHandler() http.HandlerFunc {
 		_ = streamErr
 		// TODO record metrics about errors?
 
+		var result struct {
+			Accepted int         `json:"accepted"`
+			Errors   []jsonError `json:"errors,omitempty"`
+		}
 		result.Accepted = elasticapmResult.Accepted
 		// TODO process elasticapmResult.Errors, add to result
 		// TODO process streamErr, conditionally add to result
