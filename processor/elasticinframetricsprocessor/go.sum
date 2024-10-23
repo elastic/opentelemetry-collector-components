@@ -3,8 +3,8 @@ github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/elastic/opentelemetry-lib v0.9.0 h1:auMnq5zxqnB3eQNNdfz8+mtooy0D8+2ZEusU0sHeDj4=
-github.com/elastic/opentelemetry-lib v0.9.0/go.mod h1:H4ECk7whGn41etgYL4zQWJ2BWN5xwP2A5HUIIwNrM9Y=
+github.com/elastic/opentelemetry-lib v0.12.0 h1:SiCGkT7gLOzkl0wQosQrIWjHWb5eJY18Cm3V3GmdU0o=
+github.com/elastic/opentelemetry-lib v0.12.0/go.mod h1:fdpkzh517xJqSGq3bo/fkdoX/Ag0OoanJoMoIDC3bBk=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=
 github.com/go-logr/logr v1.4.2/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
