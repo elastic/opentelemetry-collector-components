@@ -30,10 +30,6 @@ func NewAdjustedCountFactory() ottl.Factory[ottlspan.TransformContext] {
 }
 
 func createAdjustedCountFunction(_ ottl.FunctionContext, _ ottl.Arguments) (ottl.ExprFunc[ottlspan.TransformContext], error) {
-	return adjustedCount()
-}
-
-func adjustedCount() (ottl.ExprFunc[ottlspan.TransformContext], error) {
 	return func(_ context.Context, tCtx ottlspan.TransformContext) (any, error) {
 		return trace.CalculateAdjustedCount(tCtx.GetSpan().TraceState().AsRaw()), nil
 	}, nil
