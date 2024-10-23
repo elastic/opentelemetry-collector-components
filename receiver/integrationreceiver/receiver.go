@@ -106,6 +106,9 @@ func (r *integrationReceiver) Start(ctx context.Context, ch component.Host) erro
 		return fmt.Errorf("failed to select component: %w", err)
 	}
 	for id, pipeline := range pipelines {
+		if !r.hasConsumerForPipelineType(id) {
+			continue
+		}
 		err := r.startPipeline(ctx, host, integrationConfig, id, pipeline)
 		if err != nil {
 			// Shutdown components that had been already started for cleanup.
@@ -118,6 +121,20 @@ func (r *integrationReceiver) Start(ctx context.Context, ch component.Host) erro
 	}
 
 	return nil
+}
+
+func (r *integrationReceiver) hasConsumerForPipelineType(id component.ID) bool {
+	switch id.Type().String() {
+	case "logs":
+		return r.nextLogsConsumer != nil
+	case "metrics":
+		return r.nextMetricsConsumer != nil
+	case "traces":
+		return r.nextTracesConsumer != nil
+	default:
+		r.params.Logger.Warn("unexpected pipeline type in integration", zap.String("id", id.String()))
+		return false
+	}
 }
 
 func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGetter, config integrations.Config, pipelineID component.ID, pipeline integrations.PipelineConfig) error {
