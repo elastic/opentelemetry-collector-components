@@ -24,11 +24,11 @@ import (
 )
 
 var (
-	Type = component.MustNewType("elasticapm")
+	Type      = component.MustNewType("elasticapm")
+	ScopeName = "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver"
 )
 
 const (
-	GoModule         = "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver"
 	MetricsStability = component.StabilityLevelAlpha
 	LogsStability    = component.StabilityLevelAlpha
 	TracesStability  = component.StabilityLevelAlpha
