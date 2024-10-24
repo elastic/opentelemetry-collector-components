@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  content: read
+  contents: read
 
 jobs:
   setup-environment:
