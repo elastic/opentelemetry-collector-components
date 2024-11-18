@@ -7,8 +7,8 @@ require (
 	github.com/elastic/go-licenser v0.4.2
 	github.com/golangci/golangci-lint v1.62.0
 	github.com/jcchavezs/porto v0.6.0
-	go.opentelemetry.io/collector/cmd/builder v0.112.0
-	go.opentelemetry.io/collector/cmd/mdatagen v0.112.0
+	go.opentelemetry.io/collector/cmd/builder v0.113.0
+	go.opentelemetry.io/collector/cmd/mdatagen v0.113.0
 	golang.org/x/vuln v1.1.3
 )
 
@@ -189,12 +189,12 @@ require (
 	gitlab.com/bosi/decorder v0.4.2 // indirect
 	go-simpler.org/musttag v0.13.0 // indirect
 	go-simpler.org/sloglint v0.7.2 // indirect
-	go.opentelemetry.io/collector/component v0.112.0 // indirect
-	go.opentelemetry.io/collector/config/configtelemetry v0.112.0 // indirect
-	go.opentelemetry.io/collector/confmap v1.18.0 // indirect
-	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.18.0 // indirect
-	go.opentelemetry.io/collector/filter v0.112.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.18.0 // indirect
+	go.opentelemetry.io/collector/component v0.113.0 // indirect
+	go.opentelemetry.io/collector/config/configtelemetry v0.113.0 // indirect
+	go.opentelemetry.io/collector/confmap v1.19.0 // indirect
+	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.19.0 // indirect
+	go.opentelemetry.io/collector/filter v0.113.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.19.0 // indirect
 	go.opentelemetry.io/otel v1.31.0 // indirect
 	go.opentelemetry.io/otel/metric v1.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.31.0 // indirect
