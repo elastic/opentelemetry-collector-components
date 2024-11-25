@@ -19,6 +19,7 @@ package lsmintervalprocessor
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor/processortest"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
@@ -115,6 +117,75 @@ func TestAggregation(t *testing.T) {
 			expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 			require.NoError(t, err)
 			assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
+		})
+	}
+}
+
+func BenchmarkAggregation(b *testing.B) {
+	testCases := []struct {
+		name        string
+		passThrough bool
+	}{
+		{name: "sum_cumulative"},
+		{name: "sum_delta"},
+		{name: "histogram_cumulative"},
+		{name: "histogram_delta"},
+		{name: "exphistogram_cumulative"},
+		{name: "exphistogram_delta"},
+		{name: "summary_enabled"},
+		{name: "summary_passthrough", passThrough: true},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tc := range testCases {
+		config := &Config{
+			Intervals: []IntervalConfig{
+				{
+					Duration: time.Hour,
+					Statements: []string{
+						`set(resource.attributes["custom_res_attr"], "res")`,
+						`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
+						`set(attributes["custom_dp_attr"], "dp")`,
+						`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
+					},
+				},
+			},
+			PassThrough: PassThrough{
+				Summary: tc.passThrough,
+			},
+		}
+		b.Run(tc.name, func(b *testing.B) {
+			next := &consumertest.MetricsSink{}
+
+			factory := NewFactory()
+			settings := processortest.NewNopSettings()
+			settings.TelemetrySettings.Logger = zap.NewNop()
+			mgp, _ := factory.CreateMetricsProcessor(
+				context.Background(),
+				settings,
+				config,
+				next,
+			)
+
+			dir := filepath.Join("testdata", tc.name)
+
+			md, _ := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+			md.MarkReadOnly()
+			b.ResetTimer()
+
+			_ = mgp.Start(context.Background(), componenttest.NewNopHost())
+			for i := 0; i < b.N; i++ {
+				mdCopy := pmetric.NewMetrics()
+				md.CopyTo(mdCopy)
+				mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", fmt.Sprintf("%d", i))
+				_ = mgp.ConsumeMetrics(ctx, mdCopy)
+			}
+
+			_ = mgp.(*Processor).Shutdown(context.Background())
+			allMetrics := next.AllMetrics()
+			assert.Len(b, allMetrics, b.N+1)
 		})
 	}
 }
