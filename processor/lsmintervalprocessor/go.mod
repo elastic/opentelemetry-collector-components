@@ -3,6 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/lsminterv
 go 1.22.0
 
 require (
+	github.com/axiomhq/hyperloglog v0.2.0
 	github.com/cockroachdb/pebble v1.1.2
 	github.com/google/go-cmp v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.114.0
@@ -35,6 +36,7 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc // indirect
 	github.com/elastic/go-grok v0.3.1 // indirect
 	github.com/elastic/lunes v0.1.0 // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect

@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
@@ -56,8 +57,8 @@ func TestAggregation(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		config := &Config{
-			Intervals: []IntervalConfig{
+		config := &config.Config{
+			Intervals: []config.IntervalConfig{
 				{
 					Duration: time.Second,
 					Statements: []string{
@@ -68,57 +69,119 @@ func TestAggregation(t *testing.T) {
 					},
 				},
 			},
-			PassThrough: PassThrough{
+			PassThrough: config.PassThrough{
 				Summary: tc.passThrough,
 			},
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			next := &consumertest.MetricsSink{}
-
-			factory := NewFactory()
-			settings := processortest.NewNopSettings()
-			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
-			mgp, err := factory.CreateMetrics(
-				context.Background(),
-				settings,
-				config,
-				next,
-			)
-			require.NoError(t, err)
-			require.IsType(t, &Processor{}, mgp)
-			t.Cleanup(func() { require.NoError(t, mgp.Shutdown(context.Background())) })
-
-			dir := filepath.Join("testdata", tc.name)
-			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
-			require.NoError(t, err)
-
-			// Start the processor and feed the metrics
-			err = mgp.Start(context.Background(), componenttest.NewNopHost())
-			require.NoError(t, err)
-			err = mgp.ConsumeMetrics(ctx, md)
-			require.NoError(t, err)
-
-			var allMetrics []pmetric.Metrics
-			require.Eventually(t, func() bool {
-				// 1 from calling next on the input and 1 from the export
-				allMetrics = next.AllMetrics()
-				return len(allMetrics) == 2
-			}, 5*time.Second, 100*time.Millisecond)
-
-			expectedNextData, err := golden.ReadMetrics(filepath.Join(dir, "next.yaml"))
-			require.NoError(t, err)
-			assert.NoError(t, pmetrictest.CompareMetrics(expectedNextData, allMetrics[0]))
-
-			expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
-			require.NoError(t, err)
-			assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
+			testRunHelper(t, tc.name, config)
 		})
 	}
+}
+
+func TestAggregationOverflow(t *testing.T) {
+	t.Parallel()
+
+	oneCardinalityLimitConfig := config.LimitConfig{
+		MaxCardinality: 1,
+		Overflow: config.OverflowConfig{
+			Attributes: []config.Attribute{{Key: "test_overflow", Value: any(true)}},
+		},
+	}
+
+	testCases := []struct {
+		name string
+	}{
+		{name: "sum_cumulative_overflow"},
+		{name: "sum_delta_overflow"},
+		{name: "histogram_cumulative_overflow"},
+		{name: "histogram_delta_overflow"},
+		{name: "exphistogram_cumulative_overflow"},
+		{name: "exphistogram_delta_overflow"},
+	}
+
+	for _, tc := range testCases {
+		config := &config.Config{
+			Intervals: []config.IntervalConfig{
+				{
+					Duration: time.Second,
+					Statements: []string{
+						`set(resource.attributes["custom_res_attr"], "res")`,
+						`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
+						`set(attributes["custom_dp_attr"], "dp")`,
+					},
+				},
+			},
+			ResourceLimits:  oneCardinalityLimitConfig,
+			ScopeLimits:     oneCardinalityLimitConfig,
+			DatapointLimits: oneCardinalityLimitConfig,
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			testRunHelper(t, tc.name, config)
+		})
+	}
+}
+
+func testRunHelper(t *testing.T, name string, config *config.Config) {
+	t.Helper()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	next := &consumertest.MetricsSink{}
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings()
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+	mgp, err := factory.CreateMetrics(
+		context.Background(),
+		settings,
+		config,
+		next,
+	)
+	require.NoError(t, err)
+	require.IsType(t, &Processor{}, mgp)
+	t.Cleanup(func() { require.NoError(t, mgp.Shutdown(context.Background())) })
+
+	dir := filepath.Join("testdata", name)
+	md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+	require.NoError(t, err)
+
+	// Start the processor and feed the metrics
+	err = mgp.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+	err = mgp.ConsumeMetrics(ctx, md)
+	require.NoError(t, err)
+
+	var allMetrics []pmetric.Metrics
+	require.Eventually(t, func() bool {
+		// 1 from calling next on the input and 1 from the export
+		allMetrics = next.AllMetrics()
+		return len(allMetrics) == 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	expectedNextData, err := golden.ReadMetrics(filepath.Join(dir, "next.yaml"))
+	require.NoError(t, err)
+	assert.NoError(t, pmetrictest.CompareMetrics(expectedNextData, allMetrics[0]))
+
+	expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
+	require.NoError(t, err)
+	assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
+}
+
+func BenchmarkAggregation(b *testing.B) {
+	benchmarkAggregation(b, nil)
+}
+
+func BenchmarkAggregationWithOTTL(b *testing.B) {
+	benchmarkAggregation(b, []string{
+		`set(resource.attributes["custom_res_attr"], "res")`,
+		`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
+		`set(attributes["custom_dp_attr"], "dp")`,
+		`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
+	})
 }
 
 func benchmarkAggregation(b *testing.B, ottlStatements []string) {
@@ -137,14 +200,14 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 	}
 
 	for _, tc := range testCases {
-		config := &Config{
-			Intervals: []IntervalConfig{
+		config := &config.Config{
+			Intervals: []config.IntervalConfig{
 				{
 					Duration:   time.Hour,
 					Statements: ottlStatements,
 				},
 			},
-			PassThrough: PassThrough{
+			PassThrough: config.PassThrough{
 				Summary: tc.passThrough,
 			},
 		}
@@ -190,17 +253,4 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 			assert.Len(b, allMetrics, b.N+1)
 		})
 	}
-}
-
-func BenchmarkAggregation(b *testing.B) {
-	benchmarkAggregation(b, nil)
-}
-
-func BenchmarkAggregationWithOTTL(b *testing.B) {
-	benchmarkAggregation(b, []string{
-		`set(resource.attributes["custom_res_attr"], "res")`,
-		`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
-		`set(attributes["custom_dp_attr"], "dp")`,
-		`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
-	})
 }

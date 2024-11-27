@@ -1,0 +1,50 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+        - key: custom_res_attr
+          value:
+            stringValue: res
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - name: cumulative.monotonic.sum.1
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asDouble: 222
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
+                  timeUnixNano: "7000000"
+              isMonotonic: true
+          - description: Overflow count due to datapoints limit
+            name: _other
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
+                    - key: test_overflow
+                      value:
+                        boolValue: true
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: custom_scope_attr
+              value:
+                stringValue: scope
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3

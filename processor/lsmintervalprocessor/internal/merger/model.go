@@ -24,8 +24,10 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
 )
 
 // TODO (lahsivjar): Think about multitenancy, should be part of the key
@@ -82,51 +84,43 @@ func (k *Key) Unmarshal(d []byte) error {
 
 // Not safe for concurrent use.
 type Value struct {
-	Metrics pmetric.Metrics
-
-	dynamicMapBuilt bool
-	resLookup       map[identity.Resource]pmetric.ResourceMetrics
-	scopeLookup     map[identity.Scope]pmetric.ScopeMetrics
-	metricLookup    map[identity.Metric]pmetric.Metric
-	numberLookup    map[identity.Stream]pmetric.NumberDataPoint
-	summaryLookup   map[identity.Stream]pmetric.SummaryDataPoint
-	histoLookup     map[identity.Stream]pmetric.HistogramDataPoint
-	expHistoLookup  map[identity.Stream]pmetric.ExponentialHistogramDataPoint
+	store *limits.Store
 }
 
-func (v *Value) SizeBinary() int {
-	// TODO (lahsivjar): Possible optimization, can take marshaler
-	// as input and reuse with MarshalProto if this causes allocations.
-	var marshaler pmetric.ProtoMarshaler
-	return marshaler.MetricsSize(v.Metrics)
+func NewValue(cfg *config.Config) Value {
+	return Value{
+		store: limits.NewStore(cfg),
+	}
+}
+
+func (v *Value) Get() pmetric.Metrics {
+	return v.store.Get()
+}
+
+func (v *Value) Finalize() (pmetric.Metrics, error) {
+	return v.store.Finalize()
 }
 
 func (v *Value) MarshalProto() ([]byte, error) {
-	var marshaler pmetric.ProtoMarshaler
-	return marshaler.MarshalMetrics(v.Metrics)
+	return v.store.MarshalProto()
 }
 
-func (v *Value) UnmarshalProto(data []byte) (err error) {
-	var unmarshaler pmetric.ProtoUnmarshaler
-	v.Metrics, err = unmarshaler.UnmarshalMetrics(data)
-	return
+func (v *Value) UnmarshalProto(data []byte) error {
+	return v.store.UnmarshalProto(data)
 }
 
 func (v *Value) Merge(op Value) error {
-	// Dynamic maps allow quick lookups to aid merging.
-	// We build the map only once and maintain it while
-	// merging by updating as required.
-	v.buildDynamicMaps()
-
-	rms := op.Metrics.ResourceMetrics()
+	rms := op.Get().ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
+		resID := v.store.AddResourceMetrics(rm)
 		sms := rm.ScopeMetrics()
 		for j := 0; j < sms.Len(); j++ {
 			sm := sms.At(j)
+			scopeID := v.store.AddScopeMetrics(resID, sm)
 			metrics := sm.Metrics()
 			for k := 0; k < metrics.Len(); k++ {
-				v.MergeMetric(rm, sm, metrics.At(k))
+				v.mergeMetric(resID, scopeID, metrics.At(k))
 			}
 		}
 	}
@@ -138,211 +132,82 @@ func (v *Value) MergeMetric(
 	sm pmetric.ScopeMetrics,
 	m pmetric.Metric,
 ) {
-	// Dynamic maps allow quick lookups to aid merging.
-	// We build the map only once and maintain it while
-	// merging by updating as required.
-	v.buildDynamicMaps()
+	resID := v.store.AddResourceMetrics(rm)
+	scopeID := v.store.AddScopeMetrics(resID, sm)
+	v.mergeMetric(resID, scopeID, m)
+}
+
+func (v *Value) mergeMetric(
+	resID identity.Resource,
+	scopeID identity.Scope,
+	m pmetric.Metric,
+) {
+	metricID := v.store.AddMetric(scopeID, m)
 
 	switch m.Type() {
 	case pmetric.MetricTypeSum:
-		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
 		merge(
 			m.Sum().DataPoints(),
-			mClone.Sum().DataPoints(),
 			metricID,
-			v.numberLookup,
+			v.store.AddSumDataPoint,
 			m.Sum().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeSummary:
-		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
 		merge(
 			m.Summary().DataPoints(),
-			mClone.Summary().DataPoints(),
 			metricID,
-			v.summaryLookup,
+			v.store.AddSummaryDataPoint,
 			// Assume summary to be cumulative temporality
 			pmetric.AggregationTemporalityCumulative,
 		)
 	case pmetric.MetricTypeHistogram:
-		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
 		merge(
 			m.Histogram().DataPoints(),
-			mClone.Histogram().DataPoints(),
 			metricID,
-			v.histoLookup,
+			v.store.AddHistogramDataPoint,
 			m.Histogram().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeExponentialHistogram:
-		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
 		merge(
 			m.ExponentialHistogram().DataPoints(),
-			mClone.ExponentialHistogram().DataPoints(),
 			metricID,
-			v.expHistoLookup,
+			v.store.AddExponentialHistogramDataPoint,
 			m.ExponentialHistogram().AggregationTemporality(),
 		)
 	}
 }
 
-func (v *Value) buildDynamicMaps() {
-	if v.dynamicMapBuilt {
-		return
-	}
-	v.dynamicMapBuilt = true
-
-	v.resLookup = make(map[identity.Resource]pmetric.ResourceMetrics)
-	v.scopeLookup = make(map[identity.Scope]pmetric.ScopeMetrics)
-	v.metricLookup = make(map[identity.Metric]pmetric.Metric)
-	v.numberLookup = make(map[identity.Stream]pmetric.NumberDataPoint)
-	v.summaryLookup = make(map[identity.Stream]pmetric.SummaryDataPoint)
-	v.histoLookup = make(map[identity.Stream]pmetric.HistogramDataPoint)
-	v.expHistoLookup = make(map[identity.Stream]pmetric.ExponentialHistogramDataPoint)
-
-	rms := v.Metrics.ResourceMetrics()
-	for i := 0; i < rms.Len(); i++ {
-		rm := rms.At(i)
-		res := identity.OfResource(rm.Resource())
-		v.resLookup[res] = rm
-
-		sms := rm.ScopeMetrics()
-		for j := 0; j < sms.Len(); j++ {
-			sm := sms.At(j)
-			iscope := identity.OfScope(res, sm.Scope())
-			v.scopeLookup[iscope] = sm
-
-			metrics := sm.Metrics()
-			for k := 0; k < metrics.Len(); k++ {
-				metric := metrics.At(k)
-				imetric := identity.OfMetric(iscope, metric)
-
-				switch metric.Type() {
-				case pmetric.MetricTypeSum:
-					dps := metric.Sum().DataPoints()
-					for l := 0; l < dps.Len(); l++ {
-						dp := dps.At(l)
-						v.numberLookup[identity.OfStream(imetric, dp)] = dp
-					}
-				case pmetric.MetricTypeSummary:
-					dps := metric.Summary().DataPoints()
-					for l := 0; l < dps.Len(); l++ {
-						dp := dps.At(l)
-						v.summaryLookup[identity.OfStream(imetric, dp)] = dp
-					}
-				case pmetric.MetricTypeHistogram:
-					dps := metric.Histogram().DataPoints()
-					for l := 0; l < dps.Len(); l++ {
-						dp := dps.At(l)
-						v.histoLookup[identity.OfStream(imetric, dp)] = dp
-					}
-				case pmetric.MetricTypeExponentialHistogram:
-					dps := metric.ExponentialHistogram().DataPoints()
-					for l := 0; l < dps.Len(); l++ {
-						dp := dps.At(l)
-						v.expHistoLookup[identity.OfStream(imetric, dp)] = dp
-					}
-				}
-			}
-		}
-	}
-}
-
-func (v *Value) getOrCloneMetric(
-	rm pmetric.ResourceMetrics,
-	sm pmetric.ScopeMetrics,
-	m pmetric.Metric,
-) (pmetric.Metric, identity.Metric) {
-	// Find the ResourceMetrics
-	resID := identity.OfResource(rm.Resource())
-	rmClone, ok := v.resLookup[resID]
-	if !ok {
-		// We need to clone it *without* the ScopeMetricsSlice data
-		rmClone = v.Metrics.ResourceMetrics().AppendEmpty()
-		rm.Resource().CopyTo(rmClone.Resource())
-		rmClone.SetSchemaUrl(rm.SchemaUrl())
-		v.resLookup[resID] = rmClone
-	}
-
-	// Find the ScopeMetrics
-	scopeID := identity.OfScope(resID, sm.Scope())
-	smClone, ok := v.scopeLookup[scopeID]
-	if !ok {
-		// We need to clone it *without* the MetricSlice data
-		smClone = rmClone.ScopeMetrics().AppendEmpty()
-		sm.Scope().CopyTo(smClone.Scope())
-		smClone.SetSchemaUrl(sm.SchemaUrl())
-		v.scopeLookup[scopeID] = smClone
-	}
-
-	// Find the Metric
-	metricID := identity.OfMetric(scopeID, m)
-	mClone, ok := v.metricLookup[metricID]
-	if !ok {
-		// We need to clone it *without* the datapoint data
-		mClone = smClone.Metrics().AppendEmpty()
-		mClone.SetName(m.Name())
-		mClone.SetDescription(m.Description())
-		mClone.SetUnit(m.Unit())
-
-		switch m.Type() {
-		case pmetric.MetricTypeGauge:
-			mClone.SetEmptyGauge()
-		case pmetric.MetricTypeSummary:
-			mClone.SetEmptySummary()
-		case pmetric.MetricTypeSum:
-			src := m.Sum()
-
-			dest := mClone.SetEmptySum()
-			dest.SetAggregationTemporality(src.AggregationTemporality())
-			dest.SetIsMonotonic(src.IsMonotonic())
-		case pmetric.MetricTypeHistogram:
-			src := m.Histogram()
-
-			dest := mClone.SetEmptyHistogram()
-			dest.SetAggregationTemporality(src.AggregationTemporality())
-		case pmetric.MetricTypeExponentialHistogram:
-			src := m.ExponentialHistogram()
-
-			dest := mClone.SetEmptyExponentialHistogram()
-			dest.SetAggregationTemporality(src.AggregationTemporality())
-		}
-
-		v.metricLookup[metricID] = mClone
-	}
-
-	return mClone, metricID
-}
-
 func merge[DPS DataPointSlice[DP], DP DataPoint[DP]](
-	from, to DPS,
-	mID identity.Metric,
-	lookup map[identity.Stream]DP,
+	from DPS,
+	toMetricID identity.Metric,
+	addDP func(identity.Metric, DP) (DP, bool),
 	temporality pmetric.AggregationTemporality,
 ) {
 	switch temporality {
 	case pmetric.AggregationTemporalityCumulative:
-		mergeCumulative(from, to, mID, lookup)
+		mergeCumulative(from, toMetricID, addDP)
 	case pmetric.AggregationTemporalityDelta:
-		mergeDelta(from, to, mID, lookup)
+		mergeDelta(from, toMetricID, addDP)
 	}
 }
 
 func mergeCumulative[DPS DataPointSlice[DP], DP DataPoint[DP]](
-	from, to DPS,
-	mID identity.Metric,
-	lookup map[identity.Stream]DP,
+	from DPS,
+	toMetricID identity.Metric,
+	addDP func(identity.Metric, DP) (DP, bool),
 ) {
+	var zero DP
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
-
-		streamID := identity.OfStream(mID, fromDP)
-		toDP, ok := lookup[streamID]
-		if !ok {
-			toDP = to.AppendEmpty()
-			fromDP.CopyTo(toDP)
-			lookup[streamID] = toDP
+		toDP, ok := addDP(toMetricID, fromDP)
+		if toDP == zero {
+			// Overflow, discard the datapoint
 			continue
 		}
-
+		if ok {
+			// New data point is created so we can copy the old data directly
+			fromDP.CopyTo(toDP)
+		}
 		if fromDP.Timestamp() > toDP.Timestamp() {
 			fromDP.CopyTo(toDP)
 		}
@@ -350,19 +215,21 @@ func mergeCumulative[DPS DataPointSlice[DP], DP DataPoint[DP]](
 }
 
 func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
-	from, to DPS,
-	mID identity.Metric,
-	lookup map[identity.Stream]DP,
+	from DPS,
+	toMetricID identity.Metric,
+	addDP func(identity.Metric, DP) (DP, bool),
 ) {
+	var zero DP
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
-
-		streamID := identity.OfStream(mID, fromDP)
-		toDP, ok := lookup[streamID]
-		if !ok {
-			toDP = to.AppendEmpty()
+		toDP, ok := addDP(toMetricID, fromDP)
+		if toDP == zero {
+			// Overflow, discard the datapoint
+			continue
+		}
+		if ok {
+			// New data point is created so we can copy the old data directly
 			fromDP.CopyTo(toDP)
-			lookup[streamID] = toDP
 			continue
 		}
 
@@ -373,11 +240,6 @@ func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
 			mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
 		case pmetric.ExponentialHistogramDataPoint:
 			mergeDeltaExponentialHistogramDP(fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint))
-		}
-
-		// Keep the highest timestamp for the aggregated metric
-		if fromDP.Timestamp() > toDP.Timestamp() {
-			toDP.SetTimestamp(fromDP.Timestamp())
 		}
 	}
 }

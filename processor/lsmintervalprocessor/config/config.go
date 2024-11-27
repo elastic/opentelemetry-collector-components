@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package lsmintervalprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor"
+package config // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 
 import (
 	"time"
@@ -39,7 +39,10 @@ type Config struct {
 	// TODO (lahsivjar): Make specifying interval easier. We can just
 	// optimize the timer to run on differnt times and remove any
 	// restriction on different interval configuration.
-	Intervals []IntervalConfig `mapstructure:"intervals"`
+	Intervals       []IntervalConfig `mapstructure:"intervals"`
+	ResourceLimits  LimitConfig      `mapstructure:"resource_limit"`
+	ScopeLimits     LimitConfig      `mapstructure:"scope_limit"`
+	DatapointLimits LimitConfig      `mapstructure:"datapoint_limit"`
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -61,6 +64,21 @@ type IntervalConfig struct {
 	// The list of available OTTL editors can be checked at:
 	// https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs#section-readme
 	Statements []string `mapstructure:"statements"`
+}
+
+type LimitConfig struct {
+	Attributes     map[string]struct{} `mapstructure:"attributes"`
+	MaxCardinality uint64              `mapstructure:"max_cardinality"`
+	Overflow       OverflowConfig      `mapstructure:"overflow"`
+}
+
+type OverflowConfig struct {
+	Attributes []Attribute `mapstructure:"attributes"`
+}
+
+type Attribute struct {
+	Key   string `mapstructure:"key"`
+	Value any    `mapstructure:"value"`
 }
 
 func (config *Config) Validate() error {
