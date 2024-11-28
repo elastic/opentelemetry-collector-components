@@ -197,7 +197,7 @@ func BenchmarkAggregation(b *testing.B) {
 	benchmarkAggregation(b, nil)
 }
 
-func BenchmarkAggregationOTTL(b *testing.B) {
+func BenchmarkAggregationWithOTTL(b *testing.B) {
 	benchmarkAggregation(b, []string{
 		`set(resource.attributes["custom_res_attr"], "res")`,
 		`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
