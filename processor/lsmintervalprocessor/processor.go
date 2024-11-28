@@ -148,6 +148,7 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 }
 
 func (p *Processor) Shutdown(ctx context.Context) error {
+	defer p.logger.Info("shutdown finished")
 	// Signal stop for the exporting goroutine
 	p.cancel()
 

@@ -48,7 +48,7 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "gomod"
-    directory: "/connector/spanmetricsconnectorv2"
+    directory: "/connector/signaltometricsconnector"
     schedule:
       interval: "daily"
     labels:

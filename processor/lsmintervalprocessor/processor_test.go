@@ -83,7 +83,7 @@ func TestAggregation(t *testing.T) {
 			factory := NewFactory()
 			settings := processortest.NewNopSettings()
 			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
-			mgp, err := factory.CreateMetricsProcessor(
+			mgp, err := factory.CreateMetrics(
 				context.Background(),
 				settings,
 				config,
