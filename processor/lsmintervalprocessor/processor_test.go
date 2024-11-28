@@ -148,8 +148,7 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 				Summary: tc.passThrough,
 			},
 		}
-		tcName := tc.name
-		b.Run(tcName, func(b *testing.B) {
+		b.Run(tc.name, func(b *testing.B) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
