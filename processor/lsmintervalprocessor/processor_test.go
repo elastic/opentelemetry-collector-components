@@ -185,6 +185,8 @@ func BenchmarkAggregation(b *testing.B) {
 			err = mgp.(*Processor).Shutdown(context.Background())
 			require.NoError(b, err)
 			allMetrics := next.AllMetrics()
+			// There should be 1 empty metrics for each of the b.N input metrics,
+			// then at last 1 actual merged metrics on shutdown
 			assert.Len(b, allMetrics, b.N+1)
 		})
 	}
