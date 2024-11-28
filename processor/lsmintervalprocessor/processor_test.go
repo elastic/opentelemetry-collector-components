@@ -55,9 +55,6 @@ func TestAggregation(t *testing.T) {
 		{name: "summary_passthrough", passThrough: true},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	for _, tc := range testCases {
 		config := &Config{
 			Intervals: []IntervalConfig{
@@ -77,6 +74,9 @@ func TestAggregation(t *testing.T) {
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			next := &consumertest.MetricsSink{}
 
@@ -121,8 +121,7 @@ func TestAggregation(t *testing.T) {
 	}
 }
 
-// BenchmarkAggregation benchmarks various inputs with high resource attribute cardinality, and with and without OTTL.
-func BenchmarkAggregation(b *testing.B) {
+func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 	testCases := []struct {
 		name        string
 		passThrough bool
@@ -137,73 +136,72 @@ func BenchmarkAggregation(b *testing.B) {
 		{name: "summary_passthrough", passThrough: true},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for _, ottlStatements := range [][]string{
-		{},
-		{
-			`set(resource.attributes["custom_res_attr"], "res")`,
-			`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
-			`set(attributes["custom_dp_attr"], "dp")`,
-			`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
-		},
-	} {
-
-		for _, tc := range testCases {
-			config := &Config{
-				Intervals: []IntervalConfig{
-					{
-						Duration:   time.Hour,
-						Statements: ottlStatements,
-					},
+	for _, tc := range testCases {
+		config := &Config{
+			Intervals: []IntervalConfig{
+				{
+					Duration:   time.Hour,
+					Statements: ottlStatements,
 				},
-				PassThrough: PassThrough{
-					Summary: tc.passThrough,
-				},
-			}
-			tcName := tc.name
-			if len(ottlStatements) > 0 {
-				tcName += "-OTTL"
-			}
-			b.Run(tcName, func(b *testing.B) {
-				next := &consumertest.MetricsSink{}
-
-				factory := NewFactory()
-				settings := processortest.NewNopSettings()
-				settings.TelemetrySettings.Logger = zap.NewNop()
-				mgp, err := factory.CreateMetrics(
-					context.Background(),
-					settings,
-					config,
-					next,
-				)
-				require.NoError(b, err)
-
-				dir := filepath.Join("testdata", tc.name)
-				md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
-				require.NoError(b, err)
-				md.MarkReadOnly()
-				b.ResetTimer()
-
-				err = mgp.Start(context.Background(), componenttest.NewNopHost())
-				require.NoError(b, err)
-				for i := 0; i < b.N; i++ {
-					mdCopy := pmetric.NewMetrics()
-					md.CopyTo(mdCopy)
-					// Overwrites the asdf attribute in metrics such that it becomes high cardinality
-					mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", fmt.Sprintf("%d", i))
-					err = mgp.ConsumeMetrics(ctx, mdCopy)
-					require.NoError(b, err)
-				}
-
-				err = mgp.(*Processor).Shutdown(context.Background())
-				require.NoError(b, err)
-				allMetrics := next.AllMetrics()
-				// There should be 1 empty metrics for each of the b.N input metrics,
-				// then at last 1 actual merged metrics on shutdown
-				assert.Len(b, allMetrics, b.N+1)
-			})
+			},
+			PassThrough: PassThrough{
+				Summary: tc.passThrough,
+			},
 		}
+		tcName := tc.name
+		b.Run(tcName, func(b *testing.B) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			next := &consumertest.MetricsSink{}
+
+			factory := NewFactory()
+			settings := processortest.NewNopSettings()
+			settings.TelemetrySettings.Logger = zap.NewNop()
+			mgp, err := factory.CreateMetrics(
+				context.Background(),
+				settings,
+				config,
+				next,
+			)
+			require.NoError(b, err)
+
+			dir := filepath.Join("testdata", tc.name)
+			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+			require.NoError(b, err)
+			md.MarkReadOnly()
+			b.ResetTimer()
+
+			err = mgp.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(b, err)
+			for i := 0; i < b.N; i++ {
+				mdCopy := pmetric.NewMetrics()
+				md.CopyTo(mdCopy)
+				// Overwrites the asdf attribute in metrics such that it becomes high cardinality
+				mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", fmt.Sprintf("%d", i))
+				err = mgp.ConsumeMetrics(ctx, mdCopy)
+				require.NoError(b, err)
+			}
+
+			err = mgp.(*Processor).Shutdown(context.Background())
+			require.NoError(b, err)
+			allMetrics := next.AllMetrics()
+			// There should be 1 empty metrics for each of the b.N input metrics,
+			// then at last 1 actual merged metrics on shutdown
+			assert.Len(b, allMetrics, b.N+1)
+		})
 	}
+}
+
+func BenchmarkAggregation(b *testing.B) {
+	benchmarkAggregation(b, nil)
+}
+
+func BenchmarkAggregationOTTL(b *testing.B) {
+	benchmarkAggregation(b, []string{
+		`set(resource.attributes["custom_res_attr"], "res")`,
+		`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
+		`set(attributes["custom_dp_attr"], "dp")`,
+		`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
+	})
 }
