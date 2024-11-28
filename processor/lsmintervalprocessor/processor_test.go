@@ -176,6 +176,7 @@ func BenchmarkAggregation(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				mdCopy := pmetric.NewMetrics()
 				md.CopyTo(mdCopy)
+				// Overwrites the asdf attribute in metrics such that it becomes high cardinality
 				mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", fmt.Sprintf("%d", i))
 				err = mgp.ConsumeMetrics(ctx, mdCopy)
 				require.NoError(b, err)
