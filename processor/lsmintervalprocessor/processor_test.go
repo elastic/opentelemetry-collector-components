@@ -121,6 +121,7 @@ func TestAggregation(t *testing.T) {
 	}
 }
 
+// BenchmarkAggregation benchmarks various inputs with high resource attribute cardinality and without OTTL.
 func BenchmarkAggregation(b *testing.B) {
 	testCases := []struct {
 		name        string
@@ -144,12 +145,6 @@ func BenchmarkAggregation(b *testing.B) {
 			Intervals: []IntervalConfig{
 				{
 					Duration: time.Hour,
-					Statements: []string{
-						`set(resource.attributes["custom_res_attr"], "res")`,
-						`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
-						`set(attributes["custom_dp_attr"], "dp")`,
-						`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
-					},
 				},
 			},
 			PassThrough: PassThrough{
@@ -162,28 +157,32 @@ func BenchmarkAggregation(b *testing.B) {
 			factory := NewFactory()
 			settings := processortest.NewNopSettings()
 			settings.TelemetrySettings.Logger = zap.NewNop()
-			mgp, _ := factory.CreateMetricsProcessor(
+			mgp, err := factory.CreateMetricsProcessor(
 				context.Background(),
 				settings,
 				config,
 				next,
 			)
+			require.NoError(b, err)
 
 			dir := filepath.Join("testdata", tc.name)
-
-			md, _ := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+			require.NoError(b, err)
 			md.MarkReadOnly()
 			b.ResetTimer()
 
-			_ = mgp.Start(context.Background(), componenttest.NewNopHost())
+			err = mgp.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(b, err)
 			for i := 0; i < b.N; i++ {
 				mdCopy := pmetric.NewMetrics()
 				md.CopyTo(mdCopy)
 				mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", fmt.Sprintf("%d", i))
-				_ = mgp.ConsumeMetrics(ctx, mdCopy)
+				err = mgp.ConsumeMetrics(ctx, mdCopy)
+				require.NoError(b, err)
 			}
 
-			_ = mgp.(*Processor).Shutdown(context.Background())
+			err = mgp.(*Processor).Shutdown(context.Background())
+			require.NoError(b, err)
 			allMetrics := next.AllMetrics()
 			assert.Len(b, allMetrics, b.N+1)
 		})
