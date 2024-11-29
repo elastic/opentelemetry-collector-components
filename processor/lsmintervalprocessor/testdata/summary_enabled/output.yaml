@@ -1,0 +1,43 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+        - key: custom_res_attr
+          value:
+            stringValue: res
+        - key: dependent_attr
+          value:
+            stringValue: bbb-dependent
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - name: summary.test
+            summary:
+              dataPoints:
+                - attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
+                  count: "25"
+                  quantileValues:
+                    - quantile: 0.95
+                      value: 15
+                  startTimeUnixNano: "5000000"
+                  sum: 310
+                  timeUnixNano: "8000000"
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: custom_scope_attr
+              value:
+                stringValue: scope
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3

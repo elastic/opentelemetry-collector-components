@@ -1,8 +1,8 @@
 type: elastictrace
-scope_name: otelcol/elastictrace
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
 
 status:
   class: processor
   stability:
-    development: [traces]
+    alpha: [traces]
   distributions: []

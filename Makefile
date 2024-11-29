@@ -4,8 +4,8 @@ include ./Makefile.Common
 ALL_DOC := $(shell find . \( -name "*.md" -o -name "*.yaml" \) \
                                 -type f | sort)
 
-# ALL_MODULES includes ./* dirs (excludes . and ./_build dirs)
-ALL_MODULES := $(shell find . -type f -name "go.mod" -exec dirname {} \; | sort | grep -E '^./' | grep -v '^./_build')
+# ALL_MODULES includes ./* dirs with a go.mod file (excludes . and ./_build dirs)
+ALL_MODULES := $(shell find . -type f -name "go.mod" -not -wholename "./go.mod" -not -wholename "./_build/*" -exec dirname {} \; | sort )
 
 GROUP ?= all
 FOR_GROUP_TARGET=for-$(GROUP)-target
@@ -74,3 +74,19 @@ genelasticcol: $(BUILDER)
 .PHONY: elasticcol-validate
 elasticcol-validate: genelasticcol
 	./_build/elastic-collector-components validate --config ./distributions/elastic-components/config.yaml
+
+.PHONY: builddocker
+builddocker:
+	@if [ -z "$(TAG)" ]; then \
+		echo "TAG is not set. Please provide a tag using 'make builddocker TAG=<tag>'"; \
+		exit 1; \
+	fi
+	@if [ ! -f "_build/elastic-collector-components" ]; then \
+		GOOS=linux $(MAKE) genelasticcol; \
+	fi
+	@if [ -n "$(USERNAME)" ]; then \
+		IMAGE_NAME=$(USERNAME)/elastic-collector-components:$(TAG); \
+	else \
+		IMAGE_NAME=elastic-collector-components:$(TAG); \
+	fi; \
+	docker build -t $$IMAGE_NAME -f distributions/elastic-components/Dockerfile .

@@ -24,7 +24,8 @@ import (
 )
 
 var (
-	Type = component.MustNewType("elasticinframetrics")
+	Type      = component.MustNewType("elasticinframetrics")
+	ScopeName = "github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor"
 )
 
 const (

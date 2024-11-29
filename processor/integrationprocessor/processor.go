@@ -160,7 +160,7 @@ func (r *integrationProcessor) startPipeline(ctx context.Context, host factoryGe
 		params.ID = component.NewIDWithName(factory.Type(), fmt.Sprintf("%s-%s-%d", r.params.ID, pipelineID, i))
 		params.Logger = params.Logger.With(zap.String("name", params.ID.String()))
 		if r.logs != nil {
-			logs, err := factory.CreateLogsProcessor(ctx, params, config, r.logs)
+			logs, err := factory.CreateLogs(ctx, params, config, r.logs)
 			if err != nil {
 				return fmt.Errorf("failed to create logs processor %s: %w", params.ID, err)
 			}
@@ -168,7 +168,7 @@ func (r *integrationProcessor) startPipeline(ctx context.Context, host factoryGe
 			r.components = append(r.components, logs)
 		}
 		if r.metrics != nil {
-			metrics, err := factory.CreateMetricsProcessor(ctx, params, config, r.metrics)
+			metrics, err := factory.CreateMetrics(ctx, params, config, r.metrics)
 			if err != nil {
 				return fmt.Errorf("failed to create metrics processor %s: %w", params.ID, err)
 			}
@@ -176,7 +176,7 @@ func (r *integrationProcessor) startPipeline(ctx context.Context, host factoryGe
 			r.components = append(r.components, metrics)
 		}
 		if r.traces != nil {
-			traces, err := factory.CreateTracesProcessor(ctx, params, config, r.traces)
+			traces, err := factory.CreateTraces(ctx, params, config, r.traces)
 			if err != nil {
 				return fmt.Errorf("failed to create traces processor %s: %w", params.ID, err)
 			}

@@ -90,7 +90,7 @@ func createMetricsProcessor(
 		intervalDefs = append(intervalDefs, ivlDef)
 	}
 
-	return newProcessor(processorConfig.Directory, intervalDefs, set.Logger, nextConsumer)
+	return newProcessor(processorConfig, intervalDefs, set.Logger, nextConsumer)
 }
 
 type intervalDef struct {

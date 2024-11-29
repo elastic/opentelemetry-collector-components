@@ -186,7 +186,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		params.ID = component.NewIDWithName(factory.Type(), fmt.Sprintf("%s-%s-%d", r.params.ID, pipelineID, i))
 		params.Logger = params.Logger.With(zap.String("name", params.ID.String()))
 		if consumerChain.logs != nil {
-			logs, err := factory.CreateLogsProcessor(ctx, params, config, consumerChain.logs)
+			logs, err := factory.CreateLogs(ctx, params, config, consumerChain.logs)
 			if err != nil {
 				return fmt.Errorf("failed to create logs processor %s: %w", params.ID, err)
 			}
@@ -194,7 +194,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 			components = append(components, logs)
 		}
 		if consumerChain.metrics != nil {
-			metrics, err := factory.CreateMetricsProcessor(ctx, params, config, consumerChain.metrics)
+			metrics, err := factory.CreateMetrics(ctx, params, config, consumerChain.metrics)
 			if err != nil {
 				return fmt.Errorf("failed to create metrics processor %s: %w", params.ID, err)
 			}
@@ -202,7 +202,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 			components = append(components, metrics)
 		}
 		if consumerChain.traces != nil {
-			traces, err := factory.CreateTracesProcessor(ctx, params, config, consumerChain.traces)
+			traces, err := factory.CreateTraces(ctx, params, config, consumerChain.traces)
 			if err != nil {
 				return fmt.Errorf("failed to create traces processor %s: %w", params.ID, err)
 			}
@@ -216,7 +216,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 	params.Logger = params.Logger.With(zap.String("name", params.ID.String()))
 	receiversCreated := 0
 	if consumerChain.logs != nil {
-		logs, err := receiverFactory.CreateLogsReceiver(ctx, params, preparedConfig, consumerChain.logs)
+		logs, err := receiverFactory.CreateLogs(ctx, params, preparedConfig, consumerChain.logs)
 		switch {
 		case err == nil:
 			components = append(components, logs)
@@ -230,7 +230,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		}
 	}
 	if consumerChain.metrics != nil {
-		metrics, err := receiverFactory.CreateMetricsReceiver(ctx, params, preparedConfig, consumerChain.metrics)
+		metrics, err := receiverFactory.CreateMetrics(ctx, params, preparedConfig, consumerChain.metrics)
 		switch {
 		case err == nil:
 			components = append(components, metrics)
@@ -244,7 +244,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		}
 	}
 	if consumerChain.traces != nil {
-		traces, err := receiverFactory.CreateTracesReceiver(ctx, params, preparedConfig, consumerChain.traces)
+		traces, err := receiverFactory.CreateTraces(ctx, params, preparedConfig, consumerChain.traces)
 		switch {
 		case err == nil:
 			components = append(components, traces)

@@ -24,6 +24,7 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 )
 
@@ -88,6 +89,7 @@ type Value struct {
 	scopeLookup     map[identity.Scope]pmetric.ScopeMetrics
 	metricLookup    map[identity.Metric]pmetric.Metric
 	numberLookup    map[identity.Stream]pmetric.NumberDataPoint
+	summaryLookup   map[identity.Stream]pmetric.SummaryDataPoint
 	histoLookup     map[identity.Stream]pmetric.HistogramDataPoint
 	expHistoLookup  map[identity.Stream]pmetric.ExponentialHistogramDataPoint
 }
@@ -151,6 +153,16 @@ func (v *Value) MergeMetric(
 			v.numberLookup,
 			m.Sum().AggregationTemporality(),
 		)
+	case pmetric.MetricTypeSummary:
+		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
+		merge(
+			m.Summary().DataPoints(),
+			mClone.Summary().DataPoints(),
+			metricID,
+			v.summaryLookup,
+			// Assume summary to be cumulative temporality
+			pmetric.AggregationTemporalityCumulative,
+		)
 	case pmetric.MetricTypeHistogram:
 		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
 		merge(
@@ -161,7 +173,14 @@ func (v *Value) MergeMetric(
 			m.Histogram().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeExponentialHistogram:
-		// TODO (lahsivjar): implement exponential histogram merge
+		mClone, metricID := v.getOrCloneMetric(rm, sm, m)
+		merge(
+			m.ExponentialHistogram().DataPoints(),
+			mClone.ExponentialHistogram().DataPoints(),
+			metricID,
+			v.expHistoLookup,
+			m.ExponentialHistogram().AggregationTemporality(),
+		)
 	}
 }
 
@@ -175,6 +194,7 @@ func (v *Value) buildDynamicMaps() {
 	v.scopeLookup = make(map[identity.Scope]pmetric.ScopeMetrics)
 	v.metricLookup = make(map[identity.Metric]pmetric.Metric)
 	v.numberLookup = make(map[identity.Stream]pmetric.NumberDataPoint)
+	v.summaryLookup = make(map[identity.Stream]pmetric.SummaryDataPoint)
 	v.histoLookup = make(map[identity.Stream]pmetric.HistogramDataPoint)
 	v.expHistoLookup = make(map[identity.Stream]pmetric.ExponentialHistogramDataPoint)
 
@@ -201,6 +221,12 @@ func (v *Value) buildDynamicMaps() {
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
 						v.numberLookup[identity.OfStream(imetric, dp)] = dp
+					}
+				case pmetric.MetricTypeSummary:
+					dps := metric.Summary().DataPoints()
+					for l := 0; l < dps.Len(); l++ {
+						dp := dps.At(l)
+						v.summaryLookup[identity.OfStream(imetric, dp)] = dp
 					}
 				case pmetric.MetricTypeHistogram:
 					dps := metric.Histogram().DataPoints()
@@ -345,6 +371,8 @@ func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
 			mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
 		case pmetric.HistogramDataPoint:
 			mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
+		case pmetric.ExponentialHistogramDataPoint:
+			mergeDeltaExponentialHistogramDP(fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint))
 		}
 
 		// Keep the highest timestamp for the aggregated metric
@@ -355,36 +383,38 @@ func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
 }
 
 func mergeDeltaSumDP(from, to pmetric.NumberDataPoint) {
-	switch from.ValueType() {
-	case pmetric.NumberDataPointValueTypeInt:
-		to.SetIntValue(to.IntValue() + from.IntValue())
-	case pmetric.NumberDataPointValueTypeDouble:
-		to.SetDoubleValue(to.DoubleValue() + from.DoubleValue())
-	}
+	toDP := data.Number{NumberDataPoint: to}
+	fromDP := data.Number{NumberDataPoint: from}
+
+	toDP.Add(fromDP)
 }
 
 func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
-	// Explicit bounds histogram should have same pre-defined buckets.
-	// However, it is possible that the boundaries got updated. In such
-	// scenarios we can't calculate the histogram for conflicting
-	// boundaries without assuming the distribution of the bucket. In
-	// practical situations, we should not see such cases because if the
-	// service restarts to apply the new boundaries then some of the
-	// resource attributes will change which will change the identification
-	// for the metric, however, it is possible to observe such cases if the
-	// service has multiple replicas and we are aggregating the replicas.
-	// A rolling update with a change in the histogram definition will
-	// trigger this situation.
-	//
-	// Here we protect our code by checking the size of the counts slices.
-	// TODO (lahsivjar): merge histograms with conflicting boundaries by
-	// assuming the distribution of the bucket.
-	fromCounts := from.BucketCounts()
-	toCounts := to.BucketCounts()
-	if fromCounts.Len() != toCounts.Len() {
+	if from.Count() == 0 {
 		return
 	}
-	for i := 0; i < toCounts.Len(); i++ {
-		toCounts.SetAt(i, fromCounts.At(i)+toCounts.At(i))
+	if to.Count() == 0 {
+		from.CopyTo(to)
+		return
 	}
+
+	toDP := data.Histogram{HistogramDataPoint: to}
+	fromDP := data.Histogram{HistogramDataPoint: from}
+
+	toDP.Add(fromDP)
+}
+
+func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataPoint) {
+	if from.Count() == 0 {
+		return
+	}
+	if to.Count() == 0 {
+		from.CopyTo(to)
+		return
+	}
+
+	toDP := data.ExpHistogram{DataPoint: to}
+	fromDP := data.ExpHistogram{DataPoint: from}
+
+	toDP.Add(fromDP)
 }
