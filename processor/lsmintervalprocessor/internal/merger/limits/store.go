@@ -34,9 +34,11 @@ const (
 
 // The source metric must be modified only by the store once the store is created.
 type Store struct {
-	cfg    *config.Config
-	source pmetric.Metrics
+	resourceLimitsCfg   config.LimitConfig
+	scopeLimitsCfg      config.LimitConfig
+	datapointsLimitsCfg config.LimitConfig
 
+	source pmetric.Metrics
 	// Keeps track of resource metrics overflow
 	resourceLimits *Tracker[identity.Resource]
 
@@ -52,16 +54,18 @@ type Store struct {
 
 func NewStore(cfg *config.Config) *Store {
 	s := &Store{
-		cfg:            cfg,
-		source:         pmetric.NewMetrics(),
-		resourceLimits: NewTracker[identity.Resource](cfg.ResourceLimits),
-		resLookup:      make(map[identity.Resource]resourceMetrics),
-		scopeLookup:    make(map[identity.Scope]scopeMetrics),
-		metricLookup:   make(map[identity.Metric]metric),
-		numberLookup:   make(map[identity.Stream]numberDataPoint),
-		summaryLookup:  make(map[identity.Stream]summaryDataPoint),
-		histoLookup:    make(map[identity.Stream]histogramDataPoint),
-		expHistoLookup: make(map[identity.Stream]exponentialHistogramDataPoint),
+		resourceLimitsCfg:   cfg.ResourceLimits,
+		scopeLimitsCfg:      cfg.ScopeLimits,
+		datapointsLimitsCfg: cfg.DatapointLimits,
+		source:              pmetric.NewMetrics(),
+		resourceLimits:      NewTracker[identity.Resource](cfg.ResourceLimits),
+		resLookup:           make(map[identity.Resource]resourceMetrics),
+		scopeLookup:         make(map[identity.Scope]scopeMetrics),
+		metricLookup:        make(map[identity.Metric]metric),
+		numberLookup:        make(map[identity.Stream]numberDataPoint),
+		summaryLookup:       make(map[identity.Stream]summaryDataPoint),
+		histoLookup:         make(map[identity.Stream]histogramDataPoint),
+		expHistoLookup:      make(map[identity.Stream]exponentialHistogramDataPoint),
 	}
 	return s
 }
@@ -77,7 +81,7 @@ func (s *Store) init(source pmetric.Metrics) error {
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
 		rmID := identity.OfResource(rm.Resource())
-		scopeLimits := NewTracker[identity.Scope](s.cfg.ScopeLimits)
+		scopeLimits := NewTracker[identity.Scope](s.resourceLimitsCfg)
 		scopeLimits.SetOverflowBucketID(getOverflowScopeBucketID(scopeLimits, rmID))
 		rm.Resource().Attributes().RemoveIf(func(k string, v pcommon.Value) bool {
 			switch k {
@@ -99,7 +103,7 @@ func (s *Store) init(source pmetric.Metrics) error {
 			sm := sms.At(j)
 			scope := sm.Scope()
 			smID := identity.OfScope(rmID, scope)
-			datapointsLimits := NewTracker[identity.Stream](s.cfg.DatapointLimits)
+			datapointsLimits := NewTracker[identity.Stream](s.datapointsLimitsCfg)
 			scope.Attributes().RemoveIf(func(k string, v pcommon.Value) bool {
 				if k == datapointsLimitsAttrKey {
 					datapointsLimits.UnmarshalBinary(v.Bytes().AsRaw())
@@ -288,7 +292,7 @@ func (s *Store) AddResourceMetrics(
 			s.resourceLimits.SetOverflowBucketID(overflowResID)
 			s.resLookup[overflowResID] = resourceMetrics{
 				ResourceMetrics: overflowRm,
-				scopeLimits:     NewTracker[identity.Scope](s.cfg.ScopeLimits),
+				scopeLimits:     NewTracker[identity.Scope](s.scopeLimitsCfg),
 			}
 		}
 		return overflowResID
@@ -300,7 +304,7 @@ func (s *Store) AddResourceMetrics(
 	otherRm.Resource().CopyTo(rm.Resource())
 	s.resLookup[resID] = resourceMetrics{
 		ResourceMetrics: rm,
-		scopeLimits:     NewTracker[identity.Scope](s.cfg.ScopeLimits),
+		scopeLimits:     NewTracker[identity.Scope](s.scopeLimitsCfg),
 	}
 	return resID
 }
@@ -327,7 +331,7 @@ func (s *Store) AddScopeMetrics(
 			res.scopeLimits.SetOverflowBucketID(overflowScopeID)
 			s.scopeLookup[overflowScopeID] = scopeMetrics{
 				ScopeMetrics:     overflowScope,
-				datapointsLimits: NewTracker[identity.Stream](s.cfg.DatapointLimits),
+				datapointsLimits: NewTracker[identity.Stream](s.datapointsLimitsCfg),
 			}
 		}
 		return overflowScopeID
@@ -339,7 +343,7 @@ func (s *Store) AddScopeMetrics(
 	sm.SetSchemaUrl(otherSm.SchemaUrl())
 	s.scopeLookup[scopeID] = scopeMetrics{
 		ScopeMetrics:     sm,
-		datapointsLimits: NewTracker[identity.Stream](s.cfg.DatapointLimits),
+		datapointsLimits: NewTracker[identity.Stream](s.datapointsLimitsCfg),
 	}
 	return scopeID
 }
