@@ -19,76 +19,47 @@ package limits // import "github.com/elastic/opentelemetry-collector-components/
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 
 	"github.com/axiomhq/hyperloglog"
-	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 // Tracker tracks the configured limits while merging. It records the
 // observed count as well as the unique overflow counts.
 type Tracker[K any] struct {
-	cfg config.LimitConfig
-
-	// TODO: Can we make this deterministic?
-	overflowBucketID K
+	maxCardinality uint64
 	// Note that overflow buckets will NOT be counted in observed count
 	// though, overflow buckets can have overflow of their own.
-	observedCount uint64
-	// TODO (lahsivjar): This needs to be encoded as an attribute maybe?
+	observedCount  uint64
 	overflowCounts *hyperloglog.Sketch
 }
 
-func NewTracker[K any](cfg config.LimitConfig) *Tracker[K] {
-	return &Tracker[K]{cfg: cfg}
+func NewTracker[K any](maxCardinality uint64) *Tracker[K] {
+	return &Tracker[K]{maxCardinality: maxCardinality}
 }
 
-// CheckOverflow matches the passed attributes to the configured
-// attributes for the limit. Returns a boolean indicating overflow.
-// It assumes that any entry passed to this method is a NEW entry
-// and the check for this is left to the caller.
+// CheckOverflow checks if overflow will happen on addition of a new
+// entry with the provided hash denoting the entries ID. It assumes
+// that any entry passed to this method is a NEW entry and the check
+// for this is left to the caller.
 func (t *Tracker[K]) CheckOverflow(
 	hash uint64,
 	attrs pcommon.Map,
 ) bool {
-	if !t.match(attrs) || t.cfg.MaxCardinality == 0 {
+	if t.maxCardinality == 0 {
 		return false
 	}
-	if t.observedCount == t.cfg.MaxCardinality {
-		t.recordOverflow(hash)
+	if t.observedCount == t.maxCardinality {
+		if t.overflowCounts == nil {
+			// Creates an overflow with 14 precision
+			t.overflowCounts = hyperloglog.New14()
+		}
+		t.overflowCounts.InsertHash(hash)
 		return true
 	}
 	t.observedCount++
 	return false
-}
-
-func (t *Tracker[K]) Decorate(m pcommon.Map) error {
-	if len(t.cfg.Overflow.Attributes) == 0 {
-		return nil
-	}
-
-	var errs []error
-	m.EnsureCapacity(len(t.cfg.Overflow.Attributes))
-	for _, attr := range t.cfg.Overflow.Attributes {
-		v := m.PutEmpty(attr.Key)
-		if err := v.FromRaw(attr.Value); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to decorate overflow bucket: %w", errors.Join(errs...))
-	}
-	return nil
-}
-
-func (t *Tracker[K]) SetOverflowBucketID(bucketID K) {
-	t.overflowBucketID = bucketID
-}
-
-func (t *Tracker[K]) GetOverflowBucketID() K {
-	return t.overflowBucketID
 }
 
 // MarshalBinary encodes the tracker to a byte slice. Note that only the
@@ -140,27 +111,4 @@ func (t *Tracker[K]) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("failed to unmarshal overflow estimator hll sketch: %w", err)
 	}
 	return nil
-}
-
-func (t *Tracker[K]) match(attrs pcommon.Map) bool {
-	if len(t.cfg.Attributes) == 0 {
-		// If no attributes are defined then it is a match by default
-		return true
-	}
-	var match int
-	attrs.Range(func(k string, v pcommon.Value) bool {
-		if _, ok := t.cfg.Attributes[k]; ok {
-			match++
-		}
-		return match == len(t.cfg.Attributes)
-	})
-	return match == len(t.cfg.Attributes)
-}
-
-func (t *Tracker[K]) recordOverflow(hash uint64) {
-	if t.overflowCounts == nil {
-		// Creates an overflow with 14 precision
-		t.overflowCounts = hyperloglog.New14()
-	}
-	t.overflowCounts.InsertHash(hash)
 }

@@ -424,12 +424,11 @@ func (p *Processor) exportForInterval(
 				}
 			}
 		}
-		metrics := v.Get()
-		if err := p.next.ConsumeMetrics(ctx, metrics); err != nil {
+		if err := p.next.ConsumeMetrics(ctx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
 			continue
 		}
-		exportedDPCount += metrics.DataPointCount()
+		exportedDPCount += finalMetrics.DataPointCount()
 	}
 	if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
 		errs = append(errs, fmt.Errorf("failed to delete exported entries: %w", err))

@@ -39,10 +39,10 @@ type Config struct {
 	// TODO (lahsivjar): Make specifying interval easier. We can just
 	// optimize the timer to run on differnt times and remove any
 	// restriction on different interval configuration.
-	Intervals       []IntervalConfig `mapstructure:"intervals"`
-	ResourceLimits  LimitConfig      `mapstructure:"resource_limit"`
-	ScopeLimits     LimitConfig      `mapstructure:"scope_limit"`
-	DatapointLimits LimitConfig      `mapstructure:"datapoint_limit"`
+	Intervals           []IntervalConfig `mapstructure:"intervals"`
+	ResourceLimit       LimitConfig      `mapstructure:"resource_limit"`
+	ScopeLimit          LimitConfig      `mapstructure:"scope_limit"`
+	ScopeDatapointLimit LimitConfig      `mapstructure:"scope_datapoint_limit"`
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -67,9 +67,8 @@ type IntervalConfig struct {
 }
 
 type LimitConfig struct {
-	Attributes     map[string]struct{} `mapstructure:"attributes"`
-	MaxCardinality uint64              `mapstructure:"max_cardinality"`
-	Overflow       OverflowConfig      `mapstructure:"overflow"`
+	MaxCardinality uint64         `mapstructure:"max_cardinality"`
+	Overflow       OverflowConfig `mapstructure:"overflow"`
 }
 
 type OverflowConfig struct {

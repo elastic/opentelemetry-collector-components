@@ -18,6 +18,7 @@
 package limits // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
@@ -30,6 +31,9 @@ const (
 	resourceLimitsAttrKey   = "_resource_limits"
 	scopeLimitsAttrKey      = "_scope_limits"
 	datapointsLimitsAttrKey = "_datapoints_limits"
+
+	overflowMetricName = "_other"
+	overflowMetricDesc = "Overflow count due to datapoints limit"
 )
 
 // The source metric must be modified only by the store once the store is created.
@@ -54,11 +58,11 @@ type Store struct {
 
 func NewStore(cfg *config.Config) *Store {
 	s := &Store{
-		resourceLimitsCfg:   cfg.ResourceLimits,
-		scopeLimitsCfg:      cfg.ScopeLimits,
-		datapointsLimitsCfg: cfg.DatapointLimits,
+		resourceLimitsCfg:   cfg.ResourceLimit,
+		scopeLimitsCfg:      cfg.ScopeLimit,
+		datapointsLimitsCfg: cfg.ScopeDatapointLimit,
 		source:              pmetric.NewMetrics(),
-		resourceLimits:      NewTracker[identity.Resource](cfg.ResourceLimits),
+		resourceLimits:      NewTracker[identity.Resource](cfg.ResourceLimit.MaxCardinality),
 		resLookup:           make(map[identity.Resource]resourceMetrics),
 		scopeLookup:         make(map[identity.Scope]scopeMetrics),
 		metricLookup:        make(map[identity.Metric]metric),
@@ -73,16 +77,13 @@ func NewStore(cfg *config.Config) *Store {
 // init initializes the lookup maps from the source. It assumes that the source
 // will NOT overflow or if it has overflowed it already has the overflow
 // buckets initialized.
-// TODO: Propogate error
 func (s *Store) init(source pmetric.Metrics) error {
 	s.source = source
-	s.resourceLimits.SetOverflowBucketID(getOverflowResourceBucketID(s.resourceLimits))
 	rms := s.source.ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
 		rmID := identity.OfResource(rm.Resource())
-		scopeLimits := NewTracker[identity.Scope](s.resourceLimitsCfg)
-		scopeLimits.SetOverflowBucketID(getOverflowScopeBucketID(scopeLimits, rmID))
+		scopeLimits := NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality)
 		rm.Resource().Attributes().RemoveIf(func(k string, v pcommon.Value) bool {
 			switch k {
 			case resourceLimitsAttrKey:
@@ -103,7 +104,7 @@ func (s *Store) init(source pmetric.Metrics) error {
 			sm := sms.At(j)
 			scope := sm.Scope()
 			smID := identity.OfScope(rmID, scope)
-			datapointsLimits := NewTracker[identity.Stream](s.datapointsLimitsCfg)
+			datapointsLimits := NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality)
 			scope.Attributes().RemoveIf(func(k string, v pcommon.Value) bool {
 				if k == datapointsLimitsAttrKey {
 					datapointsLimits.UnmarshalBinary(v.Bytes().AsRaw())
@@ -111,9 +112,6 @@ func (s *Store) init(source pmetric.Metrics) error {
 				}
 				return false
 			})
-
-			// TODO: Updating trackers
-			// TODO: How do we deal with overflow bucket IDs in trackers? Are they deterministic based on configs?
 			s.scopeLookup[smID] = scopeMetrics{
 				ScopeMetrics:     sm,
 				datapointsLimits: datapointsLimits,
@@ -230,12 +228,15 @@ func (s *Store) Finalize() (pmetric.Metrics, error) {
 		}
 		// Add overflow metric to the scope
 		overflowMetric := sm.ScopeMetrics.Metrics().AppendEmpty()
-		overflowMetric.SetName("_other")
-		overflowMetric.SetDescription("Overflow count due to datapoints limit")
+		overflowMetric.SetName(overflowMetricName)
+		overflowMetric.SetDescription(overflowMetricDesc)
 		overflowSum := overflowMetric.SetEmptySum()
 		overflowSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 		overflowDP := overflowSum.DataPoints().AppendEmpty()
-		if err := sm.datapointsLimits.Decorate(overflowDP.Attributes()); err != nil {
+		if err := decorate(
+			overflowDP.Attributes(),
+			s.datapointsLimitsCfg.Overflow.Attributes,
+		); err != nil {
 			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
 		}
 		overflowDP.SetIntValue(int64(sm.datapointsLimits.overflowCounts.Estimate()))
@@ -274,28 +275,34 @@ func (s *Store) Finalize() (pmetric.Metrics, error) {
 // metric is created and returned.
 func (s *Store) AddResourceMetrics(
 	otherRm pmetric.ResourceMetrics,
-) identity.Resource {
+) (identity.Resource, error) {
 	resID := identity.OfResource(otherRm.Resource())
 	if _, ok := s.resLookup[resID]; ok {
-		return resID
+		return resID, nil
 	}
 	if s.resourceLimits.CheckOverflow(
 		resID.Hash().Sum64(),
 		otherRm.Resource().Attributes(),
 	) {
 		// Overflow, get/prepare an overflow bucket
-		overflowResID := s.resourceLimits.GetOverflowBucketID()
-		if overflowResID == (identity.Resource{}) {
+		overflowResID, err := s.getOverflowResourceBucketID()
+		if err != nil {
+			return identity.Resource{}, err
+		}
+		if _, ok := s.resLookup[overflowResID]; !ok {
 			overflowRm := s.source.ResourceMetrics().AppendEmpty()
-			s.resourceLimits.Decorate(overflowRm.Resource().Attributes())
-			overflowResID = identity.OfResource(overflowRm.Resource())
-			s.resourceLimits.SetOverflowBucketID(overflowResID)
+			if err := decorate(
+				overflowRm.Resource().Attributes(),
+				s.resourceLimitsCfg.Overflow.Attributes,
+			); err != nil {
+				return identity.Resource{}, err
+			}
 			s.resLookup[overflowResID] = resourceMetrics{
 				ResourceMetrics: overflowRm,
-				scopeLimits:     NewTracker[identity.Scope](s.scopeLimitsCfg),
+				scopeLimits:     NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality),
 			}
 		}
-		return overflowResID
+		return overflowResID, nil
 	}
 
 	// Clone it *without* the ScopeMetricsSlice data
@@ -304,18 +311,18 @@ func (s *Store) AddResourceMetrics(
 	otherRm.Resource().CopyTo(rm.Resource())
 	s.resLookup[resID] = resourceMetrics{
 		ResourceMetrics: rm,
-		scopeLimits:     NewTracker[identity.Scope](s.scopeLimitsCfg),
+		scopeLimits:     NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality),
 	}
-	return resID
+	return resID, nil
 }
 
 func (s *Store) AddScopeMetrics(
 	resID identity.Resource,
 	otherSm pmetric.ScopeMetrics,
-) identity.Scope {
+) (identity.Scope, error) {
 	scopeID := identity.OfScope(resID, otherSm.Scope())
 	if _, ok := s.scopeLookup[scopeID]; ok {
-		return scopeID
+		return scopeID, nil
 	}
 	res := s.resLookup[resID]
 	if res.scopeLimits.CheckOverflow(
@@ -323,18 +330,24 @@ func (s *Store) AddScopeMetrics(
 		otherSm.Scope().Attributes(),
 	) {
 		// Overflow, get/prepare an overflow bucket
-		overflowScopeID := res.scopeLimits.GetOverflowBucketID()
-		if overflowScopeID == (identity.Scope{}) {
+		overflowScopeID, err := s.getOverflowScopeBucketID(resID)
+		if err != nil {
+			return identity.Scope{}, err
+		}
+		if _, ok := s.scopeLookup[overflowScopeID]; !ok {
 			overflowScope := res.ScopeMetrics().AppendEmpty()
-			res.scopeLimits.Decorate(overflowScope.Scope().Attributes())
-			overflowScopeID = identity.OfScope(resID, overflowScope.Scope())
-			res.scopeLimits.SetOverflowBucketID(overflowScopeID)
+			if err := decorate(
+				overflowScope.Scope().Attributes(),
+				s.scopeLimitsCfg.Overflow.Attributes,
+			); err != nil {
+				return identity.Scope{}, err
+			}
 			s.scopeLookup[overflowScopeID] = scopeMetrics{
 				ScopeMetrics:     overflowScope,
-				datapointsLimits: NewTracker[identity.Stream](s.datapointsLimitsCfg),
+				datapointsLimits: NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality),
 			}
 		}
-		return overflowScopeID
+		return overflowScopeID, nil
 	}
 
 	// Clone it *without* the MetricSlice data
@@ -343,9 +356,9 @@ func (s *Store) AddScopeMetrics(
 	sm.SetSchemaUrl(otherSm.SchemaUrl())
 	s.scopeLookup[scopeID] = scopeMetrics{
 		ScopeMetrics:     sm,
-		datapointsLimits: NewTracker[identity.Stream](s.datapointsLimitsCfg),
+		datapointsLimits: NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality),
 	}
-	return scopeID
+	return scopeID, nil
 }
 
 func (s *Store) AddMetric(
@@ -517,16 +530,28 @@ func (s *Store) AddExponentialHistogramDataPoint(
 	return dp, true
 }
 
-func getOverflowResourceBucketID(s *Tracker[identity.Resource]) identity.Resource {
+func (s *Store) getOverflowResourceBucketID() (identity.Resource, error) {
 	r := pcommon.NewResource()
-	s.Decorate(r.Attributes())
-	return identity.OfResource(r)
+	if err := decorate(
+		r.Attributes(),
+		s.resourceLimitsCfg.Overflow.Attributes,
+	); err != nil {
+		return identity.Resource{}, fmt.Errorf("failed to create overflow bucket: %w", err)
+	}
+	return identity.OfResource(r), nil
 }
 
-func getOverflowScopeBucketID(s *Tracker[identity.Scope], resID identity.Resource) identity.Scope {
-	is := pcommon.NewInstrumentationScope()
-	s.Decorate(is.Attributes())
-	return identity.OfScope(resID, is)
+func (s *Store) getOverflowScopeBucketID(
+	res identity.Resource,
+) (identity.Scope, error) {
+	scope := pcommon.NewInstrumentationScope()
+	if err := decorate(
+		scope.Attributes(),
+		s.scopeLimitsCfg.Overflow.Attributes,
+	); err != nil {
+		return identity.Scope{}, fmt.Errorf("failed to create overflow bucket: %w", err)
+	}
+	return identity.OfScope(res, scope), nil
 }
 
 type resourceMetrics struct {
@@ -544,3 +569,25 @@ type numberDataPoint = pmetric.NumberDataPoint
 type summaryDataPoint = pmetric.SummaryDataPoint
 type histogramDataPoint = pmetric.HistogramDataPoint
 type exponentialHistogramDataPoint = pmetric.ExponentialHistogramDataPoint
+
+func decorate(target pcommon.Map, src []config.Attribute) error {
+	if len(src) == 0 {
+		return nil
+	}
+
+	var errs []error
+	target.EnsureCapacity(len(src))
+	for _, attr := range src {
+		v := target.PutEmpty(attr.Key)
+		if err := v.FromRaw(attr.Value); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf(
+			"failed to prepare resource overflow bucket: %w",
+			errors.Join(errs...),
+		)
+	}
+	return nil
+}

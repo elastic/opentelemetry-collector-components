@@ -20,6 +20,7 @@ package merger // import "github.com/elastic/opentelemetry-collector-components/
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"time"
 
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -110,14 +111,24 @@ func (v *Value) UnmarshalProto(data []byte) error {
 }
 
 func (v *Value) Merge(op Value) error {
-	rms := op.Get().ResourceMetrics()
+	m, err := op.Finalize()
+	if err != nil {
+		return err
+	}
+	rms := m.ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
-		resID := v.store.AddResourceMetrics(rm)
+		resID, err := v.store.AddResourceMetrics(rm)
+		if err != nil {
+			return fmt.Errorf("failed to merge resource metrics: %w", err)
+		}
 		sms := rm.ScopeMetrics()
 		for j := 0; j < sms.Len(); j++ {
 			sm := sms.At(j)
-			scopeID := v.store.AddScopeMetrics(resID, sm)
+			scopeID, err := v.store.AddScopeMetrics(resID, sm)
+			if err != nil {
+				return fmt.Errorf("failed to merge scope metrics: %w", err)
+			}
 			metrics := sm.Metrics()
 			for k := 0; k < metrics.Len(); k++ {
 				v.mergeMetric(resID, scopeID, metrics.At(k))
@@ -131,10 +142,17 @@ func (v *Value) MergeMetric(
 	rm pmetric.ResourceMetrics,
 	sm pmetric.ScopeMetrics,
 	m pmetric.Metric,
-) {
-	resID := v.store.AddResourceMetrics(rm)
-	scopeID := v.store.AddScopeMetrics(resID, sm)
+) error {
+	resID, err := v.store.AddResourceMetrics(rm)
+	if err != nil {
+		return err
+	}
+	scopeID, err := v.store.AddScopeMetrics(resID, sm)
+	if err != nil {
+		return err
+	}
 	v.mergeMetric(resID, scopeID, m)
+	return nil
 }
 
 func (v *Value) mergeMetric(
@@ -204,11 +222,7 @@ func mergeCumulative[DPS DataPointSlice[DP], DP DataPoint[DP]](
 			// Overflow, discard the datapoint
 			continue
 		}
-		if ok {
-			// New data point is created so we can copy the old data directly
-			fromDP.CopyTo(toDP)
-		}
-		if fromDP.Timestamp() > toDP.Timestamp() {
+		if ok || fromDP.Timestamp() > toDP.Timestamp() {
 			fromDP.CopyTo(toDP)
 		}
 	}
