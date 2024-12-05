@@ -18,6 +18,7 @@
 package limits // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/axiomhq/hyperloglog"
@@ -43,10 +44,20 @@ func NewTracker[K any](maxCardinality int64) *Tracker[K] {
 	return &Tracker[K]{maxCardinality: maxCardinality}
 }
 
-// CheckOverflow checks if overflow will happen on addition of a new
-// entry with the provided hash denoting the entries ID. It assumes
-// that any entry passed to this method is a NEW entry and the check
-// for this is left to the caller.
+func (t *Tracker[K]) HasOverflow() bool {
+	return t.overflowCounts != nil
+}
+
+func (t *Tracker[K]) EstimateOverflow() uint64 {
+	if t.overflowCounts == nil {
+		return 0
+	}
+	return t.overflowCounts.Estimate()
+}
+
+// CheckOverflow checks if overflow will happen on addition of a new entry with
+// the provided hash denoting the entries ID. It assumes that any entry passed
+// to this method is a NEW entry and the check for this is left to the caller.
 func (t *Tracker[K]) CheckOverflow(
 	hash uint64,
 	attrs pcommon.Map,
@@ -66,8 +77,27 @@ func (t *Tracker[K]) CheckOverflow(
 	return false
 }
 
-// MarshalWithPrefix marshals the tracker with a prefix. To be
-// used to encode more than one limit in an attribute map.
+// ForceOverflow overflows the tracker while merging the provided hll sketch.
+// The method should be used to update the tracker if the overflow is known.
+func (t *Tracker[K]) ForceOverflow(
+	other *Tracker[K],
+) error {
+	if t.maxCardinality != other.maxCardinality {
+		return errors.New("cannot overflow tracker with different max cardinality")
+	}
+	t.observedCount = t.maxCardinality
+	if other.overflowCounts == nil {
+		// Nothing to merge
+		return nil
+	}
+	if t.overflowCounts == nil {
+		t.overflowCounts = hyperloglog.New14()
+	}
+	return t.overflowCounts.Merge(other.overflowCounts)
+}
+
+// MarshalWithPrefix marshals the tracker with a prefix. To be used to encode
+// more than one limit in an attribute map.
 func (t *Tracker[K]) MarshalWithPrefix(p string, m pcommon.Map) error {
 	m.PutInt(p+counterKey, t.observedCount)
 	if t.overflowCounts != nil {

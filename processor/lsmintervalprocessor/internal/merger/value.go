@@ -15,16 +15,19 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package limits // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
+package merger // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 
 import (
 	"errors"
 	"fmt"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
 )
 
 const (
@@ -33,15 +36,15 @@ const (
 	overflowMetricDesc           = "Overflow count due to datapoints limit"
 )
 
-// The source metric must be modified only by the store once the store is created.
-type Store struct {
+// Not safe for concurrent use.
+type Value struct {
 	resourceLimitsCfg   config.LimitConfig
 	scopeLimitsCfg      config.LimitConfig
 	datapointsLimitsCfg config.LimitConfig
 
 	source pmetric.Metrics
 	// Keeps track of resource metrics overflow
-	resourceLimits *Tracker[identity.Resource]
+	resourceLimits *limits.Tracker[identity.Resource]
 
 	// Lookup tables created from source
 	resLookup      map[identity.Resource]resourceMetrics
@@ -53,13 +56,13 @@ type Store struct {
 	expHistoLookup map[identity.Stream]exponentialHistogramDataPoint
 }
 
-func NewStore(cfg *config.Config) *Store {
-	s := &Store{
+func NewValue(cfg *config.Config) Value {
+	return Value{
 		resourceLimitsCfg:   cfg.ResourceLimit,
 		scopeLimitsCfg:      cfg.ScopeLimit,
 		datapointsLimitsCfg: cfg.ScopeDatapointLimit,
 		source:              pmetric.NewMetrics(),
-		resourceLimits:      NewTracker[identity.Resource](cfg.ResourceLimit.MaxCardinality),
+		resourceLimits:      limits.NewTracker[identity.Resource](cfg.ResourceLimit.MaxCardinality),
 		resLookup:           make(map[identity.Resource]resourceMetrics),
 		scopeLookup:         make(map[identity.Scope]scopeMetrics),
 		metricLookup:        make(map[identity.Metric]metric),
@@ -68,17 +71,55 @@ func NewStore(cfg *config.Config) *Store {
 		histoLookup:         make(map[identity.Stream]histogramDataPoint),
 		expHistoLookup:      make(map[identity.Stream]exponentialHistogramDataPoint),
 	}
-	return s
 }
 
-// init initializes the lookup maps from the source. It assumes that the source
-// will NOT overflow or if it has overflowed it already has the overflow
-// buckets initialized.
-func (s *Store) init(source pmetric.Metrics) error {
-	s.source = source
+func (s *Value) MarshalProto() ([]byte, error) {
 	rms := s.source.ResourceMetrics()
-	s.resourceLimits = NewTracker[identity.Resource](s.resourceLimitsCfg.MaxCardinality)
-	if source.ResourceMetrics().Len() > 0 {
+	if rms.Len() > 0 {
+		// Encode resource tracker at the 0th resource metrics
+		// TODO (lahsivjar): Is this safe? We don't ever remove
+		// resource metrics so it should be but best to check.
+		// Also, the limits checker should ensure max cardinality
+		// is greater than zero.
+		if err := s.resourceLimits.MarshalWithPrefix(
+			resourceLimitsEncodingPrefix,
+			rms.At(0).Resource().Attributes(),
+		); err != nil {
+			return nil, fmt.Errorf("failed to marshal resource limits: %w", err)
+		}
+
+		// Encode scope trackers in resource attributes
+		for _, res := range s.resLookup {
+			resAttrs := res.ResourceMetrics.Resource().Attributes()
+			if err := res.scopeLimits.Marshal(resAttrs); err != nil {
+				return nil, fmt.Errorf("failed to marshal scope limits: %w", err)
+			}
+		}
+
+		// Encode datapoints trackers in scope attributes
+		for _, scope := range s.scopeLookup {
+			scopeAttrs := scope.ScopeMetrics.Scope().Attributes()
+			if err := scope.datapointsLimits.Marshal(scopeAttrs); err != nil {
+				return nil, fmt.Errorf("failed to marshal datapoints limits: %w", err)
+			}
+		}
+	}
+	var marshaler pmetric.ProtoMarshaler
+	return marshaler.MarshalMetrics(s.source)
+}
+
+func (s *Value) UnmarshalProto(data []byte) (err error) {
+	var unmarshaler pmetric.ProtoUnmarshaler
+	s.source, err = unmarshaler.UnmarshalMetrics(data)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %w", err)
+	}
+
+	// Initialize the lookup tables assuming that the limits were respected for
+	// the marshaled data and no unexpected overflow will happen.
+	rms := s.source.ResourceMetrics()
+	s.resourceLimits = limits.NewTracker[identity.Resource](s.resourceLimitsCfg.MaxCardinality)
+	if rms.Len() > 0 {
 		if err := s.resourceLimits.UnmarshalWithPrefix(
 			resourceLimitsEncodingPrefix,
 			rms.At(0).Resource().Attributes(),
@@ -89,7 +130,7 @@ func (s *Store) init(source pmetric.Metrics) error {
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
 		rmID := identity.OfResource(rm.Resource())
-		scopeLimits := NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality)
+		scopeLimits := limits.NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality)
 		if err := scopeLimits.Unmarshal(rm.Resource().Attributes()); err != nil {
 			return fmt.Errorf("failed to unmarshal scope limits: %w", err)
 		}
@@ -102,7 +143,7 @@ func (s *Store) init(source pmetric.Metrics) error {
 			sm := sms.At(j)
 			scope := sm.Scope()
 			smID := identity.OfScope(rmID, scope)
-			datapointsLimits := NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality)
+			datapointsLimits := limits.NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality)
 			if err := datapointsLimits.Unmarshal(scope.Attributes()); err != nil {
 				return fmt.Errorf("failed to unmarshal datapoints limits: %w", err)
 			}
@@ -152,115 +193,62 @@ func (s *Store) init(source pmetric.Metrics) error {
 	return nil
 }
 
-func (s *Store) MarshalProto() ([]byte, error) {
-	rms := s.source.ResourceMetrics()
-	if rms.Len() > 0 {
-		// Encode resource tracker at the 0th resource metrics
-		// TODO (lahsivjar): Is this safe? We don't ever remove
-		// resource metrics so it should be but best to check.
-		// Also, the limits checker should ensure max cardinality
-		// is greater than zero.
-		if err := s.resourceLimits.MarshalWithPrefix(
-			resourceLimitsEncodingPrefix,
-			rms.At(0).Resource().Attributes(),
-		); err != nil {
-			return nil, fmt.Errorf("failed to marshal resource limits: %w", err)
+// TODO: Merging the stores with the expanded map and also merge overflow
+// estimator.
+// Merge merges the provided value to the current value instance. The merged
+// value
+func (v *Value) Merge(op Value) error {
+	if op.resourceLimits.HasOverflow() {
+		err := v.resourceLimits.ForceOverflow(op.resourceLimits)
+		if err != nil {
+			return fmt.Errorf("failed to merge overflow: %w", err)
 		}
-
-		// Encode scope trackers in resource attributes
-		for _, res := range s.resLookup {
-			resAttrs := res.ResourceMetrics.Resource().Attributes()
-			if err := res.scopeLimits.Marshal(resAttrs); err != nil {
-				return nil, fmt.Errorf("failed to marshal scope limits: %w", err)
+	}
+	rms := op.source.ResourceMetrics()
+	for i := 0; i < rms.Len(); i++ {
+		rm := rms.At(i)
+		resID, err := v.AddResourceMetrics(rm)
+		if err != nil {
+			return fmt.Errorf("failed to merge resource metrics: %w", err)
+		}
+		sms := rm.ScopeMetrics()
+		for j := 0; j < sms.Len(); j++ {
+			sm := sms.At(j)
+			scopeID, err := v.AddScopeMetrics(resID, sm)
+			if err != nil {
+				return fmt.Errorf("failed to merge scope metrics: %w", err)
 			}
-		}
-
-		// Encode datapoints trackers in scope attributes
-		for _, scope := range s.scopeLookup {
-			scopeAttrs := scope.ScopeMetrics.Scope().Attributes()
-			if err := scope.datapointsLimits.Marshal(scopeAttrs); err != nil {
-				return nil, fmt.Errorf("failed to marshal datapoints limits: %w", err)
+			metrics := sm.Metrics()
+			for k := 0; k < metrics.Len(); k++ {
+				v.mergeMetric(resID, scopeID, metrics.At(k))
 			}
 		}
 	}
-	var marshaler pmetric.ProtoMarshaler
-	return marshaler.MarshalMetrics(s.source)
+	return nil
 }
 
-func (s *Store) UnmarshalProto(data []byte) error {
-	var unmarshaler pmetric.ProtoUnmarshaler
-	m, err := unmarshaler.UnmarshalMetrics(data)
+func (v *Value) MergeMetric(
+	rm pmetric.ResourceMetrics,
+	sm pmetric.ScopeMetrics,
+	m pmetric.Metric,
+) error {
+	resID, err := v.AddResourceMetrics(rm)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal data: %w", err)
+		return err
 	}
-	return s.init(m)
-}
-
-// Get returns the current pmetric.Metrics. The returned metric will
-// include datapoint overflow metrics if `Finalize` is called before
-// and will not include these metrics if `Finalize` is not called.
-func (s *Store) Get() pmetric.Metrics {
-	return s.source
-}
-
-// Finalize finalizes all overflows in the metrics to prepare it for
-// harvest. This method should be called for harvest and only once.
-func (s *Store) Finalize() (pmetric.Metrics, error) {
-	// At this point we need to assume that the metrics are returned
-	// as a final step in the store, thus, prepare the final metric.
-	// In the final metric we have to add datapoint limits.
-	for _, sm := range s.scopeLookup {
-		if sm.datapointsLimits.overflowCounts == nil {
-			continue
-		}
-		// Add overflow metric to the scope
-		overflowMetric := sm.ScopeMetrics.Metrics().AppendEmpty()
-		overflowMetric.SetName(overflowMetricName)
-		overflowMetric.SetDescription(overflowMetricDesc)
-		overflowSum := overflowMetric.SetEmptySum()
-		overflowSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		overflowDP := overflowSum.DataPoints().AppendEmpty()
-		if err := decorate(
-			overflowDP.Attributes(),
-			s.datapointsLimitsCfg.Overflow.Attributes,
-		); err != nil {
-			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
-		}
-		overflowDP.SetIntValue(int64(sm.datapointsLimits.overflowCounts.Estimate()))
+	scopeID, err := v.AddScopeMetrics(resID, sm)
+	if err != nil {
+		return err
 	}
-	// Remove any hanging resource or scope which failed to have any entries
-	// due to children reaching their limits.
-	// TODO (lahsivjar): We can probably optimize to not require this loop by
-	// adding to source metric only at finalize.
-	s.source.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
-		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
-			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
-				switch m.Type() {
-				case pmetric.MetricTypeGauge:
-					return m.Gauge().DataPoints().Len() == 0
-				case pmetric.MetricTypeSum:
-					return m.Sum().DataPoints().Len() == 0
-				case pmetric.MetricTypeHistogram:
-					return m.Histogram().DataPoints().Len() == 0
-				case pmetric.MetricTypeExponentialHistogram:
-					return m.ExponentialHistogram().DataPoints().Len() == 0
-				case pmetric.MetricTypeSummary:
-					return m.Summary().DataPoints().Len() == 0
-				}
-				return false
-			})
-			return sm.Metrics().Len() == 0
-		})
-		return rm.ScopeMetrics().Len() == 0
-	})
-	return s.source, nil
+	v.mergeMetric(resID, scopeID, m)
+	return nil
 }
 
 // AddResourceMetrics adds a new resource metrics to the store while also
 // applying resource limiters. If a limit is configured and breached by
 // adding the provided resource metric, then, a new overflow resource
 // metric is created and returned.
-func (s *Store) AddResourceMetrics(
+func (s *Value) AddResourceMetrics(
 	otherRm pmetric.ResourceMetrics,
 ) (identity.Resource, error) {
 	resID := identity.OfResource(otherRm.Resource())
@@ -286,7 +274,7 @@ func (s *Store) AddResourceMetrics(
 			}
 			s.resLookup[overflowResID] = resourceMetrics{
 				ResourceMetrics: overflowRm,
-				scopeLimits:     NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality),
+				scopeLimits:     limits.NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality),
 			}
 		}
 		return overflowResID, nil
@@ -298,12 +286,12 @@ func (s *Store) AddResourceMetrics(
 	otherRm.Resource().CopyTo(rm.Resource())
 	s.resLookup[resID] = resourceMetrics{
 		ResourceMetrics: rm,
-		scopeLimits:     NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality),
+		scopeLimits:     limits.NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality),
 	}
 	return resID, nil
 }
 
-func (s *Store) AddScopeMetrics(
+func (s *Value) AddScopeMetrics(
 	resID identity.Resource,
 	otherSm pmetric.ScopeMetrics,
 ) (identity.Scope, error) {
@@ -331,7 +319,7 @@ func (s *Store) AddScopeMetrics(
 			}
 			s.scopeLookup[overflowScopeID] = scopeMetrics{
 				ScopeMetrics:     overflowScope,
-				datapointsLimits: NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality),
+				datapointsLimits: limits.NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality),
 			}
 		}
 		return overflowScopeID, nil
@@ -343,12 +331,12 @@ func (s *Store) AddScopeMetrics(
 	sm.SetSchemaUrl(otherSm.SchemaUrl())
 	s.scopeLookup[scopeID] = scopeMetrics{
 		ScopeMetrics:     sm,
-		datapointsLimits: NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality),
+		datapointsLimits: limits.NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality),
 	}
 	return scopeID, nil
 }
 
-func (s *Store) AddMetric(
+func (s *Value) AddMetric(
 	scopeID identity.Scope,
 	otherMetric pmetric.Metric,
 ) identity.Metric {
@@ -395,7 +383,7 @@ func (s *Store) AddMetric(
 // present then either a new data point is added or if the data point overflows
 // due to configured limit then an empty data point is returned. The returned
 // bool value is `true` if a new data point is created and `false` otherwise.
-func (s *Store) AddSumDataPoint(
+func (s *Value) AddSumDataPoint(
 	metricID identity.Metric,
 	otherDP pmetric.NumberDataPoint,
 ) (pmetric.NumberDataPoint, bool) {
@@ -427,7 +415,7 @@ func (s *Store) AddSumDataPoint(
 // overflows due to configured limit then an empty data point is returned.
 // The returned bool value is `true` if a new data point is created and
 // `false` otherwise.
-func (s *Store) AddSummaryDataPoint(
+func (s *Value) AddSummaryDataPoint(
 	metricID identity.Metric,
 	otherDP pmetric.SummaryDataPoint,
 ) (pmetric.SummaryDataPoint, bool) {
@@ -459,7 +447,7 @@ func (s *Store) AddSummaryDataPoint(
 // overflows due to configured limit then an empty data point is returned.
 // The returned bool value is `true` if a new data point is created and
 // `false` otherwise.
-func (s *Store) AddHistogramDataPoint(
+func (s *Value) AddHistogramDataPoint(
 	metricID identity.Metric,
 	otherDP pmetric.HistogramDataPoint,
 ) (pmetric.HistogramDataPoint, bool) {
@@ -491,7 +479,7 @@ func (s *Store) AddHistogramDataPoint(
 // data point overflows due to configured limit then an empty data point is
 // returned. The returned bool value is `true` if a new data point is created
 // and `false` otherwise.
-func (s *Store) AddExponentialHistogramDataPoint(
+func (s *Value) AddExponentialHistogramDataPoint(
 	metricID identity.Metric,
 	otherDP pmetric.ExponentialHistogramDataPoint,
 ) (pmetric.ExponentialHistogramDataPoint, bool) {
@@ -517,7 +505,100 @@ func (s *Store) AddExponentialHistogramDataPoint(
 	return dp, true
 }
 
-func (s *Store) getOverflowResourceBucketID() (identity.Resource, error) {
+// Finalize finalizes all overflows in the metrics to prepare it for
+// harvest. This method must be called only once for harvest.
+func (s *Value) Finalize() (pmetric.Metrics, error) {
+	// At this point we need to assume that the metrics are returned
+	// as a final step in the store, thus, prepare the final metric.
+	// In the final metric we have to add datapoint limits.
+	for _, sm := range s.scopeLookup {
+		if !sm.datapointsLimits.HasOverflow() {
+			continue
+		}
+		// Add overflow metric to the scope
+		overflowMetric := sm.ScopeMetrics.Metrics().AppendEmpty()
+		overflowMetric.SetName(overflowMetricName)
+		overflowMetric.SetDescription(overflowMetricDesc)
+		overflowSum := overflowMetric.SetEmptySum()
+		overflowSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		overflowDP := overflowSum.DataPoints().AppendEmpty()
+		if err := decorate(
+			overflowDP.Attributes(),
+			s.datapointsLimitsCfg.Overflow.Attributes,
+		); err != nil {
+			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
+		}
+		overflowDP.SetIntValue(int64(sm.datapointsLimits.EstimateOverflow()))
+	}
+	// Remove any hanging resource or scope which failed to have any entries
+	// due to children reaching their limits.
+	// TODO (lahsivjar): We can probably optimize to not require this loop by
+	// adding to source metric only at finalize.
+	s.source.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
+		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
+			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
+				switch m.Type() {
+				case pmetric.MetricTypeGauge:
+					return m.Gauge().DataPoints().Len() == 0
+				case pmetric.MetricTypeSum:
+					return m.Sum().DataPoints().Len() == 0
+				case pmetric.MetricTypeHistogram:
+					return m.Histogram().DataPoints().Len() == 0
+				case pmetric.MetricTypeExponentialHistogram:
+					return m.ExponentialHistogram().DataPoints().Len() == 0
+				case pmetric.MetricTypeSummary:
+					return m.Summary().DataPoints().Len() == 0
+				}
+				return false
+			})
+			return sm.Metrics().Len() == 0
+		})
+		return rm.ScopeMetrics().Len() == 0
+	})
+	return s.source, nil
+}
+
+func (v *Value) mergeMetric(
+	resID identity.Resource,
+	scopeID identity.Scope,
+	m pmetric.Metric,
+) {
+	metricID := v.AddMetric(scopeID, m)
+
+	switch m.Type() {
+	case pmetric.MetricTypeSum:
+		merge(
+			m.Sum().DataPoints(),
+			metricID,
+			v.AddSumDataPoint,
+			m.Sum().AggregationTemporality(),
+		)
+	case pmetric.MetricTypeSummary:
+		merge(
+			m.Summary().DataPoints(),
+			metricID,
+			v.AddSummaryDataPoint,
+			// Assume summary to be cumulative temporality
+			pmetric.AggregationTemporalityCumulative,
+		)
+	case pmetric.MetricTypeHistogram:
+		merge(
+			m.Histogram().DataPoints(),
+			metricID,
+			v.AddHistogramDataPoint,
+			m.Histogram().AggregationTemporality(),
+		)
+	case pmetric.MetricTypeExponentialHistogram:
+		merge(
+			m.ExponentialHistogram().DataPoints(),
+			metricID,
+			v.AddExponentialHistogramDataPoint,
+			m.ExponentialHistogram().AggregationTemporality(),
+		)
+	}
+}
+
+func (s *Value) getOverflowResourceBucketID() (identity.Resource, error) {
 	r := pcommon.NewResource()
 	if err := decorate(
 		r.Attributes(),
@@ -528,7 +609,7 @@ func (s *Store) getOverflowResourceBucketID() (identity.Resource, error) {
 	return identity.OfResource(r), nil
 }
 
-func (s *Store) getOverflowScopeBucketID(
+func (s *Value) getOverflowScopeBucketID(
 	res identity.Resource,
 ) (identity.Scope, error) {
 	scope := pcommon.NewInstrumentationScope()
@@ -545,17 +626,117 @@ type resourceMetrics struct {
 	pmetric.ResourceMetrics
 
 	// Keeps track of scope overflows within each resource metric
-	scopeLimits *Tracker[identity.Scope]
+	scopeLimits *limits.Tracker[identity.Scope]
 }
 type scopeMetrics struct {
 	pmetric.ScopeMetrics
-	datapointsLimits *Tracker[identity.Stream]
+	datapointsLimits *limits.Tracker[identity.Stream]
 }
 type metric = pmetric.Metric
 type numberDataPoint = pmetric.NumberDataPoint
 type summaryDataPoint = pmetric.SummaryDataPoint
 type histogramDataPoint = pmetric.HistogramDataPoint
 type exponentialHistogramDataPoint = pmetric.ExponentialHistogramDataPoint
+
+func merge[DPS DataPointSlice[DP], DP DataPoint[DP]](
+	from DPS,
+	toMetricID identity.Metric,
+	addDP func(identity.Metric, DP) (DP, bool),
+	temporality pmetric.AggregationTemporality,
+) {
+	switch temporality {
+	case pmetric.AggregationTemporalityCumulative:
+		mergeCumulative(from, toMetricID, addDP)
+	case pmetric.AggregationTemporalityDelta:
+		mergeDelta(from, toMetricID, addDP)
+	}
+}
+
+func mergeCumulative[DPS DataPointSlice[DP], DP DataPoint[DP]](
+	from DPS,
+	toMetricID identity.Metric,
+	addDP func(identity.Metric, DP) (DP, bool),
+) {
+	var zero DP
+	for i := 0; i < from.Len(); i++ {
+		fromDP := from.At(i)
+		toDP, ok := addDP(toMetricID, fromDP)
+		if toDP == zero {
+			// Overflow, discard the datapoint
+			continue
+		}
+		if ok || fromDP.Timestamp() > toDP.Timestamp() {
+			fromDP.CopyTo(toDP)
+		}
+	}
+}
+
+func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
+	from DPS,
+	toMetricID identity.Metric,
+	addDP func(identity.Metric, DP) (DP, bool),
+) {
+	var zero DP
+	for i := 0; i < from.Len(); i++ {
+		fromDP := from.At(i)
+		toDP, ok := addDP(toMetricID, fromDP)
+		if toDP == zero {
+			// Overflow, discard the datapoint
+			continue
+		}
+		if ok {
+			// New data point is created so we can copy the old data directly
+			fromDP.CopyTo(toDP)
+			continue
+		}
+
+		switch fromDP := any(fromDP).(type) {
+		case pmetric.NumberDataPoint:
+			mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
+		case pmetric.HistogramDataPoint:
+			mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
+		case pmetric.ExponentialHistogramDataPoint:
+			mergeDeltaExponentialHistogramDP(fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint))
+		}
+	}
+}
+
+func mergeDeltaSumDP(from, to pmetric.NumberDataPoint) {
+	toDP := data.Number{NumberDataPoint: to}
+	fromDP := data.Number{NumberDataPoint: from}
+
+	toDP.Add(fromDP)
+}
+
+func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
+	if from.Count() == 0 {
+		return
+	}
+	if to.Count() == 0 {
+		from.CopyTo(to)
+		return
+	}
+
+	toDP := data.Histogram{HistogramDataPoint: to}
+	fromDP := data.Histogram{HistogramDataPoint: from}
+
+	toDP.Add(fromDP)
+}
+
+func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataPoint) {
+	if from.Count() == 0 {
+		return
+	}
+	if to.Count() == 0 {
+		from.CopyTo(to)
+		return
+	}
+
+	toDP := data.ExpHistogram{DataPoint: to}
+	fromDP := data.ExpHistogram{DataPoint: from}
+
+	toDP.Add(fromDP)
+}
 
 func decorate(target pcommon.Map, src []config.Attribute) error {
 	if len(src) == 0 {
