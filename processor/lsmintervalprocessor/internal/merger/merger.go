@@ -21,20 +21,25 @@ import (
 	"io"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 var _ pebble.ValueMerger = (*Merger)(nil)
 
 type Merger struct {
 	current Value
+	cfg     *config.Config
 }
 
-func New(v Value) *Merger {
-	return &Merger{current: v}
+func New(v Value, cfg *config.Config) *Merger {
+	return &Merger{
+		current: v,
+		cfg:     cfg,
+	}
 }
 
 func (m *Merger) MergeNewer(value []byte) error {
-	var op Value
+	op := NewValue(m.cfg)
 	if err := op.UnmarshalProto(value); err != nil {
 		return err
 	}
@@ -42,7 +47,7 @@ func (m *Merger) MergeNewer(value []byte) error {
 }
 
 func (m *Merger) MergeOlder(value []byte) error {
-	var op Value
+	op := NewValue(m.cfg)
 	if err := op.UnmarshalProto(value); err != nil {
 		return err
 	}
