@@ -28,12 +28,9 @@ import (
 )
 
 const (
-	resourceLimitsAttrKey   = "_resource_limits"
-	scopeLimitsAttrKey      = "_scope_limits"
-	datapointsLimitsAttrKey = "_datapoints_limits"
-
-	overflowMetricName = "_other"
-	overflowMetricDesc = "Overflow count due to datapoints limit"
+	resourceLimitsEncodingPrefix = "_resource"
+	overflowMetricName           = "_other"
+	overflowMetricDesc           = "Overflow count due to datapoints limit"
 )
 
 // The source metric must be modified only by the store once the store is created.
@@ -80,21 +77,22 @@ func NewStore(cfg *config.Config) *Store {
 func (s *Store) init(source pmetric.Metrics) error {
 	s.source = source
 	rms := s.source.ResourceMetrics()
+	s.resourceLimits = NewTracker[identity.Resource](s.resourceLimitsCfg.MaxCardinality)
+	if source.ResourceMetrics().Len() > 0 {
+		if err := s.resourceLimits.UnmarshalWithPrefix(
+			resourceLimitsEncodingPrefix,
+			rms.At(0).Resource().Attributes(),
+		); err != nil {
+			return fmt.Errorf("failed to unmarshal resource limits: %w", err)
+		}
+	}
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
 		rmID := identity.OfResource(rm.Resource())
 		scopeLimits := NewTracker[identity.Scope](s.scopeLimitsCfg.MaxCardinality)
-		rm.Resource().Attributes().RemoveIf(func(k string, v pcommon.Value) bool {
-			switch k {
-			case resourceLimitsAttrKey:
-				s.resourceLimits.UnmarshalBinary(v.Bytes().AsRaw())
-				return true
-			case scopeLimitsAttrKey:
-				scopeLimits.UnmarshalBinary(v.Bytes().AsRaw())
-				return true
-			}
-			return false
-		})
+		if err := scopeLimits.Unmarshal(rm.Resource().Attributes()); err != nil {
+			return fmt.Errorf("failed to unmarshal scope limits: %w", err)
+		}
 		s.resLookup[rmID] = resourceMetrics{
 			ResourceMetrics: rm,
 			scopeLimits:     scopeLimits,
@@ -105,13 +103,9 @@ func (s *Store) init(source pmetric.Metrics) error {
 			scope := sm.Scope()
 			smID := identity.OfScope(rmID, scope)
 			datapointsLimits := NewTracker[identity.Stream](s.datapointsLimitsCfg.MaxCardinality)
-			scope.Attributes().RemoveIf(func(k string, v pcommon.Value) bool {
-				if k == datapointsLimitsAttrKey {
-					datapointsLimits.UnmarshalBinary(v.Bytes().AsRaw())
-					return true
-				}
-				return false
-			})
+			if err := datapointsLimits.Unmarshal(scope.Attributes()); err != nil {
+				return fmt.Errorf("failed to unmarshal datapoints limits: %w", err)
+			}
 			s.scopeLookup[smID] = scopeMetrics{
 				ScopeMetrics:     sm,
 				datapointsLimits: datapointsLimits,
@@ -161,39 +155,32 @@ func (s *Store) init(source pmetric.Metrics) error {
 func (s *Store) MarshalProto() ([]byte, error) {
 	rms := s.source.ResourceMetrics()
 	if rms.Len() > 0 {
-		bLimits, err := s.resourceLimits.MarshalBinary()
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal resource limits: %w", err)
-		}
 		// Encode resource tracker at the 0th resource metrics
 		// TODO (lahsivjar): Is this safe? We don't ever remove
 		// resource metrics so it should be but best to check.
 		// Also, the limits checker should ensure max cardinality
 		// is greater than zero.
-		rmAttr := rms.At(0).Resource().Attributes()
-		b := rmAttr.PutEmptyBytes(resourceLimitsAttrKey)
-		b.FromRaw(bLimits)
+		if err := s.resourceLimits.MarshalWithPrefix(
+			resourceLimitsEncodingPrefix,
+			rms.At(0).Resource().Attributes(),
+		); err != nil {
+			return nil, fmt.Errorf("failed to marshal resource limits: %w", err)
+		}
 
 		// Encode scope trackers in resource attributes
 		for _, res := range s.resLookup {
-			bLimits, err := res.scopeLimits.MarshalBinary()
-			if err != nil {
+			resAttrs := res.ResourceMetrics.Resource().Attributes()
+			if err := res.scopeLimits.Marshal(resAttrs); err != nil {
 				return nil, fmt.Errorf("failed to marshal scope limits: %w", err)
 			}
-			resAttrs := res.ResourceMetrics.Resource().Attributes()
-			b := resAttrs.PutEmptyBytes(scopeLimitsAttrKey)
-			b.FromRaw(bLimits)
 		}
 
 		// Encode datapoints trackers in scope attributes
 		for _, scope := range s.scopeLookup {
-			bLimits, err := scope.datapointsLimits.MarshalBinary()
-			if err != nil {
+			scopeAttrs := scope.ScopeMetrics.Scope().Attributes()
+			if err := scope.datapointsLimits.Marshal(scopeAttrs); err != nil {
 				return nil, fmt.Errorf("failed to marshal datapoints limits: %w", err)
 			}
-			scopeAttrs := scope.ScopeMetrics.Scope().Attributes()
-			b := scopeAttrs.PutEmptyBytes(datapointsLimitsAttrKey)
-			b.FromRaw(bLimits)
 		}
 	}
 	var marshaler pmetric.ProtoMarshaler

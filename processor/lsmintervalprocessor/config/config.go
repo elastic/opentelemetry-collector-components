@@ -67,7 +67,7 @@ type IntervalConfig struct {
 }
 
 type LimitConfig struct {
-	MaxCardinality uint64         `mapstructure:"max_cardinality"`
+	MaxCardinality int64          `mapstructure:"max_cardinality"`
 	Overflow       OverflowConfig `mapstructure:"overflow"`
 }
 

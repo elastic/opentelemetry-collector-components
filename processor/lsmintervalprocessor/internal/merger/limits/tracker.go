@@ -18,24 +18,28 @@
 package limits // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
 
 import (
-	"encoding/binary"
 	"fmt"
 
 	"github.com/axiomhq/hyperloglog"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
+const (
+	hllSketchKey = "_limits_hll_sketch"
+	counterKey   = "_limits_counter"
+)
+
 // Tracker tracks the configured limits while merging. It records the
 // observed count as well as the unique overflow counts.
 type Tracker[K any] struct {
-	maxCardinality uint64
+	maxCardinality int64
 	// Note that overflow buckets will NOT be counted in observed count
 	// though, overflow buckets can have overflow of their own.
-	observedCount  uint64
+	observedCount  int64
 	overflowCounts *hyperloglog.Sketch
 }
 
-func NewTracker[K any](maxCardinality uint64) *Tracker[K] {
+func NewTracker[K any](maxCardinality int64) *Tracker[K] {
 	return &Tracker[K]{maxCardinality: maxCardinality}
 }
 
@@ -62,53 +66,59 @@ func (t *Tracker[K]) CheckOverflow(
 	return false
 }
 
-// MarshalBinary encodes the tracker to a byte slice. Note that only the
-// observed count and the overflow estimator are encoded.
-func (t *Tracker[K]) MarshalBinary() ([]byte, error) {
-	var (
-		hll []byte
-		err error
-	)
+// MarshalWithPrefix marshals the tracker with a prefix. To be
+// used to encode more than one limit in an attribute map.
+func (t *Tracker[K]) MarshalWithPrefix(p string, m pcommon.Map) error {
+	m.PutInt(p+counterKey, t.observedCount)
 	if t.overflowCounts != nil {
-		hll, err = t.overflowCounts.MarshalBinary()
+		hll, err := t.overflowCounts.MarshalBinary()
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal overflow estimator: %w", err)
+			return fmt.Errorf("failed to marshal limits: %w", err)
 		}
-	}
-
-	var offset int
-	// 8 bytes for observed count + HLL binary encoded size
-	data := make([]byte, 8+len(hll))
-	binary.BigEndian.PutUint64(data[offset:], t.observedCount)
-	offset += 8
-
-	if len(hll) > 0 {
-		copy(data[offset:], hll)
-	}
-	return data, nil
-}
-
-// UnmarshalBinary unmarshals binary encoded tracker to the go struct. Note
-// that limit config and the overflow bucket ID are not encoded in the binary
-// format as they could be recreated. Example usage:
-//
-//	t := NewTracker[identity.Resource](cfg)
-//	if err := t.UnmarshalBinary(data); err != nil {
-//	    panic(err)
-//	}
-//	t.SetOverflowBucketID(identity.OfResource(decodedResource))
-func (t *Tracker[K]) UnmarshalBinary(data []byte) error {
-	if len(data) < 8 {
-		return fmt.Errorf("failed to unmarshal observed count, invalid data of length %d received", len(data))
-	}
-
-	t.observedCount = binary.BigEndian.Uint64(data[:8])
-	if len(data) == 8 {
-		return nil
-	}
-	t.overflowCounts = hyperloglog.New14()
-	if err := t.overflowCounts.UnmarshalBinary(data[8:]); err != nil {
-		return fmt.Errorf("failed to unmarshal overflow estimator hll sketch: %w", err)
+		v := m.PutEmptyBytes(p + hllSketchKey)
+		v.FromRaw(hll)
 	}
 	return nil
+}
+
+// Marshal encodes the tracker as attributes in the provided map.
+func (t *Tracker[K]) Marshal(m pcommon.Map) error {
+	return t.MarshalWithPrefix("", m)
+}
+
+// UnmarshalWithPrefix unmarshals the tracker encoded with a prefix.
+func (t *Tracker[K]) UnmarshalWithPrefix(p string, m pcommon.Map) (err error) {
+	prefixCounterKey := p + counterKey
+	prefixHllKey := p + hllSketchKey
+	m.RemoveIf(func(k string, v pcommon.Value) bool {
+		switch k {
+		case prefixCounterKey:
+			t.observedCount = v.Int()
+			return true
+		case prefixHllKey:
+			t.overflowCounts = hyperloglog.New14()
+			if err := t.overflowCounts.UnmarshalBinary(v.Bytes().AsRaw()); err != nil {
+				err = fmt.Errorf(
+					"failed to unmarshal overflow estimator hll sketch: %w",
+					err,
+				)
+			}
+			return true
+		}
+		return false
+	})
+	return err
+}
+
+// Unmarshal unmarshals the encoded limits from the attribute map to
+// the go struct and removes any attributes used in the encoding logic.
+// Example usage:
+//
+// t := NewTracker[identity.Resource](maxCardinality)
+//
+//	if err := t.Unmarshal(resourceAttrs); err != nil {
+//	    panic(err)
+//	}
+func (t *Tracker[K]) Unmarshal(m pcommon.Map) error {
+	return t.UnmarshalWithPrefix("", m)
 }
