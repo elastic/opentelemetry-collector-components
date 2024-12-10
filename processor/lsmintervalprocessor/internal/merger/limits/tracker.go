@@ -32,7 +32,7 @@ const (
 
 // Tracker tracks the configured limits while merging. It records the
 // observed count as well as the unique overflow counts.
-type Tracker[K any] struct {
+type Tracker struct {
 	maxCardinality int64
 	// Note that overflow buckets will NOT be counted in observed count
 	// though, overflow buckets can have overflow of their own.
@@ -40,15 +40,15 @@ type Tracker[K any] struct {
 	overflowCounts *hyperloglog.Sketch
 }
 
-func NewTracker[K any](maxCardinality int64) *Tracker[K] {
-	return &Tracker[K]{maxCardinality: maxCardinality}
+func NewTracker(maxCardinality int64) *Tracker {
+	return &Tracker{maxCardinality: maxCardinality}
 }
 
-func (t *Tracker[K]) HasOverflow() bool {
+func (t *Tracker) HasOverflow() bool {
 	return t.overflowCounts != nil
 }
 
-func (t *Tracker[K]) EstimateOverflow() uint64 {
+func (t *Tracker) EstimateOverflow() uint64 {
 	if t.overflowCounts == nil {
 		return 0
 	}
@@ -58,10 +58,7 @@ func (t *Tracker[K]) EstimateOverflow() uint64 {
 // CheckOverflow checks if overflow will happen on addition of a new entry with
 // the provided hash denoting the entries ID. It assumes that any entry passed
 // to this method is a NEW entry and the check for this is left to the caller.
-func (t *Tracker[K]) CheckOverflow(
-	hash uint64,
-	attrs pcommon.Map,
-) bool {
+func (t *Tracker) CheckOverflow(hash uint64) bool {
 	if t.maxCardinality == 0 {
 		return false
 	}
@@ -80,8 +77,8 @@ func (t *Tracker[K]) CheckOverflow(
 // MergeEstimators merges the overflow estimators for the two trackers.
 // Note that other required maintenance of the tracker for merge needs to
 // done by the caller.
-func (t *Tracker[K]) MergeEstimators(
-	other *Tracker[K],
+func (t *Tracker) MergeEstimators(
+	other *Tracker,
 ) error {
 	if other.overflowCounts == nil {
 		// nothing to merge
@@ -94,28 +91,9 @@ func (t *Tracker[K]) MergeEstimators(
 	return t.overflowCounts.Merge(other.overflowCounts)
 }
 
-// ForceOverflow overflows the tracker while merging the provided hll sketch.
-// The method should be used to update the tracker if the overflow is known.
-func (t *Tracker[K]) ForceOverflow(
-	other *Tracker[K],
-) error {
-	if t.maxCardinality != other.maxCardinality {
-		return errors.New("cannot overflow tracker with different max cardinality")
-	}
-	t.observedCount = t.maxCardinality
-	if other.overflowCounts == nil {
-		// Nothing to merge
-		return nil
-	}
-	if t.overflowCounts == nil {
-		t.overflowCounts = hyperloglog.New14()
-	}
-	return t.overflowCounts.Merge(other.overflowCounts)
-}
-
 // MarshalWithPrefix marshals the tracker with a prefix. To be used to encode
 // more than one limit in an attribute map.
-func (t *Tracker[K]) MarshalWithPrefix(p string, m pcommon.Map) error {
+func (t *Tracker) MarshalWithPrefix(p string, m pcommon.Map) error {
 	m.PutInt(p+counterKey, t.observedCount)
 	if t.overflowCounts != nil {
 		hll, err := t.overflowCounts.MarshalBinary()
@@ -129,12 +107,12 @@ func (t *Tracker[K]) MarshalWithPrefix(p string, m pcommon.Map) error {
 }
 
 // Marshal encodes the tracker as attributes in the provided map.
-func (t *Tracker[K]) Marshal(m pcommon.Map) error {
+func (t *Tracker) Marshal(m pcommon.Map) error {
 	return t.MarshalWithPrefix("", m)
 }
 
 // UnmarshalWithPrefix unmarshals the tracker encoded with a prefix.
-func (t *Tracker[K]) UnmarshalWithPrefix(p string, m pcommon.Map) error {
+func (t *Tracker) UnmarshalWithPrefix(p string, m pcommon.Map) error {
 	var errs []error
 	prefixCounterKey := p + counterKey
 	prefixHllKey := p + hllSketchKey
@@ -164,11 +142,10 @@ func (t *Tracker[K]) UnmarshalWithPrefix(p string, m pcommon.Map) error {
 // the go struct and removes any attributes used in the encoding logic.
 // Example usage:
 //
-// t := NewTracker[identity.Resource](maxCardinality)
-//
-//	if err := t.Unmarshal(resourceAttrs); err != nil {
+//	t := NewTracker[identity.Resource](MaxCardinality)
+//	if err := t.Unmarshal(ResourceAttributes); err != nil {
 //	    panic(err)
 //	}
-func (t *Tracker[K]) Unmarshal(m pcommon.Map) error {
+func (t *Tracker) Unmarshal(m pcommon.Map) error {
 	return t.UnmarshalWithPrefix("", m)
 }
