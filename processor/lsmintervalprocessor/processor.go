@@ -69,11 +69,20 @@ func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, ne
 		Merger: &pebble.Merger{
 			Name: "pmetrics_merger",
 			Merge: func(key, value []byte) (pebble.ValueMerger, error) {
-				v := merger.NewValue(cfg)
+				v := merger.NewValue(
+					cfg.ResourceLimit,
+					cfg.ScopeLimit,
+					cfg.ScopeDatapointLimit,
+				)
 				if err := v.UnmarshalProto(value); err != nil {
 					return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
 				}
-				return merger.New(v, cfg), nil
+				return merger.New(
+					v,
+					cfg.ResourceLimit,
+					cfg.ScopeLimit,
+					cfg.ScopeDatapointLimit,
+				), nil
 			},
 		},
 	}
@@ -210,7 +219,11 @@ func (p *Processor) Capabilities() consumer.Capabilities {
 
 func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	var errs []error
-	v := merger.NewValue(p.cfg)
+	v := merger.NewValue(
+		p.cfg.ResourceLimit,
+		p.cfg.ScopeLimit,
+		p.cfg.ScopeDatapointLimit,
+	)
 	md.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
 		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
 			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
@@ -371,7 +384,11 @@ func (p *Processor) exportForInterval(
 	var errs []error
 	var exportedDPCount int
 	for iter.First(); iter.Valid(); iter.Next() {
-		v := merger.NewValue(p.cfg)
+		v := merger.NewValue(
+			p.cfg.ResourceLimit,
+			p.cfg.ScopeLimit,
+			p.cfg.ScopeDatapointLimit,
+		)
 		if err := v.UnmarshalProto(iter.Value()); err != nil {
 			errs = append(errs, fmt.Errorf("failed to decode binary from database: %w", err))
 			continue

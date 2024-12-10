@@ -27,34 +27,39 @@ import (
 var _ pebble.ValueMerger = (*Merger)(nil)
 
 type Merger struct {
-	current Value
-	cfg     *config.Config
+	current          Value
+	resourceLimitCfg config.LimitConfig
+	scopeLimitCfg    config.LimitConfig
+	scopeDPLimitCfg  config.LimitConfig
+	cfg              *config.Config
 }
 
-func New(v Value, cfg *config.Config) *Merger {
-	return &Merger{
-		current: v,
-		cfg:     cfg,
+func New(v Value, resLimit, scopeLimit, scopeDPLimit config.LimitConfig) Merger {
+	return Merger{
+		current:          v,
+		resourceLimitCfg: resLimit,
+		scopeLimitCfg:    scopeLimit,
+		scopeDPLimitCfg:  scopeDPLimit,
 	}
 }
 
-func (m *Merger) MergeNewer(value []byte) error {
-	op := NewValue(m.cfg)
+func (m Merger) MergeNewer(value []byte) error {
+	op := NewValue(m.resourceLimitCfg, m.scopeLimitCfg, m.scopeDPLimitCfg)
 	if err := op.UnmarshalProto(value); err != nil {
 		return err
 	}
-	return m.current.Merge(op)
+	return m.current.merge(op)
 }
 
-func (m *Merger) MergeOlder(value []byte) error {
-	op := NewValue(m.cfg)
+func (m Merger) MergeOlder(value []byte) error {
+	op := NewValue(m.resourceLimitCfg, m.scopeLimitCfg, m.scopeDPLimitCfg)
 	if err := op.UnmarshalProto(value); err != nil {
 		return err
 	}
-	return m.current.Merge(op)
+	return m.current.merge(op)
 }
 
-func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
+func (m Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
 	data, err := m.current.MarshalProto()
 	return data, nil, err
 }
