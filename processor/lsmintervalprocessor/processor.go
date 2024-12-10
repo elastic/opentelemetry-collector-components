@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 )
 
@@ -43,7 +44,7 @@ var zeroTime = time.Unix(0, 0).UTC()
 const batchCommitThreshold = 16 << 20 // 16MB
 
 type Processor struct {
-	passthrough PassThrough
+	cfg *config.Config
 
 	db      *pebble.DB
 	dataDir string
@@ -63,16 +64,25 @@ type Processor struct {
 	logger        *zap.Logger
 }
 
-func newProcessor(cfg *Config, ivlDefs []intervalDef, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
+func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
 	dbOpts := &pebble.Options{
 		Merger: &pebble.Merger{
 			Name: "pmetrics_merger",
 			Merge: func(key, value []byte) (pebble.ValueMerger, error) {
-				var v merger.Value
+				v := merger.NewValue(
+					cfg.ResourceLimit,
+					cfg.ScopeLimit,
+					cfg.ScopeDatapointLimit,
+				)
 				if err := v.UnmarshalProto(value); err != nil {
 					return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
 				}
-				return merger.New(v), nil
+				return merger.New(
+					v,
+					cfg.ResourceLimit,
+					cfg.ScopeLimit,
+					cfg.ScopeDatapointLimit,
+				), nil
 			},
 		},
 	}
@@ -88,7 +98,7 @@ func newProcessor(cfg *Config, ivlDefs []intervalDef, log *zap.Logger, next cons
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Processor{
-		passthrough:    cfg.PassThrough,
+		cfg:            cfg,
 		dataDir:        dataDir,
 		dbOpts:         dbOpts,
 		wOpts:          writeOpts,
@@ -209,7 +219,11 @@ func (p *Processor) Capabilities() consumer.Capabilities {
 
 func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	var errs []error
-	v := merger.Value{Metrics: pmetric.NewMetrics()}
+	v := merger.NewValue(
+		p.cfg.ResourceLimit,
+		p.cfg.ScopeLimit,
+		p.cfg.ScopeDatapointLimit,
+	)
 	md.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
 		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
 			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
@@ -218,13 +232,17 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 					// TODO (lahsivjar): implement support for gauges
 					return false
 				case pmetric.MetricTypeSummary:
-					if p.passthrough.Summary {
+					if p.cfg.PassThrough.Summary {
 						return false
 					}
-					v.MergeMetric(rm, sm, m)
+					if err := v.MergeMetric(rm, sm, m); err != nil {
+						errs = append(errs, err)
+					}
 					return true
 				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram, pmetric.MetricTypeExponentialHistogram:
-					v.MergeMetric(rm, sm, m)
+					if err := v.MergeMetric(rm, sm, m); err != nil {
+						errs = append(errs, err)
+					}
 					return true
 				default:
 					// All metric types are handled, this is unexpected
@@ -366,12 +384,21 @@ func (p *Processor) exportForInterval(
 	var errs []error
 	var exportedDPCount int
 	for iter.First(); iter.Valid(); iter.Next() {
-		var v merger.Value
+		v := merger.NewValue(
+			p.cfg.ResourceLimit,
+			p.cfg.ScopeLimit,
+			p.cfg.ScopeDatapointLimit,
+		)
 		if err := v.UnmarshalProto(iter.Value()); err != nil {
 			errs = append(errs, fmt.Errorf("failed to decode binary from database: %w", err))
 			continue
 		}
-		resourceMetrics := v.Metrics.ResourceMetrics()
+		finalMetrics, err := v.Finalize()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to finalize merged metric: %w", err))
+			continue
+		}
+		resourceMetrics := finalMetrics.ResourceMetrics()
 		if ivl.Statements != nil {
 			for i := 0; i < resourceMetrics.Len(); i++ {
 				res := resourceMetrics.At(i)
@@ -419,11 +446,11 @@ func (p *Processor) exportForInterval(
 				}
 			}
 		}
-		if err := p.next.ConsumeMetrics(ctx, v.Metrics); err != nil {
+		if err := p.next.ConsumeMetrics(ctx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
 			continue
 		}
-		exportedDPCount += v.Metrics.DataPointCount()
+		exportedDPCount += finalMetrics.DataPointCount()
 	}
 	if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
 		errs = append(errs, fmt.Errorf("failed to delete exported entries: %w", err))
