@@ -375,6 +375,7 @@ func (p *Processor) exportForInterval(
 		finalMetrics, err := v.Finalize()
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to finalize merged metric: %w", err))
+			continue
 		}
 		resourceMetrics := finalMetrics.ResourceMetrics()
 		if ivl.Statements != nil {
