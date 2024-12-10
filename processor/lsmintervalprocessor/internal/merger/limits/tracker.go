@@ -77,9 +77,7 @@ func (t *Tracker) CheckOverflow(hash uint64) bool {
 // MergeEstimators merges the overflow estimators for the two trackers.
 // Note that other required maintenance of the tracker for merge needs to
 // done by the caller.
-func (t *Tracker) MergeEstimators(
-	other *Tracker,
-) error {
+func (t *Tracker) MergeEstimators(other *Tracker) error {
 	if other.overflowCounts == nil {
 		// nothing to merge
 		return nil
