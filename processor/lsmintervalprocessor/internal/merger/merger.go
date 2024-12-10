@@ -31,7 +31,6 @@ type Merger struct {
 	resourceLimitCfg config.LimitConfig
 	scopeLimitCfg    config.LimitConfig
 	scopeDPLimitCfg  config.LimitConfig
-	cfg              *config.Config
 }
 
 func New(v Value, resLimit, scopeLimit, scopeDPLimit config.LimitConfig) Merger {
