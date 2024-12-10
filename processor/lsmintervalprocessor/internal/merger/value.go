@@ -56,6 +56,30 @@ type Value struct {
 	expHistoLookup map[identity.Stream]exponentialHistogramDataPoint
 }
 
+type resourceMetrics struct {
+	pmetric.ResourceMetrics
+
+	// Keeps track of scope overflows within each resource metric
+	scopeLimits *limits.Tracker[identity.Scope]
+}
+
+type scopeMetrics struct {
+	pmetric.ScopeMetrics
+
+	// Keeps track of datapoints limits within each scope metric
+	datapointsLimits *limits.Tracker[identity.Stream]
+}
+
+type metric = pmetric.Metric
+
+type numberDataPoint = pmetric.NumberDataPoint
+
+type summaryDataPoint = pmetric.SummaryDataPoint
+
+type histogramDataPoint = pmetric.HistogramDataPoint
+
+type exponentialHistogramDataPoint = pmetric.ExponentialHistogramDataPoint
+
 func NewValue(cfg *config.Config) Value {
 	return Value{
 		resourceLimitsCfg:   cfg.ResourceLimit,
@@ -198,31 +222,42 @@ func (s *Value) UnmarshalProto(data []byte) (err error) {
 // Merge merges the provided value to the current value instance. The merged
 // value
 func (v *Value) Merge(op Value) error {
-	if op.resourceLimits.HasOverflow() {
-		err := v.resourceLimits.ForceOverflow(op.resourceLimits)
-		if err != nil {
-			return fmt.Errorf("failed to merge overflow: %w", err)
-		}
-	}
-	rms := op.source.ResourceMetrics()
-	for i := 0; i < rms.Len(); i++ {
-		rm := rms.At(i)
-		resID, err := v.AddResourceMetrics(rm)
+	// Implement bottoms up merge so that only the resource and scope metrics
+	// with data are considered in the final metric.
+	for mOtherID, mOther := range op.metricLookup {
+		resOtherID := mOtherID.Resource()
+		scopeOtherID := mOtherID.Scope()
+		resOther := op.resLookup[resOtherID]
+		scopeOther := op.scopeLookup[scopeOtherID]
+
+		// Merge/add resource metrics. Note that if the resource metrics
+		// overflows then the ID will be different from the other resource ID.
+		resID, err := v.AddResourceMetrics(resOther.ResourceMetrics)
 		if err != nil {
 			return fmt.Errorf("failed to merge resource metrics: %w", err)
 		}
-		sms := rm.ScopeMetrics()
-		for j := 0; j < sms.Len(); j++ {
-			sm := sms.At(j)
-			scopeID, err := v.AddScopeMetrics(resID, sm)
-			if err != nil {
-				return fmt.Errorf("failed to merge scope metrics: %w", err)
-			}
-			metrics := sm.Metrics()
-			for k := 0; k < metrics.Len(); k++ {
-				v.mergeMetric(resID, scopeID, metrics.At(k))
-			}
+		// Merge/add scope metrics. Note that if the scope metrics overflows
+		// then the ID will be different from the other scope ID.
+		scopeID, err := v.AddScopeMetrics(resID, scopeOther.ScopeMetrics)
+		if err != nil {
+			return fmt.Errorf("failed to merge scope metrics: %w", err)
 		}
+		// Merge any overflow estimators for scope or datapoints. Note that here
+		// we assume that the limits for both metrics being merged are identical
+		// and thus if any of the metric has overflowed then the target metric
+		// for merge will definitely overflow. Thus, merging the estimators is
+		// safe and required to correctly estimate the total number of overflow.
+		res := v.resLookup[resID]
+		res.scopeLimits.MergeEstimators(resOther.scopeLimits)
+		scope := v.scopeLookup[scopeID]
+		scope.datapointsLimits.MergeEstimators(scopeOther.datapointsLimits)
+
+		// Finally merge the metric
+		v.mergeMetric(resID, scopeID, mOther)
+	}
+	// Merge any resource overflow estimators
+	if err := v.resourceLimits.MergeEstimators(op.resourceLimits); err != nil {
+		return fmt.Errorf("failed to merge resource metrics overflow estimators: %w", err)
 	}
 	return nil
 }
@@ -561,7 +596,7 @@ func (s *Value) Finalize() (pmetric.Metrics, error) {
 func (v *Value) mergeMetric(
 	resID identity.Resource,
 	scopeID identity.Scope,
-	m pmetric.Metric,
+	m metric,
 ) {
 	metricID := v.AddMetric(scopeID, m)
 
@@ -621,22 +656,6 @@ func (s *Value) getOverflowScopeBucketID(
 	}
 	return identity.OfScope(res, scope), nil
 }
-
-type resourceMetrics struct {
-	pmetric.ResourceMetrics
-
-	// Keeps track of scope overflows within each resource metric
-	scopeLimits *limits.Tracker[identity.Scope]
-}
-type scopeMetrics struct {
-	pmetric.ScopeMetrics
-	datapointsLimits *limits.Tracker[identity.Stream]
-}
-type metric = pmetric.Metric
-type numberDataPoint = pmetric.NumberDataPoint
-type summaryDataPoint = pmetric.SummaryDataPoint
-type histogramDataPoint = pmetric.HistogramDataPoint
-type exponentialHistogramDataPoint = pmetric.ExponentialHistogramDataPoint
 
 func merge[DPS DataPointSlice[DP], DP DataPoint[DP]](
 	from DPS,

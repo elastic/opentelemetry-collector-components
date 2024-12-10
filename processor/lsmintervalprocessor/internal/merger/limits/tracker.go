@@ -77,6 +77,23 @@ func (t *Tracker[K]) CheckOverflow(
 	return false
 }
 
+// MergeEstimators merges the overflow estimators for the two trackers.
+// Note that other required maintenance of the tracker for merge needs to
+// done by the caller.
+func (t *Tracker[K]) MergeEstimators(
+	other *Tracker[K],
+) error {
+	if other.overflowCounts == nil {
+		// nothing to merge
+		return nil
+	}
+	if t.overflowCounts == nil {
+		t.overflowCounts = other.overflowCounts.Clone()
+		return nil
+	}
+	return t.overflowCounts.Merge(other.overflowCounts)
+}
+
 // ForceOverflow overflows the tracker while merging the provided hll sketch.
 // The method should be used to update the tracker if the overflow is known.
 func (t *Tracker[K]) ForceOverflow(
