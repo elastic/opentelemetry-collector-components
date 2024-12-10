@@ -248,16 +248,20 @@ func (v *Value) Merge(op Value) error {
 		// for merge will definitely overflow. Thus, merging the estimators is
 		// safe and required to correctly estimate the total number of overflow.
 		res := v.resLookup[resID]
-		res.scopeLimits.MergeEstimators(resOther.scopeLimits)
+		if err := res.scopeLimits.MergeEstimators(resOther.scopeLimits); err != nil {
+			return fmt.Errorf("failed to merge scope overflow estimators: %w", err)
+		}
 		scope := v.scopeLookup[scopeID]
-		scope.datapointsLimits.MergeEstimators(scopeOther.datapointsLimits)
+		if err := scope.datapointsLimits.MergeEstimators(scopeOther.datapointsLimits); err != nil {
+			return fmt.Errorf("failed to merge datapoints overflow estimators: %w", err)
+		}
 
 		// Finally merge the metric
 		v.mergeMetric(resID, scopeID, mOther)
 	}
 	// Merge any resource overflow estimators
 	if err := v.resourceLimits.MergeEstimators(op.resourceLimits); err != nil {
-		return fmt.Errorf("failed to merge resource metrics overflow estimators: %w", err)
+		return fmt.Errorf("failed to merge resource overflow estimators: %w", err)
 	}
 	return nil
 }

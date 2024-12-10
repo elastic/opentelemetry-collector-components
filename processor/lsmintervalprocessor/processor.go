@@ -222,10 +222,14 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 					if p.cfg.PassThrough.Summary {
 						return false
 					}
-					v.MergeMetric(rm, sm, m)
+					if err := v.MergeMetric(rm, sm, m); err != nil {
+						errs = append(errs, err)
+					}
 					return true
 				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram, pmetric.MetricTypeExponentialHistogram:
-					v.MergeMetric(rm, sm, m)
+					if err := v.MergeMetric(rm, sm, m); err != nil {
+						errs = append(errs, err)
+					}
 					return true
 				default:
 					// All metric types are handled, this is unexpected

@@ -134,7 +134,8 @@ func (t *Tracker[K]) Marshal(m pcommon.Map) error {
 }
 
 // UnmarshalWithPrefix unmarshals the tracker encoded with a prefix.
-func (t *Tracker[K]) UnmarshalWithPrefix(p string, m pcommon.Map) (err error) {
+func (t *Tracker[K]) UnmarshalWithPrefix(p string, m pcommon.Map) error {
+	var errs []error
 	prefixCounterKey := p + counterKey
 	prefixHllKey := p + hllSketchKey
 	m.RemoveIf(func(k string, v pcommon.Value) bool {
@@ -145,16 +146,18 @@ func (t *Tracker[K]) UnmarshalWithPrefix(p string, m pcommon.Map) (err error) {
 		case prefixHllKey:
 			t.overflowCounts = hyperloglog.New14()
 			if err := t.overflowCounts.UnmarshalBinary(v.Bytes().AsRaw()); err != nil {
-				err = fmt.Errorf(
-					"failed to unmarshal overflow estimator hll sketch: %w",
-					err,
-				)
+				errs = append(errs, fmt.Errorf(
+					"failed to unmarshal overflow estimator hll sketch: %w", err,
+				))
 			}
 			return true
 		}
 		return false
 	})
-	return err
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to unmarshal tracker: %w", errors.Join(errs...))
+	}
+	return nil
 }
 
 // Unmarshal unmarshals the encoded limits from the attribute map to
