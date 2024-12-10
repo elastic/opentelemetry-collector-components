@@ -242,6 +242,9 @@ func (v *Value) Merge(op Value) error {
 		// and thus if any of the metric has overflowed then the target metric
 		// for merge will definitely overflow. Thus, merging the estimators is
 		// safe and required to correctly estimate the total number of overflow.
+		// Note that overflow merging is not deterministic and the estimates are
+		// always estimates as it is possible that the oveflows have hashes which
+		// haven't overflowed in the source metric.
 		res := v.resLookup[resID]
 		if err := res.scopeLimits.MergeEstimators(resOther.scopeLimits); err != nil {
 			return fmt.Errorf("failed to merge scope overflow estimators: %w", err)
@@ -638,7 +641,22 @@ func (s *Value) getOverflowScopeBucketID(
 	return identity.OfScope(res, scope), nil
 }
 
-func merge[DPS DataPointSlice[DP], DP DataPoint[DP]](
+type dataPointSlice[DP dataPoint[DP]] interface {
+	Len() int
+	At(i int) DP
+	AppendEmpty() DP
+}
+
+type dataPoint[Self any] interface {
+	pmetric.NumberDataPoint | pmetric.SummaryDataPoint | pmetric.HistogramDataPoint | pmetric.ExponentialHistogramDataPoint
+
+	Timestamp() pcommon.Timestamp
+	SetTimestamp(pcommon.Timestamp)
+	Attributes() pcommon.Map
+	CopyTo(dest Self)
+}
+
+func merge[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
 	toMetricID identity.Metric,
 	addDP func(identity.Metric, DP) (DP, bool),
@@ -652,7 +670,7 @@ func merge[DPS DataPointSlice[DP], DP DataPoint[DP]](
 	}
 }
 
-func mergeCumulative[DPS DataPointSlice[DP], DP DataPoint[DP]](
+func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
 	toMetricID identity.Metric,
 	addDP func(identity.Metric, DP) (DP, bool),
@@ -671,7 +689,7 @@ func mergeCumulative[DPS DataPointSlice[DP], DP DataPoint[DP]](
 	}
 }
 
-func mergeDelta[DPS DataPointSlice[DP], DP DataPoint[DP]](
+func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
 	toMetricID identity.Metric,
 	addDP func(identity.Metric, DP) (DP, bool),

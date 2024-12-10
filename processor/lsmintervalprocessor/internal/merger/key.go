@@ -67,10 +67,7 @@ func (k *Key) Unmarshal(d []byte) error {
 	if len(d) != 10 {
 		return errors.New("failed to unmarshal key, invalid sized buffer provided")
 	}
-	var offset int
-	k.Interval = time.Duration(binary.BigEndian.Uint16(d[offset:2])) * time.Second
-	offset += 2
-
-	k.ProcessingTime = time.Unix(int64(binary.BigEndian.Uint64(d[offset:offset+8])), 0)
+	k.Interval = time.Duration(binary.BigEndian.Uint16(d[:2])) * time.Second
+	k.ProcessingTime = time.Unix(int64(binary.BigEndian.Uint64(d[2:10])), 0)
 	return nil
 }
