@@ -33,8 +33,8 @@ type Merger struct {
 	scopeDPLimitCfg  config.LimitConfig
 }
 
-func New(v Value, resLimit, scopeLimit, scopeDPLimit config.LimitConfig) Merger {
-	return Merger{
+func New(v Value, resLimit, scopeLimit, scopeDPLimit config.LimitConfig) *Merger {
+	return &Merger{
 		current:          v,
 		resourceLimitCfg: resLimit,
 		scopeLimitCfg:    scopeLimit,
@@ -42,7 +42,7 @@ func New(v Value, resLimit, scopeLimit, scopeDPLimit config.LimitConfig) Merger 
 	}
 }
 
-func (m Merger) MergeNewer(value []byte) error {
+func (m *Merger) MergeNewer(value []byte) error {
 	op := NewValue(m.resourceLimitCfg, m.scopeLimitCfg, m.scopeDPLimitCfg)
 	if err := op.UnmarshalProto(value); err != nil {
 		return err
@@ -50,7 +50,7 @@ func (m Merger) MergeNewer(value []byte) error {
 	return m.current.merge(op)
 }
 
-func (m Merger) MergeOlder(value []byte) error {
+func (m *Merger) MergeOlder(value []byte) error {
 	op := NewValue(m.resourceLimitCfg, m.scopeLimitCfg, m.scopeDPLimitCfg)
 	if err := op.UnmarshalProto(value); err != nil {
 		return err
@@ -58,7 +58,7 @@ func (m Merger) MergeOlder(value []byte) error {
 	return m.current.merge(op)
 }
 
-func (m Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
+func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
 	data, err := m.current.MarshalProto()
 	return data, nil, err
 }
