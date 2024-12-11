@@ -111,12 +111,16 @@ func (t *Tracker) Marshal(m pcommon.Map) error {
 
 // UnmarshalWithPrefix unmarshals the tracker encoded with a prefix.
 func (t *Tracker) UnmarshalWithPrefix(p string, m pcommon.Map) error {
-	var errs []error
+	var (
+		errs             []error
+		requiredKeyFound bool
+	)
 	prefixCounterKey := p + counterKey
 	prefixHllKey := p + hllSketchKey
 	m.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case prefixCounterKey:
+			requiredKeyFound = true
 			t.observedCount = v.Int()
 			return true
 		case prefixHllKey:
@@ -130,6 +134,9 @@ func (t *Tracker) UnmarshalWithPrefix(p string, m pcommon.Map) error {
 		}
 		return false
 	})
+	if !requiredKeyFound {
+		return fmt.Errorf("invalid map passed, missing required key: %s", prefixCounterKey)
+	}
 	if len(errs) > 0 {
 		return fmt.Errorf("failed to unmarshal tracker: %w", errors.Join(errs...))
 	}
