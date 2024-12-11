@@ -55,6 +55,10 @@ type PassThrough struct {
 	Summary bool `mapstructure:"summary"`
 }
 
+// IntervalConfig defines the configuration for the intervals that the
+// component will aggregate over. OTTL statements are also defined to
+// be applied to the metric harvested for each interval after they are
+// mature for the interval duration.
 type IntervalConfig struct {
 	Duration time.Duration `mapstructure:"duration"`
 	// Statements are a list of OTTL statements to be executed on the
@@ -66,15 +70,20 @@ type IntervalConfig struct {
 	Statements []string `mapstructure:"statements"`
 }
 
+// LimitConfig defines the limits applied over the aggregated metrics.
+// After the max cardinality is breached the overflow behaviour kicks in.
 type LimitConfig struct {
 	MaxCardinality int64          `mapstructure:"max_cardinality"`
 	Overflow       OverflowConfig `mapstructure:"overflow"`
 }
 
+// OverflowConfig defines the configuration for tweaking the events
+// produced after overflow kicks in.
 type OverflowConfig struct {
 	Attributes []Attribute `mapstructure:"attributes"`
 }
 
+// Attribute represent an OTel attribute.
 type Attribute struct {
 	Key   string `mapstructure:"key"`
 	Value any    `mapstructure:"value"`
