@@ -17,4 +17,4 @@
 
 //go:generate mdatagen metadata.yaml
 
-package ratelimitprocessor
+package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"

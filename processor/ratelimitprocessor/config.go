@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package ratelimitprocessor
+package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
 
 import (
 	"errors"
