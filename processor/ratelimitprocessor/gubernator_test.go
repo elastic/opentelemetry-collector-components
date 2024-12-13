@@ -44,7 +44,10 @@ func setupGubernatorServer(t *testing.T) (*testServer, string) {
 	gubernator.RegisterV1Server(s, server)
 	lis, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
-	go s.Serve(lis)
+	go func() {
+		err := s.Serve(lis)
+		require.NoError(t, err)
+	}()
 	t.Cleanup(s.GracefulStop)
 	return server, lis.Addr().String()
 }
