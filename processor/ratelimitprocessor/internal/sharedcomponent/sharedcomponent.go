@@ -15,6 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
+// This is a copy of the internal module from opentelemetry-collector:
+// https://github.com/open-telemetry/opentelemetry-collector/blob/main/internal/sharedcomponent
+
 // Package sharedcomponent exposes functionality for components
 // to register against a shared key, such as a configuration object, in order to be reused across signal types.
 // This is particularly useful when the component relies on a shared resource such as os.File or http.Server.

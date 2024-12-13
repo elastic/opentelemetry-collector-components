@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// Copyright The OpenTelemetry Authors
+// SPDX-License-Identifier: Apache-2.0
+
 package sharedcomponent
 
 import (
