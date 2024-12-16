@@ -48,6 +48,21 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "gomod"
+    directory: "/processor/ratelimitprocessor/"
+    schedule:
+      interval: "daily"
+    labels:
+      - automation
+    groups:
+      otel-dependencies:
+        patterns:
+          - "go.opentelemetry.io/*"
+          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major" ]
+
+  - package-ecosystem: "gomod"
     directory: "/connector/signaltometricsconnector"
     schedule:
       interval: "daily"
