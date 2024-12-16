@@ -1,0 +1,12 @@
+type: ratelimit
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor
+
+status:
+  class: processor
+  stability:
+    development: [logs, traces, metrics, profiles]
+
+tests:
+  config:
+    rate: 1
+    burst: 1
