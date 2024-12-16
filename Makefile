@@ -90,3 +90,13 @@ builddocker:
 		IMAGE_NAME=elastic-collector-components:$(TAG); \
 	fi; \
 	docker build -t $$IMAGE_NAME -f distributions/elastic-components/Dockerfile .
+
+# Build a loadgen collector
+.PHONY: genloadgencol
+genloadgencol: $(BUILDER)
+	$(BUILDER) --config ./loadgen/manifest.yaml
+
+# Validate that the loadgen collector can run with the example configuration.
+.PHONY: loadgencol-validate
+loadgencol-validate: genloadgencol
+	./_loadgenbuild/loadgencol validate --config ./loadgen/config.yaml

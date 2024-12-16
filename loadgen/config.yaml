@@ -1,0 +1,67 @@
+receivers:
+  otlpjsonfile/traces:
+    include:
+      - ./testdata/traces
+    replay_file: true
+  otlpjsonfile/metrics:
+    include:
+      - ./testdata/metrics
+    replay_file: true
+  otlpjsonfile/logs:
+    include:
+      - ./testdata/logs
+    replay_file: true
+
+exporters:
+  otlp:
+    endpoint: "${env:ELASTIC_APM_SERVER_URL}"
+    headers:
+      Authorization: "Bearer ${env:ELASTIC_APM_SECRET_TOKEN}"
+    sending_queue:
+      enabled: false
+    timeout: 60s
+  debug:
+
+
+processors:
+  transform:
+    log_statements:
+      - context: log
+        statements:
+          - set(time, Now())
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(time, Now())
+    trace_statements:
+      - context: span
+        statements:
+          - set(start_time, Now())
+          - set(end_time, Now())
+      - context: spanevent
+        statements:
+          - set(time, Now())
+
+  ratelimit:
+    strategy: records
+    rate: 1000
+    burst: 1000
+
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlpjsonfile/logs]
+      processors: [transform]
+      exporters: [otlp, debug]
+    metrics:
+      receivers: [otlpjsonfile/metrics]
+      processors: [transform]
+      exporters: [otlp, debug]
+    traces:
+      receivers: [otlpjsonfile/traces]
+      processors: [transform]
+      exporters: [otlp, debug]
+#  telemetry:
+#    logs:
+#      level: debug
