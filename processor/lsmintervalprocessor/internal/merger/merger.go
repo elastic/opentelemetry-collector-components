@@ -44,7 +44,7 @@ func New(v Value, resLimit, scopeLimit, scopeDPLimit config.LimitConfig) *Merger
 
 func (m *Merger) MergeNewer(value []byte) error {
 	op := NewValue(m.resourceLimitCfg, m.scopeLimitCfg, m.scopeDPLimitCfg)
-	if err := op.UnmarshalProto(value); err != nil {
+	if err := op.Unmarshal(value); err != nil {
 		return err
 	}
 	return m.current.merge(op)
@@ -52,13 +52,13 @@ func (m *Merger) MergeNewer(value []byte) error {
 
 func (m *Merger) MergeOlder(value []byte) error {
 	op := NewValue(m.resourceLimitCfg, m.scopeLimitCfg, m.scopeDPLimitCfg)
-	if err := op.UnmarshalProto(value); err != nil {
+	if err := op.Unmarshal(value); err != nil {
 		return err
 	}
 	return m.current.merge(op)
 }
 
 func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
-	data, err := m.current.MarshalProto()
+	data, err := m.current.Marshal()
 	return data, nil, err
 }

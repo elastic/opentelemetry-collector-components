@@ -98,9 +98,9 @@ func NewValue(resLimit, scopeLimit, dpLimit config.LimitConfig) Value {
 	}
 }
 
-// MarshalProto marshals the value into binary. Before marshaling the metric,
+// Marshal marshals the value into binary. Before marshaling the metric,
 // the overflow values are encoded as attributes with pre-defined keys.
-func (s *Value) MarshalProto() ([]byte, error) {
+func (s *Value) Marshal() ([]byte, error) {
 	rms := s.source.ResourceMetrics()
 	if rms.Len() > 0 {
 		// Encode resource tracker at the 0th resource metrics
@@ -137,7 +137,7 @@ func (s *Value) MarshalProto() ([]byte, error) {
 
 // Unmarshal unmarshals the binary into the value struct. Unmarshaler also
 // unmarshals, and then removes, any attributes added to enocde overflows.
-func (s *Value) UnmarshalProto(data []byte) (err error) {
+func (s *Value) Unmarshal(data []byte) (err error) {
 	var unmarshaler pmetric.ProtoUnmarshaler
 	s.source, err = unmarshaler.UnmarshalMetrics(data)
 	if err != nil {

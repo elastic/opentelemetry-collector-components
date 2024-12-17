@@ -74,7 +74,7 @@ func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, ne
 					cfg.ScopeLimit,
 					cfg.ScopeDatapointLimit,
 				)
-				if err := v.UnmarshalProto(value); err != nil {
+				if err := v.Unmarshal(value); err != nil {
 					return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
 				}
 				return merger.New(
@@ -255,7 +255,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		return rm.ScopeMetrics().Len() == 0
 	})
 
-	vb, err := v.MarshalProto()
+	vb, err := v.Marshal()
 	if err != nil {
 		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
 	}
@@ -389,7 +389,7 @@ func (p *Processor) exportForInterval(
 			p.cfg.ScopeLimit,
 			p.cfg.ScopeDatapointLimit,
 		)
-		if err := v.UnmarshalProto(iter.Value()); err != nil {
+		if err := v.Unmarshal(iter.Value()); err != nil {
 			errs = append(errs, fmt.Errorf("failed to decode binary from database: %w", err))
 			continue
 		}
