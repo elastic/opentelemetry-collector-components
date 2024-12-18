@@ -147,7 +147,12 @@ const (
 	dpsTracker
 )
 
-// Trackers represent multiple tracker in an ordered structure.
+// Trackers represent multiple tracker in an ordered structure. It takes advantage
+// of the fact that pmetric DS is ordered and thus allows trackers to be created
+// for each resource, scope, and datapoint independent of the pmetric datastructure.
+// Note that this means that the order for pmetric and trackers are implicitly
+// related and removing/adding new objects to pmetric should be accompained by
+// adding a corresponding tracker.
 type Trackers struct {
 	resourceLimit uint64
 	scopeLimit    uint64

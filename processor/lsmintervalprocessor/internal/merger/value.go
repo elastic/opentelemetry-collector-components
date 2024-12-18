@@ -255,7 +255,8 @@ func (s *Value) Finalize() (pmetric.Metrics, error) {
 		overflowDP.SetIntValue(int64(sm.datapointsLimits.EstimateOverflow()))
 	}
 	// Remove any hanging resource or scope which failed to have any entries
-	// due to children reaching their limits.
+	// due to children reaching their limits. Note that after this the trackers
+	// will not be associated with the pmetric, but, we don't them anyway.
 	// TODO (lahsivjar): We can probably optimize to not require this loop by
 	// adding to source metric only at finalize.
 	s.source.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
