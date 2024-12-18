@@ -122,7 +122,7 @@ func (s *Value) Marshal() ([]byte, error) {
 	binary.BigEndian.PutUint64(b, uint64(len(tb)))
 	offset := 8
 	offset += copy(b[offset:], tb)
-	offset += copy(b[offset:], pmb)
+	copy(b[offset:], pmb)
 	return b, nil
 }
 

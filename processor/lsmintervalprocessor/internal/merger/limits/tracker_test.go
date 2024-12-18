@@ -60,7 +60,7 @@ func TestTracker(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tracker := NewTracker(tc.maxCardinality)
+			tracker := newTracker(tc.maxCardinality)
 			assert.False(t, tracker.HasOverflow())
 			assert.Zero(t, tracker.EstimateOverflow())
 			for _, h := range tc.inputHashes {
@@ -76,7 +76,7 @@ func TestTracker(t *testing.T) {
 
 			b, err := tracker.Marshal()
 			require.NoError(t, err)
-			newTracker := NewTracker(tc.maxCardinality)
+			newTracker := newTracker(tc.maxCardinality)
 			require.NoError(t, newTracker.Unmarshal(b))
 			assert.True(t, tracker.Equal(newTracker))
 		})
@@ -93,17 +93,17 @@ func TestTracker_Merge(t *testing.T) {
 		{
 			name: "empty",
 			to: func() *Tracker {
-				return NewTracker(0)
+				return newTracker(0)
 			}(),
 			from: func() *Tracker {
-				return NewTracker(0)
+				return newTracker(0)
 			}(),
 			expectedOverflow: 0,
 		},
 		{
 			name: "estimator_overflow",
 			to: func() *Tracker {
-				t := NewTracker(1)
+				t := newTracker(1)
 				// 2 overflow, 0x0002 and 0x0003 will overflow
 				t.CheckOverflow(0x00010fffffffffff)
 				t.CheckOverflow(0x00020fffffffffff)
@@ -111,7 +111,7 @@ func TestTracker_Merge(t *testing.T) {
 				return t
 			}(),
 			from: func() *Tracker {
-				t := NewTracker(1)
+				t := newTracker(1)
 				// 2 overflow, 0x0004 and 0x0005 will overflow
 				t.CheckOverflow(0x00030fffffffffff)
 				t.CheckOverflow(0x00040fffffffffff)

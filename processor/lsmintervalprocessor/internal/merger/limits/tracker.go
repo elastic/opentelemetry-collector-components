@@ -36,7 +36,7 @@ type Tracker struct {
 	overflowCounts *hyperloglog.Sketch
 }
 
-func NewTracker(maxCardinality uint64) *Tracker {
+func newTracker(maxCardinality uint64) *Tracker {
 	return &Tracker{maxCardinality: maxCardinality}
 }
 
@@ -110,7 +110,7 @@ func (t *Tracker) Marshal() ([]byte, error) {
 			return nil, fmt.Errorf("failed to marshal limits: %w", err)
 		}
 		b = slices.Grow(b, len(hll))[:offset+len(hll)]
-		offset += copy(b[offset:], hll)
+		copy(b[offset:], hll)
 	}
 	return b, nil
 }
@@ -172,19 +172,19 @@ func NewTrackers(resourceLimit, scopeLimit, scopeDPLimit uint64) *Trackers {
 }
 
 func (t *Trackers) NewResourceTracker() *Tracker {
-	newTracker := NewTracker(t.resourceLimit)
+	newTracker := newTracker(t.resourceLimit)
 	t.resource = append(t.resource, newTracker)
 	return newTracker
 }
 
 func (t *Trackers) NewScopeTracker() *Tracker {
-	newTracker := NewTracker(t.scopeLimit)
+	newTracker := newTracker(t.scopeLimit)
 	t.scope = append(t.scope, newTracker)
 	return newTracker
 }
 
 func (t *Trackers) NewScopeDPsTracker() *Tracker {
-	newTracker := NewTracker(t.scopeDPLimit)
+	newTracker := newTracker(t.scopeDPLimit)
 	t.scopeDPs = append(t.scopeDPs, newTracker)
 	return newTracker
 }
@@ -219,8 +219,8 @@ func (t *Trackers) Marshal() ([]byte, error) {
 	// TODO (lahsivjar): Estimate total required size including overflow
 	// Estimate minimum without overflow:
 	// - 1 byte for tracker type
-	// - 8 bytes min for each tracker
 	// - 8 bytes for each trackers length
+	// - 8 bytes min for each tracker
 	estimatedSize := (len(t.resource) + len(t.scope) + len(t.scopeDPs)) * 17
 	result := make([]byte, 0, estimatedSize)
 
