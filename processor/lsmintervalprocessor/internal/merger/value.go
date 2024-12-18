@@ -18,6 +18,7 @@
 package merger // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -42,11 +43,11 @@ type Value struct {
 	scopeLimitCfg    config.LimitConfig
 	scopeDPLimitCfg  config.LimitConfig
 
-	source pmetric.Metrics
-	// Keeps track of resource metrics overflow
-	resourceLimits *limits.Tracker
+	source   pmetric.Metrics
+	trackers *limits.Trackers
 
 	// Lookup tables created from source
+	resourceLimits *limits.Tracker
 	resLookup      map[identity.Resource]resourceMetrics
 	scopeLookup    map[identity.Scope]scopeMetrics
 	metricLookup   map[identity.Metric]metric
@@ -81,63 +82,65 @@ type histogramDataPoint = pmetric.HistogramDataPoint
 type exponentialHistogramDataPoint = pmetric.ExponentialHistogramDataPoint
 
 // NewValue creates a new instance of the value with the configured limiters.
-func NewValue(resLimit, scopeLimit, dpLimit config.LimitConfig) Value {
+func NewValue(resLimit, scopeLimit, scopeDPLimit config.LimitConfig) Value {
+	trackers := limits.NewTrackers(
+		uint64(resLimit.MaxCardinality),
+		uint64(scopeLimit.MaxCardinality),
+		uint64(scopeDPLimit.MaxCardinality),
+	)
 	return Value{
 		resourceLimitCfg: resLimit,
 		scopeLimitCfg:    scopeLimit,
-		scopeDPLimitCfg:  dpLimit,
+		scopeDPLimitCfg:  scopeDPLimit,
 		source:           pmetric.NewMetrics(),
-		resourceLimits:   limits.NewTracker(resLimit.MaxCardinality),
-		resLookup:        make(map[identity.Resource]resourceMetrics),
-		scopeLookup:      make(map[identity.Scope]scopeMetrics),
-		metricLookup:     make(map[identity.Metric]metric),
-		numberLookup:     make(map[identity.Stream]numberDataPoint),
-		summaryLookup:    make(map[identity.Stream]summaryDataPoint),
-		histoLookup:      make(map[identity.Stream]histogramDataPoint),
-		expHistoLookup:   make(map[identity.Stream]exponentialHistogramDataPoint),
+		trackers:         trackers,
+
+		resourceLimits: trackers.NewResourceTracker(),
+		resLookup:      make(map[identity.Resource]resourceMetrics),
+		scopeLookup:    make(map[identity.Scope]scopeMetrics),
+		metricLookup:   make(map[identity.Metric]metric),
+		numberLookup:   make(map[identity.Stream]numberDataPoint),
+		summaryLookup:  make(map[identity.Stream]summaryDataPoint),
+		histoLookup:    make(map[identity.Stream]histogramDataPoint),
+		expHistoLookup: make(map[identity.Stream]exponentialHistogramDataPoint),
 	}
 }
 
 // Marshal marshals the value into binary. Before marshaling the metric,
 // the overflow values are encoded as attributes with pre-defined keys.
 func (s *Value) Marshal() ([]byte, error) {
-	rms := s.source.ResourceMetrics()
-	if rms.Len() > 0 {
-		// Encode resource tracker at the 0th resource metrics
-		// TODO (lahsivjar): Is this safe? We don't ever remove
-		// resource metrics so it should be but best to check.
-		// Also, the limits checker should ensure max cardinality
-		// is greater than zero.
-		if err := s.resourceLimits.MarshalWithPrefix(
-			resourceLimitsEncodingPrefix,
-			rms.At(0).Resource().Attributes(),
-		); err != nil {
-			return nil, fmt.Errorf("failed to marshal resource limits: %w", err)
-		}
-
-		// Encode scope trackers in resource attributes
-		for _, res := range s.resLookup {
-			resAttrs := res.ResourceMetrics.Resource().Attributes()
-			if err := res.scopeLimits.Marshal(resAttrs); err != nil {
-				return nil, fmt.Errorf("failed to marshal scope limits: %w", err)
-			}
-		}
-
-		// Encode datapoints trackers in scope attributes
-		for _, scope := range s.scopeLookup {
-			scopeAttrs := scope.ScopeMetrics.Scope().Attributes()
-			if err := scope.datapointsLimits.Marshal(scopeAttrs); err != nil {
-				return nil, fmt.Errorf("failed to marshal datapoints limits: %w", err)
-			}
-		}
+	tb, err := s.trackers.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal metric: %w", err)
 	}
 	var marshaler pmetric.ProtoMarshaler
-	return marshaler.MarshalMetrics(s.source)
+	pmb, err := marshaler.MarshalMetrics(s.source)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal metric: %w", err)
+	}
+	b := make([]byte, 8+len(tb)+len(pmb))
+	binary.BigEndian.PutUint64(b, uint64(len(tb)))
+	offset := 8
+	offset += copy(b[offset:], tb)
+	offset += copy(b[offset:], pmb)
+	return b, nil
 }
 
 // Unmarshal unmarshals the binary into the value struct. Unmarshaler also
 // unmarshals, and then removes, any attributes added to enocde overflows.
 func (s *Value) Unmarshal(data []byte) (err error) {
+	if len(data) < 8 {
+		return errors.New("failed to unmarshal value, invalid length")
+	}
+	trackersLen := int(binary.BigEndian.Uint64(data[:8]))
+	data = data[8:]
+	if trackersLen > 0 {
+		err = s.trackers.Unmarshal(data[:trackersLen])
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal limits: %w", err)
+		}
+		data = data[trackersLen:]
+	}
 	var unmarshaler pmetric.ProtoUnmarshaler
 	s.source, err = unmarshaler.UnmarshalMetrics(data)
 	if err != nil {
@@ -146,39 +149,23 @@ func (s *Value) Unmarshal(data []byte) (err error) {
 
 	// Initialize the lookup tables assuming that the limits were respected for
 	// the marshaled data and no unexpected overflow will happen.
+	s.resourceLimits = s.trackers.GetResourceTracker(0)
 	rms := s.source.ResourceMetrics()
-	s.resourceLimits = limits.NewTracker(s.resourceLimitCfg.MaxCardinality)
-	if rms.Len() > 0 {
-		if err := s.resourceLimits.UnmarshalWithPrefix(
-			resourceLimitsEncodingPrefix,
-			rms.At(0).Resource().Attributes(),
-		); err != nil {
-			return fmt.Errorf("failed to unmarshal resource limits: %w", err)
-		}
-	}
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
 		rmID := identity.OfResource(rm.Resource())
-		scopeLimits := limits.NewTracker(s.scopeLimitCfg.MaxCardinality)
-		if err := scopeLimits.Unmarshal(rm.Resource().Attributes()); err != nil {
-			return fmt.Errorf("failed to unmarshal scope limits: %w", err)
-		}
 		s.resLookup[rmID] = resourceMetrics{
 			ResourceMetrics: rm,
-			scopeLimits:     scopeLimits,
+			scopeLimits:     s.trackers.GetScopeTracker(i),
 		}
 		sms := rm.ScopeMetrics()
 		for j := 0; j < sms.Len(); j++ {
 			sm := sms.At(j)
 			scope := sm.Scope()
 			smID := identity.OfScope(rmID, scope)
-			datapointsLimits := limits.NewTracker(s.scopeDPLimitCfg.MaxCardinality)
-			if err := datapointsLimits.Unmarshal(scope.Attributes()); err != nil {
-				return fmt.Errorf("failed to unmarshal datapoints limits: %w", err)
-			}
 			s.scopeLookup[smID] = scopeMetrics{
 				ScopeMetrics:     sm,
-				datapointsLimits: datapointsLimits,
+				datapointsLimits: s.trackers.GetScopeDPsTracker(j),
 			}
 			metrics := sm.Metrics()
 			for k := 0; k < metrics.Len(); k++ {
@@ -353,6 +340,9 @@ func (s *Value) addResourceMetrics(
 	if _, ok := s.resLookup[resID]; ok {
 		return resID, nil
 	}
+	if s.resourceLimits == nil {
+		s.resourceLimits = s.trackers.NewResourceTracker()
+	}
 	if s.resourceLimits.CheckOverflow(resID.Hash().Sum64()) {
 		// Overflow, get/prepare an overflow bucket
 		overflowResID, err := s.getOverflowResourceBucketID()
@@ -369,7 +359,7 @@ func (s *Value) addResourceMetrics(
 			}
 			s.resLookup[overflowResID] = resourceMetrics{
 				ResourceMetrics: overflowRm,
-				scopeLimits:     limits.NewTracker(s.scopeLimitCfg.MaxCardinality),
+				scopeLimits:     s.trackers.NewScopeTracker(),
 			}
 		}
 		return overflowResID, nil
@@ -381,7 +371,7 @@ func (s *Value) addResourceMetrics(
 	otherRm.Resource().CopyTo(rm.Resource())
 	s.resLookup[resID] = resourceMetrics{
 		ResourceMetrics: rm,
-		scopeLimits:     limits.NewTracker(s.scopeLimitCfg.MaxCardinality),
+		scopeLimits:     s.trackers.NewScopeTracker(),
 	}
 	return resID, nil
 }
@@ -415,7 +405,7 @@ func (s *Value) addScopeMetrics(
 			}
 			s.scopeLookup[overflowScopeID] = scopeMetrics{
 				ScopeMetrics:     overflowScope,
-				datapointsLimits: limits.NewTracker(s.scopeDPLimitCfg.MaxCardinality),
+				datapointsLimits: s.trackers.NewScopeDPsTracker(),
 			}
 		}
 		return overflowScopeID, nil
@@ -427,7 +417,7 @@ func (s *Value) addScopeMetrics(
 	sm.SetSchemaUrl(otherSm.SchemaUrl())
 	s.scopeLookup[scopeID] = scopeMetrics{
 		ScopeMetrics:     sm,
-		datapointsLimits: limits.NewTracker(s.scopeDPLimitCfg.MaxCardinality),
+		datapointsLimits: s.trackers.NewScopeDPsTracker(),
 	}
 	return scopeID, nil
 }

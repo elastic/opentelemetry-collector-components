@@ -18,30 +18,36 @@
 package limits // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/axiomhq/hyperloglog"
-	"go.opentelemetry.io/collector/pdata/pcommon"
-)
-
-const (
-	hllSketchKey = "_limits_hll_sketch"
-	counterKey   = "_limits_counter"
 )
 
 // Tracker tracks the configured limits while merging. It records the
 // observed count as well as the unique overflow counts.
 type Tracker struct {
-	maxCardinality int64
+	maxCardinality uint64
 	// Note that overflow buckets will NOT be counted in observed count
 	// though, overflow buckets can have overflow of their own.
-	observedCount  int64
+	observedCount  uint64
 	overflowCounts *hyperloglog.Sketch
 }
 
-func NewTracker(maxCardinality int64) *Tracker {
+func NewTracker(maxCardinality uint64) *Tracker {
 	return &Tracker{maxCardinality: maxCardinality}
+}
+
+func (t *Tracker) Equal(other *Tracker) bool {
+	if t.maxCardinality != other.maxCardinality {
+		return false
+	}
+	if t.observedCount != other.observedCount {
+		return false
+	}
+	return t.EstimateOverflow() == other.EstimateOverflow()
 }
 
 func (t *Tracker) HasOverflow() bool {
@@ -89,68 +95,205 @@ func (t *Tracker) MergeEstimators(other *Tracker) error {
 	return t.overflowCounts.Merge(other.overflowCounts)
 }
 
-// MarshalWithPrefix marshals the tracker with a prefix. To be used to encode
-// more than one limit in an attribute map.
-func (t *Tracker) MarshalWithPrefix(p string, m pcommon.Map) error {
-	m.PutInt(p+counterKey, t.observedCount)
+// Marshal marshals the tracker to a byte slice.
+func (t *Tracker) Marshal() ([]byte, error) {
+	// TODO (lahsivjar): Estimate the size of the trackers to optimize
+	// allocations. Also see: https://github.com/axiomhq/hyperloglog/issues/44
+	b := make([]byte, 8) // reserved for observed count
+
+	var offset int
+	binary.BigEndian.PutUint64(b[offset:(offset+8)], t.observedCount)
+	offset += 8
 	if t.overflowCounts != nil {
 		hll, err := t.overflowCounts.MarshalBinary()
 		if err != nil {
-			return fmt.Errorf("failed to marshal limits: %w", err)
+			return nil, fmt.Errorf("failed to marshal limits: %w", err)
 		}
-		v := m.PutEmptyBytes(p + hllSketchKey)
-		v.FromRaw(hll)
+		b = slices.Grow(b, len(hll))[:offset+len(hll)]
+		offset += copy(b[offset:], hll)
 	}
-	return nil
+	return b, nil
 }
 
-// Marshal encodes the tracker as attributes in the provided map.
-func (t *Tracker) Marshal(m pcommon.Map) error {
-	return t.MarshalWithPrefix("", m)
-}
-
-// UnmarshalWithPrefix unmarshals the tracker encoded with a prefix.
-func (t *Tracker) UnmarshalWithPrefix(p string, m pcommon.Map) error {
-	var (
-		errs             []error
-		requiredKeyFound bool
-	)
-	prefixCounterKey := p + counterKey
-	prefixHllKey := p + hllSketchKey
-	m.RemoveIf(func(k string, v pcommon.Value) bool {
-		switch k {
-		case prefixCounterKey:
-			requiredKeyFound = true
-			t.observedCount = v.Int()
-			return true
-		case prefixHllKey:
-			t.overflowCounts = hyperloglog.New14()
-			if err := t.overflowCounts.UnmarshalBinary(v.Bytes().AsRaw()); err != nil {
-				errs = append(errs, fmt.Errorf(
-					"failed to unmarshal overflow estimator hll sketch: %w", err,
-				))
-			}
-			return true
-		}
-		return false
-	})
-	if !requiredKeyFound {
-		return fmt.Errorf("invalid map passed, missing required key: %s", prefixCounterKey)
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to unmarshal tracker: %w", errors.Join(errs...))
-	}
-	return nil
-}
-
-// Unmarshal unmarshals the encoded limits from the attribute map to
-// the go struct and removes any attributes used in the encoding logic.
-// Example usage:
+// Unmarshal unmarshals the encoded limits to go struct. Example usage:
 //
-//	t := NewTracker[identity.Resource](MaxCardinality)
-//	if err := t.Unmarshal(ResourceAttributes); err != nil {
+//	var t Tracker
+//	if err := t.Unmarshal(data); err != nil {
 //	    panic(err)
 //	}
-func (t *Tracker) Unmarshal(m pcommon.Map) error {
-	return t.UnmarshalWithPrefix("", m)
+func (t *Tracker) Unmarshal(d []byte) error {
+	if len(d) < 8 {
+		return errors.New("failed to unmarshal tracker, invalid length")
+	}
+
+	var offset int
+	t.observedCount = binary.BigEndian.Uint64(d[offset:(offset + 8)])
+	offset += 8
+	if len(d) == offset {
+		return nil
+	}
+	t.overflowCounts = hyperloglog.New14()
+	if err := t.overflowCounts.UnmarshalBinary(d[offset:]); err != nil {
+		return fmt.Errorf("failed to unmarshal tracker: %w", err)
+	}
+	return nil
+}
+
+type trackerType uint8
+
+const (
+	resourceTracker trackerType = iota
+	scopeTracker
+	dpsTracker
+)
+
+// Trackers represent multiple tracker in an ordered structure.
+type Trackers struct {
+	resourceLimit uint64
+	scopeLimit    uint64
+	scopeDPLimit  uint64
+
+	resource []*Tracker
+	scope    []*Tracker
+	scopeDPs []*Tracker
+}
+
+func NewTrackers(resourceLimit, scopeLimit, scopeDPLimit uint64) *Trackers {
+	return &Trackers{
+		resourceLimit: resourceLimit,
+		scopeLimit:    scopeLimit,
+		scopeDPLimit:  scopeDPLimit,
+	}
+}
+
+func (t *Trackers) NewResourceTracker() *Tracker {
+	newTracker := NewTracker(t.resourceLimit)
+	t.resource = append(t.resource, newTracker)
+	return newTracker
+}
+
+func (t *Trackers) NewScopeTracker() *Tracker {
+	newTracker := NewTracker(t.scopeLimit)
+	t.scope = append(t.scope, newTracker)
+	return newTracker
+}
+
+func (t *Trackers) NewScopeDPsTracker() *Tracker {
+	newTracker := NewTracker(t.scopeDPLimit)
+	t.scopeDPs = append(t.scopeDPs, newTracker)
+	return newTracker
+}
+
+func (t *Trackers) GetResourceTracker(i int) *Tracker {
+	if i >= len(t.resource) {
+		return nil
+	}
+	return t.resource[i]
+}
+
+func (t *Trackers) GetScopeTracker(i int) *Tracker {
+	if i >= len(t.scope) {
+		return nil
+	}
+	return t.scope[i]
+}
+
+func (t *Trackers) GetScopeDPsTracker(i int) *Tracker {
+	if i >= len(t.scopeDPs) {
+		return nil
+	}
+	return t.scopeDPs[i]
+}
+
+func (t *Trackers) Marshal() ([]byte, error) {
+	if t == nil {
+		// if trackers is nil then nothing to marshal
+		return nil, nil
+	}
+
+	// TODO (lahsivjar): Estimate total required size including overflow
+	// Estimate minimum without overflow:
+	// - 1 byte for tracker type
+	// - 8 bytes min for each tracker
+	// - 8 bytes for each trackers length
+	estimatedSize := (len(t.resource) + len(t.scope) + len(t.scopeDPs)) * 17
+	result := make([]byte, 0, estimatedSize)
+
+	var (
+		offset int
+		err    error
+	)
+	for _, tracker := range t.resource {
+		result, offset, err = marshalTracker(resourceTracker, tracker, result, offset)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, tracker := range t.scope {
+		result, offset, err = marshalTracker(scopeTracker, tracker, result, offset)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, tracker := range t.scopeDPs {
+		result, offset, err = marshalTracker(dpsTracker, tracker, result, offset)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func (t *Trackers) Unmarshal(d []byte) error {
+	if len(d) == 0 {
+		return nil
+	}
+
+	var offset int
+	for offset < len(d) {
+		trackerTyp := trackerType(d[offset])
+		offset += 1
+		// Create the required tracker
+		var tracker *Tracker
+		switch trackerTyp {
+		case resourceTracker:
+			tracker = t.NewResourceTracker()
+		case scopeTracker:
+			tracker = t.NewScopeTracker()
+		case dpsTracker:
+			tracker = t.NewScopeDPsTracker()
+		default:
+			return errors.New("invalid tracker found")
+		}
+
+		trackerLen := int(binary.BigEndian.Uint64(d[offset : offset+8]))
+		offset += 8
+		if err := tracker.Unmarshal(d[offset : offset+trackerLen]); err != nil {
+			return err
+		}
+		offset += int(trackerLen)
+	}
+	return nil
+}
+
+func marshalTracker(
+	typ trackerType,
+	tracker *Tracker,
+	result []byte,
+	offset int,
+) ([]byte, int, error) {
+	b, err := tracker.Marshal()
+	if err != nil {
+		return result, offset, err
+	}
+	// Encode the tracker type, length of the tracker, and the tracker
+	totalEncodeLen := 1 + 8 + len(b)
+	result = slices.Grow(result, totalEncodeLen)[:offset+totalEncodeLen]
+	result[offset] = byte(typ)
+	offset += 1
+	binary.BigEndian.PutUint64(result[offset:], uint64(len(b)))
+	offset += 8
+	// Encode the tracker
+	offset += copy(result[offset:], b)
+	return result, offset, nil
 }
