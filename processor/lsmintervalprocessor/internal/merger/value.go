@@ -93,6 +93,10 @@ func NewValue(resLimit, scopeLimit, scopeDPLimit config.LimitConfig) Value {
 // Marshal marshals the value into binary. Before marshaling the metric,
 // the overflow values are encoded as attributes with pre-defined keys.
 func (s *Value) Marshal() ([]byte, error) {
+	if s.source.DataPointCount() == 0 {
+		// Nothing to marshal
+		return nil, nil
+	}
 	tb, err := s.trackers.Marshal()
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal metric: %w", err)
@@ -114,7 +118,12 @@ func (s *Value) Marshal() ([]byte, error) {
 // pmetric data structure and a set of limits tracking the overflows for each of the
 // pmetric children (resource, scope, and datapoints).
 func (s *Value) Unmarshal(data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+
 	if len(data) < 8 {
+		// For non-nil value, tracker must be marshaled
 		return errors.New("failed to unmarshal value, invalid length")
 	}
 	trackersLen := int(binary.BigEndian.Uint64(data[:8]))
@@ -146,6 +155,10 @@ func (s *Value) Unmarshal(data []byte) error {
 func (v *Value) Merge(op Value) error {
 	v.initLookupTables()
 	for mOtherID, mOther := range op.metricLookup {
+		if metricDPsCount(mOther) == 0 {
+			// If there are no datapoints then nothing to merge
+			continue
+		}
 		resOtherID := mOtherID.Resource()
 		scopeOtherID := mOtherID.Scope()
 		resOther := op.resLookup[resOtherID]
@@ -203,6 +216,10 @@ func (v *Value) MergeMetric(
 	sm pmetric.ScopeMetrics,
 	m pmetric.Metric,
 ) error {
+	if metricDPsCount(m) == 0 {
+		// Nothing to merge as either there are 0 or only unsupported metrics
+		return nil
+	}
 	v.initLookupTables()
 	// TODO: Precheck the metric for datapoints existence, if none exists
 	// then don't add resource/scope metrics. This will help to remove the
@@ -228,7 +245,7 @@ func (s *Value) Finalize() (pmetric.Metrics, error) {
 	// as a final step in the store, thus, prepare the final metric.
 	// In the final metric we have to add datapoint limits. Also, we
 	// need to ensure that lookup tables, and thus limits, are
-	// initialized at this point.
+	// initialized.
 	s.initLookupTables()
 	for _, sm := range s.scopeLookup {
 		if !sm.datapointsLimits.HasOverflow() {
@@ -821,26 +838,26 @@ func decorate(target pcommon.Map, src []config.Attribute) error {
 	return nil
 }
 
-func scopeDPsCount(scope pmetric.ScopeMetrics) (c uint64) {
+func scopeDPsCount(scope scopeMetrics) (c uint64) {
 	metrics := scope.Metrics()
 	for i := 0; i < metrics.Len(); i++ {
-		m := metrics.At(i)
-
-		//exhaustive:enforce
-		switch m.Type() {
-		case pmetric.MetricTypeEmpty:
-			continue
-		case pmetric.MetricTypeGauge:
-			// TODO (lahsivjar): implement gauge support
-		case pmetric.MetricTypeSum:
-			c += uint64(m.Sum().DataPoints().Len())
-		case pmetric.MetricTypeSummary:
-			c += uint64(m.Summary().DataPoints().Len())
-		case pmetric.MetricTypeHistogram:
-			c += uint64(m.Histogram().DataPoints().Len())
-		case pmetric.MetricTypeExponentialHistogram:
-			c += uint64(m.ExponentialHistogram().DataPoints().Len())
-		}
+		c += metricDPsCount(metrics.At(i))
 	}
 	return c
+}
+
+func metricDPsCount(m metric) uint64 {
+	switch m.Type() {
+	case pmetric.MetricTypeSum:
+		return uint64(m.Sum().DataPoints().Len())
+	case pmetric.MetricTypeSummary:
+		return uint64(m.Summary().DataPoints().Len())
+	case pmetric.MetricTypeHistogram:
+		return uint64(m.Histogram().DataPoints().Len())
+	case pmetric.MetricTypeExponentialHistogram:
+		return uint64(m.ExponentialHistogram().DataPoints().Len())
+	default:
+		// Includeds non supporte metric types
+		return 0
+	}
 }
