@@ -152,57 +152,53 @@ func (s *Value) Unmarshal(data []byte) error {
 }
 
 // Merge merges the provided value to the current value instance.
+// TODO: This is wrong, now that we are not creating lookup tables
+// for metric lookup this will NOT work at all. Basically, this is
+// a no-op.
 func (v *Value) Merge(op Value) error {
-	v.initLookupTables()
-	for mOtherID, mOther := range op.metricLookup {
-		if metricDPsCount(mOther) == 0 {
-			// If there are no datapoints then nothing to merge
-			continue
-		}
-		resOtherID := mOtherID.Resource()
-		scopeOtherID := mOtherID.Scope()
-		resOther := op.resLookup[resOtherID]
-		scopeOther := op.scopeLookup[scopeOtherID]
-
-		// Merge/add resource metrics. Note that if the resource metrics
-		// overflows then the ID will be different from the other resource ID.
-		resID, err := v.addResourceMetrics(resOther.ResourceMetrics)
-		if err != nil {
-			return fmt.Errorf("failed to merge resource metrics: %w", err)
-		}
-		// Merge/add scope metrics. Note that if the scope metrics overflows
-		// then the ID will be different from the other scope ID.
-		scopeID, err := v.addScopeMetrics(resID, scopeOther.ScopeMetrics)
-		if err != nil {
-			return fmt.Errorf("failed to merge scope metrics: %w", err)
-		}
-		// Merge any overflow estimators for scope or datapoints. Note that here
-		// we assume that the limits for both metrics being merged are identical
-		// and thus if any of the metric has overflowed then the target metric
-		// for merge will definitely overflow. Thus, merging the estimators is
-		// safe and required to correctly estimate the total number of overflow.
-		// Note that overflow merging is not deterministic and the estimates are
-		// always estimates as it is possible that the oveflows have hashes which
-		// haven't overflowed in the source metric.
-		res := v.resLookup[resID]
-		if err := res.scopeLimits.MergeEstimators(resOther.scopeLimits); err != nil {
-			return fmt.Errorf("failed to merge scope overflow estimators: %w", err)
-		}
-		scope := v.scopeLookup[scopeID]
-		if err := scope.datapointsLimits.MergeEstimators(scopeOther.datapointsLimits); err != nil {
-			return fmt.Errorf("failed to merge datapoints overflow estimators: %w", err)
-		}
-		// Finally merge the metric
-		v.mergeMetric(resID, scopeID, mOther)
+	if op.source.DataPointCount() == 0 {
+		// Nothing to merge
+		return nil
 	}
-	// Merge any resource overflow estimators. It is possible that the other tracker
-	// is nil if there are no overflows in the other tracker since we only create
-	// trackers if overflow occurs.
+
+	v.initLookupTables()
 	if op.trackers != nil {
 		if err := v.trackers.GetResourceTracker().MergeEstimators(
 			op.trackers.GetResourceTracker(),
 		); err != nil {
 			return fmt.Errorf("failed to merge resource overflow estimators: %w", err)
+		}
+	}
+	rmsOther := op.source.ResourceMetrics()
+	for i := 0; i < rmsOther.Len(); i++ {
+		rmOther := rmsOther.At(i)
+		resID, err := v.addResourceMetrics(rmOther)
+		if err != nil {
+			return fmt.Errorf("failed while merging resource metrics: %w", err)
+		}
+		scopeLimits := op.trackers.GetScopeTracker(i)
+		if scopeLimits != nil {
+			if err := v.resLookup[resID].scopeLimits.MergeEstimators(scopeLimits); err != nil {
+				return fmt.Errorf("failed to merge scope overflow estimators: %w", err)
+			}
+		}
+		smsOther := rmOther.ScopeMetrics()
+		for j := 0; j < smsOther.Len(); j++ {
+			smOther := smsOther.At(j)
+			scopeID, err := v.addScopeMetrics(resID, smOther)
+			if err != nil {
+				return fmt.Errorf("failed while merging scope metrics: %w", err)
+			}
+			scopeDPsLimits := op.trackers.GetScopeDPsTracker(j)
+			if scopeDPsLimits != nil {
+				if err := v.scopeLookup[scopeID].datapointsLimits.MergeEstimators(scopeDPsLimits); err != nil {
+					return fmt.Errorf("failed to merge scope datapoints overflow estimators: %w", err)
+				}
+			}
+			msOther := smOther.Metrics()
+			for k := 0; k < msOther.Len(); k++ {
+				v.mergeMetric(resID, scopeID, msOther.At(k))
+			}
 		}
 	}
 	return nil
@@ -857,7 +853,7 @@ func metricDPsCount(m metric) uint64 {
 	case pmetric.MetricTypeExponentialHistogram:
 		return uint64(m.ExponentialHistogram().DataPoints().Len())
 	default:
-		// Includeds non supporte metric types
+		// Includes non supported metric types
 		return 0
 	}
 }
