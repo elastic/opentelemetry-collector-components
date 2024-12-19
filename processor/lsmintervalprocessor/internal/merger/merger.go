@@ -47,7 +47,7 @@ func (m *Merger) MergeNewer(value []byte) error {
 	if err := op.Unmarshal(value); err != nil {
 		return err
 	}
-	return m.current.merge(op)
+	return m.current.Merge(op)
 }
 
 func (m *Merger) MergeOlder(value []byte) error {
@@ -55,7 +55,7 @@ func (m *Merger) MergeOlder(value []byte) error {
 	if err := op.Unmarshal(value); err != nil {
 		return err
 	}
-	return m.current.merge(op)
+	return m.current.Merge(op)
 }
 
 func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {

@@ -135,11 +135,7 @@ func TestTracker_Merge(t *testing.T) {
 
 func TestTrackers(t *testing.T) {
 	getTestTrackers := func() *Trackers {
-		return &Trackers{
-			resourceLimit: 1,
-			scopeLimit:    1,
-			scopeDPLimit:  1,
-		}
+		return NewTrackers(1, 1, 1)
 	}
 	for _, tc := range []struct {
 		name     string
@@ -153,7 +149,7 @@ func TestTrackers(t *testing.T) {
 			name: "with_one_tracker_no_overflow",
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
-				tr := trackers.NewResourceTracker()
+				tr := trackers.GetResourceTracker()
 				tr.CheckOverflow(0x00010fffffffffff)
 
 				ts := trackers.NewScopeTracker()
@@ -168,7 +164,7 @@ func TestTrackers(t *testing.T) {
 			name: "with_one_tracker_overflow",
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
-				tr := trackers.NewResourceTracker()
+				tr := trackers.GetResourceTracker()
 				tr.CheckOverflow(0x00010fffffffffff)
 				tr.CheckOverflow(0x00020fffffffffff) // will overflow
 
@@ -186,11 +182,9 @@ func TestTrackers(t *testing.T) {
 			name: "with_multiple_tracker",
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
-				tr1 := trackers.NewResourceTracker()
-				tr1.CheckOverflow(0x00010fffffffffff)
-				tr2 := trackers.NewResourceTracker()
-				tr2.CheckOverflow(0x00010fffffffffff)
-				tr2.CheckOverflow(0x00020fffffffffff) // will overflow
+				tr := trackers.GetResourceTracker()
+				tr.CheckOverflow(0x00010fffffffffff)
+				tr.CheckOverflow(0x00020fffffffffff) // will overflow
 
 				ts1 := trackers.NewScopeTracker()
 				ts1.CheckOverflow(0x00010fffffffffff)
@@ -223,6 +217,7 @@ func TestTrackers(t *testing.T) {
 
 			newTrackers := getTestTrackers()
 			require.NoError(t, newTrackers.Unmarshal(b))
+			assert.True(t, tc.trackers.resource.Equal(newTrackers.resource))
 			// Assert decoded trackers to be equal to the original
 			allEqual := func(ts1, ts2 []*Tracker) {
 				assert.Equal(t, len(ts1), len(ts2))
@@ -230,7 +225,6 @@ func TestTrackers(t *testing.T) {
 					assert.True(t, ts1[i].Equal(ts2[i]))
 				}
 			}
-			allEqual(tc.trackers.resource, newTrackers.resource)
 			allEqual(tc.trackers.scope, newTrackers.scope)
 			allEqual(tc.trackers.scopeDPs, newTrackers.scopeDPs)
 		})

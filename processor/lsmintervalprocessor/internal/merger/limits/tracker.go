@@ -40,6 +40,10 @@ func newTracker(maxCardinality uint64) *Tracker {
 	return &Tracker{maxCardinality: maxCardinality}
 }
 
+func (t *Tracker) UpdateObservedCount(c uint64) {
+	t.observedCount = c
+}
+
 func (t *Tracker) Equal(other *Tracker) bool {
 	if t.maxCardinality != other.maxCardinality {
 		return false
@@ -158,7 +162,7 @@ type Trackers struct {
 	scopeLimit    uint64
 	scopeDPLimit  uint64
 
-	resource []*Tracker
+	resource *Tracker
 	scope    []*Tracker
 	scopeDPs []*Tracker
 }
@@ -168,13 +172,10 @@ func NewTrackers(resourceLimit, scopeLimit, scopeDPLimit uint64) *Trackers {
 		resourceLimit: resourceLimit,
 		scopeLimit:    scopeLimit,
 		scopeDPLimit:  scopeDPLimit,
-	}
-}
 
-func (t *Trackers) NewResourceTracker() *Tracker {
-	newTracker := newTracker(t.resourceLimit)
-	t.resource = append(t.resource, newTracker)
-	return newTracker
+		// Create a resource tracker preemptively whenever a tracker is created
+		resource: newTracker(resourceLimit),
+	}
 }
 
 func (t *Trackers) NewScopeTracker() *Tracker {
@@ -189,11 +190,8 @@ func (t *Trackers) NewScopeDPsTracker() *Tracker {
 	return newTracker
 }
 
-func (t *Trackers) GetResourceTracker(i int) *Tracker {
-	if i >= len(t.resource) {
-		return nil
-	}
-	return t.resource[i]
+func (t *Trackers) GetResourceTracker() *Tracker {
+	return t.resource
 }
 
 func (t *Trackers) GetScopeTracker(i int) *Tracker {
@@ -211,7 +209,7 @@ func (t *Trackers) GetScopeDPsTracker(i int) *Tracker {
 }
 
 func (t *Trackers) Marshal() ([]byte, error) {
-	if t == nil {
+	if t == nil || t.resource == nil {
 		// if trackers is nil then nothing to marshal
 		return nil, nil
 	}
@@ -221,18 +219,16 @@ func (t *Trackers) Marshal() ([]byte, error) {
 	// - 1 byte for tracker type
 	// - 8 bytes for each trackers length
 	// - 8 bytes min for each tracker
-	estimatedSize := (len(t.resource) + len(t.scope) + len(t.scopeDPs)) * 17
+	estimatedSize := (1 + len(t.scope) + len(t.scopeDPs)) * 17
 	result := make([]byte, 0, estimatedSize)
 
 	var (
 		offset int
 		err    error
 	)
-	for _, tracker := range t.resource {
-		result, offset, err = marshalTracker(resourceTracker, tracker, result, offset)
-		if err != nil {
-			return nil, err
-		}
+	result, offset, err = marshalTracker(resourceTracker, t.resource, result, offset)
+	if err != nil {
+		return nil, err
 	}
 	for _, tracker := range t.scope {
 		result, offset, err = marshalTracker(scopeTracker, tracker, result, offset)
@@ -262,7 +258,7 @@ func (t *Trackers) Unmarshal(d []byte) error {
 		var tracker *Tracker
 		switch trackerTyp {
 		case resourceTracker:
-			tracker = t.NewResourceTracker()
+			tracker = t.GetResourceTracker()
 		case scopeTracker:
 			tracker = t.NewScopeTracker()
 		case dpsTracker:

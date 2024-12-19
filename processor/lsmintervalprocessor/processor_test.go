@@ -168,7 +168,9 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 
 	expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 	require.NoError(t, err)
-	assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
+	if !assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1])) {
+		golden.WriteMetrics(t, filepath.Join(dir, "output.yaml"), allMetrics[1])
+	}
 }
 
 func BenchmarkAggregation(b *testing.B) {

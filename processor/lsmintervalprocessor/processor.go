@@ -415,6 +415,7 @@ func (p *Processor) exportForInterval(
 							}
 						}
 						// TODO (lahsivjar): add exhaustive:enforce lint rule
+						//exhaustive:enforce
 						switch metric.Type() {
 						case pmetric.MetricTypeGauge:
 							dps := metric.Gauge().DataPoints()
