@@ -32,9 +32,8 @@ import (
 )
 
 const (
-	resourceLimitsEncodingPrefix = "_resource"
-	overflowMetricName           = "_other"
-	overflowMetricDesc           = "Overflow count due to datapoints limit"
+	overflowMetricName = "_other"
+	overflowMetricDesc = "Overflow count due to datapoints limit"
 )
 
 // Not safe for concurrent use.
@@ -146,7 +145,11 @@ func (s *Value) Unmarshal(data []byte) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal data: %w", err)
 	}
+	s.initLookupTables()
+	return nil
+}
 
+func (s *Value) initLookupTables() {
 	// Initialize the lookup tables assuming that the limits were respected for
 	// the marshaled data and no unexpected overflow will happen.
 	s.resourceLimits = s.trackers.GetResourceTracker(0)
@@ -206,7 +209,6 @@ func (s *Value) Unmarshal(data []byte) (err error) {
 			}
 		}
 	}
-	return nil
 }
 
 // MergeMetric adds a metric with a provided resource metric and scope
