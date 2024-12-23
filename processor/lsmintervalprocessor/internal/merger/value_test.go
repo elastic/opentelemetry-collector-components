@@ -84,7 +84,7 @@ func benchmarkWithTestdata(
 				// Update from to have the pmetric structure
 				mdCopy := pmetric.NewMetrics()
 				md.CopyTo(mdCopy)
-				updateValueWithPMetrics(mdCopy, from)
+				require.NoError(b, updateValueWithPMetrics(mdCopy, from))
 				b.StartTimer()
 				err = to.Merge(from)
 				require.NoError(b, err)
@@ -93,7 +93,7 @@ func benchmarkWithTestdata(
 	}
 }
 
-func updateValueWithPMetrics(m pmetric.Metrics, v *Value) {
+func updateValueWithPMetrics(m pmetric.Metrics, v *Value) error {
 	rms := m.ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
@@ -102,8 +102,11 @@ func updateValueWithPMetrics(m pmetric.Metrics, v *Value) {
 			sm := sms.At(j)
 			ms := sm.Metrics()
 			for k := 0; k < ms.Len(); k++ {
-				v.MergeMetric(rm, sm, ms.At(k))
+				if err := v.MergeMetric(rm, sm, ms.At(k)); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }

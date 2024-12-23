@@ -856,14 +856,6 @@ func decorate(target pcommon.Map, src []config.Attribute) error {
 	return nil
 }
 
-func scopeDPsCount(scope scopeMetrics) (c uint64) {
-	metrics := scope.Metrics()
-	for i := 0; i < metrics.Len(); i++ {
-		c += metricDPsCount(metrics.At(i))
-	}
-	return c
-}
-
 func metricDPsCount(m pmetric.Metric) uint64 {
 	switch m.Type() {
 	case pmetric.MetricTypeSum:
