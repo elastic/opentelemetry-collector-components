@@ -1,8 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension
 
-go 1.22.7
-
-toolchain go1.23.1
+go 1.22.0
 
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/integrations v0.0.0

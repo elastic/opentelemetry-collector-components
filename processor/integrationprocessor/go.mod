@@ -2,8 +2,6 @@ module github.com/elastic/opentelemetry-collector-components/processor/integrati
 
 go 1.22.7
 
-toolchain go1.23.1
-
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/integrations v0.0.0
 	github.com/stretchr/testify v1.9.0
