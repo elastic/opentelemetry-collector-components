@@ -1,69 +1,14 @@
 ---
 version: 2
 updates:
-  #TODO: Replace go directories with wildcard https://github.com/dependabot/dependabot-core/issues/2178
   - package-ecosystem: "gomod"
-    directory: "/processor/lsmintervalprocessor/"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/processor/elasticinframetricsprocessor/"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/processor/elastictraceprocessor/"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/processor/ratelimitprocessor/"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: [ "version-update:semver-major" ]
-
-  - package-ecosystem: "gomod"
-    directory: "/connector/signaltometricsconnector"
+    directories:
+      - "/processor/lsmintervalprocessor/"
+      - "/processor/elasticinframetricsprocessor/"
+      - "/processor/elastictraceprocessor/"
+      - "/processor/ratelimitprocessor/"
+      - "/connector/signaltometricsconnector"
+      - "/internal/tools/"
     schedule:
       interval: "daily"
     labels:
