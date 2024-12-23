@@ -413,7 +413,7 @@ func (s *Value) addResourceMetrics(
 	}
 	if s.trackers.GetResourceTracker().CheckOverflow(resID.Hash) {
 		// Overflow, get/prepare an overflow bucket
-		overflowResID, err := s.getOverflowResourceBucketID()
+		overflowResID, err := s.getOverflowResourceIdentity()
 		if err != nil {
 			return identity.Resource{}, err
 		}
@@ -458,7 +458,7 @@ func (s *Value) addScopeMetrics(
 	res := s.resLookup[resID]
 	if res.scopeLimits.CheckOverflow(scopeID.Hash) {
 		// Overflow, get/prepare an overflow bucket
-		overflowScopeID, err := s.getOverflowScopeBucketID(resID)
+		overflowScopeID, err := s.getOverflowScopeIdentity(resID)
 		if err != nil {
 			return identity.Scope{}, err
 		}
@@ -690,7 +690,7 @@ func (v *Value) mergeMetric(
 	}
 }
 
-func (s *Value) getOverflowResourceBucketID() (identity.Resource, error) {
+func (s *Value) getOverflowResourceIdentity() (identity.Resource, error) {
 	r := pcommon.NewResource()
 	if err := decorate(
 		r.Attributes(),
@@ -701,7 +701,7 @@ func (s *Value) getOverflowResourceBucketID() (identity.Resource, error) {
 	return identity.OfResource(r), nil
 }
 
-func (s *Value) getOverflowScopeBucketID(
+func (s *Value) getOverflowScopeIdentity(
 	res identity.Resource,
 ) (identity.Scope, error) {
 	scope := pcommon.NewInstrumentationScope()
