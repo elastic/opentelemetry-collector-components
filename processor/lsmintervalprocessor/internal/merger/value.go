@@ -36,7 +36,26 @@ const (
 	overflowMetricDesc = "Overflow count due to datapoints limit"
 )
 
-// Not safe for concurrent use.
+// Value defines the data structure used to perform merges and other operations
+// for the underlying LSM database. The basic representation of the Value is
+// based on pmetric datastructure. To aid in merging and operations, the
+// pmetric datastructure is expanded into multiple lookup maps as required.
+//
+// Value also tracks overflows based on defined limits. Once the overflow limit
+// is breached, the new metrics are handled as per the defined overflow
+// behaviour. The Value can be in two states:
+//
+// 1) Unexpanded state, in this state the lookup maps are not created. The
+// limit trackers, if present, are encoded into a separate field. This state
+// is immutable i.e. the pmetric structure and the metrics cannot be modified
+// in this state.
+//
+// 2) Expanded state, in this state lookup maps are created and the limit
+// trackers are decoded and put together with their corresponding pmetric
+// datastructure. The value is automatically upgraded to expanded state
+// when a merge operation is performed.
+//
+// Value is not safe for concurrent use.
 type Value struct {
 	resourceLimitCfg config.LimitConfig
 	scopeLimitCfg    config.LimitConfig
@@ -81,8 +100,8 @@ type histogramDataPoint = pmetric.HistogramDataPoint
 type exponentialHistogramDataPoint = pmetric.ExponentialHistogramDataPoint
 
 // NewValue creates a new instance of the value with the configured limiters.
-func NewValue(resLimit, scopeLimit, scopeDPLimit config.LimitConfig) Value {
-	return Value{
+func NewValue(resLimit, scopeLimit, scopeDPLimit config.LimitConfig) *Value {
+	return &Value{
 		resourceLimitCfg: resLimit,
 		scopeLimitCfg:    scopeLimit,
 		scopeDPLimitCfg:  scopeDPLimit,
@@ -90,8 +109,8 @@ func NewValue(resLimit, scopeLimit, scopeDPLimit config.LimitConfig) Value {
 	}
 }
 
-// Marshal marshals the value into binary. Before marshaling the metric,
-// the overflow values are encoded as attributes with pre-defined keys.
+// Marshal marshals the value into binary. Limit trackers and pmetric are marshaled
+// into the same binary representation.
 func (s *Value) Marshal() ([]byte, error) {
 	if s.source.DataPointCount() == 0 {
 		// Nothing to marshal
@@ -114,14 +133,14 @@ func (s *Value) Marshal() ([]byte, error) {
 	return b, nil
 }
 
-// Unmarshal unmarshals the binary into the value struct. The value consistes of the
-// pmetric data structure and a set of limits tracking the overflows for each of the
-// pmetric children (resource, scope, and datapoints).
+// Unmarshal unmarshals the binary into the value struct. The value consists
+// of the pmetric data structure and a set of limits tracking the overflows
+// for each of the pmetric children (resource, scope, and datapoints). The
+// limits are marshaled and encoded separately from the pmetric datastructure.
 func (s *Value) Unmarshal(data []byte) error {
 	if len(data) == 0 {
 		return nil
 	}
-
 	if len(data) < 8 {
 		// For non-nil value, tracker must be marshaled
 		return errors.New("failed to unmarshal value, invalid length")
@@ -152,23 +171,14 @@ func (s *Value) Unmarshal(data []byte) error {
 }
 
 // Merge merges the provided value to the current value instance.
-// TODO: This is wrong, now that we are not creating lookup tables
-// for metric lookup this will NOT work at all. Basically, this is
-// a no-op.
-func (v *Value) Merge(op Value) error {
-	if op.source.DataPointCount() == 0 {
+func (v *Value) Merge(op *Value) error {
+	if op == nil || op.source.DataPointCount() == 0 {
 		// Nothing to merge
 		return nil
 	}
-
+	// Initialize the destination lookup table
 	v.initLookupTables()
-	if op.trackers != nil {
-		if err := v.trackers.GetResourceTracker().MergeEstimators(
-			op.trackers.GetResourceTracker(),
-		); err != nil {
-			return fmt.Errorf("failed to merge resource overflow estimators: %w", err)
-		}
-	}
+	// Iterate over the source's pmetric structure and merge into destination
 	rmsOther := op.source.ResourceMetrics()
 	for i := 0; i < rmsOther.Len(); i++ {
 		rmOther := rmsOther.At(i)
@@ -199,6 +209,13 @@ func (v *Value) Merge(op Value) error {
 			for k := 0; k < msOther.Len(); k++ {
 				v.mergeMetric(resID, scopeID, msOther.At(k))
 			}
+		}
+	}
+	if op.trackers != nil {
+		if err := v.trackers.GetResourceTracker().MergeEstimators(
+			op.trackers.GetResourceTracker(),
+		); err != nil {
+			return fmt.Errorf("failed to merge resource overflow estimators: %w", err)
 		}
 	}
 	return nil

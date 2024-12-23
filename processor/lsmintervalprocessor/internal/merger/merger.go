@@ -27,13 +27,13 @@ import (
 var _ pebble.ValueMerger = (*Merger)(nil)
 
 type Merger struct {
-	current          Value
+	current          *Value
 	resourceLimitCfg config.LimitConfig
 	scopeLimitCfg    config.LimitConfig
 	scopeDPLimitCfg  config.LimitConfig
 }
 
-func New(v Value, resLimit, scopeLimit, scopeDPLimit config.LimitConfig) *Merger {
+func New(v *Value, resLimit, scopeLimit, scopeDPLimit config.LimitConfig) *Merger {
 	return &Merger{
 		current:          v,
 		resourceLimitCfg: resLimit,
