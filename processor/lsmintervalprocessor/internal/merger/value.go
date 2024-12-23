@@ -410,6 +410,7 @@ func (s *Value) addResourceMetrics(
 			return overflowResID, rm, nil
 		}
 		overflowRm := s.source.ResourceMetrics().AppendEmpty()
+		overflowRm.SetSchemaUrl(otherRm.SchemaUrl())
 		if err := decorate(
 			overflowRm.Resource().Attributes(),
 			s.resourceLimitCfg.Overflow.Attributes,
@@ -458,6 +459,7 @@ func (s *Value) addScopeMetrics(
 			return overflowScopeID, sm, nil
 		}
 		overflowScope := rm.ScopeMetrics().AppendEmpty()
+		overflowScope.SetSchemaUrl(otherSm.SchemaUrl())
 		if err := decorate(
 			overflowScope.Scope().Attributes(),
 			s.scopeLimitCfg.Overflow.Attributes,
