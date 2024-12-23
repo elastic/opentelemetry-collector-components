@@ -549,8 +549,7 @@ func (s *Value) addSumDataPoint(
 		return dp, false
 	}
 	sm := s.scopeLookup[metricID.Scope()]
-	metric := s.metricLookup[metricID]
-	if sm.datapointsLimits.CheckOverflow(metricID.Hash) {
+	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -558,6 +557,7 @@ func (s *Value) addSumDataPoint(
 		// and the metric will be populated on demand.
 		return pmetric.NumberDataPoint{}, false
 	}
+	metric := s.metricLookup[metricID]
 	dp := metric.Sum().DataPoints().AppendEmpty()
 	s.numberLookup[streamID] = dp
 	return dp, true
@@ -578,8 +578,7 @@ func (s *Value) addSummaryDataPoint(
 		return dp, false
 	}
 	sm := s.scopeLookup[metricID.Scope()]
-	metric := s.metricLookup[metricID]
-	if sm.datapointsLimits.CheckOverflow(metricID.Hash) {
+	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -587,6 +586,7 @@ func (s *Value) addSummaryDataPoint(
 		// and the metric will be populated on demand.
 		return pmetric.SummaryDataPoint{}, false
 	}
+	metric := s.metricLookup[metricID]
 	dp := metric.Summary().DataPoints().AppendEmpty()
 	s.summaryLookup[streamID] = dp
 	return dp, true
@@ -607,8 +607,7 @@ func (s *Value) addHistogramDataPoint(
 		return dp, false
 	}
 	sm := s.scopeLookup[metricID.Scope()]
-	metric := s.metricLookup[metricID]
-	if sm.datapointsLimits.CheckOverflow(metricID.Hash) {
+	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -616,6 +615,7 @@ func (s *Value) addHistogramDataPoint(
 		// and the metric will be populated on demand.
 		return pmetric.HistogramDataPoint{}, false
 	}
+	metric := s.metricLookup[metricID]
 	dp := metric.Histogram().DataPoints().AppendEmpty()
 	s.histoLookup[streamID] = dp
 	return dp, true
@@ -636,8 +636,7 @@ func (s *Value) addExponentialHistogramDataPoint(
 		return dp, false
 	}
 	sm := s.scopeLookup[metricID.Scope()]
-	metric := s.metricLookup[metricID]
-	if sm.datapointsLimits.CheckOverflow(metricID.Hash) {
+	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -645,6 +644,7 @@ func (s *Value) addExponentialHistogramDataPoint(
 		// and the metric will be populated on demand.
 		return pmetric.ExponentialHistogramDataPoint{}, false
 	}
+	metric := s.metricLookup[metricID]
 	dp := metric.ExponentialHistogram().DataPoints().AppendEmpty()
 	s.expHistoLookup[streamID] = dp
 	return dp, true
