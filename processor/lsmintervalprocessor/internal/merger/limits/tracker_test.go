@@ -18,6 +18,7 @@
 package limits
 
 import (
+	"hash"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,7 +65,7 @@ func TestTracker(t *testing.T) {
 			assert.False(t, tracker.HasOverflow())
 			assert.Zero(t, tracker.EstimateOverflow())
 			for _, h := range tc.inputHashes {
-				tracker.CheckOverflow(h)
+				tracker.CheckOverflow(testHash(h).Hash)
 			}
 			if tc.expectedOverflow > 0 {
 				assert.True(t, tracker.HasOverflow())
@@ -105,17 +106,17 @@ func TestTracker_Merge(t *testing.T) {
 			to: func() *Tracker {
 				t := newTracker(1)
 				// 2 overflow, 0x0002 and 0x0003 will overflow
-				t.CheckOverflow(0x00010fffffffffff)
-				t.CheckOverflow(0x00020fffffffffff)
-				t.CheckOverflow(0x00030fffffffffff)
+				t.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				t.CheckOverflow(testHash(0x00020fffffffffff).Hash)
+				t.CheckOverflow(testHash(0x00030fffffffffff).Hash)
 				return t
 			}(),
 			from: func() *Tracker {
 				t := newTracker(1)
 				// 2 overflow, 0x0004 and 0x0005 will overflow
-				t.CheckOverflow(0x00030fffffffffff)
-				t.CheckOverflow(0x00040fffffffffff)
-				t.CheckOverflow(0x00050fffffffffff)
+				t.CheckOverflow(testHash(0x00030fffffffffff).Hash)
+				t.CheckOverflow(testHash(0x00040fffffffffff).Hash)
+				t.CheckOverflow(testHash(0x00050fffffffffff).Hash)
 				return t
 			}(),
 			expectedOverflow: 4,
@@ -150,13 +151,13 @@ func TestTrackers(t *testing.T) {
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
 				tr := trackers.GetResourceTracker()
-				tr.CheckOverflow(0x00010fffffffffff)
+				tr.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 
 				ts := trackers.NewScopeTracker()
-				ts.CheckOverflow(0x00010fffffffffff)
+				ts.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 
 				tdps := trackers.NewScopeDPsTracker()
-				tdps.CheckOverflow(0x00010fffffffffff)
+				tdps.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				return trackers
 			}(),
 		},
@@ -165,16 +166,16 @@ func TestTrackers(t *testing.T) {
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
 				tr := trackers.GetResourceTracker()
-				tr.CheckOverflow(0x00010fffffffffff)
-				tr.CheckOverflow(0x00020fffffffffff) // will overflow
+				tr.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tr.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 
 				ts := trackers.NewScopeTracker()
-				ts.CheckOverflow(0x00010fffffffffff)
-				ts.CheckOverflow(0x00020fffffffffff) // will overflow
+				ts.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				ts.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 
 				tdps := trackers.NewScopeDPsTracker()
-				tdps.CheckOverflow(0x00010fffffffffff)
-				tdps.CheckOverflow(0x00020fffffffffff) // will overflow
+				tdps.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tdps.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 				return trackers
 			}(),
 		},
@@ -183,30 +184,30 @@ func TestTrackers(t *testing.T) {
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
 				tr := trackers.GetResourceTracker()
-				tr.CheckOverflow(0x00010fffffffffff)
-				tr.CheckOverflow(0x00020fffffffffff) // will overflow
+				tr.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tr.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 
 				ts1 := trackers.NewScopeTracker()
-				ts1.CheckOverflow(0x00010fffffffffff)
-				ts1.CheckOverflow(0x00020fffffffffff) // will overflow
-				ts1.CheckOverflow(0x00030fffffffffff) // will overflow
+				ts1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				ts1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+				ts1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
 				ts2 := trackers.NewScopeTracker()
-				ts2.CheckOverflow(0x00010fffffffffff)
+				ts2.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				ts3 := trackers.NewScopeTracker()
-				ts3.CheckOverflow(0x00030fffffffffff) // will overflow
-				trackers.NewScopeTracker()            // empty tracker
+				ts3.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
+				trackers.NewScopeTracker()                           // empty tracker
 
 				tdps1 := trackers.NewScopeDPsTracker()
-				tdps1.CheckOverflow(0x00010fffffffffff)
-				tdps1.CheckOverflow(0x00020fffffffffff) // will overflow
-				tdps1.CheckOverflow(0x00030fffffffffff) // will overflow
+				tdps1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tdps1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+				tdps1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
 				tdps2 := trackers.NewScopeDPsTracker()
-				tdps2.CheckOverflow(0x00040fffffffffff)
+				tdps2.CheckOverflow(testHash(0x00040fffffffffff).Hash)
 				tdps3 := trackers.NewScopeDPsTracker()
-				tdps3.CheckOverflow(0x00050fffffffffff)
+				tdps3.CheckOverflow(testHash(0x00050fffffffffff).Hash)
 				tdps4 := trackers.NewScopeDPsTracker()
-				tdps4.CheckOverflow(0x00050fffffffffff)
-				tdps4.CheckOverflow(0x00060fffffffffff) // will overflow
+				tdps4.CheckOverflow(testHash(0x00050fffffffffff).Hash)
+				tdps4.CheckOverflow(testHash(0x00060fffffffffff).Hash) // will overflow
 				return trackers
 			}(),
 		},
@@ -229,4 +230,37 @@ func TestTrackers(t *testing.T) {
 			allEqual(tc.trackers.scopeDPs, newTrackers.scopeDPs)
 		})
 	}
+}
+
+// testHash is a test implementation of hash.Hash64 to simplify testing
+// The testHash is a type alias over uint64 which signifies the return
+// value of Sum64().
+type testHash uint64
+
+func (h testHash) Hash() hash.Hash64 {
+	return h
+}
+
+func (h testHash) Sum64() uint64 {
+	return uint64(h)
+}
+
+func (h testHash) Write(p []byte) (int, error) {
+	panic("not implemented")
+}
+
+func (h testHash) Sum(b []byte) []byte {
+	panic("not implemented")
+}
+
+func (h testHash) Reset() {
+	panic("not implemented")
+}
+
+func (h testHash) Size() int {
+	panic("not implemented")
+}
+
+func (h testHash) BlockSize() int {
+	panic("not implemented")
 }

@@ -80,6 +80,9 @@ type LimitConfig struct {
 // OverflowConfig defines the configuration for tweaking the events
 // produced after overflow kicks in.
 type OverflowConfig struct {
+	// Attributes are added to the overflow bucket for the respective
+	// limit. For example, attributes defined for an overflow config
+	// representing a scope will be added to the overflow scope attributes.
 	Attributes []Attribute `mapstructure:"attributes"`
 }
 

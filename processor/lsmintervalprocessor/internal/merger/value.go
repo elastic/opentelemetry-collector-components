@@ -411,7 +411,7 @@ func (s *Value) addResourceMetrics(
 			uint64(s.scopeDPLimitCfg.MaxCardinality),
 		)
 	}
-	if s.trackers.GetResourceTracker().CheckOverflow(resID.Hash().Sum64()) {
+	if s.trackers.GetResourceTracker().CheckOverflow(resID.Hash) {
 		// Overflow, get/prepare an overflow bucket
 		overflowResID, err := s.getOverflowResourceBucketID()
 		if err != nil {
@@ -456,7 +456,7 @@ func (s *Value) addScopeMetrics(
 		return scopeID, nil
 	}
 	res := s.resLookup[resID]
-	if res.scopeLimits.CheckOverflow(scopeID.Hash().Sum64()) {
+	if res.scopeLimits.CheckOverflow(scopeID.Hash) {
 		// Overflow, get/prepare an overflow bucket
 		overflowScopeID, err := s.getOverflowScopeBucketID(resID)
 		if err != nil {
@@ -550,7 +550,7 @@ func (s *Value) addSumDataPoint(
 	}
 	sm := s.scopeLookup[metricID.Scope()]
 	metric := s.metricLookup[metricID]
-	if sm.datapointsLimits.CheckOverflow(metricID.Hash().Sum64()) {
+	if sm.datapointsLimits.CheckOverflow(metricID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -579,7 +579,7 @@ func (s *Value) addSummaryDataPoint(
 	}
 	sm := s.scopeLookup[metricID.Scope()]
 	metric := s.metricLookup[metricID]
-	if sm.datapointsLimits.CheckOverflow(metricID.Hash().Sum64()) {
+	if sm.datapointsLimits.CheckOverflow(metricID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -608,7 +608,7 @@ func (s *Value) addHistogramDataPoint(
 	}
 	sm := s.scopeLookup[metricID.Scope()]
 	metric := s.metricLookup[metricID]
-	if sm.datapointsLimits.CheckOverflow(metricID.Hash().Sum64()) {
+	if sm.datapointsLimits.CheckOverflow(metricID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -637,7 +637,7 @@ func (s *Value) addExponentialHistogramDataPoint(
 	}
 	sm := s.scopeLookup[metricID.Scope()]
 	metric := s.metricLookup[metricID]
-	if sm.datapointsLimits.CheckOverflow(metricID.Hash().Sum64()) {
+	if sm.datapointsLimits.CheckOverflow(metricID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique

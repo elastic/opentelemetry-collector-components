@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash"
 	"slices"
 
 	"github.com/axiomhq/hyperloglog"
@@ -38,10 +39,6 @@ type Tracker struct {
 
 func newTracker(maxCardinality uint64) *Tracker {
 	return &Tracker{maxCardinality: maxCardinality}
-}
-
-func (t *Tracker) UpdateObservedCount(c uint64) {
-	t.observedCount = c
 }
 
 func (t *Tracker) Equal(other *Tracker) bool {
@@ -68,7 +65,7 @@ func (t *Tracker) EstimateOverflow() uint64 {
 // CheckOverflow checks if overflow will happen on addition of a new entry with
 // the provided hash denoting the entries ID. It assumes that any entry passed
 // to this method is a NEW entry and the check for this is left to the caller.
-func (t *Tracker) CheckOverflow(hash uint64) bool {
+func (t *Tracker) CheckOverflow(f func() hash.Hash64) bool {
 	if t.maxCardinality == 0 {
 		return false
 	}
@@ -77,7 +74,7 @@ func (t *Tracker) CheckOverflow(hash uint64) bool {
 			// Creates an overflow with 14 precision
 			t.overflowCounts = hyperloglog.New14()
 		}
-		t.overflowCounts.InsertHash(hash)
+		t.overflowCounts.InsertHash(f().Sum64())
 		return true
 	}
 	t.observedCount++
