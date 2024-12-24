@@ -1,0 +1,28 @@
+// Renovate configuration file to automate bumping Go packages versions within non
+// standard Go files (e.g YAML).
+{
+  "extends": [
+    "config:base"
+  ],
+  "labels": ["automation"],
+  "enabledManagers": [
+    // Enable only the regex manager.
+    "regex"
+  ],
+  "packageRules": [{
+    "matchManagers": ["regex"],
+    // "matchPackagePatterns": ["open-telemetry"],
+    "groupName": "otelcol"
+  }],
+  "regexManagers": [
+    {
+      "fileMatch": [
+        "distributions/**/manifest.yaml$"
+      ],
+      "datasourceTemplate": "go",
+      "matchStrings": [
+        "gomod: (?<depName>.+) (?<currentValue>.+)"
+      ]
+    }
+  ]
+}
