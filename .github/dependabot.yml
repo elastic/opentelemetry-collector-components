@@ -3,12 +3,7 @@ version: 2
 updates:
   - package-ecosystem: "gomod"
     directories:
-      - "/processor/lsmintervalprocessor/"
-      - "/processor/elasticinframetricsprocessor/"
-      - "/processor/elastictraceprocessor/"
-      - "/processor/ratelimitprocessor/"
-      - "/connector/signaltometricsconnector"
-      - "/internal/tools/"
+      - "**/*"
     schedule:
       interval: "daily"
     labels:
