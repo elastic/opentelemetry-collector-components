@@ -26,7 +26,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
 )
@@ -549,6 +548,7 @@ func (s *Value) addMetric(
 // due to configured limit then an empty data point is returned. The returned
 // bool value is `true` if a new data point is created and `false` otherwise.
 func (s *Value) addSumDataPoint(
+	sm scopeMetrics,
 	metricID identity.Metric,
 	metric pmetric.Metric,
 	otherDP pmetric.NumberDataPoint,
@@ -559,7 +559,6 @@ func (s *Value) addSumDataPoint(
 	} else if dp, ok := s.numberLookup[streamID]; ok {
 		return dp, false
 	}
-	sm := s.scopeLookup[metricID.Scope()]
 	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
@@ -580,6 +579,7 @@ func (s *Value) addSumDataPoint(
 // The returned bool value is `true` if a new data point is created and
 // `false` otherwise.
 func (s *Value) addSummaryDataPoint(
+	sm scopeMetrics,
 	metricID identity.Metric,
 	metric pmetric.Metric,
 	otherDP pmetric.SummaryDataPoint,
@@ -590,7 +590,6 @@ func (s *Value) addSummaryDataPoint(
 	} else if dp, ok := s.summaryLookup[streamID]; ok {
 		return dp, false
 	}
-	sm := s.scopeLookup[metricID.Scope()]
 	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
@@ -611,6 +610,7 @@ func (s *Value) addSummaryDataPoint(
 // The returned bool value is `true` if a new data point is created and
 // `false` otherwise.
 func (s *Value) addHistogramDataPoint(
+	sm scopeMetrics,
 	metricID identity.Metric,
 	metric pmetric.Metric,
 	otherDP pmetric.HistogramDataPoint,
@@ -621,7 +621,6 @@ func (s *Value) addHistogramDataPoint(
 	} else if dp, ok := s.histoLookup[streamID]; ok {
 		return dp, false
 	}
-	sm := s.scopeLookup[metricID.Scope()]
 	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
@@ -642,6 +641,7 @@ func (s *Value) addHistogramDataPoint(
 // returned. The returned bool value is `true` if a new data point is created
 // and `false` otherwise.
 func (s *Value) addExponentialHistogramDataPoint(
+	sm scopeMetrics,
 	metricID identity.Metric,
 	metric pmetric.Metric,
 	otherDP pmetric.ExponentialHistogramDataPoint,
@@ -652,7 +652,6 @@ func (s *Value) addExponentialHistogramDataPoint(
 	} else if dp, ok := s.expHistoLookup[streamID]; ok {
 		return dp, false
 	}
-	sm := s.scopeLookup[metricID.Scope()]
 	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
@@ -675,16 +674,18 @@ func (v *Value) mergeMetric(
 
 	switch otherM.Type() {
 	case pmetric.MetricTypeSum:
-		merge(
+		mergeDataPoints(
 			otherM.Sum().DataPoints(),
+			sm,
 			metricID,
 			metric,
 			v.addSumDataPoint,
 			otherM.Sum().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeSummary:
-		merge(
+		mergeDataPoints(
 			otherM.Summary().DataPoints(),
+			sm,
 			metricID,
 			metric,
 			v.addSummaryDataPoint,
@@ -692,16 +693,18 @@ func (v *Value) mergeMetric(
 			pmetric.AggregationTemporalityCumulative,
 		)
 	case pmetric.MetricTypeHistogram:
-		merge(
+		mergeDataPoints(
 			otherM.Histogram().DataPoints(),
+			sm,
 			metricID,
 			metric,
 			v.addHistogramDataPoint,
 			otherM.Histogram().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeExponentialHistogram:
-		merge(
+		mergeDataPoints(
 			otherM.ExponentialHistogram().DataPoints(),
+			sm,
 			metricID,
 			metric,
 			v.addExponentialHistogramDataPoint,
@@ -732,124 +735,6 @@ func (s *Value) getOverflowScopeIdentity(
 		return identity.Scope{}, fmt.Errorf("failed to create overflow bucket: %w", err)
 	}
 	return identity.OfScope(res, scope), nil
-}
-
-type dataPointSlice[DP dataPoint[DP]] interface {
-	Len() int
-	At(i int) DP
-	AppendEmpty() DP
-}
-
-type dataPoint[Self any] interface {
-	pmetric.NumberDataPoint | pmetric.SummaryDataPoint | pmetric.HistogramDataPoint | pmetric.ExponentialHistogramDataPoint
-
-	Timestamp() pcommon.Timestamp
-	SetTimestamp(pcommon.Timestamp)
-	Attributes() pcommon.Map
-	CopyTo(dest Self)
-}
-
-func merge[DPS dataPointSlice[DP], DP dataPoint[DP]](
-	from DPS,
-	toMetricID identity.Metric,
-	toMetric pmetric.Metric,
-	addDP func(identity.Metric, pmetric.Metric, DP) (DP, bool),
-	temporality pmetric.AggregationTemporality,
-) {
-	switch temporality {
-	case pmetric.AggregationTemporalityCumulative:
-		mergeCumulative(from, toMetricID, toMetric, addDP)
-	case pmetric.AggregationTemporalityDelta:
-		mergeDelta(from, toMetricID, toMetric, addDP)
-	}
-}
-
-func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
-	from DPS,
-	toMetricID identity.Metric,
-	toMetric pmetric.Metric,
-	addDP func(identity.Metric, pmetric.Metric, DP) (DP, bool),
-) {
-	var zero DP
-	for i := 0; i < from.Len(); i++ {
-		fromDP := from.At(i)
-		toDP, ok := addDP(toMetricID, toMetric, fromDP)
-		if toDP == zero {
-			// Overflow, discard the datapoint
-			continue
-		}
-		if ok || fromDP.Timestamp() > toDP.Timestamp() {
-			fromDP.CopyTo(toDP)
-		}
-	}
-}
-
-func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
-	from DPS,
-	toMetricID identity.Metric,
-	toMetric pmetric.Metric,
-	addDP func(identity.Metric, pmetric.Metric, DP) (DP, bool),
-) {
-	var zero DP
-	for i := 0; i < from.Len(); i++ {
-		fromDP := from.At(i)
-		toDP, ok := addDP(toMetricID, toMetric, fromDP)
-		if toDP == zero {
-			// Overflow, discard the datapoint
-			continue
-		}
-		if ok {
-			// New data point is created so we can copy the old data directly
-			fromDP.CopyTo(toDP)
-			continue
-		}
-
-		switch fromDP := any(fromDP).(type) {
-		case pmetric.NumberDataPoint:
-			mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
-		case pmetric.HistogramDataPoint:
-			mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
-		case pmetric.ExponentialHistogramDataPoint:
-			mergeDeltaExponentialHistogramDP(fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint))
-		}
-	}
-}
-
-func mergeDeltaSumDP(from, to pmetric.NumberDataPoint) {
-	toDP := data.Number{NumberDataPoint: to}
-	fromDP := data.Number{NumberDataPoint: from}
-
-	toDP.Add(fromDP)
-}
-
-func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
-	if from.Count() == 0 {
-		return
-	}
-	if to.Count() == 0 {
-		from.CopyTo(to)
-		return
-	}
-
-	toDP := data.Histogram{HistogramDataPoint: to}
-	fromDP := data.Histogram{HistogramDataPoint: from}
-
-	toDP.Add(fromDP)
-}
-
-func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataPoint) {
-	if from.Count() == 0 {
-		return
-	}
-	if to.Count() == 0 {
-		from.CopyTo(to)
-		return
-	}
-
-	toDP := data.ExpHistogram{DataPoint: to}
-	fromDP := data.ExpHistogram{DataPoint: from}
-
-	toDP.Add(fromDP)
 }
 
 func decorate(target pcommon.Map, src []config.Attribute) error {
