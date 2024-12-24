@@ -17,7 +17,7 @@
   "regexManagers": [
     {
       "fileMatch": [
-        "distributions/**/manifest.yaml$"
+        "distributions/elastic-components/manifest.yaml$"
       ],
       "datasourceTemplate": "go",
       "matchStrings": [
