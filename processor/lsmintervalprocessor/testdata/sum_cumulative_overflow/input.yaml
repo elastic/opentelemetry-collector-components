@@ -1,0 +1,50 @@
+resourceMetrics:
+  - schemaUrl: https://test-res-schema.com/schema
+    resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+    scopeMetrics:
+      - schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          name: MyTestInstrument
+          version: "1.2.3"
+          attributes:
+            - key: foo
+              value:
+                stringValue: bar
+        metrics:
+          - name: cumulative.monotonic.sum.1
+            sum:
+              aggregationTemporality: 2
+              isMonotonic: true
+              dataPoints:
+                - timeUnixNano: 5000000
+                  asDouble: 333
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+          - name: cumulative.monotonic.sum.1
+            sum:
+              aggregationTemporality: 2
+              isMonotonic: true
+              dataPoints:
+                - timeUnixNano: 7000000
+                  asDouble: 222
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+          - name: cumulative.monotonic.sum.2
+            sum:
+              aggregationTemporality: 2
+              isMonotonic: true
+              dataPoints:
+                - timeUnixNano: 8000000
+                  asDouble: 444
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb

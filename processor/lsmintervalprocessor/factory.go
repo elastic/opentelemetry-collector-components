@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
@@ -41,8 +42,8 @@ func NewFactory() processor.Factory {
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{
-		Intervals: []IntervalConfig{
+	return &config.Config{
+		Intervals: []config.IntervalConfig{
 			{Duration: 60 * time.Second},
 		},
 	}
@@ -54,7 +55,7 @@ func createMetricsProcessor(
 	cfg component.Config,
 	nextConsumer consumer.Metrics,
 ) (processor.Metrics, error) {
-	processorConfig, ok := cfg.(*Config)
+	processorConfig, ok := cfg.(*config.Config)
 	if !ok {
 		return nil, fmt.Errorf("configuration parsing error")
 	}
