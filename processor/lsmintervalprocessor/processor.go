@@ -40,7 +40,7 @@ var _ processor.Metrics = (*Processor)(nil)
 var zeroTime = time.Unix(0, 0).UTC()
 
 const (
-	// pebbleMemTableSize defines the max stead state size of a memtable.
+	// pebbleMemTableSize defines the max steady state size of a memtable.
 	// There can be more than 1 memtable in memory at a time as it takes
 	// time for old memtable to flush. The memtable size also defines
 	// the size for large batches. A large batch is a batch which will
@@ -54,7 +54,13 @@ const (
 	// large batches will need to be reallocated. Note that large batch
 	// classification uses the memtable size that a batch will occupy
 	// rather than the length of data slice backing the batch.
-	pebbleMemTableSize = 32 << 20 // 32MB
+	pebbleMemTableSize = 64 << 20 // 64MB
+
+	// pebbleMemTableStopWritesThreshold is the hard limit on the maximum
+	// number of memtables that could be queued before which writes are
+	// stopped. This value should be at least 2 or writes will stop whenever
+	// a MemTable is being flushed.
+	pebbleMemTableStopWritesThreshold = 2
 
 	// dbCommitThresholdBytes is a soft limit and the batch is committed
 	// to the DB as soon as it crosses this threshold. To make sure that
@@ -99,7 +105,8 @@ func newProcessor(cfg *Config, ivlDefs []intervalDef, log *zap.Logger, next cons
 				return merger.New(v), nil
 			},
 		},
-		MemTableSize: pebbleMemTableSize,
+		MemTableSize:                pebbleMemTableSize,
+		MemTableStopWritesThreshold: pebbleMemTableStopWritesThreshold,
 	}
 	writeOpts := pebble.Sync
 	dataDir := cfg.Directory
