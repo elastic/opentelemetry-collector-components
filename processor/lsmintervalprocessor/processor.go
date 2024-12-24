@@ -39,8 +39,32 @@ import (
 var _ processor.Metrics = (*Processor)(nil)
 var zeroTime = time.Unix(0, 0).UTC()
 
-// TODO (lahsivjar): Optimize pebble
-const batchCommitThreshold = 16 << 20 // 16MB
+const (
+	// pebbleMemTableSize defines the max stead state size of a memtable.
+	// There can be more than 1 memtable in memory at a time as it takes
+	// time for old memtable to flush. The memtable size also defines
+	// the size for large batches. A large batch is a batch which will
+	// take atleast half of the memtable size. Note that the Batch#Len
+	// is not the same as the memtable size that the batch will occupy
+	// as data in batches are encoded differently. In general, the
+	// memtable size of the batch will be higher than the length of the
+	// batch data.
+	//
+	// On commit, data in the large batch maybe kept by pebble and thus
+	// large batches will need to be reallocated. Note that large batch
+	// classification uses the memtable size that a batch will occupy
+	// rather than the length of data slice backing the batch.
+	pebbleMemTableSize = 32 << 20 // 32MB
+
+	// dbCommitThresholdBytes is a soft limit and the batch is committed
+	// to the DB as soon as it crosses this threshold. To make sure that
+	// the commit threshold plays will with the max retained batch size
+	// the threshold should be kept smaller than the sum of max retained
+	// batch size and encoded size of aggregated data to be committed.
+	// However, this requires https://github.com/cockroachdb/pebble/pull/3139.
+	// So, for now we are only tweaking the available options.
+	dbCommitThresholdBytes = 8 << 20 // 8MB
+)
 
 type Processor struct {
 	passthrough PassThrough
@@ -75,6 +99,7 @@ func newProcessor(cfg *Config, ivlDefs []intervalDef, log *zap.Logger, next cons
 				return merger.New(v), nil
 			},
 		},
+		MemTableSize: pebbleMemTableSize,
 	}
 	writeOpts := pebble.Sync
 	dataDir := cfg.Directory
@@ -258,8 +283,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	}
 
 	if p.batch == nil {
-		// TODO (lahsivjar): investigate possible optimization by using NewBatchWithSize
-		p.batch = p.db.NewBatch()
+		p.batch = newBatch(p.db)
 	}
 
 	for _, k := range keys {
@@ -268,7 +292,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		}
 	}
 
-	if p.batch.Len() >= batchCommitThreshold {
+	if p.batch.Len() >= dbCommitThresholdBytes {
 		if err := p.batch.Commit(p.wOpts); err != nil {
 			return errors.Join(append(errs, fmt.Errorf("failed to commit a batch to db: %w", err))...)
 		}
@@ -432,4 +456,10 @@ func (p *Processor) exportForInterval(
 		return exportedDPCount, errors.Join(errs...)
 	}
 	return exportedDPCount, nil
+}
+
+func newBatch(db *pebble.DB) *pebble.Batch {
+	// TODO (lahsivjar): Optimize batch as per our needs
+	// Requires release of https://github.com/cockroachdb/pebble/pull/3139
+	return db.NewBatch()
 }
