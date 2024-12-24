@@ -307,10 +307,6 @@ func (s *Value) initLookupTables() {
 	s.resLookup = make(map[identity.Resource]resourceMetrics)
 	s.scopeLookup = make(map[identity.Scope]scopeMetrics)
 	s.metricLookup = make(map[identity.Metric]pmetric.Metric)
-	s.numberLookup = make(map[identity.Stream]pmetric.NumberDataPoint)
-	s.summaryLookup = make(map[identity.Stream]pmetric.SummaryDataPoint)
-	s.histoLookup = make(map[identity.Stream]pmetric.HistogramDataPoint)
-	s.expHistoLookup = make(map[identity.Stream]pmetric.ExponentialHistogramDataPoint)
 
 	rms := s.source.ResourceMetrics()
 	if rms.Len() == 0 {
@@ -319,7 +315,9 @@ func (s *Value) initLookupTables() {
 	}
 
 	// Initialize the lookup tables assuming that the limits were respected
-	// for the marshaled data and no unexpected overflow will happen.
+	// for the marshaled data and unexpected overflow will not happen.
+	// Initialization is done by directly accessing the map and without
+	// checking overflows to avoid accounting overflows as normal buckets.
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
 		rmID := identity.OfResource(rm.Resource())
@@ -349,6 +347,9 @@ func (s *Value) initLookupTables() {
 				case pmetric.MetricTypeGauge:
 					// TODO (lahsivjar): implement gauge support
 				case pmetric.MetricTypeSum:
+					if s.numberLookup == nil {
+						s.numberLookup = make(map[identity.Stream]pmetric.NumberDataPoint)
+					}
 					dps := metric.Sum().DataPoints()
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
@@ -356,6 +357,9 @@ func (s *Value) initLookupTables() {
 						s.numberLookup[streamID] = dp
 					}
 				case pmetric.MetricTypeSummary:
+					if s.summaryLookup == nil {
+						s.summaryLookup = make(map[identity.Stream]pmetric.SummaryDataPoint)
+					}
 					dps := metric.Summary().DataPoints()
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
@@ -363,6 +367,9 @@ func (s *Value) initLookupTables() {
 						s.summaryLookup[streamID] = dp
 					}
 				case pmetric.MetricTypeHistogram:
+					if s.histoLookup == nil {
+						s.histoLookup = make(map[identity.Stream]pmetric.HistogramDataPoint)
+					}
 					dps := metric.Histogram().DataPoints()
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
@@ -370,6 +377,9 @@ func (s *Value) initLookupTables() {
 						s.histoLookup[streamID] = dp
 					}
 				case pmetric.MetricTypeExponentialHistogram:
+					if s.expHistoLookup == nil {
+						s.expHistoLookup = make(map[identity.Stream]pmetric.ExponentialHistogramDataPoint)
+					}
 					dps := metric.ExponentialHistogram().DataPoints()
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
@@ -544,7 +554,9 @@ func (s *Value) addSumDataPoint(
 	otherDP pmetric.NumberDataPoint,
 ) (pmetric.NumberDataPoint, bool) {
 	streamID := identity.OfStream(metricID, otherDP)
-	if dp, ok := s.numberLookup[streamID]; ok {
+	if s.numberLookup == nil {
+		s.numberLookup = make(map[identity.Stream]pmetric.NumberDataPoint)
+	} else if dp, ok := s.numberLookup[streamID]; ok {
 		return dp, false
 	}
 	sm := s.scopeLookup[metricID.Scope()]
@@ -573,7 +585,9 @@ func (s *Value) addSummaryDataPoint(
 	otherDP pmetric.SummaryDataPoint,
 ) (pmetric.SummaryDataPoint, bool) {
 	streamID := identity.OfStream(metricID, otherDP)
-	if dp, ok := s.summaryLookup[streamID]; ok {
+	if s.summaryLookup == nil {
+		s.summaryLookup = make(map[identity.Stream]pmetric.SummaryDataPoint)
+	} else if dp, ok := s.summaryLookup[streamID]; ok {
 		return dp, false
 	}
 	sm := s.scopeLookup[metricID.Scope()]
@@ -602,7 +616,9 @@ func (s *Value) addHistogramDataPoint(
 	otherDP pmetric.HistogramDataPoint,
 ) (pmetric.HistogramDataPoint, bool) {
 	streamID := identity.OfStream(metricID, otherDP)
-	if dp, ok := s.histoLookup[streamID]; ok {
+	if s.histoLookup == nil {
+		s.histoLookup = make(map[identity.Stream]pmetric.HistogramDataPoint)
+	} else if dp, ok := s.histoLookup[streamID]; ok {
 		return dp, false
 	}
 	sm := s.scopeLookup[metricID.Scope()]
@@ -631,7 +647,9 @@ func (s *Value) addExponentialHistogramDataPoint(
 	otherDP pmetric.ExponentialHistogramDataPoint,
 ) (pmetric.ExponentialHistogramDataPoint, bool) {
 	streamID := identity.OfStream(metricID, otherDP)
-	if dp, ok := s.expHistoLookup[streamID]; ok {
+	if s.expHistoLookup == nil {
+		s.expHistoLookup = make(map[identity.Stream]pmetric.ExponentialHistogramDataPoint)
+	} else if dp, ok := s.expHistoLookup[streamID]; ok {
 		return dp, false
 	}
 	sm := s.scopeLookup[metricID.Scope()]
