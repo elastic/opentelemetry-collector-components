@@ -22,13 +22,13 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/consumer/consumerprofiles"
+	"go.opentelemetry.io/collector/consumer/xconsumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
-	"go.opentelemetry.io/collector/processor/processorprofiles"
+	"go.opentelemetry.io/collector/processor/xprocessor"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/sharedcomponent"
@@ -41,14 +41,14 @@ type rateLimiterComponent interface {
 	RateLimiter
 }
 
-func NewFactory() processorprofiles.Factory {
-	return processorprofiles.NewFactory(
+func NewFactory() xprocessor.Factory {
+	return xprocessor.NewFactory(
 		metadata.Type,
 		createDefaultConfig,
-		processorprofiles.WithProfiles(createProfilesProcessor, metadata.ProfilesStability),
-		processorprofiles.WithTraces(createTracesProcessor, metadata.TracesStability),
-		processorprofiles.WithMetrics(createMetricsProcessor, metadata.MetricsStability),
-		processorprofiles.WithLogs(createLogsProcessor, metadata.LogsStability),
+		xprocessor.WithProfiles(createProfilesProcessor, metadata.ProfilesStability),
+		xprocessor.WithTraces(createTracesProcessor, metadata.TracesStability),
+		xprocessor.WithMetrics(createMetricsProcessor, metadata.MetricsStability),
+		xprocessor.WithLogs(createLogsProcessor, metadata.LogsStability),
 	)
 }
 
@@ -128,8 +128,8 @@ func createProfilesProcessor(
 	_ context.Context,
 	set processor.Settings,
 	cfg component.Config,
-	nextConsumer consumerprofiles.Profiles,
-) (processorprofiles.Profiles, error) {
+	nextConsumer xconsumer.Profiles,
+) (xprocessor.Profiles, error) {
 	config := cfg.(*Config)
 	rateLimiter, err := getRateLimiter(config, set)
 	if err != nil {
