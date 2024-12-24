@@ -1,0 +1,50 @@
+ratelimit/local:
+  rate: 100
+  burst: 200
+
+ratelimit/strategy:
+  rate: 100
+  burst: 200
+  strategy: bytes
+
+ratelimit/gubernator:
+  rate: 100
+  burst: 200
+  gubernator:
+    endpoint: localhost:1081
+
+ratelimit/gubernator_behavior:
+  rate: 100
+  burst: 200
+  gubernator:
+    endpoint: localhost:1081
+    behavior:
+      - global
+      - duration_is_gregorian
+
+ratelimit/metadata_keys:
+  metadata_keys:
+    - project_id
+  rate: 100
+  burst: 200
+
+ratelimit/invalid_rate:
+  rate: -1
+  burst: 1
+
+ratelimit/invalid_burst:
+  rate: 1
+  burst: -1
+
+ratelimit/invalid_strategy:
+  rate: 1
+  burst: 1
+  strategy: foo
+
+ratelimit/invalid_gubernator_behavior:
+  rate: 1
+  burst: 1
+  gubernator:
+    endpoint: localhost:1081
+    behavior:
+      - foo
