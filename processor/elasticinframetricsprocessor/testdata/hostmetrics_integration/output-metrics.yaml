@@ -3,139 +3,6 @@ resourceMetrics:
     schemaUrl: https://opentelemetry.io/schemas/1.9.0
     scopeMetrics:
       - metrics:
-          - description: Bytes of memory in use.
-            name: system.memory.usage
-            sum:
-              aggregationTemporality: 2
-              dataPoints:
-                - asInt: "2435125248"
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: buffered
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asInt: "18412355584"
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: cached
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asInt: "1795715072"
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: free
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asInt: "1832374272"
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: slab_reclaimable
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asInt: "286572544"
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: slab_unreclaimable
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asInt: "10654171136"
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: used
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            unit: By
-          - description: Percentage of memory bytes in use.
-            gauge:
-              dataPoints:
-                - asDouble: 0.0731326667683572
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: buffered
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asDouble: 0.5529673130575552
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: cached
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asDouble: 0.053929641639316836
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: free
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asDouble: 0.05503060556706408
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: slab_reclaimable
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asDouble: 0.008606462596749511
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: slab_unreclaimable
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-                - asDouble: 0.3199703785347708
-                  attributes:
-                    - key: state
-                      value:
-                        stringValue: used
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            name: system.memory.utilization
-            unit: "1"
-        scope:
-          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/memoryscraper
-          version: latest
-  - resource: {}
-    schemaUrl: https://opentelemetry.io/schemas/1.9.0
-    scopeMetrics:
-      - metrics:
-          - description: Average CPU Load over 15 minutes.
-            gauge:
-              dataPoints:
-                - asDouble: 0.22412109375
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            name: system.cpu.load_average.15m
-            unit: '{thread}'
-          - description: Average CPU Load over 1 minute.
-            gauge:
-              dataPoints:
-                - asDouble: 0.2451171875
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            name: system.cpu.load_average.1m
-            unit: '{thread}'
-          - description: Average CPU Load over 5 minutes.
-            gauge:
-              dataPoints:
-                - asDouble: 0.16943359375
-                  startTimeUnixNano: "1000000"
-                  timeUnixNano: "2000000"
-            name: system.cpu.load_average.5m
-            unit: '{thread}'
-        scope:
-          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/loadscraper
-          version: latest
-  - resource: {}
-    schemaUrl: https://opentelemetry.io/schemas/1.9.0
-    scopeMetrics:
-      - metrics:
           - description: Number of available logical CPUs.
             name: system.cpu.logical.count
             sum:
@@ -559,6 +426,37 @@ resourceMetrics:
     schemaUrl: https://opentelemetry.io/schemas/1.9.0
     scopeMetrics:
       - metrics:
+          - description: Average CPU Load over 15 minutes.
+            gauge:
+              dataPoints:
+                - asDouble: 0.39794921875
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            name: system.cpu.load_average.15m
+            unit: '{thread}'
+          - description: Average CPU Load over 1 minute.
+            gauge:
+              dataPoints:
+                - asDouble: 0.39794921875
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            name: system.cpu.load_average.1m
+            unit: '{thread}'
+          - description: Average CPU Load over 5 minutes.
+            gauge:
+              dataPoints:
+                - asDouble: 0.47265625
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            name: system.cpu.load_average.5m
+            unit: '{thread}'
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/loadscraper
+          version: latest
+  - resource: {}
+    schemaUrl: https://opentelemetry.io/schemas/1.9.0
+    scopeMetrics:
+      - metrics:
           - description: Total number of processes in each state.
             name: system.processes.count
             sum:
@@ -598,6 +496,108 @@ resourceMetrics:
             unit: '{processes}'
         scope:
           name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/processesscraper
+          version: latest
+  - resource: {}
+    schemaUrl: https://opentelemetry.io/schemas/1.9.0
+    scopeMetrics:
+      - metrics:
+          - description: Bytes of memory in use.
+            name: system.memory.usage
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asInt: "2388606976"
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: buffered
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asInt: "9186443264"
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: cached
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asInt: "12518809600"
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: free
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asInt: "1361186816"
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: slab_reclaimable
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asInt: "250290176"
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: slab_unreclaimable
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asInt: "9203499008"
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: used
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            unit: By
+          - description: Percentage of memory bytes in use.
+            gauge:
+              dataPoints:
+                - asDouble: 0.07173562884983808
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: buffered
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asDouble: 0.2758910490749564
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: cached
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asDouble: 0.37597004786918525
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: free
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asDouble: 0.040879723290178
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: slab_reclaimable
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asDouble: 0.007516817689431654
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: slab_unreclaimable
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asDouble: 0.2764032742060203
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: used
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            name: system.memory.utilization
+            unit: "1"
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/memoryscraper
           version: latest
   - resource:
       attributes:

@@ -5,8 +5,6 @@ package elasticinframetricsprocessor
 
 import (
 	"context"
-	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -144,8 +142,7 @@ scrapers:
 			actualMetrics, err := p.processMetrics(context.Background(), inputMetrics[0])
 			assert.NoError(t, err)
 
-			golden.WriteMetrics(t, filepath.Join("testdata", "hostmetrics_integration", "output-metrics-drop.yaml"), actualMetrics)
-			fmt.Printf("%#v\n", actualMetrics.ResourceMetrics().Len())
+			// golden.WriteMetrics(t, tt.expectedMetricsPath, actualMetrics)
 
 			expectedMetrics, err := golden.ReadMetrics(tt.expectedMetricsPath)
 			require.NoError(t, err)
