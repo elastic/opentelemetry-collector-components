@@ -1,0 +1,552 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: process.command
+          value:
+            stringValue: /bin/bash
+        - key: process.command_line
+          value:
+            stringValue: /bin/bash
+        - key: process.executable.name
+          value:
+            stringValue: ""
+        - key: process.executable.path
+          value:
+            stringValue: testdata/e2e/bin/bash
+        - key: process.parent_pid
+          value:
+            intValue: "0"
+        - key: process.pid
+          value:
+            intValue: "1"
+    scopeMetrics:
+      - metrics:
+          - name: process.cpu.start_time
+            sum:
+              dataPoints:
+                - asInt: "1693963661860"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.num_threads
+            sum:
+              dataPoints:
+                - asInt: "0"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - gauge:
+              dataPoints:
+                - asDouble: Infinity
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+            name: system.process.memory.rss.pct
+          - name: system.process.memory.rss.bytes
+            sum:
+              dataPoints:
+                - asInt: "2322432"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.memory.size
+            sum:
+              dataPoints:
+                - asInt: "5054464"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.fd.open
+            sum:
+              dataPoints:
+                - asInt: "0"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - gauge:
+              dataPoints:
+                - asDouble: Infinity
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+            name: process.memory.pct
+          - name: system.process.cpu.total.value
+            sum:
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.cpu.system.ticks
+            sum:
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.cpu.user.ticks
+            sum:
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.cpu.total.ticks
+            sum:
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.io.read_bytes
+            sum:
+              dataPoints:
+                - asInt: "0"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.io.write_bytes
+            sum:
+              dataPoints:
+                - asInt: "0"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.io.read_ops
+            sum:
+              dataPoints:
+                - asInt: "0"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - name: system.process.io.write_ops
+            sum:
+              dataPoints:
+                - asInt: "0"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+          - gauge:
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.dataset
+                      value:
+                        stringValue: system.process
+                    - key: event.module
+                      value:
+                        stringValue: system
+                    - key: otel_remapped
+                      value:
+                        boolValue: true
+                    - key: process.executable
+                      value:
+                        stringValue: testdata/e2e/bin/bash
+                    - key: system.process.cmdline
+                      value:
+                        stringValue: /bin/bash
+                    - key: system.process.cpu.start_time
+                      value:
+                        stringValue: "2023-09-06T01:27:41Z"
+                    - key: system.process.state
+                      value:
+                        stringValue: undefined
+                    - key: user.name
+                      value:
+                        stringValue: undefined
+                  timeUnixNano: "1000000"
+            name: system.process.cpu.total.pct
+        scope: {}

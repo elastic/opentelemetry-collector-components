@@ -23,27 +23,18 @@ import (
 
 func TestProcessorHostMetrics(t *testing.T) {
 	tests := []struct {
-		name                string
-		hostmetricsRoopath  string
-		scrapersConfig      string
-		processorConfig     *Config
-		expectedMetricsPath string
+		name                    string
+		hostmetricsRoopath      string
+		scrapersConfig          string
+		expectedHostmetricsPath string
+		processorConfig         *Config
+		expectedMetricsPath     string
 	}{
 		{
-			name:               "all scrapers",
+			name:               "process scrapers",
 			hostmetricsRoopath: "./testdata/hostmetrics_integration/e2e/",
 			scrapersConfig: `
 scrapers:
-  cpu:
-    metrics:
-      system.cpu.utilization:
-        enabled: true
-      system.cpu.logical.count:
-        enabled: true
-  memory:
-    metrics:
-      system.memory.utilization:
-        enabled: true
   process:
     mute_process_exe_error: true
     mute_process_io_error: true
@@ -57,53 +48,13 @@ scrapers:
         enabled: true
       process.disk.operations:
         enabled: true
-  network: {}
-  processes: {}
-  load: {}
-  disk: {}
-  filesystem:
-    exclude_mount_points:
-      mount_points:
-        - /dev/*
-        - /proc/*
-        - /sys/*
-        - /run/k3s/containerd/*
-        - /var/lib/docker/*
-        - /var/lib/kubelet/*
-        - /snap/*
-      match_type: regexp
-    exclude_fs_types:
-      fs_types:
-        - autofs
-        - binfmt_misc
-        - bpf
-        - cgroup2
-        - configfs
-        - debugfs
-        - devpts
-        - devtmpfs
-        - fusectl
-        - hugetlbfs
-        - iso9660
-        - mqueue
-        - nsfs
-        - overlay
-        - proc
-        - procfs
-        - pstore
-        - rpc_pipefs
-        - securityfs
-        - selinuxfs
-        - squashfs
-        - sysfs
-        - tracefs
-      match_type: strict
 `,
+			expectedHostmetricsPath: "./testdata/hostmetrics_integration/input-process-metrics.yaml",
 			processorConfig: &Config{
 				DropOriginal:     true,
 				AddSystemMetrics: true,
 			},
-			expectedMetricsPath: "./testdata/hostmetrics_integration/output-metrics-drop.yaml",
+			expectedMetricsPath: "./testdata/hostmetrics_integration/output-process-metrics.yaml",
 		},
 	}
 
@@ -113,7 +64,7 @@ scrapers:
 			metricsProvider := hostmetricsreceiver.NewFactory()
 			cfg := metricsProvider.CreateDefaultConfig().(*hostmetricsreceiver.Config)
 			cfg.RootPath = tt.hostmetricsRoopath
-			cfg.CollectionInterval = 1 * time.Second
+			cfg.CollectionInterval = 100 * time.Millisecond
 
 			hostCfg2, err := confmap.NewRetrievedFromYAML([]byte(tt.scrapersConfig))
 			require.NoError(t, err)
@@ -130,18 +81,28 @@ scrapers:
 			err = hostComponent.Start(ctx, componenttest.NewNopHost())
 			require.NoError(t, err)
 
-			var inputMetrics []pmetric.Metrics
+			var allMetrics []pmetric.Metrics
+			expectedHostmetrics, err := golden.ReadMetrics(tt.expectedHostmetricsPath)
+			require.NoError(t, err)
 			require.Eventually(t, func() bool {
-				inputMetrics = nextMetrics.AllMetrics()
-				return len(inputMetrics) > 0
-			}, 5*time.Second, 2*time.Second)
+				allMetrics = nextMetrics.AllMetrics()
+				if len(allMetrics) == 0 {
+					return false
+				}
+				validateErr := pmetrictest.CompareMetrics(expectedHostmetrics, allMetrics[len(allMetrics)-1], pmetrictest.IgnoreResourceMetricsOrder(),
+					pmetrictest.IgnoreMetricValues(),
+					pmetrictest.IgnoreMetricDataPointsOrder(),
+					pmetrictest.IgnoreStartTimestamp(),
+					pmetrictest.IgnoreTimestamp())
+				return validateErr == nil
+			}, 10*time.Second, 100*time.Millisecond)
 
 			err = hostComponent.Shutdown(ctx)
 			require.NoError(t, err)
 
 			p := newProcessor(processortest.NewNopSettings(), tt.processorConfig)
 
-			actualMetrics, err := p.processMetrics(context.Background(), inputMetrics[0])
+			actualMetrics, err := p.processMetrics(context.Background(), allMetrics[0])
 			assert.NoError(t, err)
 
 			// golden.WriteMetrics(t, tt.expectedMetricsPath, actualMetrics)
