@@ -129,13 +129,15 @@ scrapers:
 			require.NoError(t, err)
 			err = hostComponent.Start(ctx, componenttest.NewNopHost())
 			require.NoError(t, err)
-			defer hostComponent.Shutdown(ctx)
 
 			var inputMetrics []pmetric.Metrics
 			require.Eventually(t, func() bool {
 				inputMetrics = nextMetrics.AllMetrics()
 				return len(inputMetrics) > 0
 			}, 5*time.Second, 2*time.Second)
+
+			err = hostComponent.Shutdown(ctx)
+			require.NoError(t, err)
 
 			p := newProcessor(processortest.NewNopSettings(), tt.processorConfig)
 
