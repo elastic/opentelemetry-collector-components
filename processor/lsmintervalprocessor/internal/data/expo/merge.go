@@ -28,7 +28,11 @@ import (
 )
 
 // Merge combines the counts of buckets a and b into a.
-// Both buckets MUST be of same scale
+// Both buckets MUST be of same scale.
+//
+// The code has been modified from the upstream code to optimize allocations
+// performed while merging the histograms. This also makes the Merge operation
+// mutating w.r.t. the brel bucket.
 func Merge(arel, brel Buckets) {
 	if brel.BucketCounts().Len() == 0 {
 		return
@@ -45,13 +49,32 @@ func Merge(arel, brel Buckets) {
 
 	size := up - lo
 
-	counts := pcommon.NewUInt64Slice()
-	counts.EnsureCapacity(size)
-
-	for i := 0; i < size; i++ {
-		counts.Append(a.Abs(lo+i) + b.Abs(lo+i))
+	// TODO (lahsivjar): the below optimization is not able to take advantage
+	// of slices with greater length than what is required as the pdata model
+	// does not allow reslicing:
+	// https://github.com/open-telemetry/opentelemetry-collector/issues/12004
+	switch {
+	case a.Lower() == lo && size == a.BucketCounts().Len():
+		counts := a.BucketCounts()
+		for i := 0; i < size; i++ {
+			val := a.Abs(lo+i) + b.Abs(lo+i)
+			counts.SetAt(i, val)
+		}
+	case b.Lower() == lo && size == b.BucketCounts().Len():
+		counts := b.BucketCounts()
+		for i := 0; i < size; i++ {
+			val := a.Abs(lo+i) + b.Abs(lo+i)
+			counts.SetAt(i, val)
+		}
+		counts.MoveTo(a.BucketCounts())
+	default:
+		counts := pcommon.NewUInt64Slice()
+		counts.EnsureCapacity(size)
+		for i := 0; i < size; i++ {
+			val := a.Abs(lo+i) + b.Abs(lo+i)
+			counts.Append(val)
+		}
+		counts.MoveTo(a.BucketCounts())
 	}
-
 	a.SetOffset(int32(lo))
-	counts.MoveTo(a.BucketCounts())
 }
