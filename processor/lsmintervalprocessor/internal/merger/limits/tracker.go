@@ -127,9 +127,8 @@ func (t *Tracker) Unmarshal(d []byte) error {
 		return errors.New("failed to unmarshal tracker, invalid length")
 	}
 
-	var offset int
-	t.observedCount = binary.BigEndian.Uint64(d[offset:(offset + 8)])
-	offset += 8
+	t.observedCount = binary.BigEndian.Uint64(d[:8])
+	offset := 8
 	if len(d) == offset {
 		return nil
 	}
