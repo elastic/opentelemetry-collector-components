@@ -102,9 +102,8 @@ func (t *Tracker) Marshal() ([]byte, error) {
 	// allocations. Also see: https://github.com/axiomhq/hyperloglog/issues/44
 	b := make([]byte, 8) // reserved for observed count
 
-	var offset int
-	binary.BigEndian.PutUint64(b[offset:(offset+8)], t.observedCount)
-	offset += 8
+	binary.BigEndian.PutUint64(b[:8], t.observedCount)
+	offset := 8
 	if t.overflowCounts != nil {
 		hll, err := t.overflowCounts.MarshalBinary()
 		if err != nil {
