@@ -64,15 +64,10 @@ func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	toMetric pmetric.Metric,
 	addDP addDPFunc[DP],
 ) {
-	var zero DP
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
-		toDP, ok := addDP(toScope, toMetricID, toMetric, fromDP)
-		if toDP == zero {
-			// Overflow, discard the datapoint
-			continue
-		}
-		if ok || fromDP.Timestamp() > toDP.Timestamp() {
+		toDP, exists := addDP(toScope, toMetricID, toMetric, fromDP)
+		if exists && fromDP.Timestamp() > toDP.Timestamp() {
 			fromDP.CopyTo(toDP)
 		}
 	}
@@ -85,27 +80,17 @@ func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	toMetric pmetric.Metric,
 	addDP addDPFunc[DP],
 ) {
-	var zero DP
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
-		toDP, ok := addDP(toScope, toMetricID, toMetric, fromDP)
-		if toDP == zero {
-			// Overflow, discard the datapoint
-			continue
-		}
-		if ok {
-			// New data point is created so we can copy the old data directly
-			fromDP.CopyTo(toDP)
-			continue
-		}
-
-		switch fromDP := any(fromDP).(type) {
-		case pmetric.NumberDataPoint:
-			mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
-		case pmetric.HistogramDataPoint:
-			mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
-		case pmetric.ExponentialHistogramDataPoint:
-			mergeDeltaExponentialHistogramDP(fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint))
+		if toDP, exists := addDP(toScope, toMetricID, toMetric, fromDP); exists {
+			switch fromDP := any(fromDP).(type) {
+			case pmetric.NumberDataPoint:
+				mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
+			case pmetric.HistogramDataPoint:
+				mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
+			case pmetric.ExponentialHistogramDataPoint:
+				mergeDeltaExponentialHistogramDP(fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint))
+			}
 		}
 	}
 }

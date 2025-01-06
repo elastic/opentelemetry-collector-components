@@ -546,7 +546,7 @@ func (s *Value) addMetric(
 // and the external data point if it is present. If the data point is not
 // present then either a new data point is added or if the data point overflows
 // due to configured limit then an empty data point is returned. The returned
-// bool value is `true` if a new data point is created and `false` otherwise.
+// bool value is `true` if the datapoint already exists and `false` otherwise.
 func (s *Value) addSumDataPoint(
 	sm scopeMetrics,
 	metricID identity.Metric,
@@ -557,7 +557,7 @@ func (s *Value) addSumDataPoint(
 	if s.numberLookup == nil {
 		s.numberLookup = make(map[identity.Stream]pmetric.NumberDataPoint)
 	} else if dp, ok := s.numberLookup[streamID]; ok {
-		return dp, false
+		return dp, true
 	}
 	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
@@ -568,16 +568,18 @@ func (s *Value) addSumDataPoint(
 		return pmetric.NumberDataPoint{}, false
 	}
 	dp := metric.Sum().DataPoints().AppendEmpty()
+	// New datapoint created, so copy the otherDP to the new one
+	otherDP.CopyTo(dp)
 	s.numberLookup[streamID] = dp
-	return dp, true
+	return dp, false
 }
 
 // addSummaryDataPoint returns a data point entry in the store for the given
 // metric and the external data point if it is present. If the data point is
 // not present then either a new data point is added or if the data point
 // overflows due to configured limit then an empty data point is returned.
-// The returned bool value is `true` if a new data point is created and
-// `false` otherwise.
+// The returned bool value is `true` if datapoint already exists and `false`
+// otherwise.
 func (s *Value) addSummaryDataPoint(
 	sm scopeMetrics,
 	metricID identity.Metric,
@@ -588,7 +590,7 @@ func (s *Value) addSummaryDataPoint(
 	if s.summaryLookup == nil {
 		s.summaryLookup = make(map[identity.Stream]pmetric.SummaryDataPoint)
 	} else if dp, ok := s.summaryLookup[streamID]; ok {
-		return dp, false
+		return dp, true
 	}
 	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
@@ -599,16 +601,18 @@ func (s *Value) addSummaryDataPoint(
 		return pmetric.SummaryDataPoint{}, false
 	}
 	dp := metric.Summary().DataPoints().AppendEmpty()
+	// New datapoint created, so copy the otherDP to the new one
+	otherDP.CopyTo(dp)
 	s.summaryLookup[streamID] = dp
-	return dp, true
+	return dp, false
 }
 
 // addHistogramDataPoint returns a data point entry in the store for the given
 // metric and the external data point if it is present. If the data point is
 // not present then either a new data point is added or if the data point
 // overflows due to configured limit then an empty data point is returned.
-// The returned bool value is `true` if a new data point is created and
-// `false` otherwise.
+// The returned bool value is `true` if datapoint already exists and `false`
+// otherwise.
 func (s *Value) addHistogramDataPoint(
 	sm scopeMetrics,
 	metricID identity.Metric,
@@ -619,7 +623,7 @@ func (s *Value) addHistogramDataPoint(
 	if s.histoLookup == nil {
 		s.histoLookup = make(map[identity.Stream]pmetric.HistogramDataPoint)
 	} else if dp, ok := s.histoLookup[streamID]; ok {
-		return dp, false
+		return dp, true
 	}
 	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
@@ -630,15 +634,17 @@ func (s *Value) addHistogramDataPoint(
 		return pmetric.HistogramDataPoint{}, false
 	}
 	dp := metric.Histogram().DataPoints().AppendEmpty()
+	// New datapoint created, so copy the otherDP to the new one
+	otherDP.CopyTo(dp)
 	s.histoLookup[streamID] = dp
-	return dp, true
+	return dp, false
 }
 
 // addExponentialHistogramDataPoint returns a data point entry in the store
 // for the given metric and the external data point if it is present. If the
 // data point is not present then either a new data point is added or if the
 // data point overflows due to configured limit then an empty data point is
-// returned. The returned bool value is `true` if a new data point is created
+// returned. The returned bool value is `true` if datapoint already exists
 // and `false` otherwise.
 func (s *Value) addExponentialHistogramDataPoint(
 	sm scopeMetrics,
@@ -650,7 +656,7 @@ func (s *Value) addExponentialHistogramDataPoint(
 	if s.expHistoLookup == nil {
 		s.expHistoLookup = make(map[identity.Stream]pmetric.ExponentialHistogramDataPoint)
 	} else if dp, ok := s.expHistoLookup[streamID]; ok {
-		return dp, false
+		return dp, true
 	}
 	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
@@ -661,8 +667,10 @@ func (s *Value) addExponentialHistogramDataPoint(
 		return pmetric.ExponentialHistogramDataPoint{}, false
 	}
 	dp := metric.ExponentialHistogram().DataPoints().AppendEmpty()
+	// New datapoint created, so copy the otherDP to the new one
+	otherDP.CopyTo(dp)
 	s.expHistoLookup[streamID] = dp
-	return dp, true
+	return dp, false
 }
 
 func (v *Value) mergeMetric(
