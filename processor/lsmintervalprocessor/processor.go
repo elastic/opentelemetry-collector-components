@@ -64,7 +64,7 @@ const (
 
 	// dbCommitThresholdBytes is a soft limit and the batch is committed
 	// to the DB as soon as it crosses this threshold. To make sure that
-	// the commit threshold plays will with the max retained batch size
+	// the commit threshold plays well with the max retained batch size
 	// the threshold should be kept smaller than the sum of max retained
 	// batch size and encoded size of aggregated data to be committed.
 	// However, this requires https://github.com/cockroachdb/pebble/pull/3139.
