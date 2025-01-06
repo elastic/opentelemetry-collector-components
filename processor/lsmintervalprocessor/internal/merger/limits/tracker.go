@@ -27,6 +27,8 @@ import (
 	"github.com/axiomhq/hyperloglog"
 )
 
+const version = uint8(1)
+
 // Tracker tracks the configured limits while merging. It records the
 // observed count as well as the unique overflow counts.
 type Tracker struct {
@@ -100,10 +102,12 @@ func (t *Tracker) MergeEstimators(other *Tracker) error {
 func (t *Tracker) Marshal() ([]byte, error) {
 	// TODO (lahsivjar): Estimate the size of the trackers to optimize
 	// allocations. Also see: https://github.com/axiomhq/hyperloglog/issues/44
-	b := make([]byte, 8) // reserved for observed count
+	b := make([]byte, 9) // reserved for observed count
 
-	binary.BigEndian.PutUint64(b[:8], t.observedCount)
-	offset := 8
+	b[0] = version
+	offset := 1
+	binary.BigEndian.PutUint64(b[offset:offset+8], t.observedCount)
+	offset += 8
 	if t.overflowCounts != nil {
 		hll, err := t.overflowCounts.MarshalBinary()
 		if err != nil {
@@ -122,12 +126,15 @@ func (t *Tracker) Marshal() ([]byte, error) {
 //	    panic(err)
 //	}
 func (t *Tracker) Unmarshal(d []byte) error {
-	if len(d) < 8 {
+	if len(d) < 9 {
 		return errors.New("failed to unmarshal tracker, invalid length")
 	}
-
-	t.observedCount = binary.BigEndian.Uint64(d[:8])
-	offset := 8
+	if v := uint8(d[0]); v != version {
+		return fmt.Errorf("unsupported version: %d", v)
+	}
+	offset := 1
+	t.observedCount = binary.BigEndian.Uint64(d[offset : offset+8])
+	offset += 8
 	if len(d) == offset {
 		return nil
 	}
