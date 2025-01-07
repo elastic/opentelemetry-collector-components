@@ -20,8 +20,11 @@ package merger // import "github.com/elastic/opentelemetry-collector-components/
 import (
 	"encoding/binary"
 	"errors"
+	"slices"
 	"time"
 )
+
+const KeySizeBinary = 10
 
 // TODO (lahsivjar): Think about multitenancy, should be part of the key
 type Key struct {
@@ -37,29 +40,20 @@ func NewKey(ivl time.Duration, pTime time.Time) Key {
 	}
 }
 
-// SizeBinary returns the size of the Key when binary encoded.
-// The interval, represented by time.Duration, is encoded to
-// 2 bytes by converting it into seconds. This allows a max of
-// ~18 hours duration.
-func (k *Key) SizeBinary() int {
-	// 2 bytes for interval, 8 bytes for processing time
-	return 10
-}
+// AppendBinary marshals the key into its binary representation,
+// and appends it to to b.
+func (k *Key) AppendBinary(b []byte) ([]byte, error) {
+	b = slices.Grow(b, KeySizeBinary)
 
-// Marshal marshals the key into binary representation.
-func (k *Key) Marshal() ([]byte, error) {
+	var buf [8]byte
 	ivlSeconds := uint16(k.Interval.Seconds())
+	binary.BigEndian.PutUint16(buf[:2], ivlSeconds)
+	b = append(b, buf[:2]...)
 
-	var (
-		offset int
-		d      [10]byte
-	)
-	binary.BigEndian.PutUint16(d[offset:], ivlSeconds)
-	offset += 2
+	binary.BigEndian.PutUint64(buf[:], uint64(k.ProcessingTime.Unix()))
+	b = append(b, buf[:]...)
 
-	binary.BigEndian.PutUint64(d[offset:], uint64(k.ProcessingTime.Unix()))
-
-	return d[:], nil
+	return b, nil
 }
 
 // Unmarshal unmarshals the binary representation of the Key.
