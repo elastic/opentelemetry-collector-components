@@ -74,6 +74,6 @@ func (m *Merger) MergeOlder(value []byte) error {
 }
 
 func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
-	data, err := m.current.Marshal()
+	data, err := m.current.AppendBinary(nil)
 	return data, nil, err
 }

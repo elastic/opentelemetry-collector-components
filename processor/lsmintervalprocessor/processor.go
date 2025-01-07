@@ -320,7 +320,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		}
 	}
 
-	vb, err := v.Marshal()
+	vb, err := v.AppendBinary(nil)
 	if err != nil {
 		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
 	}
