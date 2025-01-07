@@ -66,7 +66,7 @@ func BenchmarkMerge(b *testing.B) {
 	}
 }
 
-func BenchmarkMarshal(b *testing.B) {
+func BenchmarkAppendBinary(b *testing.B) {
 	for _, tc := range testCases {
 		dir := filepath.Join("../../testdata", tc)
 		md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
@@ -77,12 +77,23 @@ func BenchmarkMarshal(b *testing.B) {
 			v := NewValue(maxLimit, maxLimit, maxLimit, maxLimit)
 			require.NoError(b, updateValueWithPMetrics(md, v))
 
-			//var buf []byte
-			for i := 0; i < b.N; i++ {
-				if _, err := v.Marshal(); err != nil {
-					b.Fatal(err)
+			b.Run("without_reuse", func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					if _, err := v.AppendBinary(nil); err != nil {
+						b.Fatal(err)
+					}
 				}
-			}
+			})
+			b.Run("with_reuse", func(b *testing.B) {
+				var buf []byte
+				for i := 0; i < b.N; i++ {
+					var err error
+					buf, err = v.AppendBinary(buf[:0])
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
 		})
 	}
 }

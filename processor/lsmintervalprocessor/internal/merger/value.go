@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"slices"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -110,27 +111,34 @@ func NewValue(resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConf
 	}
 }
 
-// Marshal marshals the value into binary. Limit trackers and pmetric are marshaled
-// into the same binary representation.
-func (s *Value) Marshal() ([]byte, error) {
+// AppendBinary marshals the value into its binary representation,
+// and appends it to b.
+//
+// Limit trackers and pmetric are marshaled into the same binary
+// representation.
+func (s *Value) AppendBinary(b []byte) ([]byte, error) {
 	if s.source.DataPointCount() == 0 {
 		// Nothing to marshal
-		return nil, nil
+		return b, nil
 	}
-	tb, err := s.trackers.Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal metric: %w", err)
-	}
+
 	var marshaler pmetric.ProtoMarshaler
 	pmb, err := marshaler.MarshalMetrics(s.source)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal metric: %w", err)
+		return nil, fmt.Errorf("failed to marshal metrics: %w", err)
 	}
-	b := make([]byte, 8+len(tb)+len(pmb))
-	binary.BigEndian.PutUint64(b, uint64(len(tb)))
-	offset := 8
-	offset += copy(b[offset:], tb)
-	copy(b[offset:], pmb)
+
+	lenOffset := len(b)
+	b = slices.Grow(b, 8+s.trackers.EstimatedSize()+len(pmb))
+	b = b[:lenOffset+8] // leave space for the length of encoded trackers
+
+	b, err = s.trackers.AppendBinary(b)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal trackers: %w", err)
+	}
+	trackersLen := len(b) - lenOffset - 8
+	binary.BigEndian.PutUint64(b[lenOffset:lenOffset+8], uint64(trackersLen))
+	b = append(b, pmb...)
 	return b, nil
 }
 

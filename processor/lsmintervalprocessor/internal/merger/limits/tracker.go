@@ -98,23 +98,26 @@ func (t *Tracker) MergeEstimators(other *Tracker) error {
 	return t.overflowCounts.Merge(other.overflowCounts)
 }
 
-// Marshal marshals the tracker to a byte slice.
-func (t *Tracker) Marshal() ([]byte, error) {
+func (t *Tracker) EstimatedSize() int {
 	// TODO (lahsivjar): Estimate the size of the trackers to optimize
 	// allocations. Also see: https://github.com/axiomhq/hyperloglog/issues/44
-	b := make([]byte, 9) // reserved for observed count
+	return 9 // version & observed count
+}
 
-	b[0] = version
-	offset := 1
-	binary.BigEndian.PutUint64(b[offset:offset+8], t.observedCount)
-	offset += 8
+// AppendBinary marshals the tracker and appends the result to b.
+func (t *Tracker) AppendBinary(b []byte) ([]byte, error) {
+	b = slices.Grow(b, t.EstimatedSize())
+	b = append(b, version)
+	lenOffset := len(b)
+	b = b[:lenOffset+8]
+	binary.BigEndian.PutUint64(b[lenOffset:lenOffset+8], t.observedCount)
+
 	if t.overflowCounts != nil {
-		hll, err := t.overflowCounts.MarshalBinary()
+		var err error
+		b, err = t.overflowCounts.AppendBinary(b)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal limits: %w", err)
 		}
-		b = slices.Grow(b, len(hll))[:offset+len(hll)]
-		copy(b[offset:], hll)
 	}
 	return b, nil
 }
@@ -227,47 +230,45 @@ func (t *Trackers) GetDatapointTracker(i int) *Tracker {
 	return t.datapoint[i]
 }
 
-func (t *Trackers) Marshal() ([]byte, error) {
-	if t == nil || t.resource == nil {
-		// if trackers is nil then nothing to marshal
-		return nil, nil
-	}
-
+func (t *Trackers) EstimatedSize() int {
 	// TODO (lahsivjar): Estimate total required size including overflow
 	// Estimate minimum without overflow:
 	// - 1 byte for tracker type
 	// - 8 bytes for each trackers length
 	// - 8 bytes min for each tracker
-	estimatedSize := (1 + len(t.scope) + len(t.metric) + len(t.datapoint)) * 17
-	result := make([]byte, 0, estimatedSize)
+	return (1 + len(t.scope) + len(t.metric) + len(t.datapoint)) * 17
+}
 
-	var (
-		offset int
-		err    error
-	)
-	result, offset, err = marshalTracker(resourceTracker, t.resource, result, offset)
+func (t *Trackers) AppendBinary(b []byte) ([]byte, error) {
+	if t == nil || t.resource == nil {
+		// if trackers is nil then nothing to marshal
+		return b, nil
+	}
+
+	b = slices.Grow(b, t.EstimatedSize())
+	b, err := marshalTracker(resourceTracker, t.resource, b)
 	if err != nil {
 		return nil, err
 	}
 	for _, tracker := range t.scope {
-		result, offset, err = marshalTracker(scopeTracker, tracker, result, offset)
+		b, err = marshalTracker(scopeTracker, tracker, b)
 		if err != nil {
 			return nil, err
 		}
 	}
 	for _, tracker := range t.metric {
-		result, offset, err = marshalTracker(metricTracker, tracker, result, offset)
+		b, err = marshalTracker(metricTracker, tracker, b)
 		if err != nil {
 			return nil, err
 		}
 	}
 	for _, tracker := range t.datapoint {
-		result, offset, err = marshalTracker(dpTracker, tracker, result, offset)
+		b, err = marshalTracker(dpTracker, tracker, b)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return result, nil
+	return b, nil
 }
 
 func (t *Trackers) Unmarshal(d []byte) error {
@@ -304,24 +305,19 @@ func (t *Trackers) Unmarshal(d []byte) error {
 	return nil
 }
 
-func marshalTracker(
-	typ trackerType,
-	tracker *Tracker,
-	result []byte,
-	offset int,
-) ([]byte, int, error) {
-	b, err := tracker.Marshal()
+func marshalTracker(typ trackerType, tracker *Tracker, result []byte) ([]byte, error) {
+	result = slices.Grow(result, 9+tracker.EstimatedSize())
+	result = append(result, byte(typ))
+
+	lenOffset := len(result)
+	result = result[:lenOffset+8] // leave space for the length of encoded tracker
+
+	result, err := tracker.AppendBinary(result)
 	if err != nil {
-		return result, offset, err
+		return result, err
 	}
-	// Encode the tracker type, length of the tracker, and the tracker
-	totalEncodeLen := 1 + 8 + len(b)
-	result = slices.Grow(result, totalEncodeLen)[:offset+totalEncodeLen]
-	result[offset] = byte(typ)
-	offset += 1
-	binary.BigEndian.PutUint64(result[offset:], uint64(len(b)))
-	offset += 8
-	// Encode the tracker
-	offset += copy(result[offset:], b)
-	return result, offset, nil
+	trackerLen := len(result) - lenOffset - 8
+	binary.BigEndian.PutUint64(result[lenOffset:lenOffset+8], uint64(trackerLen))
+
+	return result, nil
 }

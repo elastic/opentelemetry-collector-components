@@ -75,7 +75,7 @@ func TestTracker(t *testing.T) {
 				assert.Zero(t, tracker.EstimateOverflow())
 			}
 
-			b, err := tracker.Marshal()
+			b, err := tracker.AppendBinary(nil)
 			require.NoError(t, err)
 			newTracker := newTracker(tc.maxCardinality)
 			require.NoError(t, newTracker.Unmarshal(b))
@@ -229,7 +229,7 @@ func TestTrackers(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			b, err := tc.trackers.Marshal()
+			b, err := tc.trackers.AppendBinary(nil)
 			require.NoError(t, err)
 
 			newTrackers := getTestTrackers()
