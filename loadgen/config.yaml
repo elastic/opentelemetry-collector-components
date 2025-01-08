@@ -38,6 +38,10 @@ processors:
         statements:
           - set(start_time, Now())
           - set(end_time, Now())
+          # The worst way to generate a random trace / span ID, but is the simplest in OTTL
+          - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
+          - set(span_id.string, Substring(MD5(UUID()), 0, 16))
+          - set(parent_span_id.string, Substring(MD5(UUID()), 0, 16))
       - context: spanevent
         statements:
           - set(time, Now())
