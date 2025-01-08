@@ -100,3 +100,8 @@ genloadgencol: $(BUILDER)
 .PHONY: loadgencol-validate
 loadgencol-validate: genloadgencol
 	./_loadgenbuild/loadgencol validate --config ./loadgen/config.yaml
+
+# Run loadgencol
+.PHONY: loadgencol-run
+loadgencol-run: genloadgencol
+	TESTDATA_DIR=./loadgen ./_loadgenbuild/loadgencol --config ./loadgen/config.yaml

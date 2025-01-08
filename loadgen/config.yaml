@@ -1,15 +1,15 @@
 receivers:
   otlpjsonfile/traces:
     include:
-      - ./testdata/traces
+      - "${env:TESTDATA_DIR:-.}/testdata/traces"
     replay_file: true
   otlpjsonfile/metrics:
     include:
-      - ./testdata/metrics
+      - "${env:TESTDATA_DIR:-.}/testdata/metrics"
     replay_file: true
   otlpjsonfile/logs:
     include:
-      - ./testdata/logs
+      - "${env:TESTDATA_DIR:-.}/testdata/logs"
     replay_file: true
 
 exporters:
