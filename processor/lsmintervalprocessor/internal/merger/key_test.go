@@ -26,6 +26,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestKey(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		ivl            time.Duration
+		processingTime time.Time
+	}{
+		{
+			name:           "zero",
+			ivl:            0,
+			processingTime: time.Unix(0, 0),
+		},
+		{
+			name:           "non_zero",
+			ivl:            time.Minute,
+			processingTime: time.Unix(time.Now().Unix(), 0),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			key := NewKey(tc.ivl, tc.processingTime)
+			assert.Equal(t, 10, key.SizeBinary())
+			b, err := key.Marshal()
+			assert.NoError(t, err)
+			var newKey Key
+			assert.NoError(t, newKey.Unmarshal(b))
+			assert.Equal(t, newKey, key)
+		})
+	}
+}
+
 func TestKeyOrdered(t *testing.T) {
 	// For querying purposes the key should be ordered and comparable
 	ts := time.Unix(0, 0)

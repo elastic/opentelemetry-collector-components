@@ -33,17 +33,48 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 )
 
 var _ processor.Metrics = (*Processor)(nil)
 var zeroTime = time.Unix(0, 0).UTC()
 
-// TODO (lahsivjar): Optimize pebble
-const batchCommitThreshold = 16 << 20 // 16MB
+const (
+	// pebbleMemTableSize defines the max steady state size of a memtable.
+	// There can be more than 1 memtable in memory at a time as it takes
+	// time for old memtable to flush. The memtable size also defines
+	// the size for large batches. A large batch is a batch which will
+	// take atleast half of the memtable size. Note that the Batch#Len
+	// is not the same as the memtable size that the batch will occupy
+	// as data in batches are encoded differently. In general, the
+	// memtable size of the batch will be higher than the length of the
+	// batch data.
+	//
+	// On commit, data in the large batch maybe kept by pebble and thus
+	// large batches will need to be reallocated. Note that large batch
+	// classification uses the memtable size that a batch will occupy
+	// rather than the length of data slice backing the batch.
+	pebbleMemTableSize = 64 << 20 // 64MB
+
+	// pebbleMemTableStopWritesThreshold is the hard limit on the maximum
+	// number of memtables that could be queued before which writes are
+	// stopped. This value should be at least 2 or writes will stop whenever
+	// a MemTable is being flushed.
+	pebbleMemTableStopWritesThreshold = 2
+
+	// dbCommitThresholdBytes is a soft limit and the batch is committed
+	// to the DB as soon as it crosses this threshold. To make sure that
+	// the commit threshold plays well with the max retained batch size
+	// the threshold should be kept smaller than the sum of max retained
+	// batch size and encoded size of aggregated data to be committed.
+	// However, this requires https://github.com/cockroachdb/pebble/pull/3139.
+	// So, for now we are only tweaking the available options.
+	dbCommitThresholdBytes = 8 << 20 // 8MB
+)
 
 type Processor struct {
-	passthrough PassThrough
+	cfg *config.Config
 
 	db      *pebble.DB
 	dataDir string
@@ -63,18 +94,29 @@ type Processor struct {
 	logger        *zap.Logger
 }
 
-func newProcessor(cfg *Config, ivlDefs []intervalDef, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
+func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
 	dbOpts := &pebble.Options{
 		Merger: &pebble.Merger{
 			Name: "pmetrics_merger",
 			Merge: func(key, value []byte) (pebble.ValueMerger, error) {
-				var v merger.Value
-				if err := v.UnmarshalProto(value); err != nil {
+				v := merger.NewValue(
+					cfg.ResourceLimit,
+					cfg.ScopeLimit,
+					cfg.ScopeDatapointLimit,
+				)
+				if err := v.Unmarshal(value); err != nil {
 					return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
 				}
-				return merger.New(v), nil
+				return merger.New(
+					v,
+					cfg.ResourceLimit,
+					cfg.ScopeLimit,
+					cfg.ScopeDatapointLimit,
+				), nil
 			},
 		},
+		MemTableSize:                pebbleMemTableSize,
+		MemTableStopWritesThreshold: pebbleMemTableStopWritesThreshold,
 	}
 	writeOpts := pebble.Sync
 	dataDir := cfg.Directory
@@ -88,7 +130,7 @@ func newProcessor(cfg *Config, ivlDefs []intervalDef, log *zap.Logger, next cons
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Processor{
-		passthrough:    cfg.PassThrough,
+		cfg:            cfg,
 		dataDir:        dataDir,
 		dbOpts:         dbOpts,
 		wOpts:          writeOpts,
@@ -209,7 +251,11 @@ func (p *Processor) Capabilities() consumer.Capabilities {
 
 func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	var errs []error
-	v := merger.Value{Metrics: pmetric.NewMetrics()}
+	v := merger.NewValue(
+		p.cfg.ResourceLimit,
+		p.cfg.ScopeLimit,
+		p.cfg.ScopeDatapointLimit,
+	)
 	md.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
 		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
 			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
@@ -218,13 +264,17 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 					// TODO (lahsivjar): implement support for gauges
 					return false
 				case pmetric.MetricTypeSummary:
-					if p.passthrough.Summary {
+					if p.cfg.PassThrough.Summary {
 						return false
 					}
-					v.MergeMetric(rm, sm, m)
+					if err := v.MergeMetric(rm, sm, m); err != nil {
+						errs = append(errs, err)
+					}
 					return true
 				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram, pmetric.MetricTypeExponentialHistogram:
-					v.MergeMetric(rm, sm, m)
+					if err := v.MergeMetric(rm, sm, m); err != nil {
+						errs = append(errs, err)
+					}
 					return true
 				default:
 					// All metric types are handled, this is unexpected
@@ -237,7 +287,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		return rm.ScopeMetrics().Len() == 0
 	})
 
-	vb, err := v.MarshalProto()
+	vb, err := v.Marshal()
 	if err != nil {
 		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
 	}
@@ -258,8 +308,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	}
 
 	if p.batch == nil {
-		// TODO (lahsivjar): investigate possible optimization by using NewBatchWithSize
-		p.batch = p.db.NewBatch()
+		p.batch = newBatch(p.db)
 	}
 
 	for _, k := range keys {
@@ -268,7 +317,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		}
 	}
 
-	if p.batch.Len() >= batchCommitThreshold {
+	if p.batch.Len() >= dbCommitThresholdBytes {
 		if err := p.batch.Commit(p.wOpts); err != nil {
 			return errors.Join(append(errs, fmt.Errorf("failed to commit a batch to db: %w", err))...)
 		}
@@ -366,12 +415,21 @@ func (p *Processor) exportForInterval(
 	var errs []error
 	var exportedDPCount int
 	for iter.First(); iter.Valid(); iter.Next() {
-		var v merger.Value
-		if err := v.UnmarshalProto(iter.Value()); err != nil {
+		v := merger.NewValue(
+			p.cfg.ResourceLimit,
+			p.cfg.ScopeLimit,
+			p.cfg.ScopeDatapointLimit,
+		)
+		if err := v.Unmarshal(iter.Value()); err != nil {
 			errs = append(errs, fmt.Errorf("failed to decode binary from database: %w", err))
 			continue
 		}
-		resourceMetrics := v.Metrics.ResourceMetrics()
+		finalMetrics, err := v.Finalize()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to finalize merged metric: %w", err))
+			continue
+		}
+		resourceMetrics := finalMetrics.ResourceMetrics()
 		if ivl.Statements != nil {
 			for i := 0; i < resourceMetrics.Len(); i++ {
 				res := resourceMetrics.At(i)
@@ -388,6 +446,7 @@ func (p *Processor) exportForInterval(
 							}
 						}
 						// TODO (lahsivjar): add exhaustive:enforce lint rule
+						//exhaustive:enforce
 						switch metric.Type() {
 						case pmetric.MetricTypeGauge:
 							dps := metric.Gauge().DataPoints()
@@ -419,11 +478,11 @@ func (p *Processor) exportForInterval(
 				}
 			}
 		}
-		if err := p.next.ConsumeMetrics(ctx, v.Metrics); err != nil {
+		if err := p.next.ConsumeMetrics(ctx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
 			continue
 		}
-		exportedDPCount += v.Metrics.DataPointCount()
+		exportedDPCount += finalMetrics.DataPointCount()
 	}
 	if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
 		errs = append(errs, fmt.Errorf("failed to delete exported entries: %w", err))
@@ -432,4 +491,10 @@ func (p *Processor) exportForInterval(
 		return exportedDPCount, errors.Join(errs...)
 	}
 	return exportedDPCount, nil
+}
+
+func newBatch(db *pebble.DB) *pebble.Batch {
+	// TODO (lahsivjar): Optimize batch as per our needs
+	// Requires release of https://github.com/cockroachdb/pebble/pull/3139
+	return db.NewBatch()
 }
