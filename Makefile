@@ -99,7 +99,7 @@ genloadgencol: $(BUILDER)
 # Validate that the loadgen collector can run with the example configuration.
 .PHONY: loadgencol-validate
 loadgencol-validate: genloadgencol
-	./_loadgenbuild/loadgencol validate --config ./loadgen/config.yaml
+	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_SECRET_TOKEN=foobar ./_loadgenbuild/loadgencol validate --config ./loadgen/config.yaml
 
 # Run loadgencol
 .PHONY: loadgencol-run
