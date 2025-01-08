@@ -7,14 +7,14 @@ dist:
 #  go: "/usr/bin/go" # which Go binary to use to compile the generated sources. Optional.
 #  debug_compilation: false # enabling this causes the builder to keep the debug symbols in the resulting binary. Optional.
 exporters:
-  - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.115.0
-  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.115.0
+  - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.116.0
+  - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.116.0
 processors:
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.115.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.116.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0
     path: ./processor/ratelimitprocessor
 receivers:
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otlpjsonfilereceiver v0.115.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otlpjsonfilereceiver v0.116.0
 replaces:
 #  # a list of "replaces" directives that will be part of the resulting go.mod
 #  - github.com/open-telemetry/opentelemetry-collector-contrib/internal/common => github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.40.0
