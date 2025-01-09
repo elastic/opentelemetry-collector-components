@@ -152,7 +152,3 @@ func (ar *tracesGenerator) nextTraces() (ptrace.Traces, int, error) {
 
 	return nextLogs, sampledSize, nil
 }
-
-func (hmr *tracesGenerator) shutdown(_ context.Context) error {
-	return nil
-}

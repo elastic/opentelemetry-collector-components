@@ -149,7 +149,3 @@ func (ar *logsGenerator) nextLogs() (plog.Logs, int, error) {
 
 	return nextLogs, sampledSize, nil
 }
-
-func (hmr *logsGenerator) shutdown(_ context.Context) error {
-	return nil
-}
