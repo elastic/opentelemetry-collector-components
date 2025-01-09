@@ -25,6 +25,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -36,18 +37,12 @@ import (
 //go:embed testdata/metrics.jsonl
 var demoMetrics []byte
 
-type receiverMetrics struct {
-	metrics  pmetric.Metrics
-	jsonSize int
-}
-
 type metricsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	sampleMetrics   []receiverMetrics
-	lastSampleIndex int
-	consumer        consumer.Metrics
+	samples  internal.LoopingList[pmetric.Metrics]
+	consumer consumer.Metrics
 
 	cancelFn context.CancelFunc
 }
@@ -59,13 +54,6 @@ func createMetricsReceiver(
 	consumer consumer.Metrics,
 ) (receiver.Metrics, error) {
 	genConfig := config.(*Config)
-	recv := metricsGenerator{
-		cfg:             genConfig,
-		logger:          set.Logger,
-		consumer:        consumer,
-		sampleMetrics:   make([]receiverMetrics, 0),
-		lastSampleIndex: 0,
-	}
 
 	parser := pmetric.JSONUnmarshaler{}
 	var err error
@@ -78,6 +66,7 @@ func createMetricsReceiver(
 		}
 	}
 
+	var samples []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
 	for scanner.Scan() {
 		metricBytes := scanner.Bytes()
@@ -85,13 +74,15 @@ func createMetricsReceiver(
 		if err != nil {
 			return nil, err
 		}
-		recv.sampleMetrics = append(recv.sampleMetrics, receiverMetrics{
-			metrics:  lineMetrics,
-			jsonSize: len(metricBytes),
-		})
+		samples = append(samples, lineMetrics)
 	}
 
-	return &recv, nil
+	return &metricsGenerator{
+		cfg:      genConfig,
+		logger:   set.Logger,
+		consumer: consumer,
+		samples:  internal.NewLoopingList(samples),
+	}, nil
 }
 
 func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
@@ -104,13 +95,7 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 			case <-startCtx.Done():
 				return
 			default:
-				nMetrics, _, err := ar.nextMetrics()
-				if err != nil {
-					ar.logger.Error(err.Error())
-					continue
-				}
-				err = ar.consumer.ConsumeMetrics(startCtx, nMetrics)
-				if err != nil {
+				if err := ar.consumer.ConsumeMetrics(startCtx, ar.nextMetrics()); err != nil {
 					ar.logger.Error(err.Error())
 					continue
 				}
@@ -127,13 +112,11 @@ func (ar *metricsGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *metricsGenerator) nextMetrics() (pmetric.Metrics, int, error) {
+func (ar *metricsGenerator) nextMetrics() pmetric.Metrics {
 	now := pcommon.NewTimestampFromTime(time.Now())
 
 	nextMetrics := pmetric.NewMetrics()
-
-	ar.sampleMetrics[ar.lastSampleIndex].metrics.CopyTo(nextMetrics)
-	sampledSize := ar.sampleMetrics[ar.lastSampleIndex].jsonSize
+	ar.samples.Next().CopyTo(nextMetrics)
 
 	rm := nextMetrics.ResourceMetrics()
 	for i := 0; i < rm.Len(); i++ {
@@ -177,7 +160,5 @@ func (ar *metricsGenerator) nextMetrics() (pmetric.Metrics, int, error) {
 		}
 	}
 
-	ar.lastSampleIndex = (ar.lastSampleIndex + 1) % len(ar.sampleMetrics)
-
-	return nextMetrics, sampledSize, nil
+	return nextMetrics
 }

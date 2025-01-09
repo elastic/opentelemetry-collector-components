@@ -25,6 +25,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -36,18 +37,12 @@ import (
 //go:embed testdata/logs.jsonl
 var demoLogs []byte
 
-type receiverLogs struct {
-	logs     plog.Logs
-	jsonSize int
-}
-
 type logsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	sampleLogs      []receiverLogs
-	lastSampleIndex int
-	consumer        consumer.Logs
+	samples  internal.LoopingList[plog.Logs]
+	consumer consumer.Logs
 
 	cancelFn context.CancelFunc
 }
@@ -59,13 +54,6 @@ func createLogsReceiver(
 	consumer consumer.Logs,
 ) (receiver.Logs, error) {
 	genConfig := config.(*Config)
-	recv := logsGenerator{
-		cfg:             genConfig,
-		logger:          set.Logger,
-		consumer:        consumer,
-		sampleLogs:      make([]receiverLogs, 0),
-		lastSampleIndex: 0,
-	}
 
 	parser := plog.JSONUnmarshaler{}
 	var err error
@@ -78,6 +66,7 @@ func createLogsReceiver(
 		}
 	}
 
+	var samples []plog.Logs
 	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
 	for scanner.Scan() {
 		logBytes := scanner.Bytes()
@@ -85,13 +74,15 @@ func createLogsReceiver(
 		if err != nil {
 			return nil, err
 		}
-		recv.sampleLogs = append(recv.sampleLogs, receiverLogs{
-			logs:     lineLogs,
-			jsonSize: len(logBytes),
-		})
+		samples = append(samples, lineLogs)
 	}
 
-	return &recv, nil
+	return &logsGenerator{
+		cfg:      genConfig,
+		logger:   set.Logger,
+		consumer: consumer,
+		samples:  internal.NewLoopingList(samples),
+	}, nil
 }
 
 func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
@@ -104,13 +95,7 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 			case <-startCtx.Done():
 				return
 			default:
-				nMetrics, _, err := ar.nextLogs()
-				if err != nil {
-					ar.logger.Error(err.Error())
-					continue
-				}
-				err = ar.consumer.ConsumeLogs(startCtx, nMetrics)
-				if err != nil {
+				if err := ar.consumer.ConsumeLogs(startCtx, ar.nextLogs()); err != nil {
 					ar.logger.Error(err.Error())
 					continue
 				}
@@ -127,13 +112,11 @@ func (ar *logsGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *logsGenerator) nextLogs() (plog.Logs, int, error) {
+func (ar *logsGenerator) nextLogs() plog.Logs {
 	now := pcommon.NewTimestampFromTime(time.Now())
 
 	nextLogs := plog.NewLogs()
-
-	ar.sampleLogs[ar.lastSampleIndex].logs.CopyTo(nextLogs)
-	sampledSize := ar.sampleLogs[ar.lastSampleIndex].jsonSize
+	ar.samples.Next().CopyTo(nextLogs)
 
 	rm := nextLogs.ResourceLogs()
 	for i := 0; i < rm.Len(); i++ {
@@ -145,7 +128,5 @@ func (ar *logsGenerator) nextLogs() (plog.Logs, int, error) {
 		}
 	}
 
-	ar.lastSampleIndex = (ar.lastSampleIndex + 1) % len(ar.sampleLogs)
-
-	return nextLogs, sampledSize, nil
+	return nextLogs
 }

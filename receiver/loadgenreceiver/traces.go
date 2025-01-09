@@ -26,6 +26,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -37,18 +38,12 @@ import (
 //go:embed testdata/traces.jsonl
 var demoTraces []byte
 
-type receiverTraces struct {
-	traces   ptrace.Traces
-	jsonSize int
-}
-
 type tracesGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	sampleTraces    []receiverTraces
-	lastSampleIndex int
-	consumer        consumer.Traces
+	samples  internal.LoopingList[ptrace.Traces]
+	consumer consumer.Traces
 
 	cancelFn context.CancelFunc
 }
@@ -60,13 +55,6 @@ func createTracesReceiver(
 	consumer consumer.Traces,
 ) (receiver.Traces, error) {
 	genConfig := config.(*Config)
-	recv := tracesGenerator{
-		cfg:             genConfig,
-		logger:          set.Logger,
-		consumer:        consumer,
-		sampleTraces:    make([]receiverTraces, 0),
-		lastSampleIndex: 0,
-	}
 
 	parser := ptrace.JSONUnmarshaler{}
 	var err error
@@ -79,6 +67,7 @@ func createTracesReceiver(
 		}
 	}
 
+	var samples []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
 	for scanner.Scan() {
 		traceBytes := scanner.Bytes()
@@ -86,13 +75,15 @@ func createTracesReceiver(
 		if err != nil {
 			return nil, err
 		}
-		recv.sampleTraces = append(recv.sampleTraces, receiverTraces{
-			traces:   lineTraces,
-			jsonSize: len(traceBytes),
-		})
+		samples = append(samples, lineTraces)
 	}
 
-	return &recv, nil
+	return &tracesGenerator{
+		cfg:      genConfig,
+		logger:   set.Logger,
+		consumer: consumer,
+		samples:  internal.NewLoopingList(samples),
+	}, nil
 }
 
 func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
@@ -105,13 +96,7 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 			case <-startCtx.Done():
 				return
 			default:
-				nTraces, _, err := ar.nextTraces()
-				if err != nil {
-					ar.logger.Error(err.Error())
-					continue
-				}
-				err = ar.consumer.ConsumeTraces(startCtx, nTraces)
-				if err != nil {
+				if err := ar.consumer.ConsumeTraces(startCtx, ar.nextTraces()); err != nil {
 					ar.logger.Error(err.Error())
 					continue
 				}
@@ -128,11 +113,9 @@ func (ar *tracesGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *tracesGenerator) nextTraces() (ptrace.Traces, int, error) {
+func (ar *tracesGenerator) nextTraces() ptrace.Traces {
 	nextLogs := ptrace.NewTraces()
-
-	ar.sampleTraces[ar.lastSampleIndex].traces.CopyTo(nextLogs)
-	sampledSize := ar.sampleTraces[ar.lastSampleIndex].jsonSize
+	ar.samples.Next().CopyTo(nextLogs)
 
 	rm := nextLogs.ResourceSpans()
 	for i := 0; i < rm.Len(); i++ {
@@ -148,7 +131,5 @@ func (ar *tracesGenerator) nextTraces() (ptrace.Traces, int, error) {
 		}
 	}
 
-	ar.lastSampleIndex = (ar.lastSampleIndex + 1) % len(ar.sampleTraces)
-
-	return nextLogs, sampledSize, nil
+	return nextLogs
 }
