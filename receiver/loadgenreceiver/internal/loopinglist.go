@@ -30,7 +30,7 @@ func NewLoopingList[T any](items []T) LoopingList[T] {
 
 func (s *LoopingList[T]) Next() T {
 	defer func() {
-		s.idx++
+		s.idx = (s.idx + 1) % len(s.items)
 	}()
 	return s.items[s.idx]
 }
