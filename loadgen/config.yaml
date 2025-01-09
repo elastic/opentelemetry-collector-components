@@ -32,15 +32,15 @@ service:
   pipelines:
     logs:
       receivers: [loadgen]
-      processors: [transform/rewrite, ratelimit]
+      processors: [transform/rewrite]
       exporters: [otlp, debug]
     metrics:
       receivers: [loadgen]
-      processors: [transform/rewrite, ratelimit]
+      processors: [transform/rewrite]
       exporters: [otlp, debug]
     traces:
       receivers: [loadgen]
-      processors: [transform/rewrite, ratelimit]
+      processors: [transform/rewrite]
       exporters: [otlp, debug]
 #  telemetry:
 #    logs:
