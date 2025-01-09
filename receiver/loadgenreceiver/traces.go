@@ -21,7 +21,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	crand "crypto/rand"
 	_ "embed"
 	"math/rand"
 	"os"
@@ -37,11 +36,6 @@ import (
 
 //go:embed testdata/traces.jsonl
 var demoTraces []byte
-
-const (
-	randomStringSource = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0987654321_+=."
-	randomStringLength = 10
-)
 
 type receiverTraces struct {
 	traces   ptrace.Traces
@@ -105,20 +99,13 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 	startCtx, cancelFn := context.WithCancel(ctx)
 	ar.cancelFn = cancelFn
 
-	randomServices := make([]string, ar.cfg.Traces.Services.RandomizedNameCount)
-	if ar.cfg.Traces.Services.RandomizedNameCount > 0 {
-		for i := 0; i < ar.cfg.Traces.Services.RandomizedNameCount; i++ {
-			randomServices[i] = randomString(randomStringLength)
-		}
-	}
-
 	go func() {
 		for {
 			select {
 			case <-startCtx.Done():
 				return
 			default:
-				nTraces, _, err := ar.nextTraces(randomServices)
+				nTraces, _, err := ar.nextTraces()
 				if err != nil {
 					ar.logger.Error(err.Error())
 					continue
@@ -141,19 +128,7 @@ func (ar *tracesGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func randomString(n int) string {
-	s, r := make([]rune, n), []rune(randomStringSource)
-
-	for i := range s {
-		p, _ := crand.Prime(crand.Reader, len(r))
-		x, y := p.Uint64(), uint64(len(r)) // note: uint64 here because we know it will not be negative
-		s[i] = r[x%y]
-	}
-
-	return string(s)
-}
-
-func (ar *tracesGenerator) nextTraces(serviceNames []string) (ptrace.Traces, int, error) {
+func (ar *tracesGenerator) nextTraces() (ptrace.Traces, int, error) {
 	nextLogs := ptrace.NewTraces()
 
 	ar.sampleTraces[ar.lastSampleIndex].traces.CopyTo(nextLogs)
@@ -161,15 +136,12 @@ func (ar *tracesGenerator) nextTraces(serviceNames []string) (ptrace.Traces, int
 
 	rm := nextLogs.ResourceSpans()
 	for i := 0; i < rm.Len(); i++ {
-		if len(serviceNames) > 0 {
-			rm.At(i).Resource().Attributes().PutStr("service.name", serviceNames[rand.Intn(len(serviceNames))])
-		}
 		for j := 0; j < rm.At(i).ScopeSpans().Len(); j++ {
 			for k := 0; k < rm.At(i).ScopeSpans().At(j).Spans().Len(); k++ {
 				sspan := rm.At(i).ScopeSpans().At(j).Spans().At(k)
 				now := time.Now()
 				// Generate a random duration between 0 and 3 seconds
-				sspan.SetStartTimestamp(pcommon.NewTimestampFromTime(now.Add(-time.Duration(rand.Intn(int(ar.cfg.Traces.MaxSpansInterval.Milliseconds()))) * time.Millisecond)))
+				sspan.SetStartTimestamp(pcommon.NewTimestampFromTime(now.Add(-time.Duration(rand.Int63n(int64(3 * time.Second))))))
 				sspan.SetEndTimestamp(pcommon.NewTimestampFromTime(now))
 
 			}
