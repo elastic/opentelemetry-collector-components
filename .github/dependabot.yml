@@ -78,6 +78,21 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "gomod"
+    directory: "/receiver/loadgenreceiver"
+    schedule:
+      interval: "daily"
+    labels:
+      - automation
+    groups:
+      otel-dependencies:
+        patterns:
+          - "go.opentelemetry.io/*"
+          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "gomod"
     directory: "/internal/tools/"
     schedule:
       interval: "daily"
