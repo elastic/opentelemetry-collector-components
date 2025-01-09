@@ -99,31 +99,21 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 	ar.cancelFn = cancelFn
 
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		var throughput, totalSeconds, totalSendBytes float64
 		for {
 			select {
 			case <-startCtx.Done():
 				return
-			case <-ticker.C:
-				totalSeconds += 1
-				throughput = totalSendBytes / totalSeconds
-				for throughput < float64(ar.cfg.Metrics.Throughput) {
-					nMetrics, nSize, err := ar.nextMetrics()
-					if err != nil {
-						ar.logger.Error(err.Error())
-						continue
-					}
-					err = ar.consumer.ConsumeMetrics(startCtx, nMetrics)
-					if err != nil {
-						ar.logger.Error(err.Error())
-						continue
-					}
-
-					totalSendBytes += float64(nSize)
-					throughput = totalSendBytes / totalSeconds
+			default:
+				nMetrics, _, err := ar.nextMetrics()
+				if err != nil {
+					ar.logger.Error(err.Error())
+					continue
 				}
-				ar.logger.Info("Consumed metrics", zap.Float64("bytes", totalSendBytes))
+				err = ar.consumer.ConsumeMetrics(startCtx, nMetrics)
+				if err != nil {
+					ar.logger.Error(err.Error())
+					continue
+				}
 			}
 		}
 	}()

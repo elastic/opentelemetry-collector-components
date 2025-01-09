@@ -113,32 +113,21 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 	}
 
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		var throughput, totalSeconds, totalSendBytes float64
 		for {
 			select {
-
 			case <-startCtx.Done():
 				return
-			case <-ticker.C:
-				totalSeconds += 1
-				throughput = totalSendBytes / totalSeconds
-				for throughput < float64(ar.cfg.Traces.Throughput) {
-					nTraces, nSize, err := ar.nextTraces(randomServices)
-					if err != nil {
-						ar.logger.Error(err.Error())
-						continue
-					}
-					err = ar.consumer.ConsumeTraces(startCtx, nTraces)
-					if err != nil {
-						ar.logger.Error(err.Error())
-						continue
-					}
-
-					totalSendBytes += float64(nSize)
-					throughput = totalSendBytes / totalSeconds
+			default:
+				nTraces, _, err := ar.nextTraces(randomServices)
+				if err != nil {
+					ar.logger.Error(err.Error())
+					continue
 				}
-				ar.logger.Info("Consumed traces", zap.Float64("bytes", totalSendBytes))
+				err = ar.consumer.ConsumeTraces(startCtx, nTraces)
+				if err != nil {
+					ar.logger.Error(err.Error())
+					continue
+				}
 			}
 		}
 	}()
