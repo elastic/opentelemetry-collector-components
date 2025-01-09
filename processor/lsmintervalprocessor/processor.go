@@ -287,7 +287,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		return rm.ScopeMetrics().Len() == 0
 	})
 
-	vb, err := v.Marshal()
+	vb, err := v.AppendBinary(nil)
 	if err != nil {
 		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
 	}
@@ -295,24 +295,20 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	keys := make([][]byte, len(p.intervals))
-	for i, ivl := range p.intervals {
-		// TODO (lahsivjar): If key ends up being independent of any other dimensions
-		// then we can simply cache the marshaled key while updating them on each harvest
-		key := merger.NewKey(ivl.Duration, p.processingTime)
-		keys[i], err = key.Marshal()
-		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err))
-			continue
-		}
-	}
-
 	if p.batch == nil {
 		p.batch = newBatch(p.db)
 	}
 
-	for _, k := range keys {
-		if err := p.batch.Merge(k, vb, nil); err != nil {
+	for _, ivl := range p.intervals {
+		// TODO (lahsivjar): If key ends up being independent of any other dimensions
+		// then we can simply cache the marshaled key while updating them on each harvest
+		var keyBuf [merger.KeySizeBinary]byte
+		key := merger.NewKey(ivl.Duration, p.processingTime)
+		if _, err := key.AppendBinary(keyBuf[:0]); err != nil {
+			errs = append(errs, fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err))
+			continue
+		}
+		if err := p.batch.Merge(keyBuf[:], vb, nil); err != nil {
 			errs = append(errs, fmt.Errorf("failed to merge to db: %w", err))
 		}
 	}
@@ -390,21 +386,21 @@ func (p *Processor) exportForInterval(
 	end time.Time,
 	ivl intervalDef,
 ) (int, error) {
+	var lbBuf, ubBuf [merger.KeySizeBinary]byte
+
 	from := merger.NewKey(ivl.Duration, zeroTime)
-	lb, err := from.Marshal()
-	if err != nil {
+	if _, err := from.AppendBinary(lbBuf[:0]); err != nil {
 		return 0, fmt.Errorf("failed to encode range: %w", err)
 	}
 
 	to := merger.NewKey(ivl.Duration, end)
-	ub, err := to.Marshal()
-	if err != nil {
+	if _, err := to.AppendBinary(ubBuf[:0]); err != nil {
 		return 0, fmt.Errorf("failed to encode range: %w", err)
 	}
 
 	iter, err := snap.NewIter(&pebble.IterOptions{
-		LowerBound: lb,
-		UpperBound: ub,
+		LowerBound: lbBuf[:],
+		UpperBound: ubBuf[:],
 		KeyTypes:   pebble.IterKeyTypePointsOnly,
 	})
 	if err != nil {
@@ -484,7 +480,7 @@ func (p *Processor) exportForInterval(
 		}
 		exportedDPCount += finalMetrics.DataPointCount()
 	}
-	if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
+	if err := p.db.DeleteRange(lbBuf[:], ubBuf[:], p.wOpts); err != nil {
 		errs = append(errs, fmt.Errorf("failed to delete exported entries: %w", err))
 	}
 	if len(errs) > 0 {
