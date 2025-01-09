@@ -71,8 +71,8 @@ func createMetricsReceiver(
 	var err error
 	sampleMetrics := demoMetrics
 
-	if genConfig.Metrics.JsonFile != "" {
-		sampleMetrics, err = os.ReadFile(string(genConfig.Metrics.JsonFile))
+	if genConfig.Metrics.JsonlFile != "" {
+		sampleMetrics, err = os.ReadFile(string(genConfig.Metrics.JsonlFile))
 		if err != nil {
 			return nil, err
 		}

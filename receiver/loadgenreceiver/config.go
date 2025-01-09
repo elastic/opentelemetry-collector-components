@@ -22,7 +22,7 @@ import (
 )
 
 type (
-	JsonFile string
+	JsonlFile string
 )
 
 // Config defines configuration for HostMetrics receiver.
@@ -33,21 +33,21 @@ type Config struct {
 }
 
 type MetricsConfig struct {
-	// JsonFile is an optional configuration option to specify the path to
+	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
-	JsonFile `mapstructure:"json_file"`
+	JsonlFile `mapstructure:"jsonl_file"`
 }
 
 type LogsConfig struct {
-	// JsonFile is an optional configuration option to specify the path to
+	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
-	JsonFile `mapstructure:"json_file"`
+	JsonlFile `mapstructure:"jsonl_file"`
 }
 
 type TracesConfig struct {
-	// JsonFile is an optional configuration option to specify the path to
+	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
-	JsonFile `mapstructure:"json_file"`
+	JsonlFile `mapstructure:"jsonl_file"`
 }
 
 var _ component.Config = (*Config)(nil)

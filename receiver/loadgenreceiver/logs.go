@@ -71,8 +71,8 @@ func createLogsReceiver(
 	var err error
 	sampleLogs := demoLogs
 
-	if genConfig.Logs.JsonFile != "" {
-		sampleLogs, err = os.ReadFile(string(genConfig.Logs.JsonFile))
+	if genConfig.Logs.JsonlFile != "" {
+		sampleLogs, err = os.ReadFile(string(genConfig.Logs.JsonlFile))
 		if err != nil {
 			return nil, err
 		}
