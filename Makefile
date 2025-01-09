@@ -104,4 +104,4 @@ loadgencol-validate: genloadgencol
 # Run loadgencol
 .PHONY: loadgencol-run
 loadgencol-run: genloadgencol
-	TESTDATA_DIR=./loadgen ./_loadgenbuild/loadgencol --config ./loadgen/config.yaml
+	TESTDATA_DIR=./loadgen ./_loadgenbuild/loadgencol --config ./loadgen/config.yaml $(ARGS)
