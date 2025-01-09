@@ -1,0 +1,39 @@
+extensions:
+
+receivers:
+  telemetrygen:
+    metrics:
+      throughput: 1048576 # 1MB/s (1024*1024)
+    logs:
+      throughput: 1048576 # 1MB/s (1024*1024)
+    traces:
+      throughput: 1048576 # 1MB/s (1024*1024)
+      services:
+        randomized_name_count: 200
+
+processors:
+
+exporters:
+  debug:
+    verbosity: normal
+
+service:
+  telemetry:
+    logs:
+      level: debug
+  pipelines:
+    metrics:
+      receivers: [telemetrygen]
+      processors:
+      exporters:
+        - debug
+    logs:
+      receivers: [telemetrygen]
+      processors:
+      exporters:
+        - debug
+    traces:
+      receivers: [telemetrygen]
+      processors:
+      exporters:
+        - debug

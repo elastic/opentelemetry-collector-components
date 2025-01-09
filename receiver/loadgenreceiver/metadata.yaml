@@ -1,0 +1,11 @@
+type: loadgen
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: receiver
+  stability:
+    development: [metrics, logs, traces]
+  distributions: []
+#  codeowners:
+#    active: []
+
