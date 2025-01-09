@@ -20,6 +20,10 @@ The receiver utilizes pre-captured telemetry data from a typical OpenTelemetry D
 
 The receiver generates telemetry as quickly as possible. Any rate limiting should be done via backpressure using [processor/ratelimitprocessor](/processor/ratelimitprocessor).
 
+## Telemetry cardinality
+
+The receiver only rewrites timestamps to Now, and does not modify any other fields. Therefore, it will have the same cardinality as the original canned data. To simulate higher cardinality (e.g. trace ID, service name), use `transform` processor with OTTL to rewrite fields. 
+
 ## Sample configuration
 
 ```yaml
