@@ -37,23 +37,23 @@ processors:
 
   ratelimit:
     strategy: records
-    rate: 1000
-    burst: 1000
+    rate: 5000
+    burst: 5000
 
 
 service:
   pipelines:
     logs:
       receivers: [loadgen]
-      processors: [transform]
+      processors: [transform, ratelimit]
       exporters: [otlp, debug]
     metrics:
       receivers: [loadgen]
-      processors: [transform]
+      processors: [transform, ratelimit]
       exporters: [otlp, debug]
     traces:
       receivers: [loadgen]
-      processors: [transform]
+      processors: [transform, ratelimit]
       exporters: [otlp, debug]
 #  telemetry:
 #    logs:
