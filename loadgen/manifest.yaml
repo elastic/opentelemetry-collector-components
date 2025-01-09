@@ -14,7 +14,8 @@ processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0
     path: ./processor/ratelimitprocessor
 receivers:
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otlpjsonfilereceiver v0.116.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0
+    path: ./receiver/loadgenreceiver
 replaces:
 #  # a list of "replaces" directives that will be part of the resulting go.mod
 #  - github.com/open-telemetry/opentelemetry-collector-contrib/internal/common => github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.40.0

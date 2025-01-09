@@ -1,16 +1,5 @@
 receivers:
-  otlpjsonfile/traces:
-    include:
-      - "${env:TESTDATA_DIR:-.}/testdata/traces"
-    replay_file: true
-  otlpjsonfile/metrics:
-    include:
-      - "${env:TESTDATA_DIR:-.}/testdata/metrics"
-    replay_file: true
-  otlpjsonfile/logs:
-    include:
-      - "${env:TESTDATA_DIR:-.}/testdata/logs"
-    replay_file: true
+  loadgen:
 
 exporters:
   otlp:
@@ -55,15 +44,15 @@ processors:
 service:
   pipelines:
     logs:
-      receivers: [otlpjsonfile/logs]
+      receivers: [loadgen]
       processors: [transform]
       exporters: [otlp, debug]
     metrics:
-      receivers: [otlpjsonfile/metrics]
+      receivers: [loadgen]
       processors: [transform]
       exporters: [otlp, debug]
     traces:
-      receivers: [otlpjsonfile/traces]
+      receivers: [loadgen]
       processors: [transform]
       exporters: [otlp, debug]
 #  telemetry:
