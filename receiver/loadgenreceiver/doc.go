@@ -17,4 +17,4 @@
 
 //go:generate mdatagen metadata.yaml
 
-package loadgenreceiver
+package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"

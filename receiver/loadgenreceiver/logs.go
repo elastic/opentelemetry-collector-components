@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package loadgenreceiver
+package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
 	"bufio"
