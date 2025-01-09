@@ -13,27 +13,14 @@ exporters:
 
 
 processors:
-  transform:
-    log_statements:
-      - context: log
-        statements:
-          - set(time, Now())
-    metric_statements:
-      - context: datapoint
-        statements:
-          - set(time, Now())
+  transform/rewrite:  # Rewrite telemetry to increase cardinality
     trace_statements:
       - context: span
         statements:
-          - set(start_time, Now())
-          - set(end_time, Now())
           # The worst way to generate a random trace / span ID, but is the simplest in OTTL
           - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
           - set(span_id.string, Substring(MD5(UUID()), 0, 16))
           - set(parent_span_id.string, Substring(MD5(UUID()), 0, 16))
-      - context: spanevent
-        statements:
-          - set(time, Now())
 
   ratelimit:
     strategy: records
@@ -45,15 +32,15 @@ service:
   pipelines:
     logs:
       receivers: [loadgen]
-      processors: [transform, ratelimit]
+      processors: [transform/rewrite, ratelimit]
       exporters: [otlp, debug]
     metrics:
       receivers: [loadgen]
-      processors: [transform, ratelimit]
+      processors: [transform/rewrite, ratelimit]
       exporters: [otlp, debug]
     traces:
       receivers: [loadgen]
-      processors: [transform, ratelimit]
+      processors: [transform/rewrite, ratelimit]
       exporters: [otlp, debug]
 #  telemetry:
 #    logs:
