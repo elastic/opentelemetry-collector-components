@@ -27,21 +27,22 @@ processors:
     strategy: records
     rate: 5000
     burst: 5000
+    throttle_behavior: delay
 
 
 service:
   pipelines:
     logs:
       receivers: [loadgen]
-      processors: [transform/rewrite]
+      processors: [ratelimit, transform/rewrite]
       exporters: [otlp, debug]
     metrics:
       receivers: [loadgen]
-      processors: [transform/rewrite]
+      processors: [ratelimit, transform/rewrite]
       exporters: [otlp, debug]
     traces:
       receivers: [loadgen]
-      processors: [transform/rewrite]
+      processors: [ratelimit, transform/rewrite]
       exporters: [otlp, debug]
 #  telemetry:
 #    logs:
