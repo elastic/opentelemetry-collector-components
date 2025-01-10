@@ -1,9 +1,10 @@
 module github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
 
 go 1.22.0
+toolchain go1.23.4
 
 require (
-	github.com/axiomhq/hyperloglog v0.2.0
+	github.com/axiomhq/hyperloglog v0.2.3
 	github.com/cockroachdb/pebble v1.1.3
 	github.com/google/go-cmp v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.116.0
@@ -52,6 +53,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kamstrup/intmap v0.5.1 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect
 	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
