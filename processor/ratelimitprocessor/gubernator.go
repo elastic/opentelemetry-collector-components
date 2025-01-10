@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
@@ -85,6 +86,7 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
+	createdAt := time.Now().UnixMilli()
 	getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
 		Requests: []*gubernator.RateLimitReq{{
 			Name:      r.set.ID.String(),
@@ -95,9 +97,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			Limit:     int64(r.cfg.Rate), // rate is per second
 			Burst:     int64(r.cfg.Burst),
 			Duration:  1000, // duration is in milliseconds, i.e. 1s
-
-			// TODO specify CreatedAt, so resulting reset time is
-			// relative to the relative clock.
+			CreatedAt: &createdAt,
 		}},
 	})
 	if err != nil {
@@ -115,14 +115,20 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 
 	if isUnderLimit := resp.GetStatus() == gubernator.Status_UNDER_LIMIT; !isUnderLimit {
-		// TODO support `throttle_behavior` config for returning an error vs. delaying processing.
-		r.set.Logger.Error(
-			"request is over the limits defined by the rate limiter",
-			zap.Error(errTooManyRequests),
-			zap.String("processor_id", r.set.ID.String()),
-			zap.Strings("metadata_keys", r.cfg.MetadataKeys),
-		)
-		return errTooManyRequests
+		// Same logic as local
+		switch r.cfg.ThrottleBehavior {
+		case ThrottleBehaviorError:
+			r.set.Logger.Error(
+				"request is over the limits defined by the rate limiter",
+				zap.Error(errTooManyRequests),
+				zap.String("processor_id", r.set.ID.String()),
+				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
+			)
+			return errTooManyRequests
+		case ThrottleBehaviorDelay:
+			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
+			time.Sleep(delay)
+		}
 	}
 	return nil
 }
