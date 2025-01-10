@@ -57,7 +57,7 @@ func TestLocalRateLimiter_StartStop(t *testing.T) {
 
 func TestLocalRateLimiter_RateLimit(t *testing.T) {
 	burst := 2
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: burst, OnThrottle: OnThrottleError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: burst, ThrottleBehavior: ThrottleBehaviorError})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
@@ -78,10 +78,10 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 func TestLocalRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	burst := 2
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:         1,
-		Burst:        burst,
-		MetadataKeys: []string{"metadata_key"},
-		OnThrottle:   OnThrottleError,
+		Rate:             1,
+		Burst:            burst,
+		MetadataKeys:     []string{"metadata_key"},
+		ThrottleBehavior: ThrottleBehaviorError,
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)

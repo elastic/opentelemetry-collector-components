@@ -56,12 +56,12 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	key := getUniqueKey(ctx, r.cfg.MetadataKeys)
 	v, _ := r.limiters.LoadOrStore(key, rate.NewLimiter(rate.Limit(r.cfg.Rate), r.cfg.Burst))
 	limiter := v.(*rate.Limiter)
-	switch r.cfg.OnThrottle {
-	case OnThrottleError:
+	switch r.cfg.ThrottleBehavior {
+	case ThrottleBehaviorError:
 		if ok := limiter.AllowN(time.Now(), hits); !ok {
 			return errTooManyRequests
 		}
-	case OnThrottleBlock:
+	case ThrottleBehaviorBlock:
 		r := limiter.ReserveN(time.Now(), hits)
 		if !r.OK() {
 			return errTooManyRequests
