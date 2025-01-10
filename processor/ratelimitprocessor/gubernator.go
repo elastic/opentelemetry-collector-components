@@ -115,7 +115,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 
 	if isUnderLimit := resp.GetStatus() == gubernator.Status_UNDER_LIMIT; !isUnderLimit {
-		// TODO add configurable behaviour for returning an error vs. delaying processing.
+		// TODO support `throttle_behavior` config for returning an error vs. delaying processing.
 		r.set.Logger.Error(
 			"request is over the limits defined by the rate limiter",
 			zap.Error(errTooManyRequests),
