@@ -92,10 +92,10 @@ const (
 type ThrottleBehavior string
 
 const (
-	// ThrottleBehaviorError is the behavior to return an error immediately on throttle
+	// ThrottleBehaviorError is the behavior to return an error immediately on throttle and does not send the event.
 	ThrottleBehaviorError ThrottleBehavior = "error"
 
-	// ThrottleBehaviorDelay is the behavior to block until throttling is done
+	// ThrottleBehaviorDelay is the behavior to delay the sending until it is no longer throttled.
 	ThrottleBehaviorDelay ThrottleBehavior = "delay"
 )
 
