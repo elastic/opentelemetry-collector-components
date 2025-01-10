@@ -103,7 +103,7 @@ func TestLoadConfig(t *testing.T) {
 		},
 		{
 			name:        "invalid_throttle_behavior",
-			expectedErr: `invalid throttle behavior "foo", expected one of ["error" "block"]`,
+			expectedErr: `invalid throttle behavior "foo", expected one of ["error" "delay"]`,
 		},
 		{
 			name:        "invalid_gubernator_behavior",

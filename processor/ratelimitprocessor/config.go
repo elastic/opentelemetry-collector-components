@@ -95,8 +95,8 @@ const (
 	// ThrottleBehaviorError is the behavior to return an error immediately on throttle
 	ThrottleBehaviorError ThrottleBehavior = "error"
 
-	// ThrottleBehaviorBlock is the behavior to block until throttling is done
-	ThrottleBehaviorBlock ThrottleBehavior = "block"
+	// ThrottleBehaviorDelay is the behavior to block until throttling is done
+	ThrottleBehaviorDelay ThrottleBehavior = "delay"
 )
 
 // GubernatorConfig holds Gubernator-specific configuration for the ratelimit processor.
@@ -148,14 +148,14 @@ func (s Strategy) Validate() error {
 // Validate checks if throttle behavior matches the possible options
 func (s ThrottleBehavior) Validate() error {
 	switch s {
-	case ThrottleBehaviorError, ThrottleBehaviorBlock:
+	case ThrottleBehaviorError, ThrottleBehaviorDelay:
 		return nil
 	}
 	return fmt.Errorf(
 		"invalid throttle behavior %q, expected one of %q",
 		s, []string{
 			string(ThrottleBehaviorError),
-			string(ThrottleBehaviorBlock),
+			string(ThrottleBehaviorDelay),
 		},
 	)
 }

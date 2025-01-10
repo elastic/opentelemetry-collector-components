@@ -61,7 +61,7 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		if ok := limiter.AllowN(time.Now(), hits); !ok {
 			return errTooManyRequests
 		}
-	case ThrottleBehaviorBlock:
+	case ThrottleBehaviorDelay:
 		r := limiter.ReserveN(time.Now(), hits)
 		if !r.OK() {
 			return errTooManyRequests
