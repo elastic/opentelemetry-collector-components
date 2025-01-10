@@ -58,6 +58,11 @@ type Config struct {
 
 	// Burst holds the maximum capacity of rate limit buckets.
 	Burst int `mapstructure:"burst"`
+
+	// OnThrottle holds the behavior when rate limit is exceeded.
+	//
+	// Defaults to "error"
+	OnThrottle OnThrottleBehavior `mapstructure:"on_throttle"`
 }
 
 // Strategy identifies the rate-limiting strategy: requests, records, or bytes.
@@ -81,6 +86,17 @@ const (
 	// and records. Bear in mind that this strategy may impact
 	// CPU and memory usage.
 	StrategyRateLimitBytes Strategy = "bytes"
+)
+
+// OnThrottleBehavior identifies the behavior when rate limit is exceeded.
+type OnThrottleBehavior string
+
+const (
+	// OnThrottleError is the behavior to return an error immediately on throttle
+	OnThrottleError OnThrottleBehavior = "error"
+
+	// OnThrottleBlock is the behavior to block until throttling is done
+	OnThrottleBlock OnThrottleBehavior = "block"
 )
 
 // GubernatorConfig holds Gubernator-specific configuration for the ratelimit processor.
