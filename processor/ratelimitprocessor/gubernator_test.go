@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -132,13 +133,16 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 			err = rateLimiter.RateLimit(context.Background(), 1)
 			assert.EqualError(t, err, "expected 1 response from gubernator, got 0")
 
-			resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT}}
+			reqTime := time.Now()
+			resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT, ResetTime: reqTime.Add(100 * time.Millisecond).UnixMilli()}}
 			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, "too many requests")
-
-			resp.Responses = []*gubernator.RateLimitResp{{Status: -1}} // handled like OVER_LIMIT
-			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, "too many requests")
+			switch behavior {
+			case ThrottleBehaviorError:
+				assert.EqualError(t, err, "too many requests")
+			case ThrottleBehaviorDelay:
+				assert.NoError(t, err)
+				assert.GreaterOrEqual(t, time.Now(), reqTime.Add(100*time.Millisecond))
+			}
 
 			respErr = errors.New("nope")
 			err = rateLimiter.RateLimit(context.Background(), 1)
@@ -149,9 +153,10 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{
-		Rate:         1,
-		Burst:        2,
-		MetadataKeys: []string{"metadata_key"},
+		Rate:             1,
+		Burst:            2,
+		MetadataKeys:     []string{"metadata_key"},
+		ThrottleBehavior: ThrottleBehaviorError,
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
