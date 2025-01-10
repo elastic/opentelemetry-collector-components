@@ -41,17 +41,19 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "local",
 			expected: &Config{
-				Rate:     100,
-				Burst:    200,
-				Strategy: StrategyRateLimitRequests,
+				Rate:       100,
+				Burst:      200,
+				Strategy:   StrategyRateLimitRequests,
+				OnThrottle: OnThrottleError,
 			},
 		},
 		{
 			name: "strategy",
 			expected: &Config{
-				Rate:     100,
-				Burst:    200,
-				Strategy: StrategyRateLimitBytes,
+				Rate:       100,
+				Burst:      200,
+				Strategy:   StrategyRateLimitBytes,
+				OnThrottle: OnThrottleError,
 			},
 		},
 		{
@@ -61,6 +63,7 @@ func TestLoadConfig(t *testing.T) {
 				Rate:       100,
 				Burst:      200,
 				Strategy:   StrategyRateLimitRequests,
+				OnThrottle: OnThrottleError,
 			},
 		},
 		{
@@ -70,9 +73,10 @@ func TestLoadConfig(t *testing.T) {
 					ClientConfig: *grpcClientConfig,
 					Behavior:     []GubernatorBehavior{"global", "duration_is_gregorian"},
 				},
-				Rate:     100,
-				Burst:    200,
-				Strategy: StrategyRateLimitRequests,
+				Rate:       100,
+				Burst:      200,
+				Strategy:   StrategyRateLimitRequests,
+				OnThrottle: OnThrottleError,
 			},
 		},
 		{
@@ -81,6 +85,7 @@ func TestLoadConfig(t *testing.T) {
 				Rate:         100,
 				Burst:        200,
 				Strategy:     StrategyRateLimitRequests,
+				OnThrottle:   OnThrottleError,
 				MetadataKeys: []string{"project_id"},
 			},
 		},

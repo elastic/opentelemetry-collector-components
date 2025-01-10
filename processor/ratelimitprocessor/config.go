@@ -113,7 +113,8 @@ type GubernatorBehavior string
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		Strategy: StrategyRateLimitRequests,
+		Strategy:   StrategyRateLimitRequests,
+		OnThrottle: OnThrottleError,
 	}
 }
 
