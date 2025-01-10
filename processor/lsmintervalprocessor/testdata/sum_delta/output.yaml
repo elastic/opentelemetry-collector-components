@@ -1,0 +1,40 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+        - key: custom_res_attr
+          value:
+            stringValue: res
+        - key: dependent_attr
+          value:
+            stringValue: bbb-dependent
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - name: delta.monotonic.sum
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 999
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
+                  timeUnixNano: "8000000"
+              isMonotonic: true
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: custom_scope_attr
+              value:
+                stringValue: scope
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3

@@ -6,11 +6,19 @@ receivers:
 processors:
   elasticinframetrics:
     add_system_metrics:
+  elastictrace:
 
 exporters:
   nop:
 
 connectors:
+  signaltometrics:
+    spans:
+      - name: span.duration.exponential_histogram
+        description: "Span duration as exponential histogram"
+        unit: us
+        exponential_histogram:
+          value: Microseconds(end_time - start_time)
 
 service:
   pipelines:

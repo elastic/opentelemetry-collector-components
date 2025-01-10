@@ -1,0 +1,53 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+        - key: custom_res_attr
+          value:
+            stringValue: res
+        - key: dependent_attr
+          value:
+            stringValue: bbb-dependent
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - histogram:
+              aggregationTemporality: 1
+              dataPoints:
+                - attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
+                  bucketCounts:
+                    - "25"
+                    - "15"
+                    - "22"
+                    - "33"
+                    - "18"
+                    - "79"
+                  explicitBounds:
+                    - 0.01
+                    - 0.1
+                    - 1
+                    - 10
+                    - 100
+                  timeUnixNano: "8000000"
+                  count: 192
+                  sum: 8380
+            name: delta.histogram.test
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: custom_scope_attr
+              value:
+                stringValue: scope
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3

@@ -1,0 +1,14 @@
+type: lsminterval
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
+
+status:
+  class: processor
+  stability:
+    development: [metrics]
+  distributions: []
+  warnings: [Statefulness]
+  codeowners:
+    active: []
+tests:
+  config:
+

@@ -1,0 +1,31 @@
+{
+  extends: [
+    'config:recommended',
+  ],
+  labels: [
+    'automation',
+  ],
+  enabledManagers: [
+    'custom.regex',
+  ],
+  packageRules: [
+    {
+      matchManagers: [
+        'custom.regex',
+      ],
+      groupName: 'otelcol',
+    },
+  ],
+  customManagers: [
+    {
+      customType: 'regex',
+      fileMatch: [
+        'distributions/elastic-components/manifest.yaml$',
+      ],
+      datasourceTemplate: 'go',
+      matchStrings: [
+        'gomod: (?<depName>.+) (?<currentValue>.+)',
+      ],
+    },
+  ],
+}

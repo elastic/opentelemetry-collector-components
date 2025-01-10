@@ -19,14 +19,62 @@ package elasticinframetricsprocessor
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 )
+
+func TestProcessorK8sMetrics(t *testing.T) {
+	testCases := []struct {
+		name       string
+		goldenTest string
+		cfg        *Config
+	}{
+		{
+			name:       "K8s metrics remapper enabled",
+			goldenTest: "k8smetrics",
+			cfg:        &Config{AddK8sMetrics: true, DropOriginal: false},
+		},
+		{
+			name:       "K8s metrics remapper enabled, drop original",
+			goldenTest: "k8smetrics_drop_original",
+			cfg:        &Config{AddK8sMetrics: true, DropOriginal: true},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := filepath.Join("testdata", tc.goldenTest)
+			inputMetrics, err := golden.ReadMetrics(filepath.Join(dir, "input-metrics.yaml"))
+			require.NoError(t, err)
+
+			expectedMetrics, err := golden.ReadMetrics(filepath.Join(dir, "output-metrics.yaml"))
+			require.NoError(t, err)
+
+			set := processor.Settings{
+				TelemetrySettings: component.TelemetrySettings{
+					Logger: zap.NewNop(),
+				},
+			}
+
+			p := newProcessor(set, tc.cfg)
+
+			actualMetrics, err := p.processMetrics(context.Background(), inputMetrics)
+
+			assert.NoError(t, err)
+			// golden.WriteMetrics(t, filepath.Join(dir, "output-metrics.yaml"), actualMetrics)
+			require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics))
+		})
+	}
+}
 
 func TestProcessMetrics(t *testing.T) {
 	testCases := []struct {

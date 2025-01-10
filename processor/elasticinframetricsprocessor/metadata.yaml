@@ -4,3 +4,5 @@ status:
   class: processor
   stability:
     alpha: [metrics]
+  codeowners:
+    active: [ishleenk17]
