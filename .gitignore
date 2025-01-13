@@ -1,7 +1,6 @@
 bin/
 .tools/
 _build/
-_loadgenbuild/
 
 ### IntelliJ IDEA ###
 .idea/

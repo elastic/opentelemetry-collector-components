@@ -232,5 +232,5 @@ jobs:
     needs: [ setup-environment ]
     steps:
       - uses: actions/checkout@v4
-      - name: Build loadgen collector and validate example configuration
-        run: make loadgencol-validate
+      - name: Validate loadgen example config
+        run: make loadgen-validate

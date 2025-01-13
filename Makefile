@@ -91,17 +91,12 @@ builddocker:
 	fi; \
 	docker build -t $$IMAGE_NAME -f distributions/elastic-components/Dockerfile .
 
-# Build a loadgen collector
-.PHONY: genloadgencol
-genloadgencol: $(BUILDER)
-	$(BUILDER) --config ./loadgen/manifest.yaml
-
-# Validate that the loadgen collector can run with the example configuration.
+# Validate that the Elastic components collector can run with the example loadgen configuration.
 .PHONY: loadgencol-validate
-loadgencol-validate: genloadgencol
-	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./_loadgenbuild/loadgencol validate --config ./loadgen/config.example.yaml
+loadgen-validate: genelasticcol
+	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./_build/elastic-collector-components validate --config ./loadgen/config.example.yaml
 
-# Run loadgencol
+# Run loadgen
 .PHONY: loadgencol-run
-loadgencol-run: genloadgencol
-	TESTDATA_DIR=./loadgen ./_loadgenbuild/loadgencol --config ./loadgen/config.example.yaml $(ARGS)
+loadgen-run: genelasticcol
+	TESTDATA_DIR=./loadgen ./_build/elastic-collector-components --config ./loadgen/config.example.yaml $(ARGS)

@@ -28,6 +28,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.116.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.116.0
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.116.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.116.0
@@ -41,6 +42,8 @@ processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.13.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.3.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.3.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0
+    path: ./processor/ratelimitprocessor
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.116.0
@@ -63,3 +66,5 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
   - github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor => ../processor/lsmintervalprocessor
   - github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector => ../connector/signaltometricsconnector
+  - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ../receiver/loadgenreceiver
+  - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../processor/ratelimitprocessor
