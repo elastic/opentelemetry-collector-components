@@ -17,11 +17,9 @@ processors:
     trace_statements:
       - context: span
         statements:
-          # The worst way to generate a random trace / span ID, but is the simplest in OTTL
-          # TODO: randomize IDs consistently to maintain trace/span relationships
+          # The worst way to generate a random ID, but is the simplest in OTTL
+          # Only randomize trace ID such that span relationships are still maintained
           - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
-          - set(span_id.string, Substring(MD5(UUID()), 0, 16))
-          - set(parent_span_id.string, Substring(MD5(UUID()), 0, 16))
 
   ratelimit:
     strategy: records
