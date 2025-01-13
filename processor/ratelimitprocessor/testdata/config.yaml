@@ -41,6 +41,11 @@ ratelimit/invalid_strategy:
   burst: 1
   strategy: foo
 
+ratelimit/invalid_throttle_behavior:
+  rate: 1
+  burst: 1
+  throttle_behavior: foo
+
 ratelimit/invalid_gubernator_behavior:
   rate: 1
   burst: 1
