@@ -5,7 +5,8 @@ exporters:
   otlp:
     endpoint: "${env:ELASTIC_APM_SERVER_URL}"
     headers:
-      Authorization: "Bearer ${env:ELASTIC_APM_SECRET_TOKEN}"
+      Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
+#      Authorization: "Bearer ${env:ELASTIC_APM_SECRET_TOKEN}"
     sending_queue:
       enabled: false
     timeout: 60s
