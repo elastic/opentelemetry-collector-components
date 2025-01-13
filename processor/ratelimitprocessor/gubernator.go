@@ -114,7 +114,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		return errors.New(resp.GetError())
 	}
 
-	if isUnderLimit := resp.GetStatus() == gubernator.Status_UNDER_LIMIT; !isUnderLimit {
+	if resp.GetStatus() != gubernator.Status_UNDER_LIMIT {
 		// Same logic as local
 		switch r.cfg.ThrottleBehavior {
 		case ThrottleBehaviorError:
