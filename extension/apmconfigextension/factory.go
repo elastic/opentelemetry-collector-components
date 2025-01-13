@@ -36,7 +36,13 @@ func NewFactory() extension.Factory {
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{}
+	return &Config{
+		OpAMP: OpAMPConfig{
+			Server: OpAMPServerConfig{
+				Endpoint: "127.0.0.1:4320",
+			},
+		},
+	}
 }
 
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {

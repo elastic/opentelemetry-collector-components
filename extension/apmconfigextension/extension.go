@@ -19,6 +19,7 @@ package apmconfigextension // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
@@ -76,5 +77,6 @@ func (op *apmConfigExtension) Shutdown(ctx context.Context) error {
 			return err
 		}
 	}
+	fmt.Println("shuting down the opamp server")
 	return op.opampServer.Stop(ctx)
 }
