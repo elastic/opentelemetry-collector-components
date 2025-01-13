@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
-	"math/rand"
 	"os"
 	"time"
 
@@ -123,10 +122,10 @@ func (ar *tracesGenerator) nextTraces() ptrace.Traces {
 			for k := 0; k < rm.At(i).ScopeSpans().At(j).Spans().Len(); k++ {
 				sspan := rm.At(i).ScopeSpans().At(j).Spans().At(k)
 				now := time.Now()
-				// Generate a random duration between 0 and 3 seconds
-				sspan.SetStartTimestamp(pcommon.NewTimestampFromTime(now.Add(-time.Duration(rand.Int63n(int64(3 * time.Second))))))
+				// Set end timestamp to now and maintain the same duration.
+				duration := time.Duration(sspan.EndTimestamp() - sspan.StartTimestamp())
 				sspan.SetEndTimestamp(pcommon.NewTimestampFromTime(now))
-
+				sspan.SetStartTimestamp(pcommon.NewTimestampFromTime(now.Add(-duration)))
 			}
 		}
 	}
