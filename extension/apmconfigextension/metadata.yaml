@@ -1,0 +1,10 @@
+type: apmconfig
+
+status:
+  class: extension
+  stability:
+    development: [extension]
+  distributions: []
+  codeowners:
+    active: [rogercoll]
+
