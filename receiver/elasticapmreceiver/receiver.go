@@ -19,16 +19,19 @@ package elasticapmreceiver // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -92,6 +95,7 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 	httpMux := http.NewServeMux()
 
 	elasticAPMEventsHandler := r.newElasticAPMEventsHandler()
+
 	httpMux.HandleFunc("/intake/v2/events", elasticAPMEventsHandler)
 	// TODO rum v2, v3
 
@@ -104,6 +108,10 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 	}
 
 	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.ServerConfig.Endpoint))
+
+	// TODO: Remove this once we have a proper way to configure TLS
+	r.cfg.TLSSetting = nil
+
 	var hln net.Listener
 	if hln, err = r.cfg.ServerConfig.ToListener(ctx); err != nil {
 		return err
@@ -191,8 +199,8 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 	for _, event := range *batch {
 		timestampNanos := event.GetTimestamp()
 		timestamp := time.Unix(
-			int64(timestampNanos/uint64(time.Nanosecond)),
-			int64(timestampNanos%uint64(time.Nanosecond)),
+			int64(timestampNanos/1e9), // Convert nanoseconds to seconds
+			int64(timestampNanos%1e9), // Remainder in nanoseconds
 		)
 
 		// TODO record metrics about events processed by type?
@@ -236,18 +244,59 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 			ss := rs.ScopeSpans().AppendEmpty()
 			s := ss.Spans().AppendEmpty()
 
+			traceId, err := traceIDFromHex(event.Trace.Id)
+			if err == nil {
+				s.SetTraceID(traceId)
+			}
+
+			spanId, err := spanIdFromHex(event.Span.Id)
+			if err == nil {
+				s.SetSpanID(spanId)
+			}
+
+			if event.ParentId != "" {
+				parentId, err := spanIdFromHex(event.ParentId)
+				if err == nil {
+					s.SetParentSpanID(parentId)
+				}
+			}
+
+			mappers.TranslateToOtelResourceAttributes(event, rs.Resource().Attributes())
+			mappers.SetDerivedFieldsCommon(event, s.Attributes())
+			mappers.SetDerivedResourceAttributes(event, rs.Resource().Attributes())
+
 			duration := time.Duration(event.GetEvent().GetDuration())
 			s.SetStartTimestamp(pcommon.NewTimestampFromTime(timestamp))
 			s.SetEndTimestamp(pcommon.NewTimestampFromTime(timestamp.Add(duration)))
 
-			// TODO set attributes
+			if strings.EqualFold(event.Event.Outcome, "success") {
+				s.Status().SetCode(ptrace.StatusCodeOk)
+			} else if strings.EqualFold(event.Event.Outcome, "failure") {
+				s.Status().SetCode(ptrace.StatusCodeError)
+			}
+
 			isTransaction := event.Type() == modelpb.TransactionEventType
 			if isTransaction {
+				mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
 				transaction := event.GetTransaction()
 				s.SetName(transaction.GetName())
+				mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
+
+				if event.Http.Request != nil {
+					s.SetKind(ptrace.SpanKindServer)
+				} else if event.Message != "" { // this check is TBD
+					s.SetKind(ptrace.SpanKindConsumer)
+				}
 			} else {
 				span := event.GetSpan()
 				s.SetName(span.GetName())
+
+				mappers.SetDerivedFieldsForSpan(event, s.Attributes())
+				mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
+
+				if event.Http != nil || event.Message != "" {
+					s.SetKind(ptrace.SpanKindClient)
+				}
 			}
 		default:
 			return fmt.Errorf("unhandled event type %q", event.Type())
@@ -273,6 +322,26 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
+}
+
+func traceIDFromHex(hexStr string) (pcommon.TraceID, error) {
+	bytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return pcommon.TraceID{}, err
+	}
+	var id pcommon.TraceID
+	copy(id[:], bytes)
+	return id, nil
+}
+
+func spanIdFromHex(hexStr string) (pcommon.SpanID, error) {
+	bytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return pcommon.SpanID{}, err
+	}
+	var id pcommon.SpanID
+	copy(id[:], bytes)
+	return id, nil
 }
 
 type jsonError struct {
