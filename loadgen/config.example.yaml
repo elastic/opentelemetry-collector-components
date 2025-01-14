@@ -1,0 +1,48 @@
+receivers:
+  loadgen:
+
+exporters:
+  otlp:
+    endpoint: "${env:ELASTIC_APM_SERVER_URL}"
+    headers:
+      Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
+#      Authorization: "Bearer ${env:ELASTIC_APM_SECRET_TOKEN}"
+    sending_queue:
+      enabled: false
+    timeout: 60s
+  debug:
+
+
+processors:
+  transform/rewrite:  # Rewrite telemetry to increase cardinality
+    trace_statements:
+      - context: span
+        statements:
+          # The worst way to generate a random ID, but is the simplest in OTTL
+          # Only randomize trace ID such that span relationships are still maintained
+          - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
+
+  ratelimit:
+    strategy: records
+    rate: 5000
+    burst: 5000
+    throttle_behavior: delay
+
+
+service:
+  pipelines:
+    logs:
+      receivers: [loadgen]
+      processors: [ratelimit, transform/rewrite]
+      exporters: [otlp, debug]
+    metrics:
+      receivers: [loadgen]
+      processors: [ratelimit, transform/rewrite]
+      exporters: [otlp, debug]
+    traces:
+      receivers: [loadgen]
+      processors: [ratelimit, transform/rewrite]
+      exporters: [otlp, debug]
+#  telemetry:
+#    logs:
+#      level: debug
