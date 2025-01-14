@@ -284,13 +284,15 @@ func (s *Value) Finalize() (pmetric.Metrics, error) {
 			continue
 		}
 		// Add overflow metric due to metric limit breached
-		overflowMetric := sm.ScopeMetrics.Metrics().AppendEmpty()
-		overflowMetric.SetName(overflowMetricName)
-		overflowMetric.SetDescription(overflowMetricDesc)
-		overflowSum := overflowMetric.SetEmptySum()
-		overflowSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		overflowDP := overflowSum.DataPoints().AppendEmpty()
-		overflowDP.SetIntValue(int64(sm.metricLimits.EstimateOverflow()))
+		if err := fillOverflowMetric(
+			sm.ScopeMetrics.Metrics().AppendEmpty(),
+			overflowMetricName,
+			overflowMetricDesc,
+			sm.metricLimits.EstimateOverflow(),
+			s.metricLimitCfg.Overflow.Attributes,
+		); err != nil {
+			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
+		}
 	}
 	for mID, m := range s.metricLookup {
 		if !m.datapointLimits.HasOverflow() {
@@ -298,20 +300,15 @@ func (s *Value) Finalize() (pmetric.Metrics, error) {
 		}
 		// Add overflow metric due to datapoint limit breached
 		sm := s.scopeLookup[mID.Scope()]
-		overflowMetric := sm.ScopeMetrics.Metrics().AppendEmpty()
-		overflowMetric.SetName(overflowDatapointMetricName)
-		overflowMetric.SetDescription(overflowDatapointMetricDesc)
-		overflowSum := overflowMetric.SetEmptySum()
-		overflowSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		overflowDP := overflowSum.DataPoints().AppendEmpty()
-		overflowDP.SetIntValue(int64(sm.metricLimits.EstimateOverflow()))
-		if err := decorate(
-			overflowDP.Attributes(),
+		if err := fillOverflowMetric(
+			sm.ScopeMetrics.Metrics().AppendEmpty(),
+			overflowDatapointMetricName,
+			overflowDatapointMetricDesc,
+			m.datapointLimits.EstimateOverflow(),
 			s.datapointLimitCfg.Overflow.Attributes,
 		); err != nil {
 			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
 		}
-		overflowDP.SetIntValue(int64(m.datapointLimits.EstimateOverflow()))
 	}
 	return s.source, nil
 }
@@ -770,6 +767,24 @@ func (s *Value) getOverflowScopeIdentity(
 		return identity.Scope{}, fmt.Errorf("failed to create overflow bucket: %w", err)
 	}
 	return identity.OfScope(res, scope), nil
+}
+
+func fillOverflowMetric(
+	m pmetric.Metric,
+	name, desc string,
+	count uint64,
+	extraAttrs []config.Attribute,
+) error {
+	m.SetName(name)
+	m.SetDescription(desc)
+	sum := m.SetEmptySum()
+	sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	dp := sum.DataPoints().AppendEmpty()
+	dp.SetIntValue(int64(count))
+	if err := decorate(dp.Attributes(), extraAttrs); err != nil {
+		return fmt.Errorf("failed to append configured attributes to overflow metric: %w", err)
+	}
+	return nil
 }
 
 func decorate(target pcommon.Map, src []config.Attribute) error {

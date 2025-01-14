@@ -18,7 +18,6 @@
 package config // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 
 import (
-	"errors"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -96,8 +95,5 @@ type Attribute struct {
 
 func (config *Config) Validate() error {
 	// TODO (lahsivjar): Add validation for interval duration
-	if len(config.MetricLimit.Overflow.Attributes) > 0 {
-		return errors.New("metric limit does not have overflow attributes")
-	}
 	return nil
 }

@@ -52,6 +52,9 @@ resourceMetrics:
                     - key: custom_dp_attr
                       value:
                         stringValue: dp
+                    - key: test_overflow
+                      value:
+                        boolValue: true
           - description: Overflow datapoint count due to datapoint limit
             name: _overflow_datapoints
             sum:
