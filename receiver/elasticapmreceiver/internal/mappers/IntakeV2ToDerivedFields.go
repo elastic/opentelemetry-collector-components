@@ -35,14 +35,12 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 	attributes.PutStr("processor.event", "transaction")
 	attributes.PutStr("transaction.id", event.Transaction.Id)
 	attributes.PutStr("transaction.name", event.Transaction.Name)
-
 	attributes.PutBool("transaction.sampled", event.Transaction.Sampled)
 	// from whatever reason Transaction.Root is always false. That seems to be a derived field already - I don't see that fields directly on IntakeV2 - there is only ParentId
 	attributes.PutBool("transaction.root", event.ParentId == "")
 	attributes.PutStr("transaction.type", event.Transaction.Type)
 	attributes.PutStr("transaction.result", event.Transaction.Result)
-
-	attributes.PutDouble("transaction.duration.us", float64(event.Event.Duration))
+	attributes.PutInt("transaction.duration.us", int64(event.Event.Duration))
 }
 
 func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
@@ -67,8 +65,6 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 
 // Shared across spans and transactions
 func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
-	attributes.PutDouble("duration.us", float64(event.Event.Duration))
-
 	//TODO: that's not correct.
 	attributes.PutInt("timestamp.us", int64(event.Timestamp))
 
