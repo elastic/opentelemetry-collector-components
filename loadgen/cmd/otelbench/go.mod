@@ -164,6 +164,6 @@ require (
 )
 
 replace (
-	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ./../processor/ratelimitprocessor
-	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ./../receiver/loadgenreceiver
+	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ./../../../processor/ratelimitprocessor
+	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ./../../../receiver/loadgenreceiver
 )

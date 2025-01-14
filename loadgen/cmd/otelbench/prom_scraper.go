@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package loadgen // import "github.com/elastic/opentelemetry-collector-components/loadgen"
+package main // import "github.com/elastic/opentelemetry-collector-components/loadgen"
 
 import (
 	dto "github.com/prometheus/client_model/go"

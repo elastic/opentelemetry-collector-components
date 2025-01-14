@@ -1,4 +1,4 @@
-package loadgen
+package main
 
 import (
 	"context"

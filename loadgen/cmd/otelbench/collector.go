@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package loadgen // import "github.com/elastic/opentelemetry-collector-components/loadgen"
+package main // import "github.com/elastic/opentelemetry-collector-components/loadgen"
 
 import (
 	"context"
@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	buildDescription = "loadgen distribution"
-	buildVersion     = "0.1.0"
+	buildDescription = "otelbench distribution"
+	buildVersion     = "0.0.1"
 )
 
 func RunCollector(ctx context.Context, stop chan bool, configFiles []string) error {
