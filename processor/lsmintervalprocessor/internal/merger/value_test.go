@@ -41,32 +41,35 @@ var testCases = []string{
 
 func BenchmarkMerge(b *testing.B) {
 	for _, tc := range []struct {
-		name          string
-		resLimit      config.LimitConfig
-		scopeLimit    config.LimitConfig
-		scopeDPsLimit config.LimitConfig
+		name        string
+		resLimit    config.LimitConfig
+		scopeLimit  config.LimitConfig
+		metricLimit config.LimitConfig
+		dpLimit     config.LimitConfig
 	}{
 		{
-			name:          "without_overflow",
-			resLimit:      config.LimitConfig{MaxCardinality: math.MaxInt64},
-			scopeLimit:    config.LimitConfig{MaxCardinality: math.MaxInt64},
-			scopeDPsLimit: config.LimitConfig{MaxCardinality: math.MaxInt64},
+			name:        "without_overflow",
+			resLimit:    config.LimitConfig{MaxCardinality: math.MaxInt64},
+			scopeLimit:  config.LimitConfig{MaxCardinality: math.MaxInt64},
+			metricLimit: config.LimitConfig{MaxCardinality: math.MaxInt64},
+			dpLimit:     config.LimitConfig{MaxCardinality: math.MaxInt64},
 		},
 		{
-			name:          "with_overflow",
-			resLimit:      config.LimitConfig{MaxCardinality: 1},
-			scopeLimit:    config.LimitConfig{MaxCardinality: 1},
-			scopeDPsLimit: config.LimitConfig{MaxCardinality: 1},
+			name:        "with_overflow",
+			resLimit:    config.LimitConfig{MaxCardinality: 1},
+			scopeLimit:  config.LimitConfig{MaxCardinality: 1},
+			metricLimit: config.LimitConfig{MaxCardinality: 1},
+			dpLimit:     config.LimitConfig{MaxCardinality: 1},
 		},
 	} {
-		benchmarkWithTestdata(b, tc.name, tc.resLimit, tc.scopeLimit, tc.scopeDPsLimit)
+		benchmarkWithTestdata(b, tc.name, tc.resLimit, tc.scopeLimit, tc.metricLimit, tc.dpLimit)
 	}
 }
 
 func benchmarkWithTestdata(
 	b *testing.B,
 	name string,
-	resLimit, scopeLimit, scopeDPsLimit config.LimitConfig,
+	resLimit, scopeLimit, metricLimit, dpLimit config.LimitConfig,
 ) {
 	b.Helper()
 
@@ -79,8 +82,8 @@ func benchmarkWithTestdata(
 		b.Run(name+"/"+tc, func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				b.StopTimer()
-				to := NewValue(resLimit, scopeLimit, scopeDPsLimit)
-				from := NewValue(resLimit, scopeLimit, scopeDPsLimit)
+				to := NewValue(resLimit, scopeLimit, metricLimit, dpLimit)
+				from := NewValue(resLimit, scopeLimit, metricLimit, dpLimit)
 				// Update from to have the pmetric structure
 				mdCopy := pmetric.NewMetrics()
 				md.CopyTo(mdCopy)

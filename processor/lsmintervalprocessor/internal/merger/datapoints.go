@@ -41,32 +41,30 @@ type dataPoint[Self any] interface {
 
 func mergeDataPoints[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
-	toScope scopeMetrics,
 	toMetricID identity.Metric,
-	toMetric pmetric.Metric,
-	addDP func(scopeMetrics, identity.Metric, pmetric.Metric, DP) (DP, bool),
+	toMetric pdataMetric,
+	addDP func(identity.Metric, pdataMetric, DP) (DP, bool),
 	temporality pmetric.AggregationTemporality,
 ) {
 	switch temporality {
 	case pmetric.AggregationTemporalityCumulative:
-		mergeCumulative(from, toScope, toMetricID, toMetric, addDP)
+		mergeCumulative(from, toMetricID, toMetric, addDP)
 	case pmetric.AggregationTemporalityDelta:
-		mergeDelta(from, toScope, toMetricID, toMetric, addDP)
+		mergeDelta(from, toMetricID, toMetric, addDP)
 	}
 }
 
-type addDPFunc[DP dataPoint[DP]] func(scopeMetrics, identity.Metric, pmetric.Metric, DP) (DP, bool)
+type addDPFunc[DP dataPoint[DP]] func(identity.Metric, pdataMetric, DP) (DP, bool)
 
 func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
-	toScope scopeMetrics,
 	toMetricID identity.Metric,
-	toMetric pmetric.Metric,
+	toMetric pdataMetric,
 	addDP addDPFunc[DP],
 ) {
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
-		toDP, exists := addDP(toScope, toMetricID, toMetric, fromDP)
+		toDP, exists := addDP(toMetricID, toMetric, fromDP)
 		if exists && fromDP.Timestamp() > toDP.Timestamp() {
 			fromDP.CopyTo(toDP)
 		}
@@ -75,14 +73,13 @@ func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 
 func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
-	toScope scopeMetrics,
 	toMetricID identity.Metric,
-	toMetric pmetric.Metric,
+	toMetric pdataMetric,
 	addDP addDPFunc[DP],
 ) {
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
-		if toDP, exists := addDP(toScope, toMetricID, toMetric, fromDP); exists {
+		if toDP, exists := addDP(toMetricID, toMetric, fromDP); exists {
 			switch fromDP := any(fromDP).(type) {
 			case pmetric.NumberDataPoint:
 				mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))

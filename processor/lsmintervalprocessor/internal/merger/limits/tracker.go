@@ -27,7 +27,7 @@ import (
 	"github.com/axiomhq/hyperloglog"
 )
 
-const version = uint8(1)
+const version = uint8(2)
 
 // Tracker tracks the configured limits while merging. It records the
 // observed count as well as the unique overflow counts.
@@ -150,7 +150,8 @@ type trackerType uint8
 const (
 	resourceTracker trackerType = iota
 	scopeTracker
-	dpsTracker
+	metricTracker
+	dpTracker
 )
 
 // Trackers represent multiple tracker in an ordered structure. It takes advantage
@@ -160,20 +161,23 @@ const (
 // related and removing/adding new objects to pmetric should be accompanied by
 // adding a corresponding tracker.
 type Trackers struct {
-	resourceLimit uint64
-	scopeLimit    uint64
-	scopeDPLimit  uint64
+	resourceLimit  uint64
+	scopeLimit     uint64
+	metricLimit    uint64
+	datapointLimit uint64
 
-	resource *Tracker
-	scope    []*Tracker
-	scopeDPs []*Tracker
+	resource  *Tracker
+	scope     []*Tracker
+	metric    []*Tracker
+	datapoint []*Tracker
 }
 
-func NewTrackers(resourceLimit, scopeLimit, scopeDPLimit uint64) *Trackers {
+func NewTrackers(resourceLimit, scopeLimit, metricLimit, datapointLimit uint64) *Trackers {
 	return &Trackers{
-		resourceLimit: resourceLimit,
-		scopeLimit:    scopeLimit,
-		scopeDPLimit:  scopeDPLimit,
+		resourceLimit:  resourceLimit,
+		scopeLimit:     scopeLimit,
+		metricLimit:    metricLimit,
+		datapointLimit: datapointLimit,
 
 		// Create a resource tracker preemptively whenever a tracker is created
 		resource: newTracker(resourceLimit),
@@ -186,9 +190,15 @@ func (t *Trackers) NewScopeTracker() *Tracker {
 	return newTracker
 }
 
-func (t *Trackers) NewScopeDPsTracker() *Tracker {
-	newTracker := newTracker(t.scopeDPLimit)
-	t.scopeDPs = append(t.scopeDPs, newTracker)
+func (t *Trackers) NewMetricTracker() *Tracker {
+	newTracker := newTracker(t.metricLimit)
+	t.metric = append(t.metric, newTracker)
+	return newTracker
+}
+
+func (t *Trackers) NewDatapointTracker() *Tracker {
+	newTracker := newTracker(t.datapointLimit)
+	t.datapoint = append(t.datapoint, newTracker)
 	return newTracker
 }
 
@@ -203,11 +213,18 @@ func (t *Trackers) GetScopeTracker(i int) *Tracker {
 	return t.scope[i]
 }
 
-func (t *Trackers) GetScopeDPsTracker(i int) *Tracker {
-	if i >= len(t.scopeDPs) {
+func (t *Trackers) GetMetricTracker(i int) *Tracker {
+	if i >= len(t.metric) {
 		return nil
 	}
-	return t.scopeDPs[i]
+	return t.metric[i]
+}
+
+func (t *Trackers) GetDatapointTracker(i int) *Tracker {
+	if i >= len(t.datapoint) {
+		return nil
+	}
+	return t.datapoint[i]
 }
 
 func (t *Trackers) Marshal() ([]byte, error) {
@@ -221,7 +238,7 @@ func (t *Trackers) Marshal() ([]byte, error) {
 	// - 1 byte for tracker type
 	// - 8 bytes for each trackers length
 	// - 8 bytes min for each tracker
-	estimatedSize := (1 + len(t.scope) + len(t.scopeDPs)) * 17
+	estimatedSize := (1 + len(t.scope) + len(t.metric) + len(t.datapoint)) * 17
 	result := make([]byte, 0, estimatedSize)
 
 	var (
@@ -238,8 +255,14 @@ func (t *Trackers) Marshal() ([]byte, error) {
 			return nil, err
 		}
 	}
-	for _, tracker := range t.scopeDPs {
-		result, offset, err = marshalTracker(dpsTracker, tracker, result, offset)
+	for _, tracker := range t.metric {
+		result, offset, err = marshalTracker(metricTracker, tracker, result, offset)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, tracker := range t.datapoint {
+		result, offset, err = marshalTracker(dpTracker, tracker, result, offset)
 		if err != nil {
 			return nil, err
 		}
@@ -263,8 +286,10 @@ func (t *Trackers) Unmarshal(d []byte) error {
 			tracker = t.GetResourceTracker()
 		case scopeTracker:
 			tracker = t.NewScopeTracker()
-		case dpsTracker:
-			tracker = t.NewScopeDPsTracker()
+		case metricTracker:
+			tracker = t.NewMetricTracker()
+		case dpTracker:
+			tracker = t.NewDatapointTracker()
 		default:
 			return errors.New("invalid tracker found")
 		}
