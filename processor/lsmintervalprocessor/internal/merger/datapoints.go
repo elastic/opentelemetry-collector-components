@@ -42,8 +42,8 @@ type dataPoint[Self any] interface {
 func mergeDataPoints[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
 	toMetricID identity.Metric,
-	toMetric metric,
-	addDP func(identity.Metric, metric, DP) (DP, bool),
+	toMetric pdataMetric,
+	addDP func(identity.Metric, pdataMetric, DP) (DP, bool),
 	temporality pmetric.AggregationTemporality,
 ) {
 	switch temporality {
@@ -54,12 +54,12 @@ func mergeDataPoints[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	}
 }
 
-type addDPFunc[DP dataPoint[DP]] func(identity.Metric, metric, DP) (DP, bool)
+type addDPFunc[DP dataPoint[DP]] func(identity.Metric, pdataMetric, DP) (DP, bool)
 
 func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
 	toMetricID identity.Metric,
-	toMetric metric,
+	toMetric pdataMetric,
 	addDP addDPFunc[DP],
 ) {
 	for i := 0; i < from.Len(); i++ {
@@ -74,7 +74,7 @@ func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
 	toMetricID identity.Metric,
-	toMetric metric,
+	toMetric pdataMetric,
 	addDP addDPFunc[DP],
 ) {
 	for i := 0; i < from.Len(); i++ {
