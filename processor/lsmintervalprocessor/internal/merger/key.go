@@ -20,54 +20,95 @@ package merger // import "github.com/elastic/opentelemetry-collector-components/
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"slices"
 	"time"
 )
 
-// TODO (lahsivjar): Think about multitenancy, should be part of the key
 type Key struct {
 	Interval       time.Duration
 	ProcessingTime time.Time
+
+	// Metadata holds an ordered list of arbitrary keys and associated
+	// string values to associate with the interval and processing time.
+	Metadata []KeyValues
 }
 
-// NewKey creates a new instance of the merger key.
-func NewKey(ivl time.Duration, pTime time.Time) Key {
-	return Key{
-		Interval:       ivl,
-		ProcessingTime: pTime,
+type KeyValues struct {
+	Key    string
+	Values []string
+}
+
+// AppendBinary marshals the key into its binary representation,
+// appending it to b.
+func (k *Key) AppendBinary(b []byte) ([]byte, error) {
+	b = slices.Grow(b, 10)
+	b = binary.BigEndian.AppendUint16(b, uint16(k.Interval.Seconds()))
+	b = binary.BigEndian.AppendUint64(b, uint64(k.ProcessingTime.Unix()))
+	if len(k.Metadata) != 0 {
+		b = binary.AppendUvarint(b, uint64(len(k.Metadata)))
+		for _, kvs := range k.Metadata {
+			mk := kvs.Key
+			mvs := kvs.Values
+
+			b = binary.AppendUvarint(b, uint64(len(mk)))
+			b = append(b, mk...)
+			b = binary.AppendUvarint(b, uint64(len(mvs)))
+			for _, mv := range mvs {
+				b = binary.AppendUvarint(b, uint64(len(mv)))
+				b = append(b, mv...)
+			}
+		}
 	}
-}
-
-// SizeBinary returns the size of the Key when binary encoded.
-// The interval, represented by time.Duration, is encoded to
-// 2 bytes by converting it into seconds. This allows a max of
-// ~18 hours duration.
-func (k *Key) SizeBinary() int {
-	// 2 bytes for interval, 8 bytes for processing time
-	return 10
-}
-
-// Marshal marshals the key into binary representation.
-func (k *Key) Marshal() ([]byte, error) {
-	ivlSeconds := uint16(k.Interval.Seconds())
-
-	var (
-		offset int
-		d      [10]byte
-	)
-	binary.BigEndian.PutUint16(d[offset:], ivlSeconds)
-	offset += 2
-
-	binary.BigEndian.PutUint64(d[offset:], uint64(k.ProcessingTime.Unix()))
-
-	return d[:], nil
+	return b, nil
 }
 
 // Unmarshal unmarshals the binary representation of the Key.
 func (k *Key) Unmarshal(d []byte) error {
-	if len(d) != 10 {
+	if len(d) < 10 {
 		return errors.New("failed to unmarshal key, invalid sized buffer provided")
 	}
 	k.Interval = time.Duration(binary.BigEndian.Uint16(d[:2])) * time.Second
 	k.ProcessingTime = time.Unix(int64(binary.BigEndian.Uint64(d[2:10])), 0)
+
+	d = d[10:]
+	if len(d) > 0 {
+		numKeys, n := binary.Uvarint(d)
+		if n <= 0 {
+			return fmt.Errorf("error reading number of metadata keys (n=%d)", n)
+		}
+		d = d[n:]
+		k.Metadata = make([]KeyValues, numKeys)
+
+		for i := range numKeys {
+			mklen, n := binary.Uvarint(d)
+			if n <= 0 {
+				return fmt.Errorf("error reading metadata key length (n=%d)", n)
+			}
+			d = d[n:]
+			mk := string(d[:mklen])
+			d = d[mklen:]
+
+			numValues, n := binary.Uvarint(d)
+			if n <= 0 {
+				return fmt.Errorf("error reading number of metadata values for %q (n=%d)", mk, n)
+			}
+			d = d[n:]
+			mvs := make([]string, numValues)
+			for i := range numValues {
+				mvlen, n := binary.Uvarint(d)
+				if n <= 0 {
+					return fmt.Errorf("error reading metadata value length for %q (n=%d)", mk, n)
+				}
+				d = d[n:]
+				mv := string(d[:mvlen])
+				d = d[mvlen:]
+				mvs[i] = mv
+			}
+
+			k.Metadata[i] = KeyValues{Key: mk, Values: mvs}
+		}
+	}
+
 	return nil
 }
