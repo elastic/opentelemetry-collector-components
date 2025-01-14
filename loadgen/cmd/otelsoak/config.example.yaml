@@ -43,6 +43,11 @@ service:
       receivers: [loadgen]
       processors: [ratelimit, transform/rewrite]
       exporters: [otlp, debug]
-#  telemetry:
-#    logs:
-#      level: debug
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '127.0.0.1'
+                port: 8888
