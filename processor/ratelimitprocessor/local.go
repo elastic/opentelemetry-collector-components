@@ -66,7 +66,13 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		if !r.OK() {
 			return errTooManyRequests
 		}
-		time.Sleep(r.Delay())
+		timer := time.NewTimer(r.Delay())
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 	return nil
 }
