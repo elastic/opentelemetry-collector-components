@@ -313,31 +313,6 @@ func (s *Value) Finalize() (pmetric.Metrics, error) {
 		}
 		overflowDP.SetIntValue(int64(m.datapointLimits.EstimateOverflow()))
 	}
-	// Remove any hanging metrics, scope, or resource which failed to have any
-	// entries due to datapoints overflowing. Overflowing datapoints discards
-	// that metric and creates a new overflow metric which might result in the
-	// original metric and its parent to exist without any datapoints.
-	s.source.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
-		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
-			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
-				switch m.Type() {
-				case pmetric.MetricTypeGauge:
-					return m.Gauge().DataPoints().Len() == 0
-				case pmetric.MetricTypeSum:
-					return m.Sum().DataPoints().Len() == 0
-				case pmetric.MetricTypeHistogram:
-					return m.Histogram().DataPoints().Len() == 0
-				case pmetric.MetricTypeExponentialHistogram:
-					return m.ExponentialHistogram().DataPoints().Len() == 0
-				case pmetric.MetricTypeSummary:
-					return m.Summary().DataPoints().Len() == 0
-				}
-				return false
-			})
-			return sm.Metrics().Len() == 0
-		})
-		return rm.ScopeMetrics().Len() == 0
-	})
 	return s.source, nil
 }
 
