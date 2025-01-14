@@ -127,7 +127,13 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			return errTooManyRequests
 		case ThrottleBehaviorDelay:
 			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
-			time.Sleep(delay)
+			timer := time.NewTimer(delay)
+			defer timer.Stop()
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-timer.C:
+			}
 		}
 	}
 	return nil

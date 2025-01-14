@@ -59,7 +59,9 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
 		t.Run(string(behavior), func(t *testing.T) {
 			burst := 2
-			rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: burst, ThrottleBehavior: behavior})
+			rateLimiter := newTestLocalRateLimiter(t, &Config{
+				Rate: 10, Burst: burst, ThrottleBehavior: behavior,
+			})
 			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 			require.NoError(t, err)
 
@@ -80,7 +82,7 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 				}, 2*time.Second, 20*time.Millisecond)
 			case ThrottleBehaviorDelay:
 				assert.NoError(t, err)
-				assert.GreaterOrEqual(t, time.Now(), startTime.Add(time.Second))
+				assert.GreaterOrEqual(t, time.Now(), startTime.Add(100*time.Millisecond))
 			}
 		})
 	}
