@@ -18,6 +18,7 @@
 package config // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 
 import (
+	"errors"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -39,10 +40,11 @@ type Config struct {
 	// TODO (lahsivjar): Make specifying interval easier. We can just
 	// optimize the timer to run on differnt times and remove any
 	// restriction on different interval configuration.
-	Intervals           []IntervalConfig `mapstructure:"intervals"`
-	ResourceLimit       LimitConfig      `mapstructure:"resource_limit"`
-	ScopeLimit          LimitConfig      `mapstructure:"scope_limit"`
-	ScopeDatapointLimit LimitConfig      `mapstructure:"scope_datapoint_limit"`
+	Intervals      []IntervalConfig `mapstructure:"intervals"`
+	ResourceLimit  LimitConfig      `mapstructure:"resource_limit"`
+	ScopeLimit     LimitConfig      `mapstructure:"scope_limit"`
+	MetricLimit    LimitConfig      `mapstructure:"metric_limit"`
+	DatapointLimit LimitConfig      `mapstructure:"datapoint_limit"`
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -94,5 +96,8 @@ type Attribute struct {
 
 func (config *Config) Validate() error {
 	// TODO (lahsivjar): Add validation for interval duration
+	if len(config.MetricLimit.Overflow.Attributes) > 0 {
+		return errors.New("metric limit does not have overflow attributes")
+	}
 	return nil
 }

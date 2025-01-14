@@ -37,8 +37,18 @@ resourceMetrics:
                   sum: 4780
                   timeUnixNano: "7000000"
             name: delta.histogram.test.1
-          - description: Overflow count due to datapoints limit
-            name: _other
+          - description: Overflow metric count due to metric limit
+            name: _overflow_metric
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: custom_dp_attr
+                      value:
+                        stringValue: dp
+          - description: Overflow datapoint count due to datapoint limit
+            name: _overflow_datapoints
             sum:
               aggregationTemporality: 1
               dataPoints:
