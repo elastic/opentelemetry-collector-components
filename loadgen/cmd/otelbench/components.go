@@ -15,11 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package main // import "github.com/elastic/opentelemetry-collector-components/loadgen"
+package main
 
 import (
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/exporter"
@@ -29,6 +27,9 @@ import (
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
 func components() (otelcol.Factories, error) {

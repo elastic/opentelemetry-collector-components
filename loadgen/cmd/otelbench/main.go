@@ -23,13 +23,11 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/elastic/opentelemetry-collector-components/loadgen"
 )
 
 func main() {
-	loadgen.Init()
-	flag.CommandLine = loadgen.FlagSet
+	Init()
+	flag.CommandLine = FlagSet
 	testing.Init()
 	flag.Parse()
 
@@ -43,7 +41,7 @@ func main() {
 				select {
 				case <-stop:
 				case <-ticker.C:
-					logs, metricPoints, spans, err := loadgen.GetTelemetrySent()
+					logs, metricPoints, spans, err := GetTelemetrySent()
 					if err != nil {
 						b.Logf("error getting internal telemetry: %s", err)
 						continue
@@ -62,7 +60,7 @@ func main() {
 			}
 		}()
 
-		err := loadgen.Run(context.Background(), stop)
+		err := Run(context.Background(), stop)
 		if err != nil {
 			fmt.Println(err)
 			b.Log(err)
