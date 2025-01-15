@@ -27,7 +27,7 @@ import (
 	"github.com/axiomhq/hyperloglog"
 )
 
-const version = uint8(2)
+const version = uint8(1)
 
 // Tracker tracks the configured limits while merging. It records the
 // observed count as well as the unique overflow counts.
