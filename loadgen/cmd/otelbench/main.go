@@ -27,7 +27,6 @@ import (
 
 func main() {
 	Init()
-	flag.CommandLine = FlagSet
 	testing.Init()
 	flag.Parse()
 
@@ -41,7 +40,7 @@ func main() {
 				select {
 				case <-stop:
 				case <-ticker.C:
-					logs, metricPoints, spans, err := GetTelemetrySent()
+					logs, metricPoints, spans, err := GetTelemetrySent() // FIXME: exporter internal telemetry is broken on otlphttp
 					if err != nil {
 						b.Logf("error getting internal telemetry: %s", err)
 						continue

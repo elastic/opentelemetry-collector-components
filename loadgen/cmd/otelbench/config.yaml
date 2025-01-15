@@ -3,6 +3,12 @@ receivers:
 
 exporters:
   otlp:
+    endpoint: "localhost:0"
+    sending_queue:
+      enabled: false
+    timeout: 60s
+  otlphttp:
+    endpoint: "localhost:0"
     sending_queue:
       enabled: false
     timeout: 60s
@@ -21,15 +27,15 @@ service:
     logs:
       receivers: [loadgen]
       processors: [transform/rewrite]
-      exporters: [otlp]
+      exporters: []
     metrics:
       receivers: [loadgen]
       processors: [transform/rewrite]
-      exporters: [otlp]
+      exporters: []
     traces:
       receivers: [loadgen]
       processors: [transform/rewrite]
-      exporters: [otlp]
+      exporters: []
   telemetry:
     metrics:
       readers:

@@ -16,13 +16,12 @@ var Config struct {
 	Secure              bool
 	Headers             map[string]string
 	CollectorConfigPath string
+	Exporter            string // should be one of [otlp, otlphttp]
 }
-
-var FlagSet = flag.NewFlagSet("", flag.ExitOnError)
 
 func Init() {
 	// Server config
-	FlagSet.Func(
+	flag.Func(
 		"server",
 		"server URL (default http://127.0.0.1:8200)",
 		func(server string) (err error) {
@@ -31,10 +30,10 @@ func Init() {
 			}
 			return
 		})
-	FlagSet.StringVar(&Config.SecretToken, "secret-token", "", "secret token for APM Server")
-	FlagSet.StringVar(&Config.APIKey, "api-key", "", "API key for APM Server")
-	FlagSet.BoolVar(&Config.Secure, "secure", false, "validate the remote server TLS certificates")
-	FlagSet.Func("header",
+	flag.StringVar(&Config.SecretToken, "secret-token", "", "secret token for APM Server")
+	flag.StringVar(&Config.APIKey, "api-key", "", "API key for APM Server")
+	flag.BoolVar(&Config.Secure, "secure", false, "validate the remote server TLS certificates")
+	flag.Func("header",
 		"extra headers to use when sending data to the server",
 		func(s string) error {
 			k, v, ok := strings.Cut(s, "=")
@@ -49,7 +48,9 @@ func Init() {
 		},
 	)
 
-	FlagSet.StringVar(&Config.CollectorConfigPath, "config", "", "Collector config path")
+	flag.StringVar(&Config.CollectorConfigPath, "config", "", "Collector config path")
+
+	flag.StringVar(&Config.Exporter, "exporter", "otlp", "exporter to use, one of [otlp, otlphttp]")
 
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
@@ -76,7 +77,7 @@ func setFlagsFromEnv() {
 	}
 
 	for k, v := range flagEnvMap {
-		FlagSet.Set(k, getEnvOrDefault(v[0], v[1]))
+		flag.Set(k, getEnvOrDefault(v[0], v[1]))
 	}
 }
 
@@ -89,8 +90,8 @@ func getEnvOrDefault(name, defaultValue string) string {
 }
 
 // CollectorConfigFilesFromConfig returns a slice of strings, each can be passed to the collector using --config
-func CollectorConfigFilesFromConfig() (configFiles []string) {
-	sets := CollectorSetFromConfig()
+func CollectorConfigFilesFromConfig(exporter string) (configFiles []string) {
+	sets := CollectorSetFromConfig(exporter)
 	for _, s := range sets {
 		idx := strings.Index(s, "=")
 		if idx == -1 {
@@ -103,18 +104,22 @@ func CollectorConfigFilesFromConfig() (configFiles []string) {
 }
 
 // CollectorSetFromConfig returns a slice of strings, each can be passed to the collector using --set
-func CollectorSetFromConfig() (configSets []string) {
-	configSets = append(configSets, fmt.Sprintf("exporters.otlp.endpoint=%s", Config.ServerURL))
+func CollectorSetFromConfig(exporter string) (configSets []string) {
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.logs.exporters=[%s]", exporter))
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.metrics.exporters=[%s]", exporter))
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.traces.exporters=[%s]", exporter))
+
+	configSets = append(configSets, fmt.Sprintf("exporters.%s.endpoint=%s", exporter, Config.ServerURL))
 
 	if v := getAuthorizationHeaderValue(Config.APIKey, Config.SecretToken); v != "" {
-		configSets = append(configSets, fmt.Sprintf("exporters.otlp.headers.Authorization=%s", v))
+		configSets = append(configSets, fmt.Sprintf("exporters.%s.headers.Authorization=%s", exporter, v))
 	}
 
 	for k, v := range Config.Headers {
-		configSets = append(configSets, fmt.Sprintf("exporters.otlp.headers.%s=%s", k, v))
+		configSets = append(configSets, fmt.Sprintf("exporters.%s.headers.%s=%s", exporter, k, v))
 	}
 
-	configSets = append(configSets, fmt.Sprintf("exporters.otlp.tls.insecure=%v", !Config.Secure))
+	configSets = append(configSets, fmt.Sprintf("exporters.%s.tls.insecure=%v", exporter, !Config.Secure))
 
 	return
 }
@@ -122,6 +127,6 @@ func CollectorSetFromConfig() (configSets []string) {
 func Run(ctx context.Context, stop chan bool) error {
 	var configFiles []string
 	configFiles = append(configFiles, Config.CollectorConfigPath)
-	configFiles = append(configFiles, CollectorConfigFilesFromConfig()...)
+	configFiles = append(configFiles, CollectorConfigFilesFromConfig(Config.Exporter)...)
 	return RunCollector(ctx, stop, configFiles)
 }
