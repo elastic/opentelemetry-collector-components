@@ -36,7 +36,7 @@ type MetricsConfig struct {
 	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
-	
+
 	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
 	MaxReplay int `mapstructure:"max_replay"`
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
