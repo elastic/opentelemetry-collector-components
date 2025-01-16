@@ -110,7 +110,9 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 				ar.stats.MetricDataPoints += m.DataPointCount()
 			}
 			if ar.isDone() {
-				ar.cfg.Metrics.doneCh <- ar.stats
+				if ar.cfg.Metrics.doneCh != nil {
+					ar.cfg.Metrics.doneCh <- ar.stats
+				}
 				return
 			}
 		}

@@ -110,7 +110,9 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 				ar.stats.LogRecords += m.LogRecordCount()
 			}
 			if ar.isDone() {
-				ar.cfg.Logs.doneCh <- ar.stats
+				if ar.cfg.Logs.doneCh != nil {
+					ar.cfg.Logs.doneCh <- ar.stats
+				}
 				return
 			}
 		}

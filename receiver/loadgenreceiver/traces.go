@@ -110,7 +110,9 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 				ar.stats.Spans += m.SpanCount()
 			}
 			if ar.isDone() {
-				ar.cfg.Traces.doneCh <- ar.stats
+				if ar.cfg.Traces.doneCh != nil {
+					ar.cfg.Traces.doneCh <- ar.stats
+				}
 				return
 			}
 		}
