@@ -35,7 +35,7 @@ func Init() {
 		func(server string) (err error) {
 			if server != "" {
 				Config.ServerURLOTLP, err = url.Parse(server)
-				Config.ServerURLOTLPHTTP, err = url.Parse(server)
+				Config.ServerURLOTLPHTTP = Config.ServerURLOTLP
 			}
 			return
 		})
@@ -111,7 +111,9 @@ func setFlagsFromEnv() {
 	}
 
 	for k, v := range flagEnvMap {
-		flag.Set(k, getEnvOrDefault(v[0], v[1]))
+		if err := flag.Set(k, getEnvOrDefault(v[0], v[1])); err != nil {
+			panic(fmt.Errorf("error setting flag %q from env var %q with value %q: %w", k, v[0], v[1], err))
+		}
 	}
 }
 

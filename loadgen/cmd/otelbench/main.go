@@ -106,7 +106,7 @@ func main() {
 					b.Fatal(err)
 				}
 			})
-			fmt.Print(fmt.Sprintf("%s-%s", signal, exporter))
+			fmt.Printf("%s-%s", signal, exporter)
 			fmt.Print("\t")
 			fmt.Println(result.String())
 		}
