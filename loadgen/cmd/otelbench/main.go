@@ -21,6 +21,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
@@ -56,8 +57,12 @@ func fullBenchmarkName(signal, exporter string) string {
 }
 
 func main() {
-	Init()
 	testing.Init()
+	if err := Init(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		flag.Usage()
+		os.Exit(2)
+	}
 	flag.Parse()
 
 	// TODO(carsonip): configurable warm up

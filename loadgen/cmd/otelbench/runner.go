@@ -27,7 +27,7 @@ var Config struct {
 	ExporterOTLPHTTP bool
 }
 
-func Init() {
+func Init() error {
 	// Server config
 	flag.Func(
 		"endpoint",
@@ -89,7 +89,7 @@ func Init() {
 
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
-	setFlagsFromEnv()
+	return setFlagsFromEnv()
 }
 
 func getAuthorizationHeaderValue(apiKey, secretToken string) string {
@@ -101,7 +101,8 @@ func getAuthorizationHeaderValue(apiKey, secretToken string) string {
 	return ""
 }
 
-func setFlagsFromEnv() {
+// setFlagsFromEnv sets flags from some Elastic APM env vars
+func setFlagsFromEnv() error {
 	// value[0] is environment key
 	// value[1] is default value
 	flagEnvMap := map[string][]string{
@@ -111,10 +112,12 @@ func setFlagsFromEnv() {
 	}
 
 	for k, v := range flagEnvMap {
-		if err := flag.Set(k, getEnvOrDefault(v[0], v[1])); err != nil {
-			panic(fmt.Errorf("error setting flag %q from env var %q with value %q: %w", k, v[0], v[1], err))
+		envVarValue := getEnvOrDefault(v[0], v[1])
+		if err := flag.Set(k, envVarValue); err != nil {
+			return fmt.Errorf("error setting flag \"-%s\" from env var %q with value %q: %w", k, v[0], envVarValue, err)
 		}
 	}
+	return nil
 }
 
 func getEnvOrDefault(name, defaultValue string) string {
