@@ -117,9 +117,10 @@ func TestAggregationOverflow(t *testing.T) {
 					},
 				},
 			},
-			ResourceLimit:       oneCardinalityLimitConfig,
-			ScopeLimit:          oneCardinalityLimitConfig,
-			ScopeDatapointLimit: oneCardinalityLimitConfig,
+			ResourceLimit:  oneCardinalityLimitConfig,
+			ScopeLimit:     oneCardinalityLimitConfig,
+			MetricLimit:    oneCardinalityLimitConfig,
+			DatapointLimit: oneCardinalityLimitConfig,
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

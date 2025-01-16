@@ -105,7 +105,8 @@ func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, ne
 				v := merger.NewValue(
 					cfg.ResourceLimit,
 					cfg.ScopeLimit,
-					cfg.ScopeDatapointLimit,
+					cfg.MetricLimit,
+					cfg.DatapointLimit,
 				)
 				if err := v.Unmarshal(value); err != nil {
 					return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
@@ -114,7 +115,8 @@ func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, ne
 					v,
 					cfg.ResourceLimit,
 					cfg.ScopeLimit,
-					cfg.ScopeDatapointLimit,
+					cfg.MetricLimit,
+					cfg.DatapointLimit,
 				), nil
 			},
 		},
@@ -261,7 +263,8 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	v := merger.NewValue(
 		p.cfg.ResourceLimit,
 		p.cfg.ScopeLimit,
-		p.cfg.ScopeDatapointLimit,
+		p.cfg.MetricLimit,
+		p.cfg.DatapointLimit,
 	)
 	md.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
 		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
@@ -444,7 +447,8 @@ func (p *Processor) exportForInterval(
 		v := merger.NewValue(
 			p.cfg.ResourceLimit,
 			p.cfg.ScopeLimit,
-			p.cfg.ScopeDatapointLimit,
+			p.cfg.MetricLimit,
+			p.cfg.DatapointLimit,
 		)
 		var key merger.Key
 		if err := key.Unmarshal(iter.Key()); err != nil {

@@ -58,9 +58,10 @@ type Config struct {
 	// trigger a validation error.
 	MetadataKeys []string `mapstructure:"metadata_keys"`
 
-	ResourceLimit       LimitConfig `mapstructure:"resource_limit"`
-	ScopeLimit          LimitConfig `mapstructure:"scope_limit"`
-	ScopeDatapointLimit LimitConfig `mapstructure:"scope_datapoint_limit"`
+	ResourceLimit  LimitConfig `mapstructure:"resource_limit"`
+	ScopeLimit     LimitConfig `mapstructure:"scope_limit"`
+	MetricLimit    LimitConfig `mapstructure:"metric_limit"`
+	DatapointLimit LimitConfig `mapstructure:"datapoint_limit"`
 }
 
 // PassThrough determines whether metrics should be passed through as they
