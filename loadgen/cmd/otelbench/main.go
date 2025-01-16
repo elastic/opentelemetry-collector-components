@@ -51,6 +51,10 @@ func getExporters() (exporters []string) {
 	return
 }
 
+func fullBenchmarkName(signal, exporter string) string {
+	return fmt.Sprintf("%s-%s", signal, exporter)
+}
+
 func main() {
 	Init()
 	testing.Init()
@@ -58,8 +62,16 @@ func main() {
 
 	// TODO(carsonip): configurable warm up
 
+	var maxLen int
 	for _, signal := range getSignals() {
 		for _, exporter := range getExporters() {
+			maxLen = max(maxLen, len(fullBenchmarkName(signal, exporter)))
+		}
+	}
+
+	for _, signal := range getSignals() {
+		for _, exporter := range getExporters() {
+			benchName := fullBenchmarkName(signal, exporter)
 			result := testing.Benchmark(func(b *testing.B) {
 				// TODO(carsonip): simulate > 1 agents for higher load
 				// https://github.com/elastic/opentelemetry-collector-components/issues/305
@@ -106,9 +118,7 @@ func main() {
 					b.Fatal(err)
 				}
 			})
-			fmt.Printf("%s-%s", signal, exporter)
-			fmt.Print("\t")
-			fmt.Println(result.String())
+			fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
 		}
 	}
 }
