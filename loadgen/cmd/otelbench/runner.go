@@ -9,7 +9,9 @@ import (
 )
 
 var Config struct {
-	ServerURL           *url.URL
+	ServerURLOTLP     *url.URL
+	ServerURLOTLPHTTP *url.URL
+
 	SecretToken         string
 	APIKey              string
 	Insecure            bool
@@ -29,18 +31,37 @@ func Init() {
 	// Server config
 	flag.Func(
 		"endpoint",
-		"target server URL (defaults to value in config yaml)",
+		"target server endpoint for both otlp and otlphttp exporters (default to value in config yaml), equivalent to setting both -endpoint-otlp and -endpoint-otlphttp",
 		func(server string) (err error) {
 			if server != "" {
-				Config.ServerURL, err = url.Parse(server)
+				Config.ServerURLOTLP, err = url.Parse(server)
+				Config.ServerURLOTLPHTTP, err = url.Parse(server)
+			}
+			return
+		})
+	flag.Func(
+		"endpoint-otlp",
+		"target server endpoint for otlp exporter (default to value in config yaml)",
+		func(server string) (err error) {
+			if server != "" {
+				Config.ServerURLOTLP, err = url.Parse(server)
+			}
+			return
+		})
+	flag.Func(
+		"endpoint-otlphttp",
+		"target server endpoint for otlphttp exporter (default to value in config yaml)",
+		func(server string) (err error) {
+			if server != "" {
+				Config.ServerURLOTLPHTTP, err = url.Parse(server)
 			}
 			return
 		})
 	flag.StringVar(&Config.SecretToken, "secret-token", "", "secret token for target server")
 	flag.StringVar(&Config.APIKey, "api-key", "", "API key for target server")
 
-	flag.BoolVar(&Config.Insecure, "insecure", false, "disable TLS, ignored by otlphttp exporter (defaults to value in config yaml)")
-	flag.BoolVar(&Config.InsecureSkipVerify, "insecure-skip-verify", false, "skip validating the remote server TLS certificates (defaults to value in config yaml)")
+	flag.BoolVar(&Config.Insecure, "insecure", false, "disable TLS, ignored by otlphttp exporter (default to value in config yaml)")
+	flag.BoolVar(&Config.InsecureSkipVerify, "insecure-skip-verify", false, "skip validating the remote server TLS certificates (default to value in config yaml)")
 
 	flag.Func("header",
 		"extra headers to use when sending data to the server",
@@ -122,8 +143,12 @@ func ExporterConfigs(exporter string) (configFiles []string) {
 	configSets = append(configSets, fmt.Sprintf("service.pipelines.metrics.exporters=[%s]", exporter))
 	configSets = append(configSets, fmt.Sprintf("service.pipelines.traces.exporters=[%s]", exporter))
 
-	if Config.ServerURL != nil {
-		configSets = append(configSets, fmt.Sprintf("exporters.%s.endpoint=%s", exporter, Config.ServerURL))
+	if Config.ServerURLOTLP != nil {
+		configSets = append(configSets, fmt.Sprintf("exporters.otlp.endpoint=%s", Config.ServerURLOTLP))
+	}
+
+	if Config.ServerURLOTLPHTTP != nil {
+		configSets = append(configSets, fmt.Sprintf("exporters.otlphttp.endpoint=%s", Config.ServerURLOTLPHTTP))
 	}
 
 	if v := getAuthorizationHeaderValue(Config.APIKey, Config.SecretToken); v != "" {
