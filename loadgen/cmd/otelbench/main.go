@@ -109,6 +109,7 @@ func main() {
 					b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
 					b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
 					b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
+					// TODO(carsonip): optionally retrieve metrics (e.g. memory, cpu) of target server from Elasticsearch
 
 					close(stop)
 				}()
