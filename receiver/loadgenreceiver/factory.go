@@ -36,13 +36,13 @@ func NewFactory() receiver.Factory {
 	)
 }
 
-func createDefaultReceiverConfig(doneCh chan struct{}) component.Config {
+func createDefaultReceiverConfig(doneCh chan TelemetryStats) component.Config {
 	return &Config{
 		doneCh: doneCh,
 	}
 }
 
-func NewFactoryWithDone(doneCh chan struct{}) receiver.Factory {
+func NewFactoryWithDone(doneCh chan TelemetryStats) receiver.Factory {
 	return receiver.NewFactory(
 		metadata.Type,
 		func() component.Config {

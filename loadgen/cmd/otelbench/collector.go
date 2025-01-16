@@ -29,6 +29,8 @@ import (
 	"go.opentelemetry.io/collector/confmap/provider/httpsprovider"
 	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
 	"go.opentelemetry.io/collector/otelcol"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
 const (
@@ -36,7 +38,7 @@ const (
 	buildVersion     = "0.0.1"
 )
 
-func RunCollector(ctx context.Context, stop chan bool, configFiles []string, doneCh chan struct{}) error {
+func RunCollector(ctx context.Context, stop chan bool, configFiles []string, doneCh chan loadgenreceiver.TelemetryStats) error {
 	settings, err := NewCollectorSettings(configFiles, doneCh)
 	if err != nil {
 		return err
@@ -58,7 +60,7 @@ func RunCollector(ctx context.Context, stop chan bool, configFiles []string, don
 	return svc.Run(cancelCtx)
 }
 
-func NewCollectorSettings(configPaths []string, doneCh chan struct{}) (otelcol.CollectorSettings, error) {
+func NewCollectorSettings(configPaths []string, doneCh chan loadgenreceiver.TelemetryStats) (otelcol.CollectorSettings, error) {
 	buildInfo := component.BuildInfo{
 		Command:     os.Args[0],
 		Description: buildDescription,

@@ -42,7 +42,9 @@ type metricsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples  internal.LoopingList[pmetric.Metrics]
+	samples     internal.LoopingList[pmetric.Metrics]
+	sampleStats TelemetryStats
+
 	consumer consumer.Metrics
 
 	cancelFn context.CancelFunc
@@ -67,6 +69,7 @@ func createMetricsReceiver(
 		}
 	}
 
+	var sampleStats TelemetryStats
 	var samples []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
 	for scanner.Scan() {
@@ -76,13 +79,16 @@ func createMetricsReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineMetrics)
+		sampleStats.Requests++
+		sampleStats.MetricDataPoints += lineMetrics.DataPointCount()
 	}
 
 	return &metricsGenerator{
-		cfg:      genConfig,
-		logger:   set.Logger,
-		consumer: consumer,
-		samples:  internal.NewLoopingList(samples),
+		cfg:         genConfig,
+		logger:      set.Logger,
+		consumer:    consumer,
+		samples:     internal.NewLoopingList(samples),
+		sampleStats: sampleStats,
 	}, nil
 }
 
@@ -101,6 +107,10 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 				ar.logger.Error(err.Error())
 			}
 			if ar.isDone() {
+				ar.cfg.doneCh <- TelemetryStats{
+					Requests:         ar.sampleStats.Requests * ar.cfg.Metrics.MaxReplay,
+					MetricDataPoints: ar.sampleStats.MetricDataPoints * ar.cfg.Metrics.MaxReplay,
+				}
 				close(ar.cfg.doneCh)
 				return
 			}

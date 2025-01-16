@@ -30,7 +30,7 @@ type Config struct {
 	Metrics MetricsConfig `mapstructure:"metrics"`
 	Logs    LogsConfig    `mapstructure:"logs"`
 	Traces  TracesConfig  `mapstructure:"traces"`
-	doneCh  chan struct{}
+	doneCh  chan TelemetryStats
 }
 
 type MetricsConfig struct {

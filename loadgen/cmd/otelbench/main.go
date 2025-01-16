@@ -22,6 +22,8 @@ import (
 	"flag"
 	"fmt"
 	"testing"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
 func main() {
@@ -42,28 +44,22 @@ func main() {
 
 	for _, signal := range signals {
 		result := testing.Benchmark(func(b *testing.B) {
-			done := make(chan struct{}) // loadgenreceiver will close the channel after generating b.N
+			done := make(chan loadgenreceiver.TelemetryStats) // loadgenreceiver will send stats on generated telemetry
 			stop := make(chan bool)
 
 			go func() {
 				for {
 					select {
 					case <-stop:
-					case <-done:
-						// TODO: calculate rate without using internal telemetry
-						// as it is broken on otlphttp
-						logs, metricPoints, spans, err := GetTelemetrySent()
-						if err != nil {
-							b.Logf("error getting internal telemetry: %s", err)
-							continue
-						}
-						total := logs + metricPoints + spans
+					case stats := <-done:
 						b.StopTimer()
 						close(stop)
-						b.ReportMetric(float64(logs)/b.Elapsed().Seconds(), "logs/s")
-						b.ReportMetric(float64(metricPoints)/b.Elapsed().Seconds(), "metric_points/s")
-						b.ReportMetric(float64(spans)/b.Elapsed().Seconds(), "spans/s")
+						total := stats.LogRecords + stats.MetricDataPoints + stats.Spans
+						b.ReportMetric(float64(stats.LogRecords)/b.Elapsed().Seconds(), "logs/s")
+						b.ReportMetric(float64(stats.MetricDataPoints)/b.Elapsed().Seconds(), "metric_points/s")
+						b.ReportMetric(float64(stats.Spans)/b.Elapsed().Seconds(), "spans/s")
 						b.ReportMetric(float64(total)/b.Elapsed().Seconds(), "total/s")
+						b.ReportMetric(float64(stats.Requests)/b.Elapsed().Seconds(), "requests/s")
 						return
 					}
 				}

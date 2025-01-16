@@ -42,7 +42,9 @@ type tracesGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples  internal.LoopingList[ptrace.Traces]
+	samples     internal.LoopingList[ptrace.Traces]
+	sampleStats TelemetryStats
+
 	consumer consumer.Traces
 
 	cancelFn context.CancelFunc
@@ -67,6 +69,7 @@ func createTracesReceiver(
 		}
 	}
 
+	var sampleStats TelemetryStats
 	var samples []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
 	for scanner.Scan() {
@@ -76,13 +79,16 @@ func createTracesReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineTraces)
+		sampleStats.Requests++
+		sampleStats.Spans += lineTraces.SpanCount()
 	}
 
 	return &tracesGenerator{
-		cfg:      genConfig,
-		logger:   set.Logger,
-		consumer: consumer,
-		samples:  internal.NewLoopingList(samples),
+		cfg:         genConfig,
+		logger:      set.Logger,
+		consumer:    consumer,
+		samples:     internal.NewLoopingList(samples),
+		sampleStats: sampleStats,
 	}, nil
 }
 
@@ -101,6 +107,10 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 				ar.logger.Error(err.Error())
 			}
 			if ar.isDone() {
+				ar.cfg.doneCh <- TelemetryStats{
+					Requests: ar.sampleStats.Requests * ar.cfg.Traces.MaxReplay,
+					Spans:    ar.sampleStats.Spans * ar.cfg.Traces.MaxReplay,
+				}
 				close(ar.cfg.doneCh)
 				return
 			}

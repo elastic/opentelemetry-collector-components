@@ -42,7 +42,9 @@ type logsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples  internal.LoopingList[plog.Logs]
+	samples     internal.LoopingList[plog.Logs]
+	sampleStats TelemetryStats
+
 	consumer consumer.Logs
 
 	cancelFn context.CancelFunc
@@ -67,6 +69,7 @@ func createLogsReceiver(
 		}
 	}
 
+	var sampleStats TelemetryStats
 	var samples []plog.Logs
 	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
 	for scanner.Scan() {
@@ -76,13 +79,16 @@ func createLogsReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineLogs)
+		sampleStats.Requests++
+		sampleStats.LogRecords += lineLogs.LogRecordCount()
 	}
 
 	return &logsGenerator{
-		cfg:      genConfig,
-		logger:   set.Logger,
-		consumer: consumer,
-		samples:  internal.NewLoopingList(samples),
+		cfg:         genConfig,
+		logger:      set.Logger,
+		consumer:    consumer,
+		samples:     internal.NewLoopingList(samples),
+		sampleStats: sampleStats,
 	}, nil
 }
 
@@ -101,6 +107,10 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 				ar.logger.Error(err.Error())
 			}
 			if ar.isDone() {
+				ar.cfg.doneCh <- TelemetryStats{
+					Requests:   ar.sampleStats.Requests * ar.cfg.Logs.MaxReplay,
+					LogRecords: ar.sampleStats.LogRecords * ar.cfg.Logs.MaxReplay,
+				}
 				close(ar.cfg.doneCh)
 				return
 			}
