@@ -81,15 +81,7 @@ func main() {
 				close(stop)
 			}()
 
-			var configFiles []string
-			configFiles = append(configFiles, Config.CollectorConfigPath)
-			for _, s := range allSignals {
-				if signal != s {
-					configFiles = append(configFiles, DisableSignal(s)...)
-				}
-			}
-			configFiles = append(configFiles, CollectorConfigFilesFromConfig(Config.Exporter, signal, b.N)...)
-			err := RunCollector(context.Background(), stop, configFiles, logsDone, metricsDone, tracesDone)
+			err := RunCollector(context.Background(), stop, configs(Config.Exporter, signal, b.N), logsDone, metricsDone, tracesDone)
 			if err != nil {
 				fmt.Println(err)
 				b.Log(err)
@@ -98,4 +90,16 @@ func main() {
 		fmt.Print(signal)
 		fmt.Println(result.String())
 	}
+}
+
+func configs(exporter, signal string, iterations int) (configFiles []string) {
+	configFiles = append(configFiles, Config.CollectorConfigPath)
+	configFiles = append(configFiles, SetIterations(iterations)...)
+	for _, s := range allSignals {
+		if signal != s {
+			configFiles = append(configFiles, DisableSignal(s)...)
+		}
+	}
+	configFiles = append(configFiles, CollectorConfigFilesFromConfig(exporter)...)
+	return
 }

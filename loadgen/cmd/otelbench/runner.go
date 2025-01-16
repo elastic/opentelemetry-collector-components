@@ -97,8 +97,8 @@ func getEnvOrDefault(name, defaultValue string) string {
 }
 
 // CollectorConfigFilesFromConfig returns a slice of strings, each can be passed to the collector using --config
-func CollectorConfigFilesFromConfig(exporter, signal string, iterations int) (configFiles []string) {
-	sets := CollectorSetFromConfig(exporter, signal, iterations)
+func CollectorConfigFilesFromConfig(exporter string) (configFiles []string) {
+	sets := CollectorSetFromConfig(exporter)
 	configFiles = setsToConfigs(sets)
 	return
 }
@@ -117,10 +117,10 @@ func setsToConfigs(sets []string) (configFiles []string) {
 }
 
 // CollectorSetFromConfig returns a slice of strings, each can be passed to the collector using --set
-func CollectorSetFromConfig(exporter, signal string, iterations int) (configSets []string) {
-	configSets = append(configSets, fmt.Sprintf("receivers.loadgen.%s.max_replay=%d", signal, iterations))
-
-	configSets = append(configSets, fmt.Sprintf("exporters.%s.endpoint=%s", exporter, Config.ServerURL))
+func CollectorSetFromConfig(exporter string) (configSets []string) {
+	if Config.ServerURL != nil {
+		configSets = append(configSets, fmt.Sprintf("exporters.%s.endpoint=%s", exporter, Config.ServerURL))
+	}
 
 	if v := getAuthorizationHeaderValue(Config.APIKey, Config.SecretToken); v != "" {
 		configSets = append(configSets, fmt.Sprintf("exporters.%s.headers.Authorization=%s", exporter, v))
@@ -139,5 +139,13 @@ func DisableSignal(signal string) (configFiles []string) {
 	return setsToConfigs([]string{
 		fmt.Sprintf("service.pipelines.%s.receivers=[nop]", signal),
 		fmt.Sprintf("service.pipelines.%s.exporters=[nop]", signal),
+	})
+}
+
+func SetIterations(iterations int) (configFiles []string) {
+	return setsToConfigs([]string{
+		fmt.Sprintf("receivers.loadgen.logs.max_replay=%d", iterations),
+		fmt.Sprintf("receivers.loadgen.metrics.max_replay=%d", iterations),
+		fmt.Sprintf("receivers.loadgen.traces.max_replay=%d", iterations),
 	})
 }
