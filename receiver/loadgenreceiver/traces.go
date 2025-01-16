@@ -149,5 +149,5 @@ func (ar *tracesGenerator) nextTraces() ptrace.Traces {
 }
 
 func (ar *tracesGenerator) isDone() bool {
-	return ar.samples.LoopCount() > 0 && ar.samples.LoopCount() > ar.cfg.Traces.MaxReplay
+	return ar.samples.LoopCount() > 0 && ar.samples.LoopCount() >= ar.cfg.Traces.MaxReplay
 }
