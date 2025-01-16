@@ -26,6 +26,8 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
+var allSignals = []string{"logs", "metrics", "traces"}
+
 func main() {
 	Init()
 	testing.Init()
@@ -48,17 +50,14 @@ func main() {
 			logsDone := make(chan loadgenreceiver.TelemetryStats)
 			metricsDone := make(chan loadgenreceiver.TelemetryStats)
 			tracesDone := make(chan loadgenreceiver.TelemetryStats)
-
-			switch signal {
-			case "logs":
-				close(metricsDone)
-				close(tracesDone)
-			case "metrics":
+			if signal != "logs" {
 				close(logsDone)
-				close(tracesDone)
-			case "traces":
-				close(logsDone)
+			}
+			if signal != "metrics" {
 				close(metricsDone)
+			}
+			if signal != "traces" {
+				close(tracesDone)
 			}
 
 			stop := make(chan struct{}) // close channel to stop the loadgen collector
@@ -84,6 +83,11 @@ func main() {
 
 			var configFiles []string
 			configFiles = append(configFiles, Config.CollectorConfigPath)
+			for _, s := range allSignals {
+				if signal != s {
+					configFiles = append(configFiles, DisableSignal(s)...)
+				}
+			}
 			configFiles = append(configFiles, CollectorConfigFilesFromConfig(Config.Exporter, signal, b.N)...)
 			err := RunCollector(context.Background(), stop, configFiles, logsDone, metricsDone, tracesDone)
 			if err != nil {

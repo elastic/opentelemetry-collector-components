@@ -1,5 +1,6 @@
 receivers:
   loadgen:
+  nop:
 
 exporters:
   otlp:
@@ -12,6 +13,7 @@ exporters:
     sending_queue:
       enabled: false
     timeout: 60s
+  nop:
 
 processors:
   transform/rewrite:  # Rewrite telemetry to increase cardinality
@@ -21,3 +23,18 @@ processors:
           # The worst way to generate a random ID, but is the simplest in OTTL
           # Only randomize trace ID such that span relationships are still maintained
           - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
+
+service:
+  pipelines:
+    logs:
+      receivers: [loadgen]
+      processors: [transform/rewrite]
+      exporters: [otlp] # this will be set dynamically to otlp or otlphttp depending on config
+    metrics:
+      receivers: [loadgen]
+      processors: [transform/rewrite]
+      exporters: [otlp] # this will be set dynamically to otlp or otlphttp depending on config
+    traces:
+      receivers: [loadgen]
+      processors: [transform/rewrite]
+      exporters: [otlp] # this will be set dynamically to otlp or otlphttp depending on config

@@ -99,10 +99,16 @@ func getEnvOrDefault(name, defaultValue string) string {
 // CollectorConfigFilesFromConfig returns a slice of strings, each can be passed to the collector using --config
 func CollectorConfigFilesFromConfig(exporter, signal string, iterations int) (configFiles []string) {
 	sets := CollectorSetFromConfig(exporter, signal, iterations)
+	configFiles = setsToConfigs(sets)
+	return
+}
+
+// setsToConfigs converts --set to --config
+func setsToConfigs(sets []string) (configFiles []string) {
 	for _, s := range sets {
 		idx := strings.Index(s, "=")
 		if idx == -1 {
-			panic("missing = in --set") // Should never happen as all the strings are hardcoded below.
+			panic("missing = in --set") // Should never happen as all the strings are hardcoded in this file
 		}
 		v := "yaml:" + strings.TrimSpace(strings.ReplaceAll(s[:idx], ".", "::")) + ": " + strings.TrimSpace(s[idx+1:])
 		configFiles = append(configFiles, v)
@@ -112,10 +118,6 @@ func CollectorConfigFilesFromConfig(exporter, signal string, iterations int) (co
 
 // CollectorSetFromConfig returns a slice of strings, each can be passed to the collector using --set
 func CollectorSetFromConfig(exporter, signal string, iterations int) (configSets []string) {
-	configSets = append(configSets, fmt.Sprintf("service.pipelines.%s.receivers=[loadgen]", signal))
-	configSets = append(configSets, fmt.Sprintf("service.pipelines.%s.processors=[transform/rewrite]", signal))
-	configSets = append(configSets, fmt.Sprintf("service.pipelines.%s.exporters=[%s]", signal, exporter))
-
 	configSets = append(configSets, fmt.Sprintf("receivers.loadgen.%s.max_replay=%d", signal, iterations))
 
 	configSets = append(configSets, fmt.Sprintf("exporters.%s.endpoint=%s", exporter, Config.ServerURL))
@@ -131,4 +133,11 @@ func CollectorSetFromConfig(exporter, signal string, iterations int) (configSets
 	configSets = append(configSets, fmt.Sprintf("exporters.%s.tls.insecure=%v", exporter, !Config.Secure))
 
 	return
+}
+
+func DisableSignal(signal string) (configFiles []string) {
+	return setsToConfigs([]string{
+		fmt.Sprintf("service.pipelines.%s.receivers=[nop]", signal),
+		fmt.Sprintf("service.pipelines.%s.exporters=[nop]", signal),
+	})
 }
