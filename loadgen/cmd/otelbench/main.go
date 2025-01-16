@@ -118,6 +118,7 @@ func main() {
 					b.Fatal(err)
 				}
 			})
+			// write benchmark result to stdout, as stderr may be cluttered with collector logs
 			fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
 		}
 	}
