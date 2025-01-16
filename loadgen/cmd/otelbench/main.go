@@ -98,8 +98,7 @@ func main() {
 
 				err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N), logsDone, metricsDone, tracesDone)
 				if err != nil {
-					fmt.Println(err)
-					b.Log(err)
+					b.Fatal(err)
 				}
 			})
 			fmt.Print(fmt.Sprintf("%s-%s", signal, exporter))
