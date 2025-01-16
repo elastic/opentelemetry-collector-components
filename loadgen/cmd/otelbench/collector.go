@@ -38,7 +38,7 @@ const (
 	buildVersion     = "0.0.1"
 )
 
-func RunCollector(ctx context.Context, stop chan bool, configFiles []string, doneCh chan loadgenreceiver.TelemetryStats) error {
+func RunCollector(ctx context.Context, stop chan struct{}, configFiles []string, doneCh chan loadgenreceiver.TelemetryStats) error {
 	settings, err := NewCollectorSettings(configFiles, doneCh)
 	if err != nil {
 		return err

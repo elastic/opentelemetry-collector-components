@@ -44,25 +44,24 @@ func main() {
 
 	for _, signal := range signals {
 		result := testing.Benchmark(func(b *testing.B) {
-			done := make(chan loadgenreceiver.TelemetryStats) // loadgenreceiver will send stats on generated telemetry
-			stop := make(chan bool)
+			// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
+			done := make(chan loadgenreceiver.TelemetryStats)
+
+			stop := make(chan struct{}) // close channel to stop the loadgen collector
 
 			go func() {
-				for {
-					select {
-					case <-stop:
-					case stats := <-done:
-						b.StopTimer()
-						close(stop)
-						total := stats.LogRecords + stats.MetricDataPoints + stats.Spans
-						b.ReportMetric(float64(stats.LogRecords)/b.Elapsed().Seconds(), "logs/s")
-						b.ReportMetric(float64(stats.MetricDataPoints)/b.Elapsed().Seconds(), "metric_points/s")
-						b.ReportMetric(float64(stats.Spans)/b.Elapsed().Seconds(), "spans/s")
-						b.ReportMetric(float64(total)/b.Elapsed().Seconds(), "total/s")
-						b.ReportMetric(float64(stats.Requests)/b.Elapsed().Seconds(), "requests/s")
-						return
-					}
-				}
+				stats := <-done
+				b.StopTimer()
+
+				elapsedSeconds := b.Elapsed().Seconds()
+				total := stats.LogRecords + stats.MetricDataPoints + stats.Spans
+				b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
+				b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
+				b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
+				b.ReportMetric(float64(total)/elapsedSeconds, "total/s")
+				b.ReportMetric(float64(stats.Requests)/elapsedSeconds, "requests/s")
+
+				close(stop)
 			}()
 
 			var configFiles []string

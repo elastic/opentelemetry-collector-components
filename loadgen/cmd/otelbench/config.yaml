@@ -21,13 +21,3 @@ processors:
           # The worst way to generate a random ID, but is the simplest in OTTL
           # Only randomize trace ID such that span relationships are still maintained
           - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
-
-service:
-  telemetry:
-    metrics:
-      readers:
-        - pull:
-            exporter:
-              prometheus:
-                host: '127.0.0.1'
-                port: 8888
