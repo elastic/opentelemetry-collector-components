@@ -84,11 +84,9 @@ func main() {
 					stats := logsStats.Add(metricsStats).Add(tracesStats)
 
 					elapsedSeconds := b.Elapsed().Seconds()
-					total := stats.LogRecords + stats.MetricDataPoints + stats.Spans
 					b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
 					b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
 					b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
-					b.ReportMetric(float64(total)/elapsedSeconds, "total/s")
 					b.ReportMetric(float64(stats.Requests)/elapsedSeconds, "requests/s")
 
 					close(stop)
