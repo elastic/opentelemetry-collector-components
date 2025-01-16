@@ -46,13 +46,10 @@ type Config struct {
 	Intervals []IntervalConfig `mapstructure:"intervals"`
 
 	// MetadataKeys is a list of client.Metadata keys that will be
-	// used to form distinct instances of the processor.
+	// propagated through the metrics aggregated by the processor.
 	//
-	// If this setting is empty, a single instance will be used.
-	// When this setting is not empty, one instance will be created
-	// per distinct combination of values for the listed metadata
-	// keys. Only the listed metadata keys will be propagated to
-	// the resulting metrics.
+	// Only the listed metadata keys will be propagated to the
+	// resulting metrics.
 	//
 	// Entries are case-insensitive. Duplicated entries will
 	// trigger a validation error.
