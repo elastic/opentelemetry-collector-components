@@ -47,3 +47,6 @@ service:
       receivers: [loadgen]
       processors: [transform/rewrite]
       exporters: [otlp] # this will be set dynamically to otlp or otlphttp depending on config
+  telemetry:
+    logs:
+      level: ERROR
