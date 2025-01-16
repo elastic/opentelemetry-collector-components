@@ -21,12 +21,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -74,7 +76,8 @@ const (
 )
 
 type Processor struct {
-	cfg *config.Config
+	cfg                *config.Config
+	sortedMetadataKeys []string
 
 	db      *pebble.DB
 	dataDir string
@@ -130,18 +133,22 @@ func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, ne
 		dataDir = "/data" // will be created in the in-mem file-system
 	}
 
+	sortedMetadataKeys := append([]string{}, cfg.MetadataKeys...)
+	sort.Strings(sortedMetadataKeys)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Processor{
-		cfg:            cfg,
-		dataDir:        dataDir,
-		dbOpts:         dbOpts,
-		wOpts:          writeOpts,
-		intervals:      ivlDefs,
-		next:           next,
-		processingTime: time.Now().UTC().Truncate(ivlDefs[0].Duration),
-		ctx:            ctx,
-		cancel:         cancel,
-		logger:         log,
+		cfg:                cfg,
+		sortedMetadataKeys: sortedMetadataKeys,
+		dataDir:            dataDir,
+		dbOpts:             dbOpts,
+		wOpts:              writeOpts,
+		intervals:          ivlDefs,
+		next:               next,
+		processingTime:     time.Now().UTC().Truncate(ivlDefs[0].Duration),
+		ctx:                ctx,
+		cancel:             cancel,
+		logger:             log,
 	}, nil
 }
 
@@ -295,7 +302,18 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
 	}
 
-	if err := p.mergeToBatch(vb); err != nil {
+	clientInfo := client.FromContext(ctx)
+	clientMetadata := make([]merger.KeyValues, 0, len(p.sortedMetadataKeys))
+	for _, k := range p.sortedMetadataKeys {
+		if values := clientInfo.Metadata.Get(k); len(values) != 0 {
+			clientMetadata = append(clientMetadata, merger.KeyValues{
+				Key:    k,
+				Values: values,
+			})
+		}
+	}
+
+	if err := p.mergeToBatch(vb, clientMetadata); err != nil {
 		return fmt.Errorf("failed to merge the value to batch: %w", err)
 	}
 
@@ -310,26 +328,25 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	return nil
 }
 
-func (p *Processor) mergeToBatch(vb []byte) (err error) {
+func (p *Processor) mergeToBatch(vb []byte, clientMetadata []merger.KeyValues) (err error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-
-	keys := make([][]byte, len(p.intervals))
-	for i, ivl := range p.intervals {
-		// TODO (lahsivjar): If key ends up being independent of any other dimensions
-		// then we can simply cache the marshaled key while updating them on each harvest
-		key := merger.NewKey(ivl.Duration, p.processingTime)
-		keys[i], err = key.Marshal()
-		if err != nil {
-			return fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err)
-		}
-	}
 
 	if p.batch == nil {
 		p.batch = newBatch(p.db)
 	}
 
-	for _, k := range keys {
+	var k []byte
+	for _, ivl := range p.intervals {
+		key := merger.Key{
+			Interval:       ivl.Duration,
+			ProcessingTime: p.processingTime,
+			Metadata:       clientMetadata,
+		}
+		k, err := key.AppendBinary(k[:0])
+		if err != nil {
+			return fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err)
+		}
 		if err := p.batch.Merge(k, vb, nil); err != nil {
 			return fmt.Errorf("failed to merge to db: %w", err)
 		}
@@ -399,17 +416,20 @@ func (p *Processor) exportForInterval(
 	end time.Time,
 	ivl intervalDef,
 ) (int, error) {
-	from := merger.NewKey(ivl.Duration, zeroTime)
-	lb, err := from.Marshal()
+	var boundsBuffer []byte
+	from := merger.Key{Interval: ivl.Duration, ProcessingTime: zeroTime}
+	boundsBuffer, err := from.AppendBinary(nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode range: %w", err)
 	}
+	lb := boundsBuffer[:]
 
-	to := merger.NewKey(ivl.Duration, end)
-	ub, err := to.Marshal()
+	to := merger.Key{Interval: ivl.Duration, ProcessingTime: end}
+	boundsBuffer, err = to.AppendBinary(boundsBuffer)
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode range: %w", err)
 	}
+	ub := boundsBuffer[len(lb):]
 
 	iter, err := snap.NewIter(&pebble.IterOptions{
 		LowerBound: lb,
@@ -430,8 +450,13 @@ func (p *Processor) exportForInterval(
 			p.cfg.MetricLimit,
 			p.cfg.DatapointLimit,
 		)
+		var key merger.Key
+		if err := key.Unmarshal(iter.Key()); err != nil {
+			errs = append(errs, fmt.Errorf("failed to decode key from database: %w", err))
+			continue
+		}
 		if err := v.Unmarshal(iter.Value()); err != nil {
-			errs = append(errs, fmt.Errorf("failed to decode binary from database: %w", err))
+			errs = append(errs, fmt.Errorf("failed to decode value from database: %w", err))
 			continue
 		}
 		finalMetrics, err := v.Finalize()
@@ -487,6 +512,15 @@ func (p *Processor) exportForInterval(
 					}
 				}
 			}
+		}
+		if n := len(key.Metadata); n != 0 {
+			metadataMap := make(map[string][]string, n)
+			for _, kvs := range key.Metadata {
+				metadataMap[kvs.Key] = kvs.Values
+			}
+			info := client.FromContext(ctx)
+			info.Metadata = client.NewMetadata(metadataMap)
+			ctx = client.NewContext(ctx, info)
 		}
 		if err := p.next.ConsumeMetrics(ctx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
