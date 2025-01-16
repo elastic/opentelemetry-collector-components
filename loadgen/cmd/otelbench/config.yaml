@@ -23,19 +23,6 @@ processors:
           - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
 
 service:
-  pipelines:
-    logs:
-      receivers: [loadgen]
-      processors: [transform/rewrite]
-      exporters: []
-    metrics:
-      receivers: [loadgen]
-      processors: [transform/rewrite]
-      exporters: []
-    traces:
-      receivers: [loadgen]
-      processors: [transform/rewrite]
-      exporters: []
   telemetry:
     metrics:
       readers:

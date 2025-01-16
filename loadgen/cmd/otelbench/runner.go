@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"net/url"
@@ -17,6 +16,10 @@ var Config struct {
 	Headers             map[string]string
 	CollectorConfigPath string
 	Exporter            string // should be one of [otlp, otlphttp]
+
+	Logs    bool
+	Metrics bool
+	Traces  bool
 }
 
 func Init() {
@@ -51,6 +54,10 @@ func Init() {
 	flag.StringVar(&Config.CollectorConfigPath, "config", "", "Collector config path")
 
 	flag.StringVar(&Config.Exporter, "exporter", "otlp", "exporter to use, one of [otlp, otlphttp]")
+
+	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
+	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
+	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
 
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
@@ -90,8 +97,8 @@ func getEnvOrDefault(name, defaultValue string) string {
 }
 
 // CollectorConfigFilesFromConfig returns a slice of strings, each can be passed to the collector using --config
-func CollectorConfigFilesFromConfig(exporter string) (configFiles []string) {
-	sets := CollectorSetFromConfig(exporter)
+func CollectorConfigFilesFromConfig(exporter, signal string) (configFiles []string) {
+	sets := CollectorSetFromConfig(exporter, signal)
 	for _, s := range sets {
 		idx := strings.Index(s, "=")
 		if idx == -1 {
@@ -104,10 +111,10 @@ func CollectorConfigFilesFromConfig(exporter string) (configFiles []string) {
 }
 
 // CollectorSetFromConfig returns a slice of strings, each can be passed to the collector using --set
-func CollectorSetFromConfig(exporter string) (configSets []string) {
-	configSets = append(configSets, fmt.Sprintf("service.pipelines.logs.exporters=[%s]", exporter))
-	configSets = append(configSets, fmt.Sprintf("service.pipelines.metrics.exporters=[%s]", exporter))
-	configSets = append(configSets, fmt.Sprintf("service.pipelines.traces.exporters=[%s]", exporter))
+func CollectorSetFromConfig(exporter, signal string) (configSets []string) {
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.%s.receivers=[loadgen]", signal))
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.%s.processors=[transform/rewrite]", signal))
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.%s.exporters=[%s]", signal, exporter))
 
 	configSets = append(configSets, fmt.Sprintf("exporters.%s.endpoint=%s", exporter, Config.ServerURL))
 
@@ -122,11 +129,4 @@ func CollectorSetFromConfig(exporter string) (configSets []string) {
 	configSets = append(configSets, fmt.Sprintf("exporters.%s.tls.insecure=%v", exporter, !Config.Secure))
 
 	return
-}
-
-func Run(ctx context.Context, stop chan bool) error {
-	var configFiles []string
-	configFiles = append(configFiles, Config.CollectorConfigPath)
-	configFiles = append(configFiles, CollectorConfigFilesFromConfig(Config.Exporter)...)
-	return RunCollector(ctx, stop, configFiles)
 }

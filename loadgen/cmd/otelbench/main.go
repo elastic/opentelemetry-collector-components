@@ -30,40 +30,57 @@ func main() {
 	testing.Init()
 	flag.Parse()
 
-	result := testing.Benchmark(func(b *testing.B) {
-		stop := make(chan bool)
+	var signals []string
+	if Config.Logs {
+		signals = append(signals, "logs")
+	}
+	if Config.Metrics {
+		signals = append(signals, "metrics")
+	}
+	if Config.Traces {
+		signals = append(signals, "traces")
+	}
 
-		go func() {
-			ticker := time.NewTicker(500 * time.Millisecond)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-stop:
-				case <-ticker.C:
-					logs, metricPoints, spans, err := GetTelemetrySent() // FIXME: exporter internal telemetry is broken on otlphttp
-					if err != nil {
-						b.Logf("error getting internal telemetry: %s", err)
-						continue
-					}
-					total := logs + metricPoints + spans
-					if total > int64(b.N) {
-						b.StopTimer()
-						close(stop)
-						b.ReportMetric(float64(logs)/b.Elapsed().Seconds(), "logs/s")
-						b.ReportMetric(float64(metricPoints)/b.Elapsed().Seconds(), "metric_points/s")
-						b.ReportMetric(float64(spans)/b.Elapsed().Seconds(), "spans/s")
-						b.ReportMetric(float64(total)/b.Elapsed().Seconds(), "total/s")
-						return
+	for _, signal := range signals {
+		result := testing.Benchmark(func(b *testing.B) {
+			stop := make(chan bool)
+
+			go func() {
+				ticker := time.NewTicker(500 * time.Millisecond)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-stop:
+					case <-ticker.C:
+						logs, metricPoints, spans, err := GetTelemetrySent() // FIXME: exporter internal telemetry is broken on otlphttp
+						if err != nil {
+							b.Logf("error getting internal telemetry: %s", err)
+							continue
+						}
+						total := logs + metricPoints + spans
+						if total > int64(b.N) {
+							b.StopTimer()
+							close(stop)
+							b.ReportMetric(float64(logs)/b.Elapsed().Seconds(), "logs/s")
+							b.ReportMetric(float64(metricPoints)/b.Elapsed().Seconds(), "metric_points/s")
+							b.ReportMetric(float64(spans)/b.Elapsed().Seconds(), "spans/s")
+							b.ReportMetric(float64(total)/b.Elapsed().Seconds(), "total/s")
+							return
+						}
 					}
 				}
-			}
-		}()
+			}()
 
-		err := Run(context.Background(), stop)
-		if err != nil {
-			fmt.Println(err)
-			b.Log(err)
-		}
-	})
-	fmt.Println(result.String())
+			var configFiles []string
+			configFiles = append(configFiles, Config.CollectorConfigPath)
+			configFiles = append(configFiles, CollectorConfigFilesFromConfig(Config.Exporter, signal)...)
+			err := RunCollector(context.Background(), stop, configFiles)
+			if err != nil {
+				fmt.Println(err)
+				b.Log(err)
+			}
+		})
+		fmt.Print(signal)
+		fmt.Println(result.String())
+	}
 }
