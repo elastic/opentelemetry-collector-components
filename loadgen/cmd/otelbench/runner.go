@@ -27,16 +27,16 @@ var Config struct {
 func Init() {
 	// Server config
 	flag.Func(
-		"server",
-		"server URL (default http://127.0.0.1:8200)",
+		"endpoint",
+		"target server URL",
 		func(server string) (err error) {
 			if server != "" {
 				Config.ServerURL, err = url.Parse(server)
 			}
 			return
 		})
-	flag.StringVar(&Config.SecretToken, "secret-token", "", "secret token for APM Server")
-	flag.StringVar(&Config.APIKey, "api-key", "", "API key for APM Server")
+	flag.StringVar(&Config.SecretToken, "secret-token", "", "secret token for target server")
+	flag.StringVar(&Config.APIKey, "api-key", "", "API key for target server")
 	flag.BoolVar(&Config.Secure, "secure", false, "validate the remote server TLS certificates")
 	flag.Func("header",
 		"extra headers to use when sending data to the server",
@@ -53,7 +53,7 @@ func Init() {
 		},
 	)
 
-	flag.StringVar(&Config.CollectorConfigPath, "config", "", "Collector config path")
+	flag.StringVar(&Config.CollectorConfigPath, "config", "", "collector config path")
 
 	flag.BoolVar(&Config.ExporterOTLP, "exporter-otlp", true, "benchmark exporter otlp")
 	flag.BoolVar(&Config.ExporterOTLPHTTP, "exporter-otlphttp", true, "benchmark exporter otlphttp")
@@ -80,7 +80,7 @@ func setFlagsFromEnv() {
 	// value[0] is environment key
 	// value[1] is default value
 	flagEnvMap := map[string][]string{
-		"server":       {"ELASTIC_APM_SERVER_URL", "http://127.0.0.1:8200"},
+		"server":       {"ELASTIC_APM_SERVER_URL", ""},
 		"secret-token": {"ELASTIC_APM_SECRET_TOKEN", ""},
 		"api-key":      {"ELASTIC_APM_API_KEY", ""},
 		"secure":       {"ELASTIC_APM_VERIFY_SERVER_CERT", "false"},
