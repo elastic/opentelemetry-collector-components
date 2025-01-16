@@ -42,8 +42,9 @@ type logsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples     internal.LoopingList[plog.Logs]
-	sampleStats TelemetryStats
+	samples internal.LoopingList[plog.Logs]
+
+	stats TelemetryStats
 
 	consumer consumer.Logs
 
@@ -69,7 +70,6 @@ func createLogsReceiver(
 		}
 	}
 
-	var sampleStats TelemetryStats
 	var samples []plog.Logs
 	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
 	for scanner.Scan() {
@@ -79,16 +79,13 @@ func createLogsReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineLogs)
-		sampleStats.Requests++
-		sampleStats.LogRecords += lineLogs.LogRecordCount()
 	}
 
 	return &logsGenerator{
-		cfg:         genConfig,
-		logger:      set.Logger,
-		consumer:    consumer,
-		samples:     internal.NewLoopingList(samples),
-		sampleStats: sampleStats,
+		cfg:      genConfig,
+		logger:   set.Logger,
+		consumer: consumer,
+		samples:  internal.NewLoopingList(samples),
 	}, nil
 }
 
@@ -103,15 +100,17 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 				return
 			default:
 			}
-			if err := ar.consumer.ConsumeLogs(startCtx, ar.nextLogs()); err != nil {
+			m := ar.nextLogs()
+			if err := ar.consumer.ConsumeLogs(startCtx, m); err != nil {
 				ar.logger.Error(err.Error())
+				ar.stats.FailedRequests++
+				ar.stats.FailedLogRecords += m.LogRecordCount()
+			} else {
+				ar.stats.Requests++
+				ar.stats.LogRecords += m.LogRecordCount()
 			}
 			if ar.isDone() {
-				ar.cfg.Logs.doneCh <- TelemetryStats{
-					Requests:   ar.sampleStats.Requests * ar.cfg.Logs.MaxReplay,
-					LogRecords: ar.sampleStats.LogRecords * ar.cfg.Logs.MaxReplay,
-				}
-				close(ar.cfg.Logs.doneCh)
+				ar.cfg.Logs.doneCh <- ar.stats
 				return
 			}
 		}

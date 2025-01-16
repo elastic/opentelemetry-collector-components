@@ -42,8 +42,9 @@ type metricsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples     internal.LoopingList[pmetric.Metrics]
-	sampleStats TelemetryStats
+	samples internal.LoopingList[pmetric.Metrics]
+
+	stats TelemetryStats
 
 	consumer consumer.Metrics
 
@@ -69,7 +70,6 @@ func createMetricsReceiver(
 		}
 	}
 
-	var sampleStats TelemetryStats
 	var samples []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
 	for scanner.Scan() {
@@ -79,16 +79,13 @@ func createMetricsReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineMetrics)
-		sampleStats.Requests++
-		sampleStats.MetricDataPoints += lineMetrics.DataPointCount()
 	}
 
 	return &metricsGenerator{
-		cfg:         genConfig,
-		logger:      set.Logger,
-		consumer:    consumer,
-		samples:     internal.NewLoopingList(samples),
-		sampleStats: sampleStats,
+		cfg:      genConfig,
+		logger:   set.Logger,
+		consumer: consumer,
+		samples:  internal.NewLoopingList(samples),
 	}, nil
 }
 
@@ -103,15 +100,17 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 				return
 			default:
 			}
-			if err := ar.consumer.ConsumeMetrics(startCtx, ar.nextMetrics()); err != nil {
+			m := ar.nextMetrics()
+			if err := ar.consumer.ConsumeMetrics(startCtx, m); err != nil {
 				ar.logger.Error(err.Error())
+				ar.stats.FailedRequests++
+				ar.stats.FailedMetricDataPoints += m.DataPointCount()
+			} else {
+				ar.stats.Requests++
+				ar.stats.MetricDataPoints += m.DataPointCount()
 			}
 			if ar.isDone() {
-				ar.cfg.Metrics.doneCh <- TelemetryStats{
-					Requests:         ar.sampleStats.Requests * ar.cfg.Metrics.MaxReplay,
-					MetricDataPoints: ar.sampleStats.MetricDataPoints * ar.cfg.Metrics.MaxReplay,
-				}
-				close(ar.cfg.Metrics.doneCh)
+				ar.cfg.Metrics.doneCh <- ar.stats
 				return
 			}
 		}

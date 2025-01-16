@@ -42,8 +42,9 @@ type tracesGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples     internal.LoopingList[ptrace.Traces]
-	sampleStats TelemetryStats
+	samples internal.LoopingList[ptrace.Traces]
+
+	stats TelemetryStats
 
 	consumer consumer.Traces
 
@@ -69,7 +70,6 @@ func createTracesReceiver(
 		}
 	}
 
-	var sampleStats TelemetryStats
 	var samples []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
 	for scanner.Scan() {
@@ -79,16 +79,13 @@ func createTracesReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineTraces)
-		sampleStats.Requests++
-		sampleStats.Spans += lineTraces.SpanCount()
 	}
 
 	return &tracesGenerator{
-		cfg:         genConfig,
-		logger:      set.Logger,
-		consumer:    consumer,
-		samples:     internal.NewLoopingList(samples),
-		sampleStats: sampleStats,
+		cfg:      genConfig,
+		logger:   set.Logger,
+		consumer: consumer,
+		samples:  internal.NewLoopingList(samples),
 	}, nil
 }
 
@@ -103,15 +100,17 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 				return
 			default:
 			}
-			if err := ar.consumer.ConsumeTraces(startCtx, ar.nextTraces()); err != nil {
+			m := ar.nextTraces()
+			if err := ar.consumer.ConsumeTraces(startCtx, m); err != nil {
 				ar.logger.Error(err.Error())
+				ar.stats.FailedRequests++
+				ar.stats.FailedSpans += m.SpanCount()
+			} else {
+				ar.stats.Requests++
+				ar.stats.Spans += m.SpanCount()
 			}
 			if ar.isDone() {
-				ar.cfg.Traces.doneCh <- TelemetryStats{
-					Requests: ar.sampleStats.Requests * ar.cfg.Traces.MaxReplay,
-					Spans:    ar.sampleStats.Spans * ar.cfg.Traces.MaxReplay,
-				}
-				close(ar.cfg.Traces.doneCh)
+				ar.cfg.Traces.doneCh <- ar.stats
 				return
 			}
 		}

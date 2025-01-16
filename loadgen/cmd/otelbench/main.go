@@ -88,6 +88,10 @@ func main() {
 					b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
 					b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
 					b.ReportMetric(float64(stats.Requests)/elapsedSeconds, "requests/s")
+					b.ReportMetric(float64(stats.FailedLogRecords)/elapsedSeconds, "failed_logs/s")
+					b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
+					b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
+					b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
 
 					close(stop)
 				}()
