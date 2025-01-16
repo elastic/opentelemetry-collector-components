@@ -82,9 +82,9 @@ func main() {
 				// https://github.com/elastic/opentelemetry-collector-components/issues/305
 
 				// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
-				logsDone := make(chan loadgenreceiver.TelemetryStats)
-				metricsDone := make(chan loadgenreceiver.TelemetryStats)
-				tracesDone := make(chan loadgenreceiver.TelemetryStats)
+				logsDone := make(chan loadgenreceiver.Stats)
+				metricsDone := make(chan loadgenreceiver.Stats)
+				tracesDone := make(chan loadgenreceiver.Stats)
 				if signal != "logs" {
 					close(logsDone)
 				}

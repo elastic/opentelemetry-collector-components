@@ -44,7 +44,7 @@ type tracesGenerator struct {
 
 	samples internal.LoopingList[ptrace.Traces]
 
-	stats TelemetryStats
+	stats Stats
 
 	consumer consumer.Traces
 

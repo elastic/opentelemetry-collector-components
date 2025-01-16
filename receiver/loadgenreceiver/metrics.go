@@ -44,7 +44,7 @@ type metricsGenerator struct {
 
 	samples internal.LoopingList[pmetric.Metrics]
 
-	stats TelemetryStats
+	stats Stats
 
 	consumer consumer.Metrics
 

@@ -36,7 +36,7 @@ func NewFactory() receiver.Factory {
 	)
 }
 
-func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan TelemetryStats) component.Config {
+func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) component.Config {
 	return &Config{
 		Logs: LogsConfig{
 			doneCh: logsDone,
@@ -50,7 +50,7 @@ func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Telemetr
 	}
 }
 
-func NewFactoryWithDone(logsDone, metricsDone, tracesDone chan TelemetryStats) receiver.Factory {
+func NewFactoryWithDone(logsDone, metricsDone, tracesDone chan Stats) receiver.Factory {
 	return receiver.NewFactory(
 		metadata.Type,
 		func() component.Config {

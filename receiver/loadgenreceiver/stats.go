@@ -17,7 +17,8 @@
 
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
-type TelemetryStats struct {
+// Stats holds statistics about telemetry generated and sent by loadgenreceiver
+type Stats struct {
 	Requests       int
 	FailedRequests int
 
@@ -30,7 +31,7 @@ type TelemetryStats struct {
 	FailedSpans            int
 }
 
-func (s TelemetryStats) Add(other TelemetryStats) TelemetryStats {
+func (s Stats) Add(other Stats) Stats {
 	s.Requests += other.Requests
 	s.FailedRequests += other.FailedRequests
 	s.LogRecords += other.LogRecords

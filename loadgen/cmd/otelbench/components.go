@@ -35,7 +35,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
-func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.TelemetryStats) (otelcol.Factories, error) {
+func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.Stats) (otelcol.Factories, error) {
 	var err error
 	factories := otelcol.Factories{}
 

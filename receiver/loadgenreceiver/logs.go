@@ -44,7 +44,7 @@ type logsGenerator struct {
 
 	samples internal.LoopingList[plog.Logs]
 
-	stats TelemetryStats
+	stats Stats
 
 	consumer consumer.Logs
 

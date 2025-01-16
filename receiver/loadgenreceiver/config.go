@@ -41,7 +41,7 @@ type MetricsConfig struct {
 	MaxReplay int `mapstructure:"max_replay"`
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
-	doneCh chan TelemetryStats
+	doneCh chan Stats
 }
 
 type LogsConfig struct {
@@ -53,7 +53,7 @@ type LogsConfig struct {
 	MaxReplay int `mapstructure:"max_replay"`
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
-	doneCh chan TelemetryStats
+	doneCh chan Stats
 }
 
 type TracesConfig struct {
@@ -65,7 +65,7 @@ type TracesConfig struct {
 	MaxReplay int `mapstructure:"max_replay"`
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
-	doneCh chan TelemetryStats
+	doneCh chan Stats
 }
 
 var _ component.Config = (*Config)(nil)
