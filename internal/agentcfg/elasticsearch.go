@@ -69,14 +69,6 @@ type ElasticsearchFetcher struct {
 	cacheInitialized atomic.Bool
 
 	logger *zap.Logger
-
-	metrics fetcherMetrics
-}
-
-type fetcherMetrics struct {
-	fetchES, fetchFallback, fetchFallbackUnavailable, fetchInvalid,
-	cacheRefreshSuccesses, cacheRefreshFailures,
-	cacheEntriesCount atomic.Int64
 }
 
 func NewElasticsearchFetcher(
@@ -98,16 +90,13 @@ func (f *ElasticsearchFetcher) Fetch(ctx context.Context, query Query) (Result, 
 		// Happy path: serve fetch requests using an initialized cache.
 		f.mu.RLock()
 		defer f.mu.RUnlock()
-		f.metrics.fetchES.Add(1)
 		return matchAgentConfig(query, f.cache), nil
 	}
 
 	if f.invalidESCfg.Load() {
-		f.metrics.fetchInvalid.Add(1)
 		return Result{}, errors.New(ErrNoValidElasticsearchConfig)
 	}
 
-	f.metrics.fetchFallbackUnavailable.Add(1)
 	return Result{}, errors.New(ErrInfrastructureNotReady)
 }
 
@@ -179,14 +168,6 @@ func (f *ElasticsearchFetcher) refreshCache(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, refreshCacheTimeout)
 	defer cancel()
 
-	defer func() {
-		if err != nil {
-			f.metrics.cacheRefreshFailures.Add(1)
-		} else {
-			f.metrics.cacheRefreshSuccesses.Add(1)
-		}
-	}()
-
 	for {
 		result, err := f.singlePageRefresh(ctx, scrollID)
 		if err != nil {
@@ -215,7 +196,6 @@ func (f *ElasticsearchFetcher) refreshCache(ctx context.Context) (err error) {
 	f.cache = buffer
 	f.mu.Unlock()
 	f.cacheInitialized.Store(true)
-	f.metrics.cacheEntriesCount.Store(int64(len(f.cache)))
 	f.last = time.Now()
 	return nil
 }
