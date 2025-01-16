@@ -105,7 +105,7 @@ func setFlagsFromEnv() {
 	// value[0] is environment key
 	// value[1] is default value
 	flagEnvMap := map[string][]string{
-		"server":       {"ELASTIC_APM_SERVER_URL", ""},
+		"endpoint":     {"ELASTIC_APM_SERVER_URL", ""},
 		"secret-token": {"ELASTIC_APM_SECRET_TOKEN", ""},
 		"api-key":      {"ELASTIC_APM_API_KEY", ""},
 	}
