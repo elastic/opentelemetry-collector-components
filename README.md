@@ -35,5 +35,5 @@ In order to build a collector with a custom component, e.g. for testing purposes
    
 ## Load generator
 
-See [./loadgen/README.md](./loadgen/README.md).
+See [./loadgen/README.md](loadgen/cmd/otelsoak/README.md).
    
