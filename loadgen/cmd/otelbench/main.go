@@ -56,9 +56,14 @@ func main() {
 	testing.Init()
 	flag.Parse()
 
+	// TODO(carsonip): configurable warm up
+
 	for _, signal := range getSignals() {
 		for _, exporter := range getExporters() {
 			result := testing.Benchmark(func(b *testing.B) {
+				// TODO(carsonip): simulate > 1 agents for higher load
+				// https://github.com/elastic/opentelemetry-collector-components/issues/305
+
 				// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
 				logsDone := make(chan loadgenreceiver.TelemetryStats)
 				metricsDone := make(chan loadgenreceiver.TelemetryStats)
