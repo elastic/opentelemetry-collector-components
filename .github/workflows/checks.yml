@@ -227,5 +227,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build testing component's collector and validate example configuration
         run: make elasticcol-validate
-      - name: Validate loadgen example config
-        run: make loadgen-validate
+      - name: Validate otelsoak example config
+        run: make otelsoak-validate
