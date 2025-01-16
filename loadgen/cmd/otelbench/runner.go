@@ -108,7 +108,6 @@ func setFlagsFromEnv() {
 		"server":       {"ELASTIC_APM_SERVER_URL", ""},
 		"secret-token": {"ELASTIC_APM_SECRET_TOKEN", ""},
 		"api-key":      {"ELASTIC_APM_API_KEY", ""},
-		"secure":       {"ELASTIC_APM_VERIFY_SERVER_CERT", "false"},
 	}
 
 	for k, v := range flagEnvMap {
