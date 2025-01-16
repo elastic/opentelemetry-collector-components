@@ -19,7 +19,6 @@ package elasticsearch
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -31,8 +30,6 @@ import (
 var retryableStatuses = []int{
 	http.StatusTooManyRequests,
 }
-
-// var userAgent = fmt.Sprintf("Elastic-APM-Server/%s go-elasticsearch/%s", version.Version, esv8.Version)
 
 type Client = esv8.Client
 
@@ -88,17 +85,10 @@ func NewClientParams(args ClientParams) (*Client, error) {
 	}
 
 	headers.Set("X-Elastic-Product-Origin", "observability")
-	// if headers.Get("User-Agent") == "" {
-	// 	headers.Set("User-Agent", userAgent)
-	// }
-
-	var apikey string
-	if args.Config.APIKey != "" {
-		apikey = base64.StdEncoding.EncodeToString([]byte(args.Config.APIKey))
-	}
 
 	return esv8.NewClient(esv8.Config{
-		APIKey:        apikey,
+		// APIKey must be encoded in base64
+		APIKey:        args.Config.APIKey,
 		Username:      args.Config.Username,
 		Password:      args.Config.Password,
 		Addresses:     addrs,
