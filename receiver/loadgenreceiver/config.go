@@ -30,7 +30,6 @@ type Config struct {
 	Metrics MetricsConfig `mapstructure:"metrics"`
 	Logs    LogsConfig    `mapstructure:"logs"`
 	Traces  TracesConfig  `mapstructure:"traces"`
-	doneCh  chan TelemetryStats
 }
 
 type MetricsConfig struct {
@@ -38,6 +37,7 @@ type MetricsConfig struct {
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
 	MaxReplay int `mapstructure:"max_replay"`
+	doneCh    chan TelemetryStats
 }
 
 type LogsConfig struct {
@@ -45,6 +45,7 @@ type LogsConfig struct {
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
 	MaxReplay int `mapstructure:"max_replay"`
+	doneCh    chan TelemetryStats
 }
 
 type TracesConfig struct {
@@ -52,6 +53,7 @@ type TracesConfig struct {
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
 	MaxReplay int `mapstructure:"max_replay"`
+	doneCh    chan TelemetryStats
 }
 
 var _ component.Config = (*Config)(nil)

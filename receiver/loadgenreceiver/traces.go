@@ -107,11 +107,11 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 				ar.logger.Error(err.Error())
 			}
 			if ar.isDone() {
-				ar.cfg.doneCh <- TelemetryStats{
+				ar.cfg.Traces.doneCh <- TelemetryStats{
 					Requests: ar.sampleStats.Requests * ar.cfg.Traces.MaxReplay,
 					Spans:    ar.sampleStats.Spans * ar.cfg.Traces.MaxReplay,
 				}
-				close(ar.cfg.doneCh)
+				close(ar.cfg.Traces.doneCh)
 				return
 			}
 		}

@@ -107,11 +107,11 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 				ar.logger.Error(err.Error())
 			}
 			if ar.isDone() {
-				ar.cfg.doneCh <- TelemetryStats{
+				ar.cfg.Metrics.doneCh <- TelemetryStats{
 					Requests:         ar.sampleStats.Requests * ar.cfg.Metrics.MaxReplay,
 					MetricDataPoints: ar.sampleStats.MetricDataPoints * ar.cfg.Metrics.MaxReplay,
 				}
-				close(ar.cfg.doneCh)
+				close(ar.cfg.Metrics.doneCh)
 				return
 			}
 		}

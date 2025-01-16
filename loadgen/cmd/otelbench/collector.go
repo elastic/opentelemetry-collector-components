@@ -38,8 +38,8 @@ const (
 	buildVersion     = "0.0.1"
 )
 
-func RunCollector(ctx context.Context, stop chan struct{}, configFiles []string, doneCh chan loadgenreceiver.TelemetryStats) error {
-	settings, err := NewCollectorSettings(configFiles, doneCh)
+func RunCollector(ctx context.Context, stop chan struct{}, configFiles []string, logsDone, metricsDone, tracesDone chan loadgenreceiver.TelemetryStats) error {
+	settings, err := NewCollectorSettings(configFiles, logsDone, metricsDone, tracesDone)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func RunCollector(ctx context.Context, stop chan struct{}, configFiles []string,
 	return svc.Run(cancelCtx)
 }
 
-func NewCollectorSettings(configPaths []string, doneCh chan loadgenreceiver.TelemetryStats) (otelcol.CollectorSettings, error) {
+func NewCollectorSettings(configPaths []string, logsDone, metricsDone, tracesDone chan loadgenreceiver.TelemetryStats) (otelcol.CollectorSettings, error) {
 	buildInfo := component.BuildInfo{
 		Command:     os.Args[0],
 		Description: buildDescription,
@@ -81,7 +81,7 @@ func NewCollectorSettings(configPaths []string, doneCh chan loadgenreceiver.Tele
 	}
 
 	return otelcol.CollectorSettings{
-		Factories:              func() (otelcol.Factories, error) { return components(doneCh) },
+		Factories:              func() (otelcol.Factories, error) { return components(logsDone, metricsDone, tracesDone) },
 		BuildInfo:              buildInfo,
 		ConfigProviderSettings: configProviderSettings,
 		// we're handling DisableGracefulShutdown via the cancelCtx being passed

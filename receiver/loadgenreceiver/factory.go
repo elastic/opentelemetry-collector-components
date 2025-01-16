@@ -28,7 +28,7 @@ func NewFactory() receiver.Factory {
 	return receiver.NewFactory(
 		metadata.Type,
 		func() component.Config {
-			return createDefaultReceiverConfig(nil)
+			return createDefaultReceiverConfig(nil, nil, nil)
 		},
 		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
 		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
@@ -36,17 +36,25 @@ func NewFactory() receiver.Factory {
 	)
 }
 
-func createDefaultReceiverConfig(doneCh chan TelemetryStats) component.Config {
+func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan TelemetryStats) component.Config {
 	return &Config{
-		doneCh: doneCh,
+		Logs: LogsConfig{
+			doneCh: logsDone,
+		},
+		Metrics: MetricsConfig{
+			doneCh: metricsDone,
+		},
+		Traces: TracesConfig{
+			doneCh: tracesDone,
+		},
 	}
 }
 
-func NewFactoryWithDone(doneCh chan TelemetryStats) receiver.Factory {
+func NewFactoryWithDone(logsDone, metricsDone, tracesDone chan TelemetryStats) receiver.Factory {
 	return receiver.NewFactory(
 		metadata.Type,
 		func() component.Config {
-			return createDefaultReceiverConfig(doneCh)
+			return createDefaultReceiverConfig(logsDone, metricsDone, tracesDone)
 		},
 		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
 		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),

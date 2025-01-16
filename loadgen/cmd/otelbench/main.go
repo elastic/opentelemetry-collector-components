@@ -45,13 +45,31 @@ func main() {
 	for _, signal := range signals {
 		result := testing.Benchmark(func(b *testing.B) {
 			// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
-			done := make(chan loadgenreceiver.TelemetryStats)
+			logsDone := make(chan loadgenreceiver.TelemetryStats)
+			metricsDone := make(chan loadgenreceiver.TelemetryStats)
+			tracesDone := make(chan loadgenreceiver.TelemetryStats)
+
+			switch signal {
+			case "logs":
+				close(metricsDone)
+				close(tracesDone)
+			case "metrics":
+				close(logsDone)
+				close(tracesDone)
+			case "traces":
+				close(logsDone)
+				close(metricsDone)
+			}
 
 			stop := make(chan struct{}) // close channel to stop the loadgen collector
 
 			go func() {
-				stats := <-done
+				logsStats := <-logsDone
+				metricsStats := <-metricsDone
+				tracesStats := <-tracesDone
 				b.StopTimer()
+
+				stats := logsStats.Add(metricsStats).Add(tracesStats)
 
 				elapsedSeconds := b.Elapsed().Seconds()
 				total := stats.LogRecords + stats.MetricDataPoints + stats.Spans
@@ -67,7 +85,7 @@ func main() {
 			var configFiles []string
 			configFiles = append(configFiles, Config.CollectorConfigPath)
 			configFiles = append(configFiles, CollectorConfigFilesFromConfig(Config.Exporter, signal, b.N)...)
-			err := RunCollector(context.Background(), stop, configFiles, done)
+			err := RunCollector(context.Background(), stop, configFiles, logsDone, metricsDone, tracesDone)
 			if err != nil {
 				fmt.Println(err)
 				b.Log(err)
