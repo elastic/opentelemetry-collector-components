@@ -18,20 +18,36 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/metadata"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/receiver"
-)
 
-// CreateDefaultConfig creates the default configuration for the Scraper.
-func createDefaultReceiverConfig() component.Config {
-	return &Config{}
-}
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/metadata"
+)
 
 func NewFactory() receiver.Factory {
 	return receiver.NewFactory(
 		metadata.Type,
-		createDefaultReceiverConfig,
+		func() component.Config {
+			return createDefaultReceiverConfig(nil)
+		},
+		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
+		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
+		receiver.WithLogs(createLogsReceiver, component.StabilityLevelDevelopment),
+	)
+}
+
+func createDefaultReceiverConfig(doneCh chan struct{}) component.Config {
+	return &Config{
+		doneCh: doneCh,
+	}
+}
+
+func NewFactoryWithDone(doneCh chan struct{}) receiver.Factory {
+	return receiver.NewFactory(
+		metadata.Type,
+		func() component.Config {
+			return createDefaultReceiverConfig(doneCh)
+		},
 		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
 		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
 		receiver.WithLogs(createLogsReceiver, component.StabilityLevelDevelopment),

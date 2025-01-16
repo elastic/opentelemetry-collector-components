@@ -25,13 +25,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 )
 
 //go:embed testdata/traces.jsonl
@@ -95,10 +96,13 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 			case <-startCtx.Done():
 				return
 			default:
-				if err := ar.consumer.ConsumeTraces(startCtx, ar.nextTraces()); err != nil {
-					ar.logger.Error(err.Error())
-					continue
-				}
+			}
+			if err := ar.consumer.ConsumeTraces(startCtx, ar.nextTraces()); err != nil {
+				ar.logger.Error(err.Error())
+			}
+			if ar.isDone() {
+				close(ar.cfg.doneCh)
+				return
 			}
 		}
 	}()
@@ -131,4 +135,8 @@ func (ar *tracesGenerator) nextTraces() ptrace.Traces {
 	}
 
 	return nextLogs
+}
+
+func (ar *tracesGenerator) isDone() bool {
+	return ar.samples.LoopCount() > 0 && ar.samples.LoopCount() > ar.cfg.Traces.MaxReplay
 }

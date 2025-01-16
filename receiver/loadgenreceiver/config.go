@@ -30,24 +30,28 @@ type Config struct {
 	Metrics MetricsConfig `mapstructure:"metrics"`
 	Logs    LogsConfig    `mapstructure:"logs"`
 	Traces  TracesConfig  `mapstructure:"traces"`
+	doneCh  chan struct{}
 }
 
 type MetricsConfig struct {
 	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
+	MaxReplay int `mapstructure:"max_replay"`
 }
 
 type LogsConfig struct {
 	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
+	MaxReplay int `mapstructure:"max_replay"`
 }
 
 type TracesConfig struct {
 	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
+	MaxReplay int `mapstructure:"max_replay"`
 }
 
 var _ component.Config = (*Config)(nil)

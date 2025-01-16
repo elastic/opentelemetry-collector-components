@@ -18,8 +18,9 @@
 package internal // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 
 type LoopingList[T any] struct {
-	items []T
-	idx   int
+	items   []T
+	idx     int
+	loopCnt int
 }
 
 func NewLoopingList[T any](items []T) LoopingList[T] {
@@ -31,6 +32,13 @@ func NewLoopingList[T any](items []T) LoopingList[T] {
 func (s *LoopingList[T]) Next() T {
 	defer func() {
 		s.idx = (s.idx + 1) % len(s.items)
+		if s.idx == 0 {
+			s.loopCnt++
+		}
 	}()
 	return s.items[s.idx]
+}
+
+func (s *LoopingList[T]) LoopCount() int {
+	return s.loopCnt
 }

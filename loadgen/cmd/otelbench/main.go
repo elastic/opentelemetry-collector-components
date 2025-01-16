@@ -22,7 +22,6 @@ import (
 	"flag"
 	"fmt"
 	"testing"
-	"time"
 )
 
 func main() {
@@ -43,38 +42,37 @@ func main() {
 
 	for _, signal := range signals {
 		result := testing.Benchmark(func(b *testing.B) {
+			done := make(chan struct{}) // loadgenreceiver will close the channel after generating b.N
 			stop := make(chan bool)
 
 			go func() {
-				ticker := time.NewTicker(500 * time.Millisecond)
-				defer ticker.Stop()
 				for {
 					select {
 					case <-stop:
-					case <-ticker.C:
-						logs, metricPoints, spans, err := GetTelemetrySent() // FIXME: exporter internal telemetry is broken on otlphttp
+					case <-done:
+						// TODO: calculate rate without using internal telemetry
+						// as it is broken on otlphttp
+						logs, metricPoints, spans, err := GetTelemetrySent()
 						if err != nil {
 							b.Logf("error getting internal telemetry: %s", err)
 							continue
 						}
 						total := logs + metricPoints + spans
-						if total > int64(b.N) {
-							b.StopTimer()
-							close(stop)
-							b.ReportMetric(float64(logs)/b.Elapsed().Seconds(), "logs/s")
-							b.ReportMetric(float64(metricPoints)/b.Elapsed().Seconds(), "metric_points/s")
-							b.ReportMetric(float64(spans)/b.Elapsed().Seconds(), "spans/s")
-							b.ReportMetric(float64(total)/b.Elapsed().Seconds(), "total/s")
-							return
-						}
+						b.StopTimer()
+						close(stop)
+						b.ReportMetric(float64(logs)/b.Elapsed().Seconds(), "logs/s")
+						b.ReportMetric(float64(metricPoints)/b.Elapsed().Seconds(), "metric_points/s")
+						b.ReportMetric(float64(spans)/b.Elapsed().Seconds(), "spans/s")
+						b.ReportMetric(float64(total)/b.Elapsed().Seconds(), "total/s")
+						return
 					}
 				}
 			}()
 
 			var configFiles []string
 			configFiles = append(configFiles, Config.CollectorConfigPath)
-			configFiles = append(configFiles, CollectorConfigFilesFromConfig(Config.Exporter, signal)...)
-			err := RunCollector(context.Background(), stop, configFiles)
+			configFiles = append(configFiles, CollectorConfigFilesFromConfig(Config.Exporter, signal, b.N)...)
+			err := RunCollector(context.Background(), stop, configFiles, done)
 			if err != nil {
 				fmt.Println(err)
 				b.Log(err)

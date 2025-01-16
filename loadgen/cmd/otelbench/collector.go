@@ -36,8 +36,8 @@ const (
 	buildVersion     = "0.0.1"
 )
 
-func RunCollector(ctx context.Context, stop chan bool, configFiles []string) error {
-	settings, err := NewCollectorSettings(configFiles)
+func RunCollector(ctx context.Context, stop chan bool, configFiles []string, doneCh chan struct{}) error {
+	settings, err := NewCollectorSettings(configFiles, doneCh)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func RunCollector(ctx context.Context, stop chan bool, configFiles []string) err
 	return svc.Run(cancelCtx)
 }
 
-func NewCollectorSettings(configPaths []string) (otelcol.CollectorSettings, error) {
+func NewCollectorSettings(configPaths []string, doneCh chan struct{}) (otelcol.CollectorSettings, error) {
 	buildInfo := component.BuildInfo{
 		Command:     os.Args[0],
 		Description: buildDescription,
@@ -79,7 +79,7 @@ func NewCollectorSettings(configPaths []string) (otelcol.CollectorSettings, erro
 	}
 
 	return otelcol.CollectorSettings{
-		Factories:              components,
+		Factories:              func() (otelcol.Factories, error) { return components(doneCh) },
 		BuildInfo:              buildInfo,
 		ConfigProviderSettings: configProviderSettings,
 		// we're handling DisableGracefulShutdown via the cancelCtx being passed

@@ -33,13 +33,13 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
-func components() (otelcol.Factories, error) {
+func components(doneCh chan struct{}) (otelcol.Factories, error) {
 	var err error
 	factories := otelcol.Factories{}
 
 	// Receivers
 	factories.Receivers, err = receiver.MakeFactoryMap(
-		loadgenreceiver.NewFactory(),
+		loadgenreceiver.NewFactoryWithDone(doneCh),
 	)
 	if err != nil {
 		return otelcol.Factories{}, err
