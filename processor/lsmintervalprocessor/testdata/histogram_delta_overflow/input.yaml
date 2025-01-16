@@ -41,6 +41,19 @@ resourceMetrics:
                     - key: aaa
                       value:
                         stringValue: bbb
+          - name: delta.histogram.test.1
+            histogram:
+              aggregationTemporality: 1
+              dataPoints:
+                - timeUnixNano: 8000000
+                  count: 36
+                  sum: 2010.23
+                  explicitBounds: [0.01, 0.1, 1, 10, 100]
+                  bucketCounts: [4, 2, 3, 6, 3, 18]
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: ccc
           - name: delta.histogram.test.2
             histogram:
               aggregationTemporality: 1
