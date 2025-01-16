@@ -12,7 +12,8 @@ var Config struct {
 	ServerURL           *url.URL
 	SecretToken         string
 	APIKey              string
-	Secure              bool
+	Insecure            bool
+	InsecureSkipVerify  bool
 	Headers             map[string]string
 	CollectorConfigPath string
 
@@ -28,7 +29,7 @@ func Init() {
 	// Server config
 	flag.Func(
 		"endpoint",
-		"target server URL",
+		"target server URL (defaults to value in config yaml)",
 		func(server string) (err error) {
 			if server != "" {
 				Config.ServerURL, err = url.Parse(server)
@@ -37,7 +38,10 @@ func Init() {
 		})
 	flag.StringVar(&Config.SecretToken, "secret-token", "", "secret token for target server")
 	flag.StringVar(&Config.APIKey, "api-key", "", "API key for target server")
-	flag.BoolVar(&Config.Secure, "secure", false, "validate the remote server TLS certificates")
+
+	flag.BoolVar(&Config.Insecure, "insecure", false, "disable TLS, ignored by otlphttp exporter (defaults to value in config yaml)")
+	flag.BoolVar(&Config.InsecureSkipVerify, "insecure-skip-verify", false, "skip validating the remote server TLS certificates (defaults to value in config yaml)")
+
 	flag.Func("header",
 		"extra headers to use when sending data to the server",
 		func(s string) error {
@@ -53,7 +57,7 @@ func Init() {
 		},
 	)
 
-	flag.StringVar(&Config.CollectorConfigPath, "config", "", "collector config path")
+	flag.StringVar(&Config.CollectorConfigPath, "config", "config.yaml", "path collector config yaml")
 
 	flag.BoolVar(&Config.ExporterOTLP, "exporter-otlp", true, "benchmark exporter otlp")
 	flag.BoolVar(&Config.ExporterOTLPHTTP, "exporter-otlphttp", true, "benchmark exporter otlphttp")
@@ -130,7 +134,13 @@ func ExporterConfigs(exporter string) (configFiles []string) {
 		configSets = append(configSets, fmt.Sprintf("exporters.%s.headers.%s=%s", exporter, k, v))
 	}
 
-	configSets = append(configSets, fmt.Sprintf("exporters.%s.tls.insecure=%v", exporter, !Config.Secure))
+	// Only set insecure and insecure_skip_verify on true, so that corresponding config value in yaml is used on default.
+	if Config.Insecure {
+		configSets = append(configSets, fmt.Sprintf("exporters.%s.tls.insecure=%v", exporter, Config.Insecure))
+	}
+	if Config.InsecureSkipVerify {
+		configSets = append(configSets, fmt.Sprintf("exporters.%s.tls.insecure_skip_verify=%v", exporter, Config.InsecureSkipVerify))
+	}
 
 	return setsToConfigs(configSets)
 }
