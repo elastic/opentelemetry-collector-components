@@ -15,11 +15,13 @@ var Config struct {
 	Secure              bool
 	Headers             map[string]string
 	CollectorConfigPath string
-	Exporter            string // should be one of [otlp, otlphttp]
 
 	Logs    bool
 	Metrics bool
 	Traces  bool
+
+	ExporterOTLP     bool
+	ExporterOTLPHTTP bool
 }
 
 func Init() {
@@ -53,7 +55,8 @@ func Init() {
 
 	flag.StringVar(&Config.CollectorConfigPath, "config", "", "Collector config path")
 
-	flag.StringVar(&Config.Exporter, "exporter", "otlp", "exporter to use, one of [otlp, otlphttp]")
+	flag.BoolVar(&Config.ExporterOTLP, "exporter-otlp", true, "benchmark exporter otlp")
+	flag.BoolVar(&Config.ExporterOTLPHTTP, "exporter-otlphttp", true, "benchmark exporter otlphttp")
 
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
@@ -96,13 +99,6 @@ func getEnvOrDefault(name, defaultValue string) string {
 	return defaultValue
 }
 
-// CollectorConfigFilesFromConfig returns a slice of strings, each can be passed to the collector using --config
-func CollectorConfigFilesFromConfig(exporter string) (configFiles []string) {
-	sets := CollectorSetFromConfig(exporter)
-	configFiles = setsToConfigs(sets)
-	return
-}
-
 // setsToConfigs converts --set to --config
 func setsToConfigs(sets []string) (configFiles []string) {
 	for _, s := range sets {
@@ -116,8 +112,12 @@ func setsToConfigs(sets []string) (configFiles []string) {
 	return
 }
 
-// CollectorSetFromConfig returns a slice of strings, each can be passed to the collector using --set
-func CollectorSetFromConfig(exporter string) (configSets []string) {
+func ExporterConfigs(exporter string) (configFiles []string) {
+	var configSets []string
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.logs.exporters=[%s]", exporter))
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.metrics.exporters=[%s]", exporter))
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.traces.exporters=[%s]", exporter))
+
 	if Config.ServerURL != nil {
 		configSets = append(configSets, fmt.Sprintf("exporters.%s.endpoint=%s", exporter, Config.ServerURL))
 	}
@@ -132,7 +132,7 @@ func CollectorSetFromConfig(exporter string) (configSets []string) {
 
 	configSets = append(configSets, fmt.Sprintf("exporters.%s.tls.insecure=%v", exporter, !Config.Secure))
 
-	return
+	return setsToConfigs(configSets)
 }
 
 func DisableSignal(signal string) (configFiles []string) {

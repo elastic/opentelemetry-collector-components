@@ -26,14 +26,8 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
-var allSignals = []string{"logs", "metrics", "traces"}
-
-func main() {
-	Init()
-	testing.Init()
-	flag.Parse()
-
-	var signals []string
+// getSignal returns a slice of signal names to be benchmarked according to Config
+func getSignals() (signals []string) {
 	if Config.Logs {
 		signals = append(signals, "logs")
 	}
@@ -43,63 +37,84 @@ func main() {
 	if Config.Traces {
 		signals = append(signals, "traces")
 	}
+	return
+}
 
-	for _, signal := range signals {
-		result := testing.Benchmark(func(b *testing.B) {
-			// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
-			logsDone := make(chan loadgenreceiver.TelemetryStats)
-			metricsDone := make(chan loadgenreceiver.TelemetryStats)
-			tracesDone := make(chan loadgenreceiver.TelemetryStats)
-			if signal != "logs" {
-				close(logsDone)
-			}
-			if signal != "metrics" {
-				close(metricsDone)
-			}
-			if signal != "traces" {
-				close(tracesDone)
-			}
+// getExporters returns a slice of exporter names to be benchmarked according to Config
+func getExporters() (exporters []string) {
+	if Config.ExporterOTLP {
+		exporters = append(exporters, "otlp")
+	}
+	if Config.ExporterOTLPHTTP {
+		exporters = append(exporters, "otlphttp")
+	}
+	return
+}
 
-			stop := make(chan struct{}) // close channel to stop the loadgen collector
+func main() {
+	Init()
+	testing.Init()
+	flag.Parse()
 
-			go func() {
-				logsStats := <-logsDone
-				metricsStats := <-metricsDone
-				tracesStats := <-tracesDone
-				b.StopTimer()
+	for _, signal := range getSignals() {
+		for _, exporter := range getExporters() {
+			result := testing.Benchmark(func(b *testing.B) {
+				// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
+				logsDone := make(chan loadgenreceiver.TelemetryStats)
+				metricsDone := make(chan loadgenreceiver.TelemetryStats)
+				tracesDone := make(chan loadgenreceiver.TelemetryStats)
+				if signal != "logs" {
+					close(logsDone)
+				}
+				if signal != "metrics" {
+					close(metricsDone)
+				}
+				if signal != "traces" {
+					close(tracesDone)
+				}
 
-				stats := logsStats.Add(metricsStats).Add(tracesStats)
+				stop := make(chan struct{}) // close channel to stop the loadgen collector
 
-				elapsedSeconds := b.Elapsed().Seconds()
-				total := stats.LogRecords + stats.MetricDataPoints + stats.Spans
-				b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
-				b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
-				b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
-				b.ReportMetric(float64(total)/elapsedSeconds, "total/s")
-				b.ReportMetric(float64(stats.Requests)/elapsedSeconds, "requests/s")
+				go func() {
+					logsStats := <-logsDone
+					metricsStats := <-metricsDone
+					tracesStats := <-tracesDone
+					b.StopTimer()
 
-				close(stop)
-			}()
+					stats := logsStats.Add(metricsStats).Add(tracesStats)
 
-			err := RunCollector(context.Background(), stop, configs(Config.Exporter, signal, b.N), logsDone, metricsDone, tracesDone)
-			if err != nil {
-				fmt.Println(err)
-				b.Log(err)
-			}
-		})
-		fmt.Print(signal)
-		fmt.Println(result.String())
+					elapsedSeconds := b.Elapsed().Seconds()
+					total := stats.LogRecords + stats.MetricDataPoints + stats.Spans
+					b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
+					b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
+					b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
+					b.ReportMetric(float64(total)/elapsedSeconds, "total/s")
+					b.ReportMetric(float64(stats.Requests)/elapsedSeconds, "requests/s")
+
+					close(stop)
+				}()
+
+				err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N), logsDone, metricsDone, tracesDone)
+				if err != nil {
+					fmt.Println(err)
+					b.Log(err)
+				}
+			})
+			fmt.Print(fmt.Sprintf("%s-%s", signal, exporter))
+			fmt.Print("\t")
+			fmt.Println(result.String())
+		}
 	}
 }
 
 func configs(exporter, signal string, iterations int) (configFiles []string) {
 	configFiles = append(configFiles, Config.CollectorConfigPath)
+	configFiles = append(configFiles, ExporterConfigs(exporter)...)
 	configFiles = append(configFiles, SetIterations(iterations)...)
-	for _, s := range allSignals {
+	for _, s := range []string{"logs", "metrics", "traces"} {
 		if signal != s {
 			configFiles = append(configFiles, DisableSignal(s)...)
 		}
 	}
-	configFiles = append(configFiles, CollectorConfigFilesFromConfig(exporter)...)
 	return
 }
