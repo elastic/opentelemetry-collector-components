@@ -136,7 +136,7 @@ func TestTracker_Merge(t *testing.T) {
 
 func TestTrackers(t *testing.T) {
 	getTestTrackers := func() *Trackers {
-		return NewTrackers(1, 1, 1)
+		return NewTrackers(1, 1, 1, 1)
 	}
 	for _, tc := range []struct {
 		name     string
@@ -156,7 +156,10 @@ func TestTrackers(t *testing.T) {
 				ts := trackers.NewScopeTracker()
 				ts.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 
-				tdps := trackers.NewScopeDPsTracker()
+				tm := trackers.NewMetricTracker()
+				tm.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+
+				tdps := trackers.NewDatapointTracker()
 				tdps.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				return trackers
 			}(),
@@ -173,7 +176,11 @@ func TestTrackers(t *testing.T) {
 				ts.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				ts.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 
-				tdps := trackers.NewScopeDPsTracker()
+				tm := trackers.NewMetricTracker()
+				tm.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tm.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+
+				tdps := trackers.NewDatapointTracker()
 				tdps.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				tdps.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 				return trackers
@@ -197,15 +204,24 @@ func TestTrackers(t *testing.T) {
 				ts3.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
 				trackers.NewScopeTracker()                           // empty tracker
 
-				tdps1 := trackers.NewScopeDPsTracker()
+				tm1 := trackers.NewMetricTracker()
+				tm1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tm1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+				tm1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
+				tm2 := trackers.NewMetricTracker()
+				tm2.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tm3 := trackers.NewMetricTracker()
+				tm3.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
+
+				tdps1 := trackers.NewDatapointTracker()
 				tdps1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				tdps1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 				tdps1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
-				tdps2 := trackers.NewScopeDPsTracker()
+				tdps2 := trackers.NewDatapointTracker()
 				tdps2.CheckOverflow(testHash(0x00040fffffffffff).Hash)
-				tdps3 := trackers.NewScopeDPsTracker()
+				tdps3 := trackers.NewDatapointTracker()
 				tdps3.CheckOverflow(testHash(0x00050fffffffffff).Hash)
-				tdps4 := trackers.NewScopeDPsTracker()
+				tdps4 := trackers.NewDatapointTracker()
 				tdps4.CheckOverflow(testHash(0x00050fffffffffff).Hash)
 				tdps4.CheckOverflow(testHash(0x00060fffffffffff).Hash) // will overflow
 				return trackers
@@ -227,7 +243,8 @@ func TestTrackers(t *testing.T) {
 				}
 			}
 			allEqual(tc.trackers.scope, newTrackers.scope)
-			allEqual(tc.trackers.scopeDPs, newTrackers.scopeDPs)
+			allEqual(tc.trackers.metric, newTrackers.metric)
+			allEqual(tc.trackers.datapoint, newTrackers.datapoint)
 		})
 	}
 }

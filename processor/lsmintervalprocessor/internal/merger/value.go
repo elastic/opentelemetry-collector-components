@@ -31,8 +31,11 @@ import (
 )
 
 const (
-	overflowMetricName = "_other"
-	overflowMetricDesc = "Overflow count due to datapoints limit"
+	overflowMetricName = "_overflow_metric"
+	overflowMetricDesc = "Overflow metric count due to metric limit"
+
+	overflowDatapointMetricName = "_overflow_datapoints"
+	overflowDatapointMetricDesc = "Overflow datapoint count due to datapoint limit"
 )
 
 // Value defines the data structure used to perform merges and other operations
@@ -56,45 +59,54 @@ const (
 //
 // Value is not safe for concurrent use.
 type Value struct {
-	resourceLimitCfg config.LimitConfig
-	scopeLimitCfg    config.LimitConfig
-	scopeDPLimitCfg  config.LimitConfig
+	resourceLimitCfg  config.LimitConfig
+	scopeLimitCfg     config.LimitConfig
+	metricLimitCfg    config.LimitConfig
+	datapointLimitCfg config.LimitConfig
 
 	source   pmetric.Metrics
 	trackers *limits.Trackers
 
 	// Lookup tables created from source
 	lookupsInitialized bool
-	resLookup          map[identity.Resource]resourceMetrics
-	scopeLookup        map[identity.Scope]scopeMetrics
-	metricLookup       map[identity.Metric]pmetric.Metric
+	resLookup          map[identity.Resource]pdataResourceMetrics
+	scopeLookup        map[identity.Scope]pdataScopeMetrics
+	metricLookup       map[identity.Metric]pdataMetric
 	numberLookup       map[identity.Stream]pmetric.NumberDataPoint
 	summaryLookup      map[identity.Stream]pmetric.SummaryDataPoint
 	histoLookup        map[identity.Stream]pmetric.HistogramDataPoint
 	expHistoLookup     map[identity.Stream]pmetric.ExponentialHistogramDataPoint
 }
 
-type resourceMetrics struct {
+type pdataResourceMetrics struct {
 	pmetric.ResourceMetrics
 
-	// Keeps track of scope overflows within each resource metric
+	// Keeps track of scopes within each resource metric
 	scopeLimits *limits.Tracker
 }
 
-type scopeMetrics struct {
+type pdataScopeMetrics struct {
 	pmetric.ScopeMetrics
 
-	// Keeps track of datapoints limits within each scope metric
-	datapointsLimits *limits.Tracker
+	// Keeps track of metrics within each scope metric
+	metricLimits *limits.Tracker
+}
+
+type pdataMetric struct {
+	pmetric.Metric
+
+	// Keeps track of datapoints within each metric
+	datapointLimits *limits.Tracker
 }
 
 // NewValue creates a new instance of the value with the configured limiters.
-func NewValue(resLimit, scopeLimit, scopeDPLimit config.LimitConfig) *Value {
+func NewValue(resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig) *Value {
 	return &Value{
-		resourceLimitCfg: resLimit,
-		scopeLimitCfg:    scopeLimit,
-		scopeDPLimitCfg:  scopeDPLimit,
-		source:           pmetric.NewMetrics(),
+		resourceLimitCfg:  resLimit,
+		scopeLimitCfg:     scopeLimit,
+		metricLimitCfg:    metricLimit,
+		datapointLimitCfg: datapointLimit,
+		source:            pmetric.NewMetrics(),
 	}
 }
 
@@ -141,7 +153,8 @@ func (s *Value) Unmarshal(data []byte) error {
 		s.trackers = limits.NewTrackers(
 			uint64(s.resourceLimitCfg.MaxCardinality),
 			uint64(s.scopeLimitCfg.MaxCardinality),
-			uint64(s.scopeDPLimitCfg.MaxCardinality),
+			uint64(s.metricLimitCfg.MaxCardinality),
+			uint64(s.datapointLimitCfg.MaxCardinality),
 		)
 		err := s.trackers.Unmarshal(data[:trackersLen])
 		if err != nil {
@@ -188,15 +201,28 @@ func (v *Value) Merge(op *Value) error {
 			if err != nil {
 				return fmt.Errorf("failed while merging scope metrics: %w", err)
 			}
-			scopeDPsLimits := op.trackers.GetScopeDPsTracker(j)
-			if scopeDPsLimits != nil {
-				if err := sm.datapointsLimits.MergeEstimators(scopeDPsLimits); err != nil {
+			metricLimits := op.trackers.GetMetricTracker(j)
+			if metricLimits != nil {
+				if err := sm.metricLimits.MergeEstimators(metricLimits); err != nil {
 					return fmt.Errorf("failed to merge scope datapoints overflow estimators: %w", err)
 				}
 			}
 			msOther := smOther.Metrics()
 			for k := 0; k < msOther.Len(); k++ {
-				v.mergeMetric(scopeID, sm, msOther.At(k))
+				mOther := msOther.At(k)
+				metricID, m, overflow := v.addMetric(scopeID, sm, mOther)
+				if overflow {
+					// On metric overflow, we discard any datapoint overflow estimator
+					// since metric overflow is accounts only for unique metrics.
+					continue
+				}
+				dpLimits := op.trackers.GetDatapointTracker(k)
+				if dpLimits != nil {
+					if err := m.datapointLimits.MergeEstimators(dpLimits); err != nil {
+						return fmt.Errorf("failed to merge datapoint overflow estimators: %w", err)
+					}
+				}
+				v.mergeMetric(metricID, m, mOther)
 			}
 		}
 	}
@@ -236,7 +262,11 @@ func (v *Value) MergeMetric(
 	if err != nil {
 		return err
 	}
-	v.mergeMetric(scopeID, sm, otherM)
+	metricID, m, overflow := v.addMetric(scopeID, sm, otherM)
+	if overflow {
+		return nil
+	}
+	v.mergeMetric(metricID, m, otherM)
 	return nil
 }
 
@@ -250,49 +280,36 @@ func (s *Value) Finalize() (pmetric.Metrics, error) {
 	// initialized.
 	s.initLookupTables()
 	for _, sm := range s.scopeLookup {
-		if !sm.datapointsLimits.HasOverflow() {
+		if !sm.metricLimits.HasOverflow() {
 			continue
 		}
-		// Add overflow metric to the scope
-		overflowMetric := sm.ScopeMetrics.Metrics().AppendEmpty()
-		overflowMetric.SetName(overflowMetricName)
-		overflowMetric.SetDescription(overflowMetricDesc)
-		overflowSum := overflowMetric.SetEmptySum()
-		overflowSum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-		overflowDP := overflowSum.DataPoints().AppendEmpty()
-		if err := decorate(
-			overflowDP.Attributes(),
-			s.scopeDPLimitCfg.Overflow.Attributes,
+		// Add overflow metric due to metric limit breached
+		if err := fillOverflowMetric(
+			sm.ScopeMetrics.Metrics().AppendEmpty(),
+			overflowMetricName,
+			overflowMetricDesc,
+			sm.metricLimits.EstimateOverflow(),
+			s.metricLimitCfg.Overflow.Attributes,
 		); err != nil {
 			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
 		}
-		overflowDP.SetIntValue(int64(sm.datapointsLimits.EstimateOverflow()))
 	}
-	// Remove any hanging metrics, scope, or resource which failed to have any
-	// entries due to datapoints overflowing. Overflowing datapoints discards
-	// that metric and creates a new overflow metric which might result in the
-	// original metric and its parent to exist without any datapoints.
-	s.source.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
-		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
-			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
-				switch m.Type() {
-				case pmetric.MetricTypeGauge:
-					return m.Gauge().DataPoints().Len() == 0
-				case pmetric.MetricTypeSum:
-					return m.Sum().DataPoints().Len() == 0
-				case pmetric.MetricTypeHistogram:
-					return m.Histogram().DataPoints().Len() == 0
-				case pmetric.MetricTypeExponentialHistogram:
-					return m.ExponentialHistogram().DataPoints().Len() == 0
-				case pmetric.MetricTypeSummary:
-					return m.Summary().DataPoints().Len() == 0
-				}
-				return false
-			})
-			return sm.Metrics().Len() == 0
-		})
-		return rm.ScopeMetrics().Len() == 0
-	})
+	for mID, m := range s.metricLookup {
+		if !m.datapointLimits.HasOverflow() {
+			continue
+		}
+		// Add overflow metric due to datapoint limit breached
+		sm := s.scopeLookup[mID.Scope()]
+		if err := fillOverflowMetric(
+			sm.ScopeMetrics.Metrics().AppendEmpty(),
+			overflowDatapointMetricName,
+			overflowDatapointMetricDesc,
+			m.datapointLimits.EstimateOverflow(),
+			s.datapointLimitCfg.Overflow.Attributes,
+		); err != nil {
+			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
+		}
+	}
 	return s.source, nil
 }
 
@@ -303,9 +320,9 @@ func (s *Value) initLookupTables() {
 	s.lookupsInitialized = true
 
 	// If lookup tables are initialized we will need the lookup maps
-	s.resLookup = make(map[identity.Resource]resourceMetrics)
-	s.scopeLookup = make(map[identity.Scope]scopeMetrics)
-	s.metricLookup = make(map[identity.Metric]pmetric.Metric)
+	s.resLookup = make(map[identity.Resource]pdataResourceMetrics)
+	s.scopeLookup = make(map[identity.Scope]pdataScopeMetrics)
+	s.metricLookup = make(map[identity.Metric]pdataMetric)
 
 	rms := s.source.ResourceMetrics()
 	if rms.Len() == 0 {
@@ -320,7 +337,7 @@ func (s *Value) initLookupTables() {
 	for i := 0; i < rms.Len(); i++ {
 		rm := rms.At(i)
 		rmID := identity.OfResource(rm.Resource())
-		s.resLookup[rmID] = resourceMetrics{
+		s.resLookup[rmID] = pdataResourceMetrics{
 			ResourceMetrics: rm,
 			scopeLimits:     s.trackers.GetScopeTracker(i),
 		}
@@ -329,18 +346,21 @@ func (s *Value) initLookupTables() {
 			sm := sms.At(j)
 			scope := sm.Scope()
 			smID := identity.OfScope(rmID, scope)
-			s.scopeLookup[smID] = scopeMetrics{
-				ScopeMetrics:     sm,
-				datapointsLimits: s.trackers.GetScopeDPsTracker(j),
+			s.scopeLookup[smID] = pdataScopeMetrics{
+				ScopeMetrics: sm,
+				metricLimits: s.trackers.GetMetricTracker(j),
 			}
 			metrics := sm.Metrics()
 			for k := 0; k < metrics.Len(); k++ {
-				metric := metrics.At(k)
-				metricID := identity.OfMetric(smID, metric)
-				s.metricLookup[metricID] = metric
+				m := metrics.At(k)
+				mID := identity.OfMetric(smID, m)
+				s.metricLookup[mID] = pdataMetric{
+					Metric:          m,
+					datapointLimits: s.trackers.GetDatapointTracker(k),
+				}
 
 				//exhaustive:enforce
-				switch metric.Type() {
+				switch m.Type() {
 				case pmetric.MetricTypeEmpty:
 					continue
 				case pmetric.MetricTypeGauge:
@@ -349,40 +369,40 @@ func (s *Value) initLookupTables() {
 					if s.numberLookup == nil {
 						s.numberLookup = make(map[identity.Stream]pmetric.NumberDataPoint)
 					}
-					dps := metric.Sum().DataPoints()
+					dps := m.Sum().DataPoints()
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
-						streamID := identity.OfStream(metricID, dp)
+						streamID := identity.OfStream(mID, dp)
 						s.numberLookup[streamID] = dp
 					}
 				case pmetric.MetricTypeSummary:
 					if s.summaryLookup == nil {
 						s.summaryLookup = make(map[identity.Stream]pmetric.SummaryDataPoint)
 					}
-					dps := metric.Summary().DataPoints()
+					dps := m.Summary().DataPoints()
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
-						streamID := identity.OfStream(metricID, dp)
+						streamID := identity.OfStream(mID, dp)
 						s.summaryLookup[streamID] = dp
 					}
 				case pmetric.MetricTypeHistogram:
 					if s.histoLookup == nil {
 						s.histoLookup = make(map[identity.Stream]pmetric.HistogramDataPoint)
 					}
-					dps := metric.Histogram().DataPoints()
+					dps := m.Histogram().DataPoints()
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
-						streamID := identity.OfStream(metricID, dp)
+						streamID := identity.OfStream(mID, dp)
 						s.histoLookup[streamID] = dp
 					}
 				case pmetric.MetricTypeExponentialHistogram:
 					if s.expHistoLookup == nil {
 						s.expHistoLookup = make(map[identity.Stream]pmetric.ExponentialHistogramDataPoint)
 					}
-					dps := metric.ExponentialHistogram().DataPoints()
+					dps := m.ExponentialHistogram().DataPoints()
 					for l := 0; l < dps.Len(); l++ {
 						dp := dps.At(l)
-						streamID := identity.OfStream(metricID, dp)
+						streamID := identity.OfStream(mID, dp)
 						s.expHistoLookup[streamID] = dp
 					}
 				}
@@ -397,7 +417,7 @@ func (s *Value) initLookupTables() {
 // metric is created and returned.
 func (s *Value) addResourceMetrics(
 	otherRm pmetric.ResourceMetrics,
-) (identity.Resource, resourceMetrics, error) {
+) (identity.Resource, pdataResourceMetrics, error) {
 	resID := identity.OfResource(otherRm.Resource())
 	if rm, ok := s.resLookup[resID]; ok {
 		return resID, rm, nil
@@ -406,14 +426,15 @@ func (s *Value) addResourceMetrics(
 		s.trackers = limits.NewTrackers(
 			uint64(s.resourceLimitCfg.MaxCardinality),
 			uint64(s.scopeLimitCfg.MaxCardinality),
-			uint64(s.scopeDPLimitCfg.MaxCardinality),
+			uint64(s.metricLimitCfg.MaxCardinality),
+			uint64(s.datapointLimitCfg.MaxCardinality),
 		)
 	}
 	if s.trackers.GetResourceTracker().CheckOverflow(resID.Hash) {
 		// Overflow, get/prepare an overflow bucket
 		overflowResID, err := s.getOverflowResourceIdentity()
 		if err != nil {
-			return identity.Resource{}, resourceMetrics{}, err
+			return identity.Resource{}, pdataResourceMetrics{}, err
 		}
 		if rm, ok := s.resLookup[overflowResID]; ok {
 			return overflowResID, rm, nil
@@ -424,9 +445,9 @@ func (s *Value) addResourceMetrics(
 			overflowRm.Resource().Attributes(),
 			s.resourceLimitCfg.Overflow.Attributes,
 		); err != nil {
-			return identity.Resource{}, resourceMetrics{}, err
+			return identity.Resource{}, pdataResourceMetrics{}, err
 		}
-		rm := resourceMetrics{
+		rm := pdataResourceMetrics{
 			ResourceMetrics: overflowRm,
 			scopeLimits:     s.trackers.NewScopeTracker(),
 		}
@@ -437,7 +458,7 @@ func (s *Value) addResourceMetrics(
 	rmOrig := s.source.ResourceMetrics().AppendEmpty()
 	rmOrig.SetSchemaUrl(otherRm.SchemaUrl())
 	otherRm.Resource().CopyTo(rmOrig.Resource())
-	rm := resourceMetrics{
+	rm := pdataResourceMetrics{
 		ResourceMetrics: rmOrig,
 		scopeLimits:     s.trackers.NewScopeTracker(),
 	}
@@ -451,9 +472,9 @@ func (s *Value) addResourceMetrics(
 // metric is created and returned.
 func (s *Value) addScopeMetrics(
 	resID identity.Resource,
-	rm resourceMetrics,
+	rm pdataResourceMetrics,
 	otherSm pmetric.ScopeMetrics,
-) (identity.Scope, scopeMetrics, error) {
+) (identity.Scope, pdataScopeMetrics, error) {
 	scopeID := identity.OfScope(resID, otherSm.Scope())
 	if sm, ok := s.scopeLookup[scopeID]; ok {
 		return scopeID, sm, nil
@@ -462,7 +483,7 @@ func (s *Value) addScopeMetrics(
 		// Overflow, get/prepare an overflow bucket
 		overflowScopeID, err := s.getOverflowScopeIdentity(resID)
 		if err != nil {
-			return identity.Scope{}, scopeMetrics{}, err
+			return identity.Scope{}, pdataScopeMetrics{}, err
 		}
 		if sm, ok := s.scopeLookup[overflowScopeID]; ok {
 			return overflowScopeID, sm, nil
@@ -473,11 +494,11 @@ func (s *Value) addScopeMetrics(
 			overflowScope.Scope().Attributes(),
 			s.scopeLimitCfg.Overflow.Attributes,
 		); err != nil {
-			return identity.Scope{}, scopeMetrics{}, err
+			return identity.Scope{}, pdataScopeMetrics{}, err
 		}
-		sm := scopeMetrics{
-			ScopeMetrics:     overflowScope,
-			datapointsLimits: s.trackers.NewScopeDPsTracker(),
+		sm := pdataScopeMetrics{
+			ScopeMetrics: overflowScope,
+			metricLimits: s.trackers.NewMetricTracker(),
 		}
 		s.scopeLookup[overflowScopeID] = sm
 		return overflowScopeID, sm, nil
@@ -486,9 +507,9 @@ func (s *Value) addScopeMetrics(
 	smOrig := rm.ScopeMetrics().AppendEmpty()
 	otherSm.Scope().CopyTo(smOrig.Scope())
 	smOrig.SetSchemaUrl(otherSm.SchemaUrl())
-	sm := scopeMetrics{
-		ScopeMetrics:     smOrig,
-		datapointsLimits: s.trackers.NewScopeDPsTracker(),
+	sm := pdataScopeMetrics{
+		ScopeMetrics: smOrig,
+		metricLimits: s.trackers.NewMetricTracker(),
 	}
 	s.scopeLookup[scopeID] = sm
 	return scopeID, sm, nil
@@ -499,47 +520,58 @@ func (s *Value) addScopeMetrics(
 // metric then the datapoint overflow is updated and the metric is discarded
 // as when datapoint overflows, a new metric overflow sum metric is added
 // with delta temporality tracking the cardinality estimate of the overflow.
+// The returned bool is `true` if there is overflow and `false` otherwise.
 func (s *Value) addMetric(
 	scopeID identity.Scope,
-	sm scopeMetrics,
+	sm pdataScopeMetrics,
 	otherM pmetric.Metric,
-) (identity.Metric, pmetric.Metric) {
-	metricID := identity.OfMetric(scopeID, otherM)
-	if m, ok := s.metricLookup[metricID]; ok {
-		return metricID, m
+) (identity.Metric, pdataMetric, bool) {
+	mID := identity.OfMetric(scopeID, otherM)
+	if m, ok := s.metricLookup[mID]; ok {
+		return mID, m, false
+	}
+	if sm.metricLimits.CheckOverflow(mID.Hash) {
+		// Metric overflow detected. In this case no action has to be taken
+		// at this point since metric overflow should create a new sum metric
+		// recording the number of unique metric that overflowed. This number
+		// will be recorded in the limit tracker and the metric will be
+		// populated on demand.
+		return identity.Metric{}, pdataMetric{}, true
 	}
 
-	// Metrics doesn't have overflows (only datapoints have)
-	// TODO (lahsivjar): Add limits for metrics.
 	// Clone it *without* the datapoint data
-	m := sm.Metrics().AppendEmpty()
-	m.SetName(otherM.Name())
-	m.SetDescription(otherM.Description())
-	m.SetUnit(otherM.Unit())
+	mOrig := sm.Metrics().AppendEmpty()
+	mOrig.SetName(otherM.Name())
+	mOrig.SetDescription(otherM.Description())
+	mOrig.SetUnit(otherM.Unit())
 	switch otherM.Type() {
 	case pmetric.MetricTypeGauge:
-		m.SetEmptyGauge()
+		mOrig.SetEmptyGauge()
 	case pmetric.MetricTypeSummary:
-		m.SetEmptySummary()
+		mOrig.SetEmptySummary()
 	case pmetric.MetricTypeSum:
 		otherSum := otherM.Sum()
 
-		sum := m.SetEmptySum()
+		sum := mOrig.SetEmptySum()
 		sum.SetAggregationTemporality(otherSum.AggregationTemporality())
 		sum.SetIsMonotonic(otherSum.IsMonotonic())
 	case pmetric.MetricTypeHistogram:
 		otherHist := otherM.Histogram()
 
-		hist := m.SetEmptyHistogram()
+		hist := mOrig.SetEmptyHistogram()
 		hist.SetAggregationTemporality(otherHist.AggregationTemporality())
 	case pmetric.MetricTypeExponentialHistogram:
 		otherExp := otherM.ExponentialHistogram()
 
-		exp := m.SetEmptyExponentialHistogram()
+		exp := mOrig.SetEmptyExponentialHistogram()
 		exp.SetAggregationTemporality(otherExp.AggregationTemporality())
 	}
-	s.metricLookup[metricID] = m
-	return metricID, m
+	m := pdataMetric{
+		Metric:          mOrig,
+		datapointLimits: s.trackers.NewDatapointTracker(),
+	}
+	s.metricLookup[mID] = m
+	return mID, m, false
 }
 
 // addSumDataPoint returns a data point entry in the store for the given metric
@@ -548,9 +580,8 @@ func (s *Value) addMetric(
 // due to configured limit then an empty data point is returned. The returned
 // bool value is `true` if the datapoint already exists and `false` otherwise.
 func (s *Value) addSumDataPoint(
-	sm scopeMetrics,
 	metricID identity.Metric,
-	metric pmetric.Metric,
+	metric pdataMetric,
 	otherDP pmetric.NumberDataPoint,
 ) (pmetric.NumberDataPoint, bool) {
 	streamID := identity.OfStream(metricID, otherDP)
@@ -559,7 +590,7 @@ func (s *Value) addSumDataPoint(
 	} else if dp, ok := s.numberLookup[streamID]; ok {
 		return dp, true
 	}
-	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
+	if metric.datapointLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -581,9 +612,8 @@ func (s *Value) addSumDataPoint(
 // The returned bool value is `true` if datapoint already exists and `false`
 // otherwise.
 func (s *Value) addSummaryDataPoint(
-	sm scopeMetrics,
 	metricID identity.Metric,
-	metric pmetric.Metric,
+	metric pdataMetric,
 	otherDP pmetric.SummaryDataPoint,
 ) (pmetric.SummaryDataPoint, bool) {
 	streamID := identity.OfStream(metricID, otherDP)
@@ -592,7 +622,7 @@ func (s *Value) addSummaryDataPoint(
 	} else if dp, ok := s.summaryLookup[streamID]; ok {
 		return dp, true
 	}
-	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
+	if metric.datapointLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -614,9 +644,8 @@ func (s *Value) addSummaryDataPoint(
 // The returned bool value is `true` if datapoint already exists and `false`
 // otherwise.
 func (s *Value) addHistogramDataPoint(
-	sm scopeMetrics,
 	metricID identity.Metric,
-	metric pmetric.Metric,
+	metric pdataMetric,
 	otherDP pmetric.HistogramDataPoint,
 ) (pmetric.HistogramDataPoint, bool) {
 	streamID := identity.OfStream(metricID, otherDP)
@@ -625,7 +654,7 @@ func (s *Value) addHistogramDataPoint(
 	} else if dp, ok := s.histoLookup[streamID]; ok {
 		return dp, true
 	}
-	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
+	if metric.datapointLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -647,9 +676,8 @@ func (s *Value) addHistogramDataPoint(
 // returned. The returned bool value is `true` if datapoint already exists
 // and `false` otherwise.
 func (s *Value) addExponentialHistogramDataPoint(
-	sm scopeMetrics,
 	metricID identity.Metric,
-	metric pmetric.Metric,
+	metric pdataMetric,
 	otherDP pmetric.ExponentialHistogramDataPoint,
 ) (pmetric.ExponentialHistogramDataPoint, bool) {
 	streamID := identity.OfStream(metricID, otherDP)
@@ -658,7 +686,7 @@ func (s *Value) addExponentialHistogramDataPoint(
 	} else if dp, ok := s.expHistoLookup[streamID]; ok {
 		return dp, true
 	}
-	if sm.datapointsLimits.CheckOverflow(streamID.Hash) {
+	if metric.datapointLimits.CheckOverflow(streamID.Hash) {
 		// Datapoints overflow detected. In this case no action has to be
 		// done at this point since data point overflow should create a new
 		// overflow metric of sum type recording the number of unique
@@ -674,28 +702,24 @@ func (s *Value) addExponentialHistogramDataPoint(
 }
 
 func (v *Value) mergeMetric(
-	scopeID identity.Scope,
-	sm scopeMetrics,
+	metricID identity.Metric,
+	m pdataMetric,
 	otherM pmetric.Metric,
 ) {
-	metricID, metric := v.addMetric(scopeID, sm, otherM)
-
 	switch otherM.Type() {
 	case pmetric.MetricTypeSum:
 		mergeDataPoints(
 			otherM.Sum().DataPoints(),
-			sm,
 			metricID,
-			metric,
+			m,
 			v.addSumDataPoint,
 			otherM.Sum().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeSummary:
 		mergeDataPoints(
 			otherM.Summary().DataPoints(),
-			sm,
 			metricID,
-			metric,
+			m,
 			v.addSummaryDataPoint,
 			// Assume summary to be cumulative temporality
 			pmetric.AggregationTemporalityCumulative,
@@ -703,18 +727,16 @@ func (v *Value) mergeMetric(
 	case pmetric.MetricTypeHistogram:
 		mergeDataPoints(
 			otherM.Histogram().DataPoints(),
-			sm,
 			metricID,
-			metric,
+			m,
 			v.addHistogramDataPoint,
 			otherM.Histogram().AggregationTemporality(),
 		)
 	case pmetric.MetricTypeExponentialHistogram:
 		mergeDataPoints(
 			otherM.ExponentialHistogram().DataPoints(),
-			sm,
 			metricID,
-			metric,
+			m,
 			v.addExponentialHistogramDataPoint,
 			otherM.ExponentialHistogram().AggregationTemporality(),
 		)
@@ -743,6 +765,24 @@ func (s *Value) getOverflowScopeIdentity(
 		return identity.Scope{}, fmt.Errorf("failed to create overflow bucket: %w", err)
 	}
 	return identity.OfScope(res, scope), nil
+}
+
+func fillOverflowMetric(
+	m pmetric.Metric,
+	name, desc string,
+	count uint64,
+	extraAttrs []config.Attribute,
+) error {
+	m.SetName(name)
+	m.SetDescription(desc)
+	sum := m.SetEmptySum()
+	sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	dp := sum.DataPoints().AppendEmpty()
+	dp.SetIntValue(int64(count))
+	if err := decorate(dp.Attributes(), extraAttrs); err != nil {
+		return fmt.Errorf("failed to append configured attributes to overflow metric: %w", err)
+	}
+	return nil
 }
 
 func decorate(target pcommon.Map, src []config.Attribute) error {
