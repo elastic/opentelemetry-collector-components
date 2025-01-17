@@ -106,13 +106,16 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// per-worker temporary container to avoid allocs
+			// FIXME: this doesn't work with fanoutconsumer as it will mark as read only
+			next := plog.NewLogs()
 			for {
 				select {
 				case <-startCtx.Done():
 					return
 				default:
 				}
-				next, err := ar.nextLogs()
+				err := ar.nextLogs(next)
 				if errors.Is(err, list.ErrLoopLimitReached) {
 					return
 				}
@@ -147,13 +150,12 @@ func (ar *logsGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *logsGenerator) nextLogs() (plog.Logs, error) {
+func (ar *logsGenerator) nextLogs(next plog.Logs) error {
 	now := pcommon.NewTimestampFromTime(time.Now())
 
-	next := plog.NewLogs()
 	sample, err := ar.samples.Next()
 	if err != nil {
-		return sample, err
+		return err
 	}
 	sample.CopyTo(next)
 
@@ -167,5 +169,5 @@ func (ar *logsGenerator) nextLogs() (plog.Logs, error) {
 		}
 	}
 
-	return next, nil
+	return nil
 }

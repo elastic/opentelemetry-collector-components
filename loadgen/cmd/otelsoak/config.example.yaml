@@ -47,15 +47,15 @@ service:
     logs:
       receivers: [loadgen]
       processors: [ratelimit, transform/rewrite]
-      exporters: [otlp, debug]
+      exporters: [otlp]
     metrics:
       receivers: [loadgen]
       processors: [ratelimit, transform/rewrite]
-      exporters: [otlp, debug]
+      exporters: [otlp]
     traces:
       receivers: [loadgen]
       processors: [ratelimit, transform/rewrite]
-      exporters: [otlp, debug]
+      exporters: [otlp]
   telemetry:
     metrics:
       readers:
