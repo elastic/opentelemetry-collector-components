@@ -22,7 +22,9 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"os"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -32,7 +34,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 )
 
 //go:embed testdata/logs.jsonl
@@ -42,9 +44,10 @@ type logsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples internal.LoopingList[plog.Logs]
+	samples list.BoundedLoopingList[plog.Logs]
 
-	stats Stats
+	stats   Stats
+	statsMu sync.Mutex
 
 	consumer consumer.Logs
 
@@ -89,7 +92,7 @@ func createLogsReceiver(
 		cfg:      genConfig,
 		logger:   set.Logger,
 		consumer: consumer,
-		samples:  internal.NewLoopingList(samples),
+		samples:  list.NewBoundedLoopingList(samples, genConfig.Logs.MaxReplay),
 	}, nil
 }
 
@@ -97,28 +100,41 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 	startCtx, cancelFn := context.WithCancel(ctx)
 	ar.cancelFn = cancelFn
 
-	go func() {
-		for {
-			select {
-			case <-startCtx.Done():
-				return
-			default:
-			}
-			m := ar.nextLogs()
-			if err := ar.consumer.ConsumeLogs(startCtx, m); err != nil {
-				ar.logger.Error(err.Error())
-				ar.stats.FailedRequests++
-				ar.stats.FailedLogRecords += m.LogRecordCount()
-			} else {
-				ar.stats.Requests++
-				ar.stats.LogRecords += m.LogRecordCount()
-			}
-			if ar.isDone() {
-				if ar.cfg.Logs.doneCh != nil {
-					ar.cfg.Logs.doneCh <- ar.stats
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < ar.cfg.NumWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-startCtx.Done():
+					return
+				default:
 				}
-				return
+				next, err := ar.nextLogs()
+				if errors.Is(err, list.ErrLoopLimitReached) {
+					return
+				}
+				if err := ar.consumer.ConsumeLogs(startCtx, next); err != nil {
+					ar.logger.Error(err.Error())
+					ar.statsMu.Lock()
+					ar.stats.FailedRequests++
+					ar.stats.FailedLogRecords += next.LogRecordCount()
+					ar.statsMu.Unlock()
+				} else {
+					ar.statsMu.Lock()
+					ar.stats.Requests++
+					ar.stats.LogRecords += next.LogRecordCount()
+					ar.statsMu.Unlock()
+				}
 			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		if ar.cfg.Logs.doneCh != nil {
+			ar.cfg.Logs.doneCh <- ar.stats
 		}
 	}()
 	return nil
@@ -131,13 +147,17 @@ func (ar *logsGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *logsGenerator) nextLogs() plog.Logs {
+func (ar *logsGenerator) nextLogs() (plog.Logs, error) {
 	now := pcommon.NewTimestampFromTime(time.Now())
 
-	nextLogs := plog.NewLogs()
-	ar.samples.Next().CopyTo(nextLogs)
+	next := plog.NewLogs()
+	sample, err := ar.samples.Next()
+	if err != nil {
+		return sample, err
+	}
+	sample.CopyTo(next)
 
-	rm := nextLogs.ResourceLogs()
+	rm := next.ResourceLogs()
 	for i := 0; i < rm.Len(); i++ {
 		for j := 0; j < rm.At(i).ScopeLogs().Len(); j++ {
 			for k := 0; k < rm.At(i).ScopeLogs().At(j).LogRecords().Len(); k++ {
@@ -147,9 +167,5 @@ func (ar *logsGenerator) nextLogs() plog.Logs {
 		}
 	}
 
-	return nextLogs
-}
-
-func (ar *logsGenerator) isDone() bool {
-	return ar.cfg.Logs.MaxReplay > 0 && ar.samples.LoopCount() >= ar.cfg.Logs.MaxReplay
+	return next, nil
 }

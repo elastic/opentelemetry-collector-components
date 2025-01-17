@@ -30,6 +30,9 @@ type Config struct {
 	Metrics MetricsConfig `mapstructure:"metrics"`
 	Logs    LogsConfig    `mapstructure:"logs"`
 	Traces  TracesConfig  `mapstructure:"traces"`
+
+	// NumWorker is the number of workers to share the load
+	NumWorkers int `mapstructure:"num_workers"`
 }
 
 type MetricsConfig struct {

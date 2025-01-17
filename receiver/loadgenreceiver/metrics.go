@@ -22,7 +22,9 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"os"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -32,7 +34,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 )
 
 //go:embed testdata/metrics.jsonl
@@ -42,9 +44,10 @@ type metricsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples internal.LoopingList[pmetric.Metrics]
+	samples list.BoundedLoopingList[pmetric.Metrics]
 
-	stats Stats
+	stats   Stats
+	statsMu sync.Mutex
 
 	consumer consumer.Metrics
 
@@ -89,7 +92,7 @@ func createMetricsReceiver(
 		cfg:      genConfig,
 		logger:   set.Logger,
 		consumer: consumer,
-		samples:  internal.NewLoopingList(samples),
+		samples:  list.NewBoundedLoopingList(samples, genConfig.Metrics.MaxReplay),
 	}, nil
 }
 
@@ -97,28 +100,41 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 	startCtx, cancelFn := context.WithCancel(ctx)
 	ar.cancelFn = cancelFn
 
-	go func() {
-		for {
-			select {
-			case <-startCtx.Done():
-				return
-			default:
-			}
-			m := ar.nextMetrics()
-			if err := ar.consumer.ConsumeMetrics(startCtx, m); err != nil {
-				ar.logger.Error(err.Error())
-				ar.stats.FailedRequests++
-				ar.stats.FailedMetricDataPoints += m.DataPointCount()
-			} else {
-				ar.stats.Requests++
-				ar.stats.MetricDataPoints += m.DataPointCount()
-			}
-			if ar.isDone() {
-				if ar.cfg.Metrics.doneCh != nil {
-					ar.cfg.Metrics.doneCh <- ar.stats
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < ar.cfg.NumWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-startCtx.Done():
+					return
+				default:
 				}
-				return
+				next, err := ar.nextMetrics()
+				if errors.Is(err, list.ErrLoopLimitReached) {
+					return
+				}
+				if err := ar.consumer.ConsumeMetrics(startCtx, next); err != nil {
+					ar.logger.Error(err.Error())
+					ar.statsMu.Lock()
+					ar.stats.FailedRequests++
+					ar.stats.FailedMetricDataPoints += next.DataPointCount()
+					ar.statsMu.Unlock()
+				} else {
+					ar.statsMu.Lock()
+					ar.stats.Requests++
+					ar.stats.MetricDataPoints += next.DataPointCount()
+					ar.statsMu.Unlock()
+				}
 			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		if ar.cfg.Metrics.doneCh != nil {
+			ar.cfg.Metrics.doneCh <- ar.stats
 		}
 	}()
 	return nil
@@ -131,13 +147,17 @@ func (ar *metricsGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *metricsGenerator) nextMetrics() pmetric.Metrics {
+func (ar *metricsGenerator) nextMetrics() (pmetric.Metrics, error) {
 	now := pcommon.NewTimestampFromTime(time.Now())
 
-	nextMetrics := pmetric.NewMetrics()
-	ar.samples.Next().CopyTo(nextMetrics)
+	next := pmetric.NewMetrics()
+	sample, err := ar.samples.Next()
+	if err != nil {
+		return sample, err
+	}
+	sample.CopyTo(next)
 
-	rm := nextMetrics.ResourceMetrics()
+	rm := next.ResourceMetrics()
 	for i := 0; i < rm.Len(); i++ {
 		for j := 0; j < rm.At(i).ScopeMetrics().Len(); j++ {
 			for k := 0; k < rm.At(i).ScopeMetrics().At(j).Metrics().Len(); k++ {
@@ -179,9 +199,5 @@ func (ar *metricsGenerator) nextMetrics() pmetric.Metrics {
 		}
 	}
 
-	return nextMetrics
-}
-
-func (ar *metricsGenerator) isDone() bool {
-	return ar.cfg.Metrics.MaxReplay > 0 && ar.samples.LoopCount() >= ar.cfg.Metrics.MaxReplay
+	return next, nil
 }

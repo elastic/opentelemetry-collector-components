@@ -22,7 +22,9 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"os"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -32,7 +34,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 )
 
 const maxScannerBufSize = 1024 * 1024
@@ -44,9 +46,10 @@ type tracesGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples internal.LoopingList[ptrace.Traces]
+	samples list.BoundedLoopingList[ptrace.Traces]
 
-	stats Stats
+	stats   Stats
+	statsMu sync.Mutex
 
 	consumer consumer.Traces
 
@@ -91,7 +94,7 @@ func createTracesReceiver(
 		cfg:      genConfig,
 		logger:   set.Logger,
 		consumer: consumer,
-		samples:  internal.NewLoopingList(samples),
+		samples:  list.NewBoundedLoopingList(samples, genConfig.Traces.MaxReplay),
 	}, nil
 }
 
@@ -99,28 +102,41 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 	startCtx, cancelFn := context.WithCancel(ctx)
 	ar.cancelFn = cancelFn
 
-	go func() {
-		for {
-			select {
-			case <-startCtx.Done():
-				return
-			default:
-			}
-			m := ar.nextTraces()
-			if err := ar.consumer.ConsumeTraces(startCtx, m); err != nil {
-				ar.logger.Error(err.Error())
-				ar.stats.FailedRequests++
-				ar.stats.FailedSpans += m.SpanCount()
-			} else {
-				ar.stats.Requests++
-				ar.stats.Spans += m.SpanCount()
-			}
-			if ar.isDone() {
-				if ar.cfg.Traces.doneCh != nil {
-					ar.cfg.Traces.doneCh <- ar.stats
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < ar.cfg.NumWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-startCtx.Done():
+					return
+				default:
 				}
-				return
+				next, err := ar.nextTraces()
+				if errors.Is(err, list.ErrLoopLimitReached) {
+					return
+				}
+				if err := ar.consumer.ConsumeTraces(startCtx, next); err != nil {
+					ar.logger.Error(err.Error())
+					ar.statsMu.Lock()
+					ar.stats.FailedRequests++
+					ar.stats.FailedSpans += next.SpanCount()
+					ar.statsMu.Unlock()
+				} else {
+					ar.statsMu.Lock()
+					ar.stats.Requests++
+					ar.stats.Spans += next.SpanCount()
+					ar.statsMu.Unlock()
+				}
 			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		if ar.cfg.Traces.doneCh != nil {
+			ar.cfg.Traces.doneCh <- ar.stats
 		}
 	}()
 	return nil
@@ -133,11 +149,15 @@ func (ar *tracesGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *tracesGenerator) nextTraces() ptrace.Traces {
-	nextLogs := ptrace.NewTraces()
-	ar.samples.Next().CopyTo(nextLogs)
+func (ar *tracesGenerator) nextTraces() (ptrace.Traces, error) {
+	next := ptrace.NewTraces()
+	sample, err := ar.samples.Next()
+	if err != nil {
+		return sample, err
+	}
+	sample.CopyTo(next)
 
-	rm := nextLogs.ResourceSpans()
+	rm := next.ResourceSpans()
 	for i := 0; i < rm.Len(); i++ {
 		for j := 0; j < rm.At(i).ScopeSpans().Len(); j++ {
 			for k := 0; k < rm.At(i).ScopeSpans().At(j).Spans().Len(); k++ {
@@ -151,9 +171,5 @@ func (ar *tracesGenerator) nextTraces() ptrace.Traces {
 		}
 	}
 
-	return nextLogs
-}
-
-func (ar *tracesGenerator) isDone() bool {
-	return ar.cfg.Traces.MaxReplay > 0 && ar.samples.LoopCount() >= ar.cfg.Traces.MaxReplay
+	return next, nil
 }

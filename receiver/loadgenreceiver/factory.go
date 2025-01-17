@@ -39,6 +39,7 @@ func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) c
 		Traces: TracesConfig{
 			doneCh: tracesDone,
 		},
+		NumWorkers: 1,
 	}
 }
 

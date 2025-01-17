@@ -15,8 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package internal // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
+package list // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 
+// LoopingList is a list that infinitely loops over the provided list of items.
 type LoopingList[T any] struct {
 	items   []T
 	idx     int
@@ -29,6 +30,8 @@ func NewLoopingList[T any](items []T) LoopingList[T] {
 	}
 }
 
+// Next returns the next item in list.
+// Unsafe for concurrent calls.
 func (s *LoopingList[T]) Next() T {
 	defer func() {
 		s.idx = (s.idx + 1) % len(s.items)

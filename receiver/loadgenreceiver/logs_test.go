@@ -20,6 +20,7 @@ package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-co
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,26 +33,30 @@ import (
 
 func TestLogsGenerator_doneCh(t *testing.T) {
 	const maxReplay = 2
-	doneCh := make(chan Stats)
-	sink := &consumertest.LogsSink{}
-	r, _ := createLogsReceiver(context.Background(), receiver.Settings{
-		ID: component.ID{},
-		TelemetrySettings: component.TelemetrySettings{
-			Logger: zap.NewNop(),
-		},
-		BuildInfo: component.BuildInfo{},
-	}, &Config{Logs: LogsConfig{
-		MaxReplay: maxReplay,
-		doneCh:    doneCh,
-	}}, sink)
-	err := r.Start(context.Background(), componenttest.NewNopHost())
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, r.Shutdown(context.Background()))
-	}()
-	stats := <-doneCh
-	want := maxReplay * bytes.Count(demoLogs, []byte("\n"))
-	assert.Equal(t, want, stats.Requests)
-	assert.Equal(t, want, len(sink.AllLogs()))
-	assert.Equal(t, sink.LogRecordCount(), stats.LogRecords)
+	for _, workers := range []int{1, 2} {
+		t.Run(fmt.Sprintf("workers=%d", workers), func(t *testing.T) {
+			doneCh := make(chan Stats)
+			sink := &consumertest.LogsSink{}
+			cfg := createDefaultReceiverConfig(doneCh, nil, nil)
+			cfg.(*Config).Logs.MaxReplay = maxReplay
+			cfg.(*Config).NumWorkers = workers
+			r, _ := createLogsReceiver(context.Background(), receiver.Settings{
+				ID: component.ID{},
+				TelemetrySettings: component.TelemetrySettings{
+					Logger: zap.NewNop(),
+				},
+				BuildInfo: component.BuildInfo{},
+			}, cfg, sink)
+			err := r.Start(context.Background(), componenttest.NewNopHost())
+			assert.NoError(t, err)
+			defer func() {
+				assert.NoError(t, r.Shutdown(context.Background()))
+			}()
+			stats := <-doneCh
+			want := maxReplay * bytes.Count(demoLogs, []byte("\n"))
+			assert.Equal(t, want, stats.Requests)
+			assert.Equal(t, want, len(sink.AllLogs()))
+			assert.Equal(t, sink.LogRecordCount(), stats.LogRecords)
+		})
+	}
 }
