@@ -50,5 +50,8 @@ func TestTracesGenerator_doneCh(t *testing.T) {
 		assert.NoError(t, r.Shutdown(context.Background()))
 	}()
 	stats := <-doneCh
-	assert.Equal(t, maxReplay*bytes.Count(demoTraces, []byte("\n")), stats.Requests)
+	want := maxReplay * bytes.Count(demoTraces, []byte("\n"))
+	assert.Equal(t, want, stats.Requests)
+	assert.Equal(t, want, len(sink.AllTraces()))
+	assert.Equal(t, sink.SpanCount(), stats.Spans)
 }

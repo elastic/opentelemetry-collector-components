@@ -50,5 +50,8 @@ func TestMetricsGenerator_doneCh(t *testing.T) {
 		assert.NoError(t, r.Shutdown(context.Background()))
 	}()
 	stats := <-doneCh
-	assert.Equal(t, maxReplay*bytes.Count(demoMetrics, []byte("\n")), stats.Requests)
+	want := maxReplay * bytes.Count(demoMetrics, []byte("\n"))
+	assert.Equal(t, want, stats.Requests)
+	assert.Equal(t, want, len(sink.AllMetrics()))
+	assert.Equal(t, sink.DataPointCount(), stats.MetricDataPoints)
 }

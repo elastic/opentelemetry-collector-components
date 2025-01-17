@@ -50,5 +50,8 @@ func TestLogsGenerator_doneCh(t *testing.T) {
 		assert.NoError(t, r.Shutdown(context.Background()))
 	}()
 	stats := <-doneCh
-	assert.Equal(t, maxReplay*bytes.Count(demoLogs, []byte("\n")), stats.Requests)
+	want := maxReplay * bytes.Count(demoLogs, []byte("\n"))
+	assert.Equal(t, want, stats.Requests)
+	assert.Equal(t, want, len(sink.AllLogs()))
+	assert.Equal(t, sink.LogRecordCount(), stats.LogRecords)
 }
