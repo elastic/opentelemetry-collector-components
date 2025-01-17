@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/elasticsearch"
+	"github.com/elastic/go-elasticsearch/v8"
 )
 
 var sampleHits = []map[string]interface{}{
@@ -44,9 +44,8 @@ func newMockElasticsearchClient(t testing.TB, handler func(http.ResponseWriter, 
 		handler(w, r)
 	}))
 	t.Cleanup(srv.Close)
-	config := elasticsearch.DefaultConfig()
-	config.Backoff.Init = time.Nanosecond
-	config.Hosts = []string{srv.URL}
+	config := elasticsearch.Config{}
+	config.Addresses = []string{srv.URL}
 	client, err := elasticsearch.NewClient(config)
 	require.NoError(t, err)
 	return client

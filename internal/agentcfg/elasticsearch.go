@@ -30,8 +30,8 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
-	"github.com/elastic/opentelemetry-collector-components/internal/elasticsearch"
 )
 
 const ElasticsearchIndexName = ".apm-agent-configuration"
