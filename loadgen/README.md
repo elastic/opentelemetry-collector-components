@@ -8,4 +8,4 @@ In `cmd/` directory, there are
     - Load generator based on OTel collector and Go benchmarking. It sends load to an endpoint, terminates after a configured duration, and outputs statistics.
     - Suitable for benchmarking
 
-otelsoak and otelbench is synonymous to apmsoak and apmbench in [elastic/apm-perf](https://github.com/elastic/apm-perf).
+otelsoak and otelbench are synonymous to apmsoak and apmbench in [elastic/apm-perf](https://github.com/elastic/apm-perf).
