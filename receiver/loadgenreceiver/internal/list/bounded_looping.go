@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package list // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/loopinglist"
+package list // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 
 import (
 	"errors"
