@@ -35,6 +35,8 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 )
 
+const maxScannerBufSize = 1024 * 1024
+
 //go:embed testdata/traces.jsonl
 var demoTraces []byte
 
@@ -72,6 +74,7 @@ func createTracesReceiver(
 
 	var samples []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
+	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
 		traceBytes := scanner.Bytes()
 		lineTraces, err := parser.UnmarshalTraces(traceBytes)
@@ -79,6 +82,9 @@ func createTracesReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineTraces)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	return &tracesGenerator{

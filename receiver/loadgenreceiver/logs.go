@@ -72,6 +72,7 @@ func createLogsReceiver(
 
 	var samples []plog.Logs
 	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
+	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
 		logBytes := scanner.Bytes()
 		lineLogs, err := parser.UnmarshalLogs(logBytes)
@@ -79,6 +80,9 @@ func createLogsReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineLogs)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	return &logsGenerator{

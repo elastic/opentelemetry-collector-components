@@ -72,6 +72,7 @@ func createMetricsReceiver(
 
 	var samples []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
+	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
 		metricBytes := scanner.Bytes()
 		lineMetrics, err := parser.UnmarshalMetrics(metricBytes)
@@ -79,6 +80,9 @@ func createMetricsReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineMetrics)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	return &metricsGenerator{
