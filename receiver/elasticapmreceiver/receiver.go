@@ -46,6 +46,11 @@ import (
 // TODO report different formats for intakev2 and rumv3?
 const dataFormatElasticAPM = "elasticapm"
 
+const (
+	agentConfigPath    = "/config/v1/agents"
+	intakeV2EventsPath = "/intake/v2/events"
+)
+
 // elasticAPMReceiver implements support for receiving Logs, Metrics, and Traces from Elastic APM agents.
 type elasticAPMReceiver struct {
 	cfg       *Config
@@ -91,8 +96,8 @@ func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) err
 func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	httpMux := http.NewServeMux()
 
-	elasticAPMEventsHandler := r.newElasticAPMEventsHandler()
-	httpMux.HandleFunc("/intake/v2/events", elasticAPMEventsHandler)
+	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler())
+	httpMux.HandleFunc(agentConfigPath, r.newElasticAPMConfigsHandler())
 	// TODO rum v2, v3
 
 	var err error
