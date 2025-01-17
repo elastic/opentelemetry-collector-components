@@ -25,13 +25,14 @@ type (
 	JsonlFile string
 )
 
-// Config defines configuration for HostMetrics receiver.
+// Config defines configuration for loadgen receiver.
 type Config struct {
 	Metrics MetricsConfig `mapstructure:"metrics"`
 	Logs    LogsConfig    `mapstructure:"logs"`
 	Traces  TracesConfig  `mapstructure:"traces"`
 
-	// NumWorker is the number of workers to share the load
+	// NumWorker is the number of workers to send to next consumer concurrently.
+	// The workers share the load instead of each sending MaxReplay individually.
 	NumWorkers int `mapstructure:"num_workers"`
 }
 
