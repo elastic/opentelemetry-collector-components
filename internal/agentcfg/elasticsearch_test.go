@@ -100,7 +100,8 @@ func newElasticsearchFetcher(
 		b, err := json.Marshal(respTmpl)
 		require.NoError(t, err)
 		w.WriteHeader(200)
-		w.Write(b)
+		_, err = w.Write(b)
+		require.NoError(t, err)
 		i += searchSize
 	}), time.Second, zap.NewNop())
 	fetcher.searchSize = searchSize
@@ -142,12 +143,6 @@ func TestFetchOnCacheNotReady(t *testing.T) {
 
 	_, err = fetcher.Fetch(context.Background(), Query{Service: Service{Name: ""}, Etag: ""})
 	require.NoError(t, err)
-}
-
-type fetcherFunc func(context.Context, Query) (Result, error)
-
-func (f fetcherFunc) Fetch(ctx context.Context, query Query) (Result, error) {
-	return f(ctx, query)
 }
 
 func TestFetchNoFallback(t *testing.T) {

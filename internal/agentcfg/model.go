@@ -33,11 +33,9 @@ const (
 	EtagSentinel = "-"
 )
 
-var (
-	// UnrestrictedSettings are settings considered safe to be returned to all requesters,
-	// including unauthenticated ones such as RUM.
-	UnrestrictedSettings = map[string]bool{"transaction_sample_rate": true}
-)
+// UnrestrictedSettings are settings considered safe to be returned to all requesters,
+// including unauthenticated ones such as RUM.
+var UnrestrictedSettings = map[string]bool{"transaction_sample_rate": true}
 
 // Result models a Kibana response
 type Result struct {
@@ -76,10 +74,6 @@ type Query struct {
 	// identified by UnrestrictedSettings. Otherwise, if InsecureAgents is empty,
 	// the agent name is ignored and no restrictions are applied.
 	InsecureAgents []string `json:"-"`
-}
-
-func (q Query) id() string {
-	return q.Service.Name + q.Service.Environment
 }
 
 // Service holds supported attributes for querying configuration

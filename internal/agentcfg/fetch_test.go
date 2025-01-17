@@ -20,13 +20,10 @@ package agentcfg
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var testExpiration = time.Nanosecond
 
 func TestCustomJSON(t *testing.T) {
 	expected := Result{Source: Source{
