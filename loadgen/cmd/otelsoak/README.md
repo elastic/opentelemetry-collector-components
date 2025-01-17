@@ -11,6 +11,8 @@ See an example configuration at [`config.example.yaml`](./config.example.yaml). 
 1. Build the Elastic collector components distro by running `make genelasticcol` at the root of this repository.
 2. Run `otelsoak`, which is a symlink to the collector binary.
 
+## Example usage
+
 To override any config, use `--config` or `--set`. See [official OTel configuration documentation](https://opentelemetry.io/docs/collector/configuration/).
 ```
 ./otelsoak --config config.example.yaml --set "exporters.otlp.endpoint=http://localhost:8200" --set "exporters.otlp.headers.Authorization=ApiKey xxx" --set "exporters.otlp.headers.X-FOO-HEADER=bar"
