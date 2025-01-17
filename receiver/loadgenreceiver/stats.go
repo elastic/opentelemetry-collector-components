@@ -15,30 +15,30 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package internal // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
+package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
-type LoopingList[T any] struct {
-	items   []T
-	idx     int
-	loopCnt int
+// Stats holds statistics about telemetry generated and sent by loadgenreceiver
+type Stats struct {
+	Requests       int
+	FailedRequests int
+
+	LogRecords       int
+	MetricDataPoints int
+	Spans            int
+
+	FailedLogRecords       int
+	FailedMetricDataPoints int
+	FailedSpans            int
 }
 
-func NewLoopingList[T any](items []T) LoopingList[T] {
-	return LoopingList[T]{
-		items: items,
-	}
-}
-
-func (s *LoopingList[T]) Next() T {
-	defer func() {
-		s.idx = (s.idx + 1) % len(s.items)
-		if s.idx == 0 {
-			s.loopCnt++
-		}
-	}()
-	return s.items[s.idx]
-}
-
-func (s *LoopingList[T]) LoopCount() int {
-	return s.loopCnt
+func (s Stats) Add(other Stats) Stats {
+	s.Requests += other.Requests
+	s.FailedRequests += other.FailedRequests
+	s.LogRecords += other.LogRecords
+	s.MetricDataPoints += other.MetricDataPoints
+	s.Spans += other.Spans
+	s.FailedLogRecords += other.FailedLogRecords
+	s.FailedMetricDataPoints += other.FailedMetricDataPoints
+	s.FailedSpans += other.FailedSpans
+	return s
 }

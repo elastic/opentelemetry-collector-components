@@ -36,18 +36,36 @@ type MetricsConfig struct {
 	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
+
+	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
+	MaxReplay int `mapstructure:"max_replay"`
+	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
+	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
+	doneCh chan Stats
 }
 
 type LogsConfig struct {
 	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
+
+	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
+	MaxReplay int `mapstructure:"max_replay"`
+	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
+	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
+	doneCh chan Stats
 }
 
 type TracesConfig struct {
 	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
+
+	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
+	MaxReplay int `mapstructure:"max_replay"`
+	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
+	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
+	doneCh chan Stats
 }
 
 var _ component.Config = (*Config)(nil)

@@ -10,6 +10,14 @@ exporters:
     sending_queue:
       enabled: false
     timeout: 60s
+  otlphttp:
+    endpoint: "${env:ELASTIC_APM_SERVER_URL}"
+    headers:
+      Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
+    #      Authorization: "Bearer ${env:ELASTIC_APM_SECRET_TOKEN}"
+    sending_queue:
+      enabled: false
+    timeout: 60s
   debug:
 
 
@@ -28,6 +36,8 @@ processors:
     burst: 5000
     throttle_behavior: delay
 
+# TODO(carsonip): simulate > 1 agents for higher load
+# https://github.com/elastic/opentelemetry-collector-components/issues/305
 
 service:
   pipelines:
@@ -43,6 +53,11 @@ service:
       receivers: [loadgen]
       processors: [ratelimit, transform/rewrite]
       exporters: [otlp, debug]
-#  telemetry:
-#    logs:
-#      level: debug
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '127.0.0.1'
+                port: 8888

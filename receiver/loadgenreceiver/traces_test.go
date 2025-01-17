@@ -18,38 +18,40 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/receiver"
+	"bytes"
+	"context"
+	"testing"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/metadata"
+	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/receiver"
+	"go.uber.org/zap"
 )
 
-func NewFactory() receiver.Factory {
-	return NewFactoryWithDone(nil, nil, nil)
-}
-
-func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) component.Config {
-	return &Config{
-		Logs: LogsConfig{
-			doneCh: logsDone,
+func TestTracesGenerator_doneCh(t *testing.T) {
+	const maxReplay = 2
+	doneCh := make(chan Stats)
+	sink := &consumertest.TracesSink{}
+	r, _ := createTracesReceiver(context.Background(), receiver.Settings{
+		ID: component.ID{},
+		TelemetrySettings: component.TelemetrySettings{
+			Logger: zap.NewNop(),
 		},
-		Metrics: MetricsConfig{
-			doneCh: metricsDone,
-		},
-		Traces: TracesConfig{
-			doneCh: tracesDone,
-		},
-	}
-}
-
-func NewFactoryWithDone(logsDone, metricsDone, tracesDone chan Stats) receiver.Factory {
-	return receiver.NewFactory(
-		metadata.Type,
-		func() component.Config {
-			return createDefaultReceiverConfig(logsDone, metricsDone, tracesDone)
-		},
-		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
-		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
-		receiver.WithLogs(createLogsReceiver, component.StabilityLevelDevelopment),
-	)
+		BuildInfo: component.BuildInfo{},
+	}, &Config{Traces: TracesConfig{
+		MaxReplay: maxReplay,
+		doneCh:    doneCh,
+	}}, sink)
+	err := r.Start(context.Background(), componenttest.NewNopHost())
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, r.Shutdown(context.Background()))
+	}()
+	stats := <-doneCh
+	want := maxReplay * bytes.Count(demoTraces, []byte("\n"))
+	assert.Equal(t, want, stats.Requests)
+	assert.Equal(t, want, len(sink.AllTraces()))
+	assert.Equal(t, sink.SpanCount(), stats.Spans)
 }

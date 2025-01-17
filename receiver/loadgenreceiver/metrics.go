@@ -25,13 +25,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 )
 
 //go:embed testdata/metrics.jsonl
@@ -41,7 +42,10 @@ type metricsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples  internal.LoopingList[pmetric.Metrics]
+	samples internal.LoopingList[pmetric.Metrics]
+
+	stats Stats
+
 	consumer consumer.Metrics
 
 	cancelFn context.CancelFunc
@@ -68,6 +72,7 @@ func createMetricsReceiver(
 
 	var samples []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
+	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
 		metricBytes := scanner.Bytes()
 		lineMetrics, err := parser.UnmarshalMetrics(metricBytes)
@@ -75,6 +80,9 @@ func createMetricsReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineMetrics)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	return &metricsGenerator{
@@ -95,10 +103,21 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 			case <-startCtx.Done():
 				return
 			default:
-				if err := ar.consumer.ConsumeMetrics(startCtx, ar.nextMetrics()); err != nil {
-					ar.logger.Error(err.Error())
-					continue
+			}
+			m := ar.nextMetrics()
+			if err := ar.consumer.ConsumeMetrics(startCtx, m); err != nil {
+				ar.logger.Error(err.Error())
+				ar.stats.FailedRequests++
+				ar.stats.FailedMetricDataPoints += m.DataPointCount()
+			} else {
+				ar.stats.Requests++
+				ar.stats.MetricDataPoints += m.DataPointCount()
+			}
+			if ar.isDone() {
+				if ar.cfg.Metrics.doneCh != nil {
+					ar.cfg.Metrics.doneCh <- ar.stats
 				}
+				return
 			}
 		}
 	}()
@@ -161,4 +180,8 @@ func (ar *metricsGenerator) nextMetrics() pmetric.Metrics {
 	}
 
 	return nextMetrics
+}
+
+func (ar *metricsGenerator) isDone() bool {
+	return ar.cfg.Metrics.MaxReplay > 0 && ar.samples.LoopCount() >= ar.cfg.Metrics.MaxReplay
 }
