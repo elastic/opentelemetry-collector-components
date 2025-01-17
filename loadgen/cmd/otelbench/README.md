@@ -1,6 +1,6 @@
 # otelbench
 
-otelbench wraps the collector inside a Go test benchmark. It outputs throughput numbers in standard Go benchmark format. It uses a collector config yaml as a base, and apply some overrides from command line options.
+otelbench wraps the collector inside a Go test benchmark. It outputs throughput numbers in standard Go benchmark format. It uses a collector config yaml as a base, and applies some overrides from command line options.
 
 ## Usage
 
