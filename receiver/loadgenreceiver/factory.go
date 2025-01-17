@@ -25,15 +25,7 @@ import (
 )
 
 func NewFactory() receiver.Factory {
-	return receiver.NewFactory(
-		metadata.Type,
-		func() component.Config {
-			return createDefaultReceiverConfig(nil, nil, nil)
-		},
-		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
-		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
-		receiver.WithLogs(createLogsReceiver, component.StabilityLevelDevelopment),
-	)
+	return NewFactoryWithDone(nil, nil, nil)
 }
 
 func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) component.Config {
