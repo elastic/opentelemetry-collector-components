@@ -81,7 +81,7 @@ func Init() error {
 	flag.BoolVar(&Config.InsecureSkipVerify, "insecure-skip-verify", false, "skip validating the remote server TLS certificates (default to value in config yaml)")
 
 	flag.Func("header",
-		"extra headers to use when sending data to the server",
+		"extra headers in key=value format when sending data to the server. Can be repeated. e.g. -header X-FIRST-HEADER=foo -header X-SECOND-HEADER=bar",
 		func(s string) error {
 			k, v, ok := strings.Cut(s, "=")
 			if !ok {
@@ -95,7 +95,7 @@ func Init() error {
 		},
 	)
 
-	flag.StringVar(&Config.CollectorConfigPath, "config", "config.yaml", "path collector config yaml")
+	flag.StringVar(&Config.CollectorConfigPath, "config", "config.yaml", "path to collector config yaml")
 
 	flag.BoolVar(&Config.ExporterOTLP, "exporter-otlp", true, "benchmark exporter otlp")
 	flag.BoolVar(&Config.ExporterOTLPHTTP, "exporter-otlphttp", true, "benchmark exporter otlphttp")

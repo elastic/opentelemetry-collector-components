@@ -9,7 +9,7 @@ Usage of ./otelbench:
   -api-key string
         API key for target server
   -config string
-        path collector config yaml (default "config.yaml")
+        path to collector config yaml (default "config.yaml")
   -endpoint value
         target server endpoint for both otlp and otlphttp exporters (default to value in config yaml), equivalent to setting both -endpoint-otlp and -endpoint-otlphttp
   -endpoint-otlp value
@@ -21,7 +21,7 @@ Usage of ./otelbench:
   -exporter-otlphttp
         benchmark exporter otlphttp (default true)
   -header value
-        extra headers to use when sending data to the server
+        extra headers in key=value format when sending data to the server. Can be repeated. e.g. -header X-FIRST-HEADER=foo -header X-SECOND-HEADER=bar
   -insecure
         disable TLS, ignored by otlphttp exporter (default to value in config yaml)
   -insecure-skip-verify
