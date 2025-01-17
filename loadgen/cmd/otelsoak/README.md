@@ -13,7 +13,7 @@ See an example configuration at [`config.example.yaml`](./config.example.yaml). 
 
 To override any config, use `--config` or `--set`. See [official OTel configuration documentation](https://opentelemetry.io/docs/collector/configuration/).
 ```
-ELASTIC_APM_SERVER_URL="" ELASTIC_APM_API_KEY="" ./otelsoak --config config.example.yaml --set "exporters.otlp.endpoint=http://localhost:8200" --set "exporters.otlp.headers.Authorization=ApiKey xxx" --set "exporters.otlp.headers.X-FOO-HEADER=bar"
+./otelsoak --config config.example.yaml --set "exporters.otlp.endpoint=http://localhost:8200" --set "exporters.otlp.headers.Authorization=ApiKey xxx" --set "exporters.otlp.headers.X-FOO-HEADER=bar"
 ```
 
 Alternatively, there's `ELASTIC_APM_SERVER_URL` and `ELASTIC_APM_API_KEY` env var handling out of the box in the example config yaml. Note that `ELASTIC_APM_SECRET_TOKEN` is NOT supported without changing `config.example.yaml`.
