@@ -147,5 +147,5 @@ func (ar *logsGenerator) nextLogs() plog.Logs {
 }
 
 func (ar *logsGenerator) isDone() bool {
-	return ar.samples.LoopCount() > 0 && ar.samples.LoopCount() >= ar.cfg.Logs.MaxReplay
+	return ar.cfg.Logs.MaxReplay > 0 && ar.samples.LoopCount() >= ar.cfg.Logs.MaxReplay
 }

@@ -179,5 +179,5 @@ func (ar *metricsGenerator) nextMetrics() pmetric.Metrics {
 }
 
 func (ar *metricsGenerator) isDone() bool {
-	return ar.samples.LoopCount() > 0 && ar.samples.LoopCount() >= ar.cfg.Metrics.MaxReplay
+	return ar.cfg.Metrics.MaxReplay > 0 && ar.samples.LoopCount() >= ar.cfg.Metrics.MaxReplay
 }
