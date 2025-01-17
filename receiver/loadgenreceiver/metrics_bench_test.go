@@ -29,11 +29,11 @@ import (
 	"go.uber.org/zap"
 )
 
-func BenchmarkTracesGenerator(b *testing.B) {
+func BenchmarkMetricsGenerator(b *testing.B) {
 	doneCh := make(chan Stats)
-	cfg := createDefaultReceiverConfig(nil, nil, doneCh)
-	cfg.(*Config).Traces.MaxReplay = b.N
-	r, _ := createTracesReceiver(context.Background(), receiver.Settings{
+	cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+	cfg.(*Config).Metrics.MaxReplay = b.N
+	r, _ := createMetricsReceiver(context.Background(), receiver.Settings{
 		ID: component.ID{},
 		TelemetrySettings: component.TelemetrySettings{
 			Logger: zap.NewNop(),
