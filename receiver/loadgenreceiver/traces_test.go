@@ -46,7 +46,9 @@ func TestTracesGenerator_doneCh(t *testing.T) {
 	}}, sink)
 	err := r.Start(context.Background(), componenttest.NewNopHost())
 	assert.NoError(t, err)
-	defer r.Shutdown(context.Background())
+	defer func() {
+		assert.NoError(t, r.Shutdown(context.Background()))
+	}()
 	stats := <-doneCh
 	assert.Equal(t, maxReplay*bytes.Count(demoTraces, []byte("\n")), stats.Requests)
 }
