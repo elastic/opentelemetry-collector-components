@@ -25,14 +25,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 )
+
+const maxScannerBufSize = 1024 * 1024
 
 //go:embed testdata/traces.jsonl
 var demoTraces []byte
@@ -41,7 +44,10 @@ type tracesGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples  internal.LoopingList[ptrace.Traces]
+	samples internal.LoopingList[ptrace.Traces]
+
+	stats Stats
+
 	consumer consumer.Traces
 
 	cancelFn context.CancelFunc
@@ -68,6 +74,7 @@ func createTracesReceiver(
 
 	var samples []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
+	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
 		traceBytes := scanner.Bytes()
 		lineTraces, err := parser.UnmarshalTraces(traceBytes)
@@ -75,6 +82,9 @@ func createTracesReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineTraces)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	return &tracesGenerator{
@@ -95,10 +105,21 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 			case <-startCtx.Done():
 				return
 			default:
-				if err := ar.consumer.ConsumeTraces(startCtx, ar.nextTraces()); err != nil {
-					ar.logger.Error(err.Error())
-					continue
+			}
+			m := ar.nextTraces()
+			if err := ar.consumer.ConsumeTraces(startCtx, m); err != nil {
+				ar.logger.Error(err.Error())
+				ar.stats.FailedRequests++
+				ar.stats.FailedSpans += m.SpanCount()
+			} else {
+				ar.stats.Requests++
+				ar.stats.Spans += m.SpanCount()
+			}
+			if ar.isDone() {
+				if ar.cfg.Traces.doneCh != nil {
+					ar.cfg.Traces.doneCh <- ar.stats
 				}
+				return
 			}
 		}
 	}()
@@ -131,4 +152,8 @@ func (ar *tracesGenerator) nextTraces() ptrace.Traces {
 	}
 
 	return nextLogs
+}
+
+func (ar *tracesGenerator) isDone() bool {
+	return ar.cfg.Traces.MaxReplay > 0 && ar.samples.LoopCount() >= ar.cfg.Traces.MaxReplay
 }

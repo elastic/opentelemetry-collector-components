@@ -25,13 +25,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 )
 
 //go:embed testdata/logs.jsonl
@@ -41,7 +42,10 @@ type logsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples  internal.LoopingList[plog.Logs]
+	samples internal.LoopingList[plog.Logs]
+
+	stats Stats
+
 	consumer consumer.Logs
 
 	cancelFn context.CancelFunc
@@ -68,6 +72,7 @@ func createLogsReceiver(
 
 	var samples []plog.Logs
 	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
+	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
 		logBytes := scanner.Bytes()
 		lineLogs, err := parser.UnmarshalLogs(logBytes)
@@ -75,6 +80,9 @@ func createLogsReceiver(
 			return nil, err
 		}
 		samples = append(samples, lineLogs)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	return &logsGenerator{
@@ -95,10 +103,21 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 			case <-startCtx.Done():
 				return
 			default:
-				if err := ar.consumer.ConsumeLogs(startCtx, ar.nextLogs()); err != nil {
-					ar.logger.Error(err.Error())
-					continue
+			}
+			m := ar.nextLogs()
+			if err := ar.consumer.ConsumeLogs(startCtx, m); err != nil {
+				ar.logger.Error(err.Error())
+				ar.stats.FailedRequests++
+				ar.stats.FailedLogRecords += m.LogRecordCount()
+			} else {
+				ar.stats.Requests++
+				ar.stats.LogRecords += m.LogRecordCount()
+			}
+			if ar.isDone() {
+				if ar.cfg.Logs.doneCh != nil {
+					ar.cfg.Logs.doneCh <- ar.stats
 				}
+				return
 			}
 		}
 	}()
@@ -129,4 +148,8 @@ func (ar *logsGenerator) nextLogs() plog.Logs {
 	}
 
 	return nextLogs
+}
+
+func (ar *logsGenerator) isDone() bool {
+	return ar.cfg.Logs.MaxReplay > 0 && ar.samples.LoopCount() >= ar.cfg.Logs.MaxReplay
 }
