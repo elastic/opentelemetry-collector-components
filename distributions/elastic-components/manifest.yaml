@@ -7,6 +7,7 @@ dist:
 
 extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.117.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.117.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.117.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.117.0
   - gomod: go.opentelemetry.io/collector/extension/memorylimiterextension v0.117.0
@@ -29,6 +30,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.117.0
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.117.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver v0.0.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.117.0
@@ -68,3 +70,5 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector => ../connector/signaltometricsconnector
   - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ../receiver/loadgenreceiver
   - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../processor/ratelimitprocessor
+  - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver => ../receiver/elasticapmreceiver
+  - github.com/elastic/opentelemetry-collector-components/internal/agentcfg => ../internal/agentcfg

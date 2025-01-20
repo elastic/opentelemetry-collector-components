@@ -19,12 +19,16 @@ package elasticapmreceiver // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"fmt"
+	"runtime"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/agentcfg"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/sharedcomponent"
 )
@@ -46,10 +50,15 @@ func NewFactory() receiver.Factory {
 
 // createDefaultConfig creates a default config with the endpoint set to port 8200.
 func createDefaultConfig() component.Config {
-	defaultServerConfig := confighttp.NewDefaultServerConfig()
+	// this enables https
+	// defaultServerConfig := confighttp.NewDefaultServerConfig()
+	defaultServerConfig := confighttp.ServerConfig{}
 	defaultServerConfig.Endpoint = defaultEndpoint
 	return &Config{
 		ServerConfig: defaultServerConfig,
+		Elasticsearch: ElasticSearchClient{
+			cacheDuration: 5 * time.Second,
+		},
 	}
 }
 
@@ -62,13 +71,37 @@ func createLogsReceiver(
 ) (receiver.Logs, error) {
 	oCfg := cfg.(*Config)
 	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(oCfg, set)
+		return newElasticAPMReceiver(newAgentCfgFetcher(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
 	}
 	r.Unwrap().nextLogs = consumer
 	return r, nil
+}
+
+func newAgentCfgFetcher(cfg *Config, set receiver.Settings) agentCfgFn {
+	return func(ctx context.Context, host component.Host) (agentcfg.Fetcher, error) {
+		client, err := newElasticsearchClient(ctx, cfg, host, set.TelemetrySettings, fmt.Sprintf(
+			"%s/%s (%s/%s)",
+			set.BuildInfo.Description,
+			set.BuildInfo.Version,
+			runtime.GOOS,
+			runtime.GOARCH,
+		))
+		if err != nil {
+			return nil, err
+		}
+
+		fetcher := agentcfg.NewElasticsearchFetcher(client, cfg.Elasticsearch.cacheDuration, set.Logger)
+		go func() {
+			err := fetcher.Run(ctx)
+			if err != nil {
+				set.Logger.Error(err.Error())
+			}
+		}()
+		return fetcher, nil
+	}
 }
 
 // createMetricsReceiver creates a metrics receiver with the given configuration.
@@ -80,7 +113,7 @@ func createMetricsReceiver(
 ) (receiver.Metrics, error) {
 	oCfg := cfg.(*Config)
 	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(oCfg, set)
+		return newElasticAPMReceiver(newAgentCfgFetcher(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -98,7 +131,7 @@ func createTracesReceiver(
 ) (receiver.Traces, error) {
 	oCfg := cfg.(*Config)
 	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(oCfg, set)
+		return newElasticAPMReceiver(newAgentCfgFetcher(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err

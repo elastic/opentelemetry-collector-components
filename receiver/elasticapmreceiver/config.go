@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -65,6 +66,8 @@ type ElasticSearchClient struct {
 
 	Discovery elasticsearchexporter.DiscoverySettings `mapstructure:"discover"`
 	Retry     elasticsearchexporter.RetrySettings     `mapstructure:"retry"`
+
+	cacheDuration time.Duration `mapstructure:"cache_duration"`
 }
 
 // Validate checks the receiver configuration is valid.
@@ -114,9 +117,9 @@ func (cfg *Config) endpoints() ([]string, error) {
 	var endpoints []string
 	var numEndpointConfigs int
 
-	if cfg.Endpoint != "" {
+	if cfg.Elasticsearch.Endpoint != "" {
 		numEndpointConfigs++
-		endpoints = []string{cfg.Endpoint}
+		endpoints = []string{cfg.Elasticsearch.Endpoint}
 	}
 	if len(cfg.Elasticsearch.Endpoints) > 0 {
 		numEndpointConfigs++

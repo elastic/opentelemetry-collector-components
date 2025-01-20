@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/elastic/opentelemetry-collector-components/internal/elasticsearch"
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.uber.org/zap"
@@ -123,9 +123,8 @@ func newElasticsearchClient(
 		Header:    headers,
 
 		// configure retry behavior
-		RetryOnStatus:        config.Elasticsearch.Retry.RetryOnStatus,
-		DisableRetry:         !config.Elasticsearch.Retry.Enabled,
-		EnableRetryOnTimeout: config.Elasticsearch.Retry.Enabled,
+		RetryOnStatus: config.Elasticsearch.Retry.RetryOnStatus,
+		DisableRetry:  !config.Elasticsearch.Retry.Enabled,
 		// RetryOnError:  retryOnError, // should be used from esclient version 8 onwards
 		MaxRetries:   maxRetries,
 		RetryBackoff: createElasticsearchBackoffFunc(&config.Elasticsearch.Retry),

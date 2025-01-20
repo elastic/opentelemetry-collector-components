@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/elastic/apm-data v1.14.1
+	github.com/elastic/opentelemetry-collector-components/internal/agentcfg v0.0.0-00010101000000-000000000000
 	github.com/elastic/opentelemetry-collector-components/internal/elasticsearch v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.117.0
 	github.com/stretchr/testify v1.10.0
@@ -112,3 +113,5 @@ require (
 )
 
 replace github.com/elastic/opentelemetry-collector-components/internal/elasticsearch => ../../internal/elasticsearch/
+
+replace github.com/elastic/opentelemetry-collector-components/internal/agentcfg => ../../internal/agentcfg/
