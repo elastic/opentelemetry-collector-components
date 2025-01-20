@@ -22,7 +22,7 @@ package mappers
 import (
 	"github.com/elastic/apm-data/model/modelpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
+	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
 )
 
 // Translates resource attributes from the Elastic APM model to the OpenTelemetry resource attributes
@@ -31,20 +31,20 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 	attributes.PutStr(semconv.AttributeServiceVersion, event.Service.Version)
 	attributes.PutStr(semconv.AttributeTelemetrySDKLanguage, event.Service.Language.Name)
 	attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
-	attributes.PutStr(semconv.AttributeDeploymentEnvironment, event.Service.Environment)
+	attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
 }
 
 func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Http.Request != nil {
-		attributes.PutStr(semconv.AttributeHTTPMethod, event.Http.Request.Method)
-		attributes.PutInt(semconv.AttributeHTTPStatusCode, int64(event.Http.Response.StatusCode))
+		attributes.PutStr(semconv.AttributeHTTPRequestMethod, event.Http.Request.Method)
+		attributes.PutInt(semconv.AttributeHTTPResponseStatusCode, int64(event.Http.Response.StatusCode))
 
 		if event.Url != nil {
-			attributes.PutStr(semconv.AttributeHTTPURL, event.Url.Full)
+			attributes.PutStr(semconv.AttributeURLFull, event.Url.Full)
 		}
 	} else if event.Span.Message != nil {
-		attributes.PutStr(semconv.AttributeMessagingDestination, event.Transaction.Message.QueueName)
-		attributes.PutStr(semconv.AttributeMessagingRabbitmqRoutingKey, event.Transaction.Message.RoutingKey)
+		attributes.PutStr(semconv.AttributeMessagingDestinationName, event.Transaction.Message.QueueName)
+		attributes.PutStr(semconv.AttributeMessagingRabbitmqDestinationRoutingKey, event.Transaction.Message.RoutingKey)
 
 		// This may need to be unified, see AttributeMessagingSystem for spans
 		attributes.PutStr(semconv.AttributeMessagingSystem, event.Service.Framework.Name)
@@ -54,30 +54,30 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	if event.Http != nil {
-		attributes.PutStr(semconv.AttributeHTTPMethod, event.Http.Request.Method)
-		attributes.PutInt(semconv.AttributeHTTPStatusCode, int64(event.Http.Response.StatusCode))
+		attributes.PutStr(semconv.AttributeHTTPRequestMethod, event.Http.Request.Method)
+		attributes.PutInt(semconv.AttributeHTTPResponseStatusCode, int64(event.Http.Response.StatusCode))
 
 		if event.Url != nil {
-			attributes.PutStr(semconv.AttributeHTTPURL, event.Url.Full)
+			attributes.PutStr(semconv.AttributeURLFull, event.Url.Full)
 		}
 	}
 	if event.Span.Db != nil {
 		attributes.PutStr(semconv.AttributeDBSystem, event.Span.Db.Type)
-		attributes.PutStr(semconv.AttributeDBName, event.Span.Db.Instance)
-		attributes.PutStr(semconv.AttributeDBStatement, event.Span.Db.Statement)
+		attributes.PutStr(semconv.AttributeDBNamespace, event.Span.Db.Instance)
+		attributes.PutStr(semconv.AttributeDBQueryText, event.Span.Db.Statement)
 	}
 	if event.Span.Message != nil {
 		// TODO - Elastic APM span.subtype does not 100% overlap with https://opentelemetry.io/docs/specs/semconv/attributes-registry/messaging/#messaging-system
 		// E.g. azureservicebus in Elastic APM vs servicebus in SemConv
 		attributes.PutStr(semconv.AttributeMessagingSystem, event.Span.Subtype)
 		// No 100% overlap either
-		attributes.PutStr(semconv.AttributeMessagingOperation, event.Span.Action)
+		attributes.PutStr(semconv.AttributeMessagingOperationName, event.Span.Action)
 
 		if event.Span.Message.QueueName != "" {
-			attributes.PutStr(semconv.AttributeMessagingDestination, event.Span.Message.QueueName)
+			attributes.PutStr(semconv.AttributeMessagingDestinationName, event.Span.Message.QueueName)
 		}
 		if event.Span.Message.RoutingKey != "" {
-			attributes.PutStr(semconv.AttributeMessagingRabbitmqRoutingKey, event.Span.Message.RoutingKey)
+			attributes.PutStr(semconv.AttributeMessagingRabbitmqDestinationRoutingKey, event.Span.Message.RoutingKey)
 		}
 	}
 }
