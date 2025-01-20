@@ -1,0 +1,90 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: process.command
+          value:
+            stringValue: /bin/bash
+        - key: process.command_line
+          value:
+            stringValue: /bin/bash
+        - key: process.executable.name
+          value:
+            stringValue: ""
+        - key: process.executable.path
+          value:
+            stringValue: testdata/e2e/bin/bash
+        - key: process.parent_pid
+          value:
+            intValue: "0"
+        - key: process.pid
+          value:
+            intValue: "1"
+    schemaUrl: https://opentelemetry.io/schemas/1.9.0
+    scopeMetrics:
+      - metrics:
+          - description: Total CPU seconds broken down by different states.
+            name: process.cpu.time
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asDouble: 0
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: system
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asDouble: 0
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: user
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+                - asDouble: 0
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: wait
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: s
+          - description: The amount of physical memory in use.
+            name: process.memory.usage
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asInt: "2322432"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            unit: By
+          - description: Percentage of total physical memory that is used by the process.
+            gauge:
+              dataPoints:
+                - asDouble: Infinity
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            name: process.memory.utilization
+            unit: "1"
+          - description: Virtual memory size.
+            name: process.memory.virtual
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asInt: "5054464"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            unit: By
+          - description: Process threads count.
+            name: process.threads
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asInt: "0"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+            unit: '{threads}'
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver/internal/scraper/processscraper
+          version: latest
