@@ -50,6 +50,8 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr("span.id", event.Span.Id)
 	attributes.PutStr("span.name", event.Span.Name)
 	attributes.PutStr("span.type", event.Span.Type)
+	attributes.PutStr("span.subtype", event.Span.Subtype)
+	attributes.PutStr("span.action", event.Span.Action)
 
 	if event.Span.DestinationService != nil {
 		attributes.PutStr("service.target.name", event.Span.DestinationService.Name)
