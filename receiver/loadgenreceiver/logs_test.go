@@ -39,7 +39,7 @@ func TestLogsGenerator_doneCh(t *testing.T) {
 			sink := &consumertest.LogsSink{}
 			cfg := createDefaultReceiverConfig(doneCh, nil, nil)
 			cfg.(*Config).Logs.MaxReplay = maxReplay
-			cfg.(*Config).NumWorkers = workers
+			cfg.(*Config).Concurrency = workers
 			r, _ := createLogsReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
 				TelemetrySettings: component.TelemetrySettings{

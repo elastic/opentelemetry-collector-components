@@ -39,7 +39,7 @@ func TestMetricsGenerator_doneCh(t *testing.T) {
 			sink := &consumertest.MetricsSink{}
 			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
 			cfg.(*Config).Metrics.MaxReplay = maxReplay
-			cfg.(*Config).NumWorkers = workers
+			cfg.(*Config).Concurrency = workers
 			r, _ := createMetricsReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
 				TelemetrySettings: component.TelemetrySettings{

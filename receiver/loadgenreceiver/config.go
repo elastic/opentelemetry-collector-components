@@ -31,9 +31,10 @@ type Config struct {
 	Logs    LogsConfig    `mapstructure:"logs"`
 	Traces  TracesConfig  `mapstructure:"traces"`
 
-	// NumWorker is the number of workers to send to next consumer concurrently.
-	// The workers share the load instead of each sending MaxReplay individually.
-	NumWorkers int `mapstructure:"num_workers"`
+	// Concurrency is the amount of concurrency when sending to next consumer.
+	// The concurrent workers share the amount of workload, instead of multiplying the amount of workload,
+	// i.e. loadgenreceiver still sends up to the same MaxReplay limit.
+	Concurrency int `mapstructure:"concurrency"`
 }
 
 type MetricsConfig struct {

@@ -104,7 +104,7 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 
 	wg := sync.WaitGroup{}
 
-	for i := 0; i < ar.cfg.NumWorkers; i++ {
+	for i := 0; i < ar.cfg.Concurrency; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

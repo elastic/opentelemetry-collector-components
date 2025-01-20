@@ -39,7 +39,7 @@ func TestTracesGenerator_doneCh(t *testing.T) {
 			sink := &consumertest.TracesSink{}
 			cfg := createDefaultReceiverConfig(nil, nil, doneCh)
 			cfg.(*Config).Traces.MaxReplay = maxReplay
-			cfg.(*Config).NumWorkers = workers
+			cfg.(*Config).Concurrency = workers
 			r, _ := createTracesReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
 				TelemetrySettings: component.TelemetrySettings{
