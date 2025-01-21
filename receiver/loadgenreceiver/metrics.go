@@ -44,7 +44,7 @@ type metricsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples list.BoundedLoopingList[pmetric.Metrics]
+	samples *list.LoopingList[pmetric.Metrics]
 
 	stats   Stats
 	statsMu sync.Mutex
@@ -73,7 +73,7 @@ func createMetricsReceiver(
 		}
 	}
 
-	var samples []pmetric.Metrics
+	var items []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
 	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
@@ -82,7 +82,7 @@ func createMetricsReceiver(
 		if err != nil {
 			return nil, err
 		}
-		samples = append(samples, lineMetrics)
+		items = append(items, lineMetrics)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func createMetricsReceiver(
 		cfg:      genConfig,
 		logger:   set.Logger,
 		consumer: consumer,
-		samples:  list.NewBoundedLoopingList(samples, genConfig.Metrics.MaxReplay),
+		samples:  list.NewLoopingList(items, genConfig.Metrics.MaxReplay),
 	}, nil
 }
 

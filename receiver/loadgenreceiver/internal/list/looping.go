@@ -17,31 +17,48 @@
 
 package list // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 
-// LoopingList is a list that infinitely loops over the provided list of items.
+import (
+	"errors"
+	"sync"
+)
+
+var ErrLoopLimitReached = errors.New("loop limit reached")
+
+// LoopingList is a list that loops over the provided list of items with an optional loop limit.
 type LoopingList[T any] struct {
-	items   []T
-	idx     int
-	loopCnt int
+	items     []T
+	idx       int
+	loopCnt   int
+	loopLimit int
+	mu        sync.Mutex
 }
 
-func NewLoopingList[T any](items []T) LoopingList[T] {
-	return LoopingList[T]{
-		items: items,
+// NewLoopingList returns a LoopingList over items for an optional loopLimit.
+// Setting loopLimit to 0 causes the list to loop infinitely.
+func NewLoopingList[T any](items []T, loopLimit int) *LoopingList[T] {
+	return &LoopingList[T]{
+		items:     items,
+		loopLimit: loopLimit,
 	}
 }
 
-// Next returns the next item in list.
-// Unsafe for concurrent calls.
-func (s *LoopingList[T]) Next() T {
-	defer func() {
-		s.idx = (s.idx + 1) % len(s.items)
-		if s.idx == 0 {
-			s.loopCnt++
-		}
-	}()
-	return s.items[s.idx]
-}
+// Next returns the next item in list with a nil error.
+// Safe for concurrent use.
+func (s *LoopingList[T]) Next() (T, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-func (s *LoopingList[T]) LoopCount() int {
-	return s.loopCnt
+	if s.loopCnt > 0 && s.loopCnt >= s.loopLimit {
+		var zero T
+		return zero, ErrLoopLimitReached
+	}
+
+	item := s.items[s.idx]
+
+	s.idx = (s.idx + 1) % len(s.items)
+	if s.idx == 0 {
+		s.loopCnt++
+	}
+
+	return item, nil
 }

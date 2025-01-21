@@ -46,7 +46,7 @@ type tracesGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples list.BoundedLoopingList[ptrace.Traces]
+	samples *list.LoopingList[ptrace.Traces]
 
 	stats   Stats
 	statsMu sync.Mutex
@@ -75,7 +75,7 @@ func createTracesReceiver(
 		}
 	}
 
-	var samples []ptrace.Traces
+	var items []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
 	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
@@ -84,7 +84,7 @@ func createTracesReceiver(
 		if err != nil {
 			return nil, err
 		}
-		samples = append(samples, lineTraces)
+		items = append(items, lineTraces)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func createTracesReceiver(
 		cfg:      genConfig,
 		logger:   set.Logger,
 		consumer: consumer,
-		samples:  list.NewBoundedLoopingList(samples, genConfig.Traces.MaxReplay),
+		samples:  list.NewLoopingList(items, genConfig.Traces.MaxReplay),
 	}, nil
 }
 

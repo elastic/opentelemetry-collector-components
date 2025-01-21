@@ -44,7 +44,7 @@ type logsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples list.BoundedLoopingList[plog.Logs]
+	samples *list.LoopingList[plog.Logs]
 
 	stats   Stats
 	statsMu sync.Mutex
@@ -73,7 +73,7 @@ func createLogsReceiver(
 		}
 	}
 
-	var samples []plog.Logs
+	var items []plog.Logs
 	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
 	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
@@ -82,7 +82,7 @@ func createLogsReceiver(
 		if err != nil {
 			return nil, err
 		}
-		samples = append(samples, lineLogs)
+		items = append(items, lineLogs)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func createLogsReceiver(
 		cfg:      genConfig,
 		logger:   set.Logger,
 		consumer: consumer,
-		samples:  list.NewBoundedLoopingList(samples, genConfig.Logs.MaxReplay),
+		samples:  list.NewLoopingList(items, genConfig.Logs.MaxReplay),
 	}, nil
 }
 
