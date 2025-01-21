@@ -33,13 +33,13 @@ import (
 
 func TestMetricsGenerator_doneCh(t *testing.T) {
 	const maxReplay = 2
-	for _, workers := range []int{1, 2} {
-		t.Run(fmt.Sprintf("workers=%d", workers), func(t *testing.T) {
+	for _, concurrency := range []int{1, 2} {
+		t.Run(fmt.Sprintf("concurrency=%d", concurrency), func(t *testing.T) {
 			doneCh := make(chan Stats)
 			sink := &consumertest.MetricsSink{}
 			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
 			cfg.(*Config).Metrics.MaxReplay = maxReplay
-			cfg.(*Config).Concurrency = workers
+			cfg.(*Config).Concurrency = concurrency
 			r, _ := createMetricsReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
 				TelemetrySettings: component.TelemetrySettings{
