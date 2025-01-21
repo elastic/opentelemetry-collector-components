@@ -29,7 +29,7 @@ import (
 
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
-	"github.com/elastic/opentelemetry-collector-components/internal/agentcfg"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/confighttp"

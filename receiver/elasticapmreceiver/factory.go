@@ -28,9 +28,9 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/agentcfg"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/sharedcomponent"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/agentcfg"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"go.opentelemetry.io/collector/component"
 )
 
