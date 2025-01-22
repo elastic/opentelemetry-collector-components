@@ -1,6 +1,8 @@
 receivers:
   loadgen:
-#    concurrency: 16  # defaults to GOMAXPROCS
+#    # Similar to agent_replicas config in apmsoak
+#    # Higher concurrency value translates to higher load
+#    concurrency: 16
 
 exporters:
   otlp:
