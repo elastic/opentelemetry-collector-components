@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -43,7 +45,7 @@ var Config struct {
 	ExporterOTLP     bool
 	ExporterOTLPHTTP bool
 
-	Concurrency int
+	ConcurrencyList []int
 }
 
 func Init() error {
@@ -106,9 +108,28 @@ func Init() error {
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
 
-	// Similar to `agents` config in apmbench
-	// The value will be used as loadgenreceiver `concurrency` config
-	flag.IntVar(&Config.Concurrency, "concurrency", 1, "amount of concurrency, or number of agents simulated")
+	// `concurrency` is similar to `agents` config in apmbench
+	// Each value passed into `concurrency` list will be used as loadgenreceiver `concurrency` config
+	Config.ConcurrencyList = []int{1} // default
+	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with",
+		func(input string) error {
+			var concurrencyList []int
+			for _, val := range strings.Split(input, ",") {
+				val = strings.TrimSpace(val)
+				if val == "" {
+					continue
+				}
+				n, err := strconv.Atoi(val)
+				if err != nil || n <= 0 {
+					return fmt.Errorf("invalid value %q for -concurrency", val)
+				}
+				concurrencyList = append(concurrencyList, n)
+			}
+			sort.Ints(concurrencyList)
+			Config.ConcurrencyList = concurrencyList
+			return nil
+		},
+	)
 
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line

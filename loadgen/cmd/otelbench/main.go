@@ -68,61 +68,65 @@ func main() {
 	// TODO(carsonip): configurable warm up
 
 	var maxLen int
-	for _, signal := range getSignals() {
-		for _, exporter := range getExporters() {
-			maxLen = max(maxLen, len(fullBenchmarkName(signal, exporter, Config.Concurrency)))
+	for _, concurrency := range Config.ConcurrencyList {
+		for _, signal := range getSignals() {
+			for _, exporter := range getExporters() {
+				maxLen = max(maxLen, len(fullBenchmarkName(signal, exporter, concurrency)))
+			}
 		}
 	}
 
-	for _, signal := range getSignals() {
-		for _, exporter := range getExporters() {
-			benchName := fullBenchmarkName(signal, exporter, Config.Concurrency)
-			result := testing.Benchmark(func(b *testing.B) {
-				// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
-				logsDone := make(chan loadgenreceiver.Stats)
-				metricsDone := make(chan loadgenreceiver.Stats)
-				tracesDone := make(chan loadgenreceiver.Stats)
-				if signal != "logs" {
-					close(logsDone)
-				}
-				if signal != "metrics" {
-					close(metricsDone)
-				}
-				if signal != "traces" {
-					close(tracesDone)
-				}
+	for _, concurrency := range Config.ConcurrencyList {
+		for _, signal := range getSignals() {
+			for _, exporter := range getExporters() {
+				benchName := fullBenchmarkName(signal, exporter, concurrency)
+				result := testing.Benchmark(func(b *testing.B) {
+					// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
+					logsDone := make(chan loadgenreceiver.Stats)
+					metricsDone := make(chan loadgenreceiver.Stats)
+					tracesDone := make(chan loadgenreceiver.Stats)
+					if signal != "logs" {
+						close(logsDone)
+					}
+					if signal != "metrics" {
+						close(metricsDone)
+					}
+					if signal != "traces" {
+						close(tracesDone)
+					}
 
-				stop := make(chan struct{}) // close channel to stop the loadgen collector
+					stop := make(chan struct{}) // close channel to stop the loadgen collector
 
-				go func() {
-					logsStats := <-logsDone
-					metricsStats := <-metricsDone
-					tracesStats := <-tracesDone
-					b.StopTimer()
+					go func() {
+						logsStats := <-logsDone
+						metricsStats := <-metricsDone
+						tracesStats := <-tracesDone
+						b.StopTimer()
 
-					stats := logsStats.Add(metricsStats).Add(tracesStats)
+						stats := logsStats.Add(metricsStats).Add(tracesStats)
 
-					elapsedSeconds := b.Elapsed().Seconds()
-					b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
-					b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
-					b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
-					b.ReportMetric(float64(stats.Requests)/elapsedSeconds, "requests/s")
-					b.ReportMetric(float64(stats.FailedLogRecords)/elapsedSeconds, "failed_logs/s")
-					b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
-					b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
-					b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
-					// TODO(carsonip): optionally retrieve metrics (e.g. memory, cpu) of target server from Elasticsearch
+						elapsedSeconds := b.Elapsed().Seconds()
+						b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
+						b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
+						b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
+						b.ReportMetric(float64(stats.Requests)/elapsedSeconds, "requests/s")
+						b.ReportMetric(float64(stats.FailedLogRecords)/elapsedSeconds, "failed_logs/s")
+						b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
+						b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
+						b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
+						// TODO(carsonip): optionally retrieve metrics (e.g. memory, cpu) of target server from Elasticsearch
 
-					close(stop)
-				}()
+						close(stop)
+					}()
 
-				err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N, Config.Concurrency), logsDone, metricsDone, tracesDone)
-				if err != nil {
-					b.Fatal(err)
-				}
-			})
-			// write benchmark result to stdout, as stderr may be cluttered with collector logs
-			fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
+					err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
+					if err != nil {
+						b.Fatal(err)
+					}
+				})
+				// write benchmark result to stdout, as stderr may be cluttered with collector logs
+				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
+			}
 		}
 	}
 }
