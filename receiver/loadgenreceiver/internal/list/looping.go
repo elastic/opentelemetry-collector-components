@@ -43,12 +43,13 @@ func NewLoopingList[T any](items []T, loopLimit int) *LoopingList[T] {
 }
 
 // Next returns the next item in list with a nil error.
+// If loop limit is reached, it returns ErrLoopLimitReached.
 // Safe for concurrent use.
 func (s *LoopingList[T]) Next() (T, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.loopCnt > 0 && s.loopCnt >= s.loopLimit {
+	if s.loopLimit > 0 && s.loopCnt >= s.loopLimit {
 		var zero T
 		return zero, ErrLoopLimitReached
 	}
