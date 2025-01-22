@@ -24,11 +24,16 @@ The receiver generates telemetry as quickly as possible. Any rate limiting shoul
 
 The receiver only rewrites timestamps to Now, and does not modify any other fields. Therefore, it will have the same cardinality as the original canned data. To simulate higher cardinality (e.g. trace ID, service name), use `transform` processor with OTTL to rewrite fields. 
 
+## Config
+
+See [./config.go](./config.go) for configurations.
+
 ## Sample configuration
 
 ```yaml
 receivers:
   loadgen:
+    concurrency: 128
 
 processors:
 
