@@ -4,11 +4,12 @@ otelbench wraps the collector inside a Go test benchmark. It outputs throughput 
 
 ## Usage
 
-// FIXME
 ```
 Usage of ./otelbench:
   -api-key string
         API key for target server
+  -concurrency list
+        comma-separated list of concurrency (number of simulated agents) to run each benchmark with
   -config string
         path to collector config yaml (default "config.yaml")
   -endpoint value
