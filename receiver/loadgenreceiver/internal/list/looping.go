@@ -49,7 +49,7 @@ func (s *LoopingList[T]) Next() (T, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.loopLimit > 0 && s.loopCnt >= s.loopLimit {
+	if s.loopLimit != 0 && s.loopCnt >= s.loopLimit {
 		var zero T
 		return zero, ErrLoopLimitReached
 	}

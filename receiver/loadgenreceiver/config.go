@@ -18,6 +18,8 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
+	"fmt"
+
 	"go.opentelemetry.io/collector/component"
 )
 
@@ -77,5 +79,13 @@ var _ component.Config = (*Config)(nil)
 
 // Validate checks the receiver configuration is valid
 func (cfg *Config) Validate() error {
-	return nil
+	if cfg.Logs.MaxReplay < 0 {
+		return fmt.Errorf("logs::max_replay must be >= 0")
+	}
+	if cfg.Metrics.MaxReplay < 0 {
+		return fmt.Errorf("metrics::max_replay must be >= 0")
+	}
+	if cfg.Traces.MaxReplay < 0 {
+		return fmt.Errorf("traces::max_replay must be >= 0")
+	}
 }
