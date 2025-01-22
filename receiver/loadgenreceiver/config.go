@@ -88,4 +88,5 @@ func (cfg *Config) Validate() error {
 	if cfg.Traces.MaxReplay < 0 {
 		return fmt.Errorf("traces::max_replay must be >= 0")
 	}
+	return nil
 }
