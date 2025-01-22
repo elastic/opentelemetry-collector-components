@@ -42,6 +42,8 @@ var Config struct {
 
 	ExporterOTLP     bool
 	ExporterOTLPHTTP bool
+
+	Concurrency int
 }
 
 func Init() error {
@@ -103,6 +105,10 @@ func Init() error {
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
+
+	// Similar to `agents` config in apmbench
+	// The value will be used as loadgenreceiver `concurrency` config
+	flag.IntVar(&Config.Concurrency, "concurrency", 1, "amount of concurrency, or number of agents simulated")
 
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
@@ -203,5 +209,11 @@ func SetIterations(iterations int) (configFiles []string) {
 		fmt.Sprintf("receivers.loadgen.logs.max_replay=%d", iterations),
 		fmt.Sprintf("receivers.loadgen.metrics.max_replay=%d", iterations),
 		fmt.Sprintf("receivers.loadgen.traces.max_replay=%d", iterations),
+	})
+}
+
+func SetConcurrency(concurrency int) (configFiles []string) {
+	return setsToConfigs([]string{
+		fmt.Sprintf("receivers.loadgen.concurrency=%d", concurrency),
 	})
 }

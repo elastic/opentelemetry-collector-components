@@ -4,6 +4,7 @@ otelbench wraps the collector inside a Go test benchmark. It outputs throughput 
 
 ## Usage
 
+// FIXME
 ```
 Usage of ./otelbench:
   -api-key string

@@ -52,8 +52,8 @@ func getExporters() (exporters []string) {
 	return
 }
 
-func fullBenchmarkName(signal, exporter string) string {
-	return fmt.Sprintf("%s-%s", signal, exporter)
+func fullBenchmarkName(signal, exporter string, concurrency int) string {
+	return fmt.Sprintf("%s-%s-%d", signal, exporter, concurrency)
 }
 
 func main() {
@@ -70,17 +70,14 @@ func main() {
 	var maxLen int
 	for _, signal := range getSignals() {
 		for _, exporter := range getExporters() {
-			maxLen = max(maxLen, len(fullBenchmarkName(signal, exporter)))
+			maxLen = max(maxLen, len(fullBenchmarkName(signal, exporter, Config.Concurrency)))
 		}
 	}
 
 	for _, signal := range getSignals() {
 		for _, exporter := range getExporters() {
-			benchName := fullBenchmarkName(signal, exporter)
+			benchName := fullBenchmarkName(signal, exporter, Config.Concurrency)
 			result := testing.Benchmark(func(b *testing.B) {
-				// TODO(carsonip): simulate > 1 agents for higher load
-				// https://github.com/elastic/opentelemetry-collector-components/issues/305
-
 				// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
 				logsDone := make(chan loadgenreceiver.Stats)
 				metricsDone := make(chan loadgenreceiver.Stats)
@@ -119,7 +116,7 @@ func main() {
 					close(stop)
 				}()
 
-				err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N), logsDone, metricsDone, tracesDone)
+				err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N, Config.Concurrency), logsDone, metricsDone, tracesDone)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -130,10 +127,11 @@ func main() {
 	}
 }
 
-func configs(exporter, signal string, iterations int) (configFiles []string) {
+func configs(exporter, signal string, iterations, concurrency int) (configFiles []string) {
 	configFiles = append(configFiles, Config.CollectorConfigPath)
 	configFiles = append(configFiles, ExporterConfigs(exporter)...)
 	configFiles = append(configFiles, SetIterations(iterations)...)
+	configFiles = append(configFiles, SetConcurrency(concurrency)...)
 	for _, s := range []string{"logs", "metrics", "traces"} {
 		if signal != s {
 			configFiles = append(configFiles, DisableSignal(s)...)
