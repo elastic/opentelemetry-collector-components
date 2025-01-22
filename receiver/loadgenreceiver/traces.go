@@ -108,14 +108,19 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// per-worker temporary container to avoid allocs
-			// FIXME: this doesn't work with fanoutconsumer as it will mark as read only
-			next := ptrace.NewTraces()
+			var next ptrace.Traces
+			if ar.cfg.PerfReusePdata {
+				// per-worker temporary container to avoid allocs
+				next = ptrace.NewTraces()
+			}
 			for {
 				select {
 				case <-startCtx.Done():
 					return
 				default:
+				}
+				if !ar.cfg.PerfReusePdata {
+					next = ptrace.NewTraces()
 				}
 				err := ar.nextTraces(next)
 				if errors.Is(err, list.ErrLoopLimitReached) {

@@ -106,14 +106,19 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// per-worker temporary container to avoid allocs
-			// FIXME: this doesn't work with fanoutconsumer as it will mark as read only
-			next := pmetric.NewMetrics()
+			var next pmetric.Metrics
+			if ar.cfg.PerfReusePdata {
+				// per-worker temporary container to avoid allocs
+				next = pmetric.NewMetrics()
+			}
 			for {
 				select {
 				case <-startCtx.Done():
 					return
 				default:
+				}
+				if !ar.cfg.PerfReusePdata {
+					next = pmetric.NewMetrics()
 				}
 				err := ar.nextMetrics(next)
 				if errors.Is(err, list.ErrLoopLimitReached) {

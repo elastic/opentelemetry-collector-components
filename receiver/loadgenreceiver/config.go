@@ -40,6 +40,12 @@ type Config struct {
 	// As requests are synchronous, when concurrency is N, there will be N in-flight requests.
 	// This is similar to the `agent_replicas` config in apmsoak.
 	Concurrency int `mapstructure:"concurrency"`
+
+	// PerfReusePdata enables reusing pdata data structures to reduce allocation and GC pressure on the loadgenreceiver.
+	// This optimization is not compatible with fanoutconsumer, i.e. in pipelines where there are more than 1 consumer,
+	// as fanoutconsumer will mark the pdata struct as read only and cannot be reused.
+	// See https://github.com/open-telemetry/opentelemetry-collector/blob/461a3558086a03ab13ea121d12e28e185a1c79b0/internal/fanoutconsumer/logs.go#L70
+	PerfReusePdata bool `mapstructure:"perf_reuse_pdata"`
 }
 
 type MetricsConfig struct {
