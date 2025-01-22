@@ -19,6 +19,7 @@ package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-co
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,22 +31,27 @@ import (
 )
 
 func BenchmarkTracesGenerator(b *testing.B) {
-	doneCh := make(chan Stats)
-	cfg := createDefaultReceiverConfig(nil, nil, doneCh)
-	cfg.(*Config).Traces.MaxReplay = b.N
-	r, _ := createTracesReceiver(context.Background(), receiver.Settings{
-		ID: component.ID{},
-		TelemetrySettings: component.TelemetrySettings{
-			Logger: zap.NewNop(),
-		},
-		BuildInfo: component.BuildInfo{},
-	}, cfg, consumertest.NewNop())
-	b.ResetTimer()
-	err := r.Start(context.Background(), componenttest.NewNopHost())
-	require.NoError(b, err)
-	defer func() {
-		err := r.Shutdown(context.Background())
-		require.NoError(b, err)
-	}()
-	<-doneCh
+	for _, perfReusePdata := range []bool{false, true} {
+		b.Run(fmt.Sprintf("perfReusePdata=%v", perfReusePdata), func(b *testing.B) {
+			doneCh := make(chan Stats)
+			cfg := createDefaultReceiverConfig(nil, nil, doneCh)
+			cfg.(*Config).Traces.MaxReplay = b.N
+			cfg.(*Config).PerfReusePdata = perfReusePdata
+			r, _ := createTracesReceiver(context.Background(), receiver.Settings{
+				ID: component.ID{},
+				TelemetrySettings: component.TelemetrySettings{
+					Logger: zap.NewNop(),
+				},
+				BuildInfo: component.BuildInfo{},
+			}, cfg, consumertest.NewNop())
+			b.ResetTimer()
+			err := r.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(b, err)
+			defer func() {
+				err := r.Shutdown(context.Background())
+				require.NoError(b, err)
+			}()
+			<-doneCh
+		})
+	}
 }
