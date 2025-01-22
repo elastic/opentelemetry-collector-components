@@ -36,6 +36,7 @@ type Config struct {
 	// Concurrency is the amount of concurrency when sending to next consumer.
 	// The concurrent workers share the amount of workload, instead of multiplying the amount of workload,
 	// i.e. loadgenreceiver still sends up to the same MaxReplay limit.
+	// This is similar to the `agent_replicas` config in apmsoak.
 	Concurrency int `mapstructure:"concurrency"`
 }
 

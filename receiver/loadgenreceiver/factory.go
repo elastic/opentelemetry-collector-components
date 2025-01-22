@@ -18,8 +18,6 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
-	"runtime"
-
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/receiver"
 
@@ -41,7 +39,7 @@ func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) c
 		Traces: TracesConfig{
 			doneCh: tracesDone,
 		},
-		Concurrency: runtime.GOMAXPROCS(0),
+		Concurrency: 1,
 	}
 }
 
