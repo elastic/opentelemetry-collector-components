@@ -42,7 +42,9 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	if a.cfg.TLS != nil {
 		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
-			VerificationMode: a.cfg.TLS.VerificationMode,
+			VerificationMode:     a.cfg.TLS.VerificationMode,
+			CATrustedFingerprint: a.cfg.TLS.CATrustedFingerprint,
+			CASha256:             a.cfg.TLS.CASha256,
 		})
 		if err != nil {
 			return err
@@ -69,7 +71,8 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 
 func (a *authenticator) configureTransport(transport *http.Transport) error {
 	if a.tlsConfig != nil {
-		transport.TLSClientConfig = a.tlsConfig.BuildModuleClientConfig(a.tlsConfig.ServerName)
+		// injecting verifyConnection here, keeping all other fields on TLSConfig
+		transport.TLSClientConfig.VerifyConnection = a.tlsConfig.ToConfig().VerifyConnection
 	}
 	return nil
 }
