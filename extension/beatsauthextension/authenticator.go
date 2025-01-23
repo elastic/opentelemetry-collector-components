@@ -21,6 +21,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension/auth"
 	"google.golang.org/grpc/credentials"
@@ -31,7 +32,7 @@ var _ auth.Client = (*authenticator)(nil)
 type authenticator struct {
 	cfg       *Config
 	telemetry component.TelemetrySettings
-	client    *http.Client // set by Start
+	tlsConfig *tlscommon.TLSConfig // set by Start
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
@@ -39,14 +40,15 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-	client, err := a.cfg.ClientConfig.ToClient(ctx, host, component.TelemetrySettings{
-		// Don't instrument this client's transport, as the exporter's
-		// transport is instrumented before delegating to this one.
-	})
-	if err != nil {
-		return err
+	if a.cfg.TLS != nil {
+		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
+			VerificationMode: a.cfg.TLS.VerificationMode,
+		})
+		if err != nil {
+			return err
+		}
+		a.tlsConfig = tlsConfig
 	}
-	a.client = client
 	return nil
 }
 
@@ -55,14 +57,24 @@ func (a *authenticator) Shutdown(ctx context.Context) error {
 }
 
 func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper, error) {
-	return a, nil
+	// At the time of writing, client.Transport is guaranteed to always have type *http.Transport.
+	// If this assumption is ever broken, we would need to create and use our own transport, and
+	// ignore the one passed in.
+	httpTransport := base.(*http.Transport)
+	if err := a.configureTransport(httpTransport); err != nil {
+		return nil, err
+	}
+	return httpTransport, nil
+}
+
+func (a *authenticator) configureTransport(transport *http.Transport) error {
+	if a.tlsConfig != nil {
+		transport.TLSClientConfig = a.tlsConfig.BuildModuleClientConfig(a.tlsConfig.ServerName)
+	}
+	return nil
 }
 
 func (a *authenticator) PerRPCCredentials() (credentials.PerRPCCredentials, error) {
 	// Elasticsearch doesn't support gRPC, this function won't be called
 	return nil, nil
-}
-
-func (a *authenticator) RoundTrip(req *http.Request) (*http.Response, error) {
-	return a.client.Transport.RoundTrip(req)
 }

@@ -20,22 +20,21 @@ package beatsauthextension // import "github.com/elastic/opentelemetry-collector
 import (
 	"errors"
 
+	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/confighttp"
 )
 
 type Config struct {
-	confighttp.ClientConfig `mapstructure:",squash"`
+	TLS *TLSConfig `mapstructure:"tls"`
+}
 
-	// TODO Beats-specific TLS config settings
-	// TODO Elastic Cloud ID
-	// ...
+type TLSConfig struct {
+	ServerName       string                        `mapstructure:"server_name"`
+	VerificationMode tlscommon.TLSVerificationMode `mapstructure:"verification_mode"`
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{
-		ClientConfig: confighttp.NewDefaultClientConfig(),
-	}
+	return &Config{}
 }
 
 func (cfg *Config) Validate() error {
