@@ -71,8 +71,8 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 
 func (a *authenticator) configureTransport(transport *http.Transport) error {
 	if a.tlsConfig != nil {
-		// injecting verifyConnection here, keeping all other fields on TLSConfig
-		transport.TLSClientConfig.VerifyConnection = a.tlsConfig.ToConfig().VerifyConnection
+		// injecting verifyConnection here, keeping all other fields on TLSConfig intact
+		transport.TLSClientConfig.VerifyConnection = a.tlsConfig.BuildModuleClientConfig(a.cfg.TLS.ServerName).VerifyConnection
 	}
 	return nil
 }

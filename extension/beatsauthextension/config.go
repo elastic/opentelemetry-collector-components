@@ -32,6 +32,7 @@ type TLSConfig struct {
 	VerificationMode     tlscommon.TLSVerificationMode `mapstructure:"verification_mode"`
 	CATrustedFingerprint string                        `mapstructure:"ca_trusted_fingerprint"`
 	CASha256             []string                      `mapstructure:"ca_sha256"`
+	ServerName           string                        `mapstructure:"server_name"`
 }
 
 func createDefaultConfig() component.Config {
