@@ -42,8 +42,8 @@ const (
 )
 
 func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, host component.Host) http.HandlerFunc {
-	jsonBodyError := func(err error) map[string]string {
-		return map[string]string{"error": err.Error()}
+	mapBodyError := func(err string) map[string]string {
+		return map[string]string{"error": err}
 	}
 
 	fetcher, err := r.getFetcher(ctx, host)
@@ -54,7 +54,7 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 			w.Header().Set(ContentType, "application/json")
 
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(jsonBodyError(err))
+			_ = json.NewEncoder(w).Encode(mapBodyError(err.Error()))
 			return
 		}
 	}
@@ -65,30 +65,29 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		query, queryErr := buildQuery(req)
 		if queryErr != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(jsonBodyError(queryErr))
+			_ = json.NewEncoder(w).Encode(mapBodyError(queryErr.Error()))
 			return
 		}
 
 		result, err := fetcher.Fetch(req.Context(), query)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(jsonBodyError(err))
+			_ = json.NewEncoder(w).Encode(mapBodyError(err.Error()))
 			return
 		}
 
 		// configuration successfully fetched
-		w.Header().Set(CacheControl, fmt.Sprintf("max-age=%v, must-revalidate", r.cfg.Elasticsearch.cacheDuration.Seconds()))
+		w.Header().Set(CacheControl, fmt.Sprintf("max-age=%v, must-revalidate", r.cfg.Elasticsearch.CacheDuration.Seconds()))
 		w.Header().Set(Etag, fmt.Sprintf("\"%s\"", result.Source.Etag))
 		w.Header().Set(AccessControlExposeHeaders, Etag)
 
-		if result.Source.Etag == ifNoneMatch(req) {
+		if result.Source.Etag == query.Etag {
 			// c.Result.SetDefault(request.IDResponseValidNotModified)
 			w.WriteHeader(http.StatusNotModified)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "not modified"})
 		} else {
 			// c.Result.SetWithBody(request.IDResponseValidOK, result.Source.Settings)
 			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(&result)
+			_ = json.NewEncoder(w).Encode(result)
 		}
 	}
 }
@@ -117,7 +116,10 @@ func buildQuery(r *http.Request) (agentcfg.Query, error) {
 		return query, errors.New(agentcfg.ServiceName + " is required")
 	}
 
-	query.Etag = ifNoneMatch(r)
+	if query.Etag == "" {
+		query.Etag = ifNoneMatch(r)
+	}
+
 	return query, nil
 }
 

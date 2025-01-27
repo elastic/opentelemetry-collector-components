@@ -68,6 +68,7 @@ type elasticAPMReceiver struct {
 	shutdownWG sync.WaitGroup
 
 	getFetcher agentCfgFn
+	cancelFn   context.CancelFunc
 }
 
 // newElasticAPMReceiver just creates the OpenTelemetry receiver services. It is the caller's
@@ -93,6 +94,7 @@ func newElasticAPMReceiver(fetcher agentCfgFn, cfg *Config, set receiver.Setting
 
 // Start runs an HTTP server for receiving data from Elastic APM agents.
 func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) error {
+	ctx, r.cancelFn = context.WithCancel(ctx)
 	if err := r.startHTTPServer(ctx, host); err != nil {
 		return errors.Join(err, r.Shutdown(ctx))
 	}
@@ -133,6 +135,9 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 // Shutdown is a method to turn off receiving.
 func (r *elasticAPMReceiver) Shutdown(ctx context.Context) error {
 	var err error
+	if r.cancelFn != nil {
+		r.cancelFn()
+	}
 	if r.httpServer != nil {
 		err = r.httpServer.Shutdown(ctx)
 	}

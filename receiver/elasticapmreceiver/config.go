@@ -67,7 +67,7 @@ type ElasticSearchClient struct {
 	Discovery elasticsearchexporter.DiscoverySettings `mapstructure:"discover"`
 	Retry     elasticsearchexporter.RetrySettings     `mapstructure:"retry"`
 
-	cacheDuration time.Duration `mapstructure:"cache_duration"`
+	CacheDuration time.Duration `mapstructure:"cache_duration"`
 }
 
 // Validate checks the receiver configuration is valid.

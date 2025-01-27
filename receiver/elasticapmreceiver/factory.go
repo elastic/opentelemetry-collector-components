@@ -57,7 +57,7 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		ServerConfig: defaultServerConfig,
 		Elasticsearch: ElasticSearchClient{
-			cacheDuration: 5 * time.Second,
+			CacheDuration: 5 * time.Second,
 		},
 	}
 }
@@ -93,7 +93,7 @@ func newAgentCfgFetcher(cfg *Config, set receiver.Settings) agentCfgFn {
 			return nil, err
 		}
 
-		fetcher := agentcfg.NewElasticsearchFetcher(client, cfg.Elasticsearch.cacheDuration, set.Logger)
+		fetcher := agentcfg.NewElasticsearchFetcher(client, cfg.Elasticsearch.CacheDuration, set.Logger)
 		go func() {
 			err := fetcher.Run(ctx)
 			if err != nil {
