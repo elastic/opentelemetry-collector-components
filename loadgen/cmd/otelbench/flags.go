@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -42,6 +44,8 @@ var Config struct {
 
 	ExporterOTLP     bool
 	ExporterOTLPHTTP bool
+
+	ConcurrencyList []int
 }
 
 func Init() error {
@@ -103,6 +107,29 @@ func Init() error {
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
+
+	// `concurrency` is similar to `agents` config in apmbench
+	// Each value passed into `concurrency` list will be used as loadgenreceiver `concurrency` config
+	Config.ConcurrencyList = []int{1} // default
+	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with",
+		func(input string) error {
+			var concurrencyList []int
+			for _, val := range strings.Split(input, ",") {
+				val = strings.TrimSpace(val)
+				if val == "" {
+					continue
+				}
+				n, err := strconv.Atoi(val)
+				if err != nil || n <= 0 {
+					return fmt.Errorf("invalid value %q for -concurrency", val)
+				}
+				concurrencyList = append(concurrencyList, n)
+			}
+			sort.Ints(concurrencyList)
+			Config.ConcurrencyList = concurrencyList
+			return nil
+		},
+	)
 
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
@@ -203,5 +230,11 @@ func SetIterations(iterations int) (configFiles []string) {
 		fmt.Sprintf("receivers.loadgen.logs.max_replay=%d", iterations),
 		fmt.Sprintf("receivers.loadgen.metrics.max_replay=%d", iterations),
 		fmt.Sprintf("receivers.loadgen.traces.max_replay=%d", iterations),
+	})
+}
+
+func SetConcurrency(concurrency int) (configFiles []string) {
+	return setsToConfigs([]string{
+		fmt.Sprintf("receivers.loadgen.concurrency=%d", concurrency),
 	})
 }
