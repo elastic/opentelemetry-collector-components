@@ -20,6 +20,7 @@ package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-co
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,26 +33,30 @@ import (
 
 func TestMetricsGenerator_doneCh(t *testing.T) {
 	const maxReplay = 2
-	doneCh := make(chan Stats)
-	sink := &consumertest.MetricsSink{}
-	r, _ := createMetricsReceiver(context.Background(), receiver.Settings{
-		ID: component.ID{},
-		TelemetrySettings: component.TelemetrySettings{
-			Logger: zap.NewNop(),
-		},
-		BuildInfo: component.BuildInfo{},
-	}, &Config{Metrics: MetricsConfig{
-		MaxReplay: maxReplay,
-		doneCh:    doneCh,
-	}}, sink)
-	err := r.Start(context.Background(), componenttest.NewNopHost())
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, r.Shutdown(context.Background()))
-	}()
-	stats := <-doneCh
-	want := maxReplay * bytes.Count(demoMetrics, []byte("\n"))
-	assert.Equal(t, want, stats.Requests)
-	assert.Equal(t, want, len(sink.AllMetrics()))
-	assert.Equal(t, sink.DataPointCount(), stats.MetricDataPoints)
+	for _, concurrency := range []int{1, 2} {
+		t.Run(fmt.Sprintf("concurrency=%d", concurrency), func(t *testing.T) {
+			doneCh := make(chan Stats)
+			sink := &consumertest.MetricsSink{}
+			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+			cfg.(*Config).Metrics.MaxReplay = maxReplay
+			cfg.(*Config).Concurrency = concurrency
+			r, _ := createMetricsReceiver(context.Background(), receiver.Settings{
+				ID: component.ID{},
+				TelemetrySettings: component.TelemetrySettings{
+					Logger: zap.NewNop(),
+				},
+				BuildInfo: component.BuildInfo{},
+			}, cfg, sink)
+			err := r.Start(context.Background(), componenttest.NewNopHost())
+			assert.NoError(t, err)
+			defer func() {
+				assert.NoError(t, r.Shutdown(context.Background()))
+			}()
+			stats := <-doneCh
+			want := maxReplay * bytes.Count(demoMetrics, []byte("\n"))
+			assert.Equal(t, want, stats.Requests)
+			assert.Equal(t, want, len(sink.AllMetrics()))
+			assert.Equal(t, sink.DataPointCount(), stats.MetricDataPoints)
+		})
+	}
 }

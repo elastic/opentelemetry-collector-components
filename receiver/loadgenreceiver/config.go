@@ -18,6 +18,8 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
+	"fmt"
+
 	"go.opentelemetry.io/collector/component"
 )
 
@@ -25,11 +27,19 @@ type (
 	JsonlFile string
 )
 
-// Config defines configuration for HostMetrics receiver.
+// Config defines configuration for loadgen receiver.
 type Config struct {
 	Metrics MetricsConfig `mapstructure:"metrics"`
 	Logs    LogsConfig    `mapstructure:"logs"`
 	Traces  TracesConfig  `mapstructure:"traces"`
+
+	// Concurrency is the amount of concurrency when sending to next consumer.
+	// The concurrent workers share the amount of workload, instead of multiplying the amount of workload,
+	// i.e. loadgenreceiver still sends up to the same MaxReplay limit.
+	// A higher concurrency translates to a higher load.
+	// As requests are synchronous, when concurrency is N, there will be N in-flight requests.
+	// This is similar to the `agent_replicas` config in apmsoak.
+	Concurrency int `mapstructure:"concurrency"`
 }
 
 type MetricsConfig struct {
@@ -72,5 +82,14 @@ var _ component.Config = (*Config)(nil)
 
 // Validate checks the receiver configuration is valid
 func (cfg *Config) Validate() error {
+	if cfg.Logs.MaxReplay < 0 {
+		return fmt.Errorf("logs::max_replay must be >= 0")
+	}
+	if cfg.Metrics.MaxReplay < 0 {
+		return fmt.Errorf("metrics::max_replay must be >= 0")
+	}
+	if cfg.Traces.MaxReplay < 0 {
+		return fmt.Errorf("traces::max_replay must be >= 0")
+	}
 	return nil
 }
