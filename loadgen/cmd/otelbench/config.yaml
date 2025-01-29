@@ -1,6 +1,5 @@
 receivers:
   loadgen:
-    perf_reuse_pdata: true
   nop:
 
 exporters:
