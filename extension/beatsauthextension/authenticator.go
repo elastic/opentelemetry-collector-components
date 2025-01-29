@@ -19,6 +19,7 @@ package beatsauthextension // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
@@ -42,7 +43,7 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	if a.cfg.TLS != nil {
 		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
-			VerificationMode:     a.cfg.TLS.VerificationMode,
+			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
 			CATrustedFingerprint: a.cfg.TLS.CATrustedFingerprint,
 			CASha256:             a.cfg.TLS.CASha256,
 		})
@@ -62,7 +63,10 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 	// At the time of writing, client.Transport is guaranteed to always have type *http.Transport.
 	// If this assumption is ever broken, we would need to create and use our own transport, and
 	// ignore the one passed in.
-	httpTransport := base.(*http.Transport)
+	httpTransport, ok := base.(*http.Transport)
+	if !ok {
+		return nil, fmt.Errorf("http.Roundripper is not of type *http.Transport")
+	}
 	if err := a.configureTransport(httpTransport); err != nil {
 		return nil, err
 	}
@@ -72,7 +76,10 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 func (a *authenticator) configureTransport(transport *http.Transport) error {
 	if a.tlsConfig != nil {
 		// injecting verifyConnection here, keeping all other fields on TLSConfig intact
-		transport.TLSClientConfig.VerifyConnection = a.tlsConfig.BuildModuleClientConfig(a.cfg.TLS.ServerName).VerifyConnection
+		beatTLSConfig := a.tlsConfig.BuildModuleClientConfig(a.tlsConfig.ServerName)
+
+		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
+		transport.TLSClientConfig.InsecureSkipVerify = beatTLSConfig.InsecureSkipVerify
 	}
 	return nil
 }

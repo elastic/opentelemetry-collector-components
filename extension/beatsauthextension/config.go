@@ -18,7 +18,7 @@
 package beatsauthextension // import "github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension"
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
@@ -28,18 +28,31 @@ type Config struct {
 	TLS *TLSConfig `mapstructure:"tls"`
 }
 
+var tlsVerificationModes = map[string]tlscommon.TLSVerificationMode{
+	"full":        tlscommon.VerifyFull,
+	"strict":      tlscommon.VerifyStrict,
+	"none":        tlscommon.VerifyNone,
+	"certificate": tlscommon.VerifyCertificate,
+}
+
 type TLSConfig struct {
-	VerificationMode     tlscommon.TLSVerificationMode `mapstructure:"verification_mode"`
-	CATrustedFingerprint string                        `mapstructure:"ca_trusted_fingerprint"`
-	CASha256             []string                      `mapstructure:"ca_sha256"`
-	ServerName           string                        `mapstructure:"server_name"`
+	VerificationMode     string   `mapstructure:"verification_mode"`
+	CATrustedFingerprint string   `mapstructure:"ca_trusted_fingerprint"`
+	CASha256             []string `mapstructure:"ca_sha256"`
+	ServerName           string   `mapstructure:"server_name"`
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{}
+	return &Config{
+		&TLSConfig{
+			VerificationMode: "full",
+		},
+	}
 }
 
 func (cfg *Config) Validate() error {
-	var errs []error
-	return errors.Join(errs...)
+	if _, ok := tlsVerificationModes[cfg.TLS.VerificationMode]; !ok {
+		return fmt.Errorf("unsupported verification mode: %s", cfg.TLS.VerificationMode)
+	}
+	return nil
 }
