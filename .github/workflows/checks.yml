@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22.7"
+          go-version: "1.22.11"
           cache: false
       - name: Cache Go
         id: go-cache
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22.7"
+          go-version: "1.22.11"
           cache: false
       - name: Cache Go
         id: go-cache
@@ -107,7 +107,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22.7"
+          go-version: "1.22.11"
           cache: false
       - name: Cache Go
         id: go-cache
@@ -130,7 +130,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22.7"
+          go-version: "1.22.11"
           cache: false
       - name: Cache Go
         id: go-cache
@@ -169,7 +169,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.22.7", "1.23.1"] # 1.20 is interpreted as 1.2 without quotes
+        go-version: ["1.22.11", "1.23.1"] # 1.20 is interpreted as 1.2 without quotes
         runner: [ubuntu-latest]
         group:
           - all
