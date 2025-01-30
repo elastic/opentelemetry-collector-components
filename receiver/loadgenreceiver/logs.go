@@ -106,13 +106,21 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			next := plog.NewLogs() // per-worker temporary container to avoid allocs
 			for {
 				select {
 				case <-startCtx.Done():
 					return
 				default:
 				}
-				next, err := ar.nextLogs()
+				if next.IsReadOnly() {
+					// As the optimization to reuse pdata is not compatible with fanoutconsumer,
+					// i.e. in pipelines where there are more than 1 consumer,
+					// as fanoutconsumer will mark the pdata struct as read only and cannot be reused.
+					// See https://github.com/open-telemetry/opentelemetry-collector/blob/461a3558086a03ab13ea121d12e28e185a1c79b0/internal/fanoutconsumer/logs.go#L70
+					next = plog.NewLogs()
+				}
+				err := ar.nextLogs(next)
 				if errors.Is(err, list.ErrLoopLimitReached) {
 					return
 				}
@@ -147,13 +155,12 @@ func (ar *logsGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *logsGenerator) nextLogs() (plog.Logs, error) {
+func (ar *logsGenerator) nextLogs(next plog.Logs) error {
 	now := pcommon.NewTimestampFromTime(time.Now())
 
-	next := plog.NewLogs()
 	sample, err := ar.samples.Next()
 	if err != nil {
-		return sample, err
+		return err
 	}
 	sample.CopyTo(next)
 
@@ -167,5 +174,5 @@ func (ar *logsGenerator) nextLogs() (plog.Logs, error) {
 		}
 	}
 
-	return next, nil
+	return nil
 }
