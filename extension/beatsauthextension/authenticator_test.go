@@ -116,6 +116,7 @@ func TestVerifyConnection(t *testing.T) {
 					VerificationMode:     test.verificationMode.String(),
 					CATrustedFingerprint: test.CATrustedFingerprint,
 					CASha256:             test.CASHA256,
+					ServerName:           test.serverName,
 				},
 			}
 
@@ -133,7 +134,7 @@ func TestVerifyConnection(t *testing.T) {
 			require.NotNil(t, client)
 
 			// verifies if a callback was expected
-			verifier := auth.tlsConfig.ToConfig().VerifyConnection
+			verifier := auth.tlsConfig.BuildModuleClientConfig(test.serverName).VerifyConnection
 			if test.expectedCallback {
 				require.NotNil(t, verifier, "VerifyConnection returned a nil verifier")
 			} else {
