@@ -24,11 +24,13 @@ import (
 
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/auth"
 	"google.golang.org/grpc/credentials"
 )
 
 var _ auth.Client = (*authenticator)(nil)
+var _ extension.Extension = (*authenticator)(nil)
 
 type authenticator struct {
 	cfg       *Config
