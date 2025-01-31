@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/testutil"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
+	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -190,9 +191,11 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 			ServerConfig: confighttp.ServerConfig{
 				Endpoint: testEndpoint,
 			},
-			Elasticsearch: ElasticSearchClient{
-				Endpoints:     []string{esEndpoint},
-				CacheDuration: 100 * time.Millisecond,
+			Elasticsearch: ElasticsearchClient{
+				configelasticsearch.ClientConfig{
+					Endpoints: []string{esEndpoint},
+				},
+				100 * time.Millisecond,
 			},
 		}
 		rcvr, err := rcvrFactory.CreateMetrics(ttCtx, receivertest.NewNopSettings(), cfg, consumertest.NewNop())
@@ -232,6 +235,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 	}
 }
 
+// creates and the ".apm-agent-configuration" index
 func createApmConfigIndex(t *testing.T, endpoint string) {
 	cfg := elasticsearch.Config{
 		Addresses: []string{
@@ -247,6 +251,7 @@ func createApmConfigIndex(t *testing.T, endpoint string) {
 	require.NoError(t, err)
 }
 
+// writes an agent configuration to the ".apm-agent-configuration" index
 func writeAgentIndex(t *testing.T, endpoint, etag string, service, settings map[string]string) {
 	cfg := elasticsearch.Config{
 		Addresses: []string{

@@ -19,8 +19,6 @@ package elasticapmreceiver // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-	"fmt"
-	"runtime"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -31,6 +29,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/sharedcomponent"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
+	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 )
 
 const (
@@ -56,7 +55,8 @@ func createDefaultConfig() component.Config {
 	defaultServerConfig.Endpoint = defaultEndpoint
 	return &Config{
 		ServerConfig: defaultServerConfig,
-		Elasticsearch: ElasticSearchClient{
+		Elasticsearch: ElasticsearchClient{
+			ClientConfig:  configelasticsearch.NewDefaultClientConfig(),
 			CacheDuration: 5 * time.Second,
 		},
 	}
@@ -82,18 +82,12 @@ func createLogsReceiver(
 
 func newAgentCfgFetcher(cfg *Config, set receiver.Settings) agentCfgFn {
 	return func(ctx context.Context, host component.Host) (agentcfg.Fetcher, error) {
-		client, err := newElasticsearchClient(ctx, cfg, host, set.TelemetrySettings, fmt.Sprintf(
-			"%s/%s (%s/%s)",
-			set.BuildInfo.Description,
-			set.BuildInfo.Version,
-			runtime.GOOS,
-			runtime.GOARCH,
-		))
+		esClient, err := cfg.Elasticsearch.ToClient(ctx, host, set.TelemetrySettings)
 		if err != nil {
 			return nil, err
 		}
 
-		fetcher := agentcfg.NewElasticsearchFetcher(client, cfg.Elasticsearch.CacheDuration, set.Logger)
+		fetcher := agentcfg.NewElasticsearchFetcher(esClient, cfg.Elasticsearch.CacheDuration, set.Logger)
 		go func() {
 			err := fetcher.Run(ctx)
 			if err != nil {
