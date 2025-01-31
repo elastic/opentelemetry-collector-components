@@ -28,29 +28,43 @@ import (
 
 func TestKey(t *testing.T) {
 	for _, tc := range []struct {
-		name           string
-		ivl            time.Duration
-		processingTime time.Time
+		name string
+		key  Key
 	}{
 		{
-			name:           "zero",
-			ivl:            0,
-			processingTime: time.Unix(0, 0),
+			name: "zero",
+			key: Key{
+				Interval:       0,
+				ProcessingTime: time.Unix(0, 0),
+			},
 		},
 		{
-			name:           "non_zero",
-			ivl:            time.Minute,
-			processingTime: time.Unix(time.Now().Unix(), 0),
+			name: "non_zero",
+			key: Key{
+				Interval:       time.Minute,
+				ProcessingTime: time.Unix(time.Now().Unix(), 0),
+			},
+		},
+		{
+			name: "with_metadata_keys",
+			key: Key{
+				Interval:       time.Minute,
+				ProcessingTime: time.Unix(time.Now().Unix(), 0),
+				Metadata: []KeyValues{
+					{Key: "empty", Values: []string{}},
+					{Key: "one_empty_value", Values: []string{""}},
+					{Key: "one_nonempty_value", Values: []string{"non-empty"}},
+					{Key: "mixed_values", Values: []string{"", "non-empty"}},
+				},
+			},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			key := NewKey(tc.ivl, tc.processingTime)
-			assert.Equal(t, 10, key.SizeBinary())
-			b, err := key.Marshal()
+			b, err := tc.key.AppendBinary(nil)
 			assert.NoError(t, err)
 			var newKey Key
 			assert.NoError(t, newKey.Unmarshal(b))
-			assert.Equal(t, newKey, key)
+			assert.Equal(t, newKey, tc.key)
 		})
 	}
 }
@@ -60,14 +74,20 @@ func TestKeyOrdered(t *testing.T) {
 	ts := time.Unix(0, 0)
 	ivl := time.Minute
 
-	before := NewKey(ivl, ts)
+	before := Key{
+		Interval:       ivl,
+		ProcessingTime: ts,
+	}
 	for i := 0; i < 10; i++ {
-		beforeBytes, err := before.Marshal()
+		beforeBytes, err := before.AppendBinary(nil)
 		require.NoError(t, err)
 
 		ts = ts.Add(time.Minute)
-		after := NewKey(ivl, ts)
-		afterBytes, err := after.Marshal()
+		after := Key{
+			Interval:       ivl,
+			ProcessingTime: ts,
+		}
+		afterBytes, err := after.AppendBinary(nil)
 		require.NoError(t, err)
 
 		// before should always come first

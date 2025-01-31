@@ -41,26 +41,29 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "local",
 			expected: &Config{
-				Rate:     100,
-				Burst:    200,
-				Strategy: StrategyRateLimitRequests,
+				Rate:             100,
+				Burst:            200,
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
 			},
 		},
 		{
 			name: "strategy",
 			expected: &Config{
-				Rate:     100,
-				Burst:    200,
-				Strategy: StrategyRateLimitBytes,
+				Rate:             100,
+				Burst:            200,
+				Strategy:         StrategyRateLimitBytes,
+				ThrottleBehavior: ThrottleBehaviorError,
 			},
 		},
 		{
 			name: "gubernator",
 			expected: &Config{
-				Gubernator: &GubernatorConfig{ClientConfig: *grpcClientConfig},
-				Rate:       100,
-				Burst:      200,
-				Strategy:   StrategyRateLimitRequests,
+				Gubernator:       &GubernatorConfig{ClientConfig: *grpcClientConfig},
+				Rate:             100,
+				Burst:            200,
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
 			},
 		},
 		{
@@ -70,18 +73,20 @@ func TestLoadConfig(t *testing.T) {
 					ClientConfig: *grpcClientConfig,
 					Behavior:     []GubernatorBehavior{"global", "duration_is_gregorian"},
 				},
-				Rate:     100,
-				Burst:    200,
-				Strategy: StrategyRateLimitRequests,
+				Rate:             100,
+				Burst:            200,
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
 			},
 		},
 		{
 			name: "metadata_keys",
 			expected: &Config{
-				Rate:         100,
-				Burst:        200,
-				Strategy:     StrategyRateLimitRequests,
-				MetadataKeys: []string{"project_id"},
+				Rate:             100,
+				Burst:            200,
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
+				MetadataKeys:     []string{"project_id"},
 			},
 		},
 		{
@@ -95,6 +100,10 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name:        "invalid_strategy",
 			expectedErr: `invalid strategy "foo", expected one of ["requests" "records" "bytes"]`,
+		},
+		{
+			name:        "invalid_throttle_behavior",
+			expectedErr: `invalid throttle behavior "foo", expected one of ["error" "delay"]`,
 		},
 		{
 			name:        "invalid_gubernator_behavior",

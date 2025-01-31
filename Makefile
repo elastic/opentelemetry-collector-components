@@ -90,3 +90,13 @@ builddocker:
 		IMAGE_NAME=elastic-collector-components:$(TAG); \
 	fi; \
 	docker build -t $$IMAGE_NAME -f distributions/elastic-components/Dockerfile .
+
+# Validate that the Elastic components collector can run with the example otelsoak configuration.
+.PHONY: otelsoak-validate
+otelsoak-validate: genelasticcol
+	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./loadgen/cmd/otelsoak/otelsoak validate --config ./loadgen/cmd/otelsoak/config.example.yaml
+
+# Run otelsoak
+.PHONY: otelsoak-run
+otelsoak-run: genelasticcol
+	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.example.yaml $(ARGS)

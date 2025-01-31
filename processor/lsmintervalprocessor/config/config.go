@@ -18,6 +18,8 @@
 package config // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -29,20 +31,34 @@ type Config struct {
 	// Directory is the data directory used by the database to store files.
 	// If the directory is empty in-memory storage is used.
 	Directory string `mapstructure:"directory"`
+
 	// PassThrough is a configuration that determines whether summary
 	// metrics should be passed through as they are or aggregated. This
 	// is because they lead to lossy aggregations.
 	PassThrough PassThrough `mapstructure:"pass_through"`
+
 	// Intervals is a list of interval configuration that the processor
 	// will aggregate over. The interval duration must be in increasing
 	// order and must be a factor of the smallest interval duration.
 	// TODO (lahsivjar): Make specifying interval easier. We can just
 	// optimize the timer to run on differnt times and remove any
 	// restriction on different interval configuration.
-	Intervals           []IntervalConfig `mapstructure:"intervals"`
-	ResourceLimit       LimitConfig      `mapstructure:"resource_limit"`
-	ScopeLimit          LimitConfig      `mapstructure:"scope_limit"`
-	ScopeDatapointLimit LimitConfig      `mapstructure:"scope_datapoint_limit"`
+	Intervals []IntervalConfig `mapstructure:"intervals"`
+
+	// MetadataKeys is a list of client.Metadata keys that will be
+	// propagated through the metrics aggregated by the processor.
+	//
+	// Only the listed metadata keys will be propagated to the
+	// resulting metrics.
+	//
+	// Entries are case-insensitive. Duplicated entries will
+	// trigger a validation error.
+	MetadataKeys []string `mapstructure:"metadata_keys"`
+
+	ResourceLimit  LimitConfig `mapstructure:"resource_limit"`
+	ScopeLimit     LimitConfig `mapstructure:"scope_limit"`
+	MetricLimit    LimitConfig `mapstructure:"metric_limit"`
+	DatapointLimit LimitConfig `mapstructure:"datapoint_limit"`
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -92,7 +108,15 @@ type Attribute struct {
 	Value any    `mapstructure:"value"`
 }
 
-func (config *Config) Validate() error {
+func (cfg *Config) Validate() error {
 	// TODO (lahsivjar): Add validation for interval duration
+	uniq := map[string]bool{}
+	for _, k := range cfg.MetadataKeys {
+		l := strings.ToLower(k)
+		if _, has := uniq[l]; has {
+			return fmt.Errorf("duplicate entry in metadata_keys: %q (case-insensitive)", l)
+		}
+		uniq[l] = true
+	}
 	return nil
 }

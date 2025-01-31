@@ -58,6 +58,11 @@ type Config struct {
 
 	// Burst holds the maximum capacity of rate limit buckets.
 	Burst int `mapstructure:"burst"`
+
+	// ThrottleBehavior holds the behavior when rate limit is exceeded.
+	//
+	// Defaults to "error"
+	ThrottleBehavior ThrottleBehavior `mapstructure:"throttle_behavior"`
 }
 
 // Strategy identifies the rate-limiting strategy: requests, records, or bytes.
@@ -83,6 +88,17 @@ const (
 	StrategyRateLimitBytes Strategy = "bytes"
 )
 
+// ThrottleBehavior identifies the behavior when rate limit is exceeded.
+type ThrottleBehavior string
+
+const (
+	// ThrottleBehaviorError is the behavior to return an error immediately on throttle and does not send the event.
+	ThrottleBehaviorError ThrottleBehavior = "error"
+
+	// ThrottleBehaviorDelay is the behavior to delay the sending until it is no longer throttled.
+	ThrottleBehaviorDelay ThrottleBehavior = "delay"
+)
+
 // GubernatorConfig holds Gubernator-specific configuration for the ratelimit processor.
 type GubernatorConfig struct {
 	configgrpc.ClientConfig `mapstructure:",squash"`
@@ -97,7 +113,8 @@ type GubernatorBehavior string
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		Strategy: StrategyRateLimitRequests,
+		Strategy:         StrategyRateLimitRequests,
+		ThrottleBehavior: ThrottleBehaviorError,
 	}
 }
 
@@ -124,6 +141,21 @@ func (s Strategy) Validate() error {
 			string(StrategyRateLimitRequests),
 			string(StrategyRateLimitRecords),
 			string(StrategyRateLimitBytes),
+		},
+	)
+}
+
+// Validate checks if throttle behavior matches the possible options
+func (s ThrottleBehavior) Validate() error {
+	switch s {
+	case ThrottleBehaviorError, ThrottleBehaviorDelay:
+		return nil
+	}
+	return fmt.Errorf(
+		"invalid throttle behavior %q, expected one of %q",
+		s, []string{
+			string(ThrottleBehaviorError),
+			string(ThrottleBehaviorDelay),
 		},
 	)
 }

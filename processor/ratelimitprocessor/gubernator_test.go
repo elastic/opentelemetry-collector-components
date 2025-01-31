@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,58 +93,70 @@ func TestGubernatorRateLimiter_StartStop(t *testing.T) {
 }
 
 func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
-	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2})
-	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
-	require.NoError(t, err)
+	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
+		t.Run(string(behavior), func(t *testing.T) {
+			server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: behavior})
+			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(t, err)
 
-	var resp gubernator.GetRateLimitsResp
-	var req *gubernator.GetRateLimitsReq
-	var respErr error
-	server.getRateLimits = func(ctx context.Context, reqIn *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
-		req = reqIn
-		return &resp, respErr
+			var resp gubernator.GetRateLimitsResp
+			var req *gubernator.GetRateLimitsReq
+			var respErr error
+			server.getRateLimits = func(ctx context.Context, reqIn *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
+				req = reqIn
+				return &resp, respErr
+			}
+
+			resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}}
+			err = rateLimiter.RateLimit(context.Background(), 1)
+			assert.NoError(t, err)
+			require.NotNil(t, req)
+			require.Len(t, req.Requests, 1)
+			// CreatedAt is based on time.Now(). Check it is not nil, then nil it out for the next assertion.
+			assert.NotNil(t, req.Requests[0].CreatedAt)
+			req.Requests[0].CreatedAt = nil
+			assert.Equal(t, &gubernator.RateLimitReq{
+				Name:      "ratelimit/abc123",
+				UniqueKey: "default",
+				Hits:      1,
+				Limit:     1,
+				Burst:     2,
+				Duration:  1000,
+				Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
+			}, req.Requests[0])
+
+			resp.Responses = []*gubernator.RateLimitResp{{Error: "yeah, nah"}}
+			err = rateLimiter.RateLimit(context.Background(), 1)
+			assert.EqualError(t, err, "yeah, nah")
+
+			resp.Responses = []*gubernator.RateLimitResp{}
+			err = rateLimiter.RateLimit(context.Background(), 1)
+			assert.EqualError(t, err, "expected 1 response from gubernator, got 0")
+
+			reqTime := time.Now()
+			resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT, ResetTime: reqTime.Add(100 * time.Millisecond).UnixMilli()}}
+			err = rateLimiter.RateLimit(context.Background(), 1)
+			switch behavior {
+			case ThrottleBehaviorError:
+				assert.EqualError(t, err, "too many requests")
+			case ThrottleBehaviorDelay:
+				assert.NoError(t, err)
+				assert.GreaterOrEqual(t, time.Now(), reqTime.Add(100*time.Millisecond))
+			}
+
+			respErr = errors.New("nope")
+			err = rateLimiter.RateLimit(context.Background(), 1)
+			assert.EqualError(t, err, "error executing gubernator rate limit request: rpc error: code = Unknown desc = nope")
+		})
 	}
-
-	resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}}
-	err = rateLimiter.RateLimit(context.Background(), 1)
-	assert.NoError(t, err)
-	require.NotNil(t, req)
-	assert.Equal(t, []*gubernator.RateLimitReq{{
-		Name:      "ratelimit/abc123",
-		UniqueKey: "default",
-		Hits:      1,
-		Limit:     1,
-		Burst:     2,
-		Duration:  1000,
-		Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
-	}}, req.Requests)
-
-	resp.Responses = []*gubernator.RateLimitResp{{Error: "yeah, nah"}}
-	err = rateLimiter.RateLimit(context.Background(), 1)
-	assert.EqualError(t, err, "yeah, nah")
-
-	resp.Responses = []*gubernator.RateLimitResp{}
-	err = rateLimiter.RateLimit(context.Background(), 1)
-	assert.EqualError(t, err, "expected 1 response from gubernator, got 0")
-
-	resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT}}
-	err = rateLimiter.RateLimit(context.Background(), 1)
-	assert.EqualError(t, err, "too many requests")
-
-	resp.Responses = []*gubernator.RateLimitResp{{Status: -1}} // handled like OVER_LIMIT
-	err = rateLimiter.RateLimit(context.Background(), 1)
-	assert.EqualError(t, err, "too many requests")
-
-	respErr = errors.New("nope")
-	err = rateLimiter.RateLimit(context.Background(), 1)
-	assert.EqualError(t, err, "error executing gubernator rate limit request: rpc error: code = Unknown desc = nope")
 }
 
 func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{
-		Rate:         1,
-		Burst:        2,
-		MetadataKeys: []string{"metadata_key"},
+		Rate:             1,
+		Burst:            2,
+		MetadataKeys:     []string{"metadata_key"},
+		ThrottleBehavior: ThrottleBehaviorError,
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
