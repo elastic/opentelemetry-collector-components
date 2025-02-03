@@ -19,7 +19,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 )
 
-func TestTT(t *testing.T) {
+func TestTransactionsAndSpans(t *testing.T) {
 	runComparison(t, "transactions.ndjson", "transactions_expected.yaml")
 	runComparison(t, "spans.ndjson", "spans_expected.yaml")
 	runComparison(t, "unknown-span-type.ndjson", "unknown-span-type_expected.yaml")
