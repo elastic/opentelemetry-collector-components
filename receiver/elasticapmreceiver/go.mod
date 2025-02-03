@@ -2,8 +2,6 @@ module github.com/elastic/opentelemetry-collector-components/receiver/elasticapm
 
 go 1.22.11
 
-toolchain go1.23.4
-
 require (
 	github.com/elastic/apm-data v1.14.1
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
