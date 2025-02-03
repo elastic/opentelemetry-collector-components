@@ -1,0 +1,66 @@
+package elasticapmreceiver_test
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"bytes"
+	"net/http"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/receiver/receivertest"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
+)
+
+func TestTT(t *testing.T) {
+	runComparison(t, "transactions.ndjson", "transactions_expected.yaml")
+	runComparison(t, "spans.ndjson", "spans_expected.yaml")
+	runComparison(t, "unknown-span-type.ndjson", "unknown-span-type_expected.yaml")
+	runComparison(t, "transactions_spans.ndjson", "transactions_spans_expected.yaml")
+}
+
+func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName string) {
+	factory := elasticapmreceiver.NewFactory()
+	cfg := factory.CreateDefaultConfig()
+	testData := "testdata"
+
+	set := receivertest.NewNopSettings()
+
+	nextTrace := new(consumertest.TracesSink)
+
+	rec, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
+
+	rec.Start(context.Background(), componenttest.NewNopHost())
+
+	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+
+	// TODO: read this from the config file
+	resp, err := http.Post("http://localhost:8200/intake/v2/events", "application/x-ndjson", bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatalf("failed to send HTTP request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("unexpected status code: %v", resp.StatusCode)
+	}
+
+	actualTraces := nextTrace.AllTraces()[0]
+	expectedFile := filepath.Join(testData, expectedYamlFileName)
+	expectedTraces, _ := golden.ReadTraces(expectedFile)
+
+	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
+		ptracetest.IgnoreEndTimestamp()))
+
+	rec.Shutdown(context.Background())
+}
