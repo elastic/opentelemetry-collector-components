@@ -15,22 +15,36 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package internal // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
+package list
 
-type LoopingList[T any] struct {
-	items []T
-	idx   int
-}
+import (
+	"fmt"
+	"testing"
 
-func NewLoopingList[T any](items []T) LoopingList[T] {
-	return LoopingList[T]{
-		items: items,
+	"github.com/stretchr/testify/assert"
+)
+
+func TestNext_loopLimit(t *testing.T) {
+	for _, loopLimit := range []int{0, 10} {
+		t.Run(fmt.Sprintf("loopLimit=%d", loopLimit), func(t *testing.T) {
+			items := []int{0, 1, 2}
+			l := NewLoopingList(items, loopLimit)
+			for i := 0; ; i++ {
+				item, err := l.Next()
+				if loopLimit == 0 {
+					if i > 10 {
+						// terminate after some point if infinitely looping
+						return
+					}
+				} else {
+					if i >= len(items)*loopLimit {
+						assert.ErrorIs(t, err, ErrLoopLimitReached)
+						return
+					}
+				}
+				assert.NoError(t, err)
+				assert.Equal(t, i%3, item)
+			}
+		})
 	}
-}
-
-func (s *LoopingList[T]) Next() T {
-	defer func() {
-		s.idx = (s.idx + 1) % len(s.items)
-	}()
-	return s.items[s.idx]
 }

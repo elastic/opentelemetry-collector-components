@@ -102,12 +102,12 @@ builddocker:
 	fi; \
 	docker build -t $$IMAGE_NAME -f distributions/elastic-components/Dockerfile .
 
-# Validate that the Elastic components collector can run with the example loadgen configuration.
-.PHONY: loadgencol-validate
-loadgen-validate: genelasticcol
-	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./_build/elastic-collector-components validate --config ./loadgen/config.example.yaml
+# Validate that the Elastic components collector can run with the example otelsoak configuration.
+.PHONY: otelsoak-validate
+otelsoak-validate: genelasticcol
+	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./loadgen/cmd/otelsoak/otelsoak validate --config ./loadgen/cmd/otelsoak/config.example.yaml
 
-# Run loadgen
-.PHONY: loadgencol-run
-loadgen-run: genelasticcol
-	TESTDATA_DIR=./loadgen ./_build/elastic-collector-components --config ./loadgen/config.example.yaml $(ARGS)
+# Run otelsoak
+.PHONY: otelsoak-run
+otelsoak-run: genelasticcol
+	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.example.yaml $(ARGS)

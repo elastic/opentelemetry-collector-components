@@ -37,6 +37,17 @@ resourceMetrics:
                     - key: aaa
                       value:
                         stringValue: bbb
+          - name: cumulative.monotonic.sum.1
+            sum:
+              aggregationTemporality: 2
+              isMonotonic: true
+              dataPoints:
+                - timeUnixNano: 8000000
+                  asDouble: 143
+                  attributes:
+                    - key: aaa
+                      value:
+                        stringValue: ccc
           - name: cumulative.monotonic.sum.2
             sum:
               aggregationTemporality: 2

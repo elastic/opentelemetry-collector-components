@@ -1,0 +1,52 @@
+receivers:
+  loadgen:
+  nop:
+
+exporters:
+  otlp:
+    endpoint: "http://localhost:8200"
+    tls:
+      # As otlpexporter ignores the protocol in `endpoint`,
+      # `tls::insecure` needs to be explicitly set to true if target server does not use TLS
+      insecure: false
+      insecure_skip_verify: false
+    sending_queue:
+      enabled: false
+    timeout: 60s
+  otlphttp:
+    endpoint: "http://localhost:8200"
+    tls:
+      # As long as the endpoint contains the correct protocol, `tls::insecure` does not matter.
+      insecure: false
+      insecure_skip_verify: false
+    sending_queue:
+      enabled: false
+    timeout: 60s
+  nop:
+
+processors:
+  transform/rewrite:  # Rewrite telemetry to increase cardinality
+    trace_statements:
+      - context: span
+        statements:
+          # The worst way to generate a random ID, but is the simplest in OTTL
+          # Only randomize trace ID such that span relationships are still maintained
+          - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
+
+service:
+  pipelines:
+    logs:
+      receivers: [loadgen]
+      processors: [transform/rewrite]
+      exporters: [otlp] # this will be set dynamically to otlp or otlphttp depending on config
+    metrics:
+      receivers: [loadgen]
+      processors: [transform/rewrite]
+      exporters: [otlp] # this will be set dynamically to otlp or otlphttp depending on config
+    traces:
+      receivers: [loadgen]
+      processors: [transform/rewrite]
+      exporters: [otlp] # this will be set dynamically to otlp or otlphttp depending on config
+  telemetry:
+    logs:
+      level: ERROR

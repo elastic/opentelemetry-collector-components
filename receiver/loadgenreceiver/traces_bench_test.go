@@ -18,39 +18,34 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/receiver"
+	"context"
+	"testing"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/metadata"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/receiver"
+	"go.uber.org/zap"
 )
 
-func NewFactory() receiver.Factory {
-	return NewFactoryWithDone(nil, nil, nil)
-}
-
-func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) component.Config {
-	return &Config{
-		Logs: LogsConfig{
-			doneCh: logsDone,
+func BenchmarkTracesGenerator(b *testing.B) {
+	doneCh := make(chan Stats)
+	cfg := createDefaultReceiverConfig(nil, nil, doneCh)
+	cfg.(*Config).Traces.MaxReplay = b.N
+	r, _ := createTracesReceiver(context.Background(), receiver.Settings{
+		ID: component.ID{},
+		TelemetrySettings: component.TelemetrySettings{
+			Logger: zap.NewNop(),
 		},
-		Metrics: MetricsConfig{
-			doneCh: metricsDone,
-		},
-		Traces: TracesConfig{
-			doneCh: tracesDone,
-		},
-		Concurrency: 1,
-	}
-}
-
-func NewFactoryWithDone(logsDone, metricsDone, tracesDone chan Stats) receiver.Factory {
-	return receiver.NewFactory(
-		metadata.Type,
-		func() component.Config {
-			return createDefaultReceiverConfig(logsDone, metricsDone, tracesDone)
-		},
-		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
-		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
-		receiver.WithLogs(createLogsReceiver, component.StabilityLevelDevelopment),
-	)
+		BuildInfo: component.BuildInfo{},
+	}, cfg, consumertest.NewNop())
+	b.ResetTimer()
+	err := r.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(b, err)
+	defer func() {
+		err := r.Shutdown(context.Background())
+		require.NoError(b, err)
+	}()
+	<-doneCh
 }

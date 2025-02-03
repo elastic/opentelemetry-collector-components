@@ -22,17 +22,22 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"os"
+	"sync"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 )
+
+const maxScannerBufSize = 1024 * 1024
 
 //go:embed testdata/traces.jsonl
 var demoTraces []byte
@@ -41,7 +46,11 @@ type tracesGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples  internal.LoopingList[ptrace.Traces]
+	samples *list.LoopingList[ptrace.Traces]
+
+	stats   Stats
+	statsMu sync.Mutex
+
 	consumer consumer.Traces
 
 	cancelFn context.CancelFunc
@@ -66,22 +75,26 @@ func createTracesReceiver(
 		}
 	}
 
-	var samples []ptrace.Traces
+	var items []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
+	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
 		traceBytes := scanner.Bytes()
 		lineTraces, err := parser.UnmarshalTraces(traceBytes)
 		if err != nil {
 			return nil, err
 		}
-		samples = append(samples, lineTraces)
+		items = append(items, lineTraces)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	return &tracesGenerator{
 		cfg:      genConfig,
 		logger:   set.Logger,
 		consumer: consumer,
-		samples:  internal.NewLoopingList(samples),
+		samples:  list.NewLoopingList(items, genConfig.Traces.MaxReplay),
 	}, nil
 }
 
@@ -89,17 +102,49 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 	startCtx, cancelFn := context.WithCancel(ctx)
 	ar.cancelFn = cancelFn
 
-	go func() {
-		for {
-			select {
-			case <-startCtx.Done():
-				return
-			default:
-				if err := ar.consumer.ConsumeTraces(startCtx, ar.nextTraces()); err != nil {
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < ar.cfg.Concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			next := ptrace.NewTraces() // per-worker temporary container to avoid allocs
+			for {
+				select {
+				case <-startCtx.Done():
+					return
+				default:
+				}
+				if next.IsReadOnly() {
+					// As the optimization to reuse pdata is not compatible with fanoutconsumer,
+					// i.e. in pipelines where there are more than 1 consumer,
+					// as fanoutconsumer will mark the pdata struct as read only and cannot be reused.
+					// See https://github.com/open-telemetry/opentelemetry-collector/blob/461a3558086a03ab13ea121d12e28e185a1c79b0/internal/fanoutconsumer/logs.go#L70
+					next = ptrace.NewTraces()
+				}
+				err := ar.nextTraces(next)
+				if errors.Is(err, list.ErrLoopLimitReached) {
+					return
+				}
+				if err := ar.consumer.ConsumeTraces(startCtx, next); err != nil {
 					ar.logger.Error(err.Error())
-					continue
+					ar.statsMu.Lock()
+					ar.stats.FailedRequests++
+					ar.stats.FailedSpans += next.SpanCount()
+					ar.statsMu.Unlock()
+				} else {
+					ar.statsMu.Lock()
+					ar.stats.Requests++
+					ar.stats.Spans += next.SpanCount()
+					ar.statsMu.Unlock()
 				}
 			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		if ar.cfg.Traces.doneCh != nil {
+			ar.cfg.Traces.doneCh <- ar.stats
 		}
 	}()
 	return nil
@@ -112,11 +157,14 @@ func (ar *tracesGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *tracesGenerator) nextTraces() ptrace.Traces {
-	nextLogs := ptrace.NewTraces()
-	ar.samples.Next().CopyTo(nextLogs)
+func (ar *tracesGenerator) nextTraces(next ptrace.Traces) error {
+	sample, err := ar.samples.Next()
+	if err != nil {
+		return err
+	}
+	sample.CopyTo(next)
 
-	rm := nextLogs.ResourceSpans()
+	rm := next.ResourceSpans()
 	for i := 0; i < rm.Len(); i++ {
 		for j := 0; j < rm.At(i).ScopeSpans().Len(); j++ {
 			for k := 0; k < rm.At(i).ScopeSpans().At(j).Spans().Len(); k++ {
@@ -130,5 +178,5 @@ func (ar *tracesGenerator) nextTraces() ptrace.Traces {
 		}
 	}
 
-	return nextLogs
+	return nil
 }

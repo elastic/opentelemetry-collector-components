@@ -22,16 +22,19 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"errors"
 	"os"
+	"sync"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 )
 
 //go:embed testdata/metrics.jsonl
@@ -41,7 +44,11 @@ type metricsGenerator struct {
 	cfg    *Config
 	logger *zap.Logger
 
-	samples  internal.LoopingList[pmetric.Metrics]
+	samples *list.LoopingList[pmetric.Metrics]
+
+	stats   Stats
+	statsMu sync.Mutex
+
 	consumer consumer.Metrics
 
 	cancelFn context.CancelFunc
@@ -66,22 +73,26 @@ func createMetricsReceiver(
 		}
 	}
 
-	var samples []pmetric.Metrics
+	var items []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
+	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
 	for scanner.Scan() {
 		metricBytes := scanner.Bytes()
 		lineMetrics, err := parser.UnmarshalMetrics(metricBytes)
 		if err != nil {
 			return nil, err
 		}
-		samples = append(samples, lineMetrics)
+		items = append(items, lineMetrics)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
 	}
 
 	return &metricsGenerator{
 		cfg:      genConfig,
 		logger:   set.Logger,
 		consumer: consumer,
-		samples:  internal.NewLoopingList(samples),
+		samples:  list.NewLoopingList(items, genConfig.Metrics.MaxReplay),
 	}, nil
 }
 
@@ -89,17 +100,49 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 	startCtx, cancelFn := context.WithCancel(ctx)
 	ar.cancelFn = cancelFn
 
-	go func() {
-		for {
-			select {
-			case <-startCtx.Done():
-				return
-			default:
-				if err := ar.consumer.ConsumeMetrics(startCtx, ar.nextMetrics()); err != nil {
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < ar.cfg.Concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			next := pmetric.NewMetrics() // per-worker temporary container to avoid allocs
+			for {
+				select {
+				case <-startCtx.Done():
+					return
+				default:
+				}
+				if next.IsReadOnly() {
+					// As the optimization to reuse pdata is not compatible with fanoutconsumer,
+					// i.e. in pipelines where there are more than 1 consumer,
+					// as fanoutconsumer will mark the pdata struct as read only and cannot be reused.
+					// See https://github.com/open-telemetry/opentelemetry-collector/blob/461a3558086a03ab13ea121d12e28e185a1c79b0/internal/fanoutconsumer/logs.go#L70
+					next = pmetric.NewMetrics()
+				}
+				err := ar.nextMetrics(next)
+				if errors.Is(err, list.ErrLoopLimitReached) {
+					return
+				}
+				if err := ar.consumer.ConsumeMetrics(startCtx, next); err != nil {
 					ar.logger.Error(err.Error())
-					continue
+					ar.statsMu.Lock()
+					ar.stats.FailedRequests++
+					ar.stats.FailedMetricDataPoints += next.DataPointCount()
+					ar.statsMu.Unlock()
+				} else {
+					ar.statsMu.Lock()
+					ar.stats.Requests++
+					ar.stats.MetricDataPoints += next.DataPointCount()
+					ar.statsMu.Unlock()
 				}
 			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		if ar.cfg.Metrics.doneCh != nil {
+			ar.cfg.Metrics.doneCh <- ar.stats
 		}
 	}()
 	return nil
@@ -112,13 +155,16 @@ func (ar *metricsGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
-func (ar *metricsGenerator) nextMetrics() pmetric.Metrics {
+func (ar *metricsGenerator) nextMetrics(next pmetric.Metrics) error {
 	now := pcommon.NewTimestampFromTime(time.Now())
 
-	nextMetrics := pmetric.NewMetrics()
-	ar.samples.Next().CopyTo(nextMetrics)
+	sample, err := ar.samples.Next()
+	if err != nil {
+		return err
+	}
+	sample.CopyTo(next)
 
-	rm := nextMetrics.ResourceMetrics()
+	rm := next.ResourceMetrics()
 	for i := 0; i < rm.Len(); i++ {
 		for j := 0; j < rm.At(i).ScopeMetrics().Len(); j++ {
 			for k := 0; k < rm.At(i).ScopeMetrics().At(j).Metrics().Len(); k++ {
@@ -160,5 +206,5 @@ func (ar *metricsGenerator) nextMetrics() pmetric.Metrics {
 		}
 	}
 
-	return nextMetrics
+	return nil
 }
