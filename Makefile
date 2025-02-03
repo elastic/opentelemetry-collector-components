@@ -7,6 +7,10 @@ ALL_DOC := $(shell find . \( -name "*.md" -o -name "*.yaml" \) \
 # ALL_MODULES includes ./* dirs with a go.mod file (excludes . and ./_build dirs)
 ALL_MODULES := $(shell find . -type f -name "go.mod" -not -wholename "./go.mod" -not -wholename "./_build/*" -exec dirname {} \; | sort )
 
+FIND_INTEGRATION_TEST_MODS={ find . -type f -name "*integration_test.go" & find . -type f -name "*e2e_test.go"; }
+TO_MOD_DIR=dirname {} \; | sort | grep -E '^./'
+INTEGRATION_MODS := $(shell $(FIND_INTEGRATION_TEST_MODS) | xargs $(TO_MOD_DIR) | uniq)
+
 GROUP ?= all
 FOR_GROUP_TARGET=for-$(GROUP)-target
 
@@ -28,6 +32,9 @@ $(GOMODULES):
 .PHONY: for-all-target
 for-all-target: $(GOMODULES)
 
+.PHONY: for-integration-target
+for-integration-target: $(INTEGRATION_MODS)
+
 .PHONY: gomoddownload
 gomoddownload:
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="moddownload"
@@ -35,6 +42,10 @@ gomoddownload:
 .PHONY: gotest
 gotest:
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="test"
+
+.PHONY: gointegration-test
+gointegration-test:
+	@$(MAKE) for-integration-target TARGET="integration-test"
 
 .PHONY: golint
 golint:
