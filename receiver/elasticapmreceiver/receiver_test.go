@@ -123,7 +123,7 @@ func TestAgentCfgHandler(t *testing.T) {
 		name           string
 		requestHeaders http.Header
 		query          agentcfg.Query
-		fetcher        agentCfgFn
+		fetcher        agentCfgFetcherFactory
 
 		expectedStatusCode int
 		assertBodyFn       func([]byte)

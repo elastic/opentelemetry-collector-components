@@ -52,7 +52,7 @@ const (
 	intakeV2EventsPath = "/intake/v2/events"
 )
 
-type agentCfgFn = func(context.Context, component.Host) (agentcfg.Fetcher, error)
+type agentCfgFetcherFactory = func(context.Context, component.Host) (agentcfg.Fetcher, error)
 
 // elasticAPMReceiver implements support for receiving Logs, Metrics, and Traces from Elastic APM agents.
 type elasticAPMReceiver struct {
@@ -67,14 +67,14 @@ type elasticAPMReceiver struct {
 	httpServer *http.Server
 	shutdownWG sync.WaitGroup
 
-	getFetcher agentCfgFn
-	cancelFn   context.CancelFunc
+	fetcherFactory agentCfgFetcherFactory
+	cancelFn       context.CancelFunc
 }
 
 // newElasticAPMReceiver just creates the OpenTelemetry receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods to end it.
-func newElasticAPMReceiver(fetcher agentCfgFn, cfg *Config, set receiver.Settings) (*elasticAPMReceiver, error) {
+func newElasticAPMReceiver(fetcher agentCfgFetcherFactory, cfg *Config, set receiver.Settings) (*elasticAPMReceiver, error) {
 	obsreport, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{
 		ReceiverID:             set.ID,
 		Transport:              "http",
@@ -85,10 +85,10 @@ func newElasticAPMReceiver(fetcher agentCfgFn, cfg *Config, set receiver.Setting
 	}
 
 	return &elasticAPMReceiver{
-		cfg:        cfg,
-		settings:   set,
-		obsreport:  obsreport,
-		getFetcher: fetcher,
+		cfg:            cfg,
+		settings:       set,
+		obsreport:      obsreport,
+		fetcherFactory: fetcher,
 	}, nil
 }
 

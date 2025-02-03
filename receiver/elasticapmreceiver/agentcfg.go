@@ -72,7 +72,7 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		}
 	}
 
-	fetcher, err := r.getFetcher(ctx, host)
+	fetcher, err := r.fetcherFactory(ctx, host)
 	if err != nil {
 		r.settings.Logger.Error(fmt.Sprintf("could not start elasticsearch agent configuration client: %s", err.Error()))
 

@@ -71,7 +71,7 @@ func createLogsReceiver(
 ) (receiver.Logs, error) {
 	oCfg := cfg.(*Config)
 	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(newAgentCfgFetcher(oCfg, set), oCfg, set)
+		return newElasticAPMReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func createLogsReceiver(
 	return r, nil
 }
 
-func newAgentCfgFetcher(cfg *Config, set receiver.Settings) agentCfgFn {
+func esFetcherFactory(cfg *Config, set receiver.Settings) agentCfgFetcherFactory {
 	return func(ctx context.Context, host component.Host) (agentcfg.Fetcher, error) {
 		esClient, err := cfg.Elasticsearch.ToClient(ctx, host, set.TelemetrySettings)
 		if err != nil {
@@ -107,7 +107,7 @@ func createMetricsReceiver(
 ) (receiver.Metrics, error) {
 	oCfg := cfg.(*Config)
 	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(newAgentCfgFetcher(oCfg, set), oCfg, set)
+		return newElasticAPMReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func createTracesReceiver(
 ) (receiver.Traces, error) {
 	oCfg := cfg.(*Config)
 	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(newAgentCfgFetcher(oCfg, set), oCfg, set)
+		return newElasticAPMReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
