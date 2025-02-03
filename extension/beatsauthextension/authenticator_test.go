@@ -38,8 +38,8 @@ import (
 func TestVerifyConnection(t *testing.T) {
 	testCerts := tlscommon.GenTestCerts(t)
 	fingerprint := tlscommon.GetCertFingerprint(testCerts["ca"])
-	settings := componenttest.NewNopTelemetrySettings()
 
+	settings := componenttest.NewNopTelemetrySettings()
 	httpClientConfig := confighttp.NewDefaultClientConfig()
 	httpClientConfig.Auth = &configauth.Authentication{
 		AuthenticatorID: component.NewID(metadata.Type),
@@ -61,10 +61,18 @@ func TestVerifyConnection(t *testing.T) {
 			expectedCallback:     true,
 			CATrustedFingerprint: fingerprint,
 		},
+		"CATrustedFingerprint and verification mode:VerifyFull and incorrect servername": {
+			verificationMode:     tlscommon.VerifyFull,
+			peerCerts:            []*x509.Certificate{testCerts["correct"], testCerts["ca"]},
+			serverName:           "random",
+			expectedCallback:     true,
+			expectingError:       true,
+			CATrustedFingerprint: fingerprint,
+		},
 		"CATrustedFingerprint and verification mode:VerifyCertificate": {
 			verificationMode:     tlscommon.VerifyCertificate,
 			peerCerts:            []*x509.Certificate{testCerts["correct"], testCerts["ca"]},
-			serverName:           "localhost",
+			serverName:           "random", // does not perform hostname verification
 			expectedCallback:     true,
 			CATrustedFingerprint: fingerprint,
 		},
@@ -79,7 +87,7 @@ func TestVerifyConnection(t *testing.T) {
 		"CATrustedFingerprint and verification mode:VerifyNone": {
 			verificationMode: tlscommon.VerifyNone,
 			peerCerts:        []*x509.Certificate{testCerts["correct"], testCerts["ca"]},
-			serverName:       "localhost",
+			serverName:       "random",
 			expectedCallback: false,
 		},
 		"invalid CATrustedFingerprint and verification mode:VerifyFull returns error": {
