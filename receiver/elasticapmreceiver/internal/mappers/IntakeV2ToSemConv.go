@@ -29,13 +29,15 @@ import (
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(semconv.AttributeServiceName, event.Service.Name)
 	attributes.PutStr(semconv.AttributeServiceVersion, event.Service.Version)
-	attributes.PutStr(semconv.AttributeTelemetrySDKLanguage, event.Service.Language.Name)
+	if event.Service.Language != nil {
+		attributes.PutStr(semconv.AttributeTelemetrySDKLanguage, event.Service.Language.Name)
+	}
 	attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
 	attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
 }
 
 func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	if event.Http.Request != nil {
+	if event.Http != nil && event.Http.Request != nil {
 		attributes.PutStr(semconv.AttributeHTTPRequestMethod, event.Http.Request.Method)
 		attributes.PutInt(semconv.AttributeHTTPResponseStatusCode, int64(event.Http.Response.StatusCode))
 

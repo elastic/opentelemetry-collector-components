@@ -282,7 +282,7 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 				s.SetName(transaction.GetName())
 				mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
 
-				if event.Http.Request != nil {
+				if event.Http != nil && event.Http.Request != nil {
 					s.SetKind(ptrace.SpanKindServer)
 				} else if event.Message != "" { // this check is TBD
 					s.SetKind(ptrace.SpanKindConsumer)
