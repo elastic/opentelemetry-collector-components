@@ -46,33 +46,37 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		return map[string]string{"error": err}
 	}
 
+	// write a json response and log any encoding error
+	encodeJsonLogError := func(w http.ResponseWriter, data any) {
+		w.Header().Set(ContentType, "application/json")
+		err := json.NewEncoder(w).Encode(data)
+		if err != nil {
+			r.settings.Logger.Error(fmt.Sprintf("error encoding json response: %s", err.Error()))
+		}
+	}
+
 	fetcher, err := r.getFetcher(ctx, host)
 	if err != nil {
 		r.settings.Logger.Error(fmt.Sprintf("could not start elasticsearch agent configuration client: %s", err.Error()))
 
 		return func(w http.ResponseWriter, req *http.Request) {
-			w.Header().Set(ContentType, "application/json")
-
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(mapBodyError(err.Error()))
-			return
+			encodeJsonLogError(w, mapBodyError(err.Error()))
 		}
 	}
 
 	return func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set(ContentType, "application/json")
-
 		query, queryErr := buildQuery(req)
 		if queryErr != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(mapBodyError(queryErr.Error()))
+			encodeJsonLogError(w, mapBodyError(queryErr.Error()))
 			return
 		}
 
 		result, err := fetcher.Fetch(req.Context(), query)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(mapBodyError(err.Error()))
+			encodeJsonLogError(w, mapBodyError(err.Error()))
 			return
 		}
 
@@ -87,7 +91,7 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		} else {
 			// c.Result.SetWithBody(request.IDResponseValidOK, result.Source.Settings)
 			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(result)
+			encodeJsonLogError(w, result)
 		}
 	}
 }

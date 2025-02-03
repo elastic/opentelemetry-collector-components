@@ -55,14 +55,17 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 			ContainerRequest: req,
 			Started:          true,
 		})
-		defer testcontainers.TerminateContainer(container)
-		require.NoError(t, err)
+		defer func() {
+			err := testcontainers.TerminateContainer(container)
+			require.NoError(t, err)
+		}()
+		defer require.NoError(t, err)
 
 		tests := []struct {
 			name                  string
 			requestHeaders        http.Header
 			query                 agentcfg.Query
-			agentCfgIndexModifier func(*testing.T, string)
+			agentCfgIndexModifier func(*testing.T, *elasticsearch.Client)
 
 			expectedStatusCode int
 			expectedBody       func(*testing.T, []byte) bool
@@ -70,7 +73,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 			{
 				name:                  "empty request, service.name required",
 				query:                 agentcfg.Query{},
-				agentCfgIndexModifier: func(*testing.T, string) {},
+				agentCfgIndexModifier: func(*testing.T, *elasticsearch.Client) {},
 
 				expectedStatusCode: http.StatusBadRequest,
 				expectedBody: func(t *testing.T, b []byte) bool {
@@ -84,7 +87,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						Name: "all",
 					},
 				},
-				agentCfgIndexModifier: func(*testing.T, string) {},
+				agentCfgIndexModifier: func(*testing.T, *elasticsearch.Client) {},
 
 				expectedStatusCode: http.StatusOK,
 				expectedBody: func(t *testing.T, b []byte) bool {
@@ -98,8 +101,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						Name: "all",
 					},
 				},
-				agentCfgIndexModifier: func(t *testing.T, endpoint string) {
-					writeAgentIndex(t, endpoint, "abcd", map[string]string{"name": ""}, map[string]string{"transaction_max_spans": "124"})
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
+					err := writeAgentIndex(client, "abcd", map[string]string{"name": ""}, map[string]string{"transaction_max_spans": "124"})
+					require.NoError(t, err)
 				},
 
 				expectedStatusCode: http.StatusOK,
@@ -114,8 +118,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						Name: "test-agent",
 					},
 				},
-				agentCfgIndexModifier: func(t *testing.T, endpoint string) {
-					writeAgentIndex(t, endpoint, "abc", map[string]string{"name": "test-agent"}, map[string]string{"transaction_max_spans": "123"})
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
+					err := writeAgentIndex(client, "abc", map[string]string{"name": "test-agent"}, map[string]string{"transaction_max_spans": "123"})
+					require.NoError(t, err)
 				},
 
 				expectedStatusCode: http.StatusOK,
@@ -131,9 +136,11 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						Environment: "demo",
 					},
 				},
-				agentCfgIndexModifier: func(t *testing.T, endpoint string) {
-					writeAgentIndex(t, endpoint, "abc", map[string]string{"name": "test-agent-1", "environment": "not-demo"}, map[string]string{"transaction_max_spans": "124"})
-					writeAgentIndex(t, endpoint, "abc", map[string]string{"name": "test-agent-1", "environment": "demo"}, map[string]string{"transaction_max_spans": "125"})
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
+					err := writeAgentIndex(client, "abc", map[string]string{"name": "test-agent-1", "environment": "not-demo"}, map[string]string{"transaction_max_spans": "124"})
+					require.NoError(t, err)
+					err = writeAgentIndex(client, "abc", map[string]string{"name": "test-agent-1", "environment": "demo"}, map[string]string{"transaction_max_spans": "125"})
+					require.NoError(t, err)
 				},
 
 				expectedStatusCode: http.StatusOK,
@@ -149,8 +156,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						Name: "test-agent-2",
 					},
 				},
-				agentCfgIndexModifier: func(t *testing.T, endpoint string) {
-					writeAgentIndex(t, endpoint, "test", map[string]string{"name": "test-agent-2"}, map[string]string{"transaction_max_spans": "123"})
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
+					err := writeAgentIndex(client, "test", map[string]string{"name": "test-agent-2"}, map[string]string{"transaction_max_spans": "123"})
+					require.NoError(t, err)
 				},
 
 				expectedStatusCode: http.StatusNotModified,
@@ -166,8 +174,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						Name: "test-agent-3",
 					},
 				},
-				agentCfgIndexModifier: func(t *testing.T, endpoint string) {
-					writeAgentIndex(t, endpoint, "new", map[string]string{"name": "test-agent-3"}, map[string]string{"transaction_max_spans": "1"})
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
+					err := writeAgentIndex(client, "new", map[string]string{"name": "test-agent-3"}, map[string]string{"transaction_max_spans": "1"})
+					require.NoError(t, err)
 				},
 
 				expectedStatusCode: http.StatusOK,
@@ -184,7 +193,15 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 		containerPort, err := container.MappedPort(ttCtx, elasticPort)
 		require.NoError(t, err)
 		esEndpoint := fmt.Sprintf("http://%s:%s", containerHost, containerPort.Port())
-		createApmConfigIndex(t, esEndpoint)
+
+		esClient, err := elasticsearch.NewClient(elasticsearch.Config{
+			Addresses: []string{
+				esEndpoint,
+			},
+		})
+		require.NoError(t, err)
+		err = createApmConfigIndex(esClient, esEndpoint)
+		require.NoError(t, err)
 
 		rcvrFactory := NewFactory()
 		cfg := &Config{
@@ -206,7 +223,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				tt.agentCfgIndexModifier(t, esEndpoint)
+				tt.agentCfgIndexModifier(t, esClient)
 
 				jsonQuery, err := json.Marshal(tt.query)
 				require.NoError(t, err)
@@ -236,31 +253,18 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 }
 
 // creates and the ".apm-agent-configuration" index
-func createApmConfigIndex(t *testing.T, endpoint string) {
-	cfg := elasticsearch.Config{
-		Addresses: []string{
-			endpoint,
-		},
-	}
-	es, err := elasticsearch.NewClient(cfg)
-	resCreate, err := es.Indices.Create(
+func createApmConfigIndex(client *elasticsearch.Client, endpoint string) error {
+	resCreate, err := client.Indices.Create(
 		indexName,
 	)
-	require.NoError(t, err)
-	defer resCreate.Body.Close()
-	require.NoError(t, err)
+	if err != nil {
+		return err
+	}
+	return resCreate.Body.Close()
 }
 
 // writes an agent configuration to the ".apm-agent-configuration" index
-func writeAgentIndex(t *testing.T, endpoint, etag string, service, settings map[string]string) {
-	cfg := elasticsearch.Config{
-		Addresses: []string{
-			endpoint,
-		},
-	}
-	es, err := elasticsearch.NewClient(cfg)
-	require.NoError(t, err)
-
+func writeAgentIndex(client *elasticsearch.Client, etag string, service, settings map[string]string) (retErr error) {
 	doc := map[string]interface{}{
 		"service":          service,
 		"settings":         settings,
@@ -270,16 +274,28 @@ func writeAgentIndex(t *testing.T, endpoint, etag string, service, settings map[
 	}
 
 	var buf bytes.Buffer
-	err = json.NewEncoder(&buf).Encode(doc)
-	require.NoError(t, err)
+	retErr = json.NewEncoder(&buf).Encode(doc)
+	if retErr != nil {
+		return retErr
+	}
 
-	res, err := es.Index(
+	res, retErr := client.Index(
 		indexName,
 		&buf,
-		es.Index.WithRefresh("true"), // Ensure the document is available immediately
+		client.Index.WithRefresh("true"), // Ensure the document is available immediately
 	)
-	require.NoError(t, err)
-	defer res.Body.Close()
+	if retErr != nil {
+		return retErr
+	}
+	defer func() {
+		err := res.Body.Close()
+		if err != nil && retErr == nil {
+			retErr = err
+		}
+	}()
 
-	require.True(t, !res.IsError())
+	if res.IsError() {
+		retErr = fmt.Errorf("error while writing .apm-agent-configuration index")
+	}
+	return retErr
 }
