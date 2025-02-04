@@ -41,7 +41,6 @@ const (
 
 const (
 	msgMethodUnsupported = "method not supported"
-	notModifed           = "not modified"
 )
 
 func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, host component.Host) http.HandlerFunc {
@@ -58,12 +57,24 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		}
 	}
 
-	fetcher, err := r.fetcherFactory(ctx, host)
-	if err != nil {
-		r.settings.Logger.Error(fmt.Sprintf("could not start elasticsearch agent configuration client: %s", err.Error()))
+	// servers where the Kibana/ES connection is not enabled (server responds with 403)
+	// https://github.com/elastic/apm/blob/main/specs/agents/configuration.md#dealing-with-errors
+	if r.fetcherFactory == nil {
+		r.settings.Logger.Warn("no agent configuration fetcher available")
 
 		return func(w http.ResponseWriter, req *http.Request) {
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(http.StatusForbidden)
+			encodeJsonLogError(w, mapBodyError("remote configuration fetcher not enabled"))
+		}
+	}
+
+	fetcher, err := r.fetcherFactory(ctx, host)
+	if err != nil {
+		r.settings.Logger.Error(fmt.Sprintf("could not start agent configuration fetcher: %s", err.Error()))
+
+		// servers where the Kibana/ES connection is enabled, but unavailable (server responds with 503)
+		return func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusServiceUnavailable)
 			encodeJsonLogError(w, mapBodyError(err.Error()))
 		}
 	}
@@ -84,7 +95,7 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		}
 
 		// configuration successfully fetched
-		w.Header().Set(CacheControl, fmt.Sprintf("max-age=%v, must-revalidate", r.cfg.Elasticsearch.CacheDuration.Seconds()))
+		w.Header().Set(CacheControl, fmt.Sprintf("max-age=%v, must-revalidate", r.cfg.CacheDuration.Seconds()))
 		w.Header().Set(Etag, fmt.Sprintf("%q", result.Source.Etag))
 		w.Header().Set(AccessControlExposeHeaders, Etag)
 

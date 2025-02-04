@@ -53,13 +53,12 @@ func createDefaultConfig() component.Config {
 	// defaultServerConfig := confighttp.NewDefaultServerConfig()
 	defaultServerConfig := confighttp.ServerConfig{}
 	defaultServerConfig.Endpoint = defaultEndpoint
+	defaultESClientConfig := configelasticsearch.NewDefaultClientConfig()
 	return &Config{
-		ServerConfig: defaultServerConfig,
-		Elasticsearch: ElasticsearchClient{
-			ClientConfig: configelasticsearch.NewDefaultClientConfig(),
-			// based on apm-server default https://github.com/elastic/apm-server/blob/main/internal/beater/config/agentconfig.go#L101
-			CacheDuration: 30 * time.Second,
-		},
+		ServerConfig:  defaultServerConfig,
+		Elasticsearch: &defaultESClientConfig,
+		// based on apm-server default https://github.com/elastic/apm-server/blob/main/internal/beater/config/agentconfig.go#L101
+		CacheDuration: 30 * time.Second,
 	}
 }
 
@@ -83,12 +82,18 @@ func createLogsReceiver(
 
 func esFetcherFactory(cfg *Config, set receiver.Settings) agentCfgFetcherFactory {
 	return func(ctx context.Context, host component.Host) (agentcfg.Fetcher, error) {
+		// Elasticsearch connection is not enabled, no configuration
+		// fetcher
+		if cfg.Elasticsearch == nil {
+			return nil, nil
+		}
+
 		esClient, err := cfg.Elasticsearch.ToClient(ctx, host, set.TelemetrySettings)
 		if err != nil {
 			return nil, err
 		}
 
-		fetcher := agentcfg.NewElasticsearchFetcher(esClient, cfg.Elasticsearch.CacheDuration, set.Logger)
+		fetcher := agentcfg.NewElasticsearchFetcher(esClient, cfg.CacheDuration, set.Logger)
 		go func() {
 			err := fetcher.Run(ctx)
 			if err != nil {

@@ -25,6 +25,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/testutil"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
@@ -45,6 +46,40 @@ func (f *fetcherMock) Fetch(ctx context.Context, query agentcfg.Query) (agentcfg
 }
 
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	rcvr, err := newElasticAPMReceiver(nil, &Config{
+		ServerConfig: confighttp.ServerConfig{
+			Endpoint: testEndpoint,
+		},
+	}, receivertest.NewNopSettings())
+	require.NoError(t, err)
+
+	ttCtx := context.Background()
+	err = rcvr.Start(ttCtx, componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	jsonQuery, err := json.Marshal(agentcfg.Query{})
+	require.NoError(t, err)
+
+	r, err := http.NewRequest("POST", "http://"+testEndpoint+agentConfigPath, bytes.NewBuffer(jsonQuery))
+	require.NoError(t, err)
+
+	r.Header.Add("Content-Type", "application/json")
+	client := http.DefaultClient
+	res, err := client.Do(r)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusForbidden, res.StatusCode)
+	bodyBytes, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	assert.JSONEq(t, string([]byte(`{"error":"remote configuration fetcher not enabled"}`)), string(bodyBytes))
+	require.NoError(t, res.Body.Close())
+
+	err = rcvr.Shutdown(ttCtx)
+	require.NoError(t, err)
+}
+
+func TestAgentCfgHandlerInvalidFetcher(t *testing.T) {
 	tests := []struct {
 		name  string
 		query agentcfg.Query
@@ -56,7 +91,7 @@ func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 			name:  "empty request",
 			query: agentcfg.Query{},
 
-			expectedStatusCode: http.StatusBadRequest,
+			expectedStatusCode: http.StatusServiceUnavailable,
 			expectedBody:       []byte(`{"error":"no fetcher"}`),
 		},
 		{
@@ -67,7 +102,7 @@ func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 				},
 			},
 
-			expectedStatusCode: http.StatusBadRequest,
+			expectedStatusCode: http.StatusServiceUnavailable,
 			expectedBody:       []byte(`{"error":"no fetcher"}`),
 		},
 	}
@@ -255,6 +290,7 @@ func TestAgentCfgHandler(t *testing.T) {
 				ServerConfig: confighttp.ServerConfig{
 					Endpoint: testEndpoint,
 				},
+				CacheDuration: 1 * time.Second,
 			}, receivertest.NewNopSettings())
 			require.NoError(t, err)
 

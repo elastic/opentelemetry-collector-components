@@ -26,17 +26,15 @@ import (
 
 // Config defines configuration for the Elastic APM receiver.
 type Config struct {
-	Elasticsearch ElasticsearchClient `mapstructure:"elasticsearch"`
-
-	confighttp.ServerConfig `mapstructure:",squash"`
-}
-
-type ElasticsearchClient struct {
-	configelasticsearch.ClientConfig `mapstructure:",squash"`
+	// Elasticsearch contains the configuration options used to connect to
+	// an Elasticsearch instance to retrieve the APM Central Configurations
+	Elasticsearch *configelasticsearch.ClientConfig `mapstructure:"elasticsearch"`
 
 	// CacheDuration duration defines the timeout to fetch and update agent
 	// configurations
 	CacheDuration time.Duration `mapstructure:"cache_duration"`
+
+	confighttp.ServerConfig `mapstructure:",squash"`
 }
 
 // Validate checks the receiver configuration is valid.
