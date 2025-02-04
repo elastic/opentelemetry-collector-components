@@ -85,7 +85,7 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 
 		// configuration successfully fetched
 		w.Header().Set(CacheControl, fmt.Sprintf("max-age=%v, must-revalidate", r.cfg.Elasticsearch.CacheDuration.Seconds()))
-		w.Header().Set(Etag, fmt.Sprintf("\"%s\"", result.Source.Etag))
+		w.Header().Set(Etag, fmt.Sprintf("%q", result.Source.Etag))
 		w.Header().Set(AccessControlExposeHeaders, Etag)
 
 		if result.Source.Etag == query.Etag {
