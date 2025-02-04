@@ -31,26 +31,12 @@ import (
 
 // http header keys
 const (
-	Accept                     = "Accept"
-	AccessControlAllowHeaders  = "Access-Control-Allow-Headers"
-	AccessControlAllowMethods  = "Access-Control-Allow-Methods"
-	AccessControlAllowOrigin   = "Access-Control-Allow-Origin"
 	AccessControlExposeHeaders = "Access-Control-Expose-Headers"
-	AccessControlMaxAge        = "Access-Control-Max-Age"
-	Authorization              = "Authorization"
 	APIKey                     = "ApiKey"
-	Bearer                     = "Bearer"
 	CacheControl               = "Cache-Control"
-	Connection                 = "Connection"
-	ContentEncoding            = "Content-Encoding"
-	ContentLength              = "Content-Length"
 	ContentType                = "Content-Type"
 	Etag                       = "Etag"
 	IfNoneMatch                = "If-None-Match"
-	Origin                     = "Origin"
-	UserAgent                  = "User-Agent"
-	Vary                       = "Vary"
-	XContentTypeOptions        = "X-Content-Type-Options"
 )
 
 const (
@@ -108,7 +94,7 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		} else {
 			// c.Result.SetWithBody(request.IDResponseValidOK, result.Source.Settings)
 			w.WriteHeader(http.StatusOK)
-			encodeJsonLogError(w, result)
+			encodeJsonLogError(w, result.Source.Settings)
 		}
 	}
 }

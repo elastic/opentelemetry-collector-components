@@ -56,8 +56,9 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		ServerConfig: defaultServerConfig,
 		Elasticsearch: ElasticsearchClient{
-			ClientConfig:  configelasticsearch.NewDefaultClientConfig(),
-			CacheDuration: 5 * time.Second,
+			ClientConfig: configelasticsearch.NewDefaultClientConfig(),
+			// based on apm-server default https://github.com/elastic/apm-server/blob/main/internal/beater/config/agentconfig.go#L101
+			CacheDuration: 30 * time.Second,
 		},
 	}
 }

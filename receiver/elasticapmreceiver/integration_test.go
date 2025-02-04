@@ -77,11 +77,11 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 		tests := []struct {
 			name                  string
-			requestHeaders        http.Header
 			query                 agentcfg.Query
 			agentCfgIndexModifier func(*testing.T, *elasticsearch.Client)
 
 			expectedStatusCode int
+			expectedEtagHeader []string
 			expectedBody       func(*testing.T, []byte) bool
 		}{
 			{
@@ -104,8 +104,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				agentCfgIndexModifier: func(*testing.T, *elasticsearch.Client) {},
 
 				expectedStatusCode: http.StatusOK,
+				expectedEtagHeader: []string{"\"-\""},
 				expectedBody: func(t *testing.T, b []byte) bool {
-					return assert.JSONEq(t, string([]byte(`{"_source":{"settings":{},"etag":"-","agent_name":""}}`)), string(b))
+					return assert.JSONEq(t, string([]byte(`{}`)), string(b))
 				},
 			},
 			{
@@ -121,8 +122,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 
 				expectedStatusCode: http.StatusOK,
+				expectedEtagHeader: []string{"\"abcd\""},
 				expectedBody: func(t *testing.T, b []byte) bool {
-					return assert.JSONEq(t, string([]byte(`{"_source":{"settings":{"transaction_max_spans":"124"},"etag":"abcd","agent_name":""}}`)), string(b))
+					return assert.JSONEq(t, string([]byte(`{"transaction_max_spans":"124"}`)), string(b))
 				},
 			},
 			{
@@ -138,8 +140,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 
 				expectedStatusCode: http.StatusOK,
+				expectedEtagHeader: []string{"\"abc\""},
 				expectedBody: func(t *testing.T, b []byte) bool {
-					return assert.JSONEq(t, string([]byte(`{"_source":{"settings":{"transaction_max_spans":"123"},"etag":"abc","agent_name":""}}`)), string(b))
+					return assert.JSONEq(t, string([]byte(`{"transaction_max_spans":"123"}`)), string(b))
 				},
 			},
 			{
@@ -158,8 +161,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 
 				expectedStatusCode: http.StatusOK,
+				expectedEtagHeader: []string{"\"abc\""},
 				expectedBody: func(t *testing.T, b []byte) bool {
-					return assert.JSONEq(t, string([]byte(`{"_source":{"settings":{"transaction_max_spans":"125"},"etag":"abc","agent_name":""}}`)), string(b))
+					return assert.JSONEq(t, string([]byte(`{"transaction_max_spans":"125"}`)), string(b))
 				},
 			},
 			{
@@ -176,6 +180,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 
 				expectedStatusCode: http.StatusNotModified,
+				expectedEtagHeader: []string{"\"test\""},
 				expectedBody: func(t *testing.T, b []byte) bool {
 					return assert.Empty(t, b)
 				},
@@ -194,8 +199,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 
 				expectedStatusCode: http.StatusOK,
+				expectedEtagHeader: []string{"\"new\""},
 				expectedBody: func(t *testing.T, b []byte) bool {
-					return assert.JSONEq(t, string([]byte(`{"_source":{"settings":{"transaction_max_spans":"1"},"etag":"new","agent_name":""}}`)), string(b))
+					return assert.JSONEq(t, string([]byte(`{"transaction_max_spans":"1"}`)), string(b))
 				},
 			},
 		}
@@ -256,7 +262,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 					require.NoError(t, res.Body.Close())
 
-					return assert.Equal(t, tt.expectedStatusCode, res.StatusCode) && tt.expectedBody(t, bodyBytes)
+					return assert.Equal(t, tt.expectedStatusCode, res.StatusCode) && assert.Equal(t, tt.expectedEtagHeader, res.Header[Etag]) && tt.expectedBody(t, bodyBytes)
 				}, 30*time.Second, 1*time.Second)
 			})
 		}

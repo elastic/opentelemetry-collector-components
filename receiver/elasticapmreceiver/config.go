@@ -34,6 +34,8 @@ type Config struct {
 type ElasticsearchClient struct {
 	configelasticsearch.ClientConfig `mapstructure:",squash"`
 
+	// CacheDuration duration defines the timeout to fetch and update agent
+	// configurations
 	CacheDuration time.Duration `mapstructure:"cache_duration"`
 }
 

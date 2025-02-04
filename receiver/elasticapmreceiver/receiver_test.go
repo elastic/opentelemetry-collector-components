@@ -46,9 +46,8 @@ func (f *fetcherMock) Fetch(ctx context.Context, query agentcfg.Query) (agentcfg
 
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 	tests := []struct {
-		name           string
-		requestHeaders http.Header
-		query          agentcfg.Query
+		name  string
+		query agentcfg.Query
 
 		expectedStatusCode int
 		expectedBody       []byte
@@ -120,12 +119,12 @@ func TestAgentCfgHandler(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		requestHeaders http.Header
-		query          agentcfg.Query
-		fetcher        agentCfgFetcherFactory
+		name    string
+		query   agentcfg.Query
+		fetcher agentCfgFetcherFactory
 
 		expectedStatusCode int
+		expectedEtagHeader []string
 		assertBodyFn       func([]byte)
 	}{
 		{
@@ -185,6 +184,7 @@ func TestAgentCfgHandler(t *testing.T) {
 			},
 
 			expectedStatusCode: http.StatusNotModified,
+			expectedEtagHeader: []string{"\"abc\""},
 			assertBodyFn: func(expectedBody []byte) {
 				assert.Empty(t, expectedBody)
 			},
@@ -213,8 +213,9 @@ func TestAgentCfgHandler(t *testing.T) {
 			},
 
 			expectedStatusCode: http.StatusOK,
+			expectedEtagHeader: []string{"\"cba\""},
 			assertBodyFn: func(expectedBody []byte) {
-				assertJsonBody(expectedBody, []byte(`{"_source":{"settings":{"transaction_max_spans":"123"},"etag":"cba","agent_name":""}}`))
+				assertJsonBody(expectedBody, []byte(`{"transaction_max_spans":"123"}`))
 			},
 		},
 		{
@@ -240,8 +241,9 @@ func TestAgentCfgHandler(t *testing.T) {
 			},
 
 			expectedStatusCode: http.StatusOK,
+			expectedEtagHeader: []string{"\"cba\""},
 			assertBodyFn: func(expectedBody []byte) {
-				assertJsonBody(expectedBody, []byte(`{"_source":{"settings":{"transaction_max_spans":"123"},"etag":"cba","agent_name":""}}`))
+				assertJsonBody(expectedBody, []byte(`{"transaction_max_spans":"123"}`))
 			},
 		},
 	}
@@ -277,6 +279,7 @@ func TestAgentCfgHandler(t *testing.T) {
 			require.NoError(t, res.Body.Close())
 
 			assert.Equal(t, tt.expectedStatusCode, res.StatusCode)
+			assert.Equal(t, tt.expectedEtagHeader, res.Header[Etag])
 
 			err = rcvr.Shutdown(ttCtx)
 			require.NoError(t, err)
