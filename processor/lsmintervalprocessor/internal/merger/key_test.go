@@ -24,6 +24,7 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func TestKey(t *testing.T) {
@@ -50,12 +51,12 @@ func TestKey(t *testing.T) {
 			key: Key{
 				Interval:       time.Minute,
 				ProcessingTime: time.Unix(time.Now().Unix(), 0),
-				Metadata: []KeyValues{
-					{Key: "empty", Values: []string{}},
-					{Key: "one_empty_value", Values: []string{""}},
-					{Key: "one_nonempty_value", Values: []string{"non-empty"}},
-					{Key: "mixed_values", Values: []string{"", "non-empty"}},
-				},
+				Metadata: attribute.NewSet(
+					attribute.StringSlice("empty", []string{}),
+					attribute.StringSlice("one_empty_value", []string{""}),
+					attribute.StringSlice("one_nonempty_value", []string{"non-empty"}),
+					attribute.StringSlice("mixed_values", []string{"", "non-empty"}),
+				),
 			},
 		},
 	} {

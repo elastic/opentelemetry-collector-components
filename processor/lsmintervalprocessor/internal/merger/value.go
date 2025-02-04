@@ -110,6 +110,17 @@ func NewValue(resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConf
 	}
 }
 
+// DatapointsCount returns the count of datapoint in the value representation.
+func (s *Value) DatapointsCount() int {
+	if s.lookupsInitialized {
+		return len(s.numberLookup) +
+			len(s.summaryLookup) +
+			len(s.histoLookup) +
+			len(s.expHistoLookup)
+	}
+	return s.source.DataPointCount()
+}
+
 // Marshal marshals the value into binary. Limit trackers and pmetric are marshaled
 // into the same binary representation.
 func (s *Value) Marshal() ([]byte, error) {
