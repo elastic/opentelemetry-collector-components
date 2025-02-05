@@ -5,7 +5,7 @@ go 1.22.10
 toolchain go1.22.11
 
 require (
-	github.com/elastic/elastic-agent-libs v0.18.3
+	github.com/elastic/elastic-agent-libs v0.18.5
 	github.com/stretchr/testify v1.10.0
 	github.com/tj/assert v0.0.3
 	go.opentelemetry.io/collector/component v0.118.0
