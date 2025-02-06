@@ -19,6 +19,7 @@ package apmconfigextension // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -44,6 +45,8 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		RemoteConfig: RemoteConfig{
 			Elasticsearch: defaultElasticSearchClient,
+			// using apm-server default
+			CacheDuration: 30 * time.Second,
 		},
 		OpAMP: OpAMPConfig{
 			Server: OpAMPServerConfig{
