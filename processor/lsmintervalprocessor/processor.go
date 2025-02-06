@@ -269,7 +269,7 @@ func (p *Processor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: true}
 }
 
-func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) (errs error) {
+func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	clientInfo := client.FromContext(ctx)
 	clientMeta := make([]attribute.KeyValue, 0, len(p.sortedMetadataKeys))
 	for _, k := range p.sortedMetadataKeys {
@@ -281,19 +281,6 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) (err
 	}
 	clientMetaSet := attribute.NewSet(clientMeta...)
 
-	if err := p.mergeMetric(clientMetaSet, md); err != nil {
-		errs = errors.Join(errs, fmt.Errorf("failed to merge metric: %w", err))
-	}
-
-	// Call next for the metrics remaining in the input
-	if err := p.next.ConsumeMetrics(ctx, md); err != nil {
-		errs = errors.Join(errs, err)
-	}
-
-	return errs
-}
-
-func (p *Processor) mergeMetric(meta attribute.Set, md pmetric.Metrics) error {
 	value := merger.NewValue(
 		p.cfg.ResourceLimit,
 		p.cfg.ScopeLimit,
@@ -333,6 +320,29 @@ func (p *Processor) mergeMetric(meta attribute.Set, md pmetric.Metrics) error {
 		return rm.ScopeMetrics().Len() == 0
 	})
 
+	if values := p.valuesToCommit(clientMetaSet, value); len(values) > 0 {
+		if err := p.commitValues(values); err != nil {
+			return fmt.Errorf("failed to merge the value to batch: %w", err)
+		}
+	}
+
+	// Call next for the metrics remaining in the input
+	if err := p.next.ConsumeMetrics(ctx, md); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+
+	return nil
+}
+
+// valuesToCommit checks if the processor values have reached a threshold
+// and return the values that should be committed to the database.
+func (p *Processor) valuesToCommit(meta attribute.Set, value *merger.Value) map[attribute.Set][]*merger.Value {
+	var values map[attribute.Set][]*merger.Value
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -340,18 +350,13 @@ func (p *Processor) mergeMetric(meta attribute.Set, md pmetric.Metrics) error {
 	// We don't use size of the pmetric here as getting the size is costly.
 	p.values[meta] = append(p.values[meta], value)
 	p.totalDataPoints += value.DatapointsCount()
-
 	if p.totalDataPoints >= dbCommitDatapointsThresholdCount {
-		if err := p.commitValues(p.values); err != nil {
-			return fmt.Errorf("failed to merge the value to batch: %w", err)
-		}
-		p.values = make(map[attribute.Set][]*merger.Value)
+		values = p.values
 		p.totalDataPoints = 0
+		p.values = make(map[attribute.Set][]*merger.Value)
 	}
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-	return nil
+
+	return values
 }
 
 func (p *Processor) commitValues(metaValues map[attribute.Set][]*merger.Value) error {

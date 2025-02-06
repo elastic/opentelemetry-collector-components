@@ -110,7 +110,7 @@ func NewValue(resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConf
 	}
 }
 
-// DatapointsCount returns the count of datapoint in the value representation.
+// DatapointsCount returns the count of datapoints in the value representation.
 func (s *Value) DatapointsCount() int {
 	if s.lookupsInitialized {
 		return len(s.numberLookup) +
