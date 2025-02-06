@@ -19,64 +19,45 @@ package apmconfigextension // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-	"fmt"
-	"net/url"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
-	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/elastic/centralconfig"
 	"github.com/open-telemetry/opamp-go/server"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
-	"go.uber.org/zap"
 )
 
+type configClientFactory = func(context.Context, component.Host, component.TelemetrySettings) (apmconfig.RemoteConfigClient, error)
+
 type apmConfigExtension struct {
-	logger *zap.Logger
+	telemetrySettings component.TelemetrySettings
 
 	extensionConfig *Config
 	opampServer     server.OpAMPServer
-	configClient    apmconfig.Client
+	clientFactory   configClientFactory
+
+	cancelFn context.CancelFunc
 }
 
 var _ component.Component = (*apmConfigExtension)(nil)
 
-func newApmConfigExtension(cfg *Config, set extension.Settings) *apmConfigExtension {
-	return &apmConfigExtension{logger: set.Logger, opampServer: server.New(nil), extensionConfig: cfg}
+func newApmConfigExtension(cfg *Config, set extension.Settings, clientFactory configClientFactory) *apmConfigExtension {
+	return &apmConfigExtension{telemetrySettings: set.TelemetrySettings, opampServer: server.New(nil), extensionConfig: cfg, clientFactory: clientFactory}
 }
 
-func (op *apmConfigExtension) Start(ctx context.Context, _ component.Host) error {
-	serverUrls := make([]*url.URL, len(op.extensionConfig.CentralConfig.Elastic.Apm.Server.URLs))
+func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) error {
+	ctx, op.cancelFn = context.WithCancel(ctx)
 
-	for i := range op.extensionConfig.CentralConfig.Elastic.Apm.Server.URLs {
-		parsedUrl, err := url.Parse(op.extensionConfig.CentralConfig.Elastic.Apm.Server.URLs[i])
-		if err != nil {
-			return err
-		}
-		serverUrls[i] = parsedUrl
-	}
-
-	var err error
-	op.configClient, err = centralconfig.NewCentralConfigClient(serverUrls, op.extensionConfig.CentralConfig.Elastic.Apm.SecretToken, op.logger)
+	remoteConfigClient, err := op.clientFactory(ctx, host, op.telemetrySettings)
 	if err != nil {
 		return err
 	}
 
-	err = op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: newConfigOpAMPCallbacks(op.configClient, op.logger)}})
-	if err != nil {
-		return err
-	}
-
-	op.logger.Info("APM config extension started")
-	return nil
+	return op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: newConfigOpAMPCallbacks(remoteConfigClient, op.telemetrySettings.Logger)}})
 }
 
 func (op *apmConfigExtension) Shutdown(ctx context.Context) error {
-	if op.configClient != nil {
-		err := op.configClient.Close()
-		if err != nil {
-			return err
-		}
+	if op.cancelFn != nil {
+		op.cancelFn()
 	}
-	fmt.Println("shuting down the opamp server")
 	return op.opampServer.Stop(ctx)
 }

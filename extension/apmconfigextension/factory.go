@@ -23,7 +23,11 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
 
+	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
+	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/elastic/centralconfig"
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/internal/metadata"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
+	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 )
 
 func NewFactory() extension.Factory {
@@ -36,7 +40,11 @@ func NewFactory() extension.Factory {
 }
 
 func createDefaultConfig() component.Config {
+	defaultElasticSearchClient := configelasticsearch.NewDefaultClientConfig()
 	return &Config{
+		RemoteConfig: RemoteConfig{
+			Elasticsearch: defaultElasticSearchClient,
+		},
 		OpAMP: OpAMPConfig{
 			Server: OpAMPServerConfig{
 				Endpoint: "127.0.0.1:4320",
@@ -46,5 +54,18 @@ func createDefaultConfig() component.Config {
 }
 
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
-	return newApmConfigExtension(cfg.(*Config), set), nil
+	extCfg := cfg.(*Config)
+	elasticsearchRemoteConfig := func(ctx context.Context, host component.Host, telemetry component.TelemetrySettings) (apmconfig.RemoteConfigClient, error) {
+		esClient, err := extCfg.RemoteConfig.Elasticsearch.ToClient(ctx, host, telemetry)
+		if err != nil {
+			return nil, err
+		}
+		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.RemoteConfig.CacheDuration, telemetry.Logger)
+		go func() {
+			fetcher.Run(ctx)
+		}()
+
+		return centralconfig.NewFetcherAPMWatcher(fetcher, extCfg.RemoteConfig.CacheDuration, telemetry.Logger), nil
+	}
+	return newApmConfigExtension(cfg.(*Config), set, elasticsearchRemoteConfig), nil
 }

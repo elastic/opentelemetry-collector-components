@@ -18,26 +18,20 @@
 package apmconfigextension // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension"
 
 import (
+	"time"
+
+	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"go.opentelemetry.io/collector/component"
 )
 
 type Config struct {
-	CentralConfig CentralConfig `mapstructure:"centralconfig"`
-	OpAMP         OpAMPConfig   `mapstructure:"opamp"`
+	RemoteConfig RemoteConfig `mapstructure:"remote_config"`
+	OpAMP        OpAMPConfig  `mapstructure:"opamp"`
 }
 
-type CentralConfig struct {
-	Elastic ElasticConfig `mapstructure:"elastic"`
-}
-
-type ElasticConfig struct {
-	Apm struct {
-		Server struct {
-			URLs []string `mapstructure:"urls"`
-			// TODO add timeout
-		} `mapstructure:"server"`
-		SecretToken string `mapstructure:"secret_token"`
-	} `mapstructure:"apm"`
+type RemoteConfig struct {
+	Elasticsearch configelasticsearch.ClientConfig `mapstructure:"elasticsearch"`
+	CacheDuration time.Duration                    `mapstructure:"cache_duration"`
 }
 
 type OpAMPConfig struct {

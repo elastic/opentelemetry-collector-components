@@ -23,31 +23,11 @@ import (
 	"github.com/open-telemetry/opamp-go/protobufs"
 )
 
-// Params holds parameters for watching and notifying for config changes.
-type Params struct {
-	AgentUiD string
-
-	// Service holds the name and optionally environment name used
-	// for filtering the config to watch.
-	Service struct {
-		Name        string
-		Environment string
-	}
-}
-
-type Client interface {
-	RemoteConfigClient(context.Context, *protobufs.AgentToServer) (RemoteConfigClient, error)
-
-	// Close the client's connection
-	Close() error
-}
-
+// RemoteConfigClient is an adapter interface that can be used between different
+// remote configuration providers.
 type RemoteConfigClient interface {
 	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
-	RemoteConfig(context.Context) (RemoteConfig, error)
-
-	// Disconnect stops the Agent from rerieving the remote config
-	Disconnect(context.Context) error
+	RemoteConfig(context.Context, *protobufs.AgentToServer) (RemoteConfig, error)
 }
 
 // RemoteConfig holds an agent remote configuration.

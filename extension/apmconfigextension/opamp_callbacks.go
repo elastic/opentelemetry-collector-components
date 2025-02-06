@@ -32,18 +32,15 @@ import (
 )
 
 type configOpAMPCallbacks struct {
-	configClient apmconfig.Client
-	knownAgents  map[string]apmconfig.RemoteConfigClient
+	configClient apmconfig.RemoteConfigClient
 	logger       *zap.Logger
 }
 
 var _ types.Callbacks = (*configOpAMPCallbacks)(nil)
 
-func newConfigOpAMPCallbacks(configClient apmconfig.Client, logger *zap.Logger) *configOpAMPCallbacks {
-	knownAgents := make(map[string]apmconfig.RemoteConfigClient)
+func newConfigOpAMPCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *configOpAMPCallbacks {
 	return &configOpAMPCallbacks{
 		configClient,
-		knownAgents,
 		logger,
 	}
 }
@@ -52,13 +49,12 @@ func (op *configOpAMPCallbacks) OnConnecting(request *http.Request) types.Connec
 	return types.ConnectionResponse{
 		Accept:              true,
 		HTTPStatusCode:      200,
-		ConnectionCallbacks: &configConnectionCallbacks{configClient: op.configClient, knownAgents: op.knownAgents, logger: op.logger},
+		ConnectionCallbacks: &configConnectionCallbacks{configClient: op.configClient, logger: op.logger},
 	}
 }
 
 type configConnectionCallbacks struct {
-	configClient apmconfig.Client
-	knownAgents  map[string]apmconfig.RemoteConfigClient
+	configClient apmconfig.RemoteConfigClient
 	logger       *zap.Logger
 }
 
@@ -107,27 +103,11 @@ func (rc *configConnectionCallbacks) OnMessage(ctx context.Context, conn types.C
 	agentUid := hex.EncodeToString(message.GetInstanceUid())
 	agentUidField := zap.String("instance_uid", agentUid)
 
-	_, ok := rc.knownAgents[agentUid]
-
-	// init remote config client for the corresponding agent; internal state
-	if !ok {
-		var err error
-		rc.knownAgents[agentUid], err = rc.configClient.RemoteConfigClient(ctx, message)
-		if err != nil {
-			return rc.serverError(fmt.Sprintf("error creating the remote configuration client: %s", err), &serverToAgent)
-		}
-	}
-
 	if message.GetAgentDisconnect() != nil {
 		rc.logger.Info("Disconnecting the agent from the remote configuration service", agentUidField)
-		err := rc.knownAgents[agentUid].Disconnect(ctx)
-		if err != nil {
-			return rc.serverError(fmt.Sprintf("error disconnecting the agent: %s", err), &serverToAgent)
-		}
-		delete(rc.knownAgents, agentUid)
 	} else {
 
-		remoteConfig, err := rc.knownAgents[agentUid].RemoteConfig(ctx)
+		remoteConfig, err := rc.configClient.RemoteConfig(ctx, message)
 		if err != nil {
 			return rc.serverError(fmt.Sprintf("error retrieving remote configuration: %s", err), &serverToAgent)
 		} else if message.RemoteConfigStatus != nil && len(message.RemoteConfigStatus.GetLastRemoteConfigHash()) > 0 && bytes.Equal(remoteConfig.Hash, message.RemoteConfigStatus.GetLastRemoteConfigHash()) {
