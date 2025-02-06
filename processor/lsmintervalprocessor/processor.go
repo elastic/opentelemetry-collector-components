@@ -320,10 +320,8 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		return rm.ScopeMetrics().Len() == 0
 	})
 
-	if values := p.valuesToCommit(clientMetaSet, value); len(values) > 0 {
-		if err := p.commitValues(values); err != nil {
-			return fmt.Errorf("failed to merge the value to batch: %w", err)
-		}
+	if err := p.updateValue(clientMetaSet, value); err != nil {
+		errs = append(errs, fmt.Errorf("failed to update value: %w", err))
 	}
 
 	// Call next for the metrics remaining in the input
@@ -338,11 +336,9 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	return nil
 }
 
-// valuesToCommit checks if the processor values have reached a threshold
-// and return the values that should be committed to the database.
-func (p *Processor) valuesToCommit(meta attribute.Set, value *merger.Value) map[attribute.Set][]*merger.Value {
-	var values map[attribute.Set][]*merger.Value
-
+// updateValue updates the value to the processor cache. If the cache has
+// reached its threshold then the values are committed to the database.
+func (p *Processor) updateValue(meta attribute.Set, value *merger.Value) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -351,12 +347,14 @@ func (p *Processor) valuesToCommit(meta attribute.Set, value *merger.Value) map[
 	p.values[meta] = append(p.values[meta], value)
 	p.totalDataPoints += value.DatapointsCount()
 	if p.totalDataPoints >= dbCommitDatapointsThresholdCount {
-		values = p.values
-		p.totalDataPoints = 0
+		if err := p.commitValues(p.values); err != nil {
+			return fmt.Errorf("failed to commit value: %w", err)
+		}
 		p.values = make(map[attribute.Set][]*merger.Value)
+		p.totalDataPoints = 0
 	}
 
-	return values
+	return nil
 }
 
 func (p *Processor) commitValues(metaValues map[attribute.Set][]*merger.Value) error {
