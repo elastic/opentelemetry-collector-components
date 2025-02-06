@@ -293,11 +293,7 @@ func TestClientMetadata(t *testing.T) {
 }
 
 func BenchmarkAggregation(b *testing.B) {
-	benchmarkAggregation(b, nil, false)
-}
-
-func BenchmarkAggregationParallel(b *testing.B) {
-	benchmarkAggregation(b, nil, true)
+	benchmarkAggregation(b, nil)
 }
 
 func BenchmarkAggregationWithOTTL(b *testing.B) {
@@ -306,10 +302,10 @@ func BenchmarkAggregationWithOTTL(b *testing.B) {
 		`set(instrumentation_scope.attributes["custom_scope_attr"], "scope")`,
 		`set(attributes["custom_dp_attr"], "dp")`,
 		`set(resource.attributes["dependent_attr"], Concat([attributes["aaa"], "dependent"], "-"))`,
-	}, false)
+	})
 }
 
-func benchmarkAggregation(b *testing.B, ottlStatements []string, runParallel bool) {
+func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 	testCases := []struct {
 		name        string
 		passThrough bool
@@ -357,16 +353,14 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string, runParallel boo
 			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 			require.NoError(b, err)
 			md.MarkReadOnly()
-			benchFunc := func() {
-				b.StopTimer()
+			benchFunc := func(highCardinalityValue string) {
 				// Copy the metric as the ConsumeMetric call is mutating
 				mdCopy := pmetric.NewMetrics()
 				md.CopyTo(mdCopy)
 				// Overwrites the asdf attribute in metrics such that it becomes high cardinality
-				mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", fmt.Sprintf("rand_%d", rand.Int()))
-				b.StartTimer()
+				mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", highCardinalityValue)
 
-				err = mgp.ConsumeMetrics(ctx, mdCopy)
+				err := mgp.ConsumeMetrics(ctx, mdCopy)
 				require.NoError(b, err)
 			}
 
@@ -374,17 +368,13 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string, runParallel boo
 			err = mgp.Start(context.Background(), componenttest.NewNopHost())
 			require.NoError(b, err)
 
-			if runParallel {
-				b.RunParallel(func(pb *testing.PB) {
-					for pb.Next() {
-						benchFunc()
-					}
-				})
-			} else {
-				for i := 0; i < b.N; i++ {
-					benchFunc()
+			b.RunParallel(func(pb *testing.PB) {
+				highCardinalityValuePrefix := fmt.Sprint("rand_", rand.Int())
+				for i := 0; pb.Next(); i++ {
+					highCardinalityValue := fmt.Sprintf("%s_%d", highCardinalityValuePrefix, i)
+					benchFunc(highCardinalityValue)
 				}
-			}
+			})
 
 			err = mgp.(*Processor).Shutdown(context.Background())
 			require.NoError(b, err)
