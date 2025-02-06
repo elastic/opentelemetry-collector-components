@@ -20,6 +20,7 @@ package lsmintervalprocessor
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"path/filepath"
 	"testing"
 	"time"
@@ -352,18 +353,28 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 			require.NoError(b, err)
 			md.MarkReadOnly()
-			b.ResetTimer()
-
-			err = mgp.Start(context.Background(), componenttest.NewNopHost())
-			require.NoError(b, err)
-			for i := 0; i < b.N; i++ {
+			benchFunc := func(highCardinalityValue string) {
+				// Copy the metric as the ConsumeMetric call is mutating
 				mdCopy := pmetric.NewMetrics()
 				md.CopyTo(mdCopy)
 				// Overwrites the asdf attribute in metrics such that it becomes high cardinality
-				mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", fmt.Sprintf("%d", i))
-				err = mgp.ConsumeMetrics(ctx, mdCopy)
+				mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", highCardinalityValue)
+
+				err := mgp.ConsumeMetrics(ctx, mdCopy)
 				require.NoError(b, err)
 			}
+
+			b.ResetTimer()
+			err = mgp.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(b, err)
+
+			b.RunParallel(func(pb *testing.PB) {
+				highCardinalityValuePrefix := fmt.Sprint("rand_", rand.Int())
+				for i := 0; pb.Next(); i++ {
+					highCardinalityValue := fmt.Sprintf("%s_%d", highCardinalityValuePrefix, i)
+					benchFunc(highCardinalityValue)
+				}
+			})
 
 			err = mgp.(*Processor).Shutdown(context.Background())
 			require.NoError(b, err)
