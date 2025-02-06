@@ -89,9 +89,10 @@ type Processor struct {
 	intervals []intervalDef
 	next      consumer.Metrics
 
-	mu             sync.Mutex
-	values         map[attribute.Set]*merger.Value
-	processingTime time.Time
+	mu              sync.Mutex
+	values          map[attribute.Set][]*merger.Value
+	totalDataPoints int
+	processingTime  time.Time
 
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -147,7 +148,7 @@ func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, ne
 		wOpts:              writeOpts,
 		intervals:          ivlDefs,
 		next:               next,
-		values:             make(map[attribute.Set]*merger.Value),
+		values:             make(map[attribute.Set][]*merger.Value),
 		processingTime:     time.Now().UTC().Truncate(ivlDefs[0].Duration),
 		ctx:                ctx,
 		cancel:             cancel,
@@ -186,15 +187,16 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 			p.mu.Lock()
 			p.processingTime = to
 			values := p.values
-			p.values = make(map[attribute.Set]*merger.Value)
+			p.values = make(map[attribute.Set][]*merger.Value)
+			p.totalDataPoints = 0
 			p.mu.Unlock()
 
-			for meta, v := range values {
-				if v == nil {
-					continue
-				}
-				if err := p.commitValue(meta, v); err != nil {
-					p.logger.Warn("failed to commit value to database", zap.Error(err), zap.Time("end_time", to))
+			if len(values) != 0 {
+				if err := p.commitValues(values); err != nil {
+					p.logger.Warn(
+						"failed to commit value to database",
+						zap.Error(err), zap.Time("end_time", to),
+					)
 				}
 			}
 
@@ -233,12 +235,9 @@ func (p *Processor) Shutdown(ctx context.Context) error {
 	if p.db != nil {
 		var errs []error
 		p.logger.Info("exporting all data before shutting down")
-		for meta, v := range p.values {
-			if v == nil {
-				continue
-			}
-			if err := p.commitValue(meta, v); err != nil {
-				errs = append(errs, fmt.Errorf("failed to commit value: %w", err))
+		if len(p.values) != 0 {
+			if err := p.commitValues(p.values); err != nil {
+				errs = append(errs, fmt.Errorf("failed to commit values: %w", err))
 			}
 		}
 		p.values = nil
@@ -295,22 +294,14 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) (err
 }
 
 func (p *Processor) mergeMetric(meta attribute.Set, md pmetric.Metrics) error {
+	value := merger.NewValue(
+		p.cfg.ResourceLimit,
+		p.cfg.ScopeLimit,
+		p.cfg.MetricLimit,
+		p.cfg.DatapointLimit,
+	)
+
 	var errs []error
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	value, ok := p.values[meta]
-	if !ok || value == nil {
-		value = merger.NewValue(
-			p.cfg.ResourceLimit,
-			p.cfg.ScopeLimit,
-			p.cfg.MetricLimit,
-			p.cfg.DatapointLimit,
-		)
-		p.values[meta] = value
-	}
-
 	md.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
 		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
 			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
@@ -342,13 +333,20 @@ func (p *Processor) mergeMetric(meta attribute.Set, md pmetric.Metrics) error {
 		return rm.ScopeMetrics().Len() == 0
 	})
 
-	// Commit it batch if it has enough data points. We don't use size
-	// of the pmetric here as getting the size is costly.
-	if value.DatapointsCount() > dbCommitDatapointsThresholdCount {
-		if err := p.commitValue(meta, value); err != nil {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Accumulate values until there is enough total data points to commit.
+	// We don't use size of the pmetric here as getting the size is costly.
+	p.values[meta] = append(p.values[meta], value)
+	p.totalDataPoints += value.DatapointsCount()
+
+	if p.totalDataPoints >= dbCommitDatapointsThresholdCount {
+		if err := p.commitValues(p.values); err != nil {
 			return fmt.Errorf("failed to merge the value to batch: %w", err)
 		}
-		p.values[meta] = nil
+		p.values = make(map[attribute.Set][]*merger.Value)
+		p.totalDataPoints = 0
 	}
 	if len(errs) > 0 {
 		return errors.Join(errs...)
@@ -356,26 +354,37 @@ func (p *Processor) mergeMetric(meta attribute.Set, md pmetric.Metrics) error {
 	return nil
 }
 
-func (p *Processor) commitValue(meta attribute.Set, val *merger.Value) error {
-	vb, err := val.Marshal()
-	if err != nil {
-		return fmt.Errorf("failed to marshal value to proto binary: %w", err)
-	}
-
-	var k []byte
+func (p *Processor) commitValues(metaValues map[attribute.Set][]*merger.Value) error {
 	batch := newBatch(p.db)
-	for _, ivl := range p.intervals {
-		key := merger.Key{
-			Interval:       ivl.Duration,
-			ProcessingTime: p.processingTime,
-			Metadata:       meta,
+	for meta, values := range metaValues {
+		// Merge all values for a given client metadata,
+		// so we reduce encoding/decoding round-trips.
+		value0 := values[0]
+		for _, val := range values[1:] {
+			if err := value0.Merge(val); err != nil {
+				return fmt.Errorf("failed to merge values: %w", err)
+			}
 		}
-		k, err := key.AppendBinary(k[:0])
+
+		vb, err := value0.Marshal()
 		if err != nil {
-			return fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err)
+			return fmt.Errorf("failed to marshal value to proto binary: %w", err)
 		}
-		if err := batch.Merge(k, vb, nil); err != nil {
-			return fmt.Errorf("failed to merge to db: %w", err)
+
+		var k []byte
+		for _, ivl := range p.intervals {
+			key := merger.Key{
+				Interval:       ivl.Duration,
+				ProcessingTime: p.processingTime,
+				Metadata:       meta,
+			}
+			k, err := key.AppendBinary(k[:0])
+			if err != nil {
+				return fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err)
+			}
+			if err := batch.Merge(k, vb, nil); err != nil {
+				return fmt.Errorf("failed to merge to db: %w", err)
+			}
 		}
 	}
 	if err := batch.Commit(p.wOpts); err != nil {
