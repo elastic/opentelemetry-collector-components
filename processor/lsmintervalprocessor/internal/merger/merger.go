@@ -20,7 +20,7 @@ package merger // import "github.com/elastic/opentelemetry-collector-components/
 import (
 	"io"
 
-	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/v2"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 

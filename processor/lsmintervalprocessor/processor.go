@@ -25,8 +25,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cockroachdb/pebble"
-	"github.com/cockroachdb/pebble/vfs"
+	"github.com/cockroachdb/pebble/v2"
+	"github.com/cockroachdb/pebble/v2/vfs"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottldatapoint"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
@@ -58,13 +58,16 @@ const (
 	// large batches will need to be reallocated. Note that large batch
 	// classification uses the memtable size that a batch will occupy
 	// rather than the length of data slice backing the batch.
-	pebbleMemTableSize = 64 << 20 // 64MB
+	pebbleMemTableSize = 256 << 20 // 256MB
 
 	// pebbleMemTableStopWritesThreshold is the hard limit on the maximum
 	// number of memtables that could be queued before which writes are
 	// stopped. This value should be at least 2 or writes will stop whenever
 	// a MemTable is being flushed.
 	pebbleMemTableStopWritesThreshold = 2
+
+	pebbleInitialBatchSize     = 8 << 20
+	pebbleMaxRetainedBatchSize = 128 << 20
 
 	// dbCommitDatapointsThresholdCount is the soft limit on the count of
 	// the datapoints after which the value is committed to the database.
@@ -74,7 +77,7 @@ const (
 	// retained batch size and encoded size of aggregated data to be
 	// committed. In order to achieve this we can estimate the size of the
 	// datapoint.
-	dbCommitDatapointsThresholdCount = 16384
+	dbCommitDatapointsThresholdCount = 4096
 )
 
 type Processor struct {
@@ -558,5 +561,8 @@ func (p *Processor) exportForInterval(
 func newBatch(db *pebble.DB) *pebble.Batch {
 	// TODO (lahsivjar): Optimize batch as per our needs
 	// Requires release of https://github.com/cockroachdb/pebble/pull/3139
-	return db.NewBatch()
+	return db.NewBatch(
+		pebble.WithInitialSizeBytes(pebbleInitialBatchSize),
+		pebble.WithMaxRetainedSizeBytes(pebbleMaxRetainedBatchSize),
+	)
 }
