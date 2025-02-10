@@ -37,6 +37,7 @@ require (
 	github.com/ebitengine/purego v0.8.1 // indirect
 	github.com/elastic/go-grok v0.3.1 // indirect
 	github.com/elastic/lunes v0.1.0 // indirect
+	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
@@ -169,6 +170,7 @@ require (
 )
 
 replace (
-	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ./../../../processor/ratelimitprocessor
-	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ./../../../receiver/loadgenreceiver
+	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent => ../../../internal/sharedcomponent
+	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../../../processor/ratelimitprocessor
+	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ../../../receiver/loadgenreceiver
 )
