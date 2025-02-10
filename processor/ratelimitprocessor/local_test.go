@@ -56,31 +56,45 @@ func TestLocalRateLimiter_StartStop(t *testing.T) {
 }
 
 func TestLocalRateLimiter_RateLimit(t *testing.T) {
-	burst := 2
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: burst})
-	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
-	require.NoError(t, err)
+	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
+		t.Run(string(behavior), func(t *testing.T) {
+			burst := 2
+			rateLimiter := newTestLocalRateLimiter(t, &Config{
+				Rate: 10, Burst: burst, ThrottleBehavior: behavior,
+			})
+			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(t, err)
 
-	for i := 0; i < burst; i++ {
-		err = rateLimiter.RateLimit(context.Background(), 1) // should pass
-		assert.NoError(t, err)
+			startTime := time.Now()
+
+			for i := 0; i < burst; i++ {
+				err = rateLimiter.RateLimit(context.Background(), 1) // should pass
+				assert.NoError(t, err)
+			}
+
+			err = rateLimiter.RateLimit(context.Background(), 1) // should fail
+			switch behavior {
+			case ThrottleBehaviorError:
+				assert.EqualError(t, err, "too many requests")
+				// retry every 20ms to ensure that RateLimit will recover from error when bucket refills after 1 second
+				assert.Eventually(t, func() bool {
+					return rateLimiter.RateLimit(context.Background(), 1) == nil
+				}, 2*time.Second, 20*time.Millisecond)
+			case ThrottleBehaviorDelay:
+				assert.NoError(t, err)
+				assert.GreaterOrEqual(t, time.Now(), startTime.Add(100*time.Millisecond))
+			}
+		})
 	}
-
-	err = rateLimiter.RateLimit(context.Background(), 1) // should fail
-	assert.EqualError(t, err, "too many requests")
-
-	// retry every 20ms to ensure that RateLimit will recover from error when bucket refills after 1 second
-	assert.Eventually(t, func() bool {
-		return rateLimiter.RateLimit(context.Background(), 1) == nil
-	}, 2*time.Second, 20*time.Millisecond)
 }
 
 func TestLocalRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	burst := 2
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:         1,
-		Burst:        burst,
-		MetadataKeys: []string{"metadata_key"},
+		Rate:             1,
+		Burst:            burst,
+		MetadataKeys:     []string{"metadata_key"},
+		ThrottleBehavior: ThrottleBehaviorError,
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)

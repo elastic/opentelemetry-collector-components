@@ -21,35 +21,59 @@ import (
 	"io"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 var _ pebble.ValueMerger = (*Merger)(nil)
 
 type Merger struct {
-	current Value
+	current           *Value
+	resourceLimitCfg  config.LimitConfig
+	scopeLimitCfg     config.LimitConfig
+	metricLimitCfg    config.LimitConfig
+	datapointLimitCfg config.LimitConfig
 }
 
-func New(v Value) *Merger {
-	return &Merger{current: v}
+func New(
+	v *Value,
+	resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig,
+) *Merger {
+	return &Merger{
+		current:           v,
+		resourceLimitCfg:  resLimit,
+		scopeLimitCfg:     scopeLimit,
+		metricLimitCfg:    metricLimit,
+		datapointLimitCfg: datapointLimit,
+	}
 }
 
 func (m *Merger) MergeNewer(value []byte) error {
-	var op Value
-	if err := op.UnmarshalProto(value); err != nil {
+	op := NewValue(
+		m.resourceLimitCfg,
+		m.scopeLimitCfg,
+		m.metricLimitCfg,
+		m.datapointLimitCfg,
+	)
+	if err := op.Unmarshal(value); err != nil {
 		return err
 	}
 	return m.current.Merge(op)
 }
 
 func (m *Merger) MergeOlder(value []byte) error {
-	var op Value
-	if err := op.UnmarshalProto(value); err != nil {
+	op := NewValue(
+		m.resourceLimitCfg,
+		m.scopeLimitCfg,
+		m.metricLimitCfg,
+		m.datapointLimitCfg,
+	)
+	if err := op.Unmarshal(value); err != nil {
 		return err
 	}
 	return m.current.Merge(op)
 }
 
 func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
-	data, err := m.current.MarshalProto()
+	data, err := m.current.Marshal()
 	return data, nil, err
 }
