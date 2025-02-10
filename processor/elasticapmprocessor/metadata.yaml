@@ -1,0 +1,13 @@
+type: elasticapm
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: processor
+  stability:
+    development: [traces, logs, metrics]
+  distributions: []
+  warnings: [Statefulness]
+
+tests:
+  config:
