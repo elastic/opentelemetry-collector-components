@@ -3,7 +3,7 @@ package centralconfig
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
@@ -19,8 +19,10 @@ var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
 
 type fetcherAPMWatcher struct {
 	configFetcher agentcfg.Fetcher
-
 	cacheDuration time.Duration
+
+	// OpAMP instanceID to service mapping
+	uidToService map[string]agentcfg.Service
 
 	logger *zap.Logger
 }
@@ -29,6 +31,7 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration,
 	return &fetcherAPMWatcher{
 		fetcher,
 		cacheDuration,
+		make(map[string]agentcfg.Service),
 		logger,
 	}
 }
@@ -59,25 +62,25 @@ func changeToConfig(change agentcfg.Result) (apmconfig.RemoteConfig, error) {
 }
 
 func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
-	var params agentcfg.Query
+	var serviceParams agentcfg.Service
 	if agentMsg.AgentDescription != nil {
 		for _, attr := range agentMsg.GetAgentDescription().GetIdentifyingAttributes() {
 			switch attr.GetKey() {
 			case semconv.AttributeServiceName:
-				params.Service.Name = attr.GetValue().GetStringValue()
+				serviceParams.Name = attr.GetValue().GetStringValue()
 			case semconv.AttributeDeploymentEnvironment:
-				params.Service.Environment = attr.GetValue().GetStringValue()
+				serviceParams.Environment = attr.GetValue().GetStringValue()
 			}
 		}
+		fw.uidToService[string(agentMsg.GetInstanceUid())] = serviceParams
+	} else {
+		serviceParams = fw.uidToService[string(agentMsg.GetInstanceUid())]
 	}
-	if params.Service.Name == "" {
-		return apmconfig.RemoteConfig{}, errors.New("unidentified agent: service.name attribute must be provided")
+	if serviceParams.Name == "" {
+		return apmconfig.RemoteConfig{}, fmt.Errorf("%w: service.name attribute must be provided", apmconfig.InvalidAgent)
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{
-		Service: agentcfg.Service{
-			Name:        params.Service.Name,
-			Environment: params.Service.Environment,
-		},
+		Service: serviceParams,
 	})
 	if err != nil {
 		return apmconfig.RemoteConfig{}, err
