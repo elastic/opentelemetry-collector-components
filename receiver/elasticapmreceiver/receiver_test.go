@@ -290,7 +290,9 @@ func TestAgentCfgHandler(t *testing.T) {
 				ServerConfig: confighttp.ServerConfig{
 					Endpoint: testEndpoint,
 				},
-				CacheDuration: 1 * time.Second,
+				AgentConfig: AgentConfig{
+					CacheDuration: 1 * time.Second,
+				},
 			}, receivertest.NewNopSettings())
 			require.NoError(t, err)
 

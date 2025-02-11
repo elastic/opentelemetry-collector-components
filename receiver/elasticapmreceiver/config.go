@@ -26,18 +26,27 @@ import (
 
 // Config defines configuration for the Elastic APM receiver.
 type Config struct {
-	// Elasticsearch contains the configuration options used to connect to
-	// an Elasticsearch instance to retrieve the APM Central Configurations
-	Elasticsearch *configelasticsearch.ClientConfig `mapstructure:"elasticsearch"`
-
-	// CacheDuration duration defines the timeout to fetch and update agent
-	// configurations
-	CacheDuration time.Duration `mapstructure:"cache_duration"`
+	// When using APM agent configuration, information fetched from Elasticsearch will be cached in memory for some time.
+	AgentConfig AgentConfig `mapstructure:"agent_config"`
 
 	confighttp.ServerConfig `mapstructure:",squash"`
 }
 
+type AgentConfig struct {
+	// AgentConfig fetcher is disabled by default.
+	Enabled bool `mapstructure:"enabled"`
+
+	// Elasticsearch contains the configuration options used to connect to
+	// an Elasticsearch instance to retrieve the APM Central Configurations.
+	// Configuration options can be found in https://github.com/elastic/opentelemetry-lib/blob/main/config/configelasticsearch/configclient.go#L69
+	Elasticsearch configelasticsearch.ClientConfig `mapstructure:"elasticsearch"`
+
+	// CacheDuration duration defines the timeout to fetch and update agent
+	// configurations. Default is 30 seconds.
+	CacheDuration time.Duration `mapstructure:"cache_duration"`
+}
+
 // Validate checks the receiver configuration is valid.
 func (cfg *Config) Validate() error {
-	return cfg.Elasticsearch.Validate()
+	return cfg.AgentConfig.Elasticsearch.Validate()
 }

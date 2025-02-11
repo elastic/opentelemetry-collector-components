@@ -33,7 +33,8 @@ import (
 )
 
 const (
-	defaultEndpoint = "localhost:8200"
+	defaultEndpoint   = "localhost:8200"
+	defaultESEndpoint = "http://localhost:9200"
 )
 
 // NewFactory creates a new factory for the elasticapm receiver.
@@ -54,11 +55,16 @@ func createDefaultConfig() component.Config {
 	defaultServerConfig := confighttp.ServerConfig{}
 	defaultServerConfig.Endpoint = defaultEndpoint
 	defaultESClientConfig := configelasticsearch.NewDefaultClientConfig()
+	defaultESClientConfig.Endpoint = defaultESEndpoint
+
 	return &Config{
-		ServerConfig:  defaultServerConfig,
-		Elasticsearch: &defaultESClientConfig,
-		// based on apm-server default https://github.com/elastic/apm-server/blob/main/internal/beater/config/agentconfig.go#L101
-		CacheDuration: 30 * time.Second,
+		ServerConfig: defaultServerConfig,
+		AgentConfig: AgentConfig{
+			Enabled:       false,
+			Elasticsearch: defaultESClientConfig,
+			// based on apm-server default https://github.com/elastic/apm-server/blob/main/internal/beater/config/agentconfig.go#L101
+			CacheDuration: 30 * time.Second,
+		},
 	}
 }
 
@@ -84,16 +90,16 @@ func esFetcherFactory(cfg *Config, set receiver.Settings) agentCfgFetcherFactory
 	return func(ctx context.Context, host component.Host) (agentcfg.Fetcher, error) {
 		// Elasticsearch connection is not enabled, no configuration
 		// fetcher
-		if cfg.Elasticsearch == nil {
+		if !cfg.AgentConfig.Enabled {
 			return nil, nil
 		}
 
-		esClient, err := cfg.Elasticsearch.ToClient(ctx, host, set.TelemetrySettings)
+		esClient, err := cfg.AgentConfig.Elasticsearch.ToClient(ctx, host, set.TelemetrySettings)
 		if err != nil {
 			return nil, err
 		}
 
-		fetcher := agentcfg.NewElasticsearchFetcher(esClient, cfg.CacheDuration, set.Logger)
+		fetcher := agentcfg.NewElasticsearchFetcher(esClient, cfg.AgentConfig.CacheDuration, set.Logger)
 		go func() {
 			err := fetcher.Run(ctx)
 			if err != nil {

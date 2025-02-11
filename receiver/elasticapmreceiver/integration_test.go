@@ -228,10 +228,13 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 			ServerConfig: confighttp.ServerConfig{
 				Endpoint: testEndpoint,
 			},
-			Elasticsearch: &configelasticsearch.ClientConfig{
-				Endpoints: []string{esEndpoint},
+			AgentConfig: AgentConfig{
+				Enabled: true,
+				Elasticsearch: configelasticsearch.ClientConfig{
+					Endpoints: []string{esEndpoint},
+				},
+				CacheDuration: 100 * time.Millisecond,
 			},
-			CacheDuration: 100 * time.Millisecond,
 		}
 		rcvr, err := rcvrFactory.CreateMetrics(ttCtx, receivertest.NewNopSettings(), cfg, consumertest.NewNop())
 		require.NoError(t, err)
