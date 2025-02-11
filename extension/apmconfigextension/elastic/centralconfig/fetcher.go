@@ -77,7 +77,7 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobu
 		serviceParams = fw.uidToService[string(agentMsg.GetInstanceUid())]
 	}
 	if serviceParams.Name == "" {
-		return apmconfig.RemoteConfig{}, fmt.Errorf("%w: service.name attribute must be provided", apmconfig.InvalidAgent)
+		return apmconfig.RemoteConfig{}, fmt.Errorf("%w: service.name attribute must be provided", apmconfig.UnidentifiedAgent)
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{
 		Service: serviceParams,

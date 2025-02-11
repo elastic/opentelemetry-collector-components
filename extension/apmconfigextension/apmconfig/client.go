@@ -24,7 +24,7 @@ import (
 	"github.com/open-telemetry/opamp-go/protobufs"
 )
 
-var InvalidAgent = errors.New("agent could not be identified")
+var UnidentifiedAgent = errors.New("agent could not be identified")
 
 // RemoteConfigClient is an adapter interface that can be used between different
 // remote configuration providers.

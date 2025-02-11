@@ -8,3 +8,8 @@ status:
   codeowners:
     active: [rogercoll]
 
+tests:
+  config:
+    providers:
+      elasticsearch:
+        endpoint: http://localhost:8200

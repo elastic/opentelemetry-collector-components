@@ -18,9 +18,17 @@ The [ServerToAgent.ReportFullState flag](https://github.com/open-telemetry/opamp
 
 - The agent did not include the `service.name` identifing attributes during the
   first message.
-- The OpAMP server does not have that data.
+- The OpAMP server was not able to identify the agent.
 
 The agent **must** return a message with the corresponding `AgentDescription.identifying_attributes`.
+
+## OpAMP Remote Config
+
+The OpAMP protocol defines a [AgentRemoteConfig](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L913) structure within the [ServerToAgent](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L187) to share a configuration that should be applied by the connected agent.
+
+The `AgentRemoteConfig` structure contains a map of configurations, where each key represents a file name or subsection. This extension assumes that connected agents use only a single configuration file or section, meaning the map will contain only one entry—and in this case, the key may be an empty string.
+
+Since the configuration is encoded in JSON, the [content_type](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L948C12-L948C24) field in the `AgentRemoteConfig` is set to `text/json`.
 
 ![Extension workflow](./extension-workflow.png "Extension workflow")
 
