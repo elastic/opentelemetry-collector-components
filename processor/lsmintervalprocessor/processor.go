@@ -255,47 +255,70 @@ func (p *Processor) Shutdown(ctx context.Context) error {
 }
 
 func (p *Processor) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: true}
+	return consumer.Capabilities{MutatesData: false}
 }
 
 func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	var errs []error
 	v := merger.NewValue(
 		p.cfg.ResourceLimit,
 		p.cfg.ScopeLimit,
 		p.cfg.MetricLimit,
 		p.cfg.DatapointLimit,
 	)
-	md.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
-		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
-			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
+
+	var errs []error
+	nextMD := pmetric.NewMetrics()
+	rms := md.ResourceMetrics()
+	for i := 0; i < rms.Len(); i++ {
+		var nextMDResourceMetrics pmetric.ResourceMetrics
+		rm := rms.At(i)
+		sms := rm.ScopeMetrics()
+		for i := 0; i < sms.Len(); i++ {
+			var nextMDScopeMetrics pmetric.ScopeMetrics
+			sm := sms.At(i)
+			ms := sm.Metrics()
+			for i := 0; i < ms.Len(); i++ {
+				m := ms.At(i)
 				switch t := m.Type(); t {
 				case pmetric.MetricTypeEmpty, pmetric.MetricTypeGauge:
 					// TODO (lahsivjar): implement support for gauges
-					return false
+					//
+					// For now, pass through by copying across to nextMD below.
+					break
 				case pmetric.MetricTypeSummary:
 					if p.cfg.PassThrough.Summary {
-						return false
+						// Copy across to nextMD below.
+						break
 					}
 					if err := v.MergeMetric(rm, sm, m); err != nil {
 						errs = append(errs, err)
 					}
-					return true
+					continue
 				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram, pmetric.MetricTypeExponentialHistogram:
 					if err := v.MergeMetric(rm, sm, m); err != nil {
 						errs = append(errs, err)
 					}
-					return true
+					continue
 				default:
 					// All metric types are handled, this is unexpected
 					errs = append(errs, fmt.Errorf("unexpected metric type, dropping: %d", t))
-					return true
+					continue
 				}
-			})
-			return sm.Metrics().Len() == 0
-		})
-		return rm.ScopeMetrics().Len() == 0
-	})
+
+				if nextMDScopeMetrics == (pmetric.ScopeMetrics{}) {
+					if nextMDResourceMetrics == (pmetric.ResourceMetrics{}) {
+						nextMDResourceMetrics = nextMD.ResourceMetrics().AppendEmpty()
+						rm.Resource().CopyTo(nextMDResourceMetrics.Resource())
+						nextMDResourceMetrics.SetSchemaUrl(rm.SchemaUrl())
+					}
+					nextMDScopeMetrics = nextMDResourceMetrics.ScopeMetrics().AppendEmpty()
+					sm.Scope().CopyTo(nextMDScopeMetrics.Scope())
+					nextMDScopeMetrics.SetSchemaUrl(sm.SchemaUrl())
+				}
+				m.CopyTo(nextMDScopeMetrics.Metrics().AppendEmpty())
+			}
+		}
+	}
 
 	vb, err := v.Marshal()
 	if err != nil {
@@ -318,7 +341,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	}
 
 	// Call next for the metrics remaining in the input
-	if err := p.next.ConsumeMetrics(ctx, md); err != nil {
+	if err := p.next.ConsumeMetrics(ctx, nextMD); err != nil {
 		errs = append(errs, err)
 	}
 
