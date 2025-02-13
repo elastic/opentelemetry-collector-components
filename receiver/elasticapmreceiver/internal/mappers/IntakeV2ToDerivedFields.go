@@ -30,7 +30,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
-// Sets fields that are NOT part of OTel. These fields are derived by the Enrichment lib in case of OTLP input
+// Sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr("processor.event", "transaction")
@@ -44,6 +44,7 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 	attributes.PutInt("transaction.duration.us", int64(event.Event.Duration))
 }
 
+// Sets fields that are NOT part of OTel for spans. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr("processor.event", "span")
@@ -65,6 +66,7 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 }
 
+// Sets resource fields that are NOT part of OTel. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr("agent.name", event.Agent.Name)
 	attributes.PutStr("agent.version", event.Agent.Version)

@@ -25,7 +25,7 @@ import (
 	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
 )
 
-// Translates resource attributes from the Elastic APM model to the SemConv resource attributes
+// Translates resource attributes from the Elastic APM model to SemConv resource attributes
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(semconv.AttributeServiceName, event.Service.Name)
 	attributes.PutStr(semconv.AttributeServiceVersion, event.Service.Version)
@@ -36,7 +36,7 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 	attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
 }
 
-// Translates transaction attributes from the Elastic APM model to the SemConv attributes
+// Translates transaction attributes from the Elastic APM model to SemConv attributes
 func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Http != nil && event.Http.Request != nil {
 		attributes.PutStr(semconv.AttributeHTTPRequestMethod, event.Http.Request.Method)
@@ -54,7 +54,7 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 	}
 }
 
-// Translates span attributes from the Elastic APM model to the SemConv attributes
+// Translates span attributes from the Elastic APM model to SemConv attributes
 func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Http != nil {
 

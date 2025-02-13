@@ -27,7 +27,7 @@ import (
 )
 
 // Sets fields on spans that are not defined by OTel.
-// Unlike fields from IntakeV2ToElasticSpecificFields.go, these fields are not used by the UI
+// Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
 // and store information about a specific span type
 func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Span.Db != nil {
