@@ -25,7 +25,7 @@ import (
 )
 
 type Config struct {
-	RemoteConfig RemoteConfig `mapstructure:"providers"`
+	RemoteConfig RemoteConfig `mapstructure:"agent_config"`
 	OpAMP        OpAMPConfig  `mapstructure:"opamp"`
 }
 

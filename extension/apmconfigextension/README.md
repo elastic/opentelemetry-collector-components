@@ -42,7 +42,7 @@ extensions:
       password: changeme
 
   apmconfig:
-   providers:
+   agent_config:
     elasticsearch:
       endpoint: "https://127.0.0.1:9200"
       tls:
