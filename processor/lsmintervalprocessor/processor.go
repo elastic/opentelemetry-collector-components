@@ -84,8 +84,9 @@ type Processor struct {
 	dbOpts  *pebble.Options
 	wOpts   *pebble.WriteOptions
 
-	intervals []intervalDef
-	next      consumer.Metrics
+	intervals  []intervalDef
+	next       consumer.Metrics
+	bufferPool sync.Pool
 
 	mu             sync.Mutex
 	batch          *pebble.Batch
@@ -320,10 +321,12 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		}
 	}
 
-	vb, err := v.AppendBinary(nil)
+	vb, _ := p.bufferPool.Get().([]byte)
+	vb, err := v.AppendBinary(vb[:0])
 	if err != nil {
 		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
 	}
+	defer p.bufferPool.Put(vb)
 
 	clientInfo := client.FromContext(ctx)
 	clientMetadata := make([]merger.KeyValues, 0, len(p.sortedMetadataKeys))
@@ -366,7 +369,8 @@ func (p *Processor) mergeToBatch(vb []byte, clientMetadata []merger.KeyValues) (
 			ProcessingTime: p.processingTime,
 			Metadata:       clientMetadata,
 		}
-		k, err := key.AppendBinary(k[:0])
+		var err error
+		k, err = key.AppendBinary(k[:0])
 		if err != nil {
 			return fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err)
 		}
