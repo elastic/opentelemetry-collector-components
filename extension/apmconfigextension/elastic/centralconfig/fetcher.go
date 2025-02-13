@@ -2,7 +2,6 @@ package centralconfig
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/open-telemetry/opamp-go/protobufs"
 	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 )
 
 var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
@@ -34,31 +32,6 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration,
 		make(map[string]agentcfg.Service),
 		logger,
 	}
-}
-
-// TODO: move config to type instead of map[string]string
-func configHash(encodedConfig []byte) ([]byte, error) {
-	hasher := sha256.New()
-	_, err := hasher.Write(encodedConfig)
-	if err != nil {
-		return nil, err
-	}
-	return hasher.Sum(nil), nil
-}
-
-// TODO: what we do with the eTag?
-func changeToConfig(change agentcfg.Result) (apmconfig.RemoteConfig, error) {
-	encodedConfig, err := yaml.Marshal(change.Source.Settings)
-	if err != nil {
-		return otelapmconfig.RemoteConfig{}, err
-	}
-
-	configHash, err := configHash(encodedConfig)
-	if err != nil {
-		return otelapmconfig.RemoteConfig{}, err
-	}
-
-	return otelapmconfig.RemoteConfig{Hash: configHash, Attrs: change.Source.Settings}, nil
 }
 
 func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
@@ -86,5 +59,5 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobu
 		return apmconfig.RemoteConfig{}, err
 	}
 
-	return changeToConfig(result)
+	return otelapmconfig.RemoteConfig{Hash: []byte(result.Source.Etag), Attrs: result.Source.Settings}, nil
 }

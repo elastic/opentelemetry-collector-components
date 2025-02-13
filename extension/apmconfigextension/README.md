@@ -26,9 +26,9 @@ The agent **must** return a message with the corresponding `AgentDescription.ide
 
 The OpAMP protocol defines a [AgentRemoteConfig](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L913) structure within the [ServerToAgent](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L187) to share a configuration that should be applied by the connected agent.
 
-The `AgentRemoteConfig` structure contains a map of configurations, where each key represents a file name or subsection. This extension assumes that connected agents use only a single configuration file or section, meaning the map will contain only one entry—and in this case, the key may be an empty string.
-
-Since the configuration is encoded in JSON, the [content_type](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L948C12-L948C24) field in the `AgentRemoteConfig` is set to `text/json`.
+- The `AgentRemoteConfig` structure contains a map of configurations, where each key represents a file name or subsection. This extension assumes that connected agents use only a single configuration file or section, meaning the map will contain only one entry—and in this case, the key may be an empty string.
+- Since the configuration is encoded in JSON, the [content_type](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L948C12-L948C24) field in the `AgentRemoteConfig` is set to `text/json`.
+- Each `AgentRemoteConfig` message should contain a [hash identifier](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L929) that the Agent SHOULD include value in subsequent [RemoteConfigStatus](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L751) messages in the `last_remote_config_hash` field. The server decides on which hash function to use, this extension will use the `etag` associated to each unique remote configuration.
 
 ![Extension workflow](./extension-workflow.png "Extension workflow")
 
