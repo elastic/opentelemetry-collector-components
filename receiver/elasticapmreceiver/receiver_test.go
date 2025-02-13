@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/testutil"
+	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

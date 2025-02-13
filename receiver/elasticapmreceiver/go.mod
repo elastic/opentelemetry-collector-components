@@ -1,10 +1,11 @@
 module github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver
 
-go 1.22.11
+go 1.22.12
 
 require (
 	github.com/elastic/apm-data v1.14.1
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
+	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-00010101000000-000000000000
 	github.com/elastic/opentelemetry-lib v0.14.1-0.20250203070458-17aa3e31dddf
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
@@ -121,3 +122,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	howett.net/plist v1.0.1 // indirect
 )
+
+replace github.com/elastic/opentelemetry-collector-components/internal/testutil => ../../internal/testutil/
