@@ -21,7 +21,7 @@
 // TODO: attribute names should be pulled in from https://github.com/elastic/opentelemetry-lib/blob/main/enrichments/trace/internal/elastic/attributes.go
 // `opentelemetry-lib` already has a PR to do so, after the next release of that repo, we can update this file to use those constants
 
-package mappers
+package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
 
 import (
 	"strings"
