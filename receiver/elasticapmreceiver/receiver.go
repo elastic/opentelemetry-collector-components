@@ -63,6 +63,8 @@ type elasticAPMReceiver struct {
 	shutdownWG sync.WaitGroup
 }
 
+const intakePath = "/intake/v2/events"
+
 // newElasticAPMReceiver just creates the OpenTelemetry receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods to end it.
@@ -96,7 +98,7 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 
 	elasticAPMEventsHandler := r.newElasticAPMEventsHandler()
 
-	httpMux.HandleFunc("/intake/v2/events", elasticAPMEventsHandler)
+	httpMux.HandleFunc(intakePath, elasticAPMEventsHandler)
 	// TODO rum v2, v3
 
 	var err error

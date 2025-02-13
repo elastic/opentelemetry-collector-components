@@ -1,4 +1,4 @@
-package elasticapmreceiver_test
+package elasticapmreceiver
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"net/http"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/sharedcomponent"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
@@ -27,16 +27,14 @@ func TestTransactionsAndSpans(t *testing.T) {
 }
 
 func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName string) {
-	factory := elasticapmreceiver.NewFactory()
+
+	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig()
 	testData := "testdata"
 
 	set := receivertest.NewNopSettings()
-
 	nextTrace := new(consumertest.TracesSink)
-
 	rec, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
-
 	rec.Start(context.Background(), componenttest.NewNopHost())
 
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
@@ -44,8 +42,16 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 		t.Fatalf("failed to read file: %v", err)
 	}
 
-	// TODO: read this from the config file
-	resp, err := http.Post("http://localhost:8200/intake/v2/events", "application/x-ndjson", bytes.NewBuffer(data))
+	receiver := extractElasticAPMReceiver(rec)
+	if receiver == nil {
+		t.Fatal("Failed to extract elasticAPMReceiver")
+	}
+
+	protocol := "https"
+	if receiver.cfg.TLSSetting == nil {
+		protocol = "http"
+	}
+	resp, err := http.Post(protocol+"://"+receiver.cfg.Endpoint+intakePath, "application/x-ndjson", bytes.NewBuffer(data))
 	if err != nil {
 		t.Fatalf("failed to send HTTP request: %v", err)
 	}
@@ -63,4 +69,11 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 		ptracetest.IgnoreEndTimestamp()))
 
 	rec.Shutdown(context.Background())
+}
+
+func extractElasticAPMReceiver(rec interface{}) *elasticAPMReceiver {
+	if comp, ok := rec.(*sharedcomponent.Component[*elasticAPMReceiver]); ok {
+		return comp.Unwrap()
+	}
+	return nil
 }
