@@ -237,6 +237,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: call
+              - key: span.sync
+                value:
+                  boolValue: false
             endTimeUnixNano: "1532976822294980298"
             name: get /api/types
             parentSpanId: ababcdcdefefabde
@@ -298,6 +301,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query
+              - key: span.sync
+                value:
+                  boolValue: true
               - key: service.target.name
                 value:
                   stringValue: postgresql
@@ -388,6 +394,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query
+              - key: span.sync
+                value:
+                  boolValue: true
               - key: service.target.name
                 value:
                   stringValue: postgresql
@@ -478,6 +487,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query
+              - key: span.sync
+                value:
+                  boolValue: true
               - key: service.target.name
                 value:
                   stringValue: postgresql

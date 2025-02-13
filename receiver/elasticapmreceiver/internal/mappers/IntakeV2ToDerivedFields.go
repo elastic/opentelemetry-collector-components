@@ -19,6 +19,7 @@
 // These fields are not covered by SemConv and are specific to Elastic
 
 // TODO: attribute names should be pulled in from https://github.com/elastic/opentelemetry-lib/blob/main/enrichments/trace/internal/elastic/attributes.go
+// `opentelemetry-lib` already has a PR to do so, after the next release of that repo, we can update this file to use those constants
 
 package mappers
 
@@ -46,12 +47,16 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr("processor.event", "span")
-	attributes.PutDouble("span.duration.us", float64(event.Event.Duration))
+	attributes.PutInt("span.duration.us", int64(event.Event.Duration))
 	attributes.PutStr("span.id", event.Span.Id)
 	attributes.PutStr("span.name", event.Span.Name)
 	attributes.PutStr("span.type", event.Span.Type)
 	attributes.PutStr("span.subtype", event.Span.Subtype)
 	attributes.PutStr("span.action", event.Span.Action)
+
+	if event.Span.Sync != nil {
+		attributes.PutBool("span.sync", *event.Span.Sync)
+	}
 
 	if event.Span.DestinationService != nil {
 		attributes.PutStr("service.target.name", event.Span.DestinationService.Name)
@@ -67,7 +72,6 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 
 // Shared across spans and transactions
 func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
-	//TODO: that's not correct.
 	attributes.PutInt("timestamp.us", int64(event.Timestamp))
 
 	if strings.EqualFold(event.Event.Outcome, "success") {
