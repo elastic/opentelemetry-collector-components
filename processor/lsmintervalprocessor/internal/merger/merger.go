@@ -19,6 +19,7 @@ package merger // import "github.com/elastic/opentelemetry-collector-components/
 
 import (
 	"io"
+	"sync"
 
 	"github.com/cockroachdb/pebble"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
@@ -27,6 +28,7 @@ import (
 var _ pebble.ValueMerger = (*Merger)(nil)
 
 type Merger struct {
+	bufferPool        sync.Pool
 	current           *Value
 	resourceLimitCfg  config.LimitConfig
 	scopeLimitCfg     config.LimitConfig
@@ -74,6 +76,26 @@ func (m *Merger) MergeOlder(value []byte) error {
 }
 
 func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
-	data, err := m.current.AppendBinary(nil)
-	return data, nil, err
+	pb, ok := m.bufferPool.Get().(*pooledBuffer)
+	if !ok {
+		pb = &pooledBuffer{pool: &m.bufferPool}
+	}
+	newBuf, err := m.current.AppendBinary(pb.buf[:0])
+	if err != nil {
+		m.bufferPool.Put(pb)
+		return nil, nil, err
+	}
+	pb.buf = newBuf
+	return newBuf, pb, nil
+}
+
+type pooledBuffer struct {
+	pool *sync.Pool
+	buf  []byte
+}
+
+func (b *pooledBuffer) Close() error {
+	b.buf = b.buf[:0]
+	b.pool.Put(b)
+	return nil
 }
