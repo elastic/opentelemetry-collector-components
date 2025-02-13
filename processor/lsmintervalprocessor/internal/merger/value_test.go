@@ -66,7 +66,34 @@ func BenchmarkMerge(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendBinary(b *testing.B) {
+// TODO rename this to BenchmarkAppendBinary once we have compared
+// the old and AppendBinary implementations.
+// TODO use subtests for with/without buffer reuse
+func BenchmarkMarshal(b *testing.B) {
+	benchmarkAppendBinary(b, func(b *testing.B, v *Value) {
+		for i := 0; i < b.N; i++ {
+			if _, err := v.AppendBinary(nil); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
+func BenchmarkAppendBinaryReuseBuffer(b *testing.B) {
+	benchmarkAppendBinary(b, func(b *testing.B, v *Value) {
+		var buf []byte
+		var err error
+		for i := 0; i < b.N; i++ {
+			buf, err = v.AppendBinary(buf[:0])
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
+func benchmarkAppendBinary(b *testing.B, f func(*testing.B, *Value)) {
+	b.Helper()
 	for _, tc := range testCases {
 		dir := filepath.Join("../../testdata", tc)
 		md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
@@ -76,24 +103,7 @@ func BenchmarkAppendBinary(b *testing.B) {
 			maxLimit := config.LimitConfig{MaxCardinality: math.MaxInt64}
 			v := NewValue(maxLimit, maxLimit, maxLimit, maxLimit)
 			require.NoError(b, updateValueWithPMetrics(md, v))
-
-			b.Run("without_reuse", func(b *testing.B) {
-				for i := 0; i < b.N; i++ {
-					if _, err := v.AppendBinary(nil); err != nil {
-						b.Fatal(err)
-					}
-				}
-			})
-			b.Run("with_reuse", func(b *testing.B) {
-				var buf []byte
-				for i := 0; i < b.N; i++ {
-					var err error
-					buf, err = v.AppendBinary(buf[:0])
-					if err != nil {
-						b.Fatal(err)
-					}
-				}
-			})
+			f(b, v)
 		})
 	}
 }
