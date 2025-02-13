@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// This is a copy of the internal module from opentelemetry-collector:
+// https://github.com/open-telemetry/opentelemetry-collector/tree/main/internal/testutil
+
 package testutil // import "github.com/elastic/opentelemetry-collector-components/internal/testutil"
 
 import (
