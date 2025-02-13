@@ -121,6 +121,20 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+  - package-ecosystem: "gomod"
+    directory: "/internal/testutil/"
+    schedule:
+      interval: "daily"
+    labels:
+      - automation
+      - tools
+    groups:
+      otel-dependencies:
+        patterns: ["go.opentelemetry.io/*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
