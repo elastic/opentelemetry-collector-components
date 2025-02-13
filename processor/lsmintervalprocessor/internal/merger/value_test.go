@@ -62,11 +62,43 @@ func BenchmarkMerge(b *testing.B) {
 			dpLimit:     config.LimitConfig{MaxCardinality: 1},
 		},
 	} {
-		benchmarkWithTestdata(b, tc.name, tc.resLimit, tc.scopeLimit, tc.metricLimit, tc.dpLimit)
+		benchmarkMergeWithTestdata(b, tc.name, tc.resLimit, tc.scopeLimit, tc.metricLimit, tc.dpLimit)
 	}
 }
 
-func benchmarkWithTestdata(
+func BenchmarkAppendBinary(b *testing.B) {
+	for _, tc := range testCases {
+		dir := filepath.Join("../../testdata", tc)
+		md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+		require.NoError(b, err)
+		md.MarkReadOnly()
+		b.Run(tc, func(b *testing.B) {
+			maxLimit := config.LimitConfig{MaxCardinality: math.MaxInt64}
+			v := NewValue(maxLimit, maxLimit, maxLimit, maxLimit)
+			require.NoError(b, updateValueWithPMetrics(md, v))
+
+			b.Run("without_reuse", func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					if _, err := v.AppendBinary(nil); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+			b.Run("with_reuse", func(b *testing.B) {
+				var buf []byte
+				for i := 0; i < b.N; i++ {
+					var err error
+					buf, err = v.AppendBinary(buf[:0])
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		})
+	}
+}
+
+func benchmarkMergeWithTestdata(
 	b *testing.B,
 	name string,
 	resLimit, scopeLimit, metricLimit, dpLimit config.LimitConfig,
@@ -78,19 +110,15 @@ func benchmarkWithTestdata(
 		md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 		require.NoError(b, err)
 		md.MarkReadOnly()
-		b.ResetTimer()
 		b.Run(name+"/"+tc, func(b *testing.B) {
+			to := NewValue(resLimit, scopeLimit, metricLimit, dpLimit)
+			from := NewValue(resLimit, scopeLimit, metricLimit, dpLimit)
+			require.NoError(b, updateValueWithPMetrics(md, from))
+
 			for i := 0; i < b.N; i++ {
-				b.StopTimer()
-				to := NewValue(resLimit, scopeLimit, metricLimit, dpLimit)
-				from := NewValue(resLimit, scopeLimit, metricLimit, dpLimit)
-				// Update from to have the pmetric structure
-				mdCopy := pmetric.NewMetrics()
-				md.CopyTo(mdCopy)
-				require.NoError(b, updateValueWithPMetrics(mdCopy, from))
-				b.StartTimer()
-				err = to.Merge(from)
-				require.NoError(b, err)
+				if err := to.Merge(from); err != nil {
+					b.Fatal(err)
+				}
 			}
 		})
 	}
