@@ -30,8 +30,8 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/xprocessor"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/sharedcomponent"
 )
 
 var rateLimiters = sharedcomponent.NewMap[*Config, rateLimiterComponent]()

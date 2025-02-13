@@ -1,0 +1,19 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: foo
+        - key: deployment.environment
+          value:
+            stringValue: qa
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+    scopeMetrics:
+      - scope: {}
+        metrics:
+          - name: foo
+            sum:
+              dataPoints:
+                - asInt: 1

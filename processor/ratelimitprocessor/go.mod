@@ -3,10 +3,10 @@ module github.com/elastic/opentelemetry-collector-components/processor/ratelimit
 go 1.22.7
 
 require (
+	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/client v1.22.0
 	go.opentelemetry.io/collector/component v0.116.0
-	go.opentelemetry.io/collector/component/componentstatus v0.116.0
 	go.opentelemetry.io/collector/component/componenttest v0.116.0
 	go.opentelemetry.io/collector/config/configgrpc v0.116.0
 	go.opentelemetry.io/collector/confmap v1.22.0
@@ -46,6 +46,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mostynb/go-grpc-compression v1.2.3 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	go.opentelemetry.io/collector/component/componentstatus v0.116.0 // indirect
 	go.opentelemetry.io/collector/config/configauth v0.116.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.22.0 // indirect
 	go.opentelemetry.io/collector/config/confignet v1.22.0 // indirect
@@ -70,3 +71,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241206012308-a4fef0638583 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent => ../../internal/sharedcomponent
