@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package testutil // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/testutil"
+package testutil // import "github.com/elastic/opentelemetry-collector-components/internal/testutil"
 
 import (
 	"net"
