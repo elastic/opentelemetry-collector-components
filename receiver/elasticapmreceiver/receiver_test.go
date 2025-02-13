@@ -52,7 +52,10 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 	set := receivertest.NewNopSettings()
 	nextTrace := new(consumertest.TracesSink)
 	rec, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
-	rec.Start(context.Background(), componenttest.NewNopHost())
+
+	if err := rec.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+		t.Errorf("Starting receiver failed: %v", err)
+	}
 
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
@@ -85,7 +88,9 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
 		ptracetest.IgnoreEndTimestamp()))
 
-	rec.Shutdown(context.Background())
+	if err := rec.Shutdown(context.Background()); err != nil {
+		t.Errorf("Shutdown failed: %v", err)
+	}
 }
 
 func extractElasticAPMReceiver(rec interface{}) *elasticAPMReceiver {
