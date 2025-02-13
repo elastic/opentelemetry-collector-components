@@ -112,7 +112,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  doubleValue: 3.781912e+06
+                  intValue: "3781912"
               - key: span.id
                 value:
                   stringValue: 0aaaaaaaaaaaaaaa

@@ -112,7 +112,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  doubleValue: 3.781912e+06
+                  intValue: "3781912"
               - key: span.id
                 value:
                   stringValue: 0aaaaaaaaaaaaaaa
@@ -196,7 +196,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  doubleValue: 3.2592981e+07
+                  intValue: "32592981"
               - key: span.id
                 value:
                   stringValue: 1aaaaaaaaaaaaaaa
@@ -257,7 +257,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  doubleValue: 3.564298e+06
+                  intValue: "3564298"
               - key: span.id
                 value:
                   stringValue: 2aaaaaaaaaaaaaaa
@@ -318,7 +318,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  doubleValue: 1.3980298e+07
+                  intValue: "13980298"
               - key: span.id
                 value:
                   stringValue: 3aaaaaaaaaaaaaaa
@@ -571,7 +571,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  doubleValue: 3.781912e+06
+                  intValue: "3781912"
               - key: span.id
                 value:
                   stringValue: 15aaaaaaaaaaaaaa
