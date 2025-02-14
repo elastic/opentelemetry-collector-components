@@ -65,7 +65,10 @@ func createExtension(_ context.Context, set extension.Settings, cfg component.Co
 		}
 		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.RemoteConfig.CacheDuration, telemetry.Logger)
 		go func() {
-			fetcher.Run(ctx)
+			err := fetcher.Run(ctx)
+			if err != nil {
+				set.Logger.Error(err.Error())
+			}
 		}()
 
 		return centralconfig.NewFetcherAPMWatcher(fetcher, extCfg.RemoteConfig.CacheDuration, telemetry.Logger), nil

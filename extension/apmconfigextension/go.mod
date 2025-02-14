@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
 
-go 1.23.4
+go 1.22.12
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.17.0
@@ -101,7 +101,5 @@ require (
 	google.golang.org/protobuf v1.36.4
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/open-telemetry/opamp-go => /home/neck/Documents/github/rogercoll/opamp-go/
 
 replace github.com/elastic/opentelemetry-collector-components/internal/testutil => ../../internal/testutil

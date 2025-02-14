@@ -89,7 +89,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			}, zap.NewNop()),
 		},
-		"unidentified agent": {
+		"remote config provider unidentified error": {
 			opampMessages: []inOutOpamp{
 				{
 					agentToServer: &protobufs.AgentToServer{

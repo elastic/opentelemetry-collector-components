@@ -101,7 +101,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {},
 			},
 			{
-				name: "remote config provider error",
+				name: "remote config provider unidentified error",
 				opampMessages: []inOutOpamp{
 					{
 						agentToServer: &protobufs.AgentToServer{
