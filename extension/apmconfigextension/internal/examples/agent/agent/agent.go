@@ -1,3 +1,20 @@
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 package agent
 
 import (
@@ -52,8 +69,6 @@ type Agent struct {
 	opampClient client.OpAMPClient
 
 	remoteConfigStatus *protobufs.RemoteConfigStatus
-
-	metricReporter *MetricReporter
 }
 
 func NewAgent(logger types.Logger, agentType string, agentVersion string) *Agent {
@@ -187,11 +202,6 @@ func (agent *Agent) updateAgentIdentity(ctx context.Context, instanceId uuid.UUI
 		agent.instanceId,
 		instanceId)
 	agent.instanceId = instanceId
-
-	if agent.metricReporter != nil {
-		// TODO: reinit or update meter (possibly using a single function to update all own connection settings
-		// or with having a common resource factory or so)
-	}
 }
 
 func (agent *Agent) loadLocalConfig() {
@@ -214,24 +224,6 @@ func (agent *Agent) composeEffectiveConfig() *protobufs.EffectiveConfig {
 			},
 		},
 	}
-}
-
-func (agent *Agent) initMeter(settings *protobufs.TelemetryConnectionSettings) {
-	reporter, err := NewMetricReporter(agent.logger, settings, agent.agentType, agent.agentVersion, agent.instanceId)
-	if err != nil {
-		agent.logger.Errorf(context.Background(), "Cannot collect metrics: %v", err)
-		return
-	}
-
-	prevReporter := agent.metricReporter
-
-	agent.metricReporter = reporter
-
-	if prevReporter != nil {
-		prevReporter.Shutdown()
-	}
-
-	return
 }
 
 type agentConfigFileItem struct {
@@ -349,10 +341,6 @@ func (agent *Agent) onMessage(ctx context.Context, msg *types.MessageData) {
 				Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
 			})
 		}
-	}
-
-	if msg.OwnMetricsConnSettings != nil {
-		agent.initMeter(msg.OwnMetricsConnSettings)
 	}
 
 	if msg.AgentIdentification != nil {
