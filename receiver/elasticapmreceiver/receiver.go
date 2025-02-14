@@ -249,17 +249,16 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 			traceId, err := traceIDFromHex(event.Trace.Id)
 			if err == nil {
 				s.SetTraceID(traceId)
-			}
-
-			spanId, err := spanIdFromHex(event.Span.Id)
-			if err == nil {
-				s.SetSpanID(spanId)
+			} else {
+				r.settings.Logger.Error("failed to parse trace ID", zap.String("trace_id", event.Trace.Id))
 			}
 
 			if event.ParentId != "" {
 				parentId, err := spanIdFromHex(event.ParentId)
 				if err == nil {
 					s.SetParentSpanID(parentId)
+				} else {
+					r.settings.Logger.Error("failed to parse parent span ID", zap.String("parent_id", event.ParentId))
 				}
 			}
 
@@ -279,6 +278,14 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 
 			isTransaction := event.Type() == modelpb.TransactionEventType
 			if isTransaction {
+				s.SetName(event.Transaction.Name)
+				spanId, err := spanIdFromHex(event.Transaction.Id)
+				if err == nil {
+					s.SetSpanID(spanId)
+				} else {
+					r.settings.Logger.Error("failed to parse transaction ID", zap.String("transaction_id", event.Transaction.Id))
+				}
+
 				mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
 				transaction := event.GetTransaction()
 				s.SetName(transaction.GetName())
@@ -292,6 +299,13 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 			} else {
 				span := event.GetSpan()
 				s.SetName(span.GetName())
+
+				spanId, err := spanIdFromHex(event.Span.Id)
+				if err == nil {
+					s.SetSpanID(spanId)
+				} else {
+					r.settings.Logger.Error("failed to parse span ID", zap.String("span_id", event.Span.Id))
+				}
 
 				mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 				mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())

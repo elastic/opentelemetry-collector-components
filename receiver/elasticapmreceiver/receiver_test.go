@@ -37,6 +37,7 @@ import (
 )
 
 func TestTransactionsAndSpans(t *testing.T) {
+	runComparison(t, "invalid_ids.ndjson", "invalid_ids_expected.yaml")
 	runComparison(t, "transactions.ndjson", "transactions_expected.yaml")
 	runComparison(t, "spans.ndjson", "spans_expected.yaml")
 	runComparison(t, "unknown-span-type.ndjson", "unknown-span-type_expected.yaml")
@@ -84,6 +85,9 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 	actualTraces := nextTrace.AllTraces()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	expectedTraces, _ := golden.ReadTraces(expectedFile)
+
+	// Use this line to generate the expected yaml file:
+	// golden.WriteTraces(t, expectedFile, actualTraces)
 
 	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
 		ptracetest.IgnoreEndTimestamp()))
