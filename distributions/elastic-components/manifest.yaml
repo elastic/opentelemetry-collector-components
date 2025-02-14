@@ -73,3 +73,4 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../processor/ratelimitprocessor
   - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension => ../extension/beatsauthextension
   - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension => ../extension/apmconfigextension
+  - github.com/elastic/opentelemetry-collector-components/internal/testutil => ../internal/testutil
