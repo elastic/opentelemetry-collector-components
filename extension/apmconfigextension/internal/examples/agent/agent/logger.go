@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package agent
+package agent // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/internal/examples/agent/agent"
 
 import (
 	"context"
