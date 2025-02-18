@@ -2,8 +2,6 @@ module github.com/elastic/opentelemetry-collector-components/processor/lsminterv
 
 go 1.23.0
 
-toolchain go1.23.4
-
 require (
 	github.com/axiomhq/hyperloglog v0.2.3
 	github.com/cockroachdb/pebble v1.1.4
