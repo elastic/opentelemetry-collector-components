@@ -27,8 +27,6 @@ import (
 	"github.com/axiomhq/hyperloglog"
 )
 
-const version = uint8(1)
-
 // Tracker tracks the configured limits while merging. It records the
 // observed count as well as the unique overflow counts.
 type Tracker struct {
@@ -98,54 +96,61 @@ func (t *Tracker) MergeEstimators(other *Tracker) error {
 	return t.overflowCounts.Merge(other.overflowCounts)
 }
 
-func (t *Tracker) EstimatedSize() int {
-	// TODO (lahsivjar): Estimate the size of the trackers to optimize
-	// allocations. Also see: https://github.com/axiomhq/hyperloglog/issues/44
-	return 9 // version & observed count
-}
-
 // AppendBinary marshals the tracker and appends the result to b.
 func (t *Tracker) AppendBinary(b []byte) ([]byte, error) {
-	b = slices.Grow(b, t.EstimatedSize())
-	b = append(b, version)
-	lenOffset := len(b)
-	b = b[:lenOffset+8]
-	binary.BigEndian.PutUint64(b[lenOffset:lenOffset+8], t.observedCount)
+	b = binary.AppendUvarint(b, t.observedCount)
 
+	// Make space for the sketch length. We reserve 2 bytes, which is sufficient
+	// for storing the length of a precision 14 sketch.
+	lenOffset := len(b)
+	b = append(b, 0, 0)
 	if t.overflowCounts != nil {
 		var err error
 		b, err = t.overflowCounts.AppendBinary(b)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal limits: %w", err)
 		}
+		sketchLength := len(b) - lenOffset - 2
+		binary.BigEndian.PutUint16(b[lenOffset:lenOffset+2], uint16(sketchLength))
 	}
 	return b, nil
 }
 
-// Unmarshal unmarshals the encoded limits to go struct. Example usage:
+// unmarshal unmarshals the encoded limits into t, and returns the number of
+// bytes consumed.
+//
+// Example usage:
 //
 //	var t Tracker
-//	if err := t.Unmarshal(data); err != nil {
+//	n, err := t.Unmarshal(data)
+//	if err != nil {
 //	    panic(err)
 //	}
-func (t *Tracker) Unmarshal(d []byte) error {
-	if len(d) < 9 {
-		return errors.New("failed to unmarshal tracker, invalid length")
+//	data = data[n:]
+func (t *Tracker) Unmarshal(d []byte) (int, error) {
+	observedCount, n := binary.Uvarint(d)
+	if n <= 0 {
+		return 0, errors.New("failed to unmarshal tracker, invalid length")
 	}
-	if v := uint8(d[0]); v != version {
-		return fmt.Errorf("unsupported version: %d", v)
+	t.observedCount = observedCount
+	d = d[n:]
+
+	if len(d) < 2 {
+		return 0, errors.New("failed to unmarshal tracker, invalid length")
 	}
-	offset := 1
-	t.observedCount = binary.BigEndian.Uint64(d[offset : offset+8])
-	offset += 8
-	if len(d) == offset {
-		return nil
+	sketchLength := int(binary.BigEndian.Uint16(d[:2]))
+	d = d[2:]
+
+	if sketchLength > 0 {
+		if len(d) < sketchLength {
+			return 0, errors.New("failed to unmarshal tracker, invalid length")
+		}
+		t.overflowCounts = hyperloglog.New14()
+		if err := t.overflowCounts.UnmarshalBinary(d[:sketchLength]); err != nil {
+			return 0, fmt.Errorf("failed to unmarshal tracker: %w", err)
+		}
 	}
-	t.overflowCounts = hyperloglog.New14()
-	if err := t.overflowCounts.UnmarshalBinary(d[offset:]); err != nil {
-		return fmt.Errorf("failed to unmarshal tracker: %w", err)
-	}
-	return nil
+	return n + 2 + sketchLength, nil
 }
 
 type trackerType uint8
@@ -230,22 +235,16 @@ func (t *Trackers) GetDatapointTracker(i int) *Tracker {
 	return t.datapoint[i]
 }
 
-func (t *Trackers) EstimatedSize() int {
-	// TODO (lahsivjar): Estimate total required size including overflow
-	// Estimate minimum without overflow:
-	// - 1 byte for tracker type
-	// - 8 bytes for each trackers length
-	// - 8 bytes min for each tracker
-	return (1 + len(t.scope) + len(t.metric) + len(t.datapoint)) * 17
-}
-
 func (t *Trackers) AppendBinary(b []byte) ([]byte, error) {
 	if t == nil || t.resource == nil {
 		// if trackers is nil then nothing to marshal
 		return b, nil
 	}
 
-	b = slices.Grow(b, t.EstimatedSize())
+	n := 1 + len(t.scope) + len(t.metric) + len(t.datapoint)
+	// minimum 4 bytes per tracker (type=1, count=1+, sketch length=2)
+	b = slices.Grow(b, n*4)
+
 	b, err := marshalTracker(resourceTracker, t.resource, b)
 	if err != nil {
 		return nil, err
@@ -280,6 +279,7 @@ func (t *Trackers) Unmarshal(d []byte) error {
 	for offset < len(d) {
 		trackerTyp := trackerType(d[offset])
 		offset += 1
+
 		// Create the required tracker
 		var tracker *Tracker
 		switch trackerTyp {
@@ -295,29 +295,16 @@ func (t *Trackers) Unmarshal(d []byte) error {
 			return errors.New("invalid tracker found")
 		}
 
-		trackerLen := int(binary.BigEndian.Uint64(d[offset : offset+8]))
-		offset += 8
-		if err := tracker.Unmarshal(d[offset : offset+trackerLen]); err != nil {
+		n, err := tracker.Unmarshal(d[offset:])
+		if err != nil {
 			return err
 		}
-		offset += int(trackerLen)
+		offset += n
 	}
 	return nil
 }
 
 func marshalTracker(typ trackerType, tracker *Tracker, result []byte) ([]byte, error) {
-	result = slices.Grow(result, 9+tracker.EstimatedSize())
 	result = append(result, byte(typ))
-
-	lenOffset := len(result)
-	result = result[:lenOffset+8] // leave space for the length of encoded tracker
-
-	result, err := tracker.AppendBinary(result)
-	if err != nil {
-		return result, err
-	}
-	trackerLen := len(result) - lenOffset - 8
-	binary.BigEndian.PutUint64(result[lenOffset:lenOffset+8], uint64(trackerLen))
-
-	return result, nil
+	return tracker.AppendBinary(result)
 }

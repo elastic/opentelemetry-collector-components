@@ -78,7 +78,8 @@ func TestTracker(t *testing.T) {
 			b, err := tracker.AppendBinary(nil)
 			require.NoError(t, err)
 			newTracker := newTracker(tc.maxCardinality)
-			require.NoError(t, newTracker.Unmarshal(b))
+			_, err = newTracker.Unmarshal(b)
+			require.NoError(t, err)
 			assert.True(t, tracker.Equal(newTracker))
 		})
 	}

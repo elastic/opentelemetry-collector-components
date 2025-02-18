@@ -32,6 +32,8 @@ import (
 )
 
 const (
+	version = uint8(1)
+
 	overflowMetricName = "_overflow_metric"
 	overflowMetricDesc = "Overflow metric count due to metric limit"
 
@@ -117,6 +119,8 @@ func NewValue(resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConf
 // Limit trackers and pmetric are marshaled into the same binary
 // representation.
 func (s *Value) AppendBinary(b []byte) ([]byte, error) {
+	b = append(b, version)
+
 	if s.source.DataPointCount() == 0 {
 		// Nothing to marshal
 		return b, nil
@@ -129,15 +133,15 @@ func (s *Value) AppendBinary(b []byte) ([]byte, error) {
 	}
 
 	lenOffset := len(b)
-	b = slices.Grow(b, 8+s.trackers.EstimatedSize()+len(pmb))
-	b = b[:lenOffset+8] // leave space for the length of encoded trackers
+	b = slices.Grow(b, 4)
+	b = b[:lenOffset+4] // leave space for the length of encoded trackers
 
 	b, err = s.trackers.AppendBinary(b)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal trackers: %w", err)
 	}
-	trackersLen := len(b) - lenOffset - 8
-	binary.BigEndian.PutUint64(b[lenOffset:lenOffset+8], uint64(trackersLen))
+	trackersLen := len(b) - lenOffset - 4
+	binary.BigEndian.PutUint32(b[lenOffset:lenOffset+4], uint32(trackersLen))
 	b = append(b, pmb...)
 	return b, nil
 }
@@ -148,14 +152,22 @@ func (s *Value) AppendBinary(b []byte) ([]byte, error) {
 // limits are marshaled and encoded separately from the pmetric datastructure.
 func (s *Value) Unmarshal(data []byte) error {
 	if len(data) == 0 {
+		return errors.New("failed to unmarshal value, invalid length")
+	}
+	if data[0] != version {
+		return fmt.Errorf("unsupported version: %d", data[0])
+	}
+	data = data[1:]
+
+	if len(data) == 0 {
 		return nil
 	}
-	if len(data) < 8 {
+	if len(data) < 4 {
 		// For non-nil value, tracker must be marshaled
 		return errors.New("failed to unmarshal value, invalid length")
 	}
-	trackersLen := int(binary.BigEndian.Uint64(data[:8]))
-	data = data[8:]
+	trackersLen := int(binary.BigEndian.Uint64(data[:4]))
+	data = data[4:]
 	if trackersLen > 0 {
 		// Unmarshal trackers
 		s.trackers = limits.NewTrackers(
