@@ -116,7 +116,7 @@ func (t *Tracker) AppendBinary(b []byte) ([]byte, error) {
 	return b, nil
 }
 
-// unmarshal unmarshals the encoded limits into t, and returns the number of
+// Unmarshal unmarshals the encoded limits into t, and returns the number of
 // bytes consumed.
 //
 // Example usage:
