@@ -6,7 +6,7 @@ require (
 	github.com/elastic/opentelemetry-lib v0.13.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.112.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.112.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/component v0.112.0
 	go.opentelemetry.io/collector/confmap v1.18.0
 	go.opentelemetry.io/collector/consumer v0.112.0
