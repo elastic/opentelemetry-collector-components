@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/loadgen
 
-go 1.22.7
+go 1.23.6
 
 require (
 	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0-00010101000000-000000000000
