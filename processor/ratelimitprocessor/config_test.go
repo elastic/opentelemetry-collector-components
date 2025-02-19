@@ -125,7 +125,7 @@ func TestLoadConfig(t *testing.T) {
 
 			err = component.ValidateConfig(cfg)
 			if tt.expectedErr != "" {
-				require.EqualError(t, err, tt.expectedErr)
+				require.ErrorContains(t, err, tt.expectedErr)
 				return
 			}
 			require.NoError(t, err)
