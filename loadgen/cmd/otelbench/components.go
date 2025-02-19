@@ -20,7 +20,6 @@ package main
 import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/connector"
-	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/debugexporter"
 	"go.opentelemetry.io/collector/exporter/nopexporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
@@ -40,7 +39,7 @@ func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.Stats) (o
 	factories := otelcol.Factories{}
 
 	// Receivers
-	factories.Receivers, err = receiver.MakeFactoryMap(
+	factories.Receivers, err = otelcol.MakeFactoryMap[receiver.Factory](
 		loadgenreceiver.NewFactoryWithDone(logsDone, metricsDone, tracesDone),
 		nopreceiver.NewFactory(),
 	)
@@ -49,7 +48,7 @@ func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.Stats) (o
 	}
 
 	// Processors
-	factories.Processors, err = processor.MakeFactoryMap(
+	factories.Processors, err = otelcol.MakeFactoryMap[processor.Factory](
 		ratelimitprocessor.NewFactory(),
 		transformprocessor.NewFactory(),
 	)
@@ -58,7 +57,7 @@ func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.Stats) (o
 	}
 
 	// Exporters
-	factories.Exporters, err = exporter.MakeFactoryMap(
+	factories.Exporters, err = otelcol.MakeFactoryMap(
 		otlpexporter.NewFactory(),
 		otlphttpexporter.NewFactory(),
 		debugexporter.NewFactory(),
@@ -68,12 +67,12 @@ func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.Stats) (o
 		return otelcol.Factories{}, err
 	}
 
-	factories.Connectors, err = connector.MakeFactoryMap()
+	factories.Connectors, err = otelcol.MakeFactoryMap[connector.Factory]()
 	if err != nil {
 		return otelcol.Factories{}, err
 	}
 
-	factories.Extensions, err = extension.MakeFactoryMap()
+	factories.Extensions, err = otelcol.MakeFactoryMap[extension.Factory]()
 	if err != nil {
 		return otelcol.Factories{}, err
 	}
