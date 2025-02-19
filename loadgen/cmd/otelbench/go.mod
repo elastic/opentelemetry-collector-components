@@ -8,13 +8,12 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.120.0
 	go.opentelemetry.io/collector/component v0.120.0
 	go.opentelemetry.io/collector/confmap v1.26.0
-	go.opentelemetry.io/collector/confmap/provider/envprovider v1.23.0
-	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.23.0
-	go.opentelemetry.io/collector/confmap/provider/httpprovider v1.23.0
-	go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.23.0
-	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.23.0
+	go.opentelemetry.io/collector/confmap/provider/envprovider v1.26.0
+	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.26.0
+	go.opentelemetry.io/collector/confmap/provider/httpprovider v1.26.0
+	go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.26.0
+	go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.26.0
 	go.opentelemetry.io/collector/connector v0.120.0
-	go.opentelemetry.io/collector/exporter v0.120.0
 	go.opentelemetry.io/collector/exporter/debugexporter v0.120.0
 	go.opentelemetry.io/collector/exporter/nopexporter v0.120.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.120.0
@@ -111,6 +110,7 @@ require (
 	go.opentelemetry.io/collector/consumer/consumererror/xconsumererror v0.120.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumertest v0.120.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.120.0 // indirect
+	go.opentelemetry.io/collector/exporter v0.120.0 // indirect
 	go.opentelemetry.io/collector/exporter/exporterhelper/xexporterhelper v0.120.0 // indirect
 	go.opentelemetry.io/collector/exporter/exportertest v0.120.0 // indirect
 	go.opentelemetry.io/collector/exporter/xexporter v0.120.0 // indirect
