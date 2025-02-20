@@ -1,0 +1,289 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: otlp/go
+        - key: deployment.environment
+          value:
+            stringValue: qa
+        - key: service.name
+          value:
+            stringValue: foo
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+    scopeMetrics:
+      - metrics:
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.1m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 1m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.10m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 10m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.60m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 60m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - description: APM span destination metrics
+            name: span.destination.service.response_time.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_destination.1m
+                    - key: event.outcome
+                      value:
+                        stringValue: success
+                    - key: metricset.interval
+                      value:
+                        stringValue: 1m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_destination
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: service.target.name
+                      value:
+                        stringValue: main
+                    - key: service.target.type
+                      value:
+                        stringValue: mysql
+                    - key: span.destination.service.resource
+                      value:
+                        stringValue: mysql
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
+                  timeUnixNano: "1000000"
+          - description: APM span destination metrics
+            name: span.destination.service.response_time.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_destination.10m
+                    - key: event.outcome
+                      value:
+                        stringValue: success
+                    - key: metricset.interval
+                      value:
+                        stringValue: 10m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_destination
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: service.target.name
+                      value:
+                        stringValue: main
+                    - key: service.target.type
+                      value:
+                        stringValue: mysql
+                    - key: span.destination.service.resource
+                      value:
+                        stringValue: mysql
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
+                  timeUnixNano: "1000000"
+          - description: APM span destination metrics
+            name: span.destination.service.response_time.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_destination.60m
+                    - key: event.outcome
+                      value:
+                        stringValue: success
+                    - key: metricset.interval
+                      value:
+                        stringValue: 60m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_destination
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: service.target.name
+                      value:
+                        stringValue: main
+                    - key: service.target.type
+                      value:
+                        stringValue: mysql
+                    - key: span.destination.service.resource
+                      value:
+                        stringValue: mysql
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
+                  timeUnixNano: "1000000"
+          - description: APM span destination metrics
+            name: span.destination.service.response_time.sum.us
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 500000
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_destination.1m
+                    - key: event.outcome
+                      value:
+                        stringValue: success
+                    - key: metricset.interval
+                      value:
+                        stringValue: 1m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_destination
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: service.target.name
+                      value:
+                        stringValue: main
+                    - key: service.target.type
+                      value:
+                        stringValue: mysql
+                    - key: span.destination.service.resource
+                      value:
+                        stringValue: mysql
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
+                  timeUnixNano: "1000000"
+            unit: us
+          - description: APM span destination metrics
+            name: span.destination.service.response_time.sum.us
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 500000
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_destination.10m
+                    - key: event.outcome
+                      value:
+                        stringValue: success
+                    - key: metricset.interval
+                      value:
+                        stringValue: 10m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_destination
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: service.target.name
+                      value:
+                        stringValue: main
+                    - key: service.target.type
+                      value:
+                        stringValue: mysql
+                    - key: span.destination.service.resource
+                      value:
+                        stringValue: mysql
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
+                  timeUnixNano: "1000000"
+            unit: us
+          - description: APM span destination metrics
+            name: span.destination.service.response_time.sum.us
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 500000
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_destination.60m
+                    - key: event.outcome
+                      value:
+                        stringValue: success
+                    - key: metricset.interval
+                      value:
+                        stringValue: 60m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_destination
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: service.target.name
+                      value:
+                        stringValue: main
+                    - key: service.target.type
+                      value:
+                        stringValue: mysql
+                    - key: span.destination.service.resource
+                      value:
+                        stringValue: mysql
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
+                  timeUnixNano: "1000000"
+            unit: us
+        scope:
+          name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
