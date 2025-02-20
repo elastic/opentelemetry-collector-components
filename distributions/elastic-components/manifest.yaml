@@ -71,5 +71,4 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../processor/ratelimitprocessor
   - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension => ../extension/beatsauthextension
   - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector => ../connector/elasticapmconnector
-  - github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent => ../internal/sharedcomponent
 
