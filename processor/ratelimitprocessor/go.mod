@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/ratelimit
 go 1.23.6
 
 require (
-	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0
+	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/client v1.26.0
 	go.opentelemetry.io/collector/component v0.120.0
