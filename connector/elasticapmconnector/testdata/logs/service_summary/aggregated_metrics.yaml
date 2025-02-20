@@ -15,7 +15,7 @@ resourceMetrics:
             stringValue: unknown
     scopeMetrics:
       - scope:
-          name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector
         metrics:
           - name: service_summary
             sum:

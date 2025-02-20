@@ -20,8 +20,8 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 import (
 	"time"
 
-	signaltometricsconfig "github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector/config"
 	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
+	signaltometricsconfig "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector/config"
 	"go.opentelemetry.io/collector/component"
 )
 
