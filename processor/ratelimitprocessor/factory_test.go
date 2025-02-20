@@ -23,8 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/processor/processortest"
 )
@@ -34,11 +34,11 @@ func TestCreateDefaultConfig(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 	assert.NotNil(t, cfg)
 	assert.NoError(t, componenttest.CheckConfigStruct(cfg))
-	assert.Error(t, component.ValidateConfig(cfg)) // rate & burst must be specified
+	assert.Error(t, xconfmap.Validate(cfg)) // rate & burst must be specified
 
 	cfg.(*Config).Rate = 1
 	cfg.(*Config).Burst = 1
-	assert.NoError(t, component.ValidateConfig(cfg))
+	assert.NoError(t, xconfmap.Validate(cfg))
 }
 
 func TestCreateProcessor(t *testing.T) {

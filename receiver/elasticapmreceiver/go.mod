@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver
 
-go 1.22.0
+go 1.23.6
 
 require (
 	github.com/elastic/apm-data v1.14.1

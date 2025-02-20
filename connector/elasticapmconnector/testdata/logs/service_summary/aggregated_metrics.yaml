@@ -1,0 +1,73 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: foo
+        - key: deployment.environment
+          value:
+            stringValue: qa
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        - key: agent.name
+          value:
+            stringValue: unknown
+    scopeMetrics:
+      - scope:
+          name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
+        metrics:
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: 1
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.1m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: metricset.interval
+                      value:
+                        stringValue: "1m"
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: 1
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.10m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: metricset.interval
+                      value:
+                        stringValue: "10m"
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: 1
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.60m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: metricset.interval
+                      value:
+                        stringValue: "60m"
+                    - key: processor.event
+                      value:
+                        stringValue: metric
