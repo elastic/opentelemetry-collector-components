@@ -1,0 +1,16 @@
+type: elasticapm
+scope_name: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: connector
+  stability:
+    development:
+      - logs_to_metrics
+      - metrics_to_metrics
+      - traces_to_metrics
+  distributions: []
+  warnings: [Statefulness]
+
+tests:
+  config:

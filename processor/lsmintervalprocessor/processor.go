@@ -84,8 +84,9 @@ type Processor struct {
 	dbOpts  *pebble.Options
 	wOpts   *pebble.WriteOptions
 
-	intervals []intervalDef
-	next      consumer.Metrics
+	intervals  []intervalDef
+	next       consumer.Metrics
+	bufferPool sync.Pool
 
 	mu             sync.Mutex
 	batch          *pebble.Batch
@@ -320,7 +321,14 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		}
 	}
 
-	vb, err := v.Marshal()
+	mb, ok := p.bufferPool.Get().(*mergeBuffer)
+	if !ok {
+		mb = &mergeBuffer{}
+	}
+	defer p.bufferPool.Put(mb)
+
+	var err error
+	mb.value, err = v.AppendBinary(mb.value[:0])
 	if err != nil {
 		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
 	}
@@ -336,7 +344,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		}
 	}
 
-	if err := p.mergeToBatch(vb, clientMetadata); err != nil {
+	if err := p.mergeToBatch(mb, clientMetadata); err != nil {
 		return fmt.Errorf("failed to merge the value to batch: %w", err)
 	}
 
@@ -351,7 +359,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 	return nil
 }
 
-func (p *Processor) mergeToBatch(vb []byte, clientMetadata []merger.KeyValues) (err error) {
+func (p *Processor) mergeToBatch(mb *mergeBuffer, clientMetadata []merger.KeyValues) (err error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -359,18 +367,18 @@ func (p *Processor) mergeToBatch(vb []byte, clientMetadata []merger.KeyValues) (
 		p.batch = newBatch(p.db)
 	}
 
-	var k []byte
 	for _, ivl := range p.intervals {
 		key := merger.Key{
 			Interval:       ivl.Duration,
 			ProcessingTime: p.processingTime,
 			Metadata:       clientMetadata,
 		}
-		k, err := key.AppendBinary(k[:0])
+		var err error
+		mb.key, err = key.AppendBinary(mb.key[:0])
 		if err != nil {
 			return fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err)
 		}
-		if err := p.batch.Merge(k, vb, nil); err != nil {
+		if err := p.batch.Merge(mb.key, mb.value, nil); err != nil {
 			return fmt.Errorf("failed to merge to db: %w", err)
 		}
 	}
@@ -385,6 +393,11 @@ func (p *Processor) mergeToBatch(vb []byte, clientMetadata []merger.KeyValues) (
 		p.batch = nil
 	}
 	return nil
+}
+
+type mergeBuffer struct {
+	key   []byte
+	value []byte
 }
 
 // commitAndExport commits the batch to DB and exports all aggregated metrics in the provided range

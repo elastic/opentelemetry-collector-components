@@ -13,6 +13,7 @@ extensions:
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension v0.0.0
 
 connectors:
+  - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector v0.3.0
 
 converters:
@@ -44,7 +45,6 @@ processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.3.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.3.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0
-    path: ./processor/ratelimitprocessor
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.120.0
@@ -70,4 +70,5 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ../receiver/loadgenreceiver
   - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../processor/ratelimitprocessor
   - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension => ../extension/beatsauthextension
+  - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector => ../connector/elasticapmconnector
 
