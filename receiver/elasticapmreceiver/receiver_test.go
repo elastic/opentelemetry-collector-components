@@ -26,14 +26,15 @@ import (
 	"bytes"
 	"net/http"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/sharedcomponent"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
-
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 )
 
 var inputFiles = []struct {
@@ -49,18 +50,22 @@ var inputFiles = []struct {
 
 func TestTransactionsAndSpans(t *testing.T) {
 	factory := NewFactory()
-	cfg := factory.CreateDefaultConfig()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			Endpoint: testEndpoint,
+		}}
 
 	set := receivertest.NewNopSettings()
 	nextTrace := new(consumertest.TracesSink)
 	rec, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
 	receiver := rec.(*sharedcomponent.Component[*elasticAPMReceiver]).Unwrap()
 
-	if err := rec.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+	if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
 		t.Errorf("Starting receiver failed: %v", err)
 	}
 	defer func() {
-		if err := rec.Shutdown(context.Background()); err != nil {
+		if err := receiver.Shutdown(context.Background()); err != nil {
 			t.Errorf("Shutdown failed: %v", err)
 		}
 	}()
@@ -69,7 +74,6 @@ func TestTransactionsAndSpans(t *testing.T) {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparison(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, receiver, nextTrace)
 		})
-
 	}
 }
 
@@ -82,11 +86,8 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 		t.Fatalf("failed to read file: %v", err)
 	}
 
-	protocol := "https"
-	if rec.cfg.TLSSetting == nil {
-		protocol = "http"
-	}
-	resp, err := http.Post(protocol+"://"+rec.cfg.Endpoint+intakePath, "application/x-ndjson", bytes.NewBuffer(data))
+	resp, err := http.Post("http://"+rec.cfg.Endpoint+intakePath, "application/x-ndjson", bytes.NewBuffer(data))
+
 	if err != nil {
 		t.Fatalf("failed to send HTTP request: %v", err)
 	}
