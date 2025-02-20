@@ -17,5 +17,5 @@
 
 //go:generate mdatagen metadata.yaml
 
-// Package elasticapmconnector provides a connector for performing Elastic APM-specific enrichment preaggregation.
+// Package elasticapmconnector provides a connector for performing Elastic APM-specific enrichment pre-aggregation.
 package elasticapmconnector // import "github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector"
