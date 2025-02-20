@@ -108,10 +108,3 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
 		ptracetest.IgnoreEndTimestamp()))
 }
-
-func extractElasticAPMReceiver(rec interface{}) *elasticAPMReceiver {
-	if comp, ok := rec.(*sharedcomponent.Component[*elasticAPMReceiver]); ok {
-		return comp.Unwrap()
-	}
-	return nil
-}
