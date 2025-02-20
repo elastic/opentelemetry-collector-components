@@ -33,19 +33,16 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 		attributes.PutStr(semconv.AttributeTelemetrySDKLanguage, event.Service.Language.Name)
 	}
 	attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
-	attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
+	if event.Service.Environment != "" {
+		attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
+	}
 }
 
 // Translates transaction attributes from the Elastic APM model to SemConv attributes
 func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	if event.Http != nil && event.Http.Request != nil {
-		attributes.PutStr(semconv.AttributeHTTPRequestMethod, event.Http.Request.Method)
-		attributes.PutInt(semconv.AttributeHTTPResponseStatusCode, int64(event.Http.Response.StatusCode))
+	setHttpAttributes(event, attributes)
 
-		if event.Url != nil {
-			attributes.PutStr(semconv.AttributeURLFull, event.Url.Full)
-		}
-	} else if event.Span.Message != nil {
+	if event.Span.Message != nil {
 		attributes.PutStr(semconv.AttributeMessagingDestinationName, event.Transaction.Message.QueueName)
 		attributes.PutStr(semconv.AttributeMessagingRabbitmqDestinationRoutingKey, event.Transaction.Message.RoutingKey)
 
@@ -58,13 +55,8 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Http != nil {
 
-		if event.Http.Request != nil {
-			attributes.PutStr(semconv.AttributeHTTPRequestMethod, event.Http.Request.Method)
-		}
+		setHttpAttributes(event, attributes)
 
-		if event.Http.Response != nil {
-			attributes.PutInt(semconv.AttributeHTTPResponseStatusCode, int64(event.Http.Response.StatusCode))
-		}
 		if event.Url != nil {
 			attributes.PutStr(semconv.AttributeURLFull, event.Url.Full)
 		}
@@ -86,6 +78,20 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 		}
 		if event.Span.Message.RoutingKey != "" {
 			attributes.PutStr(semconv.AttributeMessagingRabbitmqDestinationRoutingKey, event.Span.Message.RoutingKey)
+		}
+	}
+}
+
+func setHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Http != nil {
+		if event.Http.Request != nil {
+			attributes.PutStr(semconv.AttributeHTTPRequestMethod, event.Http.Request.Method)
+			if event.Url != nil {
+				attributes.PutStr(semconv.AttributeURLFull, event.Url.Full)
+			}
+		}
+		if event.Http.Response != nil {
+			attributes.PutInt(semconv.AttributeHTTPResponseStatusCode, int64(event.Http.Response.StatusCode))
 		}
 	}
 }

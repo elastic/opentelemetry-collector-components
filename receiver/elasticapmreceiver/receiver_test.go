@@ -58,6 +58,12 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 		t.Errorf("Starting receiver failed: %v", err)
 	}
 
+	defer func() {
+		if err := rec.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
+
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
@@ -76,6 +82,7 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 	if err != nil {
 		t.Fatalf("failed to send HTTP request: %v", err)
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusAccepted {
@@ -91,10 +98,6 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 
 	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
 		ptracetest.IgnoreEndTimestamp()))
-
-	if err := rec.Shutdown(context.Background()); err != nil {
-		t.Errorf("Shutdown failed: %v", err)
-	}
 }
 
 func extractElasticAPMReceiver(rec interface{}) *elasticAPMReceiver {
