@@ -19,6 +19,7 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 
 import (
 	"context"
+	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,6 +38,8 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 )
+
+var update = flag.Bool("update", false, "Update golden files")
 
 func TestConnector_LogsToMetrics(t *testing.T) {
 	testCases := []struct {
@@ -67,7 +70,7 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
 			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:], false)
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
 		})
 	}
 }
@@ -101,7 +104,7 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
 			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:], false)
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
 		})
 	}
 }
@@ -136,7 +139,7 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
 			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:], false)
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
 		})
 	}
 }
@@ -203,7 +206,7 @@ func TestConnector_AggregationMetadataKeys(t *testing.T) {
 	})
 }
 
-func compareAggregatedMetrics(t testing.TB, expectedFile string, allMetrics []pmetric.Metrics, update bool) {
+func compareAggregatedMetrics(t testing.TB, expectedFile string, allMetrics []pmetric.Metrics) {
 	t.Helper()
 
 	// We should have 3 metrics from the lsminterval processor:
@@ -215,25 +218,32 @@ func compareAggregatedMetrics(t testing.TB, expectedFile string, allMetrics []pm
 	// be identical.
 	for i, metrics := range allMetrics {
 		rms := metrics.ResourceMetrics()
-		require.Equal(t, 1, rms.Len())
+		require.Equal(t, allMetrics[0].ResourceMetrics().Len(), rms.Len())
 
-		rm := rms.At(0)
-		require.Equal(t, 1, rm.ScopeMetrics().Len())
-		if i > 0 {
-			rm0 := allMetrics[0].ResourceMetrics().At(0)
-			assert.Equal(t, rm0.Resource(), rm.Resource())
+		for j := 0; j < rms.Len(); j++ {
+			rm := rms.At(j)
+			require.Equal(t, 1, rm.ScopeMetrics().Len())
 
-			sm := rm.ScopeMetrics().At(0)
-			sm0 := rm0.ScopeMetrics().At(0)
-			assert.Equal(t, sm0.Scope(), sm.Scope())
-			sm.Metrics().At(0).CopyTo(sm0.Metrics().AppendEmpty())
+			if i > 0 {
+				rmOther := allMetrics[0].ResourceMetrics().At(j)
+				assert.Equal(t, rmOther.Resource(), rm.Resource())
+
+				sm := rm.ScopeMetrics().At(0)
+				smOther := rmOther.ScopeMetrics().At(0)
+				assert.Equal(t, smOther.Scope(), sm.Scope())
+
+				for k := 0; k < sm.Metrics().Len(); k++ {
+					m := sm.Metrics().At(k)
+					m.CopyTo(smOther.Metrics().AppendEmpty())
+				}
+			}
 		}
 	}
 	allMetrics[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().Sort(func(a, b pmetric.Metric) bool {
 		return a.Name() < b.Name()
 	})
 
-	if update {
+	if *update {
 		assert.NoError(t, golden.WriteMetrics(t, expectedFile, allMetrics[0]))
 	} else {
 		expected, err := golden.ReadMetrics(expectedFile)

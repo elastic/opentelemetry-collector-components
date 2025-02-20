@@ -13,9 +13,12 @@ resourceSpans:
         - key: agent.name
           value:
             stringValue: otlp/go
-        - key: agent.version
+        - key: agent.version # ignored
           value:
             stringValue: unknown
+        - key: host.name # only in transaction metrics, not service_transaction
+          value:
+            stringValue: camponotus_leonardi
     scopeSpans:
       - scope: {}
         spans:

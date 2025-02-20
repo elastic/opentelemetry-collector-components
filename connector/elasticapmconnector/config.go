@@ -153,6 +153,23 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		{Key: "metricset.name", DefaultValue: "service_destination"},
 	}
 
+	// TODO switch to exponential histogram once we have optimised
+	// exponential histogram merging.
+	transactionDurationHistogram := &signaltometricsconfig.Histogram{
+		Buckets: []float64{
+			5000, 10000, 25000, 50000, 75000, 100000, 250000, 500000,
+			750000, 1000000, 2500000, 5000000, 7500000, 10000000,
+		},
+		Count: "Int(AdjustedCount())",
+		Value: "Microseconds(end_time - start_time)",
+	}
+
+	transactionDurationSummaryHistogram := &signaltometricsconfig.Histogram{
+		Buckets: []float64{1},
+		Count:   "Int(AdjustedCount())",
+		Value:   "Microseconds(end_time - start_time)",
+	}
+
 	return &signaltometricsconfig.Config{
 		Logs: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
@@ -183,11 +200,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"_doc_count"},
 			}),
-			Unit: "us",
-			ExponentialHistogram: &signaltometricsconfig.ExponentialHistogram{
-				Count: "Int(AdjustedCount())",
-				Value: "Microseconds(end_time - start_time)",
-			},
+			Unit:      "us",
+			Histogram: transactionDurationHistogram,
 		}, {
 			Name:                      "transaction.duration.summary",
 			Description:               "APM service transaction aggregated metrics as summary",
@@ -196,12 +210,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"aggregate_metric_double"},
 			}),
-			Unit: "us",
-			Histogram: &signaltometricsconfig.Histogram{
-				Buckets: []float64{1},
-				Count:   "Int(AdjustedCount())",
-				Value:   "Microseconds(end_time - start_time)",
-			},
+			Unit:      "us",
+			Histogram: transactionDurationSummaryHistogram,
 		}, {
 			Name:                      "transaction.duration.histogram",
 			Description:               "APM transaction aggregated metrics as histogram",
@@ -210,11 +220,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"_doc_count"},
 			}),
-			Unit: "us",
-			ExponentialHistogram: &signaltometricsconfig.ExponentialHistogram{
-				Count: "Int(AdjustedCount())",
-				Value: "Microseconds(end_time - start_time)",
-			},
+			Unit:      "us",
+			Histogram: transactionDurationHistogram,
 		}, {
 			Name:                      "transaction.duration.summary",
 			Description:               "APM transaction aggregated metrics as summary",
@@ -223,11 +230,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"aggregate_metric_double"},
 			}),
-			Unit: "us",
-			ExponentialHistogram: &signaltometricsconfig.ExponentialHistogram{
-				Count: "Int(AdjustedCount())",
-				Value: "Microseconds(end_time - start_time)",
-			},
+			Unit:      "us",
+			Histogram: transactionDurationSummaryHistogram,
 		}, {
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
