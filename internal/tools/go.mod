@@ -9,7 +9,7 @@ require (
 	github.com/jcchavezs/porto v0.6.0
 	go.opentelemetry.io/collector/cmd/builder v0.120.0
 	go.opentelemetry.io/collector/cmd/mdatagen v0.120.0
-	golang.org/x/vuln v1.1.3
+	golang.org/x/vuln v1.1.4
 )
 
 require (
