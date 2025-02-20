@@ -58,10 +58,6 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 		Intervals: []lsmconfig.IntervalConfig{{
 			Duration: time.Minute,
 			Statements: []string{
-				// TODO(axw) confirm that it's ok to change metricset.interval
-				// from a resource attribute to datapoint attribute. Resource is
-				// meant to be about the producer of the signal, I don't think
-				// this fits.
 				`set(attributes["metricset.interval"], "1m")`,
 				`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "1m"], "."))`,
 				`set(attributes["processor.event"], "metric")`,
@@ -96,7 +92,14 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		{Key: "service.name"},
 		{Key: "deployment.environment"}, // service.environment
 		{Key: "telemetry.sdk.language"}, // service.language.name
-		{Key: "agent.name"},             // set via elastictraceprocessor
+
+		// agent.name is set via elastictraceprocessor for traces,
+		// but not for other signals. Default to "unknown" for the
+		// others.
+		{
+			Key:          "agent.name",
+			DefaultValue: "unknown",
+		},
 	}
 
 	// transactionResourceAttributes is the resource attributes included
@@ -182,7 +185,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 			Unit: "us",
 			ExponentialHistogram: &signaltometricsconfig.ExponentialHistogram{
-				Count:   "Int(AdjustedCount())",
+				Count: "Int(AdjustedCount())",
 				Value: "Microseconds(end_time - start_time)",
 			},
 		}, {
@@ -222,7 +225,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 			Unit: "us",
 			ExponentialHistogram: &signaltometricsconfig.ExponentialHistogram{
-				Count:   "Int(AdjustedCount())",
+				Count: "Int(AdjustedCount())",
 				Value: "Microseconds(end_time - start_time)",
 			},
 		}, {

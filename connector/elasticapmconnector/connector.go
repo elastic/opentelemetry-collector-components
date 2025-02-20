@@ -46,7 +46,6 @@ func newElasticAPMConnector(
 	set connector.Settings,
 	nextConsumer consumer.Metrics,
 ) (*elasticapmConnector, error) {
-	c := &elasticapmConnector{cfg: cfg, set: set}
 	lsminterval, err := lsmintervalFactory.CreateMetrics(
 		ctx,
 		processor.Settings(set),
@@ -56,8 +55,11 @@ func newElasticAPMConnector(
 	if err != nil {
 		return nil, err
 	}
-	c.lsminterval = lsminterval
-	return c, nil
+	return &elasticapmConnector{
+		cfg:         cfg,
+		set:         set,
+		lsminterval: lsminterval,
+	}, nil
 }
 
 func (c *elasticapmConnector) Start(ctx context.Context, host component.Host) error {

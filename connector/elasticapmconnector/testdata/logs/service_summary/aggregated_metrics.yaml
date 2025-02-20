@@ -10,6 +10,9 @@ resourceMetrics:
         - key: telemetry.sdk.language
           value:
             stringValue: go
+        - key: agent.name
+          value:
+            stringValue: unknown
     scopeMetrics:
       - scope:
           name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector

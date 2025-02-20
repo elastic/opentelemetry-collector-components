@@ -27,7 +27,8 @@ The Elastic APM connector aggregates Elastic APM-specific metrics from signals.
 ## Configuration
 
 By design, this component has minimal configuration. An empty configuration will be functional
-though we would not recommend this for production workloads.
+though we would not recommend this for production workloads; aggregation state should be stored
+on disk to avoid extreme memory usage under high throughput.
 
 By default, all aggregation state is maintained in-memory. The aggregation state can be stored
 on disk instead by specifying `elasticapm::aggregation::directory`, which should be a directory
