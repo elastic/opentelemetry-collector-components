@@ -100,7 +100,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 	}
 
 	// transactionResourceAttributes is the resource attributes included
-	// in transaction group-level aggregationed metrics.
+	// in transaction group-level aggregated metrics.
 	transactionResourceAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "container.id"},
 		{Key: "k8s.pod.name"},
@@ -182,6 +182,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 			Unit: "us",
 			ExponentialHistogram: &signaltometricsconfig.ExponentialHistogram{
+				Count:   "Int(AdjustedCount())",
 				Value: "Microseconds(end_time - start_time)",
 			},
 		}, {
@@ -195,6 +196,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Unit: "us",
 			Histogram: &signaltometricsconfig.Histogram{
 				Buckets: []float64{1},
+				Count:   "Int(AdjustedCount())",
 				Value:   "Microseconds(end_time - start_time)",
 			},
 		}, {
@@ -207,6 +209,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 			Unit: "us",
 			ExponentialHistogram: &signaltometricsconfig.ExponentialHistogram{
+				Count: "Int(AdjustedCount())",
 				Value: "Microseconds(end_time - start_time)",
 			},
 		}, {
@@ -219,6 +222,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 			Unit: "us",
 			ExponentialHistogram: &signaltometricsconfig.ExponentialHistogram{
+				Count:   "Int(AdjustedCount())",
 				Value: "Microseconds(end_time - start_time)",
 			},
 		}, {
