@@ -25,8 +25,8 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector"
 )
 
 var (

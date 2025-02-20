@@ -493,7 +493,7 @@ resourceMetrics:
             name: transaction.duration.summary
             unit: us
         scope:
-          name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector
   - resource:
       attributes:
         - key: agent.name
@@ -1198,4 +1198,4 @@ resourceMetrics:
             name: transaction.duration.summary
             unit: us
         scope:
-          name: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector
