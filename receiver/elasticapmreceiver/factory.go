@@ -48,6 +48,10 @@ func NewFactory() receiver.Factory {
 func createDefaultConfig() component.Config {
 	defaultServerConfig := confighttp.NewDefaultServerConfig()
 	defaultServerConfig.Endpoint = defaultEndpoint
+
+	// TODO: Remove this once we have a proper way to configure TLS
+	defaultServerConfig.TLSSetting = nil
+
 	return &Config{
 		ServerConfig: defaultServerConfig,
 	}
