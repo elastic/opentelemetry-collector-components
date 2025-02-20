@@ -36,12 +36,24 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 )
 
+var inputFiles = []struct {
+	inputNdJsonFileName        string
+	outputExpectedYamlFileName string
+}{
+	{"invalid_ids.ndjson", "invalid_ids_expected.yaml"},
+	{"transactions.ndjson", "transactions_expected.yaml"},
+	{"spans.ndjson", "spans_expected.yaml"},
+	{"unknown-span-type.ndjson", "unknown-span-type_expected.yaml"},
+	{"transactions_spans.ndjson", "transactions_spans_expected.yaml"},
+}
+
 func TestTransactionsAndSpans(t *testing.T) {
-	runComparison(t, "invalid_ids.ndjson", "invalid_ids_expected.yaml")
-	runComparison(t, "transactions.ndjson", "transactions_expected.yaml")
-	runComparison(t, "spans.ndjson", "spans_expected.yaml")
-	runComparison(t, "unknown-span-type.ndjson", "unknown-span-type_expected.yaml")
-	runComparison(t, "transactions_spans.ndjson", "transactions_spans_expected.yaml")
+	for _, tt := range inputFiles {
+		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
+			runComparison(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName)
+		})
+
+	}
 }
 
 func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName string) {
