@@ -27,13 +27,13 @@ import (
 	"net/http"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/sharedcomponent"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 )
 
@@ -58,8 +58,7 @@ func TestTransactionsAndSpans(t *testing.T) {
 
 	set := receivertest.NewNopSettings()
 	nextTrace := new(consumertest.TracesSink)
-	rec, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
-	receiver := rec.(*sharedcomponent.Component[*elasticAPMReceiver]).Unwrap()
+	receiver, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
 
 	if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
 		t.Errorf("Starting receiver failed: %v", err)
@@ -72,12 +71,14 @@ func TestTransactionsAndSpans(t *testing.T) {
 
 	for _, tt := range inputFiles {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
-			runComparison(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, receiver, nextTrace)
+			runComparison(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, &receiver, nextTrace, testEndpoint)
 		})
 	}
 }
 
-func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName string, rec *elasticAPMReceiver, nextTrace *consumertest.TracesSink) {
+func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName string, rec *receiver.Traces,
+	nextTrace *consumertest.TracesSink, testEndpoint string) {
+
 	testData := "testdata"
 	nextTrace.Reset()
 
@@ -86,7 +87,7 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 		t.Fatalf("failed to read file: %v", err)
 	}
 
-	resp, err := http.Post("http://"+rec.cfg.Endpoint+intakePath, "application/x-ndjson", bytes.NewBuffer(data))
+	resp, err := http.Post("http://"+testEndpoint+intakePath, "application/x-ndjson", bytes.NewBuffer(data))
 
 	if err != nil {
 		t.Fatalf("failed to send HTTP request: %v", err)
@@ -100,7 +101,8 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 
 	actualTraces := nextTrace.AllTraces()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
-	expectedTraces, _ := golden.ReadTraces(expectedFile)
+	expectedTraces, err := golden.ReadTraces(expectedFile)
+	require.NoError(t, err)
 
 	// Use this line to generate the expected yaml file:
 	// golden.WriteTraces(t, expectedFile, actualTraces)

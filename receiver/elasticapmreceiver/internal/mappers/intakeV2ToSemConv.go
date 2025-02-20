@@ -57,7 +57,7 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 
 		setHttpAttributes(event, attributes)
 
-		if event.Url != nil {
+		if event.Url != nil && event.Url.Full != "" {
 			attributes.PutStr(semconv.AttributeURLFull, event.Url.Full)
 		}
 	}
@@ -86,7 +86,7 @@ func setHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Http != nil {
 		if event.Http.Request != nil {
 			attributes.PutStr(semconv.AttributeHTTPRequestMethod, event.Http.Request.Method)
-			if event.Url != nil {
+			if event.Url != nil && event.Url.Full != "" {
 				attributes.PutStr(semconv.AttributeURLFull, event.Url.Full)
 			}
 		}

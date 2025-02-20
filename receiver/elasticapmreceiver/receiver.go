@@ -111,9 +111,6 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 
 	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.ServerConfig.Endpoint))
 
-	// TODO: Remove this once we have a proper way to configure TLS
-	r.cfg.TLSSetting = nil
-
 	var hln net.Listener
 	if hln, err = r.cfg.ServerConfig.ToListener(ctx); err != nil {
 		return err

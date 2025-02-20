@@ -59,12 +59,12 @@ resourceSpans:
               - key: http.request.method
                 value:
                   stringValue: POST
-              - key: http.response.status_code
-                value:
-                  intValue: "200"
               - key: url.full
                 value:
                   stringValue: https://www.example.com/p/a/t/h?query=string#hash
+              - key: http.response.status_code
+                value:
+                  intValue: "200"
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
@@ -137,9 +137,6 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
-              - key: url.full
-                value:
-                  stringValue: ""
               - key: db.system
                 value:
                   stringValue: sql

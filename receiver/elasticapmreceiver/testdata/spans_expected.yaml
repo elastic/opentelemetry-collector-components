@@ -319,9 +319,6 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
-              - key: url.full
-                value:
-                  stringValue: ""
               - key: db.system
                 value:
                   stringValue: sql
@@ -412,9 +409,6 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
-              - key: url.full
-                value:
-                  stringValue: ""
               - key: db.system
                 value:
                   stringValue: sql
@@ -505,9 +499,6 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
-              - key: url.full
-                value:
-                  stringValue: ""
               - key: db.system
                 value:
                   stringValue: sql
