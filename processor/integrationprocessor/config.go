@@ -25,7 +25,7 @@ import (
 
 type Config struct {
 	Name       string         `mapstructure:"name"`
-	Pipeline   *component.ID  `mapstructure:"pipeline"`
+	Pipeline   component.ID   `mapstructure:"pipeline"`
 	Version    string         `mapstructure:"version"`
 	Parameters map[string]any `mapstructure:"parameters"`
 }
@@ -33,6 +33,10 @@ type Config struct {
 func (cfg *Config) Validate() error {
 	if cfg.Name == "" {
 		return errors.New("name is required")
+	}
+
+	if cfg.Pipeline.String() == "" {
+		return errors.New("pipeline is required")
 	}
 
 	return nil

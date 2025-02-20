@@ -86,30 +86,15 @@ func (r *integrationReceiver) Start(ctx context.Context, ch component.Host) erro
 		return fmt.Errorf("failed to find integration %q: %w", r.config.Name, err)
 	}
 
-	resolver, err := newResolver(integration, r.config.Parameters)
+	config, err := integration.Resolve(ctx, r.config.Parameters, r.config.Pipelines)
 	if err != nil {
-		return fmt.Errorf("failed to create configuration resolver: %w", err)
+		return fmt.Errorf("failed to build receiver pipelines for integration %q: %w", r.config.Name, err)
 	}
-	conf, err := resolver.Resolve(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to resolve integration %q: %w", r.config.Name, err)
-	}
-
-	var integrationConfig integrations.Config
-	err = conf.Unmarshal(&integrationConfig)
-	if err != nil {
-		return fmt.Errorf("failed to decode integration %q: %w", r.config.Name, err)
-	}
-
-	pipelines, err := selectComponents(integrationConfig.Pipelines, r.config.Pipelines)
-	if err != nil {
-		return fmt.Errorf("failed to select component: %w", err)
-	}
-	for id, pipeline := range pipelines {
+	for id, pipeline := range config.Pipelines {
 		if !r.hasConsumerForPipelineType(id) {
 			continue
 		}
-		err := r.startPipeline(ctx, host, integrationConfig, id, pipeline)
+		err := r.startPipeline(ctx, host, *config, id, pipeline)
 		if err != nil {
 			// Shutdown components that had been already started for cleanup.
 			if err := r.Shutdown(ctx); err != nil {
@@ -296,33 +281,6 @@ func shutdownComponents(ctx context.Context, components []component.Component) e
 	}
 
 	return nil
-}
-
-func newResolver(integration integrations.Template, variables map[string]any) (*confmap.Resolver, error) {
-	settings := confmap.ResolverSettings{
-		URIs: []string{integration.URI()},
-		ProviderFactories: []confmap.ProviderFactory{
-			integration.ProviderFactory(),
-			newVariablesProviderFactory(variables),
-		},
-	}
-	return confmap.NewResolver(settings)
-}
-
-func selectComponents[C any](from map[component.ID]C, selection []component.ID) (map[component.ID]C, error) {
-	if len(selection) == 0 {
-		// If no selection, select all.
-		return from, nil
-	}
-	selected := make(map[component.ID]C)
-	for _, id := range selection {
-		component, found := from[id]
-		if !found {
-			return nil, fmt.Errorf("component %s not found", id.String())
-		}
-		selected[id] = component
-	}
-	return selected, nil
 }
 
 func prepareComponentConfig(create func() component.Config, config map[string]any) (component.Config, error) {

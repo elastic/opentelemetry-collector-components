@@ -19,7 +19,6 @@ package integrationprocessor // import "github.com/elastic/opentelemetry-collect
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 
@@ -92,34 +91,12 @@ func (r *integrationProcessor) Start(ctx context.Context, ch component.Host) err
 		return fmt.Errorf("failed to find integration %q: %w", r.config.Name, err)
 	}
 
-	resolver, err := newResolver(integration, r.config.Parameters)
+	config, err := integration.Resolve(ctx, r.config.Parameters, []component.ID{r.config.Pipeline})
 	if err != nil {
-		return fmt.Errorf("failed to create configuration resolver: %w", err)
+		return fmt.Errorf("failed to build pipeline for integration %q: %w", r.config.Name, err)
 	}
-	conf, err := resolver.Resolve(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to resolve integration %q: %w", r.config.Name, err)
-	}
-
-	var integrationConfig integrations.Config
-	err = conf.Unmarshal(&integrationConfig)
-	if err != nil {
-		return fmt.Errorf("failed to decode integration %q: %w", r.config.Name, err)
-	}
-
-	selectedPipelines := []component.ID{}
-	if r.config.Pipeline != nil {
-		selectedPipelines = append(selectedPipelines, *r.config.Pipeline)
-	}
-	pipelines, err := selectComponents(integrationConfig.Pipelines, selectedPipelines)
-	if err != nil {
-		return fmt.Errorf("failed to select component: %w", err)
-	}
-	if len(pipelines) > 1 {
-		return errors.New("multiple pipelines selected, select only one")
-	}
-	for id, pipeline := range pipelines {
-		err := r.startPipeline(ctx, host, integrationConfig, id, pipeline)
+	for id, pipeline := range config.Pipelines {
+		err = r.startPipeline(ctx, host, *config, id, pipeline)
 		if err != nil {
 			// Shutdown components that had been already started for cleanup.
 			if err := r.Shutdown(ctx); err != nil {
@@ -223,33 +200,6 @@ func (r *integrationProcessor) ConsumeMetrics(ctx context.Context, metrics pmetr
 
 func (r *integrationProcessor) ConsumeTraces(ctx context.Context, traces ptrace.Traces) error {
 	return r.traces.ConsumeTraces(ctx, traces)
-}
-
-func newResolver(integration integrations.Template, variables map[string]any) (*confmap.Resolver, error) {
-	settings := confmap.ResolverSettings{
-		URIs: []string{integration.URI()},
-		ProviderFactories: []confmap.ProviderFactory{
-			integration.ProviderFactory(),
-			newVariablesProviderFactory(variables),
-		},
-	}
-	return confmap.NewResolver(settings)
-}
-
-func selectComponents[C any](from map[component.ID]C, selection []component.ID) (map[component.ID]C, error) {
-	if len(selection) == 0 {
-		// If no selection, select all.
-		return from, nil
-	}
-	selected := make(map[component.ID]C)
-	for _, id := range selection {
-		component, found := from[id]
-		if !found {
-			return nil, fmt.Errorf("component %s not found", id.String())
-		}
-		selected[id] = component
-	}
-	return selected, nil
 }
 
 func prepareComponentConfig(create func() component.Config, config map[string]any) (component.Config, error) {

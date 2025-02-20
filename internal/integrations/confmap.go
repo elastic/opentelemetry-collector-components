@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package integrationreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver"
+package integrations // import "github.com/elastic/opentelemetry-collector-components/internal/integrations"
 
 import (
 	"context"

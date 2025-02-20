@@ -45,10 +45,8 @@ func (e *configTemplateExtension) FindTemplate(ctx context.Context, name, versio
 		return nil, integrations.ErrNotFound
 	}
 
-	return &integrationConfig{
-		name:        name,
-		integration: strings.ReplaceAll(integration, `$$`, `$`),
-	}, nil
+	raw := []byte(strings.ReplaceAll(integration, `$$`, `$`))
+	return integrations.NewRawTemplate(raw)
 }
 
 func (*configTemplateExtension) Start(context.Context, component.Host) error {

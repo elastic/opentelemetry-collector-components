@@ -45,7 +45,7 @@ func newFileTemplateExtension(config *Config) *fileTemplateExtension {
 
 func (e *fileTemplateExtension) FindTemplate(ctx context.Context, name, version string) (integrations.Template, error) {
 	path := filepath.Join(e.config.Path, name+".yml")
-	_, err := os.Stat(path)
+	raw, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, integrations.ErrNotFound
 	}
@@ -53,9 +53,7 @@ func (e *fileTemplateExtension) FindTemplate(ctx context.Context, name, version 
 		return nil, err
 	}
 
-	return &integrationFile{
-		path: path,
-	}, nil
+	return integrations.NewRawTemplate(raw)
 }
 
 func (*fileTemplateExtension) Start(context.Context, component.Host) error {

@@ -25,14 +25,12 @@ import (
 	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/confmap"
 )
 
 var ErrNotFound = errors.New("not found")
 
 type Template interface {
-	URI() string
-	ProviderFactory() confmap.ProviderFactory
+	Resolve(ctx context.Context, params map[string]any, pipelines []component.ID) (*Config, error)
 }
 
 type TemplateFinder interface {
@@ -101,9 +99,5 @@ type PipelineConfig struct {
 }
 
 func (p *PipelineConfig) Validate() error {
-	if len(p.Receiver.Type().String()) == 0 {
-		return fmt.Errorf("pipeline without receiver")
-	}
-
 	return nil
 }
