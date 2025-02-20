@@ -48,49 +48,45 @@ var inputFiles = []struct {
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
-	for _, tt := range inputFiles {
-		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
-			runComparison(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName)
-		})
-
-	}
-}
-
-func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName string) {
-
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig()
-	testData := "testdata"
 
 	set := receivertest.NewNopSettings()
 	nextTrace := new(consumertest.TracesSink)
 	rec, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
+	receiver := rec.(*sharedcomponent.Component[*elasticAPMReceiver]).Unwrap()
 
 	if err := rec.Start(context.Background(), componenttest.NewNopHost()); err != nil {
 		t.Errorf("Starting receiver failed: %v", err)
 	}
-
 	defer func() {
 		if err := rec.Shutdown(context.Background()); err != nil {
 			t.Errorf("Shutdown failed: %v", err)
 		}
 	}()
 
+	for _, tt := range inputFiles {
+		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
+			runComparison(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, receiver, nextTrace)
+		})
+
+	}
+}
+
+func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName string, rec *elasticAPMReceiver, nextTrace *consumertest.TracesSink) {
+	testData := "testdata"
+	nextTrace.Reset()
+
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
 	}
 
-	receiver := extractElasticAPMReceiver(rec)
-	if receiver == nil {
-		t.Fatal("Failed to extract elasticAPMReceiver")
-	}
-
 	protocol := "https"
-	if receiver.cfg.TLSSetting == nil {
+	if rec.cfg.TLSSetting == nil {
 		protocol = "http"
 	}
-	resp, err := http.Post(protocol+"://"+receiver.cfg.Endpoint+intakePath, "application/x-ndjson", bytes.NewBuffer(data))
+	resp, err := http.Post(protocol+"://"+rec.cfg.Endpoint+intakePath, "application/x-ndjson", bytes.NewBuffer(data))
 	if err != nil {
 		t.Fatalf("failed to send HTTP request: %v", err)
 	}
