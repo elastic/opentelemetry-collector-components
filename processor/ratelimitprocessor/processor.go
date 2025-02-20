@@ -27,7 +27,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/sharedcomponent"
+	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
 )
 
 type rateLimiterProcessor struct {
