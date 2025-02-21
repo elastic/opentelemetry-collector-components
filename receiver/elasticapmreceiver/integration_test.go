@@ -224,7 +224,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 		// ES writes might are not immediately available
 		assert.Eventually(t, func() bool {
 			return assert.NoError(t, createApmConfigIndex(esClient, esEndpoint))
-		}, 1*time.Minute, 1*time.Second)
+		}, 2*time.Minute, 20*time.Second)
 
 		rcvrFactory := NewFactory()
 		cfg := &Config{
