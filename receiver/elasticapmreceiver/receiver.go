@@ -32,6 +32,7 @@ import (
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -49,6 +50,13 @@ import (
 // TODO report different formats for intakev2 and rumv3?
 const dataFormatElasticAPM = "elasticapm"
 
+const (
+	agentConfigPath    = "/config/v1/agents"
+	intakeV2EventsPath = "/intake/v2/events"
+)
+
+type agentCfgFetcherFactory = func(context.Context, component.Host) (agentcfg.Fetcher, error)
+
 // elasticAPMReceiver implements support for receiving Logs, Metrics, and Traces from Elastic APM agents.
 type elasticAPMReceiver struct {
 	cfg       *Config
@@ -61,14 +69,15 @@ type elasticAPMReceiver struct {
 
 	httpServer *http.Server
 	shutdownWG sync.WaitGroup
-}
 
-const intakePath = "/intake/v2/events"
+	fetcherFactory agentCfgFetcherFactory
+	cancelFn       context.CancelFunc
+}
 
 // newElasticAPMReceiver just creates the OpenTelemetry receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods to end it.
-func newElasticAPMReceiver(cfg *Config, set receiver.Settings) (*elasticAPMReceiver, error) {
+func newElasticAPMReceiver(fetcher agentCfgFetcherFactory, cfg *Config, set receiver.Settings) (*elasticAPMReceiver, error) {
 	obsreport, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{
 		ReceiverID:             set.ID,
 		Transport:              "http",
@@ -79,14 +88,16 @@ func newElasticAPMReceiver(cfg *Config, set receiver.Settings) (*elasticAPMRecei
 	}
 
 	return &elasticAPMReceiver{
-		cfg:       cfg,
-		settings:  set,
-		obsreport: obsreport,
+		cfg:            cfg,
+		settings:       set,
+		obsreport:      obsreport,
+		fetcherFactory: fetcher,
 	}, nil
 }
 
 // Start runs an HTTP server for receiving data from Elastic APM agents.
 func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) error {
+	ctx, r.cancelFn = context.WithCancel(ctx)
 	if err := r.startHTTPServer(ctx, host); err != nil {
 		return errors.Join(err, r.Shutdown(ctx))
 	}
@@ -96,9 +107,8 @@ func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) err
 func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	httpMux := http.NewServeMux()
 
-	elasticAPMEventsHandler := r.newElasticAPMEventsHandler()
-
-	httpMux.HandleFunc(intakePath, elasticAPMEventsHandler)
+	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler())
+	httpMux.HandleFunc(agentConfigPath, r.newElasticAPMConfigsHandler(ctx, host))
 	// TODO rum v2, v3
 
 	var err error
@@ -129,6 +139,9 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 // Shutdown is a method to turn off receiving.
 func (r *elasticAPMReceiver) Shutdown(ctx context.Context) error {
 	var err error
+	if r.cancelFn != nil {
+		r.cancelFn()
+	}
 	if r.httpServer != nil {
 		err = r.httpServer.Shutdown(ctx)
 	}
