@@ -19,16 +19,20 @@ package elasticapmreceiver // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -46,6 +50,13 @@ import (
 // TODO report different formats for intakev2 and rumv3?
 const dataFormatElasticAPM = "elasticapm"
 
+const (
+	agentConfigPath    = "/config/v1/agents"
+	intakeV2EventsPath = "/intake/v2/events"
+)
+
+type agentCfgFetcherFactory = func(context.Context, component.Host) (agentcfg.Fetcher, error)
+
 // elasticAPMReceiver implements support for receiving Logs, Metrics, and Traces from Elastic APM agents.
 type elasticAPMReceiver struct {
 	cfg       *Config
@@ -58,12 +69,15 @@ type elasticAPMReceiver struct {
 
 	httpServer *http.Server
 	shutdownWG sync.WaitGroup
+
+	fetcherFactory agentCfgFetcherFactory
+	cancelFn       context.CancelFunc
 }
 
 // newElasticAPMReceiver just creates the OpenTelemetry receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods to end it.
-func newElasticAPMReceiver(cfg *Config, set receiver.Settings) (*elasticAPMReceiver, error) {
+func newElasticAPMReceiver(fetcher agentCfgFetcherFactory, cfg *Config, set receiver.Settings) (*elasticAPMReceiver, error) {
 	obsreport, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{
 		ReceiverID:             set.ID,
 		Transport:              "http",
@@ -74,14 +88,16 @@ func newElasticAPMReceiver(cfg *Config, set receiver.Settings) (*elasticAPMRecei
 	}
 
 	return &elasticAPMReceiver{
-		cfg:       cfg,
-		settings:  set,
-		obsreport: obsreport,
+		cfg:            cfg,
+		settings:       set,
+		obsreport:      obsreport,
+		fetcherFactory: fetcher,
 	}, nil
 }
 
 // Start runs an HTTP server for receiving data from Elastic APM agents.
 func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) error {
+	ctx, r.cancelFn = context.WithCancel(ctx)
 	if err := r.startHTTPServer(ctx, host); err != nil {
 		return errors.Join(err, r.Shutdown(ctx))
 	}
@@ -91,8 +107,8 @@ func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) err
 func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	httpMux := http.NewServeMux()
 
-	elasticAPMEventsHandler := r.newElasticAPMEventsHandler()
-	httpMux.HandleFunc("/intake/v2/events", elasticAPMEventsHandler)
+	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler())
+	httpMux.HandleFunc(agentConfigPath, r.newElasticAPMConfigsHandler(ctx, host))
 	// TODO rum v2, v3
 
 	var err error
@@ -104,6 +120,7 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 	}
 
 	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.ServerConfig.Endpoint))
+
 	var hln net.Listener
 	if hln, err = r.cfg.ServerConfig.ToListener(ctx); err != nil {
 		return err
@@ -122,6 +139,9 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 // Shutdown is a method to turn off receiving.
 func (r *elasticAPMReceiver) Shutdown(ctx context.Context) error {
 	var err error
+	if r.cancelFn != nil {
+		r.cancelFn()
+	}
 	if r.httpServer != nil {
 		err = r.httpServer.Shutdown(ctx)
 	}
@@ -191,8 +211,8 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 	for _, event := range *batch {
 		timestampNanos := event.GetTimestamp()
 		timestamp := time.Unix(
-			int64(timestampNanos/uint64(time.Nanosecond)),
-			int64(timestampNanos%uint64(time.Nanosecond)),
+			int64(timestampNanos/1e9), // Convert nanoseconds to seconds
+			int64(timestampNanos%1e9), // Remainder in nanoseconds
 		)
 
 		// TODO record metrics about events processed by type?
@@ -233,21 +253,13 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 			// TODO
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
-			ss := rs.ScopeSpans().AppendEmpty()
-			s := ss.Spans().AppendEmpty()
+			s := r.elasticEventToOtelSpan(&rs, event, timestamp)
 
-			duration := time.Duration(event.GetEvent().GetDuration())
-			s.SetStartTimestamp(pcommon.NewTimestampFromTime(timestamp))
-			s.SetEndTimestamp(pcommon.NewTimestampFromTime(timestamp.Add(duration)))
-
-			// TODO set attributes
 			isTransaction := event.Type() == modelpb.TransactionEventType
 			if isTransaction {
-				transaction := event.GetTransaction()
-				s.SetName(transaction.GetName())
+				r.elasticTransactionToOtelSpan(&s, event)
 			} else {
-				span := event.GetSpan()
-				s.SetName(span.GetName())
+				r.elasticSpanToOTelSpan(&s, event)
 			}
 		default:
 			return fmt.Errorf("unhandled event type %q", event.Type())
@@ -273,6 +285,103 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
+}
+
+func (r *elasticAPMReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestamp time.Time) ptrace.Span {
+	ss := rs.ScopeSpans().AppendEmpty()
+	s := ss.Spans().AppendEmpty()
+
+	traceId, err := traceIDFromHex(event.Trace.Id)
+	if err == nil {
+		s.SetTraceID(traceId)
+	} else {
+		r.settings.Logger.Error("failed to parse trace ID", zap.String("trace_id", event.Trace.Id))
+	}
+
+	if event.ParentId != "" {
+		parentId, err := spanIdFromHex(event.ParentId)
+		if err == nil {
+			s.SetParentSpanID(parentId)
+		} else {
+			r.settings.Logger.Error("failed to parse parent span ID", zap.String("parent_id", event.ParentId))
+		}
+	}
+
+	mappers.TranslateToOtelResourceAttributes(event, rs.Resource().Attributes())
+	mappers.SetDerivedFieldsCommon(event, s.Attributes())
+	mappers.SetDerivedResourceAttributes(event, rs.Resource().Attributes())
+
+	duration := time.Duration(event.GetEvent().GetDuration())
+	s.SetStartTimestamp(pcommon.NewTimestampFromTime(timestamp))
+	s.SetEndTimestamp(pcommon.NewTimestampFromTime(timestamp.Add(duration)))
+
+	if strings.EqualFold(event.Event.Outcome, "success") {
+		s.Status().SetCode(ptrace.StatusCodeOk)
+	} else if strings.EqualFold(event.Event.Outcome, "failure") {
+		s.Status().SetCode(ptrace.StatusCodeError)
+	}
+
+	return s
+}
+
+func (r *elasticAPMReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
+	s.SetName(event.Transaction.Name)
+	spanId, err := spanIdFromHex(event.Transaction.Id)
+	if err == nil {
+		s.SetSpanID(spanId)
+	} else {
+		r.settings.Logger.Error("failed to parse transaction ID", zap.String("transaction_id", event.Transaction.Id))
+	}
+
+	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
+	transaction := event.GetTransaction()
+	s.SetName(transaction.GetName())
+	mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
+
+	if event.Http != nil && event.Http.Request != nil {
+		s.SetKind(ptrace.SpanKindServer)
+	} else if event.Message != "" { // this check is TBD
+		s.SetKind(ptrace.SpanKindConsumer)
+	}
+}
+
+func (r *elasticAPMReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
+	span := event.GetSpan()
+	s.SetName(span.GetName())
+
+	spanId, err := spanIdFromHex(event.Span.Id)
+	if err == nil {
+		s.SetSpanID(spanId)
+	} else {
+		r.settings.Logger.Error("failed to parse span ID", zap.String("span_id", event.Span.Id))
+	}
+
+	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
+	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
+
+	if event.Http != nil || event.Message != "" {
+		s.SetKind(ptrace.SpanKindClient)
+	}
+}
+
+func traceIDFromHex(hexStr string) (pcommon.TraceID, error) {
+	bytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return pcommon.TraceID{}, err
+	}
+	var id pcommon.TraceID
+	copy(id[:], bytes)
+	return id, nil
+}
+
+func spanIdFromHex(hexStr string) (pcommon.SpanID, error) {
+	bytes, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return pcommon.SpanID{}, err
+	}
+	var id pcommon.SpanID
+	copy(id[:], bytes)
+	return id, nil
 }
 
 type jsonError struct {
