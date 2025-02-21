@@ -3,9 +3,9 @@ module github.com/elastic/opentelemetry-collector-components/connector/elasticap
 go 1.23.6
 
 require (
-	github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector v0.3.0
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced
 	github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.4.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.120.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.120.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.120.1
 	github.com/stretchr/testify v1.10.0
@@ -112,5 +112,3 @@ replace github.com/elastic/opentelemetry-collector-components/internal/sharedcom
 replace github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../../processor/elastictraceprocessor
 
 replace github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor => ../../processor/lsmintervalprocessor
-
-replace github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector => ../../connector/signaltometricsconnector
