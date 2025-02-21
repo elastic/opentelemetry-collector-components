@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -73,7 +74,7 @@ func TestLoadConfig(t *testing.T) {
 		},
 		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_elasticsearch_agentcfg"),
-			validateErrorMessage: "exactly one of [endpoint, endpoints, cloudid] must be specified; exactly one of [endpoint, endpoints, cloudid] must be specified",
+			validateErrorMessage: "exactly one of [endpoint, endpoints, cloudid] must be specified",
 		},
 	}
 
@@ -95,11 +96,11 @@ func TestLoadConfig(t *testing.T) {
 			require.NoError(t, sub.Unmarshal(cfg))
 
 			if tt.validateErrorMessage != "" {
-				assert.EqualError(t, component.ValidateConfig(cfg), tt.validateErrorMessage)
+				assert.ErrorContains(t, xconfmap.Validate(cfg), tt.validateErrorMessage)
 				return
 			}
 
-			assert.NoError(t, component.ValidateConfig(cfg))
+			assert.NoError(t, xconfmap.Validate(cfg))
 			assert.Equal(t, tt.expected, cfg)
 		})
 	}
