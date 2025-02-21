@@ -25,8 +25,6 @@ import (
 	"path/filepath"
 
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/confmap"
-	"go.opentelemetry.io/collector/confmap/provider/fileprovider"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
 )
@@ -62,16 +60,4 @@ func (*fileTemplateExtension) Start(context.Context, component.Host) error {
 
 func (*fileTemplateExtension) Shutdown(context.Context) error {
 	return nil
-}
-
-type integrationFile struct {
-	path string
-}
-
-func (t *integrationFile) URI() string {
-	return "file:" + t.path
-}
-
-func (t *integrationFile) ProviderFactory() confmap.ProviderFactory {
-	return fileprovider.NewFactory()
 }

@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/confmap"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
 )
@@ -54,34 +53,5 @@ func (*configTemplateExtension) Start(context.Context, component.Host) error {
 }
 
 func (*configTemplateExtension) Shutdown(context.Context) error {
-	return nil
-}
-
-type integrationConfig struct {
-	name        string
-	integration string
-}
-
-func (t *integrationConfig) URI() string {
-	return t.Scheme() + ":" + t.name
-}
-
-func (t *integrationConfig) ProviderFactory() confmap.ProviderFactory {
-	return t
-}
-
-func (t *integrationConfig) Create(_ confmap.ProviderSettings) confmap.Provider {
-	return t
-}
-
-func (t *integrationConfig) Retrieve(ctx context.Context, _ string, _ confmap.WatcherFunc) (*confmap.Retrieved, error) {
-	return confmap.NewRetrievedFromYAML([]byte(t.integration))
-}
-
-func (t *integrationConfig) Scheme() string {
-	return "config"
-}
-
-func (t *integrationConfig) Shutdown(ctx context.Context) error {
 	return nil
 }

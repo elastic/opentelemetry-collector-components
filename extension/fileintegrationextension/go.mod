@@ -8,7 +8,6 @@ require (
 	go.opentelemetry.io/collector/component v0.114.0
 	go.opentelemetry.io/collector/component/componenttest v0.114.0
 	go.opentelemetry.io/collector/confmap v1.20.0
-	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.20.0
 	go.opentelemetry.io/collector/extension v0.114.0
 	go.opentelemetry.io/collector/extension/extensiontest v0.114.0
 	go.uber.org/goleak v1.3.0
