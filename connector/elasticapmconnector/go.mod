@@ -112,5 +112,3 @@ replace github.com/elastic/opentelemetry-collector-components/internal/sharedcom
 replace github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../../processor/elastictraceprocessor
 
 replace github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor => ../../processor/lsmintervalprocessor
-
-replace github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector => ../../connector/signaltometricsconnector
