@@ -30,10 +30,13 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 )
 
+// RawTemplate implements the Template interface for raw YAML content.
+// Unused components are removed after resolving it, so the variables they contain are not required.
 type RawTemplate struct {
 	source rawYAMLConfig
 }
 
+// NewRawTemplate creates a new RawTemplate from raw YAML content.
 func NewRawTemplate(raw []byte) (*RawTemplate, error) {
 	var source rawYAMLConfig
 	err := yaml.Unmarshal(raw, &source)
@@ -46,18 +49,23 @@ func NewRawTemplate(raw []byte) (*RawTemplate, error) {
 	return &RawTemplate{source: source}, nil
 }
 
+// Resolve resolves the template using a confmap resolver.
 func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipelines []component.ID) (*Config, error) {
-	selectedPipelines, err := selectComponents(t.source.Pipelines, pipelines)
-	if err != nil {
-		return nil, err
+	selectedPipelines := t.source.Pipelines
+	if len(pipelines) > 0 {
+		var err error
+		selectedPipelines, err = selectComponents(t.source.Pipelines, pipelines)
+		if err != nil {
+			return nil, fmt.Errorf("selecting pipelines: %w", err)
+		}
 	}
 	selectedReceivers, err := selectComponents(t.source.Receivers, listReceivers(selectedPipelines))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("selecting receivers: %w", err)
 	}
 	selectedProcessors, err := selectComponents(t.source.Processors, listProcessors(selectedPipelines))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("selecting processors: %w", err)
 	}
 
 	factory := newConfmapProviderFactory(rawYAMLConfig{
@@ -65,7 +73,7 @@ func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipeli
 		Receivers:  selectedReceivers,
 		Processors: selectedProcessors,
 	})
-	resolver, err := t.newResolver(factory, params)
+	resolver, err := newResolver(factory, params)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +89,7 @@ func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipeli
 	return &config, config.Validate()
 }
 
-func (t *RawTemplate) newResolver(factory confmap.ProviderFactory, variables map[string]any) (*confmap.Resolver, error) {
+func newResolver(factory confmap.ProviderFactory, variables map[string]any) (*confmap.Resolver, error) {
 	settings := confmap.ResolverSettings{
 		URIs: []string{"config:main"},
 		ProviderFactories: []confmap.ProviderFactory{
@@ -94,14 +102,13 @@ func (t *RawTemplate) newResolver(factory confmap.ProviderFactory, variables map
 
 func selectComponents[C any](from map[component.ID]C, selection []component.ID) (map[component.ID]C, error) {
 	if len(selection) == 0 {
-		// If no selection, select all.
-		return from, nil
+		return nil, nil
 	}
 	selected := make(map[component.ID]C)
 	for _, id := range selection {
 		component, found := from[id]
 		if !found {
-			return nil, fmt.Errorf("component %s not found", id.String())
+			return nil, fmt.Errorf("component %q not found", id.String())
 		}
 		selected[id] = component
 	}
@@ -139,7 +146,7 @@ func (c *rawYAMLConfig) Validate() error {
 		}
 
 		if _, found := c.Receivers[pipeline.Receiver]; !found {
-			return fmt.Errorf("receiver %s not defined", pipeline.Receiver.String())
+			return fmt.Errorf("receiver %q not defined", pipeline.Receiver.String())
 		}
 
 		for _, processor := range pipeline.Processors {
