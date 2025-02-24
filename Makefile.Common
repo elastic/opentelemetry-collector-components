@@ -1,7 +1,8 @@
 SHELL = /usr/bin/env bash
 
 GOTEST_TIMEOUT?=240s
-GOTEST_OPT?= -race -timeout $(GOTEST_TIMEOUT)
+GOTEST_OPT?= -race -cover -timeout $(GOTEST_TIMEOUT)
+GOTEST_INTEGRATION_OPT?= $(GOTEST_OPT) -parallel 4 -tags=integration
 GOCMD?= go
 GOTEST=$(GOCMD) test
 GOOS := $(shell $(GOCMD) env GOOS)
@@ -38,6 +39,10 @@ $(TOOLS_BIN_NAMES): $(TOOLS_BIN_DIR) $(TOOLS_MOD_DIR)/go.mod
 .PHONY: test
 test:
 	$(GOTEST) $(GOTEST_OPT) ./...
+
+.PHONY: integration-test
+integration-test:
+	$(GOTEST) $(GOTEST_INTEGRATION_OPT) ./...
 
 .PHONY: fmt
 fmt:

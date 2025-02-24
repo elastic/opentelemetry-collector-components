@@ -63,6 +63,21 @@ updates:
         update-types: [ "version-update:semver-major" ]
 
   - package-ecosystem: "gomod"
+    directory: "/connector/elasticapmconnector"
+    schedule:
+      interval: "daily"
+    labels:
+      - automation
+    groups:
+      otel-dependencies:
+        patterns:
+          - "go.opentelemetry.io/*"
+          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "gomod"
     directory: "/connector/signaltometricsconnector"
     schedule:
       interval: "daily"
@@ -79,6 +94,21 @@ updates:
 
   - package-ecosystem: "gomod"
     directory: "/receiver/loadgenreceiver"
+    schedule:
+      interval: "daily"
+    labels:
+      - automation
+    groups:
+      otel-dependencies:
+        patterns:
+          - "go.opentelemetry.io/*"
+          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "gomod"
+    directory: "/receiver/elasticapmreceiver"
     schedule:
       interval: "daily"
     labels:
