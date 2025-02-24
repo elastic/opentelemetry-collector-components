@@ -19,16 +19,18 @@ package centralconfig // import "github.com/elastic/opentelemetry-collector-comp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
-	otelapmconfig "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opamp-go/protobufs"
 	semconv "go.opentelemetry.io/collector/semconv/v1.26.0"
 	"go.uber.org/zap"
 )
+
+const configContentType = "text/json"
 
 var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
 
@@ -51,7 +53,7 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration,
 	}
 }
 
-func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
+func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
 	var serviceParams agentcfg.Service
 	if agentMsg.AgentDescription != nil {
 		for _, attr := range agentMsg.GetAgentDescription().GetIdentifyingAttributes() {
@@ -67,14 +69,26 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobu
 		serviceParams = fw.uidToService[string(agentMsg.GetInstanceUid())]
 	}
 	if serviceParams.Name == "" {
-		return apmconfig.RemoteConfig{}, fmt.Errorf("%w: service.name attribute must be provided", apmconfig.UnidentifiedAgent)
+		return nil, fmt.Errorf("%w: service.name attribute must be provided", apmconfig.UnidentifiedAgent)
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{
 		Service: serviceParams,
 	})
 	if err != nil {
-		return apmconfig.RemoteConfig{}, err
+		return nil, err
 	}
 
-	return otelapmconfig.RemoteConfig{Hash: []byte(result.Source.Etag), Attrs: result.Source.Settings}, nil
+	marshallConfig, err := json.Marshal(result.Source.Settings)
+	if err != nil {
+		return nil, err
+	}
+
+	return &protobufs.AgentRemoteConfig{ConfigHash: []byte(result.Source.Etag), Config: &protobufs.AgentConfigMap{
+		ConfigMap: map[string]*protobufs.AgentConfigFile{
+			"": {
+				Body:        marshallConfig,
+				ContentType: configContentType,
+			},
+		},
+	}}, nil
 }

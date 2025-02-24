@@ -30,10 +30,10 @@ import (
 )
 
 type remoteConfigMock struct {
-	remoteConfigFn func(context.Context, *protobufs.AgentToServer) (apmconfig.RemoteConfig, error)
+	remoteConfigFn func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error)
 }
 
-func (f *remoteConfigMock) RemoteConfig(ctx context.Context, msg *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
+func (f *remoteConfigMock) RemoteConfig(ctx context.Context, msg *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
 	return f.remoteConfigFn(ctx, msg)
 }
 
@@ -62,8 +62,8 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
-					return apmconfig.RemoteConfig{}, nil
+				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+					return nil, nil
 				},
 			}, zap.NewNop()),
 		},
@@ -84,8 +84,8 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
-					return apmconfig.RemoteConfig{}, errors.New("testing error")
+				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+					return nil, errors.New("testing error")
 				},
 			}, zap.NewNop()),
 		},
@@ -107,8 +107,8 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
-					return apmconfig.RemoteConfig{}, apmconfig.UnidentifiedAgent
+				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+					return nil, apmconfig.UnidentifiedAgent
 				},
 			}, zap.NewNop()),
 		},
@@ -149,10 +149,17 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
-					return apmconfig.RemoteConfig{
-						Hash:  []byte("abcd"),
-						Attrs: map[string]string{"test": "aaa"},
+				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+					return &protobufs.AgentRemoteConfig{
+						ConfigHash: []byte("abcd"),
+						Config: &protobufs.AgentConfigMap{
+							ConfigMap: map[string]*protobufs.AgentConfigFile{
+								"": {
+									ContentType: "text/json",
+									Body:        []byte(`{"test":"aaa"}`),
+								},
+							},
+						},
 					}, nil
 				},
 			}, zap.NewNop()),
@@ -185,10 +192,17 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
-					return apmconfig.RemoteConfig{
-						Hash:  []byte("abcd"),
-						Attrs: map[string]string{"test": "aaa"},
+				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+					return &protobufs.AgentRemoteConfig{
+						ConfigHash: []byte("abcd"),
+						Config: &protobufs.AgentConfigMap{
+							ConfigMap: map[string]*protobufs.AgentConfigFile{
+								"": {
+									ContentType: "text/json",
+									Body:        []byte(`{"test":"aaa"}`),
+								},
+							},
+						},
 					}, nil
 				},
 			}, zap.NewNop()),
@@ -221,10 +235,17 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (apmconfig.RemoteConfig, error) {
-					return apmconfig.RemoteConfig{
-						Hash:  []byte("abcd"),
-						Attrs: map[string]string{"test": "aaa"},
+				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+					return &protobufs.AgentRemoteConfig{
+						ConfigHash: []byte("abcd"),
+						Config: &protobufs.AgentConfigMap{
+							ConfigMap: map[string]*protobufs.AgentConfigFile{
+								"": {
+									ContentType: "text/json",
+									Body:        []byte(`{"test":"aaa"}`),
+								},
+							},
+						},
 					}, nil
 				},
 			}, zap.NewNop()),

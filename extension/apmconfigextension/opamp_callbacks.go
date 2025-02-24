@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -73,25 +72,6 @@ func (rc *remoteConfigCallbacks) serverError(msg string, message *protobufs.Serv
 	return message
 }
 
-func bundleJsonConfig(remoteConfig apmconfig.RemoteConfig, serverToAgent *protobufs.ServerToAgent) error {
-	marshallConfig, err := json.Marshal(remoteConfig.Attrs)
-	if err != nil {
-		return err
-	}
-	serverToAgent.RemoteConfig = &protobufs.AgentRemoteConfig{
-		ConfigHash: remoteConfig.Hash,
-		Config: &protobufs.AgentConfigMap{
-			ConfigMap: map[string]*protobufs.AgentConfigFile{
-				"": {
-					Body:        marshallConfig,
-					ContentType: "text/json",
-				},
-			},
-		},
-	}
-	return nil
-}
-
 // OnMessage is called when a message is received from the connection. Can happen
 // only after OnConnected(). Must return a ServerToAgent message that will be sent
 // as a response to the Agent.
@@ -123,16 +103,17 @@ func (rc *remoteConfigCallbacks) OnMessage(ctx context.Context, conn types.Conne
 			serverToAgent.Flags = uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState)
 		}
 		return rc.serverError(fmt.Sprintf("error retrieving remote configuration: %s", err), &serverToAgent)
-	} else if message.GetRemoteConfigStatus() != nil && message.GetRemoteConfigStatus().Status == protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED && bytes.Equal(remoteConfig.Hash, message.RemoteConfigStatus.GetLastRemoteConfigHash()) {
-		rc.logger.Info("Remote config applied", zap.String("hash", hex.EncodeToString(remoteConfig.Hash)), agentUidField)
-		rc.lastConfigHash.Store(agentUid, message.RemoteConfigStatus.GetLastRemoteConfigHash())
-	} else if lastHash, found := rc.lastConfigHash.Load(agentUid); !found || !bytes.Equal(lastHash.([]byte), remoteConfig.Hash) {
-		rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.Hash)))
+	} else if remoteConfig == nil {
+		// nothing to be applied
+		return &serverToAgent
+	}
 
-		err := bundleJsonConfig(remoteConfig, &serverToAgent)
-		if err != nil {
-			return rc.serverError(fmt.Sprintf("error marshaling remote configuration: %s", err), &serverToAgent)
-		}
+	if message.GetRemoteConfigStatus() != nil && message.GetRemoteConfigStatus().Status == protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED && bytes.Equal(remoteConfig.ConfigHash, message.RemoteConfigStatus.GetLastRemoteConfigHash()) {
+		rc.logger.Info("Remote config applied", zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)), agentUidField)
+		rc.lastConfigHash.Store(agentUid, message.RemoteConfigStatus.GetLastRemoteConfigHash())
+	} else if lastHash, found := rc.lastConfigHash.Load(agentUid); !found || !bytes.Equal(lastHash.([]byte), remoteConfig.ConfigHash) {
+		rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)))
+		serverToAgent.RemoteConfig = remoteConfig
 	}
 
 	return &serverToAgent

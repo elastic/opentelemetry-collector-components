@@ -30,12 +30,5 @@ var UnidentifiedAgent = errors.New("agent could not be identified")
 // remote configuration providers.
 type RemoteConfigClient interface {
 	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
-	RemoteConfig(context.Context, *protobufs.AgentToServer) (RemoteConfig, error)
-}
-
-// RemoteConfig holds an agent remote configuration.
-type RemoteConfig struct {
-	Hash []byte
-
-	Attrs map[string]string
+	RemoteConfig(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error)
 }
