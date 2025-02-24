@@ -43,7 +43,7 @@ func NewFactory() extension.Factory {
 func createDefaultConfig() component.Config {
 	defaultElasticSearchClient := configelasticsearch.NewDefaultClientConfig()
 	return &Config{
-		RemoteConfig: RemoteConfig{
+		AgentConfig: AgentConfig{
 			Elasticsearch: defaultElasticSearchClient,
 			// using apm-server default
 			CacheDuration: 30 * time.Second,
@@ -59,11 +59,11 @@ func createDefaultConfig() component.Config {
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
 	extCfg := cfg.(*Config)
 	elasticsearchRemoteConfig := func(ctx context.Context, host component.Host, telemetry component.TelemetrySettings) (apmconfig.RemoteConfigClient, error) {
-		esClient, err := extCfg.RemoteConfig.Elasticsearch.ToClient(ctx, host, telemetry)
+		esClient, err := extCfg.AgentConfig.Elasticsearch.ToClient(ctx, host, telemetry)
 		if err != nil {
 			return nil, err
 		}
-		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.RemoteConfig.CacheDuration, telemetry.Logger)
+		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.AgentConfig.CacheDuration, telemetry.Logger)
 		go func() {
 			err := fetcher.Run(ctx)
 			if err != nil {
@@ -71,7 +71,7 @@ func createExtension(_ context.Context, set extension.Settings, cfg component.Co
 			}
 		}()
 
-		return centralconfig.NewFetcherAPMWatcher(fetcher, extCfg.RemoteConfig.CacheDuration, telemetry.Logger), nil
+		return centralconfig.NewFetcherAPMWatcher(fetcher, extCfg.AgentConfig.CacheDuration, telemetry.Logger), nil
 	}
 	return newApmConfigExtension(cfg.(*Config), set, elasticsearchRemoteConfig), nil
 }

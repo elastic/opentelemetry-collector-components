@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"github.com/open-telemetry/opamp-go/protobufs"
@@ -49,7 +50,7 @@ const (
 )
 
 func TestIntegration(t *testing.T) {
-	t.Run("8.17.0", apmConfigintegrationTest("8_17_0"))
+	t.Run("8.17.x", apmConfigintegrationTest("8_17_x"))
 }
 
 func apmConfigintegrationTest(name string) func(t *testing.T) {
@@ -191,7 +192,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 		extFactory := NewFactory()
 		cfg := &Config{
-			RemoteConfig: RemoteConfig{
+			AgentConfig: AgentConfig{
 				Elasticsearch: configelasticsearch.ClientConfig{
 					Endpoints: []string{esEndpoint},
 				},
@@ -203,7 +204,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 			},
 		}
-		ext, err := extFactory.Create(ttCtx, extensiontest.NewNopSettings(), cfg)
+		ext, err := extFactory.Create(ttCtx, extensiontest.NewNopSettingsWithType(metadata.Type), cfg)
 		require.NoError(t, err)
 
 		err = ext.Start(ttCtx, componenttest.NewNopHost())

@@ -25,11 +25,11 @@ import (
 )
 
 type Config struct {
-	RemoteConfig RemoteConfig `mapstructure:"agent_config"`
-	OpAMP        OpAMPConfig  `mapstructure:"opamp"`
+	AgentConfig AgentConfig `mapstructure:"agent_config"`
+	OpAMP       OpAMPConfig `mapstructure:"opamp"`
 }
 
-type RemoteConfig struct {
+type AgentConfig struct {
 	Elasticsearch configelasticsearch.ClientConfig `mapstructure:"elasticsearch"`
 	CacheDuration time.Duration                    `mapstructure:"cache_duration"`
 }
