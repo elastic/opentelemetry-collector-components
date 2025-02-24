@@ -46,10 +46,10 @@ type fetcherAPMWatcher struct {
 
 func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration, logger *zap.Logger) *fetcherAPMWatcher {
 	return &fetcherAPMWatcher{
-		fetcher,
-		cacheDuration,
-		make(map[string]agentcfg.Service),
-		logger,
+		configFetcher: fetcher,
+		cacheDuration: cacheDuration,
+		uidToService:  make(map[string]agentcfg.Service),
+		logger:        logger,
 	}
 }
 
