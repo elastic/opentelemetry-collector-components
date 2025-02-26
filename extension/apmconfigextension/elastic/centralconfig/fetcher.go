@@ -55,8 +55,8 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration,
 
 func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
 	var serviceParams agentcfg.Service
-	if agentMsg.AgentDescription != nil {
-		for _, attr := range agentMsg.GetAgentDescription().GetIdentifyingAttributes() {
+	if agentDescription := agentMsg.GetAgentDescription(); agentDescription != nil {
+		for _, attr := range agentDescription.GetIdentifyingAttributes() {
 			switch attr.GetKey() {
 			case semconv.AttributeServiceName:
 				serviceParams.Name = attr.GetValue().GetStringValue()
