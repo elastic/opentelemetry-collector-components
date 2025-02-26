@@ -187,8 +187,11 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		err = createApmConfigIndex(esClient, esEndpoint)
-		require.NoError(t, err)
+
+		// ES writes might are not immediately available
+		assert.Eventually(t, func() bool {
+			return assert.NoError(t, createApmConfigIndex(esClient, esEndpoint))
+		}, 2*time.Minute, 20*time.Second)
 
 		extFactory := NewFactory()
 		cfg := &Config{
