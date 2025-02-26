@@ -65,8 +65,7 @@ func createExtension(_ context.Context, set extension.Settings, cfg component.Co
 		}
 		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.AgentConfig.CacheDuration, telemetry.Logger)
 		go func() {
-			err := fetcher.Run(ctx)
-			if err != nil {
+			if err := fetcher.Run(ctx); err != nil {
 				set.Logger.Error(err.Error())
 			}
 		}()
