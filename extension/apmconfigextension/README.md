@@ -12,7 +12,7 @@ the
 [service.name](https://www.elastic.co/guide/en/ecs/1.12/ecs-service.html#field-service-name)
 and
 [service.environment](https://www.elastic.co/guide/en/ecs/1.12/ecs-service.html#field-service-environment)
-(optional) attributes. These attributes **must** be set on the [AgentDescription.identifying_attributes](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agentdescriptionidentifying_attributes) field during the first send [AgentToServer](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agenttoserver-message) message. As the `AgentDescription` should not be send if not changed, the extension will maintain and internal mapping between the `agent.instance_id` and its service identifing attributes.
+(optional) attributes. These attributes **must** be set on the [AgentDescription.identifying_attributes](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agentdescriptionidentifying_attributes) field during the first send [AgentToServer](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agenttoserver-message) message. As the `AgentDescription` should not be send if not changed, the extension will maintain an internal mapping between the `agent.instance_id` and its service identifing attributes.
 
 The [ServerToAgent.ReportFullState flag](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#servertoagentflags) will be set in the following cases:
 
