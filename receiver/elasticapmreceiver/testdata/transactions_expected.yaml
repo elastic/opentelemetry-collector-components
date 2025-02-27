@@ -28,7 +28,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -55,7 +55,7 @@ resourceSpans:
                   stringValue: Success
               - key: transaction.duration.us
                 value:
-                  intValue: "32592981"
+                  intValue: "32592"
             endTimeUnixNano: "1496170407186592981"
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e
@@ -92,7 +92,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -119,7 +119,7 @@ resourceSpans:
                   stringValue: success
               - key: transaction.duration.us
                 value:
-                  intValue: "32592981"
+                  intValue: "32592"
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -167,7 +167,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -194,7 +194,7 @@ resourceSpans:
                   stringValue: ""
               - key: transaction.duration.us
                 value:
-                  intValue: "13980558"
+                  intValue: "13980"
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -237,7 +237,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -264,7 +264,7 @@ resourceSpans:
                   stringValue: ""
               - key: transaction.duration.us
                 value:
-                  intValue: "3000000"
+                  intValue: "3000"
             endTimeUnixNano: "1496170407157000000"
             name: amqp receive
             parentSpanId: abcdefabcdef0123
@@ -301,7 +301,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1631736666365048000"
+                  intValue: "1631736666365048"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -328,7 +328,7 @@ resourceSpans:
                   stringValue: success
               - key: transaction.duration.us
                 value:
-                  intValue: "38853000"
+                  intValue: "38853"
             endTimeUnixNano: "1631736666403901000"
             name: july-2021-delete-after-july-31
             parentSpanId: ""
