@@ -101,7 +101,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		}},
 	})
 	if err != nil {
-		return fmt.Errorf("error executing gubernator rate limit request: %w", err)
+		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
+		return errors.New("error executing gubernator rate limit request")
 	}
 
 	// Inside the gRPC response, we should have a single-item list of responses.
@@ -111,7 +112,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 	resp := responses[0]
 	if resp.GetError() != "" {
-		return errors.New(resp.GetError())
+		r.set.Logger.Error("failed to get valid response from gubernator", zap.Error(errors.New(resp.GetError())))
+		return errors.New("failed to get valid response from gubernator")
 	}
 
 	if resp.GetStatus() != gubernator.Status_UNDER_LIMIT {
