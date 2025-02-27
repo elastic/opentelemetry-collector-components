@@ -40,7 +40,6 @@ import (
 )
 
 var _ processor.Metrics = (*Processor)(nil)
-var zeroTime = time.Unix(0, 0).UTC()
 
 const (
 	// pebbleMemTableSize defines the max steady state size of a memtable.
@@ -430,7 +429,8 @@ func (p *Processor) export(ctx context.Context, end time.Time) error {
 	for _, ivl := range p.intervals {
 		// Check if the given aggregation interval needs to be exported now
 		if end.Truncate(ivl.Duration).Equal(end) {
-			exportedCount, err := p.exportForInterval(ctx, snap, end, ivl)
+			start := end.Add(-ivl.Duration)
+			exportedCount, err := p.exportForInterval(ctx, snap, start, end, ivl)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to export interval %s for end time %d: %w", ivl.Duration, end.Unix(), err))
 			}
@@ -449,11 +449,11 @@ func (p *Processor) export(ctx context.Context, end time.Time) error {
 func (p *Processor) exportForInterval(
 	ctx context.Context,
 	snap *pebble.Snapshot,
-	end time.Time,
+	start, end time.Time,
 	ivl intervalDef,
 ) (int, error) {
 	var boundsBuffer []byte
-	from := merger.Key{Interval: ivl.Duration, ProcessingTime: zeroTime}
+	from := merger.Key{Interval: ivl.Duration, ProcessingTime: start}
 	boundsBuffer, err := from.AppendBinary(nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode range: %w", err)
@@ -479,7 +479,8 @@ func (p *Processor) exportForInterval(
 
 	var errs []error
 	var exportedDPCount int
-	for iter.First(); iter.Valid(); iter.Next() {
+	rangeHasData := iter.First()
+	for ; iter.Valid(); iter.Next() {
 		v := merger.NewValue(
 			p.cfg.ResourceLimit,
 			p.cfg.ScopeLimit,
@@ -564,8 +565,10 @@ func (p *Processor) exportForInterval(
 		}
 		exportedDPCount += finalMetrics.DataPointCount()
 	}
-	if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
-		errs = append(errs, fmt.Errorf("failed to delete exported entries: %w", err))
+	if rangeHasData {
+		if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
+			errs = append(errs, fmt.Errorf("failed to delete exported entries: %w", err))
+		}
 	}
 	if len(errs) > 0 {
 		return exportedDPCount, errors.Join(errs...)
