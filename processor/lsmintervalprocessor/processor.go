@@ -56,7 +56,7 @@ const (
 	// large batches will need to be reallocated. Note that large batch
 	// classification uses the memtable size that a batch will occupy
 	// rather than the length of data slice backing the batch.
-	pebbleMemTableSize = 64 << 20 // 64MB
+	pebbleMemTableSize = 32 << 20 // 32MB
 
 	// pebbleMemTableStopWritesThreshold is the hard limit on the maximum
 	// number of memtables that could be queued before which writes are
