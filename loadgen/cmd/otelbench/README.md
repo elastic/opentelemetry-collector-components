@@ -130,18 +130,19 @@ It is possible to run with a customized config to avoid passing in command line 
 ./otelbench -config=./my-custom-config.yaml
 ```
 
-## Create new release
+## Contribute
 
-**First step**: Add a changelog entry:
+If you want to contribute to any go files, you need to create a changelog entry:
 
 1. Create a changelog entry by running `make chlog-new`.
 2. Validate your changelog entry by running `make chlog-validate`.
 3. If you want to preview the future `CHANGELOG.md` you can also run `make chlog-preview`.
 
-**Second step**: TODO
+## Create new release
+
+TODO
 <!-----
-Have a workflow that gets triggered by the changelog_otelbench,
-updates the CHANGELOG.md and pushes the image to elastic container
+Have a workflow that gets triggered by a version update (maybe the version from the MAKEFILE, maybe another option), and runs `$(CHLOGGEN) update --version $(VERSION)`, updating the CHANGELOG.md and deleting all changelog fragments + it pushes a new image to elastic container
 registry.
 ---->
 
