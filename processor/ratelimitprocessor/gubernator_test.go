@@ -26,7 +26,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -127,7 +126,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 			resp.Responses = []*gubernator.RateLimitResp{{Error: "yeah, nah"}}
 			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, "yeah, nah")
+			assert.EqualError(t, err, errRateLimitInternalError.Error())
 
 			resp.Responses = []*gubernator.RateLimitResp{}
 			err = rateLimiter.RateLimit(context.Background(), 1)
@@ -146,50 +145,42 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 			respErr = errors.New("nope")
 			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, "error executing gubernator rate limit request: rpc error: code = Unknown desc = nope")
+			assert.EqualError(t, err, errRateLimitInternalError.Error())
 		})
 	}
 }
 
-func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
-	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            2,
-		MetadataKeys:     []string{"metadata_key"},
-		ThrottleBehavior: ThrottleBehaviorError,
-	})
+func TestGubernatorRateLimiter_InternalError(t *testing.T) {
+	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: ThrottleBehaviorDelay})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
-	clientContext1 := client.NewContext(context.Background(), client.Info{
-		Metadata: client.NewMetadata(map[string][]string{
-			"metadata_key": {"value1"},
-		}),
-	})
-	clientContext2 := client.NewContext(context.Background(), client.Info{
-		Metadata: client.NewMetadata(map[string][]string{
-			"metadata_key": {"value2"},
-		}),
-	})
-
+	var resp gubernator.GetRateLimitsResp
 	var req *gubernator.GetRateLimitsReq
+	var respErr error
 	server.getRateLimits = func(ctx context.Context, reqIn *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
 		req = reqIn
-		return &gubernator.GetRateLimitsResp{
-			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}},
-		}, nil
+		return &resp, respErr
 	}
 
-	// Each unique combination of metadata keys should get its own rate limit.
-	err = rateLimiter.RateLimit(clientContext1, 1)
+	resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}}
+	err = rateLimiter.RateLimit(context.Background(), 1)
 	assert.NoError(t, err)
-	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
-	assert.Equal(t, "metadata_key:value1", req.Requests[0].UniqueKey)
+	require.NotNil(t, req)
+	require.Len(t, req.Requests, 1)
+	// CreatedAt is based on time.Now(). Check it is not nil, then nil it out for the next assertion.
+	assert.NotNil(t, req.Requests[0].CreatedAt)
+	req.Requests[0].CreatedAt = nil
+	assert.Equal(t, &gubernator.RateLimitReq{
+		Name:      "ratelimit/abc123",
+		UniqueKey: "default",
+		Hits:      1,
+		Limit:     1,
+		Burst:     2,
+		Duration:  1000,
+		Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
+	}, req.Requests[0])
 
-	err = rateLimiter.RateLimit(clientContext2, 1)
-	assert.NoError(t, err)
-	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
-	assert.Equal(t, "metadata_key:value2", req.Requests[0].UniqueKey)
 }
 
 type testServer struct {
