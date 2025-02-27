@@ -44,7 +44,7 @@ jobs:
             echo "Please add an entry to the changelog by running `make chlog-new`."
             false
           else
-            echo "CHANGELOG.md was not modified."
+            echo "./loadgen/cmd/otelbench/CHANGELOG.md was not modified."
           fi
 
       - name: Validate loadgen/cmd/otelbench/.chloggen/*.yaml changes
