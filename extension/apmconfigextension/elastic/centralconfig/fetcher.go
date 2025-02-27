@@ -54,8 +54,8 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration,
 }
 
 func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
-	var serviceParams agentcfg.Service
 	if agentDescription := agentMsg.GetAgentDescription(); agentDescription != nil {
+		var serviceParams agentcfg.Service
 		for _, attr := range agentDescription.GetIdentifyingAttributes() {
 			switch attr.GetKey() {
 			case semconv.AttributeServiceName:
@@ -64,11 +64,14 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobu
 				serviceParams.Environment = attr.GetValue().GetStringValue()
 			}
 		}
-		fw.uidToService[string(agentMsg.GetInstanceUid())] = serviceParams
-	} else {
-		serviceParams = fw.uidToService[string(agentMsg.GetInstanceUid())]
+		// only update the internal cache if service name is set
+		if serviceParams.Name != "" {
+			fw.uidToService[string(agentMsg.GetInstanceUid())] = serviceParams
+		}
 	}
-	if serviceParams.Name == "" {
+
+	serviceParams, ok := fw.uidToService[string(agentMsg.GetInstanceUid())]
+	if !ok || serviceParams.Name == "" {
 		return nil, fmt.Errorf("%w: service.name attribute must be provided", apmconfig.UnidentifiedAgent)
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{

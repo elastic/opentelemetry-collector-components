@@ -171,6 +171,71 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 					require.NoError(t, err)
 				},
 			},
+			{
+				name: "agent provides new agent description without service.name",
+				opampMessages: []inOutOpamp{
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test-2"),
+							AgentDescription: &protobufs.AgentDescription{
+								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent2"}},
+									},
+								},
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test-2"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("abcd"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"": {
+											Body:        []byte(`{"transaction_max_spans":"124"}`),
+											ContentType: "text/json",
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test-2"),
+							AgentDescription: &protobufs.AgentDescription{
+								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.environment",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent"}},
+									},
+								},
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test-2"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("abcd"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"": {
+											Body:        []byte(`{"transaction_max_spans":"124"}`),
+											ContentType: "text/json",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
+					err := writeAgentIndex(client, "abcd", map[string]string{"name": "test-agent2"}, map[string]string{"transaction_max_spans": "124"})
+					require.NoError(t, err)
+				},
+			},
 		}
 
 		ttCtx := context.Background()
