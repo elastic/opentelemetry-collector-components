@@ -26,6 +26,7 @@ GOVULNCHECK  := $(TOOLS_BIN_DIR)/govulncheck
 PORTO        := $(TOOLS_BIN_DIR)/porto
 BUILDER      := $(TOOLS_BIN_DIR)/builder
 LICENSER     := $(TOOLS_BIN_DIR)/go-licenser
+CHLOGGEN     := $(TOOLS_BIN_DIR)/chloggen
 
 .PHONY: install-tools
 install-tools: $(TOOLS_BIN_NAMES)
