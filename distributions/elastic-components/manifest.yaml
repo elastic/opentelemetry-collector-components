@@ -12,6 +12,7 @@ extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.120.1
   - gomod: go.opentelemetry.io/collector/extension/memorylimiterextension v0.120.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension v0.117.0
 
 connectors:
   - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.0.0
@@ -72,5 +73,6 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ../receiver/loadgenreceiver
   - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../processor/ratelimitprocessor
   - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension => ../extension/beatsauthextension
+  - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension => ../extension/apmconfigextension
   - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector => ../connector/elasticapmconnector
   - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver => ../receiver/elasticapmreceiver

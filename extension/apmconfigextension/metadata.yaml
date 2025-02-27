@@ -1,0 +1,15 @@
+type: apmconfig
+
+status:
+  class: extension
+  stability:
+    development: [extension]
+  distributions: []
+  codeowners:
+    active: [rogercoll]
+
+tests:
+  config:
+    agent_config:
+      elasticsearch:
+        endpoint: http://localhost:8200
