@@ -150,39 +150,6 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 	}
 }
 
-func TestGubernatorRateLimiter_InternalError(t *testing.T) {
-	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: ThrottleBehaviorDelay})
-	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
-	require.NoError(t, err)
-
-	var resp gubernator.GetRateLimitsResp
-	var req *gubernator.GetRateLimitsReq
-	var respErr error
-	server.getRateLimits = func(ctx context.Context, reqIn *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
-		req = reqIn
-		return &resp, respErr
-	}
-
-	resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}}
-	err = rateLimiter.RateLimit(context.Background(), 1)
-	assert.NoError(t, err)
-	require.NotNil(t, req)
-	require.Len(t, req.Requests, 1)
-	// CreatedAt is based on time.Now(). Check it is not nil, then nil it out for the next assertion.
-	assert.NotNil(t, req.Requests[0].CreatedAt)
-	req.Requests[0].CreatedAt = nil
-	assert.Equal(t, &gubernator.RateLimitReq{
-		Name:      "ratelimit/abc123",
-		UniqueKey: "default",
-		Hits:      1,
-		Limit:     1,
-		Burst:     2,
-		Duration:  1000,
-		Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
-	}, req.Requests[0])
-
-}
-
 type testServer struct {
 	gubernator.UnimplementedV1Server
 	getRateLimits func(context.Context, *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error)

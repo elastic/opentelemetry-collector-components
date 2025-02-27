@@ -112,7 +112,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 	resp := responses[0]
 	if resp.GetError() != "" {
-		r.set.Logger.Error("failed to get valid response from gubernator", zap.Error(errors.New(resp.GetError())))
+		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
 		return errRateLimitInternalError
 	}
 
