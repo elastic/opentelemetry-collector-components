@@ -1,0 +1,53 @@
+name: changelog-otelbench
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - loadgen/cmd/otelbench/.chloggen/*
+
+jobs:
+  changelog:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    env:
+      PR_HEAD: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: 'false'
+
+      - name: Cache go tools
+        id: go-tools-cache
+        uses: actions/cache@v4
+        with:
+          path: ./.tools
+          key: go-tools-${{ runner.os }}-${{ hashFiles('internal/tools/go.sum') }}
+
+      # If there is no cache with the go tools,
+      # install them. We need the changelog
+      # tool for this workflow to work.
+      - name: Install tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
+          make install-tools
+
+      - name: Ensure no changes to the /loadgen/cmd/otelbench/CHANGELOG.md
+        run: |
+          if [[ $(git diff --name-only $(git merge-base origin/main $PR_HEAD) $PR_HEAD ./loadgen/cmd/otelbench/CHANGELOG.md) ]]
+          then
+            echo "./loadgen/cmd/otelbench/CHANGELOG.md should not be directly modified."
+            echo "Please add an entry to the changelog by running `make chlog-new`."
+            false
+          else
+            echo "CHANGELOG.md was not modified."
+          fi
+
+      - name: Validate loadgen/cmd/otelbench/.chloggen/*.yaml changes
+        working-directory: loadgen/cmd/otelbench
+        run: |
+          make chlog-validate || { echo "New ./.chloggen/*.yaml file failed validation."; exit 1; }

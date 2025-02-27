@@ -129,3 +129,19 @@ It is possible to run with a customized config to avoid passing in command line 
 ```shell
 ./otelbench -config=./my-custom-config.yaml
 ```
+
+## Create new release
+
+**First step**: Add a changelog entry:
+
+1. Create a changelog entry by running `make chlog-new`.
+2. Validate your changelog entry by running `make chlog-validate`.
+3. If you want to preview the future `CHANGELOG.md` you can also run `make chlog-preview`.
+
+**Second step**: TODO
+<!-----
+Have a workflow that gets triggered by the changelog_otelbench,
+updates the CHANGELOG.md and pushes the image to elastic container
+registry.
+---->
+

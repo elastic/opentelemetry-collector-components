@@ -7,6 +7,7 @@ require (
 	github.com/elastic/go-licenser v0.4.2
 	github.com/golangci/golangci-lint v1.64.5
 	github.com/jcchavezs/porto v0.6.0
+	go.opentelemetry.io/build-tools/chloggen v0.19.0
 	go.opentelemetry.io/collector/cmd/builder v0.120.0
 	go.opentelemetry.io/collector/cmd/mdatagen v0.120.0
 	golang.org/x/vuln v1.1.4
@@ -166,7 +167,7 @@ require (
 	github.com/sourcegraph/go-diff v0.7.0 // indirect
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/cobra v1.8.1 // indirect
+	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/spf13/viper v1.12.0 // indirect
