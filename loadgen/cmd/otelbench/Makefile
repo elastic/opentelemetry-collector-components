@@ -1,6 +1,6 @@
 include ../../../Makefile.Common
 
-VERSION := "v1.0.0"
+VERSION := "v0.0.0"
 
 FILENAME?=$(shell git branch --show-current)
 .PHONY: chlog-new
