@@ -2,6 +2,10 @@ include ../../../Makefile.Common
 
 VERSION := "v0.0.0"
 
+.PHONY: get-version
+get-version:
+	@echo $(VERSION)
+
 FILENAME?=$(shell git branch --show-current)
 .PHONY: chlog-new
 chlog-new: $(CHLOGGEN) # Create new changelog entry
@@ -14,7 +18,3 @@ chlog-validate: $(CHLOGGEN) # Validate the new changelog entry
 .PHONY: chlog-preview
 chlog-preview: $(CHLOGGEN) # Preview the changelog entry in CHANGELOG.md
 	$(CHLOGGEN) update --dry
-
-# .PHONY: chlog-update
-# chlog-update: $(CHLOGGEN) # Update the CHANGELOG.md
-# 	$(CHLOGGEN) update --version $(VERSION)
