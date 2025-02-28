@@ -19,6 +19,7 @@ package apmconfigextension // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -64,12 +65,18 @@ func createExtension(_ context.Context, set extension.Settings, cfg component.Co
 			return nil, err
 		}
 		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.AgentConfig.CacheDuration, telemetry.Logger)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
 		go func() {
+			// ensure Go routine is scheduled
+			wg.Done()
 			if err := fetcher.Run(ctx); err != nil {
 				set.Logger.Error(err.Error())
 			}
 		}()
 
+		wg.Wait()
 		return centralconfig.NewFetcherAPMWatcher(fetcher, extCfg.AgentConfig.CacheDuration, telemetry.Logger), nil
 	}
 	return newApmConfigExtension(cfg.(*Config), set, elasticsearchRemoteConfig), nil
