@@ -46,6 +46,20 @@ var Config struct {
 	ExporterOTLPHTTP bool
 
 	ConcurrencyList []int
+
+	Telemetry TelemetryConfig
+}
+
+type TelemetryConfig struct {
+	ElasticsearchURL      []string
+	ElasticsearchUserName string
+	ElasticsearchPassword string
+	ElasticsearchAPIKey   string
+	ElasticsearchIndex    string
+	FilterCluster         string
+	FilterCollector       string
+	FilterProject         string
+	Metrics               []string
 }
 
 func Init() error {
@@ -131,6 +145,42 @@ func Init() error {
 		},
 	)
 
+	flag.Func("telemetry-elasticsearch-url", "optional comma-separated `list` of remote Elasticsearch telemetry hosts",
+		func(input string) error {
+			var urls []string
+			for _, val := range strings.Split(input, ",") {
+				val = strings.TrimSpace(val)
+				if val == "" {
+					continue
+				}
+				urls = append(urls, val)
+			}
+			Config.Telemetry.ElasticsearchURL = urls
+			return nil
+		},
+	)
+	flag.StringVar(&Config.Telemetry.ElasticsearchUserName, "telemetry-elasticsearch-username", "", "optional remote Elasticsearch telemetry username")
+	flag.StringVar(&Config.Telemetry.ElasticsearchPassword, "telemetry-elasticsearch-password", "", "optional remote Elasticsearch telemetry password")
+	flag.StringVar(&Config.Telemetry.ElasticsearchAPIKey, "telemetry-elasticsearch-api-key", "", "optional remote Elasticsearch telemetry API key")
+	flag.StringVar(&Config.Telemetry.ElasticsearchIndex, "telemetry-elasticsearch-index", "", "optional remote Elasticsearch telemetry metrics index")
+	flag.StringVar(&Config.Telemetry.FilterCluster, "telemetry-filter-cluster", "", "optional remote Elasticsearch telemetry cluster metrics filter")
+	flag.StringVar(&Config.Telemetry.FilterCollector, "telemetry-filter-collector", "", "optional remote Elasticsearch telemetry collector metrics filter")
+	flag.StringVar(&Config.Telemetry.FilterProject, "telemetry-filter-project", "", "optional remote Elasticsearch telemetry project metrics filter")
+	flag.Func("telemetry-metrics", "optional comma-separated `list` of remote Elasticsearch telemetry metrics to be reported",
+		func(input string) error {
+			var m []string
+			for _, val := range strings.Split(input, ",") {
+				val = strings.TrimSpace(val)
+				if val == "" {
+					continue
+				}
+				m = append(m, val)
+			}
+			Config.Telemetry.Metrics = m
+			return nil
+		},
+	)
+
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
 	return setFlagsFromEnv()
@@ -150,9 +200,13 @@ func setFlagsFromEnv() error {
 	// value[0] is environment key
 	// value[1] is default value
 	flagEnvMap := map[string][]string{
-		"endpoint":     {"ELASTIC_APM_SERVER_URL", ""},
-		"secret-token": {"ELASTIC_APM_SECRET_TOKEN", ""},
-		"api-key":      {"ELASTIC_APM_API_KEY", ""},
+		"endpoint":                         {"ELASTIC_APM_SERVER_URL", ""},
+		"secret-token":                     {"ELASTIC_APM_SECRET_TOKEN", ""},
+		"api-key":                          {"ELASTIC_APM_API_KEY", ""},
+		"telemetry-elasticsearch-url":      {"TELEMETRY_ELASTICSEARCH_URL", ""},
+		"telemetry-elasticsearch-username": {"TELEMETRY_ELASTICSEARCH_USERNAME", ""},
+		"telemetry-elasticsearch-password": {"TELEMETRY_ELASTICSEARCH_PASSWORD", ""},
+		"telemetry-elasticsearch-api-key":  {"TELEMETRY_ELASTICSEARCH_API_KEY", ""},
 	}
 
 	for k, v := range flagEnvMap {

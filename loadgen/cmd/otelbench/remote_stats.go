@@ -109,37 +109,21 @@ var knownMetricsAggregations map[string]types.Aggregations = map[string]types.Ag
 	},
 }
 
-type remoteStatsFetcher interface {
-	FetchStats(ctx context.Context, from, to time.Time) (map[string]float64, error)
-}
+type elasticsearchTelemetryConfig TelemetryConfig
 
-type elasticsearchStatsFetcher struct {
-	elasticsearchStatsFetcherParameters
-	client *elasticsearch.TypedClient
-}
-
-type elasticsearchStatsFetcherParameters struct {
-	Addresses []string
-	ApiKey    string
-	Index     string
-	Metrics   []string
-	Cluster   *string
-	Collector *string
-	Project   *string
-}
-
-func (p *elasticsearchStatsFetcherParameters) validate() error {
-	if len(p.Addresses) == 0 {
-		return errors.New("")
+func (cfg *elasticsearchTelemetryConfig) validate() error {
+	if len(cfg.ElasticsearchURL) == 0 {
+		return errors.New("empty telemetry Elasticsearch URL, remote stats will be ignored")
 	}
-	if p.ApiKey == "" {
-		return errors.New("")
+	if cfg.ElasticsearchAPIKey == "" && (cfg.ElasticsearchUserName == "" || cfg.ElasticsearchPassword == "") {
+		return errors.New("empty telemetry Elasticsearch API key and username or password, remote stats will be ignored")
 	}
-	if p.Index == "" {
-		return errors.New("")
+	if cfg.ElasticsearchIndex == "" {
+		return errors.New("empty telemetry Elasticsearch search index, remote stats will be ignored")
 	}
-	if len(p.Metrics) == 0 {
-		p.Metrics = []string{
+	// Use the default list of metrics if empty list was provided.
+	if len(cfg.Metrics) == 0 {
+		cfg.Metrics = []string{
 			"otelcol_process_cpu_seconds",
 			"otelcol_process_memory_rss",
 			"otelcol_process_runtime_total_alloc_bytes",
@@ -150,45 +134,56 @@ func (p *elasticsearchStatsFetcherParameters) validate() error {
 	return nil
 }
 
-func newElasticsearchStatsFetcher(p *elasticsearchStatsFetcherParameters) (remoteStatsFetcher, error) {
-	if err := p.validate(); err != nil {
+type remoteStatsFetcher interface {
+	FetchStats(ctx context.Context, from, to time.Time) (map[string]float64, error)
+}
+
+type elasticsearchStatsFetcher struct {
+	elasticsearchTelemetryConfig
+	client *elasticsearch.TypedClient
+}
+
+func newElasticsearchStatsFetcher(cfg elasticsearchTelemetryConfig) (remoteStatsFetcher, error) {
+	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
 	client, err := elasticsearch.NewTypedClient(elasticsearch.Config{
-		Addresses: p.Addresses,
-		APIKey:    p.ApiKey,
+		Addresses: cfg.ElasticsearchURL,
+		Username:  cfg.ElasticsearchUserName,
+		Password:  cfg.ElasticsearchPassword,
+		APIKey:    cfg.ElasticsearchAPIKey,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return elasticsearchStatsFetcher{elasticsearchStatsFetcherParameters: *p, client: client}, nil
+	return elasticsearchStatsFetcher{elasticsearchTelemetryConfig: cfg, client: client}, nil
 }
 
 func (esf elasticsearchStatsFetcher) FetchStats(ctx context.Context, from, to time.Time) (map[string]float64, error) {
 	var filters []types.Query
-	if esf.Cluster != nil {
+	if esf.FilterCluster != "" {
 		filters = append(filters, types.Query{
 			Term: map[string]types.TermQuery{
 				"cluster": {
-					Value: string(*esf.Cluster),
+					Value: esf.FilterCluster,
 				},
 			},
 		})
 	}
-	if esf.Collector != nil {
+	if esf.FilterCollector != "" {
 		filters = append(filters, types.Query{
 			Term: map[string]types.TermQuery{
 				"collector": {
-					Value: string(*esf.Collector),
+					Value: esf.FilterCollector,
 				},
 			},
 		})
 	}
-	if esf.Project != nil {
+	if esf.FilterProject != "" {
 		filters = append(filters, types.Query{
 			Term: map[string]types.TermQuery{
 				"project": {
-					Value: string(*esf.Project),
+					Value: esf.FilterProject,
 				},
 			},
 		})
@@ -216,7 +211,7 @@ func (esf elasticsearchStatsFetcher) FetchStats(ctx context.Context, from, to ti
 		Aggregations: aggs,
 		Size:         some.Int(0),
 	}
-	resp, err := esf.client.Search().Index(esf.Index).Request(&request).Do(ctx)
+	resp, err := esf.client.Search().Index(esf.ElasticsearchIndex).Request(&request).Do(ctx)
 	if err != nil {
 		return nil, err
 	}

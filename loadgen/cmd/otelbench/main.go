@@ -57,13 +57,13 @@ func fullBenchmarkName(signal, exporter string, concurrency int) string {
 	return fmt.Sprintf("%s-%s-%d", signal, exporter, concurrency)
 }
 
-func runBench(f remoteStatsFetcher, signal, exporter string, concurrency int) testing.BenchmarkResult {
+func runBench(fetcher remoteStatsFetcher, signal, exporter string, concurrency int) testing.BenchmarkResult {
 	return testing.Benchmark(func(b *testing.B) {
-		reportRemoteStats := func(ctx context.Context, from, to time.Time) {
-			if f == nil {
+		reportRemoteStats := func(from, to time.Time) {
+			if fetcher == nil {
 				return
 			}
-			stats, err := f.FetchStats(context.Background(), from, to)
+			stats, err := fetcher.FetchStats(context.Background(), from, to)
 			if err != nil {
 				return
 			}
@@ -87,7 +87,7 @@ func runBench(f remoteStatsFetcher, signal, exporter string, concurrency int) te
 		}
 		stop := make(chan struct{}) // close channel to stop the loadgen collector
 
-		t := time.Now()
+		t := time.Now().UTC()
 		go func() {
 			logsStats := <-logsDone
 			metricsStats := <-metricsDone
@@ -105,7 +105,7 @@ func runBench(f remoteStatsFetcher, signal, exporter string, concurrency int) te
 			b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
 			b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
 			b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
-			reportRemoteStats(context.Background(), t, time.Now())
+			reportRemoteStats(t, time.Now().UTC())
 
 			close(stop)
 		}()
@@ -137,7 +137,7 @@ func main() {
 		}
 	}
 
-	f, err := newElasticsearchStatsFetcher(nil)
+	fetcher, err := newElasticsearchStatsFetcher(elasticsearchTelemetryConfig(Config.Telemetry))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
@@ -146,7 +146,7 @@ func main() {
 		for _, signal := range getSignals() {
 			for _, exporter := range getExporters() {
 				benchName := fullBenchmarkName(signal, exporter, concurrency)
-				result := runBench(f, signal, exporter, concurrency)
+				result := runBench(fetcher, signal, exporter, concurrency)
 				// write benchmark result to stdout, as stderr may be cluttered with collector logs
 				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
 			}
