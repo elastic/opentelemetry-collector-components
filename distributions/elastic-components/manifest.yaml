@@ -15,7 +15,7 @@ extensions:
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension v0.117.0
 
 connectors:
-  - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.1.0
   - gomod: github.com/elastic/opentelemetry-collector-components/connector/signaltometricsconnector v0.3.0
 
 converters:
@@ -46,7 +46,7 @@ processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.120.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.13.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.3.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.4.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.5.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0
 
 exporters:
