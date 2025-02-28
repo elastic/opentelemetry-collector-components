@@ -20,6 +20,7 @@ package ratelimitprocessor
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/collector/client"
 	"net"
 	"testing"
 	"time"
@@ -148,6 +149,47 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 			assert.EqualError(t, err, errRateLimitInternalError.Error())
 		})
 	}
+}
+
+func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
+	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            2,
+		MetadataKeys:     []string{"metadata_key"},
+		ThrottleBehavior: ThrottleBehaviorError,
+	})
+	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	clientContext1 := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"metadata_key": {"value1"},
+		}),
+	})
+	clientContext2 := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"metadata_key": {"value2"},
+		}),
+	})
+
+	var req *gubernator.GetRateLimitsReq
+	server.getRateLimits = func(ctx context.Context, reqIn *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
+		req = reqIn
+		return &gubernator.GetRateLimitsResp{
+			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}},
+		}, nil
+	}
+
+	// Each unique combination of metadata keys should get its own rate limit.
+	err = rateLimiter.RateLimit(clientContext1, 1)
+	assert.NoError(t, err)
+	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
+	assert.Equal(t, "metadata_key:value1", req.Requests[0].UniqueKey)
+
+	err = rateLimiter.RateLimit(clientContext2, 1)
+	assert.NoError(t, err)
+	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
+	assert.Equal(t, "metadata_key:value2", req.Requests[0].UniqueKey)
 }
 
 type testServer struct {
