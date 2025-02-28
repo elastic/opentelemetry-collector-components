@@ -28,7 +28,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -55,7 +55,7 @@ resourceSpans:
                   stringValue: success
               - key: transaction.duration.us
                 value:
-                  intValue: "32592981"
+                  intValue: "32592"
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -103,7 +103,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -112,7 +112,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "3781912"
+                  intValue: "3781"
               - key: span.id
                 value:
                   stringValue: 0aaaaaaaaaaaaaaa
@@ -184,7 +184,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -193,7 +193,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "32592981"
+                  intValue: "32592"
               - key: span.id
                 value:
                   stringValue: 1aaaaaaaaaaaaaaa
@@ -245,7 +245,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -254,7 +254,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "3564298"
+                  intValue: "3564"
               - key: span.id
                 value:
                   stringValue: 2aaaaaaaaaaaaaaa
@@ -306,7 +306,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -315,7 +315,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "13980298"
+                  intValue: "13980"
               - key: span.id
                 value:
                   stringValue: 3aaaaaaaaaaaaaaa
@@ -367,7 +367,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170422281000000"
+                  intValue: "1496170422281000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -394,7 +394,7 @@ resourceSpans:
                   stringValue: failure
               - key: transaction.duration.us
                 value:
-                  intValue: "13980558"
+                  intValue: "13980"
             endTimeUnixNano: "1496170422294980558"
             name: GET /api/types
             parentSpanId: ""
@@ -431,7 +431,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170422000000000"
+                  intValue: "1496170422000000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -458,7 +458,7 @@ resourceSpans:
                   stringValue: "200"
               - key: transaction.duration.us
                 value:
-                  intValue: "13980558"
+                  intValue: "13980"
             endTimeUnixNano: "1496170422013980558"
             name: GET /api/types
             parentSpanId: ""
@@ -495,7 +495,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170422281999000"
+                  intValue: "1496170422281999"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -522,7 +522,7 @@ resourceSpans:
                   stringValue: "200"
               - key: transaction.duration.us
                 value:
-                  intValue: "13980558"
+                  intValue: "13980"
             endTimeUnixNano: "1496170422295979558"
             name: GET /api/types
             parentSpanId: ""
@@ -559,7 +559,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170422281000000"
+                  intValue: "1496170422281000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -568,7 +568,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "3781912"
+                  intValue: "3781"
               - key: span.id
                 value:
                   stringValue: 15aaaaaaaaaaaaaa
