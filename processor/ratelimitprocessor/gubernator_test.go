@@ -20,13 +20,13 @@ package ratelimitprocessor
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/collector/client"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -127,7 +127,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 			resp.Responses = []*gubernator.RateLimitResp{{Error: "yeah, nah"}}
 			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, "yeah, nah")
+			assert.EqualError(t, err, errRateLimitInternalError.Error())
 
 			resp.Responses = []*gubernator.RateLimitResp{}
 			err = rateLimiter.RateLimit(context.Background(), 1)
@@ -146,7 +146,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 			respErr = errors.New("nope")
 			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, "error executing gubernator rate limit request: rpc error: code = Unknown desc = nope")
+			assert.EqualError(t, err, errRateLimitInternalError.Error())
 		})
 	}
 }

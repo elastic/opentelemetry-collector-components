@@ -1,6 +1,6 @@
 receivers:
   loadgen:
-  nop:
+  nop: # required as nop is used to disable pipelines that are not relevant to the bench, e.g. disabling metrics pipeline in logs bench
 
 exporters:
   otlp:
@@ -22,7 +22,7 @@ exporters:
     sending_queue:
       enabled: false
     timeout: 60s
-  nop:
+  nop: # required as nop is used to disable pipelines that are not relevant to the bench, e.g. disabling metrics pipeline in logs bench
 
 processors:
   transform/rewrite:  # Rewrite telemetry to increase cardinality

@@ -160,6 +160,7 @@ func configs(exporter, signal string, iterations, concurrency int) (configFiles 
 	configFiles = append(configFiles, SetIterations(iterations)...)
 	configFiles = append(configFiles, SetConcurrency(concurrency)...)
 	for _, s := range []string{"logs", "metrics", "traces"} {
+		// Disable pipelines not relevant to the benchmark by overriding receiver and exporter to nop
 		if signal != s {
 			configFiles = append(configFiles, DisableSignal(s)...)
 		}
