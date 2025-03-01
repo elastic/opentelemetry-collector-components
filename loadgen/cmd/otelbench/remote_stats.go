@@ -113,13 +113,13 @@ type elasticsearchTelemetryConfig TelemetryConfig
 
 func (cfg *elasticsearchTelemetryConfig) validate() error {
 	if len(cfg.ElasticsearchURL) == 0 {
-		return errors.New("empty telemetry Elasticsearch URL, remote stats will be ignored")
+		return errors.New("remote stats will be ignored because of empty telemetry Elasticsearch URL")
 	}
 	if cfg.ElasticsearchAPIKey == "" && (cfg.ElasticsearchUserName == "" || cfg.ElasticsearchPassword == "") {
-		return errors.New("empty telemetry Elasticsearch API key and username or password, remote stats will be ignored")
+		return errors.New("remote stats will be ignored because of empty telemetry Elasticsearch API key and username or password")
 	}
 	if cfg.ElasticsearchIndex == "" {
-		return errors.New("empty telemetry Elasticsearch search index, remote stats will be ignored")
+		return errors.New("remote stats will be ignored because of empty telemetry Elasticsearch search index")
 	}
 	// Use the default list of metrics if empty list was provided.
 	if len(cfg.Metrics) == 0 {
@@ -164,17 +164,8 @@ func (esf elasticsearchStatsFetcher) FetchStats(ctx context.Context, from, to ti
 	if esf.FilterCluster != "" {
 		filters = append(filters, types.Query{
 			Term: map[string]types.TermQuery{
-				"cluster": {
+				"labels.cluster": {
 					Value: esf.FilterCluster,
-				},
-			},
-		})
-	}
-	if esf.FilterCollector != "" {
-		filters = append(filters, types.Query{
-			Term: map[string]types.TermQuery{
-				"collector": {
-					Value: esf.FilterCollector,
 				},
 			},
 		})
@@ -182,7 +173,7 @@ func (esf elasticsearchStatsFetcher) FetchStats(ctx context.Context, from, to ti
 	if esf.FilterProject != "" {
 		filters = append(filters, types.Query{
 			Term: map[string]types.TermQuery{
-				"project": {
+				"labels.project": {
 					Value: esf.FilterProject,
 				},
 			},
@@ -218,10 +209,10 @@ func (esf elasticsearchStatsFetcher) FetchStats(ctx context.Context, from, to ti
 	res := make(map[string]float64, len(resp.Aggregations))
 	for k, aggr := range resp.Aggregations {
 		switch v := aggr.(type) {
-		case types.SumAggregate:
-			res[k] = float64(*v.Value)
-		case types.AvgAggregate:
-			res[k] = float64(*v.Value)
+		case *types.SumAggregate:
+			res[k+"_sum"] = float64(*v.Value)
+		case *types.AvgAggregate:
+			res[k+"_avg"] = float64(*v.Value)
 		}
 	}
 	return res, nil

@@ -57,7 +57,6 @@ type TelemetryConfig struct {
 	ElasticsearchAPIKey   string
 	ElasticsearchIndex    string
 	FilterCluster         string
-	FilterCollector       string
 	FilterProject         string
 	Metrics               []string
 }
@@ -164,7 +163,6 @@ func Init() error {
 	flag.StringVar(&Config.Telemetry.ElasticsearchAPIKey, "telemetry-elasticsearch-api-key", "", "optional remote Elasticsearch telemetry API key")
 	flag.StringVar(&Config.Telemetry.ElasticsearchIndex, "telemetry-elasticsearch-index", "", "optional remote Elasticsearch telemetry metrics index")
 	flag.StringVar(&Config.Telemetry.FilterCluster, "telemetry-filter-cluster", "", "optional remote Elasticsearch telemetry cluster metrics filter")
-	flag.StringVar(&Config.Telemetry.FilterCollector, "telemetry-filter-collector", "", "optional remote Elasticsearch telemetry collector metrics filter")
 	flag.StringVar(&Config.Telemetry.FilterProject, "telemetry-filter-project", "", "optional remote Elasticsearch telemetry project metrics filter")
 	flag.Func("telemetry-metrics", "optional comma-separated `list` of remote Elasticsearch telemetry metrics to be reported",
 		func(input string) error {
@@ -207,6 +205,7 @@ func setFlagsFromEnv() error {
 		"telemetry-elasticsearch-username": {"TELEMETRY_ELASTICSEARCH_USERNAME", ""},
 		"telemetry-elasticsearch-password": {"TELEMETRY_ELASTICSEARCH_PASSWORD", ""},
 		"telemetry-elasticsearch-api-key":  {"TELEMETRY_ELASTICSEARCH_API_KEY", ""},
+		"telemetry-elasticsearch-index":    {"TELEMETRY_ELASTICSEARCH_INDEX", ""},
 	}
 
 	for k, v := range flagEnvMap {
