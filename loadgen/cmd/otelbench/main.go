@@ -98,6 +98,7 @@ func runBench(signal, exporter string, concurrency int) testing.BenchmarkResult 
 
 		err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
 		if err != nil {
+			fmt.Println(err.Error())
 			b.Fatal(err)
 		}
 	})
