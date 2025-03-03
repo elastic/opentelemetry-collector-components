@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/lsminterv
 go 1.23.6
 
 require (
-	github.com/axiomhq/hyperloglog v0.2.3
+	github.com/axiomhq/hyperloglog v0.2.5
 	github.com/cockroachdb/pebble v1.1.4
 	github.com/google/go-cmp v0.6.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.120.1
