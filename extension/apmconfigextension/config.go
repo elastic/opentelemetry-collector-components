@@ -15,22 +15,31 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//go:build tools
-
-package tools // import "github.com/elastic/opentelemetry-collector-components/internal/tools"
-
-// This file follows the recommendation at
-// https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
-// on how to pin tooling dependencies to a go.mod file.
-// This ensures that all systems use the same version of tools in addition to regular dependencies.
+package apmconfigextension // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension"
 
 import (
-	_ "github.com/client9/misspell/cmd/misspell"
-	_ "github.com/elastic/go-licenser"
-	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
-	_ "github.com/jcchavezs/porto/cmd/porto"
-	_ "go.opentelemetry.io/build-tools/chloggen"
-	_ "go.opentelemetry.io/collector/cmd/builder"
-	_ "go.opentelemetry.io/collector/cmd/mdatagen"
-	_ "golang.org/x/vuln/cmd/govulncheck"
+	"time"
+
+	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
+	"go.opentelemetry.io/collector/component"
 )
+
+type Config struct {
+	AgentConfig AgentConfig `mapstructure:"agent_config"`
+	OpAMP       OpAMPConfig `mapstructure:"opamp"`
+}
+
+type AgentConfig struct {
+	Elasticsearch configelasticsearch.ClientConfig `mapstructure:"elasticsearch"`
+	CacheDuration time.Duration                    `mapstructure:"cache_duration"`
+}
+
+type OpAMPConfig struct {
+	Server OpAMPServerConfig `mapstructure:"server"`
+}
+
+type OpAMPServerConfig struct {
+	Endpoint string `mapstructure:"endpoint"`
+}
+
+var _ component.Config = (*Config)(nil)
