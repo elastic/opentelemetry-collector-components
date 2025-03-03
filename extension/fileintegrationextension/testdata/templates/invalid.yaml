@@ -1,0 +1,8 @@
+receivers:
+  foo:
+    setting: ${var:setting}
+
+processors:
+  foo: ~
+
+pipelines

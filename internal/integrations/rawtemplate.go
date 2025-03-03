@@ -39,7 +39,9 @@ type RawTemplate struct {
 // NewRawTemplate creates a new RawTemplate from raw YAML content.
 func NewRawTemplate(raw []byte) (*RawTemplate, error) {
 	var source rawYAMLConfig
-	err := yaml.Unmarshal(raw, &source)
+	decoder := yaml.NewDecoder(bytes.NewReader(raw))
+	decoder.KnownFields(true)
+	err := decoder.Decode(&source)
 	if err != nil {
 		return nil, fmt.Errorf("invalid integration template format: %w", err)
 	}

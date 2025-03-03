@@ -34,10 +34,10 @@ type Template interface {
 }
 
 type TemplateFinder interface {
-	FindTemplate(ctx context.Context, name, version string) (Template, error)
+	FindTemplate(ctx context.Context, name string) (Template, error)
 }
 
-func Find(ctx context.Context, logger *zap.Logger, host component.Host, name string, version string) (Template, error) {
+func Find(ctx context.Context, logger *zap.Logger, host component.Host, name string) (Template, error) {
 	anyExtension := false
 	for eid, extension := range host.GetExtensions() {
 		finder, ok := extension.(TemplateFinder)
@@ -46,7 +46,7 @@ func Find(ctx context.Context, logger *zap.Logger, host component.Host, name str
 		}
 		anyExtension = true
 
-		integration, err := finder.FindTemplate(ctx, name, version)
+		integration, err := finder.FindTemplate(ctx, name)
 		if errors.Is(ErrNotFound, err) {
 			continue
 		}

@@ -41,7 +41,7 @@ func TestRawTemplateResolve(t *testing.T) {
 	}{
 		{
 			title: "valid without pipelines",
-			file:  "template-simple.yml",
+			file:  "template-simple.yaml",
 			params: map[string]any{
 				"somevalue":  "foo",
 				"value":      "bar",
@@ -92,7 +92,7 @@ func TestRawTemplateResolve(t *testing.T) {
 		},
 		{
 			title: "selected pipeline",
-			file:  "template-simple.yml",
+			file:  "template-simple.yaml",
 			pipelines: []component.ID{
 				component.MustNewID("metrics"),
 			},
@@ -122,7 +122,7 @@ func TestRawTemplateResolve(t *testing.T) {
 		},
 		{
 			title: "complex type in variable",
-			file:  "template-simple.yml",
+			file:  "template-simple.yaml",
 			pipelines: []component.ID{
 				component.MustNewID("metrics"),
 			},
@@ -158,7 +158,7 @@ func TestRawTemplateResolve(t *testing.T) {
 		},
 		{
 			title: "selected pipeline with name",
-			file:  "template-simple.yml",
+			file:  "template-simple.yaml",
 			pipelines: []component.ID{
 				component.MustNewIDWithName("logs", "raw"),
 			},
@@ -188,7 +188,7 @@ func TestRawTemplateResolve(t *testing.T) {
 		},
 		{
 			title: "missing variable",
-			file:  "template-simple.yml",
+			file:  "template-simple.yaml",
 			pipelines: []component.ID{
 				component.MustNewID("metrics"),
 			},
@@ -196,7 +196,7 @@ func TestRawTemplateResolve(t *testing.T) {
 		},
 		{
 			title: "missing pipeline",
-			file:  "template-simple.yml",
+			file:  "template-simple.yaml",
 			pipelines: []component.ID{
 				component.MustNewID("traces"),
 			},
@@ -204,13 +204,18 @@ func TestRawTemplateResolve(t *testing.T) {
 		},
 		{
 			title:   "missing receiver",
-			file:    "template-missing-receiver.yml",
+			file:    "template-missing-receiver.yaml",
 			fileErr: "receiver \"foo/missing\" not defined",
 		},
 		{
 			title:   "missing processor",
-			file:    "template-missing-processor.yml",
+			file:    "template-missing-processor.yaml",
 			fileErr: "processor \"third/missing\" not defined",
+		},
+		{
+			title:   "missing processor",
+			file:    "template-unknown-fields.yaml",
+			fileErr: "field extensions not found",
 		},
 	}
 

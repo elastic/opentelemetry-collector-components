@@ -26,7 +26,6 @@ import (
 type Config struct {
 	Name       string         `mapstructure:"name"`
 	Pipelines  []component.ID `mapstructure:"pipelines"`
-	Version    string         `mapstructure:"version"`
 	Parameters map[string]any `mapstructure:"parameters"`
 }
 

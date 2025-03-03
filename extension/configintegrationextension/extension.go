@@ -38,7 +38,7 @@ func newConfigTemplateExtension(config *Config) *configTemplateExtension {
 	}
 }
 
-func (e *configTemplateExtension) FindTemplate(ctx context.Context, name, version string) (integrations.Template, error) {
+func (e *configTemplateExtension) FindTemplate(ctx context.Context, name string) (integrations.Template, error) {
 	integration, found := e.config.Integrations[name]
 	if !found {
 		return nil, integrations.ErrNotFound

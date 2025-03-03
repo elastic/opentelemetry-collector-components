@@ -81,7 +81,7 @@ func (r *integrationReceiver) Start(ctx context.Context, ch component.Host) erro
 		return fmt.Errorf("integrationreceiver is not compatible with the provided component.Host")
 	}
 
-	integration, err := integrations.Find(ctx, r.params.Logger, host, r.config.Name, r.config.Version)
+	integration, err := integrations.Find(ctx, r.params.Logger, host, r.config.Name)
 	if err != nil {
 		return fmt.Errorf("failed to find integration %q: %w", r.config.Name, err)
 	}
