@@ -1,0 +1,23 @@
+integrations:
+  valid: |
+    receivers:
+      foo:
+        setting: ${var:setting}
+    
+    processors:
+      foo: ~
+    
+    pipelines:
+      metrics/1:
+        receiver: foo
+        processors: [foo]
+
+  invalid: |
+    receivers:
+      foo:
+        setting: $${var:setting}
+    
+    processors:
+      foo: ~
+    
+    pipelines
