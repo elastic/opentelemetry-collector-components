@@ -65,6 +65,7 @@ func runBench(fetcher remoteStatsFetcher, signal, exporter string, concurrency i
 			}
 			stats, err := fetcher.FetchStats(context.Background(), from, to)
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
 				return
 			}
 			for unit, n := range stats {
@@ -137,9 +138,12 @@ func main() {
 		}
 	}
 
-	fetcher, err := newElasticsearchStatsFetcher(elasticsearchTelemetryConfig(Config.Telemetry))
+	fetcher, ignore, err := newElasticsearchStatsFetcher(elasticsearchTelemetryConfig(Config.Telemetry))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		if !ignore {
+			os.Exit(2)
+		}
 	}
 
 	for _, concurrency := range Config.ConcurrencyList {

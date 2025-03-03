@@ -146,8 +146,10 @@ It is possible to run with a customized config to avoid passing in command line 
 ./otelbench -config=./my-custom-config.yaml
 ```
 
-Optional remote stats will be reported when additional telemetry flags are provided
+Optional remote OTel collector metrics will be reported as bench stats when additional telemetry flags are provided.
+Gauge metrics will be aggregated to average, while Counter and Histogram will be aggregated to sum.
+For the full list of reported metrics see https://opentelemetry.io/docs/collector/internal-telemetry/#basic-level-metrics.
 
 ```shell
-./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster cluster_name
+./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
 ```

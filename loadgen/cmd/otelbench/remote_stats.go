@@ -136,17 +136,10 @@ func (cfg *elasticsearchTelemetryConfig) validate() error {
 		return errors.New("remote stats will be ignored because of empty telemetry Elasticsearch API key and username or password")
 	}
 	if cfg.ElasticsearchIndex == "" {
-		return errors.New("remote stats will be ignored because of empty telemetry Elasticsearch search index")
+		return errors.New("remote stats will be ignored because of empty telemetry Elasticsearch search index pattern")
 	}
-	// Use the default list of metrics if empty list was provided.
 	if len(cfg.Metrics) == 0 {
-		cfg.Metrics = []string{
-			"otelcol_process_cpu_seconds",
-			"otelcol_process_memory_rss",
-			"otelcol_process_runtime_total_alloc_bytes",
-			"otelcol_process_runtime_total_sys_memory_bytes",
-			"otelcol_process_uptime",
-		}
+		return errors.New("remote stats will be ignored because of empty telemetry metrics list")
 	}
 	return nil
 }
@@ -160,9 +153,9 @@ type elasticsearchStatsFetcher struct {
 	client *elasticsearch.TypedClient
 }
 
-func newElasticsearchStatsFetcher(cfg elasticsearchTelemetryConfig) (remoteStatsFetcher, error) {
+func newElasticsearchStatsFetcher(cfg elasticsearchTelemetryConfig) (remoteStatsFetcher, bool, error) {
 	if err := cfg.validate(); err != nil {
-		return nil, err
+		return nil, true, err
 	}
 	client, err := elasticsearch.NewTypedClient(elasticsearch.Config{
 		Addresses: cfg.ElasticsearchURL,
@@ -171,27 +164,31 @@ func newElasticsearchStatsFetcher(cfg elasticsearchTelemetryConfig) (remoteStats
 		APIKey:    cfg.ElasticsearchAPIKey,
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return elasticsearchStatsFetcher{elasticsearchTelemetryConfig: cfg, client: client}, nil
+	ok, err := client.Ping().Do(context.Background())
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	return elasticsearchStatsFetcher{elasticsearchTelemetryConfig: cfg, client: client}, true, nil
 }
 
 func (esf elasticsearchStatsFetcher) FetchStats(ctx context.Context, from, to time.Time) (map[string]float64, error) {
 	var filters []types.Query
-	if esf.FilterCluster != "" {
+	if esf.FilterClusterName != "" {
 		filters = append(filters, types.Query{
 			Term: map[string]types.TermQuery{
-				"labels.cluster": {
-					Value: esf.FilterCluster,
+				"labels.orchestrator_cluster_name": {
+					Value: esf.FilterClusterName,
 				},
 			},
 		})
 	}
-	if esf.FilterProject != "" {
+	if esf.FilterProjectID != "" {
 		filters = append(filters, types.Query{
 			Term: map[string]types.TermQuery{
-				"labels.project": {
-					Value: esf.FilterProject,
+				"labels.project_id": {
+					Value: esf.FilterProjectID,
 				},
 			},
 		})
