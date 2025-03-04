@@ -13,6 +13,9 @@ on:
     paths:
       - ./loadgen/cmd/otelbench/Makefile
 
+permissions:
+  contents: read
+
 jobs:
   check-release:
     timeout-minutes: 15
