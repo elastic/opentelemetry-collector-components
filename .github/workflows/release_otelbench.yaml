@@ -98,6 +98,8 @@ jobs:
       ELASTIC_REGISTRY: "docker.elastic.co/observability-ci"
       IMAGE_NAME: "otelbench"
     steps:
+      - uses: actions/checkout@v4
+
       - name: Login to Elastic container registry
         uses: docker/login-action@v3
         with:
