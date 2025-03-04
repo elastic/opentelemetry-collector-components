@@ -15,6 +15,10 @@ BRANCH_NAME="update-changelog-$VERSION"
   fi
 )
 
+# go to root of this project
+cd ../../../
+
+# commit changes
 git checkout -b "$BRANCH_NAME"
 git add ./loadgen/cmd/otelbench
 if ! git diff --quiet ./loadgen/cmd/otelbench; then
