@@ -153,6 +153,8 @@ func main() {
 				result := runBench(fetcher, signal, exporter, concurrency)
 				// write benchmark result to stdout, as stderr may be cluttered with collector logs
 				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
+				// wait for a minute after each run to minimize the influence of the previous run over the next run
+				time.Sleep(time.Minute)
 			}
 		}
 	}
