@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
@@ -56,8 +57,22 @@ func fullBenchmarkName(signal, exporter string, concurrency int) string {
 	return fmt.Sprintf("%s-%s-%d", signal, exporter, concurrency)
 }
 
-func runBench(signal, exporter string, concurrency int) testing.BenchmarkResult {
+func runBench(fetcher remoteStatsFetcher, signal, exporter string, concurrency int) testing.BenchmarkResult {
 	return testing.Benchmark(func(b *testing.B) {
+		reportRemoteStats := func(from, to time.Time) {
+			if fetcher == nil {
+				return
+			}
+			stats, err := fetcher.FetchStats(context.Background(), from, to)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
+				return
+			}
+			for unit, n := range stats {
+				b.ReportMetric(n, unit)
+			}
+		}
+
 		// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
 		logsDone := make(chan loadgenreceiver.Stats)
 		metricsDone := make(chan loadgenreceiver.Stats)
@@ -71,9 +86,9 @@ func runBench(signal, exporter string, concurrency int) testing.BenchmarkResult 
 		if signal != "traces" {
 			close(tracesDone)
 		}
-
 		stop := make(chan struct{}) // close channel to stop the loadgen collector
 
+		t := time.Now().UTC()
 		go func() {
 			logsStats := <-logsDone
 			metricsStats := <-metricsDone
@@ -91,7 +106,7 @@ func runBench(signal, exporter string, concurrency int) testing.BenchmarkResult 
 			b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
 			b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
 			b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
-			// TODO(carsonip): optionally retrieve metrics (e.g. memory, cpu) of target server from Elasticsearch
+			reportRemoteStats(t, time.Now().UTC())
 
 			close(stop)
 		}()
@@ -124,13 +139,23 @@ func main() {
 		}
 	}
 
+	fetcher, ignore, err := newElasticsearchStatsFetcher(elasticsearchTelemetryConfig(Config.Telemetry))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		if !ignore {
+			os.Exit(2)
+		}
+	}
+
 	for _, concurrency := range Config.ConcurrencyList {
 		for _, signal := range getSignals() {
 			for _, exporter := range getExporters() {
 				benchName := fullBenchmarkName(signal, exporter, concurrency)
-				result := runBench(signal, exporter, concurrency)
+				result := runBench(fetcher, signal, exporter, concurrency)
 				// write benchmark result to stdout, as stderr may be cluttered with collector logs
 				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
+				// wait for a minute after each run to minimize the influence of the previous run over the next run
+				time.Sleep(time.Minute)
 			}
 		}
 	}

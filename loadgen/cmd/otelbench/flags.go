@@ -18,6 +18,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net/url"
@@ -25,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var Config struct {
@@ -46,6 +48,20 @@ var Config struct {
 	ExporterOTLPHTTP bool
 
 	ConcurrencyList []int
+
+	Telemetry TelemetryConfig
+}
+
+type TelemetryConfig struct {
+	ElasticsearchURL      []string
+	ElasticsearchUserName string
+	ElasticsearchPassword string
+	ElasticsearchAPIKey   string
+	ElasticsearchTimeout  time.Duration
+	ElasticsearchIndex    string
+	FilterClusterName     string
+	FilterProjectID       string
+	Metrics               []string
 }
 
 func Init() error {
@@ -131,6 +147,45 @@ func Init() error {
 		},
 	)
 
+	flag.Func("telemetry-elasticsearch-url", "optional comma-separated `list` of remote Elasticsearch telemetry hosts",
+		func(input string) error {
+			var urls []string
+			for _, val := range strings.Split(input, ",") {
+				val = strings.TrimSpace(val)
+				if val == "" {
+					continue
+				}
+				urls = append(urls, val)
+			}
+			Config.Telemetry.ElasticsearchURL = urls
+			return nil
+		},
+	)
+	flag.StringVar(&Config.Telemetry.ElasticsearchUserName, "telemetry-elasticsearch-username", "", "optional remote Elasticsearch telemetry username")
+	flag.StringVar(&Config.Telemetry.ElasticsearchPassword, "telemetry-elasticsearch-password", "", "optional remote Elasticsearch telemetry password")
+	flag.StringVar(&Config.Telemetry.ElasticsearchAPIKey, "telemetry-elasticsearch-api-key", "", "optional remote Elasticsearch telemetry API key")
+	flag.DurationVar(&Config.Telemetry.ElasticsearchTimeout, "telemetry-elasticsearch-timeout", time.Minute, "optional remote Elasticsearch telemetry request timeout")
+	flag.StringVar(&Config.Telemetry.ElasticsearchIndex, "telemetry-elasticsearch-index", "", "optional remote Elasticsearch telemetry metrics index pattern")
+	flag.StringVar(&Config.Telemetry.FilterClusterName, "telemetry-filter-cluster-name", "", "optional remote Elasticsearch telemetry cluster name metrics filter")
+	flag.StringVar(&Config.Telemetry.FilterProjectID, "telemetry-filter-project-id", "", "optional remote Elasticsearch telemetry project id metrics filter")
+	flag.Func("telemetry-metrics", "optional comma-separated `list` of remote Elasticsearch telemetry metrics to be reported",
+		func(input string) error {
+			var m []string
+			for _, val := range strings.Split(input, ",") {
+				val = strings.TrimSpace(val)
+				if val == "" {
+					continue
+				}
+				m = append(m, val)
+			}
+			Config.Telemetry.Metrics = m
+			return nil
+		},
+	)
+	if err := flag.Set("telemetry-metrics", "otelcol_process_cpu_seconds,otelcol_process_memory_rss,otelcol_process_runtime_total_alloc_bytes,otelcol_process_runtime_total_sys_memory_bytes,otelcol_process_uptime"); err != nil {
+		return errors.New(`error setting default value for flag "telemetry-metrics"`)
+	}
+
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
 	return setFlagsFromEnv()
@@ -150,9 +205,14 @@ func setFlagsFromEnv() error {
 	// value[0] is environment key
 	// value[1] is default value
 	flagEnvMap := map[string][]string{
-		"endpoint":     {"ELASTIC_APM_SERVER_URL", ""},
-		"secret-token": {"ELASTIC_APM_SECRET_TOKEN", ""},
-		"api-key":      {"ELASTIC_APM_API_KEY", ""},
+		"endpoint":                         {"ELASTIC_APM_SERVER_URL", ""},
+		"secret-token":                     {"ELASTIC_APM_SECRET_TOKEN", ""},
+		"api-key":                          {"ELASTIC_APM_API_KEY", ""},
+		"telemetry-elasticsearch-url":      {"TELEMETRY_ELASTICSEARCH_URL", ""},
+		"telemetry-elasticsearch-username": {"TELEMETRY_ELASTICSEARCH_USERNAME", ""},
+		"telemetry-elasticsearch-password": {"TELEMETRY_ELASTICSEARCH_PASSWORD", ""},
+		"telemetry-elasticsearch-api-key":  {"TELEMETRY_ELASTICSEARCH_API_KEY", ""},
+		"telemetry-elasticsearch-index":    {"TELEMETRY_ELASTICSEARCH_INDEX", ""},
 	}
 
 	for k, v := range flagEnvMap {
