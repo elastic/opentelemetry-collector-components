@@ -80,17 +80,39 @@ jobs:
         run: sed -i "s/^VERSION := .*/VERSION := ${{ github.event.inputs.version }}/" Makefile
 
       - name: Commit changes
+        id: commit-changes
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           
-          git checkout main
-          git pull --rebase origin main
+          branch_name="update-changelog-${{ needs.check-release.outputs.version }}"
+          echo "branch_name=$branch_name" >> $GITHUB_ENV
+
+          git checkout -b "$branch_name"
           git add ./loadgen/cmd/otelbench
           if ! git diff --quiet ./loadgen/cmd/otelbench; then
             git commit -m "Update otelbench changelog and delete changelog fragments."
-            git push origin main
+            git push origin "$branch_name"
+            echo "open_pr=true" >> $GITHUB_ENV
+          else
+            echo "No changes to commit."
           fi
+
+      - name: Create pull request
+        if: env.open_pr == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "[loadgen/otelbench] Update changelog for ${{ needs.check-release.outputs.version }}",
+              head: process.env.branch_name,
+              base: "main",
+              body: "This PR updates the changelog and removes old changelog fragments.",
+              draft: false
+            });
 
       - name: Login to Elastic container registry
         uses: docker/login-action@v3
