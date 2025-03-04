@@ -1,0 +1,106 @@
+run-name: release-otelbench
+name: Release otelbench docker image on elastic container library
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version of the otelbench image to release, should follow format "vN.N.N".
+        required: true
+  push:
+    branches:
+      - main
+    paths:
+      - ./loadgen/cmd/otelbench/Makefile
+
+jobs:
+  check-release:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-new-version.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      - name: Checks if release is required.
+        id: get-new-version
+        run: ./scripts/check_release.sh "${{ github.event_name }}" "${{ github.event.inputs.version }}"
+
+  release-otelbench:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    needs:
+      - check-release
+    if: needs.check-release.result == 'success'
+    permissions:
+      contents: write
+    env:
+      ELASTIC_REGISTRY: "docker.elastic.co/observability-ci"
+      IMAGE_NAME: "otelbench"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: 'false'
+
+      - name: Cache go tools
+        id: go-tools-cache
+        uses: actions/cache@v4
+        with:
+          path: ./.tools
+          key: go-tools-${{ runner.os }}-${{ hashFiles('internal/tools/go.sum') }}
+
+      # If there is no cache with the go tools,
+      # install them. We need the changelog
+      # tool for this workflow to work.
+      - name: Install tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
+          make install-tools
+
+      - name: Update otelbench changelog and delete changelog fragments
+        working-directory: ./loadgen/cmd/otelbench
+        run: ../../../.tools/chloggen update --version ${{ needs.check-release.outputs.version }}
+
+      - name: Update Makefile version if dispatched
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: ./loadgen/cmd/otelbench
+        run: sed -i "s/^VERSION := .*/VERSION := ${{ github.event.inputs.version }}/" Makefile
+
+      - name: Commit changes
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          
+          git checkout main
+          git pull --rebase origin main
+          git add ./loadgen/cmd/otelbench
+          if ! git diff --quiet ./loadgen/cmd/otelbench; then
+            git commit -m "Update otelbench changelog and delete changelog fragments."
+            git push origin main
+          fi
+
+      - name: Login to Elastic container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ELASTIC_REGISTRY }}
+          username: ${{ secrets.DOCKER_AUTH_USERNAME }}
+          password: ${{ secrets.DOCKER_AUTH_PASSWORD }}
+
+      - uses: ko-build/setup-ko@v0.8
+        env:
+          KO_DOCKER_REPO: ${{ env.ELASTIC_REGISTRY }}
+
+      - name: Build container image and push to Elastic registry
+        working-directory: ./loadgen/cmd/otelbench
+        run: |
+          export KO_DOCKER_REPO=${{ env.ELASTIC_REGISTRY }}
+          local_platform="linux/$(go env GOARCH)"
+          KO_IMAGE=$(ko build --platform=$local_platform)
+          docker tag "$KO_IMAGE" "${{ env.ELASTIC_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.check-release.outputs.version }}"
