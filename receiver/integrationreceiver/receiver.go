@@ -133,7 +133,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		traces:  r.nextTracesConsumer,
 	}
 
-	receiverConfig, found := config.Receivers[pipeline.Receiver]
+	receiverConfig, found := config.Receivers[*pipeline.Receiver]
 	if !found {
 		return fmt.Errorf("receiver %q not found", pipeline.Receiver)
 	}

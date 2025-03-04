@@ -120,7 +120,9 @@ func selectComponents[C any](from map[component.ID]C, selection []component.ID) 
 func listReceivers(pipelines map[component.ID]PipelineConfig) []component.ID {
 	var list []component.ID
 	for _, pipeline := range pipelines {
-		list = append(list, pipeline.Receiver)
+		if pipeline.Receiver != nil {
+			list = append(list, *pipeline.Receiver)
+		}
 	}
 	slices.SortFunc(list, func(a, b component.ID) int { return strings.Compare(a.String(), b.String()) })
 	return slices.Compact(list)
@@ -147,8 +149,10 @@ func (c *rawYAMLConfig) Validate() error {
 			return fmt.Errorf("invalid pipeline %q: %w", id, err)
 		}
 
-		if _, found := c.Receivers[pipeline.Receiver]; !found {
-			return fmt.Errorf("receiver %q not defined", pipeline.Receiver.String())
+		if pipeline.Receiver != nil {
+			if _, found := c.Receivers[*pipeline.Receiver]; !found {
+				return fmt.Errorf("receiver %q not defined", pipeline.Receiver.String())
+			}
 		}
 
 		for _, processor := range pipeline.Processors {

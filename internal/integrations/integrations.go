@@ -78,8 +78,10 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("invalid pipeline %q: %w", id, err)
 		}
 
-		if _, found := c.Receivers[pipeline.Receiver]; !found {
-			return fmt.Errorf("receiver %s not defined", pipeline.Receiver.String())
+		if pipeline.Receiver != nil {
+			if _, found := c.Receivers[*pipeline.Receiver]; !found {
+				return fmt.Errorf("receiver %s not defined", pipeline.Receiver.String())
+			}
 		}
 
 		for _, processor := range pipeline.Processors {
@@ -94,7 +96,7 @@ func (c *Config) Validate() error {
 }
 
 type PipelineConfig struct {
-	Receiver   component.ID   `mapstructure:"receiver"`
+	Receiver   *component.ID  `mapstructure:"receiver"`
 	Processors []component.ID `mapstructure:"processors"`
 }
 

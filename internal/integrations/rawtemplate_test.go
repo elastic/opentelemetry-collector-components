@@ -71,20 +71,20 @@ func TestRawTemplateResolve(t *testing.T) {
 				},
 				Pipelines: map[component.ID]PipelineConfig{
 					component.MustNewID("metrics"): {
-						Receiver: component.MustNewID("foo"),
+						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
 							component.MustNewID("otherprocessor"),
 						},
 					},
 					component.MustNewID("logs"): {
-						Receiver: component.MustNewID("bar"),
+						Receiver: idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{
 							component.MustNewID("third"),
 						},
 					},
 					component.MustNewIDWithName("logs", "raw"): {
-						Receiver:   component.MustNewID("bar"),
+						Receiver:   idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{},
 					},
 				},
@@ -111,7 +111,7 @@ func TestRawTemplateResolve(t *testing.T) {
 				},
 				Pipelines: map[component.ID]PipelineConfig{
 					component.MustNewID("metrics"): {
-						Receiver: component.MustNewID("foo"),
+						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
 							component.MustNewID("otherprocessor"),
@@ -147,7 +147,7 @@ func TestRawTemplateResolve(t *testing.T) {
 				},
 				Pipelines: map[component.ID]PipelineConfig{
 					component.MustNewID("metrics"): {
-						Receiver: component.MustNewID("foo"),
+						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
 							component.MustNewID("otherprocessor"),
@@ -180,7 +180,7 @@ func TestRawTemplateResolve(t *testing.T) {
 				Processors: nil,
 				Pipelines: map[component.ID]PipelineConfig{
 					component.MustNewIDWithName("logs", "raw"): {
-						Receiver:   component.MustNewID("bar"),
+						Receiver:   idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{},
 					},
 				},
@@ -254,4 +254,8 @@ func readTemplateFile(fileName string) []byte {
 
 func assertEqualConfigs(t *testing.T, expected, found Config) {
 	assert.EqualValues(t, expected, found)
+}
+
+func idPtr(id component.ID) *component.ID {
+	return &id
 }
