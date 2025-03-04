@@ -56,6 +56,9 @@ jobs:
           path: ./.tools
           key: go-tools-${{ runner.os }}-${{ hashFiles('internal/tools/go.sum') }}
 
+      - name: Add .tools to PATH
+        run: echo "$GITHUB_WORKSPACE/.tools" >> $GITHUB_PATH
+
       # If there is no cache with the go tools,
       # install them. We need the changelog
       # tool for this workflow to work.
@@ -66,7 +69,7 @@ jobs:
 
       - name: Update otelbench changelog and delete changelog fragments
         working-directory: ./loadgen/cmd/otelbench
-        run: ../../../.tools/chloggen update --version ${{ needs.check-release.outputs.version }}
+        run: ./chloggen update --version ${{ needs.check-release.outputs.version }}
 
       - name: Update Makefile version if dispatched
         if: github.event_name == 'workflow_dispatch'
