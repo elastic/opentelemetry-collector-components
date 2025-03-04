@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"testing"
 	"time"
 
@@ -57,22 +58,8 @@ func fullBenchmarkName(signal, exporter string, concurrency int) string {
 	return fmt.Sprintf("%s-%s-%d", signal, exporter, concurrency)
 }
 
-func runBench(fetcher remoteStatsFetcher, signal, exporter string, concurrency int) testing.BenchmarkResult {
+func runBench(ctx context.Context, signal, exporter string, concurrency int, reporter func(b *testing.B)) testing.BenchmarkResult {
 	return testing.Benchmark(func(b *testing.B) {
-		reportRemoteStats := func(from, to time.Time) {
-			if fetcher == nil {
-				return
-			}
-			stats, err := fetcher.FetchStats(context.Background(), from, to)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
-				return
-			}
-			for unit, n := range stats {
-				b.ReportMetric(n, unit)
-			}
-		}
-
 		// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
 		logsDone := make(chan loadgenreceiver.Stats)
 		metricsDone := make(chan loadgenreceiver.Stats)
@@ -86,9 +73,8 @@ func runBench(fetcher remoteStatsFetcher, signal, exporter string, concurrency i
 		if signal != "traces" {
 			close(tracesDone)
 		}
-		stop := make(chan struct{}) // close channel to stop the loadgen collector
+		stop := make(chan struct{}, 2) // close channel to stop the benchmark run
 
-		t := time.Now().UTC()
 		go func() {
 			logsStats := <-logsDone
 			metricsStats := <-metricsDone
@@ -96,8 +82,9 @@ func runBench(fetcher remoteStatsFetcher, signal, exporter string, concurrency i
 			b.StopTimer()
 
 			stats := logsStats.Add(metricsStats).Add(tracesStats)
-
 			elapsedSeconds := b.Elapsed().Seconds()
+			stop <- struct{}{}
+
 			b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
 			b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
 			b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
@@ -106,16 +93,16 @@ func runBench(fetcher remoteStatsFetcher, signal, exporter string, concurrency i
 			b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
 			b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
 			b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
-			reportRemoteStats(t, time.Now().UTC())
-
+			reporter(b)
 			close(stop)
 		}()
 
-		err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
+		err := RunCollector(ctx, stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			b.Fatal(err)
 		}
+		<-stop
 	})
 }
 
@@ -127,6 +114,9 @@ func main() {
 		os.Exit(2)
 	}
 	flag.Parse()
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
 
 	// TODO(carsonip): configurable warm up
 
@@ -147,15 +137,31 @@ func main() {
 		}
 	}
 
+	from := time.Now().UTC()
 	for _, concurrency := range Config.ConcurrencyList {
 		for _, signal := range getSignals() {
 			for _, exporter := range getExporters() {
 				benchName := fullBenchmarkName(signal, exporter, concurrency)
-				result := runBench(fetcher, signal, exporter, concurrency)
+				result := runBench(ctx, signal, exporter, concurrency, func(b *testing.B) {
+					if fetcher == nil {
+						return
+					}
+					// after each run wait a bit to capture late metric arrivals
+					time.Sleep(time.Second)
+					to := time.Now().UTC()
+					stats, err := fetcher.FetchStats(ctx, from, to)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
+						return
+					}
+					for unit, n := range stats {
+						b.ReportMetric(n, unit)
+					}
+					// advance the timestamp a bit to minimize the metrics influence of the previous run over the next run
+					from = to.Add(time.Second)
+				})
 				// write benchmark result to stdout, as stderr may be cluttered with collector logs
 				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
-				// wait for a minute after each run to minimize the influence of the previous run over the next run
-				time.Sleep(time.Minute)
 			}
 		}
 	}

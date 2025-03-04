@@ -37,17 +37,19 @@ Usage of ./otelbench:
   -telemetry-elasticsearch-api-key string
         optional remote Elasticsearch telemetry API key
   -telemetry-elasticsearch-index string
-        optional remote Elasticsearch telemetry metrics index
+        optional remote Elasticsearch telemetry metrics index pattern
   -telemetry-elasticsearch-password string
         optional remote Elasticsearch telemetry password
+  -telemetry-elasticsearch-timeout duration
+        optional remote Elasticsearch telemetry request timeout (default 1m0s)
   -telemetry-elasticsearch-url list
         optional comma-separated list of remote Elasticsearch telemetry hosts
   -telemetry-elasticsearch-username string
         optional remote Elasticsearch telemetry username
-  -telemetry-filter-cluster string
-        optional remote Elasticsearch telemetry cluster metrics filter
-  -telemetry-filter-project string
-        optional remote Elasticsearch telemetry project metrics filter
+  -telemetry-filter-cluster-name string
+        optional remote Elasticsearch telemetry cluster name metrics filter
+  -telemetry-filter-project-id string
+        optional remote Elasticsearch telemetry project id metrics filter
   -telemetry-metrics list
         optional comma-separated list of remote Elasticsearch telemetry metrics to be reported
   -test.bench regexp
