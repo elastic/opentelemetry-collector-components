@@ -113,6 +113,7 @@ func runBench(fetcher remoteStatsFetcher, signal, exporter string, concurrency i
 
 		err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
 		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
 			b.Fatal(err)
 		}
 	})
