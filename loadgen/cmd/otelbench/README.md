@@ -153,3 +153,19 @@ For the full list of reported metrics see https://opentelemetry.io/docs/collecto
 ```shell
 ./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
 ```
+=======
+## Contribute
+
+If you want to contribute to any go files, you need to create a changelog entry:
+
+1. Create a changelog entry by running `make chlog-new`.
+2. Validate your changelog entry by running `make chlog-validate`.
+3. If you want to preview the future `CHANGELOG.md` you can also run `make chlog-preview`.
+
+## Create new release
+
+TODO
+<!-----
+Have a workflow that gets triggered by a version update (maybe the version from the MAKEFILE, maybe another option), and runs `$(CHLOGGEN) update --version $(VERSION)`, updating the CHANGELOG.md and deleting all changelog fragments + it pushes a new image to elastic container
+registry.
+---->
