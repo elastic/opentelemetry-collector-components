@@ -6,7 +6,7 @@ otelbench wraps the collector inside a Go test benchmark. It outputs throughput 
 
 ```
 Usage of ./otelbench:
-   -api-key string
+  -api-key string
         API key for target server
   -concurrency list
         comma-separated list of concurrency (number of simulated agents) to run each benchmark with
@@ -153,7 +153,7 @@ For the full list of reported metrics see https://opentelemetry.io/docs/collecto
 ```shell
 ./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
 ```
-=======
+
 ## Contribute
 
 If you want to contribute to any go files, you need to create a changelog entry:
