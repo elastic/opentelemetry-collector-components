@@ -128,7 +128,7 @@ var knownMetricsAggregations map[string]types.Aggregations = map[string]types.Ag
 
 type elasticsearchTelemetryConfig TelemetryConfig
 
-func (cfg *elasticsearchTelemetryConfig) validate() error {
+func (cfg elasticsearchTelemetryConfig) validate() error {
 	if len(cfg.ElasticsearchURL) == 0 {
 		return errors.New("remote stats will be ignored because of empty telemetry Elasticsearch URL")
 	}
@@ -158,15 +158,18 @@ func newElasticsearchStatsFetcher(cfg elasticsearchTelemetryConfig) (remoteStats
 		return nil, true, err
 	}
 	client, err := elasticsearch.NewTypedClient(elasticsearch.Config{
-		Addresses: cfg.ElasticsearchURL,
-		Username:  cfg.ElasticsearchUserName,
-		Password:  cfg.ElasticsearchPassword,
-		APIKey:    cfg.ElasticsearchAPIKey,
+		Addresses:    cfg.ElasticsearchURL,
+		Username:     cfg.ElasticsearchUserName,
+		Password:     cfg.ElasticsearchPassword,
+		APIKey:       cfg.ElasticsearchAPIKey,
+		DisableRetry: true,
 	})
 	if err != nil {
 		return nil, false, err
 	}
-	ok, err := client.Ping().Do(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ElasticsearchTimeout)
+	defer cancel()
+	ok, err := client.Ping().Do(ctx)
 	if err != nil || !ok {
 		return nil, false, err
 	}
@@ -216,6 +219,8 @@ func (esf elasticsearchStatsFetcher) FetchStats(ctx context.Context, from, to ti
 		Aggregations: aggs,
 		Size:         some.Int(0),
 	}
+	ctx, cancel := context.WithTimeout(ctx, esf.ElasticsearchTimeout)
+	defer cancel()
 	resp, err := esf.client.Search().Index(esf.ElasticsearchIndex).Request(&request).Do(ctx)
 	if err != nil {
 		return nil, err

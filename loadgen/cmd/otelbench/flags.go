@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var Config struct {
@@ -56,6 +57,7 @@ type TelemetryConfig struct {
 	ElasticsearchUserName string
 	ElasticsearchPassword string
 	ElasticsearchAPIKey   string
+	ElasticsearchTimeout  time.Duration
 	ElasticsearchIndex    string
 	FilterClusterName     string
 	FilterProjectID       string
@@ -162,6 +164,7 @@ func Init() error {
 	flag.StringVar(&Config.Telemetry.ElasticsearchUserName, "telemetry-elasticsearch-username", "", "optional remote Elasticsearch telemetry username")
 	flag.StringVar(&Config.Telemetry.ElasticsearchPassword, "telemetry-elasticsearch-password", "", "optional remote Elasticsearch telemetry password")
 	flag.StringVar(&Config.Telemetry.ElasticsearchAPIKey, "telemetry-elasticsearch-api-key", "", "optional remote Elasticsearch telemetry API key")
+	flag.DurationVar(&Config.Telemetry.ElasticsearchTimeout, "telemetry-elasticsearch-timeout", time.Minute, "optional remote Elasticsearch telemetry request timeout")
 	flag.StringVar(&Config.Telemetry.ElasticsearchIndex, "telemetry-elasticsearch-index", "", "optional remote Elasticsearch telemetry metrics index pattern")
 	flag.StringVar(&Config.Telemetry.FilterClusterName, "telemetry-filter-cluster-name", "", "optional remote Elasticsearch telemetry cluster name metrics filter")
 	flag.StringVar(&Config.Telemetry.FilterProjectID, "telemetry-filter-project-id", "", "optional remote Elasticsearch telemetry project id metrics filter")
