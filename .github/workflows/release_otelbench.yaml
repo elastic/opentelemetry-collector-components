@@ -18,8 +18,7 @@ jobs:
     permissions:
       contents: write
     env:
-      ELASTIC_REGISTRY: "docker.elastic.co/observability-ci"
-      IMAGE_NAME: "otelbench"
+      ELASTIC_REGISTRY: "docker.elastic.co/observability-ci/otelbench"
     steps:
       - uses: actions/checkout@v4
 
@@ -43,5 +42,4 @@ jobs:
         run: |
           export KO_DOCKER_REPO=${{ env.ELASTIC_REGISTRY }}
           local_platform="linux/$(go env GOARCH)"
-          KO_IMAGE=$(ko build --platform=$local_platform)
-          docker tag "$KO_IMAGE" "${{ env.ELASTIC_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.OTELBENCH_VERSION }}"
+          ko build --bare --platform=$local_platform --tags ${{ env.OTELBENCH_VERSION }}"
