@@ -60,7 +60,7 @@ func (minMax) Aggregations(metric string) map[string]types.Aggregations {
 func (minMax) Value(metric string, aggs map[string]types.Aggregate) *float64 {
 	min, minOk := aggs[metric+"_min"].(*types.MinAggregate)
 	max, maxOk := aggs[metric+"_max"].(*types.MaxAggregate)
-	if minOk && maxOk {
+	if minOk && maxOk && min.Value != nil && max.Value != nil {
 		v := float64(*max.Value) - float64(*min.Value)
 		return &v
 	}
