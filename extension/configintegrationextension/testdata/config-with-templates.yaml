@@ -2,7 +2,7 @@ integrations:
   valid: |
     receivers:
       foo:
-        setting: ${var:setting}
+        setting: $${var:setting}
     
     processors:
       foo: ~
