@@ -3,7 +3,7 @@ set -eo pipefail
 
 VERSION=$1
 GITHUB_EVENT_NAME=$2
-BRANCH_NAME="update-changelog-$VERSION"
+BRANCH_NAME="update-changelog-$VERSION-$(date +%F_%H-%M-%S)"
 
 (
   pushd ../../../loadgen/cmd/otelbench
