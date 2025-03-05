@@ -137,6 +137,7 @@ func main() {
 		}
 	}
 
+	const statsFetcherDurationPadding = time.Second
 	from := time.Now().UTC()
 	for _, concurrency := range Config.ConcurrencyList {
 		for _, signal := range getSignals() {
@@ -147,7 +148,7 @@ func main() {
 						return
 					}
 					// after each run wait a bit to capture late metric arrivals
-					time.Sleep(time.Second)
+					time.Sleep(statsFetcherDurationPadding)
 					to := time.Now().UTC()
 					stats, err := fetcher.FetchStats(ctx, from, to)
 					if err != nil {
@@ -158,7 +159,7 @@ func main() {
 						b.ReportMetric(n, unit)
 					}
 					// advance the timestamp a bit to minimize the metrics influence of the previous run over the next run
-					from = to.Add(time.Second)
+					from = to.Add(statsFetcherDurationPadding)
 				})
 				// write benchmark result to stdout, as stderr may be cluttered with collector logs
 				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
