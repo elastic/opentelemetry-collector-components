@@ -6,7 +6,7 @@ GITHUB_EVENT_NAME=$2
 BRANCH_NAME="update-changelog-$VERSION"
 
 (
-  cd ../../../loadgen/cmd/otelbench
+  pushd ../../../loadgen/cmd/otelbench
   ./chloggen update --version $VERSION
 
   if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
@@ -16,7 +16,7 @@ BRANCH_NAME="update-changelog-$VERSION"
 )
 
 # go to root of this project
-cd ../../../
+popd
 
 # commit changes
 git checkout -b "$BRANCH_NAME"
