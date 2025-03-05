@@ -24,13 +24,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
+
+	"github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver/internal/metadata"
 )
 
 func TestCreateReceiver(t *testing.T) {
 	factory := NewFactory()
 	cfg := createDefaultConfig()
 
-	params := receivertest.NewNopSettings()
+	params := receivertest.NewNopSettings(metadata.Type)
 
 	lConsumer := consumertest.NewNop()
 	lReceiver, err := factory.CreateLogs(context.Background(), params, cfg, lConsumer)

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package integrationprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor"
+package integrationreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver"
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,115 +32,102 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer/consumertest"
-	"go.opentelemetry.io/collector/processor/processortest"
+	"go.opentelemetry.io/collector/receiver/receivertest"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
-	"github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver/internal/metadata"
 )
 
 func TestConsumeLogs(t *testing.T) {
 	cases := []struct {
 		title        string
 		setup        func(*Config)
-		inputFile    string
 		expectedFile string
 		startErr     string
 	}{
 		{
-			title: "empty pipeline",
+			title: "empty processing pipeline",
 			setup: func(config *Config) {
-				config.Name = "empty"
-				config.Pipeline = component.MustNewID("logs")
+				config.Name = "filelog"
+				config.Pipelines = []component.ID{component.MustNewID("logs")}
+				config.Parameters = map[string]any{
+					"paths": filepath.Join("testdata", "logs", "test-simple.log"),
+				}
 			},
-			inputFile:    "logs.yaml",
 			expectedFile: "logs-no-processing.yaml",
 		},
 		{
-			title: "undefined integration",
+			title: "pipeline with processors",
 			setup: func(config *Config) {
-				config.Name = "undefined"
-			},
-			startErr: `failed to find integration "undefined": not found`,
-		},
-		{
-			title: "undefined pipeline",
-			setup: func(config *Config) {
-				config.Name = "empty"
-				config.Pipeline = component.MustNewID("traces")
-			},
-			startErr: `component "traces" not found`,
-		},
-
-		{
-			title: "use variable",
-			setup: func(config *Config) {
-				config.Name = "addattribute"
-				config.Pipeline = component.MustNewID("logs")
+				config.Name = "filelog"
+				config.Pipelines = []component.ID{component.MustNewIDWithName("logs", "processed")}
 				config.Parameters = map[string]any{
+					"paths":    filepath.Join("testdata", "logs", "test-simple.log"),
 					"resource": "test",
 				}
 			},
-			inputFile:    "logs.yaml",
-			expectedFile: "logs-add-attribute.yaml",
+			expectedFile: "logs-with-attributes.yaml",
 		},
 		{
-			title: "missing variable",
+			title: "missing variable in processor",
 			setup: func(config *Config) {
-				config.Name = "addattribute"
-				config.Pipeline = component.MustNewID("logs")
+				config.Name = "filelog"
+				config.Pipelines = []component.ID{component.MustNewIDWithName("logs", "processed")}
+				config.Parameters = map[string]any{
+					"paths": filepath.Join("testdata", "logs", "test-simple.log"),
+				}
 			},
 			startErr: `variable "resource" not found`,
 		},
+		{
+			title: "receiver without factory",
+			setup: func(config *Config) {
+				config.Name = "filelog"
+				config.Pipelines = []component.ID{component.MustNewIDWithName("logs", "undefined")}
+			},
+			startErr: `could not find receiver factory for "undefined"`,
+		},
 
 		{
-			title: "correct order in multiple processors",
+			title: "no receiver in pipeline",
 			setup: func(config *Config) {
-				config.Name = "multipleprocessors"
-				config.Pipeline = component.MustNewID("logs")
-				config.Parameters = map[string]any{
-					"resource": "test",
-				}
+				config.Name = "no-receiver"
+				config.Pipelines = []component.ID{component.MustNewID("logs")}
 			},
-			inputFile:    "logs.yaml",
-			expectedFile: "logs-processors-order.yaml",
+			startErr: "no receiver in pipeline configuration",
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.title, func(t *testing.T) {
-			testConsumeLogs(t, c.setup, c.inputFile, c.expectedFile, c.startErr)
+			testConsumeLogs(t, c.setup, c.expectedFile, c.startErr)
 		})
 	}
 }
 
-func testConsumeLogs(t *testing.T, setup func(*Config), inputFile, expectedFile, startErr string) {
+func testConsumeLogs(t *testing.T, setup func(*Config), expectedFile, startErr string) {
 	factory := NewFactory()
 	config := factory.CreateDefaultConfig().(*Config)
 	setup(config)
 
 	sink := new(consumertest.LogsSink)
-	p, err := factory.CreateLogs(context.Background(), processortest.NewNopSettings(metadata.Type), config, sink)
+	p, err := factory.CreateLogs(context.Background(), receivertest.NewNopSettings(metadata.Type), config, sink)
 	require.NoError(t, err)
 
-	c := p.(component.Component)
-	err = c.Start(context.Background(), newMockHost("testdata/templates"))
+	err = p.Start(context.Background(), newMockHost("testdata/templates"))
 	if startErr != "" {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), startErr)
 		return
 	}
 	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, c.Shutdown(context.Background())) })
+	t.Cleanup(func() { require.NoError(t, p.Shutdown(context.Background())) })
 
-	input, err := golden.ReadLogs(filepath.Join("testdata", inputFile))
-	require.NoError(t, err)
-
-	assert.NoError(t, p.ConsumeLogs(context.Background(), input))
-
+	waitLogsSink(t, sink)
 	actual := sink.AllLogs()
-	require.True(t, len(actual) > 0)
 
 	expectedFile = filepath.Join("testdata", "expected-"+expectedFile)
 	if _, err := os.Stat(expectedFile); errors.Is(err, os.ErrNotExist) {
@@ -149,7 +137,23 @@ func testConsumeLogs(t *testing.T, setup func(*Config), inputFile, expectedFile,
 	expected, err := golden.ReadLogs(expectedFile)
 	require.NoError(t, err)
 
-	assert.NoError(t, plogtest.CompareLogs(expected, actual[0]))
+	assert.NoError(t, plogtest.CompareLogs(expected, actual[0], plogtest.IgnoreObservedTimestamp()))
+}
+
+func waitLogsSink(t *testing.T, sink *consumertest.LogsSink) {
+	timeout := time.After(10 * time.Second)
+	retry := time.NewTicker(10 * time.Millisecond)
+	defer retry.Stop()
+	for {
+		select {
+		case <-timeout:
+			t.Fatal("timeout while waiting for logs")
+		case <-retry.C:
+		}
+		if sink.LogRecordCount() > 0 {
+			return
+		}
+	}
 }
 
 func newMockHost(path string) *mockedHost {
@@ -170,6 +174,8 @@ func (m *mockedHost) GetFactory(kind component.Kind, ctype component.Type) compo
 	switch {
 	case kind == component.KindProcessor && ctype.String() == "transform":
 		return transformprocessor.NewFactory()
+	case kind == component.KindReceiver && ctype.String() == "filelog":
+		return filelogreceiver.NewFactory()
 	}
 	return nil
 }
