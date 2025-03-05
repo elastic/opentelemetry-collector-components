@@ -28,11 +28,15 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 )
 
+// statsAggregation is a local abstraction to aggregate
+// a requested remote metric into benchmarking stats in Elasticsearch.
 type statsAggregation interface {
 	Aggregations(string) map[string]types.Aggregations
 	Value(string, map[string]types.Aggregate) *float64
 }
 
+// avg implements average aggregation directly via Elasticsearch Avg metric aggregation.
+// OTel Gauge metrics should use this stats aggregation.
 type avg struct{}
 
 func (avg) Aggregations(metric string) map[string]types.Aggregations {
@@ -48,6 +52,13 @@ func (avg) Value(metric string, aggs map[string]types.Aggregate) *float64 {
 	return nil
 }
 
+// minMax implements sum aggregation by utilizing Elasticsearch Max-Min metric aggregations.
+// By calculating the difference between the aggregated max and min values,
+// cumulative metrics are effectively converted to delta metrics to obtain the counter sum.
+// OTel Counter metrics that have cumulative temporality should use this stats aggregation
+//
+// TODO this won't work when an additional aggregation collector dimension will be added in the future.
+// minMax will need to be updated to have a nested aggregation applied per collector instance.
 type minMax struct{}
 
 func (minMax) Aggregations(metric string) map[string]types.Aggregations {
