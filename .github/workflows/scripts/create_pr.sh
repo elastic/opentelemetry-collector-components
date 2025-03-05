@@ -16,7 +16,7 @@ BRANCH_NAME="update-changelog-$VERSION"
 )
 
 # go to root of this project
-cd ../../../
+popd
 
 # commit changes
 git checkout -b "$BRANCH_NAME"
