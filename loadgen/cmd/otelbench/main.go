@@ -73,7 +73,8 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 		if signal != "traces" {
 			close(tracesDone)
 		}
-		stop := make(chan struct{}, 2) // close channel to stop the benchmark run
+		stop := make(chan struct{}) // close channel to stop the loadgen collector
+		done := make(chan struct{}) // close channel to exit benchmark after stats were reported
 
 		go func() {
 			logsStats := <-logsDone
@@ -83,7 +84,7 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 
 			stats := logsStats.Add(metricsStats).Add(tracesStats)
 			elapsedSeconds := b.Elapsed().Seconds()
-			stop <- struct{}{}
+			close(stop)
 
 			b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
 			b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
@@ -94,7 +95,7 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 			b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
 			b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
 			reporter(b)
-			close(stop)
+			close(done)
 		}()
 
 		err := RunCollector(ctx, stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
@@ -102,7 +103,7 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 			fmt.Fprintln(os.Stderr, err.Error())
 			b.Fatal(err)
 		}
-		<-stop
+		<-done
 	})
 }
 

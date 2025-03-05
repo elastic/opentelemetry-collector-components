@@ -37,7 +37,7 @@ Usage of ./otelbench:
   -telemetry-elasticsearch-api-key string
         optional remote Elasticsearch telemetry API key
   -telemetry-elasticsearch-index string
-        optional remote Elasticsearch telemetry metrics index pattern
+        optional remote Elasticsearch telemetry metrics index pattern (default "metrics-*")
   -telemetry-elasticsearch-password string
         optional remote Elasticsearch telemetry password
   -telemetry-elasticsearch-timeout duration
@@ -51,7 +51,7 @@ Usage of ./otelbench:
   -telemetry-filter-project-id string
         optional remote Elasticsearch telemetry project id metrics filter
   -telemetry-metrics list
-        optional comma-separated list of remote Elasticsearch telemetry metrics to be reported
+        optional comma-separated list of remote Elasticsearch telemetry metrics to be reported (default otelcol_process_cpu_seconds,otelcol_process_memory_rss,otelcol_process_runtime_total_alloc_bytes,otelcol_process_runtime_total_sys_memory_bytes,otelcol_process_uptime)
   -test.bench regexp
         run only benchmarks matching regexp
   -test.benchmem

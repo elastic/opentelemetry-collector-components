@@ -18,7 +18,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"net/url"
@@ -62,6 +61,14 @@ type TelemetryConfig struct {
 	FilterClusterName     string
 	FilterProjectID       string
 	Metrics               []string
+}
+
+var defaultTelemetryMetrics = []string{
+	"otelcol_process_cpu_seconds",
+	"otelcol_process_memory_rss",
+	"otelcol_process_runtime_total_alloc_bytes",
+	"otelcol_process_runtime_total_sys_memory_bytes",
+	"otelcol_process_uptime",
 }
 
 func Init() error {
@@ -165,7 +172,7 @@ func Init() error {
 	flag.StringVar(&Config.Telemetry.ElasticsearchPassword, "telemetry-elasticsearch-password", "", "optional remote Elasticsearch telemetry password")
 	flag.StringVar(&Config.Telemetry.ElasticsearchAPIKey, "telemetry-elasticsearch-api-key", "", "optional remote Elasticsearch telemetry API key")
 	flag.DurationVar(&Config.Telemetry.ElasticsearchTimeout, "telemetry-elasticsearch-timeout", time.Minute, "optional remote Elasticsearch telemetry request timeout")
-	flag.StringVar(&Config.Telemetry.ElasticsearchIndex, "telemetry-elasticsearch-index", "", "optional remote Elasticsearch telemetry metrics index pattern")
+	flag.StringVar(&Config.Telemetry.ElasticsearchIndex, "telemetry-elasticsearch-index", "metrics-*", "optional remote Elasticsearch telemetry metrics index pattern")
 	flag.StringVar(&Config.Telemetry.FilterClusterName, "telemetry-filter-cluster-name", "", "optional remote Elasticsearch telemetry cluster name metrics filter")
 	flag.StringVar(&Config.Telemetry.FilterProjectID, "telemetry-filter-project-id", "", "optional remote Elasticsearch telemetry project id metrics filter")
 	flag.Func("telemetry-metrics", "optional comma-separated `list` of remote Elasticsearch telemetry metrics to be reported",
@@ -182,9 +189,7 @@ func Init() error {
 			return nil
 		},
 	)
-	if err := flag.Set("telemetry-metrics", "otelcol_process_cpu_seconds,otelcol_process_memory_rss,otelcol_process_runtime_total_alloc_bytes,otelcol_process_runtime_total_sys_memory_bytes,otelcol_process_uptime"); err != nil {
-		return errors.New(`error setting default value for flag "telemetry-metrics"`)
-	}
+	flag.Lookup("telemetry-metrics").DefValue = strings.Join(defaultTelemetryMetrics, ",")
 
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
