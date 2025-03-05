@@ -6,7 +6,7 @@ GITHUB_EVENT_NAME=$2
 BRANCH_NAME="update-changelog-$VERSION-$(date +%F_%H-%M-%S)"
 
 (
-  pushd ../../../loadgen/cmd/otelbench
+  cd ./loadgen/cmd/otelbench
   ./chloggen update --version $VERSION
 
   if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
@@ -14,9 +14,6 @@ BRANCH_NAME="update-changelog-$VERSION-$(date +%F_%H-%M-%S)"
     sed -i "s/^VERSION := .*/VERSION := $VERSION/" Makefile
   fi
 )
-
-# go to root of this project
-popd
 
 # commit changes
 git checkout -b "$BRANCH_NAME"
