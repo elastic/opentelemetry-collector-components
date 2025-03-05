@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Login to Elastic container registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           registry: ${{ env.ELASTIC_REGISTRY }}
           username: ${{ secrets.ELASTIC_DOCKER_USERNAME }}
