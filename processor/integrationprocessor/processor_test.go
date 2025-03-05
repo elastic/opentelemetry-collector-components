@@ -30,6 +30,7 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/processor/processortest"
@@ -38,31 +39,113 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor/internal/metadata"
 )
 
-func TestEmptyProcessLogs(t *testing.T) {
+func TestConsumeLogs(t *testing.T) {
+	cases := []struct {
+		title        string
+		setup        func(*Config)
+		inputFile    string
+		expectedFile string
+		startErr     string
+	}{
+		{
+			title: "empty pipeline",
+			setup: func(config *Config) {
+				config.Name = "empty"
+				config.Pipeline = component.MustNewID("logs")
+			},
+			inputFile:    "logs.yaml",
+			expectedFile: "logs-no-processing.yaml",
+		},
+		{
+			title: "undefined integration",
+			setup: func(config *Config) {
+				config.Name = "undefined"
+			},
+			startErr: `failed to find integration "undefined": not found`,
+		},
+		{
+			title: "undefined pipeline",
+			setup: func(config *Config) {
+				config.Name = "empty"
+				config.Pipeline = component.MustNewID("traces")
+			},
+			startErr: `component "traces" not found`,
+		},
+
+		{
+			title: "use variable",
+			setup: func(config *Config) {
+				config.Name = "addattribute"
+				config.Pipeline = component.MustNewID("logs")
+				config.Parameters = map[string]any{
+					"resource": "test",
+				}
+			},
+			inputFile:    "logs.yaml",
+			expectedFile: "logs-add-attribute.yaml",
+		},
+		{
+			title: "missing variable",
+			setup: func(config *Config) {
+				config.Name = "addattribute"
+				config.Pipeline = component.MustNewID("logs")
+			},
+			startErr: `variable "resource" not found`,
+		},
+
+		{
+			title: "correct order in multiple processors",
+			setup: func(config *Config) {
+				config.Name = "multipleprocessors"
+				config.Pipeline = component.MustNewID("logs")
+				config.Parameters = map[string]any{
+					"resource": "test",
+				}
+			},
+			inputFile:    "logs.yaml",
+			expectedFile: "logs-processors-order.yaml",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.title, func(t *testing.T) {
+			testConsumeLogs(t, c.setup, c.inputFile, c.expectedFile, c.startErr)
+		})
+	}
+}
+
+func testConsumeLogs(t *testing.T, setup func(*Config), inputFile, expectedFile, startErr string) {
 	factory := NewFactory()
 	config := factory.CreateDefaultConfig().(*Config)
-	config.Name = "empty"
-	config.Pipeline = component.MustNewID("logs")
+	setup(config)
 
 	sink := new(consumertest.LogsSink)
-	p, err := factory.CreateLogs(context.Background(), processortest.NewNopSettingsWithType(metadata.Type), config, sink)
+	p, err := factory.CreateLogs(context.Background(), processortest.NewNopSettings(metadata.Type), config, sink)
 	require.NoError(t, err)
 
 	c := p.(component.Component)
 	err = c.Start(context.Background(), newMockHost("testdata/templates"))
+	if startErr != "" {
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), startErr)
+		return
+	}
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Shutdown(context.Background())) })
 
-	input, err := golden.ReadLogs(filepath.Join("testdata", "logs.yaml"))
+	input, err := golden.ReadLogs(filepath.Join("testdata", inputFile))
 	require.NoError(t, err)
 
 	assert.NoError(t, p.ConsumeLogs(context.Background(), input))
 
 	actual := sink.AllLogs()
-	require.Len(t, actual, 1)
+	require.True(t, len(actual) > 0)
 
-	expectedFile := filepath.Join("testdata", "expected-logs-no-processing.yaml")
-	//golden.WriteLogs(t, expectedFile, actual[0])
+	expectedFile = filepath.Join("testdata", "expected-"+expectedFile)
+	if _, err := os.Stat(expectedFile); errors.Is(err, os.ErrNotExist) {
+		err := golden.WriteLogs(t, expectedFile, actual[0])
+		require.NoError(t, err)
+	}
 	expected, err := golden.ReadLogs(expectedFile)
 	require.NoError(t, err)
 
@@ -83,7 +166,11 @@ func (m *mockedHost) GetExtensions() map[component.ID]component.Component {
 	}
 }
 
-func (m *mockedHost) GetFactory(component.Kind, component.Type) component.Factory {
+func (m *mockedHost) GetFactory(kind component.Kind, ctype component.Type) component.Factory {
+	switch {
+	case kind == component.KindProcessor && ctype.String() == "transform":
+		return transformprocessor.NewFactory()
+	}
 	return nil
 }
 
