@@ -17,10 +17,13 @@
 
 package configintegrationextension // import "github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension"
 
+// Config is the structured configuration of the extension.
 type Config struct {
+	// Integrations is a map with the embedded definition of integrations.
 	Integrations map[string]string `mapstructure:"integrations"`
 }
 
+// Validate validates the configuration.
 func (c *Config) Validate() error {
 	return nil
 }

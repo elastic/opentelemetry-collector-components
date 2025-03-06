@@ -23,12 +23,19 @@ import (
 	"go.opentelemetry.io/collector/component"
 )
 
+// Config is the structured configuration of the processor.
 type Config struct {
-	Name       string         `mapstructure:"name"`
-	Pipeline   component.ID   `mapstructure:"pipeline"`
+	// Name of the integration to instantiate, resolved by the finder extensions.
+	Name string `mapstructure:"name"`
+
+	// Pipeline is the pipeline to instantiate, from the referenced integration.
+	Pipeline component.ID `mapstructure:"pipeline"`
+
+	// Parameters are used to resolve the placeholders in parameterized integrations.
 	Parameters map[string]any `mapstructure:"parameters"`
 }
 
+// Validate validates the configuration.
 func (cfg *Config) Validate() error {
 	if cfg.Name == "" {
 		return errors.New("name is required")

@@ -23,10 +23,13 @@ import (
 	"os"
 )
 
+// Config is the structured configuration of the extension.
 type Config struct {
+	// Path is the directory containing integrations.
 	Path string `mapstructure:"path"`
 }
 
+// Validate validates the configuration, it checks that the path is defined and is the path to a directory.
 func (c *Config) Validate() error {
 	if c.Path == "" {
 		return errors.New("path is required")
