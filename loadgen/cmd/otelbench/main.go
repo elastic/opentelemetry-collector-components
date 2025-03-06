@@ -138,19 +138,18 @@ func main() {
 		}
 	}
 
-	from := time.Now().UTC()
 	for _, concurrency := range Config.ConcurrencyList {
 		for _, signal := range getSignals() {
 			for _, exporter := range getExporters() {
 				benchName := fullBenchmarkName(signal, exporter, concurrency)
+				t := time.Now().UTC()
 				result := runBench(ctx, signal, exporter, concurrency, func(b *testing.B) {
 					if fetcher == nil {
 						return
 					}
 					// after each run wait a bit to capture late metric arrivals
 					time.Sleep(time.Second)
-					to := time.Now().UTC()
-					stats, err := fetcher.FetchStats(ctx, from, to)
+					stats, err := fetcher.FetchStats(ctx, t, time.Now().UTC())
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
 						return
@@ -158,8 +157,6 @@ func main() {
 					for unit, n := range stats {
 						b.ReportMetric(n, unit)
 					}
-					// advance the timestamp again for the next run
-					from = time.Now().UTC()
 				})
 				// write benchmark result to stdout, as stderr may be cluttered with collector logs
 				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
