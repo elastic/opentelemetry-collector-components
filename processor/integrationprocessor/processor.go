@@ -30,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/processor"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
@@ -91,7 +92,7 @@ func (r *integrationProcessor) Start(ctx context.Context, ch component.Host) err
 		return fmt.Errorf("failed to find integration %q: %w", r.config.Name, err)
 	}
 
-	config, err := integration.Resolve(ctx, r.config.Parameters, []component.ID{r.config.Pipeline})
+	config, err := integration.Resolve(ctx, r.config.Parameters, []pipeline.ID{r.config.Pipeline})
 	if err != nil {
 		return fmt.Errorf("failed to build pipeline for integration %q: %w", r.config.Name, err)
 	}
@@ -110,7 +111,7 @@ func (r *integrationProcessor) Start(ctx context.Context, ch component.Host) err
 	return nil
 }
 
-func (r *integrationProcessor) startPipeline(ctx context.Context, host factoryGetter, config integrations.Config, pipelineID component.ID, pipeline integrations.PipelineConfig) error {
+func (r *integrationProcessor) startPipeline(ctx context.Context, host factoryGetter, config integrations.Config, pipelineID pipeline.ID, pipeline integrations.PipelineConfig) error {
 	r.logs = r.nextLogsConsumer
 	r.metrics = r.nextMetricsConsumer
 	r.traces = r.nextTracesConsumer

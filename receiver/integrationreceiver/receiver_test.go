@@ -35,6 +35,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
@@ -52,7 +53,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "empty processing pipeline",
 			setup: func(config *Config) {
 				config.Name = "filelog"
-				config.Pipelines = []component.ID{component.MustNewID("logs")}
+				config.Pipelines = []pipeline.ID{pipeline.MustNewID("logs")}
 				config.Parameters = map[string]any{
 					"paths": filepath.Join("testdata", "logs", "test-simple.log"),
 				}
@@ -63,7 +64,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "pipeline with processors",
 			setup: func(config *Config) {
 				config.Name = "filelog"
-				config.Pipelines = []component.ID{component.MustNewIDWithName("logs", "processed")}
+				config.Pipelines = []pipeline.ID{pipeline.MustNewIDWithName("logs", "processed")}
 				config.Parameters = map[string]any{
 					"paths":    filepath.Join("testdata", "logs", "test-simple.log"),
 					"resource": "test",
@@ -75,7 +76,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "missing variable in processor",
 			setup: func(config *Config) {
 				config.Name = "filelog"
-				config.Pipelines = []component.ID{component.MustNewIDWithName("logs", "processed")}
+				config.Pipelines = []pipeline.ID{pipeline.MustNewIDWithName("logs", "processed")}
 				config.Parameters = map[string]any{
 					"paths": filepath.Join("testdata", "logs", "test-simple.log"),
 				}
@@ -86,7 +87,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "receiver without factory",
 			setup: func(config *Config) {
 				config.Name = "filelog"
-				config.Pipelines = []component.ID{component.MustNewIDWithName("logs", "undefined")}
+				config.Pipelines = []pipeline.ID{pipeline.MustNewIDWithName("logs", "undefined")}
 			},
 			startErr: `could not find receiver factory for "undefined"`,
 		},
@@ -95,7 +96,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "no receiver in pipeline",
 			setup: func(config *Config) {
 				config.Name = "no-receiver"
-				config.Pipelines = []component.ID{component.MustNewID("logs")}
+				config.Pipelines = []pipeline.ID{pipeline.MustNewID("logs")}
 			},
 			startErr: "no receiver in pipeline configuration",
 		},

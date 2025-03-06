@@ -33,6 +33,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/processor/processortest"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
@@ -51,7 +52,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "empty pipeline",
 			setup: func(config *Config) {
 				config.Name = "empty"
-				config.Pipeline = component.MustNewID("logs")
+				config.Pipeline = pipeline.MustNewID("logs")
 			},
 			inputFile:    "logs.yaml",
 			expectedFile: "logs-no-processing.yaml",
@@ -67,7 +68,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "undefined pipeline",
 			setup: func(config *Config) {
 				config.Name = "empty"
-				config.Pipeline = component.MustNewID("traces")
+				config.Pipeline = pipeline.MustNewID("traces")
 			},
 			startErr: `component "traces" not found`,
 		},
@@ -76,7 +77,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "use variable",
 			setup: func(config *Config) {
 				config.Name = "addattribute"
-				config.Pipeline = component.MustNewID("logs")
+				config.Pipeline = pipeline.MustNewID("logs")
 				config.Parameters = map[string]any{
 					"resource": "test",
 				}
@@ -88,7 +89,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "missing variable",
 			setup: func(config *Config) {
 				config.Name = "addattribute"
-				config.Pipeline = component.MustNewID("logs")
+				config.Pipeline = pipeline.MustNewID("logs")
 			},
 			startErr: `variable "resource" not found`,
 		},
@@ -97,7 +98,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "correct order in multiple processors",
 			setup: func(config *Config) {
 				config.Name = "multipleprocessors"
-				config.Pipeline = component.MustNewID("logs")
+				config.Pipeline = pipeline.MustNewID("logs")
 				config.Parameters = map[string]any{
 					"resource": "test",
 				}

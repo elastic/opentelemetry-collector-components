@@ -20,7 +20,7 @@ package integrationreceiver // import "github.com/elastic/opentelemetry-collecto
 import (
 	"errors"
 
-	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // Config is the structured configuration of the receiver.
@@ -29,7 +29,7 @@ type Config struct {
 	Name string `mapstructure:"name"`
 
 	// Pipelines is the list of pipelines to instantiate, from the referenced integration.
-	Pipelines []component.ID `mapstructure:"pipelines"`
+	Pipelines []pipeline.ID `mapstructure:"pipelines"`
 
 	// Parameters are used to resolve the placeholders in parameterized integrations.
 	Parameters map[string]any `mapstructure:"parameters"`

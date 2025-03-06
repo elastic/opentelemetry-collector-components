@@ -28,6 +28,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // RawTemplate implements the Template interface for raw YAML content.
@@ -52,7 +53,7 @@ func NewRawTemplate(raw []byte) (*RawTemplate, error) {
 }
 
 // Resolve resolves the template using a confmap resolver.
-func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipelines []component.ID) (*Config, error) {
+func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipelines []pipeline.ID) (*Config, error) {
 	selectedPipelines := t.source.Pipelines
 	if len(pipelines) > 0 {
 		var err error
@@ -102,22 +103,27 @@ func newResolver(factory confmap.ProviderFactory, variables map[string]any) (*co
 	return confmap.NewResolver(settings)
 }
 
-func selectComponents[C any](from map[component.ID]C, selection []component.ID) (map[component.ID]C, error) {
+type selectableID interface {
+	comparable
+	fmt.Stringer
+}
+
+func selectComponents[C any, ID selectableID](from map[ID]C, selection []ID) (map[ID]C, error) {
 	if len(selection) == 0 {
 		return nil, nil
 	}
-	selected := make(map[component.ID]C)
+	selected := make(map[ID]C)
 	for _, id := range selection {
 		component, found := from[id]
 		if !found {
-			return nil, fmt.Errorf("component %q not found", id.String())
+			return nil, fmt.Errorf("component %q not found", id)
 		}
 		selected[id] = component
 	}
 	return selected, nil
 }
 
-func listReceivers(pipelines map[component.ID]PipelineConfig) []component.ID {
+func listReceivers(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
 	var list []component.ID
 	for _, pipeline := range pipelines {
 		if pipeline.Receiver != nil {
@@ -128,7 +134,7 @@ func listReceivers(pipelines map[component.ID]PipelineConfig) []component.ID {
 	return slices.Compact(list)
 }
 
-func listProcessors(pipelines map[component.ID]PipelineConfig) []component.ID {
+func listProcessors(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
 	var list []component.ID
 	for _, pipeline := range pipelines {
 		list = append(list, pipeline.Processors...)
@@ -138,9 +144,9 @@ func listProcessors(pipelines map[component.ID]PipelineConfig) []component.ID {
 }
 
 type rawYAMLConfig struct {
-	Receivers  map[component.ID]yaml.Node      `mapstructure:"receivers"`
-	Processors map[component.ID]yaml.Node      `mapstructure:"processors"`
-	Pipelines  map[component.ID]PipelineConfig `mapstructure:"pipelines"`
+	Receivers  map[component.ID]yaml.Node     `mapstructure:"receivers"`
+	Processors map[component.ID]yaml.Node     `mapstructure:"processors"`
+	Pipelines  map[pipeline.ID]PipelineConfig `mapstructure:"pipelines"`
 }
 
 func (c *rawYAMLConfig) Validate() error {

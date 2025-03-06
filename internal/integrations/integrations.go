@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // ErrNotFound is the error returned when an integration cannot be found.
@@ -35,7 +36,7 @@ type Integration interface {
 	// Resolve resolves the parametrizable integration. It uses the params to replace placeholders
 	// in the integration, and removes or ignores everything not referenced by the indicated
 	// pipelines.
-	Resolve(ctx context.Context, params map[string]any, pipelines []component.ID) (*Config, error)
+	Resolve(ctx context.Context, params map[string]any, pipelines []pipeline.ID) (*Config, error)
 }
 
 // Finder is the interface for extensions that can be used to find integrations by their names.
@@ -77,7 +78,7 @@ func Find(ctx context.Context, logger *zap.Logger, host component.Host, name str
 type Config struct {
 	Receivers  map[component.ID]map[string]any `mapstructure:"receivers"`
 	Processors map[component.ID]map[string]any `mapstructure:"processors"`
-	Pipelines  map[component.ID]PipelineConfig `mapstructure:"pipelines"`
+	Pipelines  map[pipeline.ID]PipelineConfig  `mapstructure:"pipelines"`
 }
 
 // Validate validates that the integration configuration is valid and all the components referenced in the

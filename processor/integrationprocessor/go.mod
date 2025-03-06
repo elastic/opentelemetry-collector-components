@@ -14,6 +14,7 @@ require (
 	go.opentelemetry.io/collector/consumer v1.27.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.121.0
 	go.opentelemetry.io/collector/pdata v1.27.0
+	go.opentelemetry.io/collector/pipeline v0.121.0
 	go.opentelemetry.io/collector/processor v0.121.0
 	go.opentelemetry.io/collector/processor/processortest v0.121.0
 	go.uber.org/goleak v1.3.0
@@ -62,7 +63,6 @@ require (
 	go.opentelemetry.io/collector/featuregate v1.27.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.121.0 // indirect
 	go.opentelemetry.io/collector/pdata/testdata v0.121.0 // indirect
-	go.opentelemetry.io/collector/pipeline v0.121.0 // indirect
 	go.opentelemetry.io/collector/processor/xprocessor v0.121.0 // indirect
 	go.opentelemetry.io/collector/semconv v0.121.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect

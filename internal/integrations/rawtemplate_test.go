@@ -27,6 +27,7 @@ import (
 	"github.com/tj/assert"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func TestRawTemplateResolve(t *testing.T) {
@@ -35,7 +36,7 @@ func TestRawTemplateResolve(t *testing.T) {
 		file        string
 		fileErr     string
 		params      map[string]any
-		pipelines   []component.ID
+		pipelines   []pipeline.ID
 		expected    Config
 		expectedErr string
 	}{
@@ -69,21 +70,21 @@ func TestRawTemplateResolve(t *testing.T) {
 						"option": "stuff",
 					},
 				},
-				Pipelines: map[component.ID]PipelineConfig{
-					component.MustNewID("metrics"): {
+				Pipelines: map[pipeline.ID]PipelineConfig{
+					pipeline.MustNewID("metrics"): {
 						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
 							component.MustNewID("otherprocessor"),
 						},
 					},
-					component.MustNewID("logs"): {
+					pipeline.MustNewID("logs"): {
 						Receiver: idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{
 							component.MustNewID("third"),
 						},
 					},
-					component.MustNewIDWithName("logs", "raw"): {
+					pipeline.MustNewIDWithName("logs", "raw"): {
 						Receiver:   idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{},
 					},
@@ -93,8 +94,8 @@ func TestRawTemplateResolve(t *testing.T) {
 		{
 			title: "selected pipeline",
 			file:  "template-simple.yaml",
-			pipelines: []component.ID{
-				component.MustNewID("metrics"),
+			pipelines: []pipeline.ID{
+				pipeline.MustNewID("metrics"),
 			},
 			params: map[string]any{
 				"somevalue": "xxx",
@@ -109,8 +110,8 @@ func TestRawTemplateResolve(t *testing.T) {
 					component.MustNewID("otherprocessor"): nil,
 					component.MustNewID("someprocessor"):  nil,
 				},
-				Pipelines: map[component.ID]PipelineConfig{
-					component.MustNewID("metrics"): {
+				Pipelines: map[pipeline.ID]PipelineConfig{
+					pipeline.MustNewID("metrics"): {
 						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
@@ -123,8 +124,8 @@ func TestRawTemplateResolve(t *testing.T) {
 		{
 			title: "complex type in variable",
 			file:  "template-simple.yaml",
-			pipelines: []component.ID{
-				component.MustNewID("metrics"),
+			pipelines: []pipeline.ID{
+				pipeline.MustNewID("metrics"),
 			},
 			params: map[string]any{
 				"somevalue": map[string]any{
@@ -145,8 +146,8 @@ func TestRawTemplateResolve(t *testing.T) {
 					component.MustNewID("otherprocessor"): nil,
 					component.MustNewID("someprocessor"):  nil,
 				},
-				Pipelines: map[component.ID]PipelineConfig{
-					component.MustNewID("metrics"): {
+				Pipelines: map[pipeline.ID]PipelineConfig{
+					pipeline.MustNewID("metrics"): {
 						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
@@ -159,8 +160,8 @@ func TestRawTemplateResolve(t *testing.T) {
 		{
 			title: "selected pipeline with name",
 			file:  "template-simple.yaml",
-			pipelines: []component.ID{
-				component.MustNewIDWithName("logs", "raw"),
+			pipelines: []pipeline.ID{
+				pipeline.MustNewIDWithName("logs", "raw"),
 			},
 			params: map[string]any{
 				"value":      "bar",
@@ -178,8 +179,8 @@ func TestRawTemplateResolve(t *testing.T) {
 					},
 				},
 				Processors: nil,
-				Pipelines: map[component.ID]PipelineConfig{
-					component.MustNewIDWithName("logs", "raw"): {
+				Pipelines: map[pipeline.ID]PipelineConfig{
+					pipeline.MustNewIDWithName("logs", "raw"): {
 						Receiver:   idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{},
 					},
@@ -189,16 +190,16 @@ func TestRawTemplateResolve(t *testing.T) {
 		{
 			title: "missing variable",
 			file:  "template-simple.yaml",
-			pipelines: []component.ID{
-				component.MustNewID("metrics"),
+			pipelines: []pipeline.ID{
+				pipeline.MustNewID("metrics"),
 			},
 			expectedErr: "variable \"somevalue\" not found",
 		},
 		{
 			title: "missing pipeline",
 			file:  "template-simple.yaml",
-			pipelines: []component.ID{
-				component.MustNewID("traces"),
+			pipelines: []pipeline.ID{
+				pipeline.MustNewID("traces"),
 			},
 			expectedErr: "selecting pipelines: component \"traces\" not found",
 		},

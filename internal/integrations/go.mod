@@ -1,12 +1,15 @@
 module github.com/elastic/opentelemetry-collector-components/internal/integrations
 
-go 1.22.1
+go 1.23.0
+
+toolchain go1.24.0
 
 require (
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tj/assert v0.0.3
 	go.opentelemetry.io/collector/component v0.105.0
 	go.opentelemetry.io/collector/confmap v0.105.0
+	go.opentelemetry.io/collector/pipeline v0.121.0
 	go.uber.org/zap v1.27.0
 	gopkg.in/yaml.v3 v3.0.1
 )

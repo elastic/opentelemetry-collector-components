@@ -20,7 +20,7 @@ package integrationprocessor // import "github.com/elastic/opentelemetry-collect
 import (
 	"errors"
 
-	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 // Config is the structured configuration of the processor.
@@ -29,7 +29,7 @@ type Config struct {
 	Name string `mapstructure:"name"`
 
 	// Pipeline is the pipeline to instantiate, from the referenced integration.
-	Pipeline component.ID `mapstructure:"pipeline"`
+	Pipeline pipeline.ID `mapstructure:"pipeline"`
 
 	// Parameters are used to resolve the placeholders in parameterized integrations.
 	Parameters map[string]any `mapstructure:"parameters"`

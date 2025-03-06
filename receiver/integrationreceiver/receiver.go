@@ -28,6 +28,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pipeline"
 	otelpipeline "go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
@@ -108,21 +109,21 @@ func (r *integrationReceiver) Start(ctx context.Context, ch component.Host) erro
 	return nil
 }
 
-func (r *integrationReceiver) hasConsumerForPipelineType(id component.ID) bool {
-	switch id.Type().String() {
-	case "logs":
+func (r *integrationReceiver) hasConsumerForPipelineType(id pipeline.ID) bool {
+	switch id.Signal() {
+	case pipeline.SignalLogs:
 		return r.nextLogsConsumer != nil
-	case "metrics":
+	case pipeline.SignalMetrics:
 		return r.nextMetricsConsumer != nil
-	case "traces":
+	case pipeline.SignalTraces:
 		return r.nextTracesConsumer != nil
 	default:
-		r.params.Logger.Warn("unexpected pipeline type in integration", zap.String("id", id.String()))
+		r.params.Logger.Warn("unexpected signal type in integration", zap.String("id", id.String()))
 		return false
 	}
 }
 
-func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGetter, config integrations.Config, pipelineID component.ID, pipeline integrations.PipelineConfig) error {
+func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGetter, config integrations.Config, pipelineID pipeline.ID, pipeline integrations.PipelineConfig) error {
 	consumerChain := struct {
 		logs    consumer.Logs
 		metrics consumer.Metrics
