@@ -7,7 +7,7 @@ BRANCH_NAME="update-changelog-$VERSION-$(date +%F_%H-%M-%S)"
 
 (
   cd ./loadgen/cmd/otelbench
-  ../../../.tools/chloggen update --version $VERSION
+  chloggen update --version $VERSION
 
   if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
     # update version inside Makefile
