@@ -29,7 +29,10 @@ jobs:
 
       - name: Checks if release is required.
         id: get-new-version
-        run: ./.github/workflows/scripts/check_release.sh "${{ github.event_name }}" "${{ github.event.inputs.version }}"
+        shell: bash
+        run: |
+          chmod +x ./.github/workflows/scripts/check_release.sh
+          ./.github/workflows/scripts/check_release.sh "${{ github.event_name }}" "${{ github.event.inputs.version }}"
 
   update-changelog:
     timeout-minutes: 15
@@ -82,6 +85,9 @@ jobs:
           make install-tools
 
       - name: Update CHANGELOG and open PR.
-        run: ./.github/workflows/scripts/create_pr.sh "${{ needs.check-release.outputs.version }}" "${{ github.event_name }}"
+        shell: bash
+        run: |
+          chmod +x ./.github/workflows/scripts/create_pr.sh
+          ./.github/workflows/scripts/create_pr.sh "${{ needs.check-release.outputs.version }}" "${{ github.event_name }}"
         env:
           GH_TOKEN: ${{ steps.get_token.outputs.token }}
