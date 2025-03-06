@@ -20,6 +20,8 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
 
 import (
+	"strings"
+
 	"github.com/elastic/apm-data/model/modelpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
@@ -29,12 +31,25 @@ import (
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(semconv.AttributeServiceName, event.Service.Name)
 	attributes.PutStr(semconv.AttributeServiceVersion, event.Service.Version)
-	if event.Service.Language != nil {
-		attributes.PutStr(semconv.AttributeTelemetrySDKLanguage, event.Service.Language.Name)
+	if event.Service.Language != nil && event.Service.Language.Name != "" {
+		attributes.PutStr(semconv.AttributeTelemetrySDKLanguage, translateElasticServiceLanguageToOtelSdkLanguage(event.Service.Language.Name))
 	}
 	attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
 	if event.Service.Environment != "" {
 		attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
+	}
+}
+
+// SemConv defines a well known list of values of telemetry.sdk.language: https://opentelemetry.io/docs/specs/semconv/attributes-registry/telemetry/
+// The classic Elastic APM Agents report values that may not be in the SemConv well known list.
+// This method maps those values to the closest SemConv well known value.
+func translateElasticServiceLanguageToOtelSdkLanguage(language string) string {
+	language_lower_case := strings.ToLower(language)
+	switch language_lower_case {
+	case "c#":
+		return "dotnet"
+	default:
+		return language_lower_case
 	}
 }
 
