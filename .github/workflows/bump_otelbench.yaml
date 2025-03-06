@@ -1,0 +1,87 @@
+run-name: bump-otelbench
+name: Bump otelbench version and update changelog
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version of the otelbench image to release, should follow format "vN.N.N".
+        required: true
+  push:
+    branches:
+      - main
+    paths:
+      - ./loadgen/cmd/otelbench/Makefile
+
+permissions:
+  contents: read
+
+jobs:
+  check-release:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-new-version.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      - name: Checks if release is required.
+        id: get-new-version
+        run: ./scripts/check_release.sh "${{ github.event_name }}" "${{ github.event.inputs.version }}"
+
+  update-changelog:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    needs:
+      - check-release
+    if: needs.check-release.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
+
+      - name: Get token
+        id: get_token
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
+        with:
+          app_id: ${{ secrets.OBS_AUTOMATION_APP_ID }}
+          private_key: ${{ secrets.OBS_AUTOMATION_APP_PEM }}
+          permissions: >-
+            {
+              "contents": "write",
+              "pull_requests": "write"
+            }
+
+      - uses: elastic/oblt-actions/git/setup@bc1d39a53d1cc1fc653c0b62ec8108d1c70ff57d # v1.24.7
+        with:
+          github-token: ${{ steps.get_token.outputs.token }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: 'false'
+
+      - name: Cache go tools
+        id: go-tools-cache
+        uses: actions/cache@v4
+        with:
+          path: ./.tools
+          key: go-tools-${{ runner.os }}-${{ hashFiles('internal/tools/go.sum') }}
+
+      - name: Add .tools to PATH
+        run: echo "$GITHUB_WORKSPACE/.tools" >> $GITHUB_PATH
+
+      # If there is no cache with the go tools,
+      # install them. We need the changelog
+      # tool for this workflow to work.
+      - name: Install tools
+        if: steps.go-tools-cache.outputs.cache-hit != 'true'
+        run: |
+          make install-tools
+
+      - name: Update CHANGELOG and open PR.
+        run: ./scripts/create_pr.sh "${{ needs.check-release.outputs.version }}" "${{ github.event_name }}"
+        env:
+          GH_TOKEN: ${{ steps.get_token.outputs.token }}
