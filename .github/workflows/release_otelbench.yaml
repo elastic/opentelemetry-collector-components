@@ -1,5 +1,5 @@
-run-name: release-otelbench
-name: Release otelbench docker image on elastic container library
+name: release-otelbench
+run-name: Release otelbench docker image on elastic container library
 
 on:
   push:
