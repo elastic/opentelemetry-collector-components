@@ -140,9 +140,15 @@ If you want to contribute to any go files, you need to create a changelog entry:
 
 ## Create new release
 
-TODO
-<!-----
-Have a workflow that gets triggered by a version update (maybe the version from the MAKEFILE, maybe another option), and runs `$(CHLOGGEN) update --version $(VERSION)`, updating the CHANGELOG.md and deleting all changelog fragments + it pushes a new image to elastic container
-registry.
----->
+There are two ways you can trigger a new release:
+- Manually, by triggering the GH actions workflow `bump-otelbench`.
+- Automatically, by updating the VERSION field in the Makefile.
+
+The `bump-otelbench` workflow will check the new version increased in regards to the previous version. 
+If it did, then a new PR will be opened, updating the CHANGELOG file and removing
+the changelog fragments.
+
+Once this PR has been merged, a new workflow, `release-otelbench` will be triggered. The `otelbench` image
+is built and pushed to `docker.elastic.co/observability-ci/otelbench` registry. The new image should have
+as a tag the newest `otelbench` version.
 

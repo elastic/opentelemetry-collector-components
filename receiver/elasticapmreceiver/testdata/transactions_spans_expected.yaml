@@ -22,6 +22,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "1.3"
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:
@@ -97,6 +103,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:
@@ -178,6 +190,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:
@@ -239,6 +257,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:
@@ -300,6 +324,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:
@@ -361,6 +391,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:
@@ -425,6 +461,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:
@@ -489,6 +531,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:
@@ -553,6 +601,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "1.3"
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
     scopeSpans:
       - scope: {}
         spans:

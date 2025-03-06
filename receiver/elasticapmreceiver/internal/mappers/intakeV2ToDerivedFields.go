@@ -70,6 +70,14 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr("agent.name", event.Agent.Name)
 	attributes.PutStr("agent.version", event.Agent.Version)
+	if event.Service != nil && event.Service.Language != nil {
+		if event.Service.Language.Name != "" {
+			attributes.PutStr("service.language.name", event.Service.Language.Name)
+		}
+		if event.Service.Language.Version != "" {
+			attributes.PutStr("service.language.version", event.Service.Language.Version)
+		}
+	}
 }
 
 // Shared across spans and transactions
