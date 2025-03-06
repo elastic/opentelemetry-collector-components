@@ -27,26 +27,30 @@ import (
 	"go.opentelemetry.io/collector/component"
 )
 
+// ErrNotFound is the error returned when an integration cannot be found.
 var ErrNotFound = errors.New("not found")
 
-type Template interface {
+// Integration is the interface for integrations that can be resolved as configuration.
+type Integration interface {
 	Resolve(ctx context.Context, params map[string]any, pipelines []component.ID) (*Config, error)
 }
 
-type TemplateFinder interface {
-	FindTemplate(ctx context.Context, name string) (Template, error)
+// Finder is the interface for extensions that can be used to find integrations by their names.
+type Finder interface {
+	FindIntegration(ctx context.Context, name string) (Integration, error)
 }
 
-func Find(ctx context.Context, logger *zap.Logger, host component.Host, name string) (Template, error) {
+// Find looks for integrations in extensions of the host that implement the IntegrationFinder interface.
+func Find(ctx context.Context, logger *zap.Logger, host component.Host, name string) (Integration, error) {
 	anyExtension := false
 	for eid, extension := range host.GetExtensions() {
-		finder, ok := extension.(TemplateFinder)
+		finder, ok := extension.(Finder)
 		if !ok {
 			continue
 		}
 		anyExtension = true
 
-		integration, err := finder.FindTemplate(ctx, name)
+		integration, err := finder.FindIntegration(ctx, name)
 		if errors.Is(ErrNotFound, err) {
 			continue
 		}
@@ -66,12 +70,15 @@ func Find(ctx context.Context, logger *zap.Logger, host component.Host, name str
 	return nil, ErrNotFound
 }
 
+// Config contains an structured integration.
 type Config struct {
 	Receivers  map[component.ID]map[string]any `mapstructure:"receivers"`
 	Processors map[component.ID]map[string]any `mapstructure:"processors"`
 	Pipelines  map[component.ID]PipelineConfig `mapstructure:"pipelines"`
 }
 
+// Validate validates that the integration configuration is valid and all the components referenced in the
+// pipelines are defined.
 func (c *Config) Validate() error {
 	for id, pipeline := range c.Pipelines {
 		if err := pipeline.Validate(); err != nil {
@@ -95,11 +102,18 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+// PipelineConfig contains the definition of a pipeline in the integration.
 type PipelineConfig struct {
-	Receiver   *component.ID  `mapstructure:"receiver"`
+	// Receiver is the receiver to be used in the pipeline. It is optional, if a pipeline does not define a
+	// receiver it cannot be used to instantiate receivers.
+	Receiver *component.ID `mapstructure:"receiver"`
+
+	// Processors is the chain of processors of the pipeline, to be used as part of the receiver in receiver
+	// components, or as a combined processor when the pipeline is used as processor.
 	Processors []component.ID `mapstructure:"processors"`
 }
 
+// Validate validates the PipelineConfig.
 func (p *PipelineConfig) Validate() error {
 	return nil
 }

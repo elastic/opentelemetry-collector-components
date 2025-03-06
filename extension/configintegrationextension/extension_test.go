@@ -27,7 +27,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func TestFindTemplate(t *testing.T) {
+func TestFindIntegration(t *testing.T) {
 	cases := []struct {
 		title       string
 		template    string
@@ -68,7 +68,7 @@ func TestFindTemplate(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.title, func(t *testing.T) {
-			template, err := extension.FindTemplate(context.Background(), c.template)
+			template, err := extension.FindIntegration(context.Background(), c.template)
 			if c.expectedErr != "" {
 				if assert.Error(t, err) {
 					assert.Contains(t, err.Error(), c.expectedErr)

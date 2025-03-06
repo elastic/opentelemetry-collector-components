@@ -33,7 +33,7 @@ type fileTemplateExtension struct {
 	config *Config
 }
 
-var _ integrations.TemplateFinder = &fileTemplateExtension{}
+var _ integrations.Finder = &fileTemplateExtension{}
 
 func newFileTemplateExtension(config *Config) *fileTemplateExtension {
 	return &fileTemplateExtension{
@@ -41,7 +41,7 @@ func newFileTemplateExtension(config *Config) *fileTemplateExtension {
 	}
 }
 
-func (e *fileTemplateExtension) FindTemplate(ctx context.Context, name string) (integrations.Template, error) {
+func (e *fileTemplateExtension) FindIntegration(ctx context.Context, name string) (integrations.Integration, error) {
 	path := filepath.Join(e.config.Path, name+".yaml")
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {

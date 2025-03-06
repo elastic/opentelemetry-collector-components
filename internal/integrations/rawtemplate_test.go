@@ -221,7 +221,7 @@ func TestRawTemplateResolve(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.title, func(t *testing.T) {
-			var template Template
+			var template Integration
 			var err error
 			template, err = NewRawTemplate(readTemplateFile(c.file))
 			if c.fileErr != "" {

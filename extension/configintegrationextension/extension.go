@@ -30,7 +30,7 @@ type configTemplateExtension struct {
 	config *Config
 }
 
-var _ integrations.TemplateFinder = &configTemplateExtension{}
+var _ integrations.Finder = &configTemplateExtension{}
 
 func newConfigTemplateExtension(config *Config) *configTemplateExtension {
 	return &configTemplateExtension{
@@ -38,7 +38,7 @@ func newConfigTemplateExtension(config *Config) *configTemplateExtension {
 	}
 }
 
-func (e *configTemplateExtension) FindTemplate(ctx context.Context, name string) (integrations.Template, error) {
+func (e *configTemplateExtension) FindIntegration(ctx context.Context, name string) (integrations.Integration, error) {
 	integration, found := e.config.Integrations[name]
 	if !found {
 		return nil, integrations.ErrNotFound

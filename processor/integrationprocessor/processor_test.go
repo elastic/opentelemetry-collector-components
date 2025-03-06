@@ -182,7 +182,7 @@ func (m *mockedHost) Shutdown(context.Context) error {
 	return nil
 }
 
-func (m *mockedHost) FindTemplate(ctx context.Context, name string) (integrations.Template, error) {
+func (m *mockedHost) FindIntegration(ctx context.Context, name string) (integrations.Integration, error) {
 	path := filepath.Join(m.path, name+".yaml")
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
