@@ -32,6 +32,9 @@ var ErrNotFound = errors.New("not found")
 
 // Integration is the interface for integrations that can be resolved as configuration.
 type Integration interface {
+	// Resolve resolves the parametrizable integration. It uses the params to replace placeholders
+	// in the integration, and removes or ignores everything not referenced by the indicated
+	// pipelines.
 	Resolve(ctx context.Context, params map[string]any, pipelines []component.ID) (*Config, error)
 }
 
