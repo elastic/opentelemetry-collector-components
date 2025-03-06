@@ -262,16 +262,28 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 	for _, component := range components {
 		err := component.Start(ctx, host)
 		if err != nil {
+			if err := r.Shutdown(ctx); err != nil {
+				r.params.Logger.Error("failed to cleanup processors after a component failed to start",
+					zap.String("integration", r.params.ID.String()),
+					zap.String("receiver", params.ID.String()),
+					zap.Error(err),
+				)
+			}
 			return fmt.Errorf("failed to start component %q: %w", component, err)
 		}
+		r.components = append(r.components, component)
 	}
-	r.components = append(r.components, components...)
 
 	return nil
 }
 
 func (r *integrationReceiver) Shutdown(ctx context.Context) error {
-	return shutdownComponents(ctx, r.components)
+	err := shutdownComponents(ctx, r.components)
+	if err != nil {
+		return err
+	}
+	r.components = nil
+	return nil
 }
 
 func shutdownComponents(ctx context.Context, components []component.Component) error {
