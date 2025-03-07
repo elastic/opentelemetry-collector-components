@@ -18,7 +18,7 @@ BRANCH_NAME="update-changelog-$VERSION-$(date +%F_%H-%M-%S)"
 # commit changes
 git checkout -b "$BRANCH_NAME"
 git add ./loadgen/cmd/otelbench
-if ! git diff --quiet ./loadgen/cmd/otelbench; then
+if ! git diff --staged --quiet; then
   git commit -m "Update otelbench changelog and delete changelog fragments."
   git push origin "$BRANCH_NAME"
 else
