@@ -34,7 +34,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -61,7 +61,7 @@ resourceSpans:
                   stringValue: ""
               - key: transaction.duration.us
                 value:
-                  intValue: "32592981"
+                  intValue: "32592"
             endTimeUnixNano: "1496170407186592981"
             parentSpanId: ""
             spanId: ""
@@ -103,7 +103,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -112,7 +112,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "141581000"
+                  intValue: "141581"
               - key: span.id
                 value:
                   stringValue: invalid
