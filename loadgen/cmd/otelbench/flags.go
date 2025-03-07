@@ -190,6 +190,10 @@ func Init() error {
 		},
 	)
 	flag.Lookup("telemetry-metrics").DefValue = strings.Join(defaultTelemetryMetrics, ",")
+	// Set needs to be done separately since `DefValue` won't set default value for flag.Func.
+	if err := flag.Set("telemetry-metrics", strings.Join(defaultTelemetryMetrics, ",")); err != nil {
+		return fmt.Errorf(`error setting default flag "telemetry-metrics" value: %w`, err)
+	}
 
 	// For configs that can be set via environment variables, set the required
 	// flags from env if they are not explicitly provided via command line
