@@ -54,6 +54,8 @@ jobs:
             }
 
       - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.token_all_repositories.outputs.token }}
 
       - uses: elastic/oblt-actions/git/setup@ede2300571b905158b39fee9c1d2500694f8210e # v1.24.7
         with:
