@@ -30,9 +30,12 @@ jobs:
       - name: Checks if release is required.
         id: get-new-version
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
           chmod +x ./.github/workflows/scripts/check_release.sh
-          ./.github/workflows/scripts/check_release.sh "${{ github.event_name }}" "${{ github.event.inputs.version }}"
+          ./.github/workflows/scripts/check_release.sh "$EVENT_NAME" "$INPUT_VERSION"
 
   update-changelog:
     timeout-minutes: 15
