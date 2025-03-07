@@ -148,7 +148,7 @@ func main() {
 						return
 					}
 					// after each run wait a bit to capture late metric arrivals
-					time.Sleep(time.Second)
+					time.Sleep(10 * time.Second)
 					stats, err := fetcher.FetchStats(ctx, t, time.Now().UTC())
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
@@ -160,6 +160,12 @@ func main() {
 				})
 				// write benchmark result to stdout, as stderr may be cluttered with collector logs
 				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
+				// break early if context was canceled
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 			}
 		}
 	}
