@@ -41,11 +41,7 @@ jobs:
       - check-release
     if: needs.check-release.result == 'success'
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: '0'
-
-      - name: Get token
+      - name: Get token to checkout on the repository and to create a PR
         id: get_token
         uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
         with:
@@ -56,6 +52,10 @@ jobs:
               "contents": "write",
               "pull_requests": "write"
             }
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.get_token.outputs.token }}
 
       - uses: elastic/oblt-actions/git/setup@ede2300571b905158b39fee9c1d2500694f8210e # v1.24.7
         with:
