@@ -8,11 +8,6 @@ on:
     paths:
       - loadgen/cmd/otelbench/CHANGELOG.md
 
-  # TODO Please remove this once
-  # it is clear that the push trigger
-  # works
-  workflow_dispatch:
-
 
 permissions:
   contents: read
