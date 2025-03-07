@@ -34,6 +34,24 @@ Usage of ./otelbench:
         benchmark metrics (default true)
   -secret-token string
         secret token for target server
+  -telemetry-elasticsearch-api-key string
+        optional remote Elasticsearch telemetry API key
+  -telemetry-elasticsearch-index string
+        optional remote Elasticsearch telemetry metrics index pattern (default "metrics-*")
+  -telemetry-elasticsearch-password string
+        optional remote Elasticsearch telemetry password
+  -telemetry-elasticsearch-timeout duration
+        optional remote Elasticsearch telemetry request timeout (default 1m0s)
+  -telemetry-elasticsearch-url list
+        optional comma-separated list of remote Elasticsearch telemetry hosts
+  -telemetry-elasticsearch-username string
+        optional remote Elasticsearch telemetry username
+  -telemetry-filter-cluster-name string
+        optional remote Elasticsearch telemetry cluster name metrics filter
+  -telemetry-filter-project-id string
+        optional remote Elasticsearch telemetry project id metrics filter
+  -telemetry-metrics list
+        optional comma-separated list of remote Elasticsearch telemetry metrics to be reported (default otelcol_process_cpu_seconds,otelcol_process_memory_rss,otelcol_process_runtime_total_alloc_bytes,otelcol_process_runtime_total_sys_memory_bytes,otelcol_process_uptime)
   -test.bench regexp
         run only benchmarks matching regexp
   -test.benchmem
@@ -83,7 +101,7 @@ Usage of ./otelbench:
   -test.paniconexit0
         panic on call to os.Exit(0)
   -test.parallel n
-        run at most n tests in parallel (default 16)
+        run at most n tests in parallel (default 11)
   -test.run regexp
         run only tests and examples matching regexp
   -test.short
@@ -128,6 +146,14 @@ It is possible to run with a customized config to avoid passing in command line 
 
 ```shell
 ./otelbench -config=./my-custom-config.yaml
+```
+
+Optional remote OTel collector metrics will be reported as bench stats when additional telemetry flags are provided.
+Gauge metrics will be aggregated to average, while Counter and Histogram will be aggregated to sum.
+For the full list of reported metrics see https://opentelemetry.io/docs/collector/internal-telemetry/#basic-level-metrics.
+
+```shell
+./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
 ```
 
 ## Contribute

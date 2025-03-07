@@ -22,7 +22,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
@@ -56,7 +58,7 @@ func fullBenchmarkName(signal, exporter string, concurrency int) string {
 	return fmt.Sprintf("%s-%s-%d", signal, exporter, concurrency)
 }
 
-func runBench(signal, exporter string, concurrency int) testing.BenchmarkResult {
+func runBench(ctx context.Context, signal, exporter string, concurrency int, reporter func(b *testing.B)) testing.BenchmarkResult {
 	return testing.Benchmark(func(b *testing.B) {
 		// loadgenreceiver will send stats about generated telemetry when it finishes sending b.N iterations
 		logsDone := make(chan loadgenreceiver.Stats)
@@ -71,8 +73,8 @@ func runBench(signal, exporter string, concurrency int) testing.BenchmarkResult 
 		if signal != "traces" {
 			close(tracesDone)
 		}
-
 		stop := make(chan struct{}) // close channel to stop the loadgen collector
+		done := make(chan struct{}) // close channel to exit benchmark after stats were reported
 
 		go func() {
 			logsStats := <-logsDone
@@ -81,8 +83,9 @@ func runBench(signal, exporter string, concurrency int) testing.BenchmarkResult 
 			b.StopTimer()
 
 			stats := logsStats.Add(metricsStats).Add(tracesStats)
-
 			elapsedSeconds := b.Elapsed().Seconds()
+			close(stop)
+
 			b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
 			b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
 			b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
@@ -91,16 +94,16 @@ func runBench(signal, exporter string, concurrency int) testing.BenchmarkResult 
 			b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
 			b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
 			b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
-			// TODO(carsonip): optionally retrieve metrics (e.g. memory, cpu) of target server from Elasticsearch
-
-			close(stop)
+			reporter(b)
+			close(done)
 		}()
 
-		err := RunCollector(context.Background(), stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
+		err := RunCollector(ctx, stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			b.Fatal(err)
 		}
+		<-done
 	})
 }
 
@@ -113,6 +116,9 @@ func main() {
 	}
 	flag.Parse()
 
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
 	// TODO(carsonip): configurable warm up
 
 	var maxLen int
@@ -124,13 +130,42 @@ func main() {
 		}
 	}
 
+	fetcher, ignore, err := newElasticsearchStatsFetcher(elasticsearchTelemetryConfig(Config.Telemetry))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		if !ignore {
+			os.Exit(2)
+		}
+	}
+
 	for _, concurrency := range Config.ConcurrencyList {
 		for _, signal := range getSignals() {
 			for _, exporter := range getExporters() {
 				benchName := fullBenchmarkName(signal, exporter, concurrency)
-				result := runBench(signal, exporter, concurrency)
+				t := time.Now().UTC()
+				result := runBench(ctx, signal, exporter, concurrency, func(b *testing.B) {
+					if fetcher == nil {
+						return
+					}
+					// after each run wait a bit to capture late metric arrivals
+					time.Sleep(10 * time.Second)
+					stats, err := fetcher.FetchStats(ctx, t, time.Now().UTC())
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
+						return
+					}
+					for unit, n := range stats {
+						b.ReportMetric(n, unit)
+					}
+				})
 				// write benchmark result to stdout, as stderr may be cluttered with collector logs
 				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
+				// break early if context was canceled
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
 			}
 		}
 	}
