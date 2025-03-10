@@ -34,7 +34,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -61,7 +61,7 @@ resourceSpans:
                   stringValue: success
               - key: transaction.duration.us
                 value:
-                  intValue: "32592981"
+                  intValue: "32592"
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -115,7 +115,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1496170407154000000"
+                  intValue: "1496170407154000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -124,7 +124,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "3781912"
+                  intValue: "3781"
               - key: span.id
                 value:
                   stringValue: 0aaaaaaaaaaaaaaa
