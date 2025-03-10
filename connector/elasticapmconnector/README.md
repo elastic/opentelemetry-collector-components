@@ -44,3 +44,19 @@ elasticapm:
     directory: /path/to/aggregation/directory
     metadata_keys: [list, of, metadata, keys]
 ```
+
+### Metrics produced by the connector
+
+| Metric                                          | Source Signal       | OTel Metric Type     | ES Mapping Type         |
+| ----------------------------------------------- | ------------------- | -------------------- | ----------------------- |
+| `service_summary`                               | Logs, Metric, Spans | Sum                  | Double                  |
+| `span.destination.service.response_time.sum.us` | Spans               | Sum                  | Double                  |
+| `span.destination.service.response_time.count`  | Spans               | Sum                  | Double                  |
+| `transaction.duration.histogram`                | Spans               | Histogram            | [Histogram](https://www.elastic.co/guide/en/elasticsearch/reference/current/histogram.html)               |
+| `transaction.duration.summary`                  | Spans               | Histogram (1 bucket) | [Aggregate Metric Double](https://www.elastic.co/guide/en/elasticsearch/reference/current/aggregate-metric-double.html) |
+| `event.success_count`                           | Spans               | Histogram (1 bucket) | [Aggregate Metric Double](https://www.elastic.co/guide/en/elasticsearch/reference/current/aggregate-metric-double.html) |
+
+Above is a list of metrics that are produced by the connector. There are few noteworthy points that needs to be documented:
+
+1. [elasticsearch.mapping.hints](https://github.com/elastic/opentelemetry-dev/blob/main/docs/design-decisions/ingest/mapping.md#mapping-hints) attributes are used to bridge the gap for mapping OTel data types to Elasticsearch mappings.
+2. `transaction.duration.{histogram, summary}` metrics are produced with different set of attributes to represent transaction duration grouped by transaction type or by more granular transaction attributes. These are identified by `metricset.name` attribute set to `service_transaction` or `transaction` respectively.
