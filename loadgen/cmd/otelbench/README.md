@@ -34,6 +34,24 @@ Usage of ./otelbench:
         benchmark metrics (default true)
   -secret-token string
         secret token for target server
+  -telemetry-elasticsearch-api-key string
+        optional remote Elasticsearch telemetry API key
+  -telemetry-elasticsearch-index string
+        optional remote Elasticsearch telemetry metrics index pattern (default "metrics-*")
+  -telemetry-elasticsearch-password string
+        optional remote Elasticsearch telemetry password
+  -telemetry-elasticsearch-timeout duration
+        optional remote Elasticsearch telemetry request timeout (default 1m0s)
+  -telemetry-elasticsearch-url list
+        optional comma-separated list of remote Elasticsearch telemetry hosts
+  -telemetry-elasticsearch-username string
+        optional remote Elasticsearch telemetry username
+  -telemetry-filter-cluster-name string
+        optional remote Elasticsearch telemetry cluster name metrics filter
+  -telemetry-filter-project-id string
+        optional remote Elasticsearch telemetry project id metrics filter
+  -telemetry-metrics list
+        optional comma-separated list of remote Elasticsearch telemetry metrics to be reported (default otelcol_process_cpu_seconds,otelcol_process_memory_rss,otelcol_process_runtime_total_alloc_bytes,otelcol_process_runtime_total_sys_memory_bytes,otelcol_process_uptime)
   -test.bench regexp
         run only benchmarks matching regexp
   -test.benchmem
@@ -83,7 +101,7 @@ Usage of ./otelbench:
   -test.paniconexit0
         panic on call to os.Exit(0)
   -test.parallel n
-        run at most n tests in parallel (default 16)
+        run at most n tests in parallel (default 11)
   -test.run regexp
         run only tests and examples matching regexp
   -test.short
@@ -130,6 +148,14 @@ It is possible to run with a customized config to avoid passing in command line 
 ./otelbench -config=./my-custom-config.yaml
 ```
 
+Optional remote OTel collector metrics will be reported as bench stats when additional telemetry flags are provided.
+Gauge metrics will be aggregated to average, while Counter and Histogram will be aggregated to sum.
+For the full list of reported metrics see https://opentelemetry.io/docs/collector/internal-telemetry/#basic-level-metrics.
+
+```shell
+./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
+```
+
 ## Contribute
 
 If you want to contribute to any go files, you need to create a changelog entry:
@@ -140,9 +166,15 @@ If you want to contribute to any go files, you need to create a changelog entry:
 
 ## Create new release
 
-TODO
-<!-----
-Have a workflow that gets triggered by a version update (maybe the version from the MAKEFILE, maybe another option), and runs `$(CHLOGGEN) update --version $(VERSION)`, updating the CHANGELOG.md and deleting all changelog fragments + it pushes a new image to elastic container
-registry.
----->
+There are two ways you can trigger a new release:
+- Manually, by triggering the GH actions workflow `bump-otelbench`.
+- Automatically, by updating the VERSION field in the Makefile.
+
+The `bump-otelbench` workflow will check the new version increased in regards to the previous version. 
+If it did, then a new PR will be opened, updating the CHANGELOG file and removing
+the changelog fragments.
+
+Once this PR has been merged, a new workflow, `release-otelbench` will be triggered. The `otelbench` image
+is built and pushed to `docker.elastic.co/observability-ci/otelbench` registry. The new image should have
+as a tag the newest `otelbench` version.
 
