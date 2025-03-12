@@ -44,3 +44,20 @@ elasticapm:
     directory: /path/to/aggregation/directory
     metadata_keys: [list, of, metadata, keys]
 ```
+
+### Metrics produced by the connector
+
+| Metric                                          | Source Signal       | OTel Metric Type     | ES Mapping Type         |
+| ----------------------------------------------- | ------------------- | -------------------- | ----------------------- |
+| `service_summary`                               | Logs, Metric, Spans | Sum                  | Double                  |
+| `span.destination.service.response_time.sum.us` | Spans               | Sum                  | Double                  |
+| `span.destination.service.response_time.count`  | Spans               | Sum                  | Double                  |
+| `transaction.duration.histogram`                | Spans               | Histogram            | [Histogram](https://www.elastic.co/guide/en/elasticsearch/reference/current/histogram.html)               |
+| `transaction.duration.summary`                  | Spans               | Histogram (1 bucket) | [Aggregate Metric Double](https://www.elastic.co/guide/en/elasticsearch/reference/current/aggregate-metric-double.html) |
+| `event.success_count`                           | Spans               | Histogram (1 bucket) | [Aggregate Metric Double](https://www.elastic.co/guide/en/elasticsearch/reference/current/aggregate-metric-double.html) |
+
+Above is a list of metrics that are produced by the connector. There are few noteworthy points that needs to be documented:
+
+1. [elasticsearch.mapping.hints](https://github.com/elastic/opentelemetry-dev/blob/main/docs/design-decisions/ingest/mapping.md#mapping-hints) attributes are used to bridge the gap for mapping OTel data types to Elasticsearch mappings.
+2. `transaction.duration.{histogram, summary}` metrics are produced with different set of attributes to represent transaction duration grouped by transaction type or by more granular transaction attributes. These are identified by `metricset.name` attribute set to `service_transaction` or `transaction` respectively.
+3. `event.success_count` metric is derived from the [enriched event.outcome attribute](https://github.com/elastic/opentelemetry-lib/blob/1b69a60c8a2c4f608527fa938dc4e3ab0b991089/enrichments/trace/internal/elastic/span.go#L356-L374). The metric is produced as a histograms with a single bucket where `count` represents the total number of spans and `value` represents the total number of spans with `event.outcome` as `success`. We use a histogram as it is the closest metric type that can be mapped to the aggregate metric double field in Elasticsearch. The [aggregate_metric_double mapping hint](https://github.com/elastic/opentelemetry-dev/blob/main/docs/design-decisions/ingest/mapping.md#mapping-hints) is added as an attribute to signal [Elasticsearch exporter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter) to do the conversion to aggregate metric double.

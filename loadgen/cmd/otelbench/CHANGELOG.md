@@ -4,3 +4,11 @@
 
 <!-- next version -->
 
+## v0.1.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Print error in case of failure. (#405)
+  Print an error in case of failure if it is outside the benchmarking context.
+- `otelbench`: Fetch remote OTel collector metrics to enrich otelbench output (#400)
+
