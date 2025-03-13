@@ -109,9 +109,6 @@ type selectableID interface {
 }
 
 func selectComponents[C any, ID selectableID](from map[ID]C, selection []ID) (map[ID]C, error) {
-	if len(selection) == 0 {
-		return nil, nil
-	}
 	selected := make(map[ID]C)
 	for _, id := range selection {
 		component, found := from[id]
