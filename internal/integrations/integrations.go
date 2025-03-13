@@ -44,8 +44,20 @@ type Finder interface {
 	FindIntegration(ctx context.Context, name string) (Integration, error)
 }
 
+// Host is the interface a host must implement to be used to locate finders along extensions.
+type Host interface {
+	// GetExtensions returns the map of extensions. Only enabled and created extensions will be returned.
+	// GetExtensions can be called by the component anytime after Component.Start() begins and
+	// until Component.Shutdown() ends.
+	GetExtensions() map[component.ID]component.Component
+}
+
 // Find looks for integrations in extensions of the host that implement the IntegrationFinder interface.
-func Find(ctx context.Context, logger *zap.Logger, host component.Host, name string) (Integration, error) {
+func Find(ctx context.Context, logger *zap.Logger, host Host, name string) (Integration, error) {
+	if host == nil {
+		logger.Error("received nil host")
+		return nil, ErrNotFound
+	}
 	anyExtension := false
 	for eid, extension := range host.GetExtensions() {
 		finder, ok := extension.(Finder)
@@ -68,7 +80,7 @@ func Find(ctx context.Context, logger *zap.Logger, host component.Host, name str
 		return integration, nil
 	}
 	if !anyExtension {
-		return nil, errors.New("no integration finder extension found")
+		return nil, fmt.Errorf("%w: no integration finder extension found", ErrNotFound)
 	}
 
 	return nil, ErrNotFound
