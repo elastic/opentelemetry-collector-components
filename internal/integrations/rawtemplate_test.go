@@ -50,11 +50,11 @@ func TestRawTemplateResolve(t *testing.T) {
 				"option":     "stuff",
 			},
 			expected: Config{
-				Receivers: map[component.ID]map[string]any{
-					component.MustNewID("foo"): {
+				Receivers: map[component.ID]ComponentConfig{
+					component.MustNewID("foo"): map[string]any{
 						"somesetting": "foo",
 					},
-					component.MustNewID("bar"): {
+					component.MustNewID("bar"): map[string]any{
 						"somecomplexsetting": map[string]any{
 							"someobject": map[string]any{
 								"value": "bar",
@@ -63,10 +63,10 @@ func TestRawTemplateResolve(t *testing.T) {
 						},
 					},
 				},
-				Processors: map[component.ID]map[string]any{
+				Processors: map[component.ID]ComponentConfig{
 					component.MustNewID("otherprocessor"): nil,
 					component.MustNewID("someprocessor"):  nil,
-					component.MustNewID("third"): {
+					component.MustNewID("third"): map[string]any{
 						"option": "stuff",
 					},
 				},
@@ -101,12 +101,12 @@ func TestRawTemplateResolve(t *testing.T) {
 				"somevalue": "xxx",
 			},
 			expected: Config{
-				Receivers: map[component.ID]map[string]any{
-					component.MustNewID("foo"): {
+				Receivers: map[component.ID]ComponentConfig{
+					component.MustNewID("foo"): map[string]any{
 						"somesetting": "xxx",
 					},
 				},
-				Processors: map[component.ID]map[string]any{
+				Processors: map[component.ID]ComponentConfig{
 					component.MustNewID("otherprocessor"): nil,
 					component.MustNewID("someprocessor"):  nil,
 				},
@@ -134,15 +134,15 @@ func TestRawTemplateResolve(t *testing.T) {
 				},
 			},
 			expected: Config{
-				Receivers: map[component.ID]map[string]any{
-					component.MustNewID("foo"): {
+				Receivers: map[component.ID]ComponentConfig{
+					component.MustNewID("foo"): map[string]any{
 						"somesetting": map[string]any{
 							"subsetting": "foo",
 							"array":      []int{1, 2, 3},
 						},
 					},
 				},
-				Processors: map[component.ID]map[string]any{
+				Processors: map[component.ID]ComponentConfig{
 					component.MustNewID("otherprocessor"): nil,
 					component.MustNewID("someprocessor"):  nil,
 				},
@@ -168,8 +168,8 @@ func TestRawTemplateResolve(t *testing.T) {
 				"othervalue": "baz",
 			},
 			expected: Config{
-				Receivers: map[component.ID]map[string]any{
-					component.MustNewID("bar"): {
+				Receivers: map[component.ID]ComponentConfig{
+					component.MustNewID("bar"): map[string]any{
 						"somecomplexsetting": map[string]any{
 							"someobject": map[string]any{
 								"value": "bar",

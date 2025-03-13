@@ -76,9 +76,9 @@ func Find(ctx context.Context, logger *zap.Logger, host component.Host, name str
 
 // Config contains an structured integration.
 type Config struct {
-	Receivers  map[component.ID]map[string]any `mapstructure:"receivers"`
-	Processors map[component.ID]map[string]any `mapstructure:"processors"`
-	Pipelines  map[pipeline.ID]PipelineConfig  `mapstructure:"pipelines"`
+	Receivers  map[component.ID]ComponentConfig `mapstructure:"receivers"`
+	Processors map[component.ID]ComponentConfig `mapstructure:"processors"`
+	Pipelines  map[pipeline.ID]PipelineConfig   `mapstructure:"pipelines"`
 }
 
 // Validate validates that the integration configuration is valid and all the components referenced in the
@@ -121,3 +121,6 @@ type PipelineConfig struct {
 func (p *PipelineConfig) Validate() error {
 	return nil
 }
+
+// ComponentConfig contains the configuration of components. It is mainly irrelevant at this point.
+type ComponentConfig any
