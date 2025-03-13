@@ -123,26 +123,27 @@ func selectComponents[C any, ID selectableID](from map[ID]C, selection []ID) (ma
 	return selected, nil
 }
 
-// listReceivers lists the IDs of all the receivers found in pipelines
-func listReceivers(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
+func listComponents(pipelines map[pipeline.ID]PipelineConfig, listIDs func(PipelineConfig) []component.ID) []component.ID {
 	var list []component.ID
 	for _, pipeline := range pipelines {
-		if pipeline.Receiver != nil {
-			list = append(list, *pipeline.Receiver)
-		}
+		list = append(list, listIDs(pipeline)...)
 	}
 	slices.SortFunc(list, func(a, b component.ID) int { return strings.Compare(a.String(), b.String()) })
 	return slices.Compact(list)
 }
 
+// listReceivers lists the IDs of all the receivers found in pipelines
+func listReceivers(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
+	return listComponents(pipelines, func(c PipelineConfig) []component.ID {
+		return []component.ID{*c.Receiver}
+	})
+}
+
 // listReceivers lists the IDs of all the processors found in pipelines
 func listProcessors(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
-	var list []component.ID
-	for _, pipeline := range pipelines {
-		list = append(list, pipeline.Processors...)
-	}
-	slices.SortFunc(list, func(a, b component.ID) int { return strings.Compare(a.String(), b.String()) })
-	return slices.Compact(list)
+	return listComponents(pipelines, func(c PipelineConfig) []component.ID {
+		return c.Processors
+	})
 }
 
 type rawYAMLConfig struct {
