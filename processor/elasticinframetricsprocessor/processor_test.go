@@ -19,6 +19,7 @@ package elasticinframetricsprocessor
 
 import (
 	"context"
+	"go.opentelemetry.io/collector/consumer/consumertest"
 	"path/filepath"
 	"testing"
 
@@ -65,11 +66,16 @@ func TestProcessorK8sMetrics(t *testing.T) {
 				},
 			}
 
-			p := newProcessor(set, tc.cfg)
+			sink := new(consumertest.MetricsSink)
+			p := newProcessor(set, tc.cfg, sink)
 
-			actualMetrics, err := p.processMetrics(context.Background(), inputMetrics)
+			err = p.ConsumeMetrics(context.Background(), inputMetrics)
 
 			assert.NoError(t, err)
+			actualMetrics := pmetric.NewMetrics()
+			for _, m := range sink.AllMetrics() {
+				m.ResourceMetrics().MoveAndAppendTo(actualMetrics.ResourceMetrics())
+			}
 			// golden.WriteMetrics(t, filepath.Join(dir, "output-metrics.yaml"), actualMetrics)
 			require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics))
 		})
@@ -128,10 +134,10 @@ func TestProcessMetrics(t *testing.T) {
 				},
 			}
 
-			p := newProcessor(set, tc.cfg)
+			p := newProcessor(set, tc.cfg, new(consumertest.MetricsSink))
 
 			md := tc.createMetrics()
-			_, err := p.processMetrics(context.Background(), md)
+			err := p.ConsumeMetrics(context.Background(), md)
 
 			assert.NoError(t, err)
 
@@ -185,7 +191,7 @@ func TestRemappers(t *testing.T) {
 				},
 			}
 
-			p := newProcessor(set, tc.cfg)
+			p := newProcessor(set, tc.cfg, new(consumertest.MetricsSink))
 			assert.Equal(t, len(p.remappers), tc.expectedRemappers)
 		})
 	}

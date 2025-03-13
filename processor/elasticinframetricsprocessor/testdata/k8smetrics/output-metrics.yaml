@@ -12,6 +12,17 @@ resourceMetrics:
                 - asDouble: 345
                   timeUnixNano: "1000000"
             name: k8s.pod.cpu_limit_utilization
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
+          version: 1.2.3
+  - resource:
+      attributes:
+        - key: k8s.pod.name
+          value:
+            stringValue: test-pod
+    scopeMetrics:
+      - metrics:
           - gauge:
               dataPoints:
                 - asDouble: 345
@@ -120,7 +131,4 @@ resourceMetrics:
                       value:
                         stringValue: kubernetes
                   timeUnixNano: "1000000"
-        schemaUrl: https://test-scope-schema.com/schema
-        scope:
-          name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
-          version: 1.2.3
+        scope: {}
