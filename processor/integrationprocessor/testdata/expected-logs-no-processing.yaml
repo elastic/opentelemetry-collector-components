@@ -1,0 +1,13 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: log.file.name
+                value:
+                  stringValue: test.log
+            body:
+              stringValue: one log line
+            spanId: ""
+            traceId: ""
+        scope: {}

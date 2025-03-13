@@ -1,0 +1,9 @@
+processors:
+  transform:
+    log_statements:
+      - set(log.attributes["resource"], "${var:resource}")
+
+pipelines:
+  logs:
+    processors:
+      - transform
