@@ -19,6 +19,7 @@ package ratelimitprocessor
 
 import (
 	"context"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,7 +51,7 @@ func TestCreateProcessor(t *testing.T) {
 	cfg.Rate = 1
 	cfg.Burst = 1
 	require.NoError(t, cfg.Validate())
-	params := processortest.NewNopSettings()
+	params := processortest.NewNopSettings(metadata.Type)
 
 	lp, err := factory.CreateLogs(ctx, params, cfg, consumertest.NewNop())
 	assert.NoError(t, err)
