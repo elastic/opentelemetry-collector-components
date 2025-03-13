@@ -71,12 +71,12 @@ func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipeli
 		return nil, fmt.Errorf("selecting processors: %w", err)
 	}
 
-	factory := newConfmapProviderFactory(rawYAMLConfig{
+	rawConfig := rawYAMLConfig{
 		Pipelines:  selectedPipelines,
 		Receivers:  selectedReceivers,
 		Processors: selectedProcessors,
-	})
-	resolver, err := newResolver(factory, params)
+	}
+	resolver, err := newResolver(rawConfig, params)
 	if err != nil {
 		return nil, err
 	}
@@ -92,11 +92,11 @@ func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipeli
 	return &config, config.Validate()
 }
 
-func newResolver(factory confmap.ProviderFactory, variables map[string]any) (*confmap.Resolver, error) {
+func newResolver(rawConfig rawYAMLConfig, variables map[string]any) (*confmap.Resolver, error) {
 	settings := confmap.ResolverSettings{
 		URIs: []string{"config:main"},
 		ProviderFactories: []confmap.ProviderFactory{
-			factory,
+			newConfmapProviderFactory(rawConfig),
 			newVariablesProviderFactory(variables),
 		},
 	}
@@ -123,6 +123,7 @@ func selectComponents[C any, ID selectableID](from map[ID]C, selection []ID) (ma
 	return selected, nil
 }
 
+// listReceivers lists the IDs of all the receivers found in pipelines
 func listReceivers(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
 	var list []component.ID
 	for _, pipeline := range pipelines {
@@ -134,6 +135,7 @@ func listReceivers(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
 	return slices.Compact(list)
 }
 
+// listReceivers lists the IDs of all the processors found in pipelines
 func listProcessors(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
 	var list []component.ID
 	for _, pipeline := range pipelines {
@@ -212,9 +214,10 @@ func (p *rawConfigProvider) Retrieve(ctx context.Context, uri string, _ confmap.
 			return nil, err
 		}
 		return confmap.NewRetrievedFromYAML(d)
+	default:
+		return nil, fmt.Errorf("%s not found", uri)
 	}
 
-	return nil, fmt.Errorf("%s not found", uri)
 }
 
 func (p *rawConfigProvider) buildMainYML() []byte {
