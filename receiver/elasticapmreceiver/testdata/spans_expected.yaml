@@ -34,7 +34,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -43,7 +43,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "141581000"
+                  intValue: "141581"
               - key: span.id
                 value:
                   stringValue: abcdef01234567
@@ -102,7 +102,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -111,7 +111,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "32592981"
+                  intValue: "32592"
               - key: span.id
                 value:
                   stringValue: 1234abcdef567895
@@ -169,7 +169,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -178,7 +178,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "3564298"
+                  intValue: "3564"
               - key: span.id
                 value:
                   stringValue: 0123456a89012345
@@ -236,7 +236,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -245,7 +245,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "13980298"
+                  intValue: "13980"
               - key: span.id
                 value:
                   stringValue: abcde56a89012345
@@ -306,7 +306,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -315,7 +315,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "3781912"
+                  intValue: "3781"
               - key: span.id
                 value:
                   stringValue: 1234567890aaaade
@@ -402,7 +402,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -411,7 +411,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "3781912"
+                  intValue: "3781"
               - key: span.id
                 value:
                   stringValue: fdc4567890aaaade
@@ -498,7 +498,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -507,7 +507,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "3781912"
+                  intValue: "3781"
               - key: span.id
                 value:
                   stringValue: ute4567890aaaade
@@ -594,7 +594,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532975583584217000"
+                  intValue: "1532975583584217"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -603,7 +603,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "988000"
+                  intValue: "988"
               - key: span.id
                 value:
                   stringValue: ljf4567890aaaade
@@ -671,7 +671,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1532976822281000000"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
                   stringValue: unknown
@@ -680,7 +680,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "141581000"
+                  intValue: "141581"
               - key: span.id
                 value:
                   stringValue: 00xxx12312312312
@@ -750,7 +750,7 @@ resourceSpans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1625572685682272000"
+                  intValue: "1625572685682272"
               - key: event.outcome
                 value:
                   stringValue: success
@@ -759,7 +759,7 @@ resourceSpans:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "378191200"
+                  intValue: "378191"
               - key: span.id
                 value:
                   stringValue: abcdef01234567
