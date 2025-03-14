@@ -24,10 +24,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
-	"go.opentelemetry.io/collector/processor/processorhelper"
 )
-
-var processorCapabilities = consumer.Capabilities{MutatesData: true}
 
 // NewFactory returns a new factory for the Filter processor.
 func NewFactory() processor.Factory {
@@ -46,17 +43,10 @@ func createDefaultConfig() component.Config {
 }
 
 func createMetricsProcessor(
-	ctx context.Context,
+	_ context.Context,
 	set processor.Settings,
 	cfg component.Config,
 	nextConsumer consumer.Metrics,
 ) (processor.Metrics, error) {
-	elasticinframetricsProcessor := newProcessor(set, cfg.(*Config))
-	return processorhelper.NewMetrics(
-		ctx,
-		set,
-		cfg,
-		nextConsumer,
-		elasticinframetricsProcessor.processMetrics,
-		processorhelper.WithCapabilities(processorCapabilities))
+	return newProcessor(set, cfg.(*Config), nextConsumer), nil
 }
