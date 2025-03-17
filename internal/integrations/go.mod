@@ -4,7 +4,6 @@ go 1.23.0
 
 require (
 	github.com/stretchr/testify v1.10.0
-	github.com/tj/assert v0.0.3
 	go.opentelemetry.io/collector/component v0.105.0
 	go.opentelemetry.io/collector/confmap v0.105.0
 	go.opentelemetry.io/collector/pipeline v0.121.0

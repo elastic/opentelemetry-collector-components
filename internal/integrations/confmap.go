@@ -43,8 +43,12 @@ type variablesProvider struct {
 	variables map[string]any
 }
 
+// Retrieves obtains variables preconfigured in the provider on creation.
 func (p *variablesProvider) Retrieve(ctx context.Context, uri string, _ confmap.WatcherFunc) (*confmap.Retrieved, error) {
-	key := strings.TrimPrefix(uri, varProviderScheme+":")
+	scheme, key, found := strings.Cut(uri, ":")
+	if !found || scheme != varProviderScheme {
+		return nil, fmt.Errorf("unexpected scheme in uri %q, expected %q", uri, varProviderScheme)
+	}
 	value, found := p.variables[key]
 	if !found {
 		return nil, fmt.Errorf("variable %q not found", key)
@@ -53,10 +57,12 @@ func (p *variablesProvider) Retrieve(ctx context.Context, uri string, _ confmap.
 	return confmap.NewRetrieved(value)
 }
 
+// Scheme returns the scheme of this provider.
 func (p *variablesProvider) Scheme() string {
 	return varProviderScheme
 }
 
+// Shutdown does not do anything on this provider.
 func (p *variablesProvider) Shutdown(ctx context.Context) error {
 	return nil
 }

@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tj/assert"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -226,16 +226,14 @@ func TestRawTemplateResolve(t *testing.T) {
 			var err error
 			template, err = NewRawTemplate(readTemplateFile(c.file))
 			if c.fileErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), c.fileErr)
+				assert.ErrorContains(t, err, c.fileErr)
 				return
 			}
 			require.NoError(t, err)
 
 			config, err := template.Resolve(context.Background(), c.params, c.pipelines)
 			if c.expectedErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), c.expectedErr)
+				assert.ErrorContains(t, err, c.expectedErr)
 				return
 			}
 
