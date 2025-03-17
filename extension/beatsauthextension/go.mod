@@ -1,9 +1,10 @@
 module github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension
 
 go 1.23.6
+toolchain go1.24.1
 
 require (
-	github.com/elastic/elastic-agent-libs v0.18.3
+	github.com/elastic/elastic-agent-libs v0.18.11
 	github.com/stretchr/testify v1.10.0
 	github.com/tj/assert v0.0.3
 	go.opentelemetry.io/collector/component v0.120.0
