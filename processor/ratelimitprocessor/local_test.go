@@ -36,7 +36,7 @@ func newTestLocalRateLimiter(t *testing.T, cfg *Config) *localRateLimiter {
 	}
 	require.Nil(t, cfg.Gubernator)
 
-	rl, err := newLocalRateLimiter(cfg, processortest.NewNopSettings())
+	rl, err := newLocalRateLimiter(cfg, processortest.NewNopSettings(processortest.NopType))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := rl.Shutdown(context.Background())

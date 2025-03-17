@@ -41,14 +41,14 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 	attributes.PutBool("transaction.root", event.ParentId == "")
 	attributes.PutStr("transaction.type", event.Transaction.Type)
 	attributes.PutStr("transaction.result", event.Transaction.Result)
-	attributes.PutInt("transaction.duration.us", int64(event.Event.Duration))
+	attributes.PutInt("transaction.duration.us", int64(event.Event.Duration/1_000))
 }
 
 // Sets fields that are NOT part of OTel for spans. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr("processor.event", "span")
-	attributes.PutInt("span.duration.us", int64(event.Event.Duration))
+	attributes.PutInt("span.duration.us", int64(event.Event.Duration/1_000))
 	attributes.PutStr("span.id", event.Span.Id)
 	attributes.PutStr("span.name", event.Span.Name)
 	attributes.PutStr("span.type", event.Span.Type)
@@ -82,7 +82,7 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 
 // Shared across spans and transactions
 func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
-	attributes.PutInt("timestamp.us", int64(event.Timestamp))
+	attributes.PutInt("timestamp.us", int64(event.Timestamp/1_000))
 
 	if strings.EqualFold(event.Event.Outcome, "success") {
 		attributes.PutStr("event.outcome", "success")
