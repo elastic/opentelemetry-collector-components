@@ -1,0 +1,78 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: res.1
+          value:
+            stringValue: val.1
+    scopeMetrics:
+      - metrics:
+          - name: delta.monotonic.sum.1
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 999
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                  timeUnixNano: "8000000"
+              isMonotonic: true
+        scope:
+          name: scope.1
+  - resource:
+      attributes:
+        - key: resource_overflow
+          value:
+            boolValue: true
+    scopeMetrics:
+      - metrics:
+          - name: delta.monotonic.sum.1
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 999
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                  timeUnixNano: "8000000"
+              isMonotonic: true
+        scope:
+          name: scope.1
+      - metrics:
+          - name: delta.monotonic.sum.1
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 777
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                  timeUnixNano: "8000000"
+              isMonotonic: true
+          - description: Overflow metric count due to metric limit
+            name: _overflow_metric
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: metric_overflow
+                      value:
+                        boolValue: true
+          - description: Overflow datapoint count due to datapoint limit
+            name: _overflow_datapoints
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: dp_overflow
+                      value:
+                        boolValue: true
+        scope:
+          attributes:
+            - key: scope_overflow
+              value:
+                boolValue: true

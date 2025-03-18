@@ -157,10 +157,10 @@ func TestTrackers(t *testing.T) {
 				ts := trackers.NewScopeTracker()
 				ts.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 
-				tm := trackers.NewMetricTracker()
+				tm := ts.NewMetricTracker()
 				tm.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 
-				tdps := trackers.NewDatapointTracker()
+				tdps := tm.NewDatapointTracker()
 				tdps.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				return trackers
 			}(),
@@ -177,11 +177,11 @@ func TestTrackers(t *testing.T) {
 				ts.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				ts.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 
-				tm := trackers.NewMetricTracker()
+				tm := ts.NewMetricTracker()
 				tm.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				tm.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 
-				tdps := trackers.NewDatapointTracker()
+				tdps := tm.NewDatapointTracker()
 				tdps.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				tdps.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 				return trackers
@@ -202,29 +202,26 @@ func TestTrackers(t *testing.T) {
 				ts2 := trackers.NewScopeTracker()
 				ts2.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				ts3 := trackers.NewScopeTracker()
-				ts3.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
-				trackers.NewScopeTracker()                           // empty tracker
+				ts3.CheckOverflow(testHash(0x00030fffffffffff).Hash)
+				trackers.NewScopeTracker() // empty tracker
 
-				tm1 := trackers.NewMetricTracker()
+				tm1 := ts1.NewMetricTracker()
 				tm1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				tm1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 				tm1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
-				tm2 := trackers.NewMetricTracker()
+				tm2 := ts2.NewMetricTracker()
 				tm2.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				tm3 := trackers.NewMetricTracker()
-				tm3.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
+				tm3 := ts3.NewMetricTracker()
+				tm3.CheckOverflow(testHash(0x00030fffffffffff).Hash)
 
-				tdps1 := trackers.NewDatapointTracker()
+				tdps1 := tm1.NewDatapointTracker()
 				tdps1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
 				tdps1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
 				tdps1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
-				tdps2 := trackers.NewDatapointTracker()
+				tdps2 := tm2.NewDatapointTracker()
 				tdps2.CheckOverflow(testHash(0x00040fffffffffff).Hash)
-				tdps3 := trackers.NewDatapointTracker()
+				tdps3 := tm3.NewDatapointTracker()
 				tdps3.CheckOverflow(testHash(0x00050fffffffffff).Hash)
-				tdps4 := trackers.NewDatapointTracker()
-				tdps4.CheckOverflow(testHash(0x00050fffffffffff).Hash)
-				tdps4.CheckOverflow(testHash(0x00060fffffffffff).Hash) // will overflow
 				return trackers
 			}(),
 		},
@@ -235,18 +232,34 @@ func TestTrackers(t *testing.T) {
 
 			newTrackers := getTestTrackers()
 			require.NoError(t, newTrackers.Unmarshal(b))
-			assert.True(t, tc.trackers.resource.Equal(newTrackers.resource))
 			// Assert decoded trackers to be equal to the original
-			allEqual := func(ts1, ts2 []*Tracker) {
-				assert.Equal(t, len(ts1), len(ts2))
-				for i := range ts1 {
-					assert.True(t, ts1[i].Equal(ts2[i]))
-				}
-			}
-			allEqual(tc.trackers.scope, newTrackers.scope)
-			allEqual(tc.trackers.metric, newTrackers.metric)
-			allEqual(tc.trackers.datapoint, newTrackers.datapoint)
+			assertTrackers(t, tc.trackers, newTrackers)
 		})
+	}
+}
+
+func assertTrackers(t *testing.T, a, b *Trackers) {
+	t.Helper()
+
+	// Assert resource tracker
+	require.True(t, a.resource.Equal(b.resource))
+	// Assert number of scope trackers
+	require.Equal(t, len(a.scope), len(b.scope))
+	for i := range a.scope {
+		// Assert scope trackers for each resource
+		ast, bst := a.scope[i], b.scope[i]
+		assert.Equal(t, ast.Tracker, bst.Tracker)
+		// Assert metrics trackers for each scope
+		require.Equal(t, len(ast.metrics), len(bst.metrics))
+		for j := range ast.metrics {
+			amt, bmt := ast.metrics[j], bst.metrics[j]
+			assert.Equal(t, amt.Tracker, bmt.Tracker)
+			// Assert dp trackers for each metric
+			require.Equal(t, len(amt.datapoints), len(bmt.datapoints))
+			for k := range amt.datapoints {
+				assert.Equal(t, amt.datapoints[k], bmt.datapoints[k])
+			}
+		}
 	}
 }
 

@@ -1,0 +1,78 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: res.1
+          value:
+            stringValue: val.1
+    scopeMetrics:
+      - scope:
+          name: scope.1
+        metrics:
+          - name: delta.monotonic.sum.1
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 999
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                  timeUnixNano: "8000000"
+              isMonotonic: true
+  - resource: # New resource should result in resource overflow with 1 cardinality limit
+      attributes:
+        - key: res.2
+          value:
+            stringValue: val.2
+    scopeMetrics:
+      - scope:
+          name: scope.1
+        metrics:
+          - name: delta.monotonic.sum.1
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 999
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                  timeUnixNano: "8000000"
+              isMonotonic: true
+      - scope: # New scope should result in scope overflow with 1 cardinality
+          name: scope.2
+        metrics:
+          - name: delta.monotonic.sum.1
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 777
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                  timeUnixNano: "8000000"
+                - asDouble: 482 # New datapoint should result in dp overflow with 1 cardinality
+                  attributes:
+                    - key: dp.2
+                      value:
+                        stringValue: val.2
+                  timeUnixNano: "8500000"
+              isMonotonic: true
+          - name: delta.monotonic.sum.2 # New metric should result in metric overflow with 1 cardinality
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 782
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                  timeUnixNano: "9000000"
+                - asDouble: 842 # New datapoint should NOT result in dp overflow as metric should have already overflown
+                  attributes:
+                    - key: dp.2
+                      value:
+                        stringValue: val.2
+                  timeUnixNano: "9500000"
+              isMonotonic: true
