@@ -229,7 +229,7 @@ const (
 //   - Scope tracker: one for each `pmetric.ResourceMetrics`, tracks the cardinality
 //     of scopes within a resource as per the configured limit.
 //   - Metric tracker: one for each `pmetric.ScopeMetrics`, tracks the cardinality of
-//     metric within a scope as per the configured limit.
+//     metrics within a scope as per the configured limit.
 //   - Datapoint tracker: one for each `pmetric.Metric`, tracks the cardinality of
 //     datapoints within a metric as per the configured limit.
 type Trackers struct {
