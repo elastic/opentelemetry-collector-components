@@ -46,9 +46,11 @@ func newElasticAPMConnector(
 	set connector.Settings,
 	nextConsumer consumer.Metrics,
 ) (*elasticapmConnector, error) {
+	lsmintervalSettings := processor.Settings(set)
+	lsmintervalSettings.ID = component.NewIDWithName(lsmintervalFactory.Type(), set.ID.Name())
 	lsminterval, err := lsmintervalFactory.CreateMetrics(
 		ctx,
-		processor.Settings(set),
+		lsmintervalSettings,
 		cfg.lsmConfig(),
 		nextConsumer,
 	)
@@ -71,13 +73,22 @@ func (c *elasticapmConnector) Shutdown(ctx context.Context) error {
 }
 
 func (c *elasticapmConnector) newLogsConsumer(ctx context.Context) (consumer.Logs, error) {
-	return signaltometricsFactory.CreateLogsToMetrics(ctx, c.set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	set := c.signaltometricsSettings()
+	return signaltometricsFactory.CreateLogsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
 }
 
 func (c *elasticapmConnector) newMetricsConsumer(ctx context.Context) (consumer.Metrics, error) {
-	return signaltometricsFactory.CreateMetricsToMetrics(ctx, c.set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	set := c.signaltometricsSettings()
+	return signaltometricsFactory.CreateMetricsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
 }
 
 func (c *elasticapmConnector) newTracesToMetrics(ctx context.Context) (consumer.Traces, error) {
-	return signaltometricsFactory.CreateTracesToMetrics(ctx, c.set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	set := c.signaltometricsSettings()
+	return signaltometricsFactory.CreateTracesToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+}
+
+func (c *elasticapmConnector) signaltometricsSettings() connector.Settings {
+	signaltometricsSettings := c.set
+	signaltometricsSettings.ID = component.NewIDWithName(signaltometricsFactory.Type(), c.set.ID.Name())
+	return signaltometricsSettings
 }
