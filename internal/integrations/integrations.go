@@ -29,7 +29,10 @@ import (
 )
 
 // ErrNotFound is the error returned when an integration cannot be found.
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound      = errors.New("not found")
+	ErrNotConfigured = fmt.Errorf("%w: no integration finder extension found", ErrNotFound)
+)
 
 // Integration is the interface for integrations that can be resolved as configuration.
 type Integration interface {
@@ -44,19 +47,26 @@ type Finder interface {
 	FindIntegration(ctx context.Context, name string) (Integration, error)
 }
 
-// Host is the interface a host must implement to be used to locate finders along extensions.
-type Host interface {
+// ExtensionGetter is the interface a host must implement to be used to locate finders
+// along extensions.
+// It must be a subset of the component.Host interface.
+type ExtensionGetter interface {
 	// GetExtensions returns the map of extensions. Only enabled and created extensions will be returned.
 	// GetExtensions can be called by the component anytime after Component.Start() begins and
 	// until Component.Shutdown() ends.
 	GetExtensions() map[component.ID]component.Component
 }
 
+// Compile-time check to ensure that ExtensionGetter is a subset of the component.Host interface.
+var _ ExtensionGetter = (component.Host)(nil)
+
 // Find looks for integrations in extensions of the host that implement the IntegrationFinder interface.
-func Find(ctx context.Context, logger *zap.Logger, host Host, name string) (Integration, error) {
+// It returns ErrNotFound if the integration cannot be found, or ErrNotConfigured if there are no
+// configured finder extensions. ErrNotConfigured also wraps ErrNotFound.
+func Find(ctx context.Context, logger *zap.Logger, host ExtensionGetter, integrationName string) (Integration, error) {
 	if host == nil {
 		logger.Error("received nil host")
-		return nil, ErrNotFound
+		return nil, ErrNotConfigured
 	}
 	anyExtension := false
 	for eid, extension := range host.GetExtensions() {
@@ -66,7 +76,7 @@ func Find(ctx context.Context, logger *zap.Logger, host Host, name string) (Inte
 		}
 		anyExtension = true
 
-		integration, err := finder.FindIntegration(ctx, name)
+		integration, err := finder.FindIntegration(ctx, integrationName)
 		if errors.Is(ErrNotFound, err) {
 			continue
 		}
@@ -80,7 +90,7 @@ func Find(ctx context.Context, logger *zap.Logger, host Host, name string) (Inte
 		return integration, nil
 	}
 	if !anyExtension {
-		return nil, fmt.Errorf("%w: no integration finder extension found", ErrNotFound)
+		return nil, ErrNotConfigured
 	}
 
 	return nil, ErrNotFound
@@ -93,14 +103,13 @@ type Config struct {
 	Pipelines  map[pipeline.ID]PipelineConfig   `mapstructure:"pipelines"`
 }
 
-// Validate validates that the integration configuration is valid and all the components referenced in the
+// validate validates that the integration configuration is valid and all the components referenced in the
 // pipelines are defined.
-func (c *Config) Validate() error {
-	for id, pipeline := range c.Pipelines {
-		if err := pipeline.Validate(); err != nil {
-			return fmt.Errorf("invalid pipeline %q: %w", id, err)
-		}
-
+func (c *Config) validate() error {
+	if len(c.Pipelines) == 0 {
+		return errors.New("missing pipelines")
+	}
+	for _, pipeline := range c.Pipelines {
 		if pipeline.Receiver != nil {
 			if _, found := c.Receivers[*pipeline.Receiver]; !found {
 				return fmt.Errorf("receiver %s not defined", pipeline.Receiver.String())
@@ -127,11 +136,6 @@ type PipelineConfig struct {
 	// Processors is the chain of processors of the pipeline, to be used as part of the receiver in receiver
 	// components, or as a combined processor when the pipeline is used as processor.
 	Processors []component.ID `mapstructure:"processors"`
-}
-
-// Validate validates the PipelineConfig.
-func (p *PipelineConfig) Validate() error {
-	return nil
 }
 
 // ComponentConfig contains the configuration of components. It is mainly irrelevant at this point.

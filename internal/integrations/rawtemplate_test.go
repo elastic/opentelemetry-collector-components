@@ -218,6 +218,11 @@ func TestRawTemplateResolve(t *testing.T) {
 			file:    "template-unknown-fields.yaml",
 			fileErr: "field extensions not found",
 		},
+		{
+			title:   "no processors configured",
+			file:    "template-no-processors.yaml",
+			fileErr: "missing pipelines",
+		},
 	}
 
 	for _, c := range cases {

@@ -20,6 +20,7 @@ package integrations // import "github.com/elastic/opentelemetry-collector-compo
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -30,6 +31,8 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/pipeline"
 )
+
+var _ Integration = &RawTemplate{}
 
 // RawTemplate implements the Template interface for raw YAML content.
 // Unused components are removed after resolving it, so the variables they contain are not required.
@@ -46,7 +49,7 @@ func NewRawTemplate(raw []byte) (*RawTemplate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid integration template format: %w", err)
 	}
-	if err := source.Validate(); err != nil {
+	if err := source.validate(); err != nil {
 		return nil, fmt.Errorf("integration template validation failed: %w", err)
 	}
 	return &RawTemplate{source: source}, nil
@@ -59,16 +62,16 @@ func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipeli
 		var err error
 		selectedPipelines, err = selectComponents(t.source.Pipelines, pipelines)
 		if err != nil {
-			return nil, fmt.Errorf("selecting pipelines: %w", err)
+			return nil, fmt.Errorf("selecting pipelines: %v", err)
 		}
 	}
 	selectedReceivers, err := selectComponents(t.source.Receivers, listReceivers(selectedPipelines))
 	if err != nil {
-		return nil, fmt.Errorf("selecting receivers: %w", err)
+		return nil, fmt.Errorf("selecting receivers: %v", err)
 	}
 	selectedProcessors, err := selectComponents(t.source.Processors, listProcessors(selectedPipelines))
 	if err != nil {
-		return nil, fmt.Errorf("selecting processors: %w", err)
+		return nil, fmt.Errorf("selecting processors: %v", err)
 	}
 
 	rawConfig := rawYAMLConfig{
@@ -89,7 +92,7 @@ func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipeli
 	if err := conf.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to generate effective configuration: %w", err)
 	}
-	return &config, config.Validate()
+	return &config, config.validate()
 }
 
 func newResolver(rawConfig rawYAMLConfig, variables map[string]any) (*confmap.Resolver, error) {
@@ -109,7 +112,7 @@ type selectableID interface {
 }
 
 func selectComponents[C any, ID selectableID](from map[ID]C, selection []ID) (map[ID]C, error) {
-	selected := make(map[ID]C)
+	selected := make(map[ID]C, len(selection))
 	for _, id := range selection {
 		component, found := from[id]
 		if !found {
@@ -149,12 +152,11 @@ type rawYAMLConfig struct {
 	Pipelines  map[pipeline.ID]PipelineConfig `mapstructure:"pipelines"`
 }
 
-func (c *rawYAMLConfig) Validate() error {
-	for id, pipeline := range c.Pipelines {
-		if err := pipeline.Validate(); err != nil {
-			return fmt.Errorf("invalid pipeline %q: %w", id, err)
-		}
-
+func (c *rawYAMLConfig) validate() error {
+	if len(c.Pipelines) == 0 {
+		return errors.New("missing pipelines")
+	}
+	for _, pipeline := range c.Pipelines {
 		if pipeline.Receiver != nil {
 			if _, found := c.Receivers[*pipeline.Receiver]; !found {
 				return fmt.Errorf("receiver %q not defined", pipeline.Receiver.String())

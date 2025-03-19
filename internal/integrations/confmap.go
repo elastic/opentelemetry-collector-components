@@ -29,6 +29,8 @@ const (
 	varProviderScheme = "var"
 )
 
+var _ confmap.Provider = &variablesProvider{}
+
 func newVariablesProviderFactory(variables map[string]any) confmap.ProviderFactory {
 	return confmap.NewProviderFactory(createVariablesProvider(variables))
 }

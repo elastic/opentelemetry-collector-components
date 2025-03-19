@@ -1,0 +1,14 @@
+receivers:
+  foo:
+    somesetting: ${var:somevalue}
+  bar:
+    somecomplexsetting:
+      someobject:
+        value: ${var:value}
+        other: ${var:othervalue}
+
+processors:
+  someprocessor:
+  otherprocessor:
+  third:
+    option: ${var:option}

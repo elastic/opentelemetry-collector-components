@@ -22,10 +22,12 @@ import (
 	_ "embed"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
-	"go.uber.org/zap"
 )
 
 //go:embed testdata/template-simple.yaml
@@ -42,24 +44,34 @@ func TestFind(t *testing.T) {
 		title            string
 		skip             string
 		name             string
-		expectedErr      bool
+		expectedErr      error
 		expectedPipeline pipeline.ID
 		params           map[string]any
-		host             Host
+		host             ExtensionGetter
 	}{
 		{
 			title:       "nil host",
-			expectedErr: true,
+			expectedErr: ErrNotConfigured,
 		},
 		{
 			title:       "host without finders",
 			name:        "something",
-			expectedErr: true,
+			expectedErr: ErrNotConfigured,
 			host:        newDummyHost(nil),
 		},
 		{
 			title: "find integration",
 			name:  "simple",
+			host: newDummyHost(map[component.ID]component.Component{
+				component.MustNewID("finder"): newDummyFinder(map[string]Integration{
+					"simple": integration1,
+				}),
+			}),
+		},
+		{
+			title:       "finder configured integration not found",
+			name:        "notfound",
+			expectedErr: ErrNotFound,
 			host: newDummyHost(map[component.ID]component.Component{
 				component.MustNewID("finder"): newDummyFinder(map[string]Integration{
 					"simple": integration1,
@@ -112,8 +124,8 @@ func TestFind(t *testing.T) {
 				t.Skip(c.skip)
 			}
 			integration, err := Find(context.Background(), logger, c.host, c.name)
-			if c.expectedErr {
-				require.Error(t, err)
+			if c.expectedErr != nil {
+				require.ErrorIs(t, err, c.expectedErr)
 				return
 			}
 			require.NoError(t, err)
@@ -126,6 +138,18 @@ func TestFind(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestErrNotConfigured checks that the error returned when there is no extension
+// configured also matches the error reported when no integration is found.
+func TestErrNotConfigured(t *testing.T) {
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+	emptyHost := newDummyHost(map[component.ID]component.Component{})
+	_, err = Find(context.Background(), logger, emptyHost, "someintegration")
+
+	assert.ErrorIs(t, err, ErrNotFound)
+	assert.ErrorIs(t, err, ErrNotConfigured)
 }
 
 type dummyHost struct {
