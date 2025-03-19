@@ -1,0 +1,19 @@
+processors:
+  transform/variable:
+    log_statements:
+      - set(log.attributes["resource"], "${var:resource}")
+  transform/original:
+    log_statements:
+      - set(log.attributes["resource"], "original")
+  transform/notused:
+    log_statements:
+      - set(log.attributes["notused"], "${var:not_used}")
+
+pipelines:
+  logs:
+    processors:
+      - transform/original
+      - transform/variable
+  metrics/notused:
+    processors:
+      - transform/notused
