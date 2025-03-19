@@ -153,13 +153,68 @@ func (t *Tracker) Unmarshal(d []byte) (int, error) {
 	return n + 2 + sketchLength, nil
 }
 
+// ScopeTracker tracks cardinality for scope metrics. They have a nested
+// structure to track cardinality for each metrics for the scope and datapoints
+// for the metrics.
+type ScopeTracker struct {
+	*Tracker
+	metricLimit    uint64
+	datapointLimit uint64
+	metrics        []*MetricTracker
+}
+
+// NewMetricTracker creates new metric trackers to track metrics cardinality
+// for the metrics within the current scope.
+func (st *ScopeTracker) NewMetricTracker() *MetricTracker {
+	mt := &MetricTracker{
+		Tracker:        newTracker(st.metricLimit),
+		datapointLimit: st.datapointLimit,
+	}
+	st.metrics = append(st.metrics, mt)
+	return mt
+}
+
+// GetMetricTracker returns a metric tracker from the index of the metric in
+// the `pmetric.ScopeMetrics` slice of the `pmetric.Metrics` model.
+func (st *ScopeTracker) GetMetricTracker(i int) *MetricTracker {
+	if i >= len(st.metrics) {
+		return nil
+	}
+	return st.metrics[i]
+}
+
+// MetricTracker tracks cardinality for metrics. They have a nested structure
+// to track the cardinality of each datapoint for the metrics.
+type MetricTracker struct {
+	*Tracker
+	datapointLimit uint64
+	datapoints     []*Tracker
+}
+
+// NewDatapointTracker creates a new datapoint tracker to track datapoint
+// cardinality for the datapoints within the current metrics.
+func (mt *MetricTracker) NewDatapointTracker() *Tracker {
+	tracker := newTracker(mt.datapointLimit)
+	mt.datapoints = append(mt.datapoints, tracker)
+	return tracker
+}
+
+// GetDatapointTracker returns a datapoint tracker from the index of the
+// datapoint in the `pmetric.Metrics` slice of the `pmetric.Metrics` model.
+func (mt *MetricTracker) GetDatapointTracker(i int) *Tracker {
+	if i >= len(mt.datapoints) {
+		return nil
+	}
+	return mt.datapoints[i]
+}
+
 type trackerType uint8
 
 const (
-	resourceTracker trackerType = iota
-	scopeTracker
-	metricTracker
-	dpTracker
+	resourceTrackerType trackerType = iota
+	scopeTrackerType
+	metricTrackerType
+	dpTrackerType
 )
 
 // Trackers represent multiple tracker in an ordered structure. It takes advantage
@@ -167,19 +222,27 @@ const (
 // for each resource, scope, and datapoint independent of the pmetric datastructure.
 // Note that this means that the order for pmetric and trackers are implicitly
 // related and removing/adding new objects to pmetric should be accompanied by
-// adding a corresponding tracker.
+// adding a corresponding tracker. The different types of trackers are:
+//
+//   - Resource tracker: one for each `pmetric.Metrics`, tracks the cardinality of
+//     resources as per the configured limit.
+//   - Scope tracker: one for each `pmetric.ResourceMetrics`, tracks the cardinality
+//     of scopes within a resource as per the configured limit.
+//   - Metric tracker: one for each `pmetric.ScopeMetrics`, tracks the cardinality of
+//     metrics within a scope as per the configured limit.
+//   - Datapoint tracker: one for each `pmetric.Metric`, tracks the cardinality of
+//     datapoints within a metric as per the configured limit.
 type Trackers struct {
 	resourceLimit  uint64
 	scopeLimit     uint64
 	metricLimit    uint64
 	datapointLimit uint64
 
-	resource  *Tracker
-	scope     []*Tracker
-	metric    []*Tracker
-	datapoint []*Tracker
+	resource *Tracker
+	scope    []*ScopeTracker
 }
 
+// NewTrackers creates trackers based on the configured overflow limits.
 func NewTrackers(resourceLimit, scopeLimit, metricLimit, datapointLimit uint64) *Trackers {
 	return &Trackers{
 		resourceLimit:  resourceLimit,
@@ -192,47 +255,29 @@ func NewTrackers(resourceLimit, scopeLimit, metricLimit, datapointLimit uint64) 
 	}
 }
 
-func (t *Trackers) NewScopeTracker() *Tracker {
-	newTracker := newTracker(t.scopeLimit)
-	t.scope = append(t.scope, newTracker)
-	return newTracker
-}
-
-func (t *Trackers) NewMetricTracker() *Tracker {
-	newTracker := newTracker(t.metricLimit)
-	t.metric = append(t.metric, newTracker)
-	return newTracker
-}
-
-func (t *Trackers) NewDatapointTracker() *Tracker {
-	newTracker := newTracker(t.datapointLimit)
-	t.datapoint = append(t.datapoint, newTracker)
-	return newTracker
-}
-
+// GetResourceTracker returns the resource tracker.
 func (t *Trackers) GetResourceTracker() *Tracker {
 	return t.resource
 }
 
-func (t *Trackers) GetScopeTracker(i int) *Tracker {
+// GetScopeTracker returns the scope tracker based on the index of the resouce metrics
+// whose scopes are to be tracked in the `pmetric.ResourceMetrics` slice of the
+// `pmetric.Metrics` datamodel for the resource whose scopes are being tracked.
+func (t *Trackers) GetScopeTracker(i int) *ScopeTracker {
 	if i >= len(t.scope) {
 		return nil
 	}
 	return t.scope[i]
 }
 
-func (t *Trackers) GetMetricTracker(i int) *Tracker {
-	if i >= len(t.metric) {
-		return nil
+func (t *Trackers) NewScopeTracker() *ScopeTracker {
+	scopeTracker := &ScopeTracker{
+		Tracker:        newTracker(t.scopeLimit),
+		metricLimit:    t.metricLimit,
+		datapointLimit: t.datapointLimit,
 	}
-	return t.metric[i]
-}
-
-func (t *Trackers) GetDatapointTracker(i int) *Tracker {
-	if i >= len(t.datapoint) {
-		return nil
-	}
-	return t.datapoint[i]
+	t.scope = append(t.scope, scopeTracker)
+	return scopeTracker
 }
 
 func (t *Trackers) AppendBinary(b []byte) ([]byte, error) {
@@ -241,30 +286,36 @@ func (t *Trackers) AppendBinary(b []byte) ([]byte, error) {
 		return b, nil
 	}
 
-	n := 1 + len(t.scope) + len(t.metric) + len(t.datapoint)
+	n := 1 + len(t.scope)
+	for _, st := range t.scope {
+		n += len(st.metrics)
+		for _, mt := range st.metrics {
+			n += len(mt.datapoints)
+		}
+	}
 	// minimum 4 bytes per tracker (type=1, count=1+, sketch length=2)
 	b = slices.Grow(b, n*4)
 
-	b, err := marshalTracker(resourceTracker, t.resource, b)
+	b, err := marshalTracker(resourceTrackerType, t.resource, b)
 	if err != nil {
 		return nil, err
 	}
-	for _, tracker := range t.scope {
-		b, err = marshalTracker(scopeTracker, tracker, b)
+	for _, st := range t.scope {
+		b, err = marshalTracker(scopeTrackerType, st.Tracker, b)
 		if err != nil {
 			return nil, err
 		}
-	}
-	for _, tracker := range t.metric {
-		b, err = marshalTracker(metricTracker, tracker, b)
-		if err != nil {
-			return nil, err
-		}
-	}
-	for _, tracker := range t.datapoint {
-		b, err = marshalTracker(dpTracker, tracker, b)
-		if err != nil {
-			return nil, err
+		for _, mt := range st.metrics {
+			b, err = marshalTracker(metricTrackerType, mt.Tracker, b)
+			if err != nil {
+				return nil, err
+			}
+			for _, dpt := range mt.datapoints {
+				b, err = marshalTracker(dpTrackerType, dpt, b)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 	}
 	return b, nil
@@ -275,26 +326,37 @@ func (t *Trackers) Unmarshal(d []byte) error {
 		return nil
 	}
 
-	var offset int
+	var (
+		offset              int
+		latestScopeTracker  *ScopeTracker
+		latestMetricTracker *MetricTracker
+	)
 	for offset < len(d) {
 		trackerTyp := trackerType(d[offset])
 		offset += 1
 
-		// Create the required tracker
+		// The below code will panic with NPE if the binary encoding is
+		// unexpected. The expected binary encoding must have one resource
+		// tracker then scope tracker followed by metric tracker followed by
+		// datapoint tracker.
 		var tracker *Tracker
 		switch trackerTyp {
-		case resourceTracker:
+		case resourceTrackerType:
 			tracker = t.GetResourceTracker()
-		case scopeTracker:
-			tracker = t.NewScopeTracker()
-		case metricTracker:
-			tracker = t.NewMetricTracker()
-		case dpTracker:
-			tracker = t.NewDatapointTracker()
+		case scopeTrackerType:
+			latestScopeTracker = t.NewScopeTracker()
+			tracker = latestScopeTracker.Tracker
+			// Nil the previous metric tracker as we expect a new metric
+			// tracker for the new scope.
+			latestMetricTracker = nil
+		case metricTrackerType:
+			latestMetricTracker = latestScopeTracker.NewMetricTracker()
+			tracker = latestMetricTracker.Tracker
+		case dpTrackerType:
+			tracker = latestMetricTracker.NewDatapointTracker()
 		default:
 			return errors.New("invalid tracker found")
 		}
-
 		n, err := tracker.Unmarshal(d[offset:])
 		if err != nil {
 			return err

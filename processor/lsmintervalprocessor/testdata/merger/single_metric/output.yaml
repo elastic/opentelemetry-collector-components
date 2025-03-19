@@ -1,0 +1,21 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: res.1
+          value:
+            stringValue: val.1
+    scopeMetrics:
+      - metrics:
+          - name: delta.monotonic.sum.1
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asDouble: 999
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                  timeUnixNano: "8000000"
+              isMonotonic: true
+        scope:
+          name: scope.1

@@ -1,0 +1,37 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: res.1
+          value:
+            stringValue: val.1
+    scopeMetrics:
+      - scope:
+          name: scope.1
+        metrics:
+          - name: delta.monotonic.sum.1
+            sum:
+              aggregationTemporality: 1
+              isMonotonic: true
+              dataPoints:
+                - timeUnixNano: 5000000
+                  asDouble: 333
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                # This data point is out of order
+                # The aggregator should ignore it since the first data point has a newer timestamp
+                - timeUnixNano: 2000000
+                  asDouble: 222
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+                # This one is the newest, so it should be the one stored
+                - timeUnixNano: 8000000
+                  asDouble: 444
+                  attributes:
+                    - key: dp.1
+                      value:
+                        stringValue: val.1
+
