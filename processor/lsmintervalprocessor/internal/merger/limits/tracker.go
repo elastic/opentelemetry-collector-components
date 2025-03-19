@@ -225,7 +225,7 @@ const (
 // adding a corresponding tracker. The different types of trackers are:
 //
 //   - Resource tracker: one for each `pmetric.Metrics`, tracks the cardinality of
-//     the resource as per the configured limit.
+//     resources as per the configured limit.
 //   - Scope tracker: one for each `pmetric.ResourceMetrics`, tracks the cardinality
 //     of scopes within a resource as per the configured limit.
 //   - Metric tracker: one for each `pmetric.ScopeMetrics`, tracks the cardinality of
