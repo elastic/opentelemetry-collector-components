@@ -147,9 +147,9 @@ func listProcessors(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
 }
 
 type rawYAMLConfig struct {
-	Receivers  map[component.ID]yaml.Node     `mapstructure:"receivers"`
-	Processors map[component.ID]yaml.Node     `mapstructure:"processors"`
-	Pipelines  map[pipeline.ID]PipelineConfig `mapstructure:"pipelines"`
+	Receivers  map[component.ID]yaml.Node     `mapstructure:"receivers" yaml:"receivers,omitempty"`
+	Processors map[component.ID]yaml.Node     `mapstructure:"processors" yaml:"processors,omitempty"`
+	Pipelines  map[pipeline.ID]PipelineConfig `mapstructure:"pipelines" yaml:"pipelines,omitempty"`
 }
 
 func (c *rawYAMLConfig) validate() error {
@@ -191,47 +191,15 @@ type rawConfigProvider struct {
 }
 
 func (p *rawConfigProvider) Retrieve(ctx context.Context, uri string, _ confmap.WatcherFunc) (*confmap.Retrieved, error) {
-	key := strings.TrimPrefix(uri, configProviderScheme+":")
-
-	switch key {
-	case "main":
-		return confmap.NewRetrievedFromYAML(p.buildMainYML())
-	case "receivers":
-		d, err := yaml.Marshal(p.main.Receivers)
-		if err != nil {
-			return nil, err
-		}
-		return confmap.NewRetrievedFromYAML(d)
-	case "processors":
-		d, err := yaml.Marshal(p.main.Processors)
-		if err != nil {
-			return nil, err
-		}
-		return confmap.NewRetrievedFromYAML(d)
-	case "pipelines":
-		d, err := yaml.Marshal(p.main.Pipelines)
-		if err != nil {
-			return nil, err
-		}
-		return confmap.NewRetrievedFromYAML(d)
-	default:
-		return nil, fmt.Errorf("%s not found", uri)
+	if uri != configProviderScheme+":main" {
+		return nil, fmt.Errorf("unexpected use of %s provider, requested uri: %s", configProviderScheme, uri)
 	}
 
-}
-
-func (p *rawConfigProvider) buildMainYML() []byte {
-	var buf bytes.Buffer
-	if len(p.main.Receivers) > 0 {
-		fmt.Fprintf(&buf, "receivers: ${%s:receivers}\n", configProviderScheme)
+	main, err := yaml.Marshal(p.main)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode config: %w", err)
 	}
-	if len(p.main.Processors) > 0 {
-		fmt.Fprintf(&buf, "processors: ${%s:processors}\n", configProviderScheme)
-	}
-	if len(p.main.Pipelines) > 0 {
-		fmt.Fprintf(&buf, "pipelines: ${%s:pipelines}\n", configProviderScheme)
-	}
-	return buf.Bytes()
+	return confmap.NewRetrievedFromYAML(main)
 }
 
 func (p *rawConfigProvider) Scheme() string {
