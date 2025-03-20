@@ -53,7 +53,8 @@ type tracesGenerator struct {
 
 	consumer consumer.Traces
 
-	cancelFn context.CancelFunc
+	cancelFn            context.CancelFunc
+	inflightConcurrency sync.WaitGroup
 }
 
 func createTracesReceiver(
@@ -102,12 +103,10 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 	startCtx, cancelFn := context.WithCancel(ctx)
 	ar.cancelFn = cancelFn
 
-	wg := sync.WaitGroup{}
-
 	for i := 0; i < ar.cfg.Concurrency; i++ {
-		wg.Add(1)
+		ar.inflightConcurrency.Add(1)
 		go func() {
-			defer wg.Done()
+			defer ar.inflightConcurrency.Done()
 			next := ptrace.NewTraces() // per-worker temporary container to avoid allocs
 			for {
 				select {
@@ -126,7 +125,9 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 				if errors.Is(err, list.ErrLoopLimitReached) {
 					return
 				}
-				if err := ar.consumer.ConsumeTraces(startCtx, next); err != nil {
+				// For graceful shutdown, use ctx instead of startCtx to shield Consume* from context canceled
+				// In other words, Consume* will finish at its own pace, which may take indefinitely long.
+				if err := ar.consumer.ConsumeTraces(ctx, next); err != nil {
 					ar.logger.Error(err.Error())
 					ar.statsMu.Lock()
 					ar.stats.FailedRequests++
@@ -142,7 +143,7 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 		}()
 	}
 	go func() {
-		wg.Wait()
+		ar.inflightConcurrency.Wait()
 		if ar.cfg.Traces.doneCh != nil {
 			ar.cfg.Traces.doneCh <- ar.stats
 		}
@@ -154,6 +155,7 @@ func (ar *tracesGenerator) Shutdown(context.Context) error {
 	if ar.cancelFn != nil {
 		ar.cancelFn()
 	}
+	ar.inflightConcurrency.Wait()
 	return nil
 }
 

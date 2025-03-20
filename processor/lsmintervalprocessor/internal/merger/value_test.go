@@ -24,13 +24,92 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
+func TestMergeMetric(t *testing.T) {
+	for _, tc := range []string{
+		"empty",
+		"single_metric",
+		"all_overflow",
+	} {
+		t.Run(tc, func(t *testing.T) {
+			v := getTestValue(t)
+			dir := filepath.Join("../../testdata/merger", tc)
+			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
+			require.NoError(t, err)
+			mergeMetrics(t, v, md)
+
+			// Do a binary<>merger#Value conversion to assert the binary marshaling logic
+			vb, err := v.AppendBinary(nil)
+			require.NoError(t, err)
+			v = getTestValue(t)
+			require.NoError(t, v.Unmarshal(vb))
+
+			// Compare the final metric with the expected metric
+			expected, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
+			require.NoError(t, err)
+			actual, err := v.Finalize()
+			require.NoError(t, err)
+			assert.NoError(t, pmetrictest.CompareMetrics(expected, actual))
+		})
+	}
+}
+
+func getTestValue(t *testing.T) *Value {
+	t.Helper()
+
+	return NewValue(
+		config.LimitConfig{
+			MaxCardinality: 1,
+			Overflow: config.OverflowConfig{
+				Attributes: []config.Attribute{{Key: "resource_overflow", Value: true}},
+			},
+		},
+		config.LimitConfig{
+			MaxCardinality: 1,
+			Overflow: config.OverflowConfig{
+				Attributes: []config.Attribute{{Key: "scope_overflow", Value: true}},
+			},
+		},
+		config.LimitConfig{
+			MaxCardinality: 1,
+			Overflow: config.OverflowConfig{
+				Attributes: []config.Attribute{{Key: "metric_overflow", Value: true}},
+			},
+		},
+		config.LimitConfig{
+			MaxCardinality: 1,
+			Overflow: config.OverflowConfig{
+				Attributes: []config.Attribute{{Key: "dp_overflow", Value: true}},
+			},
+		},
+	)
+}
+
+func mergeMetrics(t *testing.T, v *Value, md pmetric.Metrics) {
+	t.Helper()
+
+	rms := md.ResourceMetrics()
+	for i := 0; i < rms.Len(); i++ {
+		rm := rms.At(i)
+		sms := rm.ScopeMetrics()
+		for j := 0; j < sms.Len(); j++ {
+			sm := sms.At(j)
+			ms := sm.Metrics()
+			for k := 0; k < ms.Len(); k++ {
+				require.NoError(t, v.MergeMetric(rm, sm, ms.At(k)))
+			}
+		}
+	}
+}
+
 // we use the overflow test files but overflow behaviour will be governed
 // by the limit configurations used in the tests/benchmarks.
-var testCases = []string{
+var benchTestCases = []string{
 	"sum_cumulative_overflow",
 	"sum_delta_overflow",
 	"histogram_cumulative_overflow",
@@ -94,7 +173,7 @@ func BenchmarkAppendBinaryReuseBuffer(b *testing.B) {
 
 func benchmarkAppendBinary(b *testing.B, f func(*testing.B, *Value)) {
 	b.Helper()
-	for _, tc := range testCases {
+	for _, tc := range benchTestCases {
 		dir := filepath.Join("../../testdata", tc)
 		md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 		require.NoError(b, err)
@@ -115,7 +194,7 @@ func benchmarkMergeWithTestdata(
 ) {
 	b.Helper()
 
-	for _, tc := range testCases {
+	for _, tc := range benchTestCases {
 		dir := filepath.Join("../../testdata", tc)
 		md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 		require.NoError(b, err)
