@@ -61,6 +61,7 @@ type ExtensionGetter interface {
 var _ ExtensionGetter = (component.Host)(nil)
 
 // Find looks for integrations in extensions of the host that implement the IntegrationFinder interface.
+// If multiple integrations match, only the first one is returned.
 // It returns ErrNotFound if the integration cannot be found, or ErrNotConfigured if there are no
 // configured finder extensions. ErrNotConfigured also wraps ErrNotFound.
 func Find(ctx context.Context, logger *zap.Logger, host ExtensionGetter, integrationName string) (Integration, error) {
@@ -96,7 +97,8 @@ func Find(ctx context.Context, logger *zap.Logger, host ExtensionGetter, integra
 	return nil, ErrNotFound
 }
 
-// Config contains an structured integration.
+// Config contains an structured integration. At this point we only handle component IDs, and not
+// their specific configurations.
 type Config struct {
 	Receivers  map[component.ID]ComponentConfig `mapstructure:"receivers"`
 	Processors map[component.ID]ComponentConfig `mapstructure:"processors"`
@@ -138,5 +140,5 @@ type PipelineConfig struct {
 	Processors []component.ID `mapstructure:"processors"`
 }
 
-// ComponentConfig contains the configuration of components. It is mainly irrelevant at this point.
+// ComponentConfig contains the configuration of components.
 type ComponentConfig any
