@@ -55,6 +55,12 @@ func NewRawTemplate(raw []byte) (*RawTemplate, error) {
 	return &RawTemplate{source: source}, nil
 }
 
+// ValidateRawTemplate checks if an integration template is syntactically valid.
+func ValidateRawTemplate(raw []byte) error {
+	_, err := NewRawTemplate(raw)
+	return err
+}
+
 // Resolve resolves the template using a confmap resolver.
 func (t *RawTemplate) Resolve(ctx context.Context, params map[string]any, pipelines []pipeline.ID) (*Config, error) {
 	selectedPipelines := t.source.Pipelines
