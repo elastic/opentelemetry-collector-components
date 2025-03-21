@@ -50,7 +50,7 @@ func TestRawTemplateResolve(t *testing.T) {
 				"option":     "stuff",
 			},
 			expected: Config{
-				Receivers: map[component.ID]ComponentConfig{
+				Receivers: map[component.ID]component.Config{
 					component.MustNewID("foo"): map[string]any{
 						"somesetting": "foo",
 					},
@@ -63,7 +63,7 @@ func TestRawTemplateResolve(t *testing.T) {
 						},
 					},
 				},
-				Processors: map[component.ID]ComponentConfig{
+				Processors: map[component.ID]component.Config{
 					component.MustNewID("otherprocessor"): nil,
 					component.MustNewID("someprocessor"):  nil,
 					component.MustNewID("third"): map[string]any{
@@ -101,12 +101,12 @@ func TestRawTemplateResolve(t *testing.T) {
 				"somevalue": "xxx",
 			},
 			expected: Config{
-				Receivers: map[component.ID]ComponentConfig{
+				Receivers: map[component.ID]component.Config{
 					component.MustNewID("foo"): map[string]any{
 						"somesetting": "xxx",
 					},
 				},
-				Processors: map[component.ID]ComponentConfig{
+				Processors: map[component.ID]component.Config{
 					component.MustNewID("otherprocessor"): nil,
 					component.MustNewID("someprocessor"):  nil,
 				},
@@ -134,7 +134,7 @@ func TestRawTemplateResolve(t *testing.T) {
 				},
 			},
 			expected: Config{
-				Receivers: map[component.ID]ComponentConfig{
+				Receivers: map[component.ID]component.Config{
 					component.MustNewID("foo"): map[string]any{
 						"somesetting": map[string]any{
 							"subsetting": "foo",
@@ -142,7 +142,7 @@ func TestRawTemplateResolve(t *testing.T) {
 						},
 					},
 				},
-				Processors: map[component.ID]ComponentConfig{
+				Processors: map[component.ID]component.Config{
 					component.MustNewID("otherprocessor"): nil,
 					component.MustNewID("someprocessor"):  nil,
 				},
@@ -168,7 +168,7 @@ func TestRawTemplateResolve(t *testing.T) {
 				"othervalue": "baz",
 			},
 			expected: Config{
-				Receivers: map[component.ID]ComponentConfig{
+				Receivers: map[component.ID]component.Config{
 					component.MustNewID("bar"): map[string]any{
 						"somecomplexsetting": map[string]any{
 							"someobject": map[string]any{
