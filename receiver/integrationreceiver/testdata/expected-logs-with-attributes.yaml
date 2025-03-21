@@ -1,0 +1,29 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: log.file.name
+                value:
+                  stringValue: test-simple.log
+              - key: resource
+                value:
+                  stringValue: test
+            body:
+              stringValue: this is a log
+            observedTimeUnixNano: "1741200622991237029"
+            spanId: ""
+            traceId: ""
+          - attributes:
+              - key: log.file.name
+                value:
+                  stringValue: test-simple.log
+              - key: resource
+                value:
+                  stringValue: test
+            body:
+              stringValue: this is another log
+            observedTimeUnixNano: "1741200622991239294"
+            spanId: ""
+            traceId: ""
+        scope: {}
