@@ -1,0 +1,25 @@
+receivers:
+  foo:
+    somesetting: ${var:somevalue}
+  bar:
+    somecomplexsetting:
+      someobject:
+        value: ${var:value}
+        other: ${var:othervalue}
+
+processors:
+  someprocessor:
+  otherprocessor:
+  third:
+    option: ${var:option}
+
+pipelines:
+  metrics:
+    receiver: foo
+    processors: [someprocessor, otherprocessor]
+  logs:
+    receiver: bar
+    processors:
+      - third/missing
+  logs/raw:
+    receiver: bar
