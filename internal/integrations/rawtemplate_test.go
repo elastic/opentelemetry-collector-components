@@ -248,6 +248,50 @@ func TestRawTemplateResolve(t *testing.T) {
 	}
 }
 
+func TestValidateRawTemplate(t *testing.T) {
+	cases := []struct {
+		title       string
+		file        string
+		expectedErr string
+	}{
+		{
+			title: "valid without pipelines",
+			file:  "template-simple.yaml",
+		},
+		{
+			title:       "missing receiver",
+			file:        "template-missing-receiver.yaml",
+			expectedErr: "receiver \"foo/missing\" not defined",
+		},
+		{
+			title:       "missing processor",
+			file:        "template-missing-processor.yaml",
+			expectedErr: "processor \"third/missing\" not defined",
+		},
+		{
+			title:       "missing processor",
+			file:        "template-unknown-fields.yaml",
+			expectedErr: "field extensions not found",
+		},
+		{
+			title:       "no processors configured",
+			file:        "template-no-processors.yaml",
+			expectedErr: "missing pipelines",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.title, func(t *testing.T) {
+			err := ValidateRawTemplate(readTemplateFile(c.file))
+			if c.expectedErr != "" {
+				assert.ErrorContains(t, err, c.expectedErr)
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func readTemplateFile(fileName string) []byte {
 	d, err := os.ReadFile(filepath.Join("testdata", fileName))
 	if err != nil {
