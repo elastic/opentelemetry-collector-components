@@ -135,11 +135,14 @@ func listComponents(pipelines map[pipeline.ID]PipelineConfig, listIDs func(Pipel
 // listReceivers lists the IDs of all the receivers found in pipelines
 func listReceivers(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
 	return listComponents(pipelines, func(c PipelineConfig) []component.ID {
+		if c.Receiver == nil {
+			return []component.ID{}
+		}
 		return []component.ID{*c.Receiver}
 	})
 }
 
-// listReceivers lists the IDs of all the processors found in pipelines
+// listProcessors lists the IDs of all the processors found in pipelines
 func listProcessors(pipelines map[pipeline.ID]PipelineConfig) []component.ID {
 	return listComponents(pipelines, func(c PipelineConfig) []component.ID {
 		return c.Processors
