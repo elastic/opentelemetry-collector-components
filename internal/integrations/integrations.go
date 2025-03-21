@@ -100,9 +100,9 @@ func Find(ctx context.Context, logger *zap.Logger, host ExtensionGetter, integra
 // Config contains an structured integration. At this point we only handle component IDs, and not
 // their specific configurations.
 type Config struct {
-	Receivers  map[component.ID]ComponentConfig `mapstructure:"receivers"`
-	Processors map[component.ID]ComponentConfig `mapstructure:"processors"`
-	Pipelines  map[pipeline.ID]PipelineConfig   `mapstructure:"pipelines"`
+	Receivers  map[component.ID]component.Config `mapstructure:"receivers"`
+	Processors map[component.ID]component.Config `mapstructure:"processors"`
+	Pipelines  map[pipeline.ID]PipelineConfig    `mapstructure:"pipelines"`
 }
 
 // validate validates that the integration configuration is valid and all the components referenced in the
@@ -139,6 +139,3 @@ type PipelineConfig struct {
 	// components, or as a combined processor when the pipeline is used as processor.
 	Processors []component.ID `mapstructure:"processors"`
 }
-
-// ComponentConfig contains the configuration of components.
-type ComponentConfig any
