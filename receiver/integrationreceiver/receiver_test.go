@@ -38,7 +38,7 @@ import (
 	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
+	"github.com/elastic/opentelemetry-collector-components/pkg/integrations"
 	"github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver/internal/metadata"
 )
 

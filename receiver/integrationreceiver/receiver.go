@@ -33,7 +33,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
+	"github.com/elastic/opentelemetry-collector-components/pkg/integrations"
 )
 
 type integrationReceiver struct {
