@@ -1,9 +1,15 @@
 ---
 version: 2
 updates:
-  #TODO: Replace go directories with wildcard https://github.com/dependabot/dependabot-core/issues/2178
+  # TODO: Replace go directories with wildcard https://github.com/dependabot/dependabot-core/issues/2178
+  # All the directories are grouped by ownership
+
+  # Owned by elastic/obs-ds-intake-services
   - package-ecosystem: "gomod"
-    directory: "/processor/lsmintervalprocessor/"
+    directories:
+      - "/processor/lsmintervalprocessor/"
+      - "/processor/elastictraceprocessor/"
+      - "/connector/elasticapmconnector"
     schedule:
       interval: "daily"
     labels:
@@ -17,6 +23,7 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+  # Owned by elastic/obs-infraobs-integrations
   - package-ecosystem: "gomod"
     directory: "/processor/elasticinframetricsprocessor/"
     schedule:
@@ -32,23 +39,13 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+  # Owned by elastic/otel-devs (the default)
   - package-ecosystem: "gomod"
-    directory: "/processor/elastictraceprocessor/"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/processor/ratelimitprocessor/"
+    directories:
+      - "/processor/ratelimitprocessor/"
+      - "/receiver/loadgenreceiver"
+      - "/receiver/elasticapmreceiver"
+      - "/extension/beatsauthextension"
     schedule:
       interval: "daily"
     labels:
@@ -62,82 +59,11 @@ updates:
       - dependency-name: "*"
         update-types: [ "version-update:semver-major" ]
 
+  # Tools owned by elastic/otel-devs (the default)
   - package-ecosystem: "gomod"
-    directory: "/connector/elasticapmconnector"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/receiver/loadgenreceiver"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/receiver/elasticapmreceiver"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/extension/beatsauthextension"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-    groups:
-      otel-dependencies:
-        patterns:
-          - "go.opentelemetry.io/*"
-          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/internal/tools/"
-    schedule:
-      interval: "daily"
-    labels:
-      - automation
-      - tools
-    groups:
-      otel-dependencies:
-        patterns: ["go.opentelemetry.io/*"]
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
-  - package-ecosystem: "gomod"
-    directory: "/internal/testutil/"
+    directories:
+      - "/internal/tools/"
+      - "/internal/testutil/"
     schedule:
       interval: "daily"
     labels:
