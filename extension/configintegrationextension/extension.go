@@ -23,7 +23,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
+	"github.com/elastic/opentelemetry-collector-components/pkg/integrations"
 )
 
 type configTemplateExtension struct {

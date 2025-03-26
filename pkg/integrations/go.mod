@@ -1,4 +1,4 @@
-module github.com/elastic/opentelemetry-collector-components/internal/integrations
+module github.com/elastic/opentelemetry-collector-components/pkg/integrations
 
 go 1.23.0
 

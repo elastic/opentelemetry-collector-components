@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/fileinteg
 go 1.23.0
 
 require (
-	github.com/elastic/opentelemetry-collector-components/internal/integrations v0.0.0
+	github.com/elastic/opentelemetry-collector-components/pkg/integrations v0.0.0
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/component v0.120.0
 	go.opentelemetry.io/collector/component/componenttest v0.120.0
@@ -48,6 +48,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver => ../../receiver/integrationreceiver
-
-replace github.com/elastic/opentelemetry-collector-components/internal/integrations => ../../internal/integrations
+replace github.com/elastic/opentelemetry-collector-components/pkg/integrations => ../../pkg/integrations

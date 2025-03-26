@@ -23,7 +23,7 @@ import (
 
 	"go.opentelemetry.io/collector/confmap/xconfmap"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
+	"github.com/elastic/opentelemetry-collector-components/pkg/integrations"
 )
 
 // Config is the structured configuration of the extension.
