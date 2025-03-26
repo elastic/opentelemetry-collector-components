@@ -36,7 +36,7 @@ import (
 	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/processor/processortest"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/integrations"
+	"github.com/elastic/opentelemetry-collector-components/pkg/integrations"
 	"github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor/internal/metadata"
 )
 

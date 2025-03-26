@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/integrati
 go 1.23.0
 
 require (
-	github.com/elastic/opentelemetry-collector-components/internal/integrations v0.0.0
+	github.com/elastic/opentelemetry-collector-components/pkg/integrations v0.0.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.121.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.121.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.121.0
@@ -82,4 +82,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/elastic/opentelemetry-collector-components/internal/integrations => ../../internal/integrations
+replace github.com/elastic/opentelemetry-collector-components/pkg/integrations => ../../pkg/integrations

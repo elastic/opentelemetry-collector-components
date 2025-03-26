@@ -5,5 +5,4 @@
 processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations
 processor/elastictraceprocessor        @elastic/obs-ds-intake-services
 processor/lsmintervalprocessor         @elastic/obs-ds-intake-services
-connector/signaltometricsconnector     @elastic/obs-ds-intake-services
 connector/elasticapmconnector          @elastic/obs-ds-intake-services
