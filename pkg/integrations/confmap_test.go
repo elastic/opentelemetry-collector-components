@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package integrations // import "github.com/elastic/opentelemetry-collector-components/internal/integrations"
+package integrations // import "github.com/elastic/opentelemetry-collector-components/pkg/integrations"
 
 import (
 	"context"
