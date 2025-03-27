@@ -1,0 +1,16 @@
+integrations:
+  valid: |
+    receivers:
+      foo:
+        setting: $${var:setting}
+
+    processors:
+      foo: ~
+
+    extensions:
+      foo: ~
+
+    pipelines:
+      metrics/1:
+        receiver: foo
+        processors: [foo, bar]
