@@ -1,0 +1,11 @@
+type: integration
+
+status:
+  class: receiver
+  stability:
+    development: [logs, metrics, traces]
+  codeowners:
+    active: [jsoriano]
+
+tests:
+  skip_lifecycle: true # It depends on other receivers to be available.
