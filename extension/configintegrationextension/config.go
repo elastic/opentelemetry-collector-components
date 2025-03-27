@@ -38,7 +38,7 @@ var _ xconfmap.Validator = &Config{}
 func (c *Config) Validate() error {
 	for name, integration := range c.Integrations {
 		raw := []byte(strings.ReplaceAll(integration, `$$`, `$`))
-		if err := integrations.ValidateRawTemplate(raw); err != nil {
+		if _, err := integrations.NewRawTemplate(raw); err != nil {
 			return fmt.Errorf("embedded integration %q is not valid: %w", name, err)
 		}
 	}
