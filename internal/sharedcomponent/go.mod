@@ -1,6 +1,7 @@
 module github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent
 
-go 1.22.7
+go 1.23.0
+
 toolchain go1.24.1
 
 require (

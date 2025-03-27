@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +52,7 @@ func TestProcessor(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc, func(t *testing.T) {
 			factory := NewFactory()
-			settings := processortest.NewNopSettings()
+			settings := processortest.NewNopSettings(metadata.Type)
 			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 			next := &consumertest.TracesSink{}
 

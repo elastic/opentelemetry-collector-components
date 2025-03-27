@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -53,7 +54,7 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
 			cfg := &Config{}
-			l2m := newLogsToMetrics(t, connectortest.NewNopSettings(), cfg, nextMetrics)
+			l2m := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
 			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadLogs(filepath.Join(dir, "input.yaml"))
@@ -87,7 +88,7 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
 			cfg := &Config{}
-			m2m := newMetricsConnector(t, connectortest.NewNopSettings(), cfg, nextMetrics)
+			m2m := newMetricsConnector(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
 			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
@@ -122,7 +123,7 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
 			cfg := &Config{}
-			t2m := newTracesConnector(t, connectortest.NewNopSettings(), cfg, nextMetrics)
+			t2m := newTracesConnector(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
 			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
@@ -153,7 +154,7 @@ func TestConnector_AggregationDirectory(t *testing.T) {
 	cfg := &Config{Aggregation: &AggregationConfig{
 		Directory: aggdir,
 	}}
-	l2m := newLogsToMetrics(t, connectortest.NewNopSettings(), cfg, &consumertest.MetricsSink{})
+	l2m := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg, &consumertest.MetricsSink{})
 	err = l2m.Shutdown(context.Background())
 	require.NoError(t, err)
 
@@ -161,7 +162,6 @@ func TestConnector_AggregationDirectory(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, entries)
 }
-
 func TestConnector_AggregationMetadataKeys(t *testing.T) {
 	cfg := &Config{Aggregation: &AggregationConfig{MetadataKeys: []string{"k"}}}
 
@@ -170,7 +170,7 @@ func TestConnector_AggregationMetadataKeys(t *testing.T) {
 		callInfo = append(callInfo, client.FromContext(ctx))
 		return nil
 	})
-	l2m := newLogsToMetrics(t, connectortest.NewNopSettings(), cfg, nextConsumer)
+	l2m := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg, nextConsumer)
 
 	input := plog.NewLogs()
 	record := input.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
