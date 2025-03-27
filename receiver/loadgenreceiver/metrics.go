@@ -157,6 +157,13 @@ func (ar *metricsGenerator) Shutdown(context.Context) error {
 	return nil
 }
 
+type datapoint interface {
+	Attributes() pcommon.Map
+	SetTimestamp(pcommon.Timestamp)
+	SetStartTimestamp(pcommon.Timestamp)
+	Timestamp() pcommon.Timestamp
+}
+
 func (ar *metricsGenerator) nextMetrics(next pmetric.Metrics) error {
 	now := pcommon.NewTimestampFromTime(time.Now())
 
@@ -175,32 +182,27 @@ func (ar *metricsGenerator) nextMetrics(next pmetric.Metrics) error {
 				case pmetric.MetricTypeGauge:
 					dps := smetric.Gauge().DataPoints()
 					for i := 0; i < dps.Len(); i++ {
-						dps.At(i).SetTimestamp(now)
-						dps.At(i).SetStartTimestamp(now)
+						rewriteTimestampRetainOriginal(dps.At(i), now)
 					}
 				case pmetric.MetricTypeSum:
 					dps := smetric.Sum().DataPoints()
 					for i := 0; i < dps.Len(); i++ {
-						dps.At(i).SetTimestamp(now)
-						dps.At(i).SetStartTimestamp(now)
+						rewriteTimestampRetainOriginal(dps.At(i), now)
 					}
 				case pmetric.MetricTypeHistogram:
 					dps := smetric.Histogram().DataPoints()
 					for i := 0; i < dps.Len(); i++ {
-						dps.At(i).SetTimestamp(now)
-						dps.At(i).SetStartTimestamp(now)
+						rewriteTimestampRetainOriginal(dps.At(i), now)
 					}
 				case pmetric.MetricTypeExponentialHistogram:
 					dps := smetric.ExponentialHistogram().DataPoints()
 					for i := 0; i < dps.Len(); i++ {
-						dps.At(i).SetTimestamp(now)
-						dps.At(i).SetStartTimestamp(now)
+						rewriteTimestampRetainOriginal(dps.At(i), now)
 					}
 				case pmetric.MetricTypeSummary:
 					dps := smetric.Summary().DataPoints()
 					for i := 0; i < dps.Len(); i++ {
-						dps.At(i).SetTimestamp(now)
-						dps.At(i).SetStartTimestamp(now)
+						rewriteTimestampRetainOriginal(dps.At(i), now)
 					}
 				case pmetric.MetricTypeEmpty:
 				}
@@ -209,4 +211,16 @@ func (ar *metricsGenerator) nextMetrics(next pmetric.Metrics) error {
 	}
 
 	return nil
+}
+
+func rewriteTimestampRetainOriginal(dp datapoint, now pcommon.Timestamp) {
+	// Workaround: If loadgenreceiver generate data points too quickly,
+	// it is possible that 2 data points of the same metric have timestamps of different nanoseconds (precision sent by elasticsearchexporter)
+	// but the same millisecond (precision in ES index mapping).
+	// This is a problem as it will cause TSDB version_conflict_engine_exception.
+	// Set an original timestamp dimension to ensure that these data points have different dimensions
+	// and will not be seen as duplicates by TSDB.
+	dp.Attributes().PutInt("original_timestamp", dp.Timestamp().AsTime().UnixNano())
+	dp.SetTimestamp(now)
+	dp.SetStartTimestamp(now)
 }

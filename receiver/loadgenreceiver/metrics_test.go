@@ -21,12 +21,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
 )
@@ -59,4 +65,47 @@ func TestMetricsGenerator_doneCh(t *testing.T) {
 			assert.Equal(t, sink.DataPointCount(), stats.MetricDataPoints)
 		})
 	}
+}
+
+func TestMetricsGenerator_TSDBWorkaround(t *testing.T) {
+	now := time.Now()
+	originalTimestamp := time.Unix(1000, 0)
+	filename := "metrics.jsonl"
+	originalMetrics := pmetric.NewMetrics()
+	originalDp := originalMetrics.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty().SetEmptySum().DataPoints().AppendEmpty()
+	originalDp.SetTimestamp(pcommon.NewTimestampFromTime(originalTimestamp))
+	marshaler := pmetric.JSONMarshaler{}
+	b, err := marshaler.MarshalMetrics(originalMetrics)
+	require.NoError(t, err)
+	tmpdir := t.TempDir()
+	tmpfile := filepath.Join(tmpdir, filename)
+	err = os.WriteFile(tmpfile, b, 0600)
+	require.NoError(t, err)
+
+	doneCh := make(chan Stats)
+	sink := &consumertest.MetricsSink{}
+	cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+	cfg.(*Config).Metrics.MaxReplay = 1
+	cfg.(*Config).Concurrency = 1
+	cfg.(*Config).Metrics.JsonlFile = JsonlFile(tmpfile)
+	r, err := createMetricsReceiver(context.Background(), receiver.Settings{
+		ID: component.ID{},
+		TelemetrySettings: component.TelemetrySettings{
+			Logger: zap.NewNop(),
+		},
+		BuildInfo: component.BuildInfo{},
+	}, cfg, sink)
+	require.NoError(t, err)
+	err = r.Start(context.Background(), componenttest.NewNopHost())
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, r.Shutdown(context.Background()))
+	}()
+	<-doneCh
+	metrics := sink.AllMetrics()
+	dp := metrics[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0)
+	assert.GreaterOrEqual(t, dp.Timestamp().AsTime(), now)
+	ts, ok := dp.Attributes().Get("original_timestamp")
+	require.True(t, ok)
+	assert.Equal(t, originalTimestamp.UnixNano(), ts.Int())
 }
