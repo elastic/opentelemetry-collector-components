@@ -1,0 +1,7 @@
+type: config_integrations
+status:
+  class: extension
+  stability:
+    development: [extension]
+  codeowners:
+    active: [jsoriano]

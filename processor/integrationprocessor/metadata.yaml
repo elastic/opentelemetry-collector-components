@@ -1,0 +1,11 @@
+type: integration
+
+status:
+  class: processor
+  stability:
+    development: [logs, metrics, traces]
+  codeowners:
+    active: [jsoriano]
+
+tests:
+  skip_lifecycle: true # It depends on other processors to be available.

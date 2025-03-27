@@ -1,0 +1,11 @@
+resourceLogs:
+  - resource:
+      attributes:
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: "one log line"
+            attributes:
+              - key: log.file.name
+                value:
+                  stringValue: test.log
