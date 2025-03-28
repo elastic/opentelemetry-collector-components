@@ -21,7 +21,7 @@
 // This is a copy of the internal module from opentelemetry-collector-contrib:
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/deltatocumulativeprocessor/internal/data
 
-package datatest // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data/datatest"
+package datatest // import "github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor/internal/data/datatest"
 
 import (
 	"reflect"

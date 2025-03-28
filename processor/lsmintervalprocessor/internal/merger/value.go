@@ -62,10 +62,11 @@ const (
 //
 // Value is not safe for concurrent use.
 type Value struct {
-	resourceLimitCfg  config.LimitConfig
-	scopeLimitCfg     config.LimitConfig
-	metricLimitCfg    config.LimitConfig
-	datapointLimitCfg config.LimitConfig
+	resourceLimitCfg               config.LimitConfig
+	scopeLimitCfg                  config.LimitConfig
+	metricLimitCfg                 config.LimitConfig
+	datapointLimitCfg              config.LimitConfig
+	maxExponentialHistogramBuckets int
 
 	source   pmetric.Metrics
 	trackers *limits.Trackers
@@ -103,13 +104,17 @@ type pdataMetric struct {
 }
 
 // NewValue creates a new instance of the value with the configured limiters.
-func NewValue(resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig) *Value {
+func NewValue(
+	resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig,
+	maxExponentialHistogramBuckets int,
+) *Value {
 	return &Value{
-		resourceLimitCfg:  resLimit,
-		scopeLimitCfg:     scopeLimit,
-		metricLimitCfg:    metricLimit,
-		datapointLimitCfg: datapointLimit,
-		source:            pmetric.NewMetrics(),
+		resourceLimitCfg:               resLimit,
+		scopeLimitCfg:                  scopeLimit,
+		metricLimitCfg:                 metricLimit,
+		datapointLimitCfg:              datapointLimit,
+		maxExponentialHistogramBuckets: maxExponentialHistogramBuckets,
+		source:                         pmetric.NewMetrics(),
 	}
 }
 
@@ -736,6 +741,7 @@ func (v *Value) mergeMetric(
 			m,
 			v.addSumDataPoint,
 			otherM.Sum().AggregationTemporality(),
+			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeSummary:
 		mergeDataPoints(
@@ -745,6 +751,7 @@ func (v *Value) mergeMetric(
 			v.addSummaryDataPoint,
 			// Assume summary to be cumulative temporality
 			pmetric.AggregationTemporalityCumulative,
+			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeHistogram:
 		mergeDataPoints(
@@ -753,6 +760,7 @@ func (v *Value) mergeMetric(
 			m,
 			v.addHistogramDataPoint,
 			otherM.Histogram().AggregationTemporality(),
+			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeExponentialHistogram:
 		mergeDataPoints(
@@ -761,6 +769,7 @@ func (v *Value) mergeMetric(
 			m,
 			v.addExponentialHistogramDataPoint,
 			otherM.ExponentialHistogram().AggregationTemporality(),
+			v.maxExponentialHistogramBuckets,
 		)
 	}
 }

@@ -45,12 +45,13 @@ func mergeDataPoints[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	toMetric pdataMetric,
 	addDP func(identity.Metric, pdataMetric, DP) (DP, bool),
 	temporality pmetric.AggregationTemporality,
+	maxExponentialHistogramBuckets int,
 ) {
 	switch temporality {
 	case pmetric.AggregationTemporalityCumulative:
 		mergeCumulative(from, toMetricID, toMetric, addDP)
 	case pmetric.AggregationTemporalityDelta:
-		mergeDelta(from, toMetricID, toMetric, addDP)
+		mergeDelta(from, toMetricID, toMetric, addDP, maxExponentialHistogramBuckets)
 	}
 }
 
@@ -76,6 +77,7 @@ func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	toMetricID identity.Metric,
 	toMetric pdataMetric,
 	addDP addDPFunc[DP],
+	maxExponentialHistogramBuckets int,
 ) {
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
@@ -86,17 +88,18 @@ func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
 			case pmetric.HistogramDataPoint:
 				mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
 			case pmetric.ExponentialHistogramDataPoint:
-				mergeDeltaExponentialHistogramDP(fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint))
+				mergeDeltaExponentialHistogramDP(
+					fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint),
+					maxExponentialHistogramBuckets,
+				)
 			}
+			toDP.SetTimestamp(fromDP.Timestamp())
 		}
 	}
 }
 
 func mergeDeltaSumDP(from, to pmetric.NumberDataPoint) {
-	toDP := data.Number{NumberDataPoint: to}
-	fromDP := data.Number{NumberDataPoint: from}
-
-	toDP.Add(fromDP)
+	data.Adder{}.Numbers(to, from)
 }
 
 func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
@@ -108,13 +111,13 @@ func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
 		return
 	}
 
-	toDP := data.Histogram{HistogramDataPoint: to}
-	fromDP := data.Histogram{HistogramDataPoint: from}
-
-	toDP.Add(fromDP)
+	data.Adder{}.Histograms(to, from)
 }
 
-func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataPoint) {
+func mergeDeltaExponentialHistogramDP(
+	from, to pmetric.ExponentialHistogramDataPoint,
+	maxBuckets int,
+) {
 	if from.Count() == 0 {
 		return
 	}
@@ -123,8 +126,5 @@ func mergeDeltaExponentialHistogramDP(from, to pmetric.ExponentialHistogramDataP
 		return
 	}
 
-	toDP := data.ExpHistogram{DataPoint: to}
-	fromDP := data.ExpHistogram{DataPoint: from}
-
-	toDP.Add(fromDP)
+	data.NewAdder(maxBuckets).Exponential(to, from)
 }

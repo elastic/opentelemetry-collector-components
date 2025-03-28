@@ -23,9 +23,14 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 )
 
 var _ component.Config = (*Config)(nil)
+
+const (
+	defaultMaxExponentialHistogramBuckets = 160
+)
 
 type Config struct {
 	// Directory is the data directory used by the database to store files.
@@ -59,6 +64,14 @@ type Config struct {
 	ScopeLimit     LimitConfig `mapstructure:"scope_limit"`
 	MetricLimit    LimitConfig `mapstructure:"metric_limit"`
 	DatapointLimit LimitConfig `mapstructure:"datapoint_limit"`
+
+	// ExponentialHistogramMaxBuckets sets the maximum number of buckets
+	// to use for resulting exponential histograms from merge operations.
+	// This allows to bound the maximum number of buckets used by the
+	// exponential histograms which could be huge if histograms with
+	// precisions ranging in, say, minutes and milliseconds are merged
+	// together. Defaults to 160.
+	ExponentialHistogramMaxBuckets int `mapstructure:"exponential_histogram_max_buckets"`
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -117,6 +130,30 @@ func (cfg *Config) Validate() error {
 			return fmt.Errorf("duplicate entry in metadata_keys: %q (case-insensitive)", l)
 		}
 		uniq[l] = true
+	}
+
+	if cfg.ExponentialHistogramMaxBuckets <= 0 {
+		return fmt.Errorf(
+			"invalid value for exponential_histogram_max_buckets, must be greater than 0, current: %d",
+			cfg.ExponentialHistogramMaxBuckets,
+		)
+	}
+	return nil
+}
+
+// Unmarshal implements confmap.Unmarshaler interface. It allows
+// unmarshaling the config with a custom logic to allow setting
+// default values when/if required.
+func (cfg *Config) Unmarshal(collectorCfg *confmap.Conf) error {
+	if collectorCfg == nil {
+		return nil
+	}
+	if err := collectorCfg.Unmarshal(cfg, confmap.WithIgnoreUnused()); err != nil {
+		return err
+	}
+
+	if cfg.ExponentialHistogramMaxBuckets == 0 {
+		cfg.ExponentialHistogramMaxBuckets = defaultMaxExponentialHistogramBuckets
 	}
 	return nil
 }

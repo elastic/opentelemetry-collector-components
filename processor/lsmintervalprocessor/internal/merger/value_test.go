@@ -30,6 +30,10 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
+const (
+	defaultMaxBuckets = 160
+)
+
 func TestMergeMetric(t *testing.T) {
 	for _, tc := range []string{
 		"empty",
@@ -87,6 +91,7 @@ func getTestValue(t *testing.T) *Value {
 				Attributes: []config.Attribute{{Key: "dp_overflow", Value: true}},
 			},
 		},
+		defaultMaxBuckets,
 	)
 }
 
@@ -180,7 +185,7 @@ func benchmarkAppendBinary(b *testing.B, f func(*testing.B, *Value)) {
 		md.MarkReadOnly()
 		b.Run(tc, func(b *testing.B) {
 			maxLimit := config.LimitConfig{MaxCardinality: math.MaxInt64}
-			v := NewValue(maxLimit, maxLimit, maxLimit, maxLimit)
+			v := NewValue(maxLimit, maxLimit, maxLimit, maxLimit, defaultMaxBuckets)
 			require.NoError(b, updateValueWithPMetrics(md, v))
 			f(b, v)
 		})
@@ -200,8 +205,8 @@ func benchmarkMergeWithTestdata(
 		require.NoError(b, err)
 		md.MarkReadOnly()
 		b.Run(name+"/"+tc, func(b *testing.B) {
-			to := NewValue(resLimit, scopeLimit, metricLimit, dpLimit)
-			from := NewValue(resLimit, scopeLimit, metricLimit, dpLimit)
+			to := NewValue(resLimit, scopeLimit, metricLimit, dpLimit, defaultMaxBuckets)
+			from := NewValue(resLimit, scopeLimit, metricLimit, dpLimit, defaultMaxBuckets)
 			require.NoError(b, updateValueWithPMetrics(md, from))
 
 			for i := 0; i < b.N; i++ {

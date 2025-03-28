@@ -21,7 +21,7 @@
 // This is a copy of the internal module from opentelemetry-collector-contrib:
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/deltatocumulativeprocessor/internal/data
 
-package expotest // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data/expo/expotest"
+package expotest // import "github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor/internal/data/expo/expotest"
 
 import (
 	"fmt"
