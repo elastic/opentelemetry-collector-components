@@ -272,7 +272,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 			},
 		}
-		ext, err := extFactory.Create(ttCtx, extensiontest.NewNopSettingsWithType(metadata.Type), cfg)
+		ext, err := extFactory.Create(ttCtx, extensiontest.NewNopSettings(metadata.Type), cfg)
 		require.NoError(t, err)
 
 		err = ext.Start(ttCtx, componenttest.NewNopHost())
