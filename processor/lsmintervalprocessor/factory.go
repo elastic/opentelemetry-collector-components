@@ -37,16 +37,8 @@ import (
 func NewFactory() processor.Factory {
 	return processor.NewFactory(
 		metadata.Type,
-		createDefaultConfig,
+		config.CreateDefaultConfig,
 		processor.WithMetrics(createMetricsProcessor, metadata.MetricsStability))
-}
-
-func createDefaultConfig() component.Config {
-	return &config.Config{
-		Intervals: []config.IntervalConfig{
-			{Duration: 60 * time.Second},
-		},
-	}
 }
 
 func createMetricsProcessor(

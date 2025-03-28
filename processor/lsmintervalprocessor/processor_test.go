@@ -78,6 +78,7 @@ func TestAggregation(t *testing.T) {
 			PassThrough: config.PassThrough{
 				Summary: tc.passThrough,
 			},
+			ExponentialHistogramMaxBuckets: 160,
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -119,10 +120,11 @@ func TestAggregationOverflow(t *testing.T) {
 					},
 				},
 			},
-			ResourceLimit:  oneCardinalityLimitConfig,
-			ScopeLimit:     oneCardinalityLimitConfig,
-			MetricLimit:    oneCardinalityLimitConfig,
-			DatapointLimit: oneCardinalityLimitConfig,
+			ResourceLimit:                  oneCardinalityLimitConfig,
+			ScopeLimit:                     oneCardinalityLimitConfig,
+			MetricLimit:                    oneCardinalityLimitConfig,
+			DatapointLimit:                 oneCardinalityLimitConfig,
+			ExponentialHistogramMaxBuckets: 160,
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

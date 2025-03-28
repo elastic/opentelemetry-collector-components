@@ -22,39 +22,28 @@ import (
 	"sync"
 
 	"github.com/cockroachdb/pebble"
-	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 var _ pebble.ValueMerger = (*Merger)(nil)
 
 type Merger struct {
-	bufferPool        sync.Pool
-	current           *Value
-	resourceLimitCfg  config.LimitConfig
-	scopeLimitCfg     config.LimitConfig
-	metricLimitCfg    config.LimitConfig
-	datapointLimitCfg config.LimitConfig
+	bufferPool sync.Pool
+	current    *Value
 }
 
-func New(
-	v *Value,
-	resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig,
-) *Merger {
+func New(v *Value) *Merger {
 	return &Merger{
-		current:           v,
-		resourceLimitCfg:  resLimit,
-		scopeLimitCfg:     scopeLimit,
-		metricLimitCfg:    metricLimit,
-		datapointLimitCfg: datapointLimit,
+		current: v,
 	}
 }
 
 func (m *Merger) MergeNewer(value []byte) error {
 	op := NewValue(
-		m.resourceLimitCfg,
-		m.scopeLimitCfg,
-		m.metricLimitCfg,
-		m.datapointLimitCfg,
+		m.current.resourceLimitCfg,
+		m.current.scopeLimitCfg,
+		m.current.metricLimitCfg,
+		m.current.datapointLimitCfg,
+		m.current.maxExponentialHistogramBuckets,
 	)
 	if err := op.Unmarshal(value); err != nil {
 		return err
@@ -64,10 +53,11 @@ func (m *Merger) MergeNewer(value []byte) error {
 
 func (m *Merger) MergeOlder(value []byte) error {
 	op := NewValue(
-		m.resourceLimitCfg,
-		m.scopeLimitCfg,
-		m.metricLimitCfg,
-		m.datapointLimitCfg,
+		m.current.resourceLimitCfg,
+		m.current.scopeLimitCfg,
+		m.current.metricLimitCfg,
+		m.current.datapointLimitCfg,
+		m.current.maxExponentialHistogramBuckets,
 	)
 	if err := op.Unmarshal(value); err != nil {
 		return err

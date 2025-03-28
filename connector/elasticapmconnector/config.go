@@ -77,6 +77,7 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 				`set(attributes["processor.event"], "metric")`,
 			},
 		}},
+		ExponentialHistogramMaxBuckets: 160,
 	}
 	if cfg.Aggregation != nil {
 		lsmConfig.Directory = cfg.Aggregation.Directory

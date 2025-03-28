@@ -107,17 +107,12 @@ func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, ne
 					cfg.ScopeLimit,
 					cfg.MetricLimit,
 					cfg.DatapointLimit,
+					cfg.ExponentialHistogramMaxBuckets,
 				)
 				if err := v.Unmarshal(value); err != nil {
 					return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
 				}
-				return merger.New(
-					v,
-					cfg.ResourceLimit,
-					cfg.ScopeLimit,
-					cfg.MetricLimit,
-					cfg.DatapointLimit,
-				), nil
+				return merger.New(v), nil
 			},
 		},
 		MemTableSize:                pebbleMemTableSize,
@@ -264,6 +259,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		p.cfg.ScopeLimit,
 		p.cfg.MetricLimit,
 		p.cfg.DatapointLimit,
+		p.cfg.ExponentialHistogramMaxBuckets,
 	)
 
 	var errs []error
@@ -486,6 +482,7 @@ func (p *Processor) exportForInterval(
 			p.cfg.ScopeLimit,
 			p.cfg.MetricLimit,
 			p.cfg.DatapointLimit,
+			p.cfg.ExponentialHistogramMaxBuckets,
 		)
 		var key merger.Key
 		if err := key.Unmarshal(iter.Key()); err != nil {
