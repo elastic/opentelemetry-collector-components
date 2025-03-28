@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/confmap"
 )
 
 var _ component.Config = (*Config)(nil)
@@ -141,19 +140,11 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-// Unmarshal implements confmap.Unmarshaler interface. It allows
-// unmarshaling the config with a custom logic to allow setting
-// default values when/if required.
-func (cfg *Config) Unmarshal(collectorCfg *confmap.Conf) error {
-	if collectorCfg == nil {
-		return nil
+func CreateDefaultConfig() component.Config {
+	return &Config{
+		Intervals: []IntervalConfig{
+			{Duration: 60 * time.Second},
+		},
+		ExponentialHistogramMaxBuckets: defaultMaxExponentialHistogramBuckets,
 	}
-	if err := collectorCfg.Unmarshal(cfg, confmap.WithIgnoreUnused()); err != nil {
-		return err
-	}
-
-	if cfg.ExponentialHistogramMaxBuckets == 0 {
-		cfg.ExponentialHistogramMaxBuckets = defaultMaxExponentialHistogramBuckets
-	}
-	return nil
 }

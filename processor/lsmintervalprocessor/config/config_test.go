@@ -20,8 +20,10 @@ package config
 import (
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
@@ -36,9 +38,9 @@ func TestConfig(t *testing.T) {
 		{
 			name:  "empty",
 			input: nil,
-			expected: &Config{
-				ExponentialHistogramMaxBuckets: defaultMaxExponentialHistogramBuckets,
-			},
+			expected: func() *Config {
+				return CreateDefaultConfig().(*Config)
+			}(),
 		},
 		{
 			name: "duplicate_metadata",
@@ -60,18 +62,24 @@ func TestConfig(t *testing.T) {
 				"metadata_keys":                     []string{"test.1", "test.2"},
 				"exponential_histogram_max_buckets": 256,
 			},
-			expected: &Config{
-				MetadataKeys:                   []string{"test.1", "test.2"},
-				ExponentialHistogramMaxBuckets: 256,
-			},
+			expected: func() *Config {
+				cfg := CreateDefaultConfig().(*Config)
+				cfg.MetadataKeys = []string{"test.1", "test.2"}
+				cfg.ExponentialHistogramMaxBuckets = 256
+				return cfg
+			}(),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			conf := confmap.NewFromStringMap(tc.input)
-			actual := &Config{}
-			require.NoError(t, conf.Unmarshal(actual))
+			// Add `lsminterval` key as a top level key to emulate actual configs
+			conf := confmap.NewFromStringMap(map[string]any{"lsminterval": tc.input})
+			subConf, err := conf.Sub(component.NewIDWithName(metadata.Type, "").String())
+			require.NoError(t, err)
 
-			err := xconfmap.Validate(actual)
+			actual := CreateDefaultConfig()
+			require.NoError(t, subConf.Unmarshal(&actual))
+
+			err = xconfmap.Validate(actual)
 			if tc.expectedErrMsg != "" {
 				assert.ErrorContains(t, err, tc.expectedErrMsg)
 			} else {
