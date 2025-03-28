@@ -25,6 +25,7 @@ package datatest
 
 import (
 	"fmt"
+	"iter"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -35,12 +36,12 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data/expo/expotest"
 )
 
-var t testing.TB = fakeT{}
+var tb testing.TB = fakeT{}
 
-var datatest = struct{ New func(t testing.TB) T }{New: New}
+var datatest = struct{ New func(tb testing.TB) T }{New: New}
 
 func ExampleT_Equal() {
-	is := datatest.New(t)
+	is := datatest.New(tb)
 
 	want := expotest.Histogram{
 		PosNeg: expotest.Observe(expo.Scale(0), 1, 2, 3, 4),
@@ -55,11 +56,43 @@ func ExampleT_Equal() {
 	is.Equal(want, got)
 
 	// Output:
-	// equal_test.go:55: Negative().BucketCounts().AsRaw(): [1 1 2] != [4]
-	// equal_test.go:55: Negative().BucketCounts().Len(): 3 != 1
-	// equal_test.go:55: Positive().BucketCounts().AsRaw(): [1 1 2] != [4]
-	// equal_test.go:55: Positive().BucketCounts().Len(): 3 != 1
-	// equal_test.go:55: Scale(): 0 != 1
+	// equal_test.go:56: Negative().BucketCounts().AsRaw(): [1 1 2] != [4]
+	// equal_test.go:56: Negative().BucketCounts().Len(): 3 != 1
+	// equal_test.go:56: Positive().BucketCounts().AsRaw(): [1 1 2] != [4]
+	// equal_test.go:56: Positive().BucketCounts().Len(): 3 != 1
+	// equal_test.go:56: Scale(): 0 != 1
+}
+
+type structFunc struct {
+	a int
+}
+
+func (s structFunc) Get() int {
+	return s.a
+}
+
+func (s structFunc) Func() func() {
+	return func() {}
+}
+
+// iter.Seq is a reflect.Func
+func (s structFunc) Seq() iter.Seq[int] {
+	return func(_ func(v int) bool) {
+	}
+}
+
+// iter.Seq2 is a reflect.Func
+func (s structFunc) Seq2() iter.Seq2[int, string] {
+	return func(_ func(k int, v string) bool) {
+	}
+}
+
+func TestEqualMethodIgnoreFuncReturnType(t *testing.T) {
+	is := datatest.New(t)
+	s := structFunc{a: 42}
+	want := any(s)
+	got := any(s)
+	is.Equal(want, got)
 }
 
 func TestNone(*testing.T) {}

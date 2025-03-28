@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
@@ -57,7 +58,7 @@ func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint: testEndpoint,
 		},
-	}, receivertest.NewNopSettings())
+	}, receivertest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
 
 	ttCtx := context.Background()
@@ -122,7 +123,7 @@ func TestAgentCfgHandlerInvalidFetcher(t *testing.T) {
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint: testEndpoint,
 		},
-	}, receivertest.NewNopSettings())
+	}, receivertest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
 
 	ttCtx := context.Background()
@@ -299,7 +300,7 @@ func TestAgentCfgHandler(t *testing.T) {
 				AgentConfig: AgentConfig{
 					CacheDuration: 1 * time.Second,
 				},
-			}, receivertest.NewNopSettings())
+			}, receivertest.NewNopSettings(metadata.Type))
 			require.NoError(t, err)
 
 			ttCtx := context.Background()
@@ -352,7 +353,7 @@ func TestTransactionsAndSpans(t *testing.T) {
 		},
 	}
 
-	set := receivertest.NewNopSettings()
+	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
 	receiver, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
 

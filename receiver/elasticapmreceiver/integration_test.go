@@ -32,6 +32,7 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"github.com/stretchr/testify/assert"
@@ -239,7 +240,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				CacheDuration: 100 * time.Millisecond,
 			},
 		}
-		rcvr, err := rcvrFactory.CreateMetrics(ttCtx, receivertest.NewNopSettings(), cfg, consumertest.NewNop())
+		rcvr, err := rcvrFactory.CreateMetrics(ttCtx, receivertest.NewNopSettings(metadata.Type), cfg, consumertest.NewNop())
 		require.NoError(t, err)
 
 		err = rcvr.Start(ttCtx, componenttest.NewNopHost())

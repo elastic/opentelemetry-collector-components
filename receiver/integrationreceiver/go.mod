@@ -14,7 +14,7 @@ require (
 	go.opentelemetry.io/collector/confmap v1.27.0
 	go.opentelemetry.io/collector/consumer v1.27.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.121.0
-	go.opentelemetry.io/collector/pipeline v0.121.0
+	go.opentelemetry.io/collector/pipeline v0.122.1
 	go.opentelemetry.io/collector/processor v0.121.0
 	go.opentelemetry.io/collector/receiver v0.121.0
 	go.opentelemetry.io/collector/receiver/receivertest v0.121.0

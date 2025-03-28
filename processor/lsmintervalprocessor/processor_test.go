@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -166,7 +167,7 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 
 func newTestProcessor(t testing.TB, cfg *config.Config, next consumer.Metrics) processor.Metrics {
 	factory := NewFactory()
-	settings := processortest.NewNopSettings()
+	settings := processortest.NewNopSettings(metadata.Type)
 	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 	mgp, err := factory.CreateMetrics(context.Background(), settings, cfg, next)
 	require.NoError(t, err)
@@ -339,7 +340,7 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 			next := &consumertest.MetricsSink{}
 
 			factory := NewFactory()
-			settings := processortest.NewNopSettings()
+			settings := processortest.NewNopSettings(metadata.Type)
 			settings.TelemetrySettings.Logger = zap.NewNop()
 			mgp, err := factory.CreateMetrics(
 				context.Background(),
