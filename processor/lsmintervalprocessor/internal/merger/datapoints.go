@@ -18,6 +18,9 @@
 package merger // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -46,12 +49,14 @@ func mergeDataPoints[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	addDP func(identity.Metric, pdataMetric, DP) (DP, bool),
 	temporality pmetric.AggregationTemporality,
 	maxExponentialHistogramBuckets int,
-) {
+) error {
 	switch temporality {
 	case pmetric.AggregationTemporalityCumulative:
-		mergeCumulative(from, toMetricID, toMetric, addDP)
+		return mergeCumulative(from, toMetricID, toMetric, addDP)
 	case pmetric.AggregationTemporalityDelta:
-		mergeDelta(from, toMetricID, toMetric, addDP, maxExponentialHistogramBuckets)
+		return mergeDelta(from, toMetricID, toMetric, addDP, maxExponentialHistogramBuckets)
+	default:
+		return fmt.Errorf("unsupported aggregation temporality: %s", temporality)
 	}
 }
 
@@ -62,7 +67,7 @@ func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	toMetricID identity.Metric,
 	toMetric pdataMetric,
 	addDP addDPFunc[DP],
-) {
+) error {
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
 		toDP, exists := addDP(toMetricID, toMetric, fromDP)
@@ -70,6 +75,7 @@ func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 			fromDP.CopyTo(toDP)
 		}
 	}
+	return nil
 }
 
 func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
@@ -78,53 +84,71 @@ func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	toMetric pdataMetric,
 	addDP addDPFunc[DP],
 	maxExponentialHistogramBuckets int,
-) {
+) error {
+	var errs []error
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
+		var err error
 		if toDP, exists := addDP(toMetricID, toMetric, fromDP); exists {
 			switch fromDP := any(fromDP).(type) {
 			case pmetric.NumberDataPoint:
-				mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
+				err = mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))
 			case pmetric.HistogramDataPoint:
-				mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
+				err = mergeDeltaHistogramDP(fromDP, any(toDP).(pmetric.HistogramDataPoint))
 			case pmetric.ExponentialHistogramDataPoint:
-				mergeDeltaExponentialHistogramDP(
+				err = mergeDeltaExponentialHistogramDP(
 					fromDP, any(toDP).(pmetric.ExponentialHistogramDataPoint),
 					maxExponentialHistogramBuckets,
 				)
 			}
 			toDP.SetTimestamp(fromDP.Timestamp())
 		}
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to merge delta datapoints: %w", errors.Join(errs...))
+	}
+	return nil
 }
 
-func mergeDeltaSumDP(from, to pmetric.NumberDataPoint) {
-	data.Adder{}.Numbers(to, from)
+func mergeDeltaSumDP(from, to pmetric.NumberDataPoint) error {
+	if err := (data.Adder{}).Numbers(to, from); err != nil {
+		return fmt.Errorf("failed to merge sum datapoint: %w", err)
+	}
+	return nil
 }
 
-func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) {
+func mergeDeltaHistogramDP(from, to pmetric.HistogramDataPoint) error {
 	if from.Count() == 0 {
-		return
+		return nil
 	}
 	if to.Count() == 0 {
 		from.CopyTo(to)
-		return
+		return nil
 	}
 
-	data.Adder{}.Histograms(to, from)
+	if err := (data.Adder{}).Histograms(to, from); err != nil {
+		return fmt.Errorf("failed to merge histogram datapoint: %w", err)
+	}
+	return nil
 }
 
 func mergeDeltaExponentialHistogramDP(
 	from, to pmetric.ExponentialHistogramDataPoint,
 	maxBuckets int,
-) {
+) error {
 	if from.Count() == 0 {
-		return
+		return nil
 	}
 	if to.Count() == 0 {
 		from.CopyTo(to)
-		return
+		return nil
 	}
 
-	data.NewAdder(maxBuckets).Exponential(to, from)
+	if err := data.NewAdder(maxBuckets).Exponential(to, from); err != nil {
+		return fmt.Errorf("failed to merge exponential histogram datapoint: %w", err)
+	}
+	return nil
 }

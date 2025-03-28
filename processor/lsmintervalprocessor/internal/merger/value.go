@@ -247,7 +247,9 @@ func (v *Value) Merge(op *Value) error {
 						return fmt.Errorf("failed to merge datapoint overflow estimators: %w", err)
 					}
 				}
-				v.mergeMetric(metricID, m, mOther)
+				if err := v.mergeMetric(metricID, m, mOther); err != nil {
+					return fmt.Errorf("failed to merge metric: %w", err)
+				}
 			}
 		}
 	}
@@ -291,8 +293,7 @@ func (v *Value) MergeMetric(
 	if overflow {
 		return nil
 	}
-	v.mergeMetric(metricID, m, otherM)
-	return nil
+	return v.mergeMetric(metricID, m, otherM)
 }
 
 // Finalize finalizes all overflows in the metrics to prepare it for
@@ -732,10 +733,10 @@ func (v *Value) mergeMetric(
 	metricID identity.Metric,
 	m pdataMetric,
 	otherM pmetric.Metric,
-) {
-	switch otherM.Type() {
+) error {
+	switch typ := otherM.Type(); typ {
 	case pmetric.MetricTypeSum:
-		mergeDataPoints(
+		return mergeDataPoints(
 			otherM.Sum().DataPoints(),
 			metricID,
 			m,
@@ -744,7 +745,7 @@ func (v *Value) mergeMetric(
 			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeSummary:
-		mergeDataPoints(
+		return mergeDataPoints(
 			otherM.Summary().DataPoints(),
 			metricID,
 			m,
@@ -754,7 +755,7 @@ func (v *Value) mergeMetric(
 			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeHistogram:
-		mergeDataPoints(
+		return mergeDataPoints(
 			otherM.Histogram().DataPoints(),
 			metricID,
 			m,
@@ -763,7 +764,7 @@ func (v *Value) mergeMetric(
 			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeExponentialHistogram:
-		mergeDataPoints(
+		return mergeDataPoints(
 			otherM.ExponentialHistogram().DataPoints(),
 			metricID,
 			m,
@@ -771,6 +772,8 @@ func (v *Value) mergeMetric(
 			otherM.ExponentialHistogram().AggregationTemporality(),
 			v.maxExponentialHistogramBuckets,
 		)
+	default:
+		return fmt.Errorf("unsupported metric type: %s", typ)
 	}
 }
 
