@@ -25,6 +25,7 @@ import (
 	"errors"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -36,6 +37,8 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 )
+
+const counterAttr = "loadgenreceiver_counter"
 
 //go:embed testdata/metrics.jsonl
 var demoMetrics []byte
@@ -53,6 +56,10 @@ type metricsGenerator struct {
 
 	cancelFn            context.CancelFunc
 	inflightConcurrency sync.WaitGroup
+
+	// counter is an increasing counter tracking the number of times nextMetrics is called.
+	// It is fine to overflow the Int64, as it is currently only used as a unique dimension in metrics.
+	counter atomic.Int64
 }
 
 func createMetricsReceiver(
@@ -166,8 +173,13 @@ func (ar *metricsGenerator) nextMetrics(next pmetric.Metrics) error {
 	}
 	sample.CopyTo(next)
 
+	counter := ar.counter.Add(1)
+
 	rm := next.ResourceMetrics()
 	for i := 0; i < rm.Len(); i++ {
+		if ar.cfg.Metrics.AddCounterAttr {
+			rm.At(i).Resource().Attributes().PutInt(counterAttr, counter)
+		}
 		for j := 0; j < rm.At(i).ScopeMetrics().Len(); j++ {
 			for k := 0; k < rm.At(i).ScopeMetrics().At(j).Metrics().Len(); k++ {
 				smetric := rm.At(i).ScopeMetrics().At(j).Metrics().At(k)

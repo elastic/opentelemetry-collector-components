@@ -24,9 +24,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
 )
@@ -57,6 +60,51 @@ func TestMetricsGenerator_doneCh(t *testing.T) {
 			assert.Equal(t, want, stats.Requests)
 			assert.Equal(t, want, len(sink.AllMetrics()))
 			assert.Equal(t, sink.DataPointCount(), stats.MetricDataPoints)
+		})
+	}
+}
+
+func TestMetricsGenerator_addCounterAttr(t *testing.T) {
+	for _, addCounterAttr := range []bool{false, true} {
+		t.Run(fmt.Sprintf("addCounterAttr=%v", addCounterAttr), func(t *testing.T) {
+			doneCh := make(chan Stats)
+			var last int64
+			consume := consumer.ConsumeMetricsFunc(func(ctx context.Context, md pmetric.Metrics) error {
+				// Assertions need to be done in ConsumeMetrics, not in MetricsSink after consuming,
+				// as loadgenreceiver perf optimization may reuse and mutate pmetric structs
+				rm := md.ResourceMetrics()
+				for i := 0; i < rm.Len(); i++ {
+					counter, ok := rm.At(i).Resource().Attributes().Get(counterAttr)
+					if addCounterAttr {
+						require.True(t, ok)
+						assert.Equal(t, last+1, counter.Int())
+					} else {
+						require.False(t, ok)
+					}
+				}
+				last++
+				return nil
+			})
+			sink, err := consumer.NewMetrics(consume)
+			require.NoError(t, err)
+			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+			cfg.(*Config).Metrics.MaxReplay = 1
+			cfg.(*Config).Concurrency = 1
+			cfg.(*Config).Metrics.AddCounterAttr = addCounterAttr
+			r, err := createMetricsReceiver(context.Background(), receiver.Settings{
+				ID: component.ID{},
+				TelemetrySettings: component.TelemetrySettings{
+					Logger: zap.NewNop(),
+				},
+				BuildInfo: component.BuildInfo{},
+			}, cfg, sink)
+			require.NoError(t, err)
+			err = r.Start(context.Background(), componenttest.NewNopHost())
+			assert.NoError(t, err)
+			defer func() {
+				assert.NoError(t, r.Shutdown(context.Background()))
+			}()
+			<-doneCh
 		})
 	}
 }

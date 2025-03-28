@@ -52,6 +52,13 @@ type MetricsConfig struct {
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
 	doneCh chan Stats
+
+	// AddCounterAttr, if true, adds a loadgenreceiver_counter resource attribute containing increasing counter value to the generated metrics.
+	// It can be used to workaround timestamp precision and duplication detection of backends,
+	// e.g. Elasticsearch TSDB version_conflict_engine_exception with millisecond-precision timestamp mapping,
+	// which will be triggered when loadgenreceiver generates metrics too quickly such that
+	// there exists data points of the same metric with the same dimensions within a millisecond but different nanoseconds.
+	AddCounterAttr bool `mapstructure:"add_counter_attr"`
 }
 
 type LogsConfig struct {
