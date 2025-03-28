@@ -38,17 +38,15 @@ func Merge(arel, brel Buckets) {
 		return
 	}
 
-	a, b := Abs(arel), Abs(brel)
-
-	lo := min(a.Lower(), b.Lower())
-	up := max(a.Upper(), b.Upper())
+	lo := min(AbsoluteLower(arel), AbsoluteLower(brel))
+	up := max(AbsoluteUpper(arel), AbsoluteUpper(brel))
 
 	// Skip leading and trailing zeros to reduce number of buckets.
 	// As we cap number of buckets this allows us to have higher scale.
-	for lo < up && a.Abs(lo) == 0 && b.Abs(lo) == 0 {
+	for lo < up && AbsoluteAt(arel, lo) == 0 && AbsoluteAt(brel, lo) == 0 {
 		lo++
 	}
-	for lo < up-1 && a.Abs(up-1) == 0 && b.Abs(up-1) == 0 {
+	for lo < up-1 && AbsoluteAt(arel, up-1) == 0 && AbsoluteAt(brel, up-1) == 0 {
 		up--
 	}
 
@@ -58,29 +56,30 @@ func Merge(arel, brel Buckets) {
 	// of slices with greater length than what is required as the pdata model
 	// does not allow reslicing:
 	// https://github.com/open-telemetry/opentelemetry-collector/issues/12004
+	aBucketCounts := arel.BucketCounts()
+	bBucketCounts := brel.BucketCounts()
 	switch {
-	case a.Lower() == lo && size == a.BucketCounts().Len():
-		counts := a.BucketCounts()
+	case AbsoluteLower(arel) == lo && size == aBucketCounts.Len():
+		counts := aBucketCounts
 		for i := 0; i < size; i++ {
-			val := a.Abs(lo+i) + b.Abs(lo+i)
+			val := AbsoluteAt(arel, lo+i) + AbsoluteAt(brel, lo+i)
 			counts.SetAt(i, val)
 		}
-	case b.Lower() == lo && size == b.BucketCounts().Len():
-		counts := b.BucketCounts()
+	case AbsoluteLower(brel) == lo && size == bBucketCounts.Len():
+		counts := bBucketCounts
 		for i := 0; i < size; i++ {
-			val := a.Abs(lo+i) + b.Abs(lo+i)
+			val := AbsoluteAt(arel, lo+i) + AbsoluteAt(brel, lo+i)
 			counts.SetAt(i, val)
 		}
-		counts.MoveTo(a.BucketCounts())
+		counts.MoveTo(aBucketCounts)
 	default:
 		counts := pcommon.NewUInt64Slice()
 		counts.EnsureCapacity(size)
 		for i := 0; i < size; i++ {
-			val := a.Abs(lo+i) + b.Abs(lo+i)
+			val := AbsoluteAt(arel, lo+i) + AbsoluteAt(brel, lo+i)
 			counts.Append(val)
 		}
-		counts.MoveTo(a.BucketCounts())
+		counts.MoveTo(aBucketCounts)
 	}
-
-	a.SetOffset(int32(lo))
+	arel.SetOffset(int32(lo))
 }
