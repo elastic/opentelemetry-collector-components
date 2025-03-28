@@ -62,10 +62,11 @@ const (
 //
 // Value is not safe for concurrent use.
 type Value struct {
-	resourceLimitCfg  config.LimitConfig
-	scopeLimitCfg     config.LimitConfig
-	metricLimitCfg    config.LimitConfig
-	datapointLimitCfg config.LimitConfig
+	resourceLimitCfg               config.LimitConfig
+	scopeLimitCfg                  config.LimitConfig
+	metricLimitCfg                 config.LimitConfig
+	datapointLimitCfg              config.LimitConfig
+	maxExponentialHistogramBuckets int
 
 	source   pmetric.Metrics
 	trackers *limits.Trackers
@@ -103,13 +104,17 @@ type pdataMetric struct {
 }
 
 // NewValue creates a new instance of the value with the configured limiters.
-func NewValue(resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig) *Value {
+func NewValue(
+	resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig,
+	maxExponentialHistogramBuckets int,
+) *Value {
 	return &Value{
-		resourceLimitCfg:  resLimit,
-		scopeLimitCfg:     scopeLimit,
-		metricLimitCfg:    metricLimit,
-		datapointLimitCfg: datapointLimit,
-		source:            pmetric.NewMetrics(),
+		resourceLimitCfg:               resLimit,
+		scopeLimitCfg:                  scopeLimit,
+		metricLimitCfg:                 metricLimit,
+		datapointLimitCfg:              datapointLimit,
+		maxExponentialHistogramBuckets: maxExponentialHistogramBuckets,
+		source:                         pmetric.NewMetrics(),
 	}
 }
 
@@ -242,7 +247,9 @@ func (v *Value) Merge(op *Value) error {
 						return fmt.Errorf("failed to merge datapoint overflow estimators: %w", err)
 					}
 				}
-				v.mergeMetric(metricID, m, mOther)
+				if err := v.mergeMetric(metricID, m, mOther); err != nil {
+					return fmt.Errorf("failed to merge metric: %w", err)
+				}
 			}
 		}
 	}
@@ -286,8 +293,7 @@ func (v *Value) MergeMetric(
 	if overflow {
 		return nil
 	}
-	v.mergeMetric(metricID, m, otherM)
-	return nil
+	return v.mergeMetric(metricID, m, otherM)
 }
 
 // Finalize finalizes all overflows in the metrics to prepare it for
@@ -727,41 +733,47 @@ func (v *Value) mergeMetric(
 	metricID identity.Metric,
 	m pdataMetric,
 	otherM pmetric.Metric,
-) {
-	switch otherM.Type() {
+) error {
+	switch typ := otherM.Type(); typ {
 	case pmetric.MetricTypeSum:
-		mergeDataPoints(
+		return mergeDataPoints(
 			otherM.Sum().DataPoints(),
 			metricID,
 			m,
 			v.addSumDataPoint,
 			otherM.Sum().AggregationTemporality(),
+			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeSummary:
-		mergeDataPoints(
+		return mergeDataPoints(
 			otherM.Summary().DataPoints(),
 			metricID,
 			m,
 			v.addSummaryDataPoint,
 			// Assume summary to be cumulative temporality
 			pmetric.AggregationTemporalityCumulative,
+			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeHistogram:
-		mergeDataPoints(
+		return mergeDataPoints(
 			otherM.Histogram().DataPoints(),
 			metricID,
 			m,
 			v.addHistogramDataPoint,
 			otherM.Histogram().AggregationTemporality(),
+			v.maxExponentialHistogramBuckets,
 		)
 	case pmetric.MetricTypeExponentialHistogram:
-		mergeDataPoints(
+		return mergeDataPoints(
 			otherM.ExponentialHistogram().DataPoints(),
 			metricID,
 			m,
 			v.addExponentialHistogramDataPoint,
 			otherM.ExponentialHistogram().AggregationTemporality(),
+			v.maxExponentialHistogramBuckets,
 		)
+	default:
+		return fmt.Errorf("unsupported metric type: %s", typ)
 	}
 }
 

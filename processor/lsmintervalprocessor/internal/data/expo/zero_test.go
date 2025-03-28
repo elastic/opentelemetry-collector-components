@@ -127,7 +127,7 @@ func TestSlice(t *testing.T) {
 			bins := cs.bins.Into()
 			want := cs.want.Into()
 
-			expo.Abs(bins).Slice(from, to)
+			expo.SliceBuckets(bins, from, to)
 
 			is := datatest.New(t)
 			is.Equal(want, bins)
@@ -135,12 +135,12 @@ func TestSlice(t *testing.T) {
 	}
 
 	t.Run("panics", func(t *testing.T) {
-		data := expo.Abs(bins{1, 2, 3, 4, 5, 6, 7, 8}.Into())
+		data := bins{1, 2, 3, 4, 5, 6, 7, 8}.Into()
 		assert.PanicsWithValue(t, "bad bounds: must be from<=to (got 8<=4)", func() {
-			data.Slice(8, 4)
+			expo.SliceBuckets(data, 8, 4)
 		})
 		assert.PanicsWithValue(t, "-6:12 is out of bounds for -3:5", func() {
-			data.Slice(-6, 12)
+			expo.SliceBuckets(data, -6, 12)
 		})
 	})
 }
