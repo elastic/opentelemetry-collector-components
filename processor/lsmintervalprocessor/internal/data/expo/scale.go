@@ -136,7 +136,7 @@ func Collapse(bs Buckets) {
 	}
 }
 
-// Limit returns a target Scale that when be downscaled to,
+// Limit returns a target Scale that when downscaled to,
 // the total bucket count after [Merge] never exceeds maxBuckets.
 func Limit(maxBuckets int, scale Scale, arel, brel pmetric.ExponentialHistogramDataPointBuckets) Scale {
 	a, b := Abs(arel), Abs(brel)
