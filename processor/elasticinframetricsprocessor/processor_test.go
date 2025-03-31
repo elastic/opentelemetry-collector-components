@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
@@ -29,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/processortest"
 	"go.uber.org/zap"
 )
 
@@ -157,6 +159,36 @@ func TestProcessMetrics(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProcessMetricsIdempotent(t *testing.T) {
+	md, err := golden.ReadMetrics("testdata/k8smetrics/input-metrics.yaml")
+	require.NoError(t, err)
+
+	config := &Config{AddK8sMetrics: true}
+	p := newProcessor(processortest.NewNopSettings(metadata.Type), config)
+
+	_, err = p.processMetrics(context.Background(), md)
+	require.NoError(t, err)
+
+	// Check that the processor did its job by looking for one remapped metric.
+	// TestProcessorK8sMetrics is more comprehensive.
+	var found bool
+	for _, metric := range md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().All() {
+		if metric.Name() == "kubernetes.pod.cpu.usage.limit.pct" {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "remapped metric not found")
+
+	// Copy the metrics and process them again.
+	mdCopy := pmetric.NewMetrics()
+	md.CopyTo(mdCopy)
+
+	_, err = p.processMetrics(context.Background(), md)
+	require.NoError(t, err)
+	assert.NoError(t, pmetrictest.CompareMetrics(mdCopy, md))
 }
 
 func TestRemappers(t *testing.T) {
