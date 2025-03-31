@@ -2,6 +2,8 @@ module github.com/elastic/opentelemetry-collector-components/connector/elasticap
 
 go 1.23.6
 
+toolchain go1.24.1
+
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced
 	github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.4.0
@@ -14,8 +16,8 @@ require (
 	go.opentelemetry.io/collector/component/componenttest v0.122.1
 	go.opentelemetry.io/collector/confmap v1.28.1
 	go.opentelemetry.io/collector/confmap/xconfmap v0.122.1
-	go.opentelemetry.io/collector/connector v0.122.0
-	go.opentelemetry.io/collector/connector/connectortest v0.122.0
+	go.opentelemetry.io/collector/connector v0.122.1
+	go.opentelemetry.io/collector/connector/connectortest v0.122.1
 	go.opentelemetry.io/collector/consumer v1.28.1
 	go.opentelemetry.io/collector/consumer/consumertest v0.122.1
 	go.opentelemetry.io/collector/pdata v1.28.1
@@ -85,12 +87,12 @@ require (
 	github.com/ua-parser/uap-go v0.0.0-20240611065828-3a4781585db6 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector/component/componentstatus v0.122.1 // indirect
-	go.opentelemetry.io/collector/connector/xconnector v0.122.0 // indirect
+	go.opentelemetry.io/collector/connector/xconnector v0.122.1 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.122.1 // indirect
 	go.opentelemetry.io/collector/featuregate v1.28.1 // indirect
-	go.opentelemetry.io/collector/internal/fanoutconsumer v0.122.0 // indirect
+	go.opentelemetry.io/collector/internal/fanoutconsumer v0.122.1 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.122.1 // indirect
-	go.opentelemetry.io/collector/pipeline/xpipeline v0.122.0 // indirect
+	go.opentelemetry.io/collector/pipeline/xpipeline v0.122.1 // indirect
 	go.opentelemetry.io/collector/semconv v0.122.1 // indirect
 	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
