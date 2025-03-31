@@ -28,6 +28,7 @@ import (
 var _ component.Config = (*Config)(nil)
 
 const (
+	// Based on the defaults suggested in https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#base2-exponential-bucket-histogram-aggregation
 	defaultMaxExponentialHistogramBuckets = 160
 )
 
