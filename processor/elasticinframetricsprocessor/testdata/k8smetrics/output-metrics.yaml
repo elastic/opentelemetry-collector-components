@@ -122,5 +122,9 @@ resourceMetrics:
                   timeUnixNano: "1000000"
         schemaUrl: https://test-scope-schema.com/schema
         scope:
+          attributes:
+            - key: otel_remapped
+              value:
+                boolValue: true
           name: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver
           version: 1.2.3

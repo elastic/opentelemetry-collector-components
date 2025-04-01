@@ -4,6 +4,7 @@ resourceMetrics:
         - key: k8s.pod.name
           value:
             stringValue: test-pod
+    schemaUrl: https://test-res-schema.com/schema
     scopeMetrics:
       - metrics:
           - gauge:
@@ -114,4 +115,10 @@ resourceMetrics:
                       value:
                         stringValue: kubernetes
                   timeUnixNano: "1000000"
-        scope: {}
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: otel_remapped
+              value:
+                boolValue: true
+          name: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor
