@@ -27,6 +27,11 @@ import (
 
 var _ component.Config = (*Config)(nil)
 
+const (
+	// Based on the defaults suggested in https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#base2-exponential-bucket-histogram-aggregation
+	defaultMaxExponentialHistogramBuckets = 160
+)
+
 type Config struct {
 	// Directory is the data directory used by the database to store files.
 	// If the directory is empty in-memory storage is used.
@@ -59,6 +64,14 @@ type Config struct {
 	ScopeLimit     LimitConfig `mapstructure:"scope_limit"`
 	MetricLimit    LimitConfig `mapstructure:"metric_limit"`
 	DatapointLimit LimitConfig `mapstructure:"datapoint_limit"`
+
+	// ExponentialHistogramMaxBuckets sets the maximum number of buckets
+	// to use for resulting exponential histograms from merge operations.
+	// This allows to bound the maximum number of buckets used by the
+	// exponential histograms which could be huge if histograms with
+	// precisions ranging in, say, minutes and milliseconds are merged
+	// together. Defaults to 160.
+	ExponentialHistogramMaxBuckets int `mapstructure:"exponential_histogram_max_buckets"`
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -118,5 +131,21 @@ func (cfg *Config) Validate() error {
 		}
 		uniq[l] = true
 	}
+
+	if cfg.ExponentialHistogramMaxBuckets <= 0 {
+		return fmt.Errorf(
+			"invalid value for exponential_histogram_max_buckets, must be greater than 0, current: %d",
+			cfg.ExponentialHistogramMaxBuckets,
+		)
+	}
 	return nil
+}
+
+func CreateDefaultConfig() component.Config {
+	return &Config{
+		Intervals: []IntervalConfig{
+			{Duration: 60 * time.Second},
+		},
+		ExponentialHistogramMaxBuckets: defaultMaxExponentialHistogramBuckets,
+	}
 }

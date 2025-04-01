@@ -28,11 +28,7 @@ import (
 )
 
 // Merge combines the counts of buckets a and b into a.
-// Both buckets MUST be of same scale.
-//
-// The code has been modified from the upstream code to optimize allocations
-// performed while merging the histograms. This also makes the Merge operation
-// mutating w.r.t. the brel bucket.
+// Both buckets MUST be of same scale
 func Merge(arel, brel Buckets) {
 	if brel.BucketCounts().Len() == 0 {
 		return
@@ -46,6 +42,15 @@ func Merge(arel, brel Buckets) {
 
 	lo := min(a.Lower(), b.Lower())
 	up := max(a.Upper(), b.Upper())
+
+	// Skip leading and trailing zeros to reduce number of buckets.
+	// As we cap number of buckets this allows us to have higher scale.
+	for lo < up && a.Abs(lo) == 0 && b.Abs(lo) == 0 {
+		lo++
+	}
+	for lo < up-1 && a.Abs(up-1) == 0 && b.Abs(up-1) == 0 {
+		up--
+	}
 
 	size := up - lo
 
@@ -76,5 +81,6 @@ func Merge(arel, brel Buckets) {
 		}
 		counts.MoveTo(a.BucketCounts())
 	}
+
 	a.SetOffset(int32(lo))
 }
