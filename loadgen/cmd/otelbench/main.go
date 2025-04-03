@@ -55,7 +55,7 @@ func getExporters() (exporters []string) {
 }
 
 func fullBenchmarkName(signal, exporter string, concurrency int) string {
-	return fmt.Sprintf("%s-%s-%d", signal, exporter, concurrency)
+	return fmt.Sprintf("BenchmarkOTelbench/%s-%s-%d", signal, exporter, concurrency)
 }
 
 func runBench(ctx context.Context, signal, exporter string, concurrency int, reporter func(b *testing.B)) testing.BenchmarkResult {
