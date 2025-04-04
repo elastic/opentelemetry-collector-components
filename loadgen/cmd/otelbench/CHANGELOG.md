@@ -4,6 +4,12 @@
 
 <!-- next version -->
 
+## v0.1.1
+
+### 🧰 Bug fixes 🧰
+
+- `otelbench`: Fix otelbench benchmark name format to be compliant with x/tools/benchmark (#515)
+
 ## v0.1.0
 
 ### 💡 Enhancements 💡
