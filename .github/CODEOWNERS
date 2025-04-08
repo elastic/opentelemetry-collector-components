@@ -1,8 +1,8 @@
 # Default owners
-* @elastic/otel-devs @elastic/ingest-tech-lead
+* @elastic/otel-devs
 
 # Per-component owners
-processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations @elastic/ingest-tech-lead
-processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/ingest-tech-lead
-processor/lsmintervalprocessor         @elastic/obs-ds-intake-services @elastic/ingest-tech-lead
-connector/elasticapmconnector          @elastic/obs-ds-intake-services @elastic/ingest-tech-lead
+processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations
+processor/elastictraceprocessor        @elastic/obs-ds-intake-services
+processor/lsmintervalprocessor         @elastic/obs-ds-intake-services
+connector/elasticapmconnector          @elastic/obs-ds-intake-services
