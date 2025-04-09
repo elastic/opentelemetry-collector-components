@@ -23,14 +23,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/cespare/xxhash"
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
+	"github.com/elastic/apm-data/model/modelprocessor"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"go.opentelemetry.io/collector/component"
@@ -248,7 +251,16 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 				}
 			}
 		case modelpb.ErrorEventType:
-			// TODO
+			rl := ld.ResourceLogs().AppendEmpty()
+
+			gk := modelprocessor.SetGroupingKey{
+				NewHash: func() hash.Hash {
+					return xxhash.New()
+				},
+			}
+			gk.ProcessBatch(ctx, batch)
+
+			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
 		case modelpb.LogEventType:
 			// TODO
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
@@ -285,6 +297,50 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
+}
+
+func (r *elasticAPMReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) {
+	sl := rl.ScopeLogs().AppendEmpty()
+
+	l := sl.LogRecords().AppendEmpty()
+
+	l.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
+
+	if event.Trace.Id != "" {
+		traceId, err := traceIDFromHex(event.Trace.Id)
+		if err == nil {
+			l.SetTraceID(traceId)
+		} else {
+			r.settings.Logger.Error("failed to parse trace ID", zap.String("trace_id", event.Trace.Id))
+		}
+	}
+
+	if event.Span.Id != "" {
+		parentId, err := spanIdFromHex(event.ParentId)
+		if err == nil {
+			l.SetSpanID(parentId)
+		} else {
+			r.settings.Logger.Error("failed to parse span ID", zap.String("span_id", event.ParentId))
+		}
+	}
+
+	if event.Transaction.Id != "" {
+		parentId, err := spanIdFromHex(event.Transaction.Id)
+		if err == nil {
+			l.SetSpanID(parentId)
+			l.Attributes().PutStr("transaction.id", event.Transaction.Id)
+		} else {
+			r.settings.Logger.Error("failed to parse transaction ID", zap.String("transaction_id", event.ParentId))
+		}
+	}
+
+	mappers.SetDerivedFieldsForError(event, l.Attributes())
+	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
+	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
+
+	if event.Error != nil && event.Error.Log != nil {
+		l.Body().SetStr(event.Error.Log.Message)
+	}
 }
 
 func (r *elasticAPMReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestamp time.Time) ptrace.Span {

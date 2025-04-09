@@ -21,6 +21,7 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/elastic/apm-data/model/modelpb"
@@ -87,5 +88,46 @@ func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 		attributes.PutStr(elasticattr.EventOutcome, "failure")
 	} else {
 		attributes.PutStr(elasticattr.EventOutcome, "unknown")
+	}
+}
+
+func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
+
+	attributes.PutStr(elasticattr.ProcessorEvent, "error")
+	attributes.PutStr(elasticattr.ErrorID, event.Error.Id)
+	attributes.PutStr("error.type", event.Error.Type)
+	if event.Error.Message != "" {
+		attributes.PutStr("message", event.Error.Message)
+	}
+	attributes.PutStr(elasticattr.ErrorGroupingKey, event.Error.GroupingKey)
+	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
+
+	if event.Error.Culprit != "" {
+		attributes.PutStr("error.culprit", event.Error.Culprit)
+	}
+
+	if event.Error.Exception != nil {
+		attributes.PutStr("exception.type", event.Error.Exception.Type)
+		attributes.PutStr("exception.message", event.Error.Exception.Message)
+
+		if event.Error.Exception.Stacktrace != nil {
+			str := ""
+			for i, frame := range event.Error.Exception.Stacktrace {
+				if i > 0 {
+					str += "\n"
+				}
+				if frame.Function != "" {
+					str += fmt.Sprintf("%s:%d %s", frame.Filename, *frame.Lineno, frame.Function)
+				} else {
+					str += fmt.Sprintf("%s:%d", frame.Classname, *frame.Lineno)
+				}
+			}
+
+			attributes.PutStr("exception.stacktrace", str)
+		}
+
+		attributes.PutStr("error.exception.module", event.Error.Exception.Module)
+		attributes.PutBool("error.exception.handled", *event.Error.Exception.Handled)
+		attributes.PutStr("error.exception.code", event.Error.Exception.Code)
 	}
 }
