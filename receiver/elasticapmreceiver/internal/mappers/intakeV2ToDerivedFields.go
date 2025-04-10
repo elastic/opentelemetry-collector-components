@@ -107,8 +107,12 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 
 	if event.Error.Exception != nil {
-		attributes.PutStr("exception.type", event.Error.Exception.Type)
-		attributes.PutStr("exception.message", event.Error.Exception.Message)
+		if event.Error.Exception.Type != "" {
+			attributes.PutStr("exception.type", event.Error.Exception.Type)
+		}
+		if event.Error.Exception.Message != "" {
+			attributes.PutStr("exception.message", event.Error.Exception.Message)
+		}
 
 		if event.Error.Exception.Stacktrace != nil {
 			str := ""
@@ -128,8 +132,14 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 			attributes.PutStr("exception.stacktrace", str)
 		}
 
-		attributes.PutStr("error.exception.module", event.Error.Exception.Module)
-		attributes.PutBool("error.exception.handled", *event.Error.Exception.Handled)
-		attributes.PutStr("error.exception.code", event.Error.Exception.Code)
+		if event.Error.Exception.Module != "" {
+			attributes.PutStr("error.exception.module", event.Error.Exception.Module)
+		}
+		if event.Error.Exception.Handled != nil {
+			attributes.PutBool("error.exception.handled", *event.Error.Exception.Handled)
+		}
+		if event.Error.Exception.Code != "" {
+			attributes.PutStr("error.exception.code", event.Error.Exception.Code)
+		}
 	}
 }

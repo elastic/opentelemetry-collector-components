@@ -126,3 +126,169 @@ resourceLogs:
             timeUnixNano: "1533826745999000000"
             traceId: ""
         scope: {}
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+        - key: service.name
+          value:
+            stringValue: 1234_service-12a3
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: processor.event
+                value:
+                  stringValue: error
+              - key: error.id
+                value:
+                  stringValue: cdefab0123456789
+              - key: error.type
+                value:
+                  stringValue: ""
+              - key: error.grouping_key
+                value:
+                  stringValue: 89f9636ef3381842
+              - key: timestamp.us
+                value:
+                  intValue: "1533826745999000"
+              - key: exception.message
+                value:
+                  stringValue: Cannot read property 'baz' no defined
+            body: {}
+            spanId: ""
+            timeUnixNano: "1533826745999000000"
+            traceId: ""
+        scope: {}
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-ruby
+        - key: agent.version
+          value:
+            stringValue: 2.1.3
+        - key: service.language.name
+          value:
+            stringValue: ruby
+        - key: service.language.version
+          value:
+            stringValue: "2.5"
+        - key: service.name
+          value:
+            stringValue: service1
+        - key: service.version
+          value:
+            stringValue: "2"
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ruby
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: testing
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: processor.event
+                value:
+                  stringValue: error
+              - key: error.id
+                value:
+                  stringValue: cdefab0123456780
+              - key: error.type
+                value:
+                  stringValue: ""
+              - key: error.grouping_key
+                value:
+                  stringValue: 60b29d2f9dafe754
+              - key: timestamp.us
+                value:
+                  intValue: "1547070053000000"
+              - key: exception.type
+                value:
+                  stringValue: DbError
+            body: {}
+            spanId: ""
+            timeUnixNano: "1547070053000000000"
+            traceId: 0123456789abcdeffedcba0123456789
+        scope: {}
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+        - key: service.name
+          value:
+            stringValue: 1234_service-12a3
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: transaction.id
+                value:
+                  stringValue: "1234567890987654"
+              - key: processor.event
+                value:
+                  stringValue: error
+              - key: error.id
+                value:
+                  stringValue: abcdef0123456789
+              - key: error.type
+                value:
+                  stringValue: ""
+              - key: error.grouping_key
+                value:
+                  stringValue: 5be7ecce1b964f32
+              - key: timestamp.us
+                value:
+                  intValue: "1533827045999000"
+            body:
+              stringValue: Cannot read property 'baz' of undefined
+            spanId: "1234567890987654"
+            timeUnixNano: "1533827045999000000"
+            traceId: 0123456789abcdeffedcba0123456789
+        scope: {}
