@@ -119,7 +119,9 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 				if frame.Function != "" {
 					str += fmt.Sprintf("%s:%d %s", frame.Filename, *frame.Lineno, frame.Function)
 				} else {
-					str += fmt.Sprintf("%s:%d", frame.Classname, *frame.Lineno)
+					if frame.Classname != "" && frame.Lineno != nil {
+						str += fmt.Sprintf("%s:%d", frame.Classname, *frame.Lineno)
+					}
 				}
 			}
 

@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,9 +41,10 @@ import (
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/consumer/consumertest"
-	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 )
+
+const testData = "testdata"
 
 type fetcherMock struct {
 	fetchFn func(context.Context, agentcfg.Query) (agentcfg.Result, error)
@@ -332,6 +334,42 @@ func TestAgentCfgHandler(t *testing.T) {
 	}
 }
 
+var inputFiles_error = []struct {
+	inputNdJsonFileName        string
+	outputExpectedYamlFileName string
+}{
+	{"errors.ndjson", "errors_expected.yaml"},
+}
+
+func TestErrors(t *testing.T) {
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			Endpoint: testEndpoint,
+		},
+	}
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	nextLog := new(consumertest.LogsSink)
+	receiver, _ := factory.CreateLogs(context.Background(), set, cfg, nextLog)
+
+	if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+		t.Errorf("Starting receiver failed: %v", err)
+	}
+	defer func() {
+		if err := receiver.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
+
+	for _, tt := range inputFiles_error {
+		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
+			runComparisonForErrors(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextLog, testEndpoint)
+		})
+	}
+}
+
 var inputFiles = []struct {
 	inputNdJsonFileName        string
 	outputExpectedYamlFileName string
@@ -368,16 +406,12 @@ func TestTransactionsAndSpans(t *testing.T) {
 
 	for _, tt := range inputFiles {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
-			runComparison(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, &receiver, nextTrace, testEndpoint)
+			runComparisonForTraces(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextTrace, testEndpoint)
 		})
 	}
 }
 
-func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName string, rec *receiver.Traces,
-	nextTrace *consumertest.TracesSink, testEndpoint string,
-) {
-	testData := "testdata"
-	nextTrace.Reset()
+func sendInput(t *testing.T, inputJsonFileName string, expectedYamlFileName string, testEndpoint string) {
 
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
@@ -394,14 +428,37 @@ func runComparison(t *testing.T, inputJsonFileName string, expectedYamlFileName 
 	if resp.StatusCode != http.StatusAccepted {
 		t.Fatalf("unexpected status code: %v", resp.StatusCode)
 	}
+}
 
+func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
+	nextTrace *consumertest.TracesSink, testEndpoint string,
+) {
+
+	nextTrace.Reset()
+
+	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
 	actualTraces := nextTrace.AllTraces()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	// Use this line to generate the expected yaml file:
 	// golden.WriteTraces(t, expectedFile, actualTraces)
 	expectedTraces, err := golden.ReadTraces(expectedFile)
 	require.NoError(t, err)
-
 	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
 		ptracetest.IgnoreEndTimestamp()))
+}
+
+func runComparisonForErrors(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
+	nextLog *consumertest.LogsSink, testEndpoint string,
+) {
+
+	nextLog.Reset()
+
+	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
+	actualLogs := nextLog.AllLogs()[0]
+	expectedFile := filepath.Join(testData, expectedYamlFileName)
+	// Use this line to generate the expected yaml file:
+	// golden.WriteLogs(t, expectedFile, actualLogs)
+	expectedLogs, err := golden.ReadLogs(expectedFile)
+	require.NoError(t, err)
+	require.NoError(t, plogtest.CompareLogs(expectedLogs, actualLogs))
 }

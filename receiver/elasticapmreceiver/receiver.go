@@ -306,7 +306,7 @@ func (r *elasticAPMReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, 
 
 	l.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 
-	if event.Trace.Id != "" {
+	if event.Trace != nil && event.Trace.Id != "" {
 		traceId, err := traceIDFromHex(event.Trace.Id)
 		if err == nil {
 			l.SetTraceID(traceId)
@@ -315,7 +315,7 @@ func (r *elasticAPMReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, 
 		}
 	}
 
-	if event.Span.Id != "" {
+	if event.Span != nil && event.Span.Id != "" {
 		parentId, err := spanIdFromHex(event.ParentId)
 		if err == nil {
 			l.SetSpanID(parentId)
@@ -324,7 +324,7 @@ func (r *elasticAPMReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, 
 		}
 	}
 
-	if event.Transaction.Id != "" {
+	if event.Transaction != nil && event.Transaction.Id != "" {
 		parentId, err := spanIdFromHex(event.Transaction.Id)
 		if err == nil {
 			l.SetSpanID(parentId)

@@ -1,0 +1,130 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "1.2"
+        - key: service.name
+          value:
+            stringValue: service1
+        - key: service.version
+          value:
+            stringValue: ""
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: processor.event
+                value:
+                  stringValue: error
+              - key: error.id
+                value:
+                  stringValue: "0123456789012345"
+              - key: error.type
+                value:
+                  stringValue: ""
+              - key: error.grouping_key
+                value:
+                  stringValue: 637be2ded470655b
+              - key: timestamp.us
+                value:
+                  intValue: "1494342245999999"
+              - key: error.culprit
+                value:
+                  stringValue: my.module.function_name
+              - key: exception.type
+                value:
+                  stringValue: DbError
+              - key: exception.message
+                value:
+                  stringValue: The username root is unknown
+              - key: exception.stacktrace
+                value:
+                  stringValue: |2-
+                    file/name.py:3 foo
+                    lib/instrumentation/index.js:102 instrumented
+              - key: error.exception.module
+                value:
+                  stringValue: __builtins__
+              - key: error.exception.handled
+                value:
+                  boolValue: false
+              - key: error.exception.code
+                value:
+                  stringValue: "42"
+            body:
+              stringValue: My service could not talk to the database named foobar
+            spanId: ""
+            timeUnixNano: "1494342245999999000"
+            traceId: ""
+        scope: {}
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+        - key: service.name
+          value:
+            stringValue: 1234_service-12a3
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: processor.event
+                value:
+                  stringValue: error
+              - key: error.id
+                value:
+                  stringValue: xFoaabb123FFFFFF
+              - key: error.type
+                value:
+                  stringValue: ""
+              - key: error.grouping_key
+                value:
+                  stringValue: 256d70df2f0019ed
+              - key: timestamp.us
+                value:
+                  intValue: "1533826745999000"
+            body:
+              stringValue: no user found
+            spanId: ""
+            timeUnixNano: "1533826745999000000"
+            traceId: ""
+        scope: {}
