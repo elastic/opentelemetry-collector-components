@@ -258,9 +258,13 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 					return xxhash.New()
 				},
 			}
-			gk.ProcessBatch(ctx, batch)
 
-			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
+			if err := gk.ProcessBatch(ctx, batch); err == nil {
+				r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
+			} else {
+				r.settings.Logger.Error("failed to process batch", zap.Error(err))
+			}
+
 		case modelpb.LogEventType:
 			// TODO
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
