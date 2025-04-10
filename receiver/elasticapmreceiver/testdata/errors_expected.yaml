@@ -57,9 +57,7 @@ resourceLogs:
                   stringValue: The username root is unknown
               - key: exception.stacktrace
                 value:
-                  stringValue: |2-
-                    file/name.py:3 foo
-                    lib/instrumentation/index.js:102 instrumented
+                  stringValue: "file/name.py:3 foo \nlib/instrumentation/index.js:102 instrumented \n"
               - key: error.exception.module
                 value:
                   stringValue: __builtins__
