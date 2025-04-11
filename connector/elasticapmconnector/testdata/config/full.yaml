@@ -2,3 +2,4 @@ elasticapm:
   aggregation:
     directory: /path/to/aggregation/state
     metadata_keys: [a, B, c]
+    intervals: [1s, 1m]

@@ -74,9 +74,9 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 	if cfg.Aggregation != nil && len(cfg.Aggregation.Intervals) != 0 {
 		intervals = cfg.Aggregation.Intervals
 	}
-	intervalConfig := make([]lsmconfig.IntervalConfig, 0, len(intervals))
+	intervalsConfig := make([]lsmconfig.IntervalConfig, 0, len(intervals))
 	for _, i := range intervals {
-		intervalConfig = append(intervalConfig, lsmconfig.IntervalConfig{
+		intervalsConfig = append(intervalsConfig, lsmconfig.IntervalConfig{
 			Duration: i,
 			Statements: []string{
 				fmt.Sprintf(`set(attributes["metricset.interval"], "%s")`, i),
@@ -86,7 +86,7 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 		})
 	}
 	lsmConfig := &lsmconfig.Config{
-		Intervals:                      intervalConfig,
+		Intervals:                      intervalsConfig,
 		ExponentialHistogramMaxBuckets: 160,
 	}
 	if cfg.Aggregation != nil {
