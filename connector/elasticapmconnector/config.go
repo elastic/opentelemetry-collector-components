@@ -79,8 +79,8 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 		intervalsConfig = append(intervalsConfig, lsmconfig.IntervalConfig{
 			Duration: i,
 			Statements: []string{
-				fmt.Sprintf(`set(attributes["metricset.interval"], "%s")`, i),
-				fmt.Sprintf(`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "%s"], "."))`, i),
+				fmt.Sprintf(`set(attributes["metricset.interval"], "%dm")`, int(i.Minutes())),
+				fmt.Sprintf(`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "%dm"], "."))`, int(i.Minutes())),
 				`set(attributes["processor.event"], "metric")`,
 			},
 		})
