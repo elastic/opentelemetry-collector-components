@@ -17,14 +17,6 @@ type TopLevelFieldSetter interface {
 	SetSpanID(v pcommon.SpanID)
 }
 
-func setTraceID(x TopLevelFieldSetter, traceID pcommon.TraceID) {
-	x.SetTraceID(traceID)
-}
-
-func SetSpanID(x TopLevelFieldSetter, spanID pcommon.SpanID) {
-	x.SetSpanID(spanID)
-}
-
 // Shared across LogRecord and Span
 func SetTopLevelFieldsCommon(event *modelpb.APMEvent, timestamp time.Time, t TopLevelFieldSetter, logger *zap.Logger) {
 
