@@ -37,9 +37,6 @@ resourceLogs:
               - key: error.id
                 value:
                   stringValue: "0123456789012345"
-              - key: error.type
-                value:
-                  stringValue: ""
               - key: error.grouping_key
                 value:
                   stringValue: 637be2ded470655b
@@ -111,9 +108,6 @@ resourceLogs:
               - key: error.id
                 value:
                   stringValue: xFoaabb123FFFFFF
-              - key: error.type
-                value:
-                  stringValue: ""
               - key: error.grouping_key
                 value:
                   stringValue: 256d70df2f0019ed
@@ -164,9 +158,6 @@ resourceLogs:
               - key: error.id
                 value:
                   stringValue: cdefab0123456789
-              - key: error.type
-                value:
-                  stringValue: ""
               - key: error.grouping_key
                 value:
                   stringValue: 89f9636ef3381842
@@ -219,9 +210,9 @@ resourceLogs:
               - key: error.id
                 value:
                   stringValue: cdefab0123456780
-              - key: error.type
+              - key: parent.id
                 value:
-                  stringValue: ""
+                  stringValue: 9632587410abcdef
               - key: error.grouping_key
                 value:
                   stringValue: 60b29d2f9dafe754
@@ -268,18 +259,18 @@ resourceLogs:
     scopeLogs:
       - logRecords:
           - attributes:
-              - key: transaction.id
-                value:
-                  stringValue: "1234567890987654"
               - key: processor.event
                 value:
                   stringValue: error
               - key: error.id
                 value:
                   stringValue: abcdef0123456789
-              - key: error.type
+              - key: transaction.id
                 value:
-                  stringValue: ""
+                  stringValue: "1234567890987654"
+              - key: parent.id
+                value:
+                  stringValue: 9632587410abcdef
               - key: error.grouping_key
                 value:
                   stringValue: 5be7ecce1b964f32

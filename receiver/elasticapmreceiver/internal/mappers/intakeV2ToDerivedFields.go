@@ -91,11 +91,27 @@ func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 }
 
+// Sets fields that are NOT part of OTel for errors. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
-
 	attributes.PutStr(elasticattr.ProcessorEvent, "error")
-	attributes.PutStr(elasticattr.ErrorID, event.Error.Id)
-	attributes.PutStr("error.type", event.Error.Type)
+
+	if event.Error == nil {
+		return
+	}
+
+	if event.Error.Id != "" {
+		attributes.PutStr(elasticattr.ErrorID, event.Error.Id)
+	}
+	if event.Transaction != nil && event.Transaction.Id != "" {
+		attributes.PutStr(elasticattr.TransactionID, event.Transaction.Id)
+	}
+	if event.ParentId != "" {
+		attributes.PutStr(elasticattr.ParentID, event.ParentId)
+	}
+
+	if event.Error.Type != "" {
+		attributes.PutStr("error.type", event.Error.Type)
+	}
 	if event.Error.Message != "" {
 		attributes.PutStr("message", event.Error.Message)
 	}
@@ -117,9 +133,6 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 		if event.Error.Exception.Stacktrace != nil {
 			str := ""
 			for _, frame := range event.Error.Exception.Stacktrace {
-				// if i > 0 {
-				// 	str += "\n"
-				// }
 				if frame.Function != "" {
 					str += fmt.Sprintf("%s:%d %s \n", frame.Filename, *frame.Lineno, frame.Function)
 				} else {
