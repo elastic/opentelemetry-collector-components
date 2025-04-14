@@ -20,6 +20,7 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,7 @@ func TestConfig(t *testing.T) {
 				Aggregation: &AggregationConfig{
 					Directory:    "/path/to/aggregation/state",
 					MetadataKeys: []string{"a", "B", "c"},
+					Intervals:    []time.Duration{time.Second, time.Minute},
 				},
 			},
 		},
