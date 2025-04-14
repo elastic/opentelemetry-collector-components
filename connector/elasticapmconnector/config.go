@@ -58,9 +58,11 @@ type AggregationConfig struct {
 	// will aggregate over. The interval duration must be in increasing
 	// order and must be a factor of the smallest interval duration.
 	// The default aggregation intervals are 1m, 10m and 60m.
-	// These intervals should only be overridden for testing purposes when
-	// faster processor feedback is required, the default intervals
-	// should be always prefered otherwise.
+	//
+	// NOTE: these intervals should only be overridden for testing purposes when
+	// faster processor feedback is required. The default intervals should be preferred
+	// in all other cases -- using this configuration may lead to invalid behavior,
+	// and will not be supported.
 	Intervals []time.Duration `mapstructure:"intervals"`
 }
 
