@@ -209,6 +209,17 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 	ld := plog.NewLogs()
 	md := pmetric.NewMetrics()
 	td := ptrace.NewTraces()
+
+	gk := modelprocessor.SetGroupingKey{
+		NewHash: func() hash.Hash {
+			return xxhash.New()
+		},
+	}
+
+	if err := gk.ProcessBatch(ctx, batch); err != nil {
+		r.settings.Logger.Error("failed to process batch", zap.Error(err))
+	}
+
 	for _, event := range *batch {
 		timestampNanos := event.GetTimestamp()
 		timestamp := time.Unix(
@@ -250,17 +261,7 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 			}
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
-			gk := modelprocessor.SetGroupingKey{
-				NewHash: func() hash.Hash {
-					return xxhash.New()
-				},
-			}
-			if err := gk.ProcessBatch(ctx, batch); err == nil {
-				r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
-			} else {
-				r.settings.Logger.Error("failed to process batch", zap.Error(err))
-			}
-
+			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
 		case modelpb.LogEventType:
 			// TODO
 		case modelpb.SpanEventType, modelpb.TransactionEventType:

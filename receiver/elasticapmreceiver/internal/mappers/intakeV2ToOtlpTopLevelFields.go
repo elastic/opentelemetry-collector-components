@@ -35,7 +35,7 @@ type TopLevelFieldSetter interface {
 }
 
 // Shared across LogRecord and Span
-func SetTopLevelFieldsCommon(event *modelpb.APMEvent, timestamp time.Time, t TopLevelFieldSetter, logger *zap.Logger) {
+func SetTopLevelFieldsCommon(event *modelpb.APMEvent, t TopLevelFieldSetter, logger *zap.Logger) {
 
 	if event.Trace != nil && event.Trace.Id != "" {
 		traceId, err := traceIDFromHex(event.Trace.Id)
@@ -67,7 +67,7 @@ func SetTopLevelFieldsCommon(event *modelpb.APMEvent, timestamp time.Time, t Top
 
 // Sets top level fields on ptrace.Span based on the APMEvent
 func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestamp time.Time, s ptrace.Span, logger *zap.Logger) {
-	SetTopLevelFieldsCommon(event, timestamp, s, logger)
+	SetTopLevelFieldsCommon(event, s, logger)
 
 	if event.ParentId != "" {
 		parentId, err := spanIdFromHex(event.ParentId)
@@ -91,7 +91,7 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestamp time.Time, s ptrac
 
 // Sets top level fields on plog.LogRecord based on the APMEvent
 func SetTopLevelFieldsLogRecord(event *modelpb.APMEvent, timestamp time.Time, l plog.LogRecord, logger *zap.Logger) {
-	SetTopLevelFieldsCommon(event, timestamp, l, logger)
+	SetTopLevelFieldsCommon(event, l, logger)
 	l.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 }
 
