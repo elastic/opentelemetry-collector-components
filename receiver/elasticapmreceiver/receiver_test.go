@@ -334,14 +334,13 @@ func TestAgentCfgHandler(t *testing.T) {
 	}
 }
 
-var inputFiles_error = []struct {
-	inputNdJsonFileName        string
-	outputExpectedYamlFileName string
-}{
-	{"errors.ndjson", "errors_expected.yaml"},
-}
-
 func TestErrors(t *testing.T) {
+	var inputFiles_error = []struct {
+		inputNdJsonFileName        string
+		outputExpectedYamlFileName string
+	}{
+		{"errors.ndjson", "errors_expected.yaml"},
+	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := &Config{
