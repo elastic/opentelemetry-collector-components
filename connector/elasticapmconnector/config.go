@@ -18,6 +18,7 @@
 package elasticapmconnector // import "github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector"
 
 import (
+	"fmt"
 	"time"
 
 	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
@@ -26,6 +27,12 @@ import (
 )
 
 var _ component.Config = (*Config)(nil)
+
+var defaultIntervals []time.Duration = []time.Duration{
+	time.Minute,
+	10 * time.Minute,
+	60 * time.Minute,
+}
 
 type Config struct {
 	// Aggregation holds configuration related to aggregation of Elastic APM
@@ -46,6 +53,17 @@ type AggregationConfig struct {
 	// Entries are case-insensitive, and duplicated entries will trigger
 	// a validation error.
 	MetadataKeys []string `mapstructure:"metadata_keys"`
+
+	// Intervals holds an optional list of time intervals that the processor
+	// will aggregate over. The interval duration must be in increasing
+	// order and must be a factor of the smallest interval duration.
+	// The default aggregation intervals are 1m, 10m and 60m.
+	//
+	// NOTE: these intervals should only be overridden for testing purposes when
+	// faster processor feedback is required. The default intervals should be preferred
+	// in all other cases -- using this configuration may lead to invalid behavior,
+	// and will not be supported.
+	Intervals []time.Duration `mapstructure:"intervals"`
 }
 
 func (cfg Config) Validate() error {
@@ -54,29 +72,23 @@ func (cfg Config) Validate() error {
 }
 
 func (cfg Config) lsmConfig() *lsmconfig.Config {
+	intervals := defaultIntervals
+	if cfg.Aggregation != nil && len(cfg.Aggregation.Intervals) != 0 {
+		intervals = cfg.Aggregation.Intervals
+	}
+	intervalsConfig := make([]lsmconfig.IntervalConfig, 0, len(intervals))
+	for _, i := range intervals {
+		intervalsConfig = append(intervalsConfig, lsmconfig.IntervalConfig{
+			Duration: i,
+			Statements: []string{
+				fmt.Sprintf(`set(attributes["metricset.interval"], "%dm")`, int(i.Minutes())),
+				fmt.Sprintf(`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "%dm"], "."))`, int(i.Minutes())),
+				`set(attributes["processor.event"], "metric")`,
+			},
+		})
+	}
 	lsmConfig := &lsmconfig.Config{
-		Intervals: []lsmconfig.IntervalConfig{{
-			Duration: time.Minute,
-			Statements: []string{
-				`set(attributes["metricset.interval"], "1m")`,
-				`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "1m"], "."))`,
-				`set(attributes["processor.event"], "metric")`,
-			},
-		}, {
-			Duration: 10 * time.Minute,
-			Statements: []string{
-				`set(attributes["metricset.interval"], "10m")`,
-				`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "10m"], "."))`,
-				`set(attributes["processor.event"], "metric")`,
-			},
-		}, {
-			Duration: 60 * time.Minute,
-			Statements: []string{
-				`set(attributes["metricset.interval"], "60m")`,
-				`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "60m"], "."))`,
-				`set(attributes["processor.event"], "metric")`,
-			},
-		}},
+		Intervals:                      intervalsConfig,
 		ExponentialHistogramMaxBuckets: 160,
 	}
 	if cfg.Aggregation != nil {
