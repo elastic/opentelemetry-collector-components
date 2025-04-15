@@ -319,11 +319,32 @@ func (r *elasticAPMReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, ev
 	s := ss.Spans().AppendEmpty()
 
 	mappers.SetTopLevelFieldsSpan(event, timestamp, s, r.settings.Logger)
-
 	mappers.TranslateToOtelResourceAttributes(event, rs.Resource().Attributes())
 	mappers.SetDerivedFieldsCommon(event, s.Attributes())
 	mappers.SetDerivedResourceAttributes(event, rs.Resource().Attributes())
 	return s
+}
+
+func (r *elasticAPMReceiver) elasticSpanLinksToOTelSpanLinks(event *modelpb.APMEvent, s ptrace.Span) {
+	if event.Span != nil && event.Span.Links != nil {
+		for _, link := range event.Span.Links {
+			ptraceSpanLink := s.Links().AppendEmpty()
+
+			traceId, err := traceIDFromHex(link.TraceId)
+			if err == nil {
+				ptraceSpanLink.SetTraceID(traceId)
+			} else {
+				r.settings.Logger.Error("failed to parse trace ID from span link", zap.String("trace_id", link.TraceId))
+			}
+
+			spanId, err := spanIdFromHex(link.SpanId)
+			if err == nil {
+				ptraceSpanLink.SetSpanID(spanId)
+			} else {
+				r.settings.Logger.Error("failed to parse span ID from span link", zap.String("span_id", link.SpanId))
+			}
+		}
+	}
 }
 
 func (r *elasticAPMReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
