@@ -133,11 +133,14 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 		if event.Error.Exception.Stacktrace != nil {
 			str := ""
 			for _, frame := range event.Error.Exception.Stacktrace {
-				if frame.Function != "" {
-					str += fmt.Sprintf("%s:%d %s \n", frame.Filename, *frame.Lineno, frame.Function)
+				f := frame.GetFunction()
+				l := frame.GetLineno()
+				if f != "" {
+					str += fmt.Sprintf("%s:%d %s \n", frame.GetFilename(), l, f)
 				} else {
-					if frame.Classname != "" && frame.Lineno != nil {
-						str += fmt.Sprintf("%s:%d \n", frame.Classname, *frame.Lineno)
+					c := frame.GetClassname()
+					if c != "" && l != 0 {
+						str += fmt.Sprintf("%s:%d \n", c, l)
 					}
 				}
 			}
