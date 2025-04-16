@@ -27,6 +27,7 @@ PORTO        := $(TOOLS_BIN_DIR)/porto
 BUILDER      := $(TOOLS_BIN_DIR)/builder
 LICENSER     := $(TOOLS_BIN_DIR)/go-licenser
 CHLOGGEN     := $(TOOLS_BIN_DIR)/chloggen
+MULTIMOD     := $(TOOLS_BIN_DIR)/multimod
 
 .PHONY: install-tools
 install-tools: $(TOOLS_BIN_NAMES)
@@ -86,3 +87,7 @@ porto: $(PORTO)
 .PHONY: govulncheck
 govulncheck: $(GOVULNCHECK)
 	$(GOVULNCHECK) ./...
+
+.PHONY: toolchain
+toolchain:
+	$(GOCMD) get toolchain@none
