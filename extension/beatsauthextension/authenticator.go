@@ -29,7 +29,8 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-var _ extensionauth.Client = (*authenticator)(nil)
+var _ extensionauth.HTTPClient = (*authenticator)(nil)
+var _ extensionauth.GRPCClient = (*authenticator)(nil)
 var _ extension.Extension = (*authenticator)(nil)
 
 type authenticator struct {
