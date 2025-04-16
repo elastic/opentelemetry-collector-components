@@ -9,10 +9,10 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
 	go.opentelemetry.io/collector/component v1.30.0
-	go.opentelemetry.io/collector/component/componenttest v0.122.1
+	go.opentelemetry.io/collector/component/componenttest v0.124.0
 	go.opentelemetry.io/collector/confmap v1.30.0
 	go.opentelemetry.io/collector/extension v1.30.0
-	go.opentelemetry.io/collector/extension/extensiontest v0.122.1
+	go.opentelemetry.io/collector/extension/extensiontest v0.124.0
 	go.uber.org/goleak v1.3.0
 )
 
@@ -62,9 +62,9 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector/client v1.30.0 // indirect
-	go.opentelemetry.io/collector/config/configauth v0.122.1 // indirect
+	go.opentelemetry.io/collector/config/configauth v0.124.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.30.0 // indirect
-	go.opentelemetry.io/collector/config/confighttp v0.122.1 // indirect
+	go.opentelemetry.io/collector/config/confighttp v0.124.0 // indirect
 	go.opentelemetry.io/collector/config/configopaque v1.30.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v1.30.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionauth v1.30.0 // indirect
@@ -87,7 +87,7 @@ require (
 	github.com/open-telemetry/opamp-go v0.19.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	go.opentelemetry.io/collector/pdata v1.30.0 // indirect
-	go.opentelemetry.io/collector/semconv v0.122.1
+	go.opentelemetry.io/collector/semconv v0.124.0
 	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
