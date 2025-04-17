@@ -34,8 +34,8 @@ github.com/elastic/elastic-transport-go/v8 v8.6.1 h1:h2jQRqH6eLGiBSN4eZbQnJLtL4b
 github.com/elastic/elastic-transport-go/v8 v8.6.1/go.mod h1:YLHer5cj0csTzNFXoNQ8qhtGY1GTvSqPnKWKaqQE3Hk=
 github.com/elastic/go-elasticsearch/v8 v8.17.1 h1:bOXChDoCMB4TIwwGqKd031U8OXssmWLT3UrAr9EGs3Q=
 github.com/elastic/go-elasticsearch/v8 v8.17.1/go.mod h1:MVJCtL+gJJ7x5jFeUmA20O7rvipX8GcQmo5iBcmaJn4=
-github.com/elastic/opentelemetry-lib v0.14.1-0.20250203070458-17aa3e31dddf h1:ivtje9uef2T+L6zHu14ppSGn4bcf9uCmsoCmqf5rwVI=
-github.com/elastic/opentelemetry-lib v0.14.1-0.20250203070458-17aa3e31dddf/go.mod h1:/7+UCI6V5qdGwwqqPqgnzxoo99jknXR4XU6MPnO6tEE=
+github.com/elastic/opentelemetry-lib v0.17.1 h1:ZNYIJBvdtEcRBCGufVtTNh2+jaizJXDsrIRz65UQzqg=
+github.com/elastic/opentelemetry-lib v0.17.1/go.mod h1:SbaZpFXer0X0UQrApyOfAIaGzM3Pm66f+p1rMhY5eco=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/fsnotify/fsnotify v1.8.0 h1:dAwr6QBTBZIkG8roQaJjGof0pp0EeF+tNV7YBP3F/8M=
@@ -167,6 +167,8 @@ go.opentelemetry.io/collector/config/configtls v1.28.1 h1:UTnB30vfXbnkm94754sd8a
 go.opentelemetry.io/collector/config/configtls v1.28.1/go.mod h1:aXztDbmrn/MGbvCNPEYu9KcX8lXFKHyh4x6OsvOfl2c=
 go.opentelemetry.io/collector/confmap v1.28.1 h1:/zUmvpnERhFXrxVCVgubjJRgeOwdPbhTfUILZPUBfyw=
 go.opentelemetry.io/collector/confmap v1.28.1/go.mod h1:2aJggo/KQl7uynFyMNNMbl7jvKkSD7CniOVEpCbjRng=
+go.opentelemetry.io/collector/confmap/xconfmap v0.122.1 h1:E8sdJens/sq+evv/VHzbDP3B28uZIAPkKjtB4mVVTso=
+go.opentelemetry.io/collector/confmap/xconfmap v0.122.1/go.mod h1:33HDN5uVKRihgLiShZZDzxN0qiTA1+t8hK41rrf1jls=
 go.opentelemetry.io/collector/consumer v1.28.1 h1:3lHW2e0i7kEkbDqK1vErA8illqPpwDxMzgc5OUDsJ0Y=
 go.opentelemetry.io/collector/consumer v1.28.1/go.mod h1:g0T16JPMYFN6T2noh+1YBxJSt5i5Zp+Y0Y6pvkMqsDQ=
 go.opentelemetry.io/collector/extension v1.28.1 h1:2qiX/nuihDzHMmOxrVKZ5SURFL/oJBMlL6+kPDvb0+I=
