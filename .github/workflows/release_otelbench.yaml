@@ -34,7 +34,7 @@ jobs:
         working-directory: ./loadgen/cmd/otelbench
         run: echo "OTELBENCH_VERSION=$(make get-version 2>/dev/null || echo 'v0.0.0')" >> $GITHUB_ENV
 
-      - uses: ko-build/setup-ko@d982fec422852203cfb2053a8ec6ad302280d04d # v0.8
+      - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
         env:
           KO_DOCKER_REPO: ${{ env.ELASTIC_REGISTRY }}
 
