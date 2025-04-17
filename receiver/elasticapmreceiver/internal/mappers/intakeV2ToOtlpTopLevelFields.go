@@ -18,7 +18,6 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
 
 import (
-	"encoding/hex"
 	"strings"
 	"time"
 
@@ -38,7 +37,7 @@ type TopLevelFieldSetter interface {
 func SetTopLevelFieldsCommon(event *modelpb.APMEvent, t TopLevelFieldSetter, logger *zap.Logger) {
 
 	if event.Trace != nil && event.Trace.Id != "" {
-		traceId, err := traceIDFromHex(event.Trace.Id)
+		traceId, err := TraceIDFromHex(event.Trace.Id)
 		if err == nil {
 			t.SetTraceID(traceId)
 		} else {
@@ -47,7 +46,7 @@ func SetTopLevelFieldsCommon(event *modelpb.APMEvent, t TopLevelFieldSetter, log
 	}
 
 	if event.Span != nil && event.Span.Id != "" {
-		spanId, err := spanIdFromHex(event.Span.Id)
+		spanId, err := SpanIdFromHex(event.Span.Id)
 		if err == nil {
 			t.SetSpanID(spanId)
 		} else {
@@ -56,7 +55,7 @@ func SetTopLevelFieldsCommon(event *modelpb.APMEvent, t TopLevelFieldSetter, log
 	}
 
 	if event.Transaction != nil && event.Transaction.Id != "" {
-		transactionId, err := spanIdFromHex(event.Transaction.Id)
+		transactionId, err := SpanIdFromHex(event.Transaction.Id)
 		if err != nil {
 			t.SetSpanID(transactionId)
 		} else {
@@ -70,7 +69,7 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestamp time.Time, s ptrac
 	SetTopLevelFieldsCommon(event, s, logger)
 
 	if event.ParentId != "" {
-		parentId, err := spanIdFromHex(event.ParentId)
+		parentId, err := SpanIdFromHex(event.ParentId)
 		if err == nil {
 			s.SetParentSpanID(parentId)
 		} else {
@@ -93,24 +92,4 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestamp time.Time, s ptrac
 func SetTopLevelFieldsLogRecord(event *modelpb.APMEvent, timestamp time.Time, l plog.LogRecord, logger *zap.Logger) {
 	SetTopLevelFieldsCommon(event, l, logger)
 	l.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
-}
-
-func traceIDFromHex(hexStr string) (pcommon.TraceID, error) {
-	bytes, err := hex.DecodeString(hexStr)
-	if err != nil {
-		return pcommon.TraceID{}, err
-	}
-	var id pcommon.TraceID
-	copy(id[:], bytes)
-	return id, nil
-}
-
-func spanIdFromHex(hexStr string) (pcommon.SpanID, error) {
-	bytes, err := hex.DecodeString(hexStr)
-	if err != nil {
-		return pcommon.SpanID{}, err
-	}
-	var id pcommon.SpanID
-	copy(id[:], bytes)
-	return id, nil
 }
