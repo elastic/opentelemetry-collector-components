@@ -20,7 +20,7 @@ require (
 	go.opentelemetry.io/collector/consumer/consumertest v0.124.0
 	go.opentelemetry.io/collector/pdata v1.30.0
 	go.opentelemetry.io/collector/pipeline v0.124.0
-	go.opentelemetry.io/collector/processor v0.122.1
+	go.opentelemetry.io/collector/processor v1.30.0
 	go.uber.org/goleak v1.3.0
 )
 
