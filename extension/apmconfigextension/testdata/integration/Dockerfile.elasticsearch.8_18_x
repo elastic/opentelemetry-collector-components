@@ -1,4 +1,4 @@
-FROM elasticsearch:8.17.5
+FROM elasticsearch:8.18.0
 
 ENV discovery.type=single-node
 
@@ -6,4 +6,3 @@ ENV ES_JAVA_OPTS='-Xms512m -Xmx512m'
 ENV xpack.security.enabled=false
 
 EXPOSE 9200
-

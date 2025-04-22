@@ -50,7 +50,7 @@ const (
 )
 
 func TestIntegration(t *testing.T) {
-	t.Run("8.17.x", apmConfigintegrationTest("8_17_x"))
+	t.Run("8.18.x", apmConfigintegrationTest("8_18_x"))
 }
 
 func apmConfigintegrationTest(name string) func(t *testing.T) {
