@@ -51,7 +51,7 @@ const (
 )
 
 func TestIntegration(t *testing.T) {
-	t.Run("8.17.0", apmConfigintegrationTest("8_17_0"))
+	t.Run("8.18.x", apmConfigintegrationTest("8_18_x"))
 }
 
 func apmConfigintegrationTest(name string) func(t *testing.T) {
