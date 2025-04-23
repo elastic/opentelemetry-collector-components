@@ -9,7 +9,7 @@ require (
 	github.com/jcchavezs/porto v0.7.0
 	go.opentelemetry.io/build-tools/chloggen v0.22.0
 	go.opentelemetry.io/collector/cmd/builder v0.124.0
-	go.opentelemetry.io/collector/cmd/mdatagen v0.124.0
+	go.opentelemetry.io/collector/cmd/mdatagen v0.124.1-0.20250422204809-07f18639a341
 	golang.org/x/vuln v1.1.4
 )
 
@@ -104,11 +104,11 @@ require (
 	github.com/kkHAIKE/contextcheck v1.1.6 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/knadh/koanf/parsers/yaml v0.1.0 // indirect
-	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
+	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
 	github.com/knadh/koanf/providers/env v1.0.0 // indirect
 	github.com/knadh/koanf/providers/file v1.1.2 // indirect
 	github.com/knadh/koanf/providers/fs v0.1.0 // indirect
-	github.com/knadh/koanf/v2 v2.1.2 // indirect
+	github.com/knadh/koanf/v2 v2.2.0 // indirect
 	github.com/kulti/thelper v0.6.3 // indirect
 	github.com/kunwardeep/paralleltest v1.0.10 // indirect
 	github.com/lasiar/canonicalheader v1.1.2 // indirect
@@ -215,14 +215,14 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/telemetry v0.0.0-20240522233618-39ace7a40ae7 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250127172529-29210b9bc287 // indirect
-	google.golang.org/grpc v1.71.1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
+	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
