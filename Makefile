@@ -76,6 +76,10 @@ gogovulncheck:
 goporto:
 	$(MAKE) $(FOR_GROUP_TARGET) TARGET="porto"
 
+.PHONY: remove-toolchain
+remove-toolchain:
+	$(MAKE) $(FOR_GROUP_TARGET) TARGET="toolchain"
+
 # Build a collector based on the Elastic components (generate Elastic collector)
 .PHONY: genelasticcol
 genelasticcol: $(BUILDER)
@@ -111,3 +115,18 @@ otelsoak-validate: genelasticcol
 .PHONY: otelsoak-run
 otelsoak-run: genelasticcol
 	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.example.yaml $(ARGS)
+
+.PHONY: update-otel
+update-otel: $(MULTIMOD)
+	$(MULTIMOD) sync -s=true -o ../opentelemetry-collector -m stable --commit-hash "$(OTEL_STABLE_VERSION)"
+	git add . && git commit -s -m "[chore] multimod update stable modules" ; \
+	$(MULTIMOD) sync -s=true -o ../opentelemetry-collector -m beta --commit-hash "$(OTEL_VERSION)"
+	git add . && git commit -s -m "[chore] multimod update beta modules" ; \
+	$(MAKE) gotidy
+	$(MAKE) -B install-tools
+	$(MAKE) genelasticcol
+	$(MAKE) gogenerate license-update
+	# Tidy again after generating code
+	$(MAKE) gotidy
+	$(MAKE) remove-toolchain
+	git add . && git commit -s -m "[chore] mod and toolchain tidy" ; \
