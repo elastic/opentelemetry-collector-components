@@ -1,32 +1,31 @@
 # Releasing opentelemetry-collector-components
 
-0. Clone the `https://github.com/open-telemetry/opentelemetry-collector`
-   repository (or ensure is up-to-date) one directory above the components
-repository (../../opentelemetry-collector).
+0. Clone the [`https://github.com/open-telemetry/opentelemetry-collector`](https://github.com/open-telemetry/opentelemetry-collector)
+   repository (or ensure it is up-to-date) one directory above the components
+   repository (`../../opentelemetry-collector`).
 
 1. Determine the version number that will be assigned to the release. It should
    match the latest upstream release version (`OTEL_VERSION`).
 
 2. Open a PR to the repository to use the newly released OpenTelemetry Collector Core version by doing the following:
-   - Ensure your local repository is up-to-date with upstream and create a new Git branch named `release/<release-series>` (e.g.
-   `release/v0.85.x`)
+   - Ensure your local repository is up-to-date with upstream and create a new Git branch named `release/<release-series>` (e.g. `release/v0.85.x`)
    - Manually update core and contrib collector module versions in
-   `../distributions/elastic-components/manifest.yaml`
+     `../distributions/elastic-components/manifest.yaml`
    - Manually update the version to be released in the [versions.yaml file](../versions.yaml)
    - Run `make genelasticcol`
    - Commit the changes
    - Run `make update-otel OTEL_VERSION=vX.Y.Z OTEL_STABLE_VERSION=vA.B.C`
-     - If there is no new stable version released in core collector, use the current stable module version in contrib as `OTEL_STABLE_VERSION`.
+     - If there is no new stable version released in the core collector, use the current stable module version in contrib as `OTEL_STABLE_VERSION`.
    - If you were unable to run `make update-otel` before releasing core, fix any errors from breaking changes.
    - Commit the changes
    - Open the PR
-   -  🛑 **Do not move forward until this PR is merged.** 🛑
+     🛑 **Do not move forward until this PR is merged.** 🛑
 
-3. Make sure you are on `release/<release-series>`. Tag the module groups with the new release version by running:
+3. Make sure you are on the `release/<release-series>` branch. Tag the module groups with the new release version by running:
 
-   ⚠️ If you set your remote using `https` you need to include `REMOTE=https://github.com/elastic/opentelemetry-collector-components.git` in each command. ⚠️
+   ⚠️ If you set your remote using `https`, you need to include `REMOTE=https://github.com/elastic/opentelemetry-collector-components.git` in each command. ⚠️
 
-   - `make push-tags` for the beta modules group,
+   - Run `make push-tags`.
 
    If you encounter an error when running `make push-tags` like:
 
@@ -36,9 +35,7 @@ repository (../../opentelemetry-collector).
 
    It’s likely because Git is trying to sign a tag using an SSH key that requires a passphrase.
 
-   ✅ Solution: Decrypt your SSH key using `ssh-agent` ✅
-
-   Run the following commands to decrypt your SSH key and make it available for Git tag signing:
+   ✅ Solution: Run the following commands to decrypt your SSH key and make it available for Git tag signing:
 
    ```bash
    eval "$(ssh-agent -s)"
