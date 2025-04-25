@@ -1,9 +1,5 @@
 # Releasing opentelemetry-collector-components
 
-0. Clone the [`https://github.com/open-telemetry/opentelemetry-collector`](https://github.com/open-telemetry/opentelemetry-collector)
-   repository (or ensure it is up-to-date) one directory above the components
-   repository (`../../opentelemetry-collector`).
-
 1. Determine the version number that will be assigned to the release. It should
    match the latest upstream release version (`OTEL_VERSION`).
 
