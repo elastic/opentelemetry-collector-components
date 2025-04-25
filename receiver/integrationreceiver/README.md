@@ -74,7 +74,7 @@ extensions:
 receivers:
   integration:
     name: "somelog"
-    pipelines: "logs"
+    pipelines: ["logs"]
     parameters:
       paths: "/var/log/somelog-*.log"
       resource: "example"
