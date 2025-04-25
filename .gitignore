@@ -1,5 +1,6 @@
 bin/
 .tools/
+.release/
 _build/
 
 ### IntelliJ IDEA ###

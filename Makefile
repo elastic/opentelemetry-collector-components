@@ -116,11 +116,22 @@ otelsoak-validate: genelasticcol
 otelsoak-run: genelasticcol
 	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.example.yaml $(ARGS)
 
+
+# Clones the upstream opentelemetry-collector repository in a temporal .release
+# directory. If the directory already exists,
+UPSTREAM_REPO_URL := https://github.com/open-telemetry/opentelemetry-collector.git
+RELEASE_REPO_DIR := $(SRC_ROOT)/.release/opentelemetry-collector
+$(RELEASE_REPO_DIR):
+	echo "Cloning repository into $@..."; \
+	mkdir -p $@; \
+	git clone $(UPSTREAM_REPO_URL) $@ ; \
+
 .PHONY: update-otel
-update-otel: $(MULTIMOD)
-	$(MULTIMOD) sync -s=true -o ../opentelemetry-collector -m stable --commit-hash "$(OTEL_STABLE_VERSION)"
+update-otel: $(MULTIMOD) $(RELEASE_REPO_DIR)
+	@(echo "Pulling upstream $(RELEASE_REPO_DIR)..."; cd $(RELEASE_REPO_DIR); git pull origin main)
+	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m stable --commit-hash "$(OTEL_STABLE_VERSION)"
 	git add . && git commit -s -m "[chore] multimod update stable modules" ; \
-	$(MULTIMOD) sync -s=true -o ../opentelemetry-collector -m beta --commit-hash "$(OTEL_VERSION)"
+	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m beta --commit-hash "$(OTEL_VERSION)"
 	git add . && git commit -s -m "[chore] multimod update beta modules" ; \
 	$(MAKE) gotidy
 	$(MAKE) -B install-tools
@@ -141,3 +152,7 @@ push-tags: $(MULTIMOD)
 		echo "pushing tag $${tag}"; \
 		git push ${REMOTE} $${tag}; \
 	done;
+
+.PHONY: clean
+clean:
+	rm -r $(dir $(RELEASE_REPO_DIR))
