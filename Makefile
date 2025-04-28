@@ -76,6 +76,10 @@ gogovulncheck:
 goporto:
 	$(MAKE) $(FOR_GROUP_TARGET) TARGET="porto"
 
+.PHONY: remove-toolchain
+remove-toolchain:
+	$(MAKE) $(FOR_GROUP_TARGET) TARGET="toolchain"
+
 # Build a collector based on the Elastic components (generate Elastic collector)
 .PHONY: genelasticcol
 genelasticcol: $(BUILDER)
@@ -111,3 +115,44 @@ otelsoak-validate: genelasticcol
 .PHONY: otelsoak-run
 otelsoak-run: genelasticcol
 	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.example.yaml $(ARGS)
+
+
+# Clones the upstream opentelemetry-collector repository in a temporal .release
+# directory. If the directory already exists,
+UPSTREAM_REPO_URL := https://github.com/open-telemetry/opentelemetry-collector.git
+RELEASE_REPO_DIR := $(SRC_ROOT)/.release/opentelemetry-collector
+$(RELEASE_REPO_DIR):
+	echo "Cloning repository into $@..."; \
+	mkdir -p $@; \
+	git clone $(UPSTREAM_REPO_URL) $@ ; \
+
+.PHONY: update-otel
+update-otel: $(MULTIMOD) $(RELEASE_REPO_DIR)
+	@(echo "Pulling upstream $(RELEASE_REPO_DIR)..."; cd $(RELEASE_REPO_DIR); git pull origin main)
+	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m stable --commit-hash "$(OTEL_STABLE_VERSION)"
+	git add . && git commit -s -m "[chore] multimod update stable modules" ; \
+	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m beta --commit-hash "$(OTEL_VERSION)"
+	git add . && git commit -s -m "[chore] multimod update beta modules" ; \
+	$(MAKE) gotidy
+	$(MAKE) -B install-tools
+	$(MAKE) genelasticcol
+	$(MAKE) gogenerate license-update
+	# Tidy again after generating code
+	$(MAKE) gotidy
+	$(MAKE) remove-toolchain
+	git add . && git commit -s -m "[chore] mod and toolchain tidy" ; \
+
+COMMIT?=HEAD
+MODSET?=edot-base
+REMOTE?=git@github.com:elastic/opentelemetry-collector-components.git
+.PHONY: push-tags
+push-tags: $(MULTIMOD)
+	$(MULTIMOD) verify
+	set -e; for tag in `$(MULTIMOD) tag -m ${MODSET} -c ${COMMIT} --print-tags | grep -v "Using" `; do \
+		echo "pushing tag $${tag}"; \
+		git push ${REMOTE} $${tag}; \
+	done;
+
+.PHONY: clean
+clean:
+	rm -r $(dir $(RELEASE_REPO_DIR))
