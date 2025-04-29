@@ -180,7 +180,10 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 			return fmt.Errorf("could not compose processor config for %s: %w", id.String(), err)
 		}
 
-		params := processor.Settings(r.params)
+		params := processor.Settings{
+			TelemetrySettings: r.params.TelemetrySettings,
+			BuildInfo:         r.params.BuildInfo,
+		}
 		params.ID = component.NewIDWithName(factory.Type(), fmt.Sprintf("%s-%s-%d", r.params.ID, pipelineID, i))
 		params.Logger = params.Logger.With(zap.String("name", params.ID.String()))
 		if consumerChain.logs != nil {
