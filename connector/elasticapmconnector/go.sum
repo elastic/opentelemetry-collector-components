@@ -113,8 +113,8 @@ github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9G
 github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.125.0 h1:6yxPRRMqZAUJLBi6P8tADM1iNjBBSBmR6ZYb1z4u4vI=
-github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.125.0/go.mod h1:EX8Z+K24DghJiWN36I9Lse1MeLtv1+dySLw3FsrTjig=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.124.2-0.20250425060700-a372d054d598 h1:TDIUJpL7PT/ta9vr2rP/0Ks5uwDdBaiz4/UhCu/xWOI=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.124.2-0.20250425060700-a372d054d598/go.mod h1:d91sytXtvJZuUK+ChxY+HG0CMYZYvzwl5z4cGLPT1oA=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.125.0 h1:JxtfPyQWRcE3OsC4JV85WEPG5yR4PnWC3L4UVhyyjPk=
 github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.125.0/go.mod h1:stMPYYi4Sz+TcfS+LL/NDLhu5jQq9aRJ8gfZHz5D0sg=
 github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.125.0 h1:JwBeJ6Ll4mTsi+16YbJgjbAdNZaePFnGT3ainh0u/D4=
