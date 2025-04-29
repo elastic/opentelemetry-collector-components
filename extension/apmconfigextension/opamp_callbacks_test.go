@@ -30,11 +30,11 @@ import (
 )
 
 type remoteConfigMock struct {
-	remoteConfigFn func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error)
+	remoteConfigFn func(context.Context, apmconfig.InstanceId, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error)
 }
 
-func (f *remoteConfigMock) RemoteConfig(ctx context.Context, msg *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
-	return f.remoteConfigFn(ctx, msg)
+func (f *remoteConfigMock) RemoteConfig(ctx context.Context, id apmconfig.InstanceId, attrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+	return f.remoteConfigFn(ctx, id, attrs)
 }
 
 func TestOnMessage(t *testing.T) {
@@ -62,7 +62,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceId, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return nil, nil
 				},
 			}, zap.NewNop()),
@@ -84,7 +84,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceId, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return nil, errors.New("testing error")
 				},
 			}, zap.NewNop()),
@@ -107,7 +107,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceId, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return nil, apmconfig.UnidentifiedAgent
 				},
 			}, zap.NewNop()),
@@ -149,7 +149,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceId, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return &protobufs.AgentRemoteConfig{
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
@@ -192,7 +192,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceId, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return &protobufs.AgentRemoteConfig{
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
@@ -235,7 +235,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceId, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return &protobufs.AgentRemoteConfig{
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{

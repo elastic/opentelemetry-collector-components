@@ -35,15 +35,21 @@ import (
 type remoteConfigCallbacks struct {
 	configClient apmconfig.RemoteConfigClient
 
-	lastConfigHash sync.Map
-	logger         *zap.Logger
+	agentState sync.Map
+	logger     *zap.Logger
+}
+
+type agentInfo struct {
+	agentUid              apmconfig.InstanceId
+	identifyingAttributes apmconfig.IdentifyingAttributes
+	lastConfigHash        []byte
 }
 
 func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *types.Callbacks {
 	opampCallbacks := &remoteConfigCallbacks{
-		configClient:   configClient,
-		lastConfigHash: sync.Map{},
-		logger:         logger,
+		configClient: configClient,
+		agentState:   sync.Map{},
+		logger:       logger,
 	}
 
 	connectionCallbacks := types.ConnectionCallbacks{}
@@ -88,15 +94,30 @@ func (rc *remoteConfigCallbacks) OnMessage(ctx context.Context, conn types.Conne
 	}
 
 	agentUid := hex.EncodeToString(message.GetInstanceUid())
-	agentUidField := zap.String("instance_uid", agentUid)
+	if message.GetAgentDescription() != nil {
+		rc.agentState.Store(agentUid, agentInfo{
+			agentUid:              message.GetInstanceUid(),
+			identifyingAttributes: message.AgentDescription.IdentifyingAttributes,
+		})
+	}
 
+	agentUidField := zap.String("instance_uid", agentUid)
 	if message.GetAgentDisconnect() != nil {
 		rc.logger.Info("Disconnecting the agent from the remote configuration service", agentUidField)
-		rc.lastConfigHash.Delete(agentUid)
+		rc.agentState.Delete(agentUid)
 		return &serverToAgent
 	}
 
-	remoteConfig, err := rc.configClient.RemoteConfig(ctx, message)
+	loadedAgent, _ := rc.agentState.LoadOrStore(agentUid, agentInfo{
+		agentUid: message.GetInstanceUid(),
+	})
+	agent, ok := loadedAgent.(agentInfo)
+	if !ok {
+		rc.logger.Warn("unexpected type in agentState cache", agentUidField)
+		return rc.serverError("internal error: invalid agent state", &serverToAgent)
+	}
+
+	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agent.agentUid, agent.identifyingAttributes)
 	if err != nil {
 		// remote config client could not identify the agent
 		if errors.Is(err, apmconfig.UnidentifiedAgent) {
@@ -110,8 +131,9 @@ func (rc *remoteConfigCallbacks) OnMessage(ctx context.Context, conn types.Conne
 
 	if message.GetRemoteConfigStatus() != nil && message.GetRemoteConfigStatus().Status == protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED && bytes.Equal(remoteConfig.ConfigHash, message.RemoteConfigStatus.GetLastRemoteConfigHash()) {
 		rc.logger.Info("Remote config applied", zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)), agentUidField)
-		rc.lastConfigHash.Store(agentUid, message.RemoteConfigStatus.GetLastRemoteConfigHash())
-	} else if lastHash, found := rc.lastConfigHash.Load(agentUid); !found || !bytes.Equal(lastHash.([]byte), remoteConfig.ConfigHash) {
+		agent.lastConfigHash = message.GetRemoteConfigStatus().GetLastRemoteConfigHash()
+		rc.agentState.Store(agentUid, agent)
+	} else if !bytes.Equal(agent.lastConfigHash, remoteConfig.ConfigHash) {
 		rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)))
 		serverToAgent.RemoteConfig = remoteConfig
 	}

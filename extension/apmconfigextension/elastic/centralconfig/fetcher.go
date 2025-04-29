@@ -38,9 +38,6 @@ type fetcherAPMWatcher struct {
 	configFetcher agentcfg.Fetcher
 	cacheDuration time.Duration
 
-	// OpAMP instanceID to service mapping
-	uidToService map[string]agentcfg.Service
-
 	logger *zap.Logger
 }
 
@@ -48,30 +45,22 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration,
 	return &fetcherAPMWatcher{
 		configFetcher: fetcher,
 		cacheDuration: cacheDuration,
-		uidToService:  make(map[string]agentcfg.Service),
 		logger:        logger,
 	}
 }
 
-func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
-	if agentDescription := agentMsg.GetAgentDescription(); agentDescription != nil {
-		var serviceParams agentcfg.Service
-		for _, attr := range agentDescription.GetIdentifyingAttributes() {
-			switch attr.GetKey() {
-			case semconv.AttributeServiceName:
-				serviceParams.Name = attr.GetValue().GetStringValue()
-			case semconv.AttributeDeploymentEnvironment:
-				serviceParams.Environment = attr.GetValue().GetStringValue()
-			}
-		}
-		// only update the internal cache if service name is set
-		if serviceParams.Name != "" {
-			fw.uidToService[string(agentMsg.GetInstanceUid())] = serviceParams
+func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfig.InstanceId, agentAttrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+	var serviceParams agentcfg.Service
+	for _, attr := range agentAttrs {
+		switch attr.GetKey() {
+		case semconv.AttributeServiceName:
+			serviceParams.Name = attr.GetValue().GetStringValue()
+		case semconv.AttributeDeploymentEnvironment:
+			serviceParams.Environment = attr.GetValue().GetStringValue()
 		}
 	}
 
-	serviceParams, ok := fw.uidToService[string(agentMsg.GetInstanceUid())]
-	if !ok || serviceParams.Name == "" {
+	if serviceParams.Name == "" {
 		return nil, fmt.Errorf("%w: service.name attribute must be provided", apmconfig.UnidentifiedAgent)
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{

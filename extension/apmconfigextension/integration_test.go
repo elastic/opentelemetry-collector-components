@@ -172,7 +172,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 			},
 			{
-				name: "agent provides new agent description without service.name",
+				name: "agent provides new agent description without service.name and corrects identifying attributes",
 				opampMessages: []inOutOpamp{
 					{
 						agentToServer: &protobufs.AgentToServer{
@@ -207,6 +207,32 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							InstanceUid: []byte("test-2"),
 							AgentDescription: &protobufs.AgentDescription{
 								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.environment",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent"}},
+									},
+								},
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test-2"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							Flags:        uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState),
+							ErrorResponse: &protobufs.ServerErrorResponse{
+								ErrorMessage: "error retrieving remote configuration: agent could not be identified: service.name attribute must be provided",
+								Type:         protobufs.ServerErrorResponseType_ServerErrorResponseType_Unknown,
+							},
+						},
+					},
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test-2"),
+							AgentDescription: &protobufs.AgentDescription{
+								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent2"}},
+									},
 									{
 										Key:   "service.environment",
 										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent"}},

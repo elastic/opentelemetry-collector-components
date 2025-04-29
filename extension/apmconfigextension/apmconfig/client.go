@@ -26,9 +26,15 @@ import (
 
 var UnidentifiedAgent = errors.New("agent could not be identified")
 
+// protobufs.AgentToServer.InstanceUid
+type (
+	InstanceId            []byte
+	IdentifyingAttributes []*protobufs.KeyValue
+)
+
 // RemoteConfigClient is an adapter interface that can be used between different
 // remote configuration providers.
 type RemoteConfigClient interface {
 	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
-	RemoteConfig(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error)
+	RemoteConfig(context.Context, InstanceId, IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error)
 }
