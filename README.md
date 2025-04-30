@@ -32,8 +32,7 @@ In order to build a collector with a custom component, e.g. for testing purposes
    ```shell
    make builddocker TAG=v0.1.0 USERNAME=johndoe
    ``` 
-   
+
 ## Load generator
 
 See [./loadgen/README.md](./loadgen/README.md).
-   
