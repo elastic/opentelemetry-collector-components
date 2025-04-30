@@ -19,12 +19,12 @@ package apmconfigextension
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/open-telemetry/opamp-go/protobufs"
-	"github.com/open-telemetry/opamp-go/server/types"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -45,7 +45,7 @@ func TestOnMessage(t *testing.T) {
 
 	testcases := map[string]struct {
 		opampMessages []inOutOpamp
-		callbacks     *types.Callbacks
+		callbacks     *remoteConfigCallbacks
 	}{
 		"empty AgentToServer message, no instance_uid": {
 			opampMessages: []inOutOpamp{
@@ -289,6 +289,21 @@ func TestOnMessage(t *testing.T) {
 			connectionCallbacks := tt.callbacks.OnConnecting(nil).ConnectionCallbacks
 			for i := range tt.opampMessages {
 				assert.Equal(t, tt.opampMessages[i].expectedServerToAgent, connectionCallbacks.OnMessage(context.TODO(), nil, tt.opampMessages[i].agentToServer))
+
+				// assert resources cleanup on AgentDisconnect
+				if len(tt.opampMessages[i].agentToServer.InstanceUid) > 0 {
+					assert.Equal(t, &protobufs.ServerToAgent{
+						InstanceUid:  tt.opampMessages[i].agentToServer.InstanceUid,
+						Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+					}, connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+						InstanceUid:     tt.opampMessages[i].agentToServer.InstanceUid,
+						AgentDisconnect: &protobufs.AgentDisconnect{},
+					}))
+					assert.False(t, func() bool {
+						_, found := tt.callbacks.agentState.Load(hex.EncodeToString(tt.opampMessages[i].agentToServer.InstanceUid))
+						return found
+					}())
+				}
 			}
 		})
 	}

@@ -33,6 +33,7 @@ import (
 )
 
 type remoteConfigCallbacks struct {
+	*types.Callbacks
 	configClient apmconfig.RemoteConfigClient
 
 	agentState sync.Map
@@ -45,7 +46,7 @@ type agentInfo struct {
 	lastConfigHash        []byte
 }
 
-func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *types.Callbacks {
+func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *remoteConfigCallbacks {
 	opampCallbacks := &remoteConfigCallbacks{
 		configClient: configClient,
 		agentState:   sync.Map{},
@@ -54,19 +55,20 @@ func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger 
 
 	connectionCallbacks := types.ConnectionCallbacks{}
 	connectionCallbacks.SetDefaults()
-	connectionCallbacks.OnMessage = opampCallbacks.OnMessage
+	connectionCallbacks.OnMessage = opampCallbacks.onMessage
 
-	remoteConfigCallbacks := types.Callbacks{}
-	remoteConfigCallbacks.OnConnecting = func(request *http.Request) types.ConnectionResponse {
-		return types.ConnectionResponse{
-			Accept:         true,
-			HTTPStatusCode: 200,
+	opampCallbacks.Callbacks = &types.Callbacks{
+		OnConnecting: func(request *http.Request) types.ConnectionResponse {
+			return types.ConnectionResponse{
+				Accept:         true,
+				HTTPStatusCode: 200,
 
-			ConnectionCallbacks: connectionCallbacks,
-		}
+				ConnectionCallbacks: connectionCallbacks,
+			}
+		},
 	}
 
-	return &remoteConfigCallbacks
+	return opampCallbacks
 }
 
 func (rc *remoteConfigCallbacks) serverError(msg string, message *protobufs.ServerToAgent, logFields ...zap.Field) *protobufs.ServerToAgent {
@@ -83,7 +85,7 @@ func (rc *remoteConfigCallbacks) serverError(msg string, message *protobufs.Serv
 // as a response to the Agent.
 // For plain HTTP requests once OnMessage returns and the response is sent
 // to the Agent the OnConnectionClose message will be called immediately.
-func (rc *remoteConfigCallbacks) OnMessage(ctx context.Context, conn types.Connection, message *protobufs.AgentToServer) *protobufs.ServerToAgent {
+func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Connection, message *protobufs.AgentToServer) *protobufs.ServerToAgent {
 	serverToAgent := protobufs.ServerToAgent{}
 	serverToAgent.Capabilities = uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig)
 	serverToAgent.InstanceUid = message.GetInstanceUid()

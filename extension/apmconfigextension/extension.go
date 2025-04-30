@@ -52,7 +52,7 @@ func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) er
 		return err
 	}
 
-	return op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: *newRemoteConfigCallbacks(remoteConfigClient, op.telemetrySettings.Logger)}})
+	return op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: *newRemoteConfigCallbacks(remoteConfigClient, op.telemetrySettings.Logger).Callbacks}})
 }
 
 func (op *apmConfigExtension) Shutdown(ctx context.Context) error {
