@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
@@ -36,15 +35,12 @@ var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
 
 type fetcherAPMWatcher struct {
 	configFetcher agentcfg.Fetcher
-	cacheDuration time.Duration
-
-	logger *zap.Logger
+	logger        *zap.Logger
 }
 
-func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration, logger *zap.Logger) *fetcherAPMWatcher {
+func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, logger *zap.Logger) *fetcherAPMWatcher {
 	return &fetcherAPMWatcher{
 		configFetcher: fetcher,
-		cacheDuration: cacheDuration,
 		logger:        logger,
 	}
 }
