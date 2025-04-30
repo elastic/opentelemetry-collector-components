@@ -4,7 +4,7 @@ go 1.23.6
 
 require (
 	github.com/axiomhq/hyperloglog v0.2.5
-	github.com/cockroachdb/pebble v1.1.4
+	github.com/cockroachdb/pebble v1.1.5
 	github.com/google/go-cmp v0.7.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.125.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.125.0
