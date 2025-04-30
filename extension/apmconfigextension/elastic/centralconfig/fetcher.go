@@ -49,7 +49,7 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration,
 	}
 }
 
-func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfig.InstanceId, agentAttrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfig.InstanceUid, agentAttrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 	var serviceParams agentcfg.Service
 	for _, attr := range agentAttrs {
 		switch attr.GetKey() {

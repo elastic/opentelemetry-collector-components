@@ -28,7 +28,7 @@ var UnidentifiedAgent = errors.New("agent could not be identified")
 
 // protobufs.AgentToServer.InstanceUid
 type (
-	InstanceId            []byte
+	InstanceUid           []byte
 	IdentifyingAttributes []*protobufs.KeyValue
 )
 
@@ -36,5 +36,5 @@ type (
 // remote configuration providers.
 type RemoteConfigClient interface {
 	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
-	RemoteConfig(context.Context, InstanceId, IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error)
+	RemoteConfig(context.Context, InstanceUid, IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error)
 }

@@ -40,7 +40,7 @@ type remoteConfigCallbacks struct {
 }
 
 type agentInfo struct {
-	agentUid              apmconfig.InstanceId
+	agentUid              apmconfig.InstanceUid
 	identifyingAttributes apmconfig.IdentifyingAttributes
 	lastConfigHash        []byte
 }
@@ -95,6 +95,7 @@ func (rc *remoteConfigCallbacks) OnMessage(ctx context.Context, conn types.Conne
 
 	agentUid := hex.EncodeToString(message.GetInstanceUid())
 	if message.GetAgentDescription() != nil {
+		// new description might lead to another remote configuration
 		rc.agentState.Store(agentUid, agentInfo{
 			agentUid:              message.GetInstanceUid(),
 			identifyingAttributes: message.AgentDescription.IdentifyingAttributes,
