@@ -26,10 +26,13 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 )
 
 var _ RateLimiter = (*gubernatorRateLimiter)(nil)
@@ -39,12 +42,19 @@ type gubernatorRateLimiter struct {
 	set      processor.Settings
 	behavior gubernator.Behavior
 
-	conn   *grpc.ClientConn
-	client gubernator.V1Client
+	conn    *grpc.ClientConn
+	client  gubernator.V1Client
+	metrics metrics
 }
 
 func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
 	var behavior int32
+
+	m, err := newMetrics(set.MeterProvider)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, b := range cfg.Gubernator.Behavior {
 		value, ok := gubernator.Behavior_value[strings.ToUpper(string(b))]
 		if !ok {
@@ -56,6 +66,7 @@ func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorR
 		cfg:      cfg,
 		set:      set,
 		behavior: gubernator.Behavior(behavior),
+		metrics:  m,
 	}, nil
 }
 
@@ -85,6 +96,7 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 }
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
+	projectID := "test"
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
 	createdAt := time.Now().UnixMilli()
 	getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
@@ -102,17 +114,32 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	})
 	if err != nil {
 		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
+		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+			telemetry.WithProjectID(projectID),
+			attribute.String("reason", "request_error"),
+			attribute.String("ratelimit_decision", "accepted"),
+		)))
 		return errRateLimitInternalError
 	}
 
 	// Inside the gRPC response, we should have a single-item list of responses.
 	responses := getRateLimitsResp.GetResponses()
 	if n := len(responses); n != 1 {
+		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+			telemetry.WithProjectID(projectID),
+			attribute.String("reason", "request_error"),
+			attribute.String("ratelimit_decision", "accepted"),
+		)))
 		return fmt.Errorf("expected 1 response from gubernator, got %d", n)
 	}
 	resp := responses[0]
 	if resp.GetError() != "" {
 		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
+		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+			telemetry.WithProjectID(projectID),
+			attribute.String("reason", "limit_error"),
+			attribute.String("ratelimit_decision", "accepted"),
+		)))
 		return errRateLimitInternalError
 	}
 
@@ -126,6 +153,11 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				zap.String("processor_id", r.set.ID.String()),
 				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 			)
+			r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+				telemetry.WithProjectID(projectID),
+				attribute.String("ratelimit_decision", "throttled"),
+				attribute.String("reason", "accepted"),
+			)))
 			return errTooManyRequests
 		case ThrottleBehaviorDelay:
 			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
@@ -138,5 +170,11 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			}
 		}
 	}
+
+	r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+		telemetry.WithProjectID(projectID),
+		attribute.String("reason", "under_limit"),
+		attribute.String("ratelimit_decision", "accepted"),
+	)))
 	return nil
 }

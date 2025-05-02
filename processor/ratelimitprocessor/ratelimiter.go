@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/collector/client"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var (
@@ -51,6 +52,11 @@ type RateLimiter interface {
 // high cardinality: tenant ID would be a good choice. For rate
 // limiting by IP (e.g. to avoid DDoS), consider running OpenTelemetry
 // Collector behind a WAF/API Gateway/proxy.
+
+type metrics struct {
+	ratelimitRequests metric.Int64Counter
+}
+
 func getUniqueKey(ctx context.Context, metadataKeys []string) string {
 	if len(metadataKeys) == 0 {
 		return "default"
@@ -74,4 +80,19 @@ func getUniqueKey(ctx context.Context, metadataKeys []string) string {
 		}
 	}
 	return uniqueKey.String()
+}
+
+func newMetrics(mp metric.MeterProvider) (metrics, error) {
+	meter := mp.Meter("internal/ratelimit")
+
+	ratelimitRequests, err := meter.Int64Counter("ratelimit.requests",
+		metric.WithUnit("1"),
+		metric.WithDescription("Number of rate-limiting requests"))
+	if err != nil {
+		return metrics{}, err
+	}
+
+	return metrics{
+		ratelimitRequests: ratelimitRequests,
+	}, nil
 }
