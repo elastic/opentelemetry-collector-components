@@ -40,6 +40,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
@@ -213,8 +214,24 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
 	server, rl := newTestGubernatorRateLimiter(t, cfg, mp)
 
-	err := rl.Start(context.Background(), componenttest.NewNopHost())
+	//We provide the x-elastic-project-id in oder to set the ProjectID
+	clientContext1 := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-project-id": {"TestProjectID"},
+		}),
+	})
+
+	err := rl.Start(clientContext1, componenttest.NewNopHost())
 	require.NoError(t, err)
+
+	getProjectIDFromAttrs := func(attrs []attribute.KeyValue) string {
+		for _, attr := range attrs {
+			if string(attr.Key) == "project_id" || string(attr.Key) == "x-elastic-project-id" {
+				return attr.Value.AsString()
+			}
+		}
+		return ""
+	}
 
 	getRatelimitRequests := func() int64 {
 		var rm metricdata.ResourceMetrics
@@ -226,6 +243,8 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 					var total int64
 					for _, dp := range sum.DataPoints {
 						total += dp.Value
+						projectID := getProjectIDFromAttrs(dp.Attributes.ToSlice())
+						assert.Equal(t, "TestProjectID", projectID)
 					}
 					return total
 				}
@@ -240,7 +259,7 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}},
 		}, nil
 	}
-	err = rl.RateLimit(context.Background(), 1)
+	err = rl.RateLimit(clientContext1, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), getRatelimitRequests())
 
@@ -250,7 +269,7 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT, ResetTime: time.Now().Add(100 * time.Millisecond).UnixMilli()}},
 		}, nil
 	}
-	err = rl.RateLimit(context.Background(), 1)
+	err = rl.RateLimit(clientContext1, 1)
 	assert.Error(t, err)
 	assert.Equal(t, int64(2), getRatelimitRequests())
 
@@ -258,7 +277,7 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
 		return nil, errors.New("server error")
 	}
-	err = rl.RateLimit(context.Background(), 1)
+	err = rl.RateLimit(clientContext1, 1)
 	assert.Error(t, err)
 	assert.Equal(t, int64(3), getRatelimitRequests())
 
@@ -268,7 +287,7 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 			Responses: []*gubernator.RateLimitResp{{Error: "custom error"}},
 		}, nil
 	}
-	err = rl.RateLimit(context.Background(), 1)
+	err = rl.RateLimit(clientContext1, 1)
 	assert.Error(t, err)
 	assert.Equal(t, int64(4), getRatelimitRequests())
 }

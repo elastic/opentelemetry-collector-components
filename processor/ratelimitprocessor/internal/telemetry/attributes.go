@@ -15,7 +15,9 @@
 
 package telemetry
 
-import "go.opentelemetry.io/otel/attribute"
+import (
+	"go.opentelemetry.io/otel/attribute"
+)
 
 // ErrorReason represents a set of constant error reasons to
 // include as attributes for telemetry.

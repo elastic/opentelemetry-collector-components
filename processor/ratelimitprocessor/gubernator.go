@@ -98,7 +98,7 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 }
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
-	projectID := "test"
+	projectID := getProjectIDFromMetadata(ctx, "x-elastic-project-id")
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
 	createdAt := time.Now().UnixMilli()
 	getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{

@@ -57,6 +57,15 @@ type metrics struct {
 	ratelimitRequests metric.Int64Counter
 }
 
+func getProjectIDFromMetadata(ctx context.Context, key string) string {
+	clientInfo := client.FromContext(ctx)
+	values := clientInfo.Metadata.Get(key)
+	if len(values) > 0 {
+		return values[0]
+	}
+	return "" // or a default value
+}
+
 func getUniqueKey(ctx context.Context, metadataKeys []string) string {
 	if len(metadataKeys) == 0 {
 		return "default"
