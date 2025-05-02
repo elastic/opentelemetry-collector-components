@@ -56,13 +56,13 @@ const (
 	ProjectID = "x-elastic-project-id"
 )
 
-func getProjectIDFromMetadata(ctx context.Context) (string, error) {
+func getProjectIDFromMetadata(ctx context.Context) string {
 	clientInfo := client.FromContext(ctx)
 	values := clientInfo.Metadata.Get(ProjectID)
 	if len(values) > 0 {
-		return values[0], nil
+		return values[0]
 	}
-	return "", errors.New("project id not found") // or a default value
+	return ""
 }
 
 func getUniqueKey(ctx context.Context, metadataKeys []string) string {

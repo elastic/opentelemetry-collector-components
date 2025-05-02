@@ -97,18 +97,7 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 }
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
-	// Check if we retrieve projectID
-	projectID, err := getProjectIDFromMetadata(ctx)
-	if err != nil {
-		r.set.Logger.Error("error receiving ProjectId", zap.Error(err))
-		r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(
-			telemetry.WithProjectID(projectID),
-			telemetry.WithLimitReason("request_error"),
-			telemetry.WithDecision("rejected"),
-		)))
-		return errRateLimitInternalError
-	}
-
+	projectID := getProjectIDFromMetadata(ctx)
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
 	createdAt := time.Now().UnixMilli()
 	getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
