@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package telemetry
+package telemetry // import "github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 
 import (
 	"go.opentelemetry.io/otel/attribute"
