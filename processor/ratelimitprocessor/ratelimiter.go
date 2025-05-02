@@ -90,18 +90,3 @@ func getUniqueKey(ctx context.Context, metadataKeys []string) string {
 	}
 	return uniqueKey.String()
 }
-
-func newMetrics(mp metric.MeterProvider) (metrics, error) {
-	meter := mp.Meter("ratelimitprocessor")
-
-	ratelimitRequests, err := meter.Int64Counter("ratelimit.requests",
-		metric.WithUnit("1"),
-		metric.WithDescription("Number of rate-limiting requests"))
-	if err != nil {
-		return metrics{}, err
-	}
-
-	return metrics{
-		ratelimitRequests: ratelimitRequests,
-	}, nil
-}
