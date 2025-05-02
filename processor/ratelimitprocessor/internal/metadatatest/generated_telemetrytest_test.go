@@ -29,7 +29,6 @@ import (
 
 	"go.opentelemetry.io/collector/component/componenttest"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
-
 )
 
 func TestSetupTelemetry(t *testing.T) {
