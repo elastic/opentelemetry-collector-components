@@ -20,10 +20,13 @@ package ratelimitprocessor
 import (
 	"context"
 	"errors"
-	"go.opentelemetry.io/collector/client"
 	"net"
 	"testing"
 	"time"
+
+	"go.opentelemetry.io/collector/client"
+	"go.opentelemetry.io/otel"
+	"go.uber.org/zap"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,6 +40,8 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 func setupGubernatorServer(t *testing.T) (*testServer, string) {
@@ -55,7 +60,7 @@ func setupGubernatorServer(t *testing.T) (*testServer, string) {
 
 // newTestGubernatorRateLimiter creates a new gubernatorRateLimiter
 // with a connection to a fake gubernator server.
-func newTestGubernatorRateLimiter(t *testing.T, cfg *Config) (*testServer, *gubernatorRateLimiter) {
+func newTestGubernatorRateLimiter(t *testing.T, cfg *Config, mp *metric.MeterProvider) (*testServer, *gubernatorRateLimiter) {
 	server, address := setupGubernatorServer(t)
 	if cfg == nil {
 		cfg = createDefaultConfig().(*Config)
@@ -69,11 +74,18 @@ func newTestGubernatorRateLimiter(t *testing.T, cfg *Config) (*testServer, *gube
 	grpcClientConfig.TLSSetting.Insecure = true
 	cfg.Gubernator.ClientConfig = *grpcClientConfig
 
-	rl, err := newGubernatorRateLimiter(cfg, processor.Settings{
+	var rl *gubernatorRateLimiter
+	var err error
+	// Initiating the newMeterProvider that will simulate the global meterprovider
+	if mp == nil {
+		mp = metric.NewMeterProvider()
+	}
+	rl, err = newGubernatorRateLimiter(cfg, processor.Settings{
 		ID:                component.NewIDWithName(metadata.Type, "abc123"),
-		TelemetrySettings: componenttest.NewNopTelemetrySettings(),
+		TelemetrySettings: component.TelemetrySettings{MeterProvider: mp, Logger: zap.NewNop()},
 		BuildInfo:         component.NewDefaultBuildInfo(),
 	})
+
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := rl.Shutdown(context.Background())
@@ -83,7 +95,7 @@ func newTestGubernatorRateLimiter(t *testing.T, cfg *Config) (*testServer, *gube
 }
 
 func TestGubernatorRateLimiter_StartStop(t *testing.T) {
-	_, rateLimiter := newTestGubernatorRateLimiter(t, nil)
+	_, rateLimiter := newTestGubernatorRateLimiter(t, nil, nil)
 
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -95,7 +107,7 @@ func TestGubernatorRateLimiter_StartStop(t *testing.T) {
 func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
 		t.Run(string(behavior), func(t *testing.T) {
-			server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: behavior})
+			server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: behavior}, nil)
 			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 			require.NoError(t, err)
 
@@ -157,7 +169,7 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 		Burst:            2,
 		MetadataKeys:     []string{"metadata_key"},
 		ThrottleBehavior: ThrottleBehaviorError,
-	})
+	}, nil)
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
@@ -190,6 +202,75 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
 	assert.Equal(t, "metadata_key:value2", req.Requests[0].UniqueKey)
+}
+
+// Ensures that specific metrics are returned in case of relevant respsonses of GetRateLimits
+func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
+	reader := metric.NewManualReader()
+	mp := metric.NewMeterProvider(metric.WithReader(reader))
+	otel.SetMeterProvider(mp)
+
+	cfg := createDefaultConfig().(*Config)
+	server, rl := newTestGubernatorRateLimiter(t, cfg, mp)
+
+	err := rl.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	getRatelimitRequests := func() int64 {
+		var rm metricdata.ResourceMetrics
+		require.NoError(t, reader.Collect(context.Background(), &rm))
+		for _, sm := range rm.ScopeMetrics {
+			for _, m := range sm.Metrics {
+				if m.Name == "ratelimit.requests" {
+					sum := m.Data.(metricdata.Sum[int64])
+					var total int64
+					for _, dp := range sum.DataPoints {
+						total += dp.Value
+					}
+					return total
+				}
+			}
+		}
+		return 0
+	}
+
+	// Under limit case
+	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
+		return &gubernator.GetRateLimitsResp{
+			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}},
+		}, nil
+	}
+	err = rl.RateLimit(context.Background(), 1)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), getRatelimitRequests())
+
+	// // Over limit case
+	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
+		return &gubernator.GetRateLimitsResp{
+			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT, ResetTime: time.Now().Add(100 * time.Millisecond).UnixMilli()}},
+		}, nil
+	}
+	err = rl.RateLimit(context.Background(), 1)
+	assert.Error(t, err)
+	assert.Equal(t, int64(2), getRatelimitRequests())
+
+	// Error from server
+	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
+		return nil, errors.New("server error")
+	}
+	err = rl.RateLimit(context.Background(), 1)
+	assert.Error(t, err)
+	assert.Equal(t, int64(3), getRatelimitRequests())
+
+	// Custom error in response
+	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
+		return &gubernator.GetRateLimitsResp{
+			Responses: []*gubernator.RateLimitResp{{Error: "custom error"}},
+		}, nil
+	}
+	err = rl.RateLimit(context.Background(), 1)
+	assert.Error(t, err)
+	assert.Equal(t, int64(4), getRatelimitRequests())
 }
 
 type testServer struct {

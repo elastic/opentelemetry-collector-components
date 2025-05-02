@@ -26,6 +26,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
@@ -50,7 +51,8 @@ type gubernatorRateLimiter struct {
 func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
 	var behavior int32
 
-	m, err := newMetrics(set.MeterProvider)
+	globalmeterProvider := otel.GetMeterProvider()
+	m, err := newMetrics(globalmeterProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +119,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
 			attribute.String("reason", "request_error"),
-			attribute.String("ratelimit_decision", "accepted"),
+			attribute.String("ratelimit_decision", "rejected"),
 		)))
 		return errRateLimitInternalError
 	}
@@ -128,7 +130,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
 			attribute.String("reason", "request_error"),
-			attribute.String("ratelimit_decision", "accepted"),
+			attribute.String("ratelimit_decision", "rejected"),
 		)))
 		return fmt.Errorf("expected 1 response from gubernator, got %d", n)
 	}
@@ -138,7 +140,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
 			attribute.String("reason", "limit_error"),
-			attribute.String("ratelimit_decision", "accepted"),
+			attribute.String("ratelimit_decision", "rejected"),
 		)))
 		return errRateLimitInternalError
 	}
