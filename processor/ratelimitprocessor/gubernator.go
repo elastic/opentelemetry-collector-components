@@ -26,13 +26,13 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 )
 
@@ -43,16 +43,17 @@ type gubernatorRateLimiter struct {
 	set      processor.Settings
 	behavior gubernator.Behavior
 
-	conn    *grpc.ClientConn
-	client  gubernator.V1Client
-	metrics metrics
+	conn             *grpc.ClientConn
+	client           gubernator.V1Client
+	telemetryBuilder *metadata.TelemetryBuilder
 }
 
 func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
 	var behavior int32
 
-	globalmeterProvider := otel.GetMeterProvider()
-	m, err := newMetrics(globalmeterProvider)
+	// globalmeterProvider := otel.GetMeterProvider()
+	// m, err := newMetrics(globalmeterProvider)
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
 	if err != nil {
 		return nil, err
 	}
@@ -65,10 +66,10 @@ func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorR
 		behavior |= value
 	}
 	return &gubernatorRateLimiter{
-		cfg:      cfg,
-		set:      set,
-		behavior: gubernator.Behavior(behavior),
-		metrics:  m,
+		cfg:              cfg,
+		set:              set,
+		behavior:         gubernator.Behavior(behavior),
+		telemetryBuilder: telemetryBuilder,
 	}, nil
 }
 
@@ -116,7 +117,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	})
 	if err != nil {
 		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
-		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+		r.telemetryBuilder.RatelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
 			telemetry.WithLimitReason("request_error"),
 			telemetry.WithDecision("rejected"),
@@ -127,7 +128,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	// Inside the gRPC response, we should have a single-item list of responses.
 	responses := getRateLimitsResp.GetResponses()
 	if n := len(responses); n != 1 {
-		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+		r.telemetryBuilder.RatelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
 			telemetry.WithLimitReason("request_error"),
 			telemetry.WithDecision("accepted"),
@@ -137,7 +138,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	resp := responses[0]
 	if resp.GetError() != "" {
 		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
-		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+		r.telemetryBuilder.RatelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
 			telemetry.WithLimitReason("limit_error"),
 			telemetry.WithDecision("rejected"),
@@ -155,7 +156,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				zap.String("processor_id", r.set.ID.String()),
 				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 			)
-			r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+			r.telemetryBuilder.RatelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 				telemetry.WithProjectID(projectID),
 				telemetry.WithLimitReason("throttled"),
 				telemetry.WithDecision("accepted"),
@@ -173,7 +174,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		}
 	}
 
-	r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+	r.telemetryBuilder.RatelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 		telemetry.WithProjectID(projectID),
 		telemetry.WithLimitReason("under_limit"),
 		telemetry.WithDecision("accepted"),

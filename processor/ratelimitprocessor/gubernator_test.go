@@ -238,7 +238,7 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 		require.NoError(t, reader.Collect(context.Background(), &rm))
 		for _, sm := range rm.ScopeMetrics {
 			for _, m := range sm.Metrics {
-				if m.Name == "ratelimit.requests" {
+				if m.Name == "otelcol_ratelimit.requests" {
 					sum := m.Data.(metricdata.Sum[int64])
 					var total int64
 					for _, dp := range sum.DataPoints {
