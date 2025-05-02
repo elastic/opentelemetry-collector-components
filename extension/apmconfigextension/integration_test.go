@@ -208,8 +208,8 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							AgentDescription: &protobufs.AgentDescription{
 								IdentifyingAttributes: []*protobufs.KeyValue{
 									{
-										Key:   "service.environment",
-										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent"}},
+										Key:   "deployment.environment.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "integration-test"}},
 									},
 								},
 							},
@@ -234,8 +234,8 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent2"}},
 									},
 									{
-										Key:   "service.environment",
-										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent"}},
+										Key:   "deployment.environment.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "integration-test"}},
 									},
 								},
 							},
@@ -248,7 +248,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
 										"": {
-											Body:        []byte(`{"transaction_max_spans":"124"}`),
+											Body:        []byte(`{"transaction_max_spans":"2"}`),
 											ContentType: "text/json",
 										},
 									},
@@ -259,6 +259,91 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
 					err := writeAgentIndex(client, "abcd", map[string]string{"name": "test-agent2"}, map[string]string{"transaction_max_spans": "124"})
+					require.NoError(t, err)
+					err = writeAgentIndex(client, "abcd", map[string]string{"name": "test-agent2", "environment": "integration-test"}, map[string]string{"transaction_max_spans": "2"})
+					require.NoError(t, err)
+				},
+			},
+			{
+				name: "neither service.environment nor deployment.environment is an OpenTelemetry identifying attribute",
+				opampMessages: []inOutOpamp{
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test-3"),
+							AgentDescription: &protobufs.AgentDescription{
+								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent3"}},
+									},
+									{
+										Key:   "service.environment",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "integration-test"}},
+									},
+								},
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test-3"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+						},
+					},
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test-3"),
+							AgentDescription: &protobufs.AgentDescription{
+								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent3"}},
+									},
+									{
+										Key:   "deployment.environment",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "integration-test"}},
+									},
+								},
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test-3"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+						},
+					},
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test-3"),
+							AgentDescription: &protobufs.AgentDescription{
+								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent3"}},
+									},
+									{
+										Key:   "deployment.environment.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "integration-test"}},
+									},
+								},
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test-3"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("abcd"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"": {
+											Body:        []byte(`{"transaction_max_spans":"2"}`),
+											ContentType: "text/json",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
+					err := writeAgentIndex(client, "abcd", map[string]string{"name": "test-agent3", "environment": "integration-test"}, map[string]string{"transaction_max_spans": "2"})
 					require.NoError(t, err)
 				},
 			},

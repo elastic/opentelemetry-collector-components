@@ -25,7 +25,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opamp-go/protobufs"
-	semconv "go.opentelemetry.io/collector/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.28.0"
 	"go.uber.org/zap"
 )
 
@@ -49,9 +49,9 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfi
 	var serviceParams agentcfg.Service
 	for _, attr := range agentAttrs {
 		switch attr.GetKey() {
-		case semconv.AttributeServiceName:
+		case string(semconv.ServiceNameKey):
 			serviceParams.Name = attr.GetValue().GetStringValue()
-		case semconv.AttributeDeploymentEnvironment:
+		case string(semconv.DeploymentEnvironmentNameKey):
 			serviceParams.Environment = attr.GetValue().GetStringValue()
 		}
 	}
@@ -64,6 +64,8 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfi
 	})
 	if err != nil {
 		return nil, err
+	} else if len(result.Source.Settings) == 0 {
+		return nil, nil
 	}
 
 	marshallConfig, err := json.Marshal(result.Source.Settings)
