@@ -118,8 +118,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
 		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
-			attribute.String("reason", "request_error"),
-			attribute.String("ratelimit_decision", "rejected"),
+			telemetry.WithLimitReason("request_error"),
+			telemetry.WithDecision("rejected"),
 		)))
 		return errRateLimitInternalError
 	}
@@ -129,8 +129,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	if n := len(responses); n != 1 {
 		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
-			attribute.String("reason", "request_error"),
-			attribute.String("ratelimit_decision", "rejected"),
+			telemetry.WithLimitReason("request_error"),
+			telemetry.WithDecision("accepted"),
 		)))
 		return fmt.Errorf("expected 1 response from gubernator, got %d", n)
 	}
@@ -139,8 +139,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
 		r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
-			attribute.String("reason", "limit_error"),
-			attribute.String("ratelimit_decision", "rejected"),
+			telemetry.WithLimitReason("limit_error"),
+			telemetry.WithDecision("rejected"),
 		)))
 		return errRateLimitInternalError
 	}
@@ -157,8 +157,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			)
 			r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 				telemetry.WithProjectID(projectID),
-				attribute.String("ratelimit_decision", "throttled"),
-				attribute.String("reason", "accepted"),
+				telemetry.WithLimitReason("throttled"),
+				telemetry.WithDecision("accepted"),
 			)))
 			return errTooManyRequests
 		case ThrottleBehaviorDelay:
@@ -175,8 +175,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 
 	r.metrics.ratelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
 		telemetry.WithProjectID(projectID),
-		attribute.String("reason", "under_limit"),
-		attribute.String("ratelimit_decision", "accepted"),
+		telemetry.WithLimitReason("under_limit"),
+		telemetry.WithDecision("accepted"),
 	)))
 	return nil
 }

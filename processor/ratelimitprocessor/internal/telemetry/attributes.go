@@ -30,9 +30,8 @@ const (
 	protocolKey    = "protocol"
 	outcomeKey     = "outcome"
 	errorReasonKey = "error_reason"
-	codecKey       = "compression.codec"
-	statusCodeKey  = "status_code"
-	signalTypeKey  = "signal_type"
+	descisionKey   = "ratelimit_decision"
+	limitReasonKey = "reason"
 
 	TooLarge   ErrorReason = "too_large"
 	BadRequest ErrorReason = "bad_request"
@@ -52,6 +51,16 @@ func WithProjectID(projectID string) attribute.KeyValue {
 	return attribute.String(projectIDKey, projectID)
 }
 
+// WithDecision returns decision attribute with key.
+func WithDecision(decision string) attribute.KeyValue {
+	return attribute.String(descisionKey, decision)
+}
+
+// WithLimitReason returns limitReason attribute with key.
+func WithLimitReason(limitReason string) attribute.KeyValue {
+	return attribute.String(limitReasonKey, limitReason)
+}
+
 // WithProtocol returns a protocol attribute with key.
 func WithProtocol(protocol string) attribute.KeyValue {
 	return attribute.String(protocolKey, protocol)
@@ -65,18 +74,4 @@ func WithOutcome(outcome string) attribute.KeyValue {
 // WithErrorReason returns a project ID attribute with key.
 func WithErrorReason(reason ErrorReason) attribute.KeyValue {
 	return attribute.String(errorReasonKey, string(reason))
-}
-
-// WithCompressionCodec returns a compression codec attribute with key
-func WithCompressionCodec(codec string) attribute.KeyValue {
-	return attribute.String(codecKey, codec)
-}
-
-// WithStatusCode returns a status code attribute with key.
-func WithStatusCode(code int) attribute.KeyValue {
-	return attribute.Int(statusCodeKey, code)
-}
-
-func WithSignalType(signal string) attribute.KeyValue {
-	return attribute.String(signalTypeKey, signal)
 }
