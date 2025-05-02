@@ -18,6 +18,7 @@ and
 attributes are:
   - [service.name](https://github.com/open-telemetry/semantic-conventions/blob/v1.32.0/docs/attributes-registry/service.md)
   - [deployment.environment.name](https://github.com/open-telemetry/semantic-conventions/blob/v1.32.0/docs/attributes-registry/deployment.md)
+
 These attributes (`service.name` and optionally `deployment.environment.name`) **must** be set on the
 [AgentDescription.identifying_attributes](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agentdescriptionidentifying_attributes)
 field during the first send
