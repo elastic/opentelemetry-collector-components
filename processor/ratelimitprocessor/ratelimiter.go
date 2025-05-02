@@ -92,7 +92,7 @@ func getUniqueKey(ctx context.Context, metadataKeys []string) string {
 }
 
 func newMetrics(mp metric.MeterProvider) (metrics, error) {
-	meter := mp.Meter("internal/ratelimit")
+	meter := mp.Meter("ratelimitprocessor")
 
 	ratelimitRequests, err := meter.Int64Counter("ratelimit.requests",
 		metric.WithUnit("1"),
