@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/collector/client"
-	"go.opentelemetry.io/otel/metric"
 )
 
 var (
@@ -52,10 +51,6 @@ type RateLimiter interface {
 // high cardinality: tenant ID would be a good choice. For rate
 // limiting by IP (e.g. to avoid DDoS), consider running OpenTelemetry
 // Collector behind a WAF/API Gateway/proxy.
-
-type metrics struct {
-	ratelimitRequests metric.Int64Counter
-}
 
 func getProjectIDFromMetadata(ctx context.Context, key string) string {
 	clientInfo := client.FromContext(ctx)
