@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
 	"strings"
 	"time"
 
@@ -34,6 +35,8 @@ import (
 
 var _ RateLimiter = (*gubernatorRateLimiter)(nil)
 
+var limitPercentDims = []float64{0.95, 0.90, 0.85, 0.75, 0.50, 0.25}
+
 type gubernatorRateLimiter struct {
 	cfg      *Config
 	set      processor.Settings
@@ -41,6 +44,8 @@ type gubernatorRateLimiter struct {
 
 	conn   *grpc.ClientConn
 	client gubernator.V1Client
+
+	telemetry *ratelimitProcessorTelemetry
 }
 
 func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
@@ -52,10 +57,17 @@ func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorR
 		}
 		behavior |= value
 	}
+
+	rpt, err := newRatelimitProcessorTelemetry(set)
+	if err != nil {
+		return nil, fmt.Errorf("error creating rate limit processor telemetry: %w", err)
+	}
+
 	return &gubernatorRateLimiter{
-		cfg:      cfg,
-		set:      set,
-		behavior: gubernator.Behavior(behavior),
+		cfg:       cfg,
+		set:       set,
+		behavior:  gubernator.Behavior(behavior),
+		telemetry: rpt,
 	}, nil
 }
 
@@ -87,6 +99,12 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
 	createdAt := time.Now().UnixMilli()
+
+	rateAttr := attribute.Int("max_bytes_per_sec", r.cfg.Rate)
+	burstAttr := attribute.Int("burst", r.cfg.Burst)
+	processorIDAttr := attribute.String("processor_id", r.set.ID.String())
+	metadataKeysAttr := attribute.StringSlice("metadata_keys", r.cfg.MetadataKeys)
+
 	getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
 		Requests: []*gubernator.RateLimitReq{{
 			Name:      r.set.ID.String(),
@@ -102,19 +120,50 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	})
 	if err != nil {
 		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
+		r.telemetry.record(
+			processorIDAttr,
+			rateAttr,
+			burstAttr,
+			metadataKeysAttr,
+			attribute.String("ratelimit_decision", "accepted"),
+			attribute.String("reason", "request_error"))
 		return errRateLimitInternalError
 	}
 
 	// Inside the gRPC response, we should have a single-item list of responses.
 	responses := getRateLimitsResp.GetResponses()
 	if n := len(responses); n != 1 {
+		r.telemetry.record(
+			processorIDAttr,
+			rateAttr,
+			burstAttr,
+			metadataKeysAttr,
+			attribute.String("ratelimit_decision", "accepted"),
+			attribute.String("reason", "request_error"))
 		return fmt.Errorf("expected 1 response from gubernator, got %d", n)
 	}
+
 	resp := responses[0]
 	if resp.GetError() != "" {
 		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
+		r.telemetry.record(
+			processorIDAttr,
+			rateAttr,
+			burstAttr,
+			metadataKeysAttr,
+			attribute.String("ratelimit_decision", "accepted"),
+			attribute.String("reason", "limit_error"))
 		return errRateLimitInternalError
 	}
+
+	var limitPercentUsed float64
+	if resp.Limit == 0 {
+		limitPercentUsed = 1.0
+	} else {
+		limitPercentUsed = 1.0 - min(1, float64(resp.Remaining)/float64(resp.Limit))
+	}
+
+	limitBucket := getLimitThresholdBucket(limitPercentUsed)
 
 	if resp.GetStatus() != gubernator.Status_UNDER_LIMIT {
 		// Same logic as local
@@ -126,6 +175,14 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				zap.String("processor_id", r.set.ID.String()),
 				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 			)
+			r.telemetry.record(
+				processorIDAttr,
+				rateAttr,
+				burstAttr,
+				metadataKeysAttr,
+				attribute.String("ratelimit_decision", "throttled"),
+				attribute.Float64("limit_threshold", limitBucket),
+				attribute.String("throttle_behavior", "error"))
 			return errTooManyRequests
 		case ThrottleBehaviorDelay:
 			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
@@ -136,7 +193,33 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				return ctx.Err()
 			case <-timer.C:
 			}
+			r.telemetry.record(
+				processorIDAttr,
+				rateAttr,
+				burstAttr,
+				metadataKeysAttr,
+				attribute.String("ratelimit_decision", "throttled"),
+				attribute.Float64("limit_threshold", limitBucket),
+				attribute.String("throttle_behavior", "delay"))
 		}
 	}
+
+	r.telemetry.record(
+		processorIDAttr,
+		rateAttr,
+		burstAttr,
+		metadataKeysAttr,
+		attribute.String("ratelimit_decision", "accepted"),
+		attribute.Float64("limit_threshold", limitBucket),
+		attribute.String("reason", "under_limit"))
 	return nil
+}
+
+func getLimitThresholdBucket(percentUsed float64) float64 {
+	for _, pct := range limitPercentDims {
+		if percentUsed >= pct {
+			return pct
+		}
+	}
+	return 0
 }

@@ -10,3 +10,40 @@ tests:
   config:
     rate: 1
     burst: 1
+
+telemetry:
+  metrics:
+    processor_ratelimit_requests:
+      enabled: true
+      description: Number of rate-limiting requests
+      unit: "{times}"
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: ["processor_id", "ratelimit_decision", "limit_threshold", "reason", "throttle_behavior", "metadata_keys", "burst", "max_bytes_per_sec"]
+
+attributes:
+  processor_id:
+    description: processor id
+    type: string
+  ratelimit_decision:
+    description: rate limit decision
+    type: string
+  limit_threshold:
+    description: rate limit threshold
+    type: double
+  reason:
+    description: rate limit reason
+    type: string
+  throttle_behavior:
+    description: behavior when rate limit is exceeded
+    type: string
+  metadata_keys:
+    description: a list of client metadata keys for defining the rate limiting key, in addition to the processor ID
+    type: string
+  burst:
+    description: maximum burst size that the limit can accept
+    type: int
+  max_bytes_per_sec:
+    description: bucket refill rate in tokens per second
+    type: int
