@@ -47,8 +47,8 @@ const (
 )
 
 // WithProjectID returns a project ID attribute with key.
-func WithProjectID(projectID string) attribute.KeyValue {
-	return attribute.String(projectIDKey, projectID)
+func WithProjectID(project string) attribute.KeyValue {
+	return attribute.String(projectIDKey, project)
 }
 
 // WithDecision returns decision attribute with key.
