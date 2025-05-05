@@ -115,35 +115,29 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	})
 	if err != nil {
 		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
-		attrs := []attribute.KeyValue{
-			telemetry.WithErrorReason(telemetry.BadRequest),
-			telemetry.WithDecision("rejected"),
-		}
-		attrs = attrsFromMetadata(ctx, r.cfg.MetadataKeys, attrs)
-		r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+		r.requestTelemetry(ctx, []attribute.KeyValue{
+			telemetry.WithErrorReason(telemetry.ErrorRequest),
+			telemetry.WithDecision("accepted"),
+		})
 		return errRateLimitInternalError
 	}
 
 	// Inside the gRPC response, we should have a single-item list of responses.
 	responses := getRateLimitsResp.GetResponses()
 	if n := len(responses); n != 1 {
-		attrs := []attribute.KeyValue{
-			telemetry.WithErrorReason(telemetry.Invalid),
+		r.requestTelemetry(ctx, []attribute.KeyValue{
+			telemetry.WithErrorReason(telemetry.ErrorRequest),
 			telemetry.WithDecision("accepted"),
-		}
-		attrs = attrsFromMetadata(ctx, r.cfg.MetadataKeys, attrs)
-		r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+		})
 		return fmt.Errorf("expected 1 response from gubernator, got %d", n)
 	}
 	resp := responses[0]
 	if resp.GetError() != "" {
 		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
-		attrs := []attribute.KeyValue{
+		r.requestTelemetry(ctx, []attribute.KeyValue{
 			telemetry.WithErrorReason(telemetry.ServerError),
-			telemetry.WithDecision("rejected"),
-		}
-		attrs = attrsFromMetadata(ctx, r.cfg.MetadataKeys, attrs)
-		r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+			telemetry.WithDecision("accepted"),
+		})
 		return errRateLimitInternalError
 	}
 
@@ -157,12 +151,10 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				zap.String("processor_id", r.set.ID.String()),
 				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 			)
-			attrs := []attribute.KeyValue{
+			r.requestTelemetry(ctx, []attribute.KeyValue{
 				telemetry.WithErrorReason(telemetry.StatusOverLimit),
 				telemetry.WithDecision("throttled"),
-			}
-			attrs = attrsFromMetadata(ctx, r.cfg.MetadataKeys, attrs)
-			r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+			})
 			return errTooManyRequests
 		case ThrottleBehaviorDelay:
 			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
@@ -170,23 +162,24 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			defer timer.Stop()
 			select {
 			case <-ctx.Done():
-				attrs := []attribute.KeyValue{
+				r.requestTelemetry(ctx, []attribute.KeyValue{
 					telemetry.WithErrorReason(telemetry.StatusOverLimit),
 					telemetry.WithDecision("throttled"),
-				}
-				attrs = attrsFromMetadata(ctx, r.cfg.MetadataKeys, attrs)
-				r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+				})
 				return ctx.Err()
 			case <-timer.C:
 			}
 		}
 	}
 
-	attrs := []attribute.KeyValue{
+	r.requestTelemetry(ctx, []attribute.KeyValue{
 		telemetry.WithErrorReason(telemetry.StatusUnderLimit),
 		telemetry.WithDecision("accepted"),
-	}
-	attrs = attrsFromMetadata(ctx, r.cfg.MetadataKeys, attrs)
-	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+	})
 	return nil
+}
+
+func (r *gubernatorRateLimiter) requestTelemetry(ctx context.Context, baseAttrs []attribute.KeyValue) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
+	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
 }

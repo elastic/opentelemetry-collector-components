@@ -33,7 +33,7 @@ const (
 	descisionKey   = "ratelimit_decision"
 
 	TooLarge         ErrorReason = "too_large"
-	BadRequest       ErrorReason = "bad_request"
+	ErrorRequest     ErrorReason = "request_error"
 	Invalid          ErrorReason = "invalid"
 	TooMany          ErrorReason = "too_many"
 	StatusUnderLimit ErrorReason = "underl_limit"
