@@ -159,7 +159,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			)
 			attrs := []attribute.KeyValue{
 				telemetry.WithErrorReason(telemetry.StatusOverLimit),
-				telemetry.WithDecision("rejected"),
+				telemetry.WithDecision("throttled"),
 			}
 			attrs = attrsFromMetadata(ctx, r.cfg.MetadataKeys, attrs)
 			r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
