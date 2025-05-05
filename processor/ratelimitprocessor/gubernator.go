@@ -38,6 +38,8 @@ import (
 
 var _ RateLimiter = (*gubernatorRateLimiter)(nil)
 
+var limitPercentDims = []float64{0.95, 0.90, 0.85, 0.75, 0.50, 0.25}
+
 type gubernatorRateLimiter struct {
 	cfg      *Config
 	set      processor.Settings
@@ -141,6 +143,14 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		return errRateLimitInternalError
 	}
 
+	var limitPercentUsed float64
+	if resp.Limit == 0 {
+		limitPercentUsed = 1.0
+	} else {
+		limitPercentUsed = 1.0 - min(1, float64(resp.Remaining)/float64(resp.Limit))
+	}
+
+	limitBucket := getLimitThresholdBucket(limitPercentUsed)
 	if resp.GetStatus() != gubernator.Status_UNDER_LIMIT {
 		// Same logic as local
 		switch r.cfg.ThrottleBehavior {
@@ -154,6 +164,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			r.requestTelemetry(ctx, []attribute.KeyValue{
 				telemetry.WithReason(telemetry.StatusOverLimit),
 				telemetry.WithDecision("throttled"),
+				telemetry.WithLimitThreshold(limitBucket),
+				telemetry.WithThrottleBehavior("error"),
 			})
 			return errTooManyRequests
 		case ThrottleBehaviorDelay:
@@ -165,6 +177,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				r.requestTelemetry(ctx, []attribute.KeyValue{
 					telemetry.WithReason(telemetry.StatusOverLimit),
 					telemetry.WithDecision("throttled"),
+					telemetry.WithLimitThreshold(limitBucket),
+					telemetry.WithThrottleBehavior("delay"),
 				})
 				return ctx.Err()
 			case <-timer.C:
@@ -175,6 +189,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	r.requestTelemetry(ctx, []attribute.KeyValue{
 		telemetry.WithReason(telemetry.StatusUnderLimit),
 		telemetry.WithDecision("accepted"),
+		telemetry.WithLimitThreshold(limitBucket),
 	})
 	return nil
 }
@@ -182,4 +197,13 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 func (r *gubernatorRateLimiter) requestTelemetry(ctx context.Context, baseAttrs []attribute.KeyValue) {
 	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
 	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+}
+
+func getLimitThresholdBucket(percentUsed float64) float64 {
+	for _, pct := range limitPercentDims {
+		if percentUsed >= pct {
+			return pct
+		}
+	}
+	return 0
 }

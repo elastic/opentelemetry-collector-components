@@ -26,11 +26,13 @@ import (
 type Reason string
 
 const (
-	projectIDKey = "project_id"
-	protocolKey  = "protocol"
-	outcomeKey   = "outcome"
-	reasonKey    = "reason"
-	decisionKey  = "ratelimit_decision"
+	projectIDKey        = "project_id"
+	protocolKey         = "protocol"
+	outcomeKey          = "outcome"
+	reasonKey           = "reason"
+	decisionKey         = "ratelimit_decision"
+	limitThresholdKey   = "limit_threshold"
+	throttleBehaviorKey = "throttle_behavior"
 
 	TooLarge         Reason = "too_large"
 	BadRequest       Reason = "bad_request"
@@ -71,4 +73,14 @@ func WithOutcome(outcome string) attribute.KeyValue {
 // WithReason returns a reason attribute with key.
 func WithReason(reason Reason) attribute.KeyValue {
 	return attribute.String(reasonKey, string(reason))
+}
+
+// WithLimitThreshold returns limit threshold with key.
+func WithLimitThreshold(limitThreshold float64) attribute.KeyValue {
+	return attribute.Float64(limitThresholdKey, limitThreshold)
+}
+
+// WithThrottleBehavior returns throttle behavior attribute with key.
+func WithThrottleBehavior(throttleBehavior string) attribute.KeyValue {
+	return attribute.String(throttleBehaviorKey, throttleBehavior)
 }

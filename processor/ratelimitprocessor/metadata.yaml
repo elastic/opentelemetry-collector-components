@@ -26,7 +26,3 @@ telemetry:
       unit: ms
       histogram: 
         value_type: double
-
-        
-
-
