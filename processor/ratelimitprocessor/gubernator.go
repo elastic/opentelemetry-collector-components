@@ -136,7 +136,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	resp := responses[0]
 	if resp.GetError() != "" {
 		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
-		r.telemetryBuilder.RatelimitRequests.Add(context.Background(), 1, metric.WithAttributeSet(attribute.NewSet(
+		r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(
 			telemetry.WithProjectID(projectID),
 			telemetry.WithLimitReason("limit_error"),
 			telemetry.WithDecision("rejected"),
