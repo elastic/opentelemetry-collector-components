@@ -116,7 +116,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	if err != nil {
 		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
 		r.requestTelemetry(ctx, []attribute.KeyValue{
-			telemetry.WithErrorReason(telemetry.ErrorRequest),
+			telemetry.WithReason(telemetry.RequestErr),
 			telemetry.WithDecision("accepted"),
 		})
 		return errRateLimitInternalError
@@ -126,7 +126,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	responses := getRateLimitsResp.GetResponses()
 	if n := len(responses); n != 1 {
 		r.requestTelemetry(ctx, []attribute.KeyValue{
-			telemetry.WithErrorReason(telemetry.ErrorRequest),
+			telemetry.WithReason(telemetry.RequestErr),
 			telemetry.WithDecision("accepted"),
 		})
 		return fmt.Errorf("expected 1 response from gubernator, got %d", n)
@@ -135,7 +135,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	if resp.GetError() != "" {
 		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
 		r.requestTelemetry(ctx, []attribute.KeyValue{
-			telemetry.WithErrorReason(telemetry.ServerError),
+			telemetry.WithReason(telemetry.LimitError),
 			telemetry.WithDecision("accepted"),
 		})
 		return errRateLimitInternalError
@@ -152,7 +152,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 			)
 			r.requestTelemetry(ctx, []attribute.KeyValue{
-				telemetry.WithErrorReason(telemetry.StatusOverLimit),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				telemetry.WithDecision("throttled"),
 			})
 			return errTooManyRequests
@@ -163,7 +163,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			select {
 			case <-ctx.Done():
 				r.requestTelemetry(ctx, []attribute.KeyValue{
-					telemetry.WithErrorReason(telemetry.StatusOverLimit),
+					telemetry.WithReason(telemetry.StatusOverLimit),
 					telemetry.WithDecision("throttled"),
 				})
 				return ctx.Err()
@@ -173,7 +173,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 
 	r.requestTelemetry(ctx, []attribute.KeyValue{
-		telemetry.WithErrorReason(telemetry.StatusUnderLimit),
+		telemetry.WithReason(telemetry.StatusUnderLimit),
 		telemetry.WithDecision("accepted"),
 	})
 	return nil

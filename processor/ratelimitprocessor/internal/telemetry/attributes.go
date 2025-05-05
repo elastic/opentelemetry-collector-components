@@ -21,30 +21,31 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// ErrorReason represents a set of constant error reasons to
+// Reason represents a set of constant rate limit processing reasons to
 // include as attributes for telemetry.
-type ErrorReason string
+type Reason string
 
 const (
-	projectIDKey   = "project_id"
-	protocolKey    = "protocol"
-	outcomeKey     = "outcome"
-	errorReasonKey = "error_reason"
-	descisionKey   = "ratelimit_decision"
+	projectIDKey = "project_id"
+	protocolKey  = "protocol"
+	outcomeKey   = "outcome"
+	reasonKey    = "reason"
+	decisionKey  = "ratelimit_decision"
 
-	TooLarge         ErrorReason = "too_large"
-	ErrorRequest     ErrorReason = "request_error"
-	Invalid          ErrorReason = "invalid"
-	TooMany          ErrorReason = "too_many"
-	StatusUnderLimit ErrorReason = "underl_limit"
-	StatusOverLimit  ErrorReason = "throttled"
+	TooLarge         Reason = "too_large"
+	BadRequest       Reason = "bad_request"
+	Invalid          Reason = "invalid"
+	TooManyRequests  Reason = "too_many_requests"
+	StatusUnderLimit Reason = "under_limit"
+	StatusOverLimit  Reason = "over_limit"
 
 	SignalTrace  = "trace"
 	SignalMetric = "metric"
 	SignalLog    = "log"
 
-	ServerError ErrorReason = "server_error"
-	ClientError ErrorReason = "client_error"
+	ClientError Reason = "client_error"
+	LimitError  Reason = "limit_error"
+	RequestErr  Reason = "request_error"
 )
 
 // WithProjectID returns a project ID attribute with key.
@@ -54,7 +55,7 @@ func WithProjectID(project string) attribute.KeyValue {
 
 // WithDecision returns decision attribute with key.
 func WithDecision(decision string) attribute.KeyValue {
-	return attribute.String(descisionKey, decision)
+	return attribute.String(decisionKey, decision)
 }
 
 // WithProtocol returns a protocol attribute with key.
@@ -62,12 +63,12 @@ func WithProtocol(protocol string) attribute.KeyValue {
 	return attribute.String(protocolKey, protocol)
 }
 
-// WithOutcome returns a project ID attribute with key.
+// WithOutcome returns an outcome attribute with key.
 func WithOutcome(outcome string) attribute.KeyValue {
 	return attribute.String(outcomeKey, outcome)
 }
 
-// WithErrorReason returns a project ID attribute with key.
-func WithErrorReason(reason ErrorReason) attribute.KeyValue {
-	return attribute.String(errorReasonKey, string(reason))
+// WithReason returns a reason attribute with key.
+func WithReason(reason Reason) attribute.KeyValue {
+	return attribute.String(reasonKey, string(reason))
 }

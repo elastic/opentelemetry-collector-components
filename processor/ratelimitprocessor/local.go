@@ -69,27 +69,35 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	case ThrottleBehaviorError:
 		if ok := limiter.AllowN(time.Now(), hits); !ok {
 			r.requestTelemetry(ctx, []attribute.KeyValue{
-				telemetry.WithErrorReason(telemetry.StatusOverLimit),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				telemetry.WithDecision("throttled"),
 			})
 			return errTooManyRequests
 		}
 	case ThrottleBehaviorDelay:
-		r := limiter.ReserveN(time.Now(), hits)
-		if !r.OK() {
+		lr := limiter.ReserveN(time.Now(), hits)
+		if !lr.OK() {
+			r.requestTelemetry(ctx, []attribute.KeyValue{
+				telemetry.WithReason(telemetry.TooManyRequests),
+				telemetry.WithDecision("throttled"),
+			})
 			return errTooManyRequests
 		}
-		timer := time.NewTimer(r.Delay())
+		timer := time.NewTimer(lr.Delay())
 		defer timer.Stop()
 		select {
 		case <-ctx.Done():
+			r.requestTelemetry(ctx, []attribute.KeyValue{
+				telemetry.WithReason(telemetry.StatusOverLimit),
+				telemetry.WithDecision("throttled"),
+			})
 			return ctx.Err()
 		case <-timer.C:
 		}
 	}
 
 	r.requestTelemetry(ctx, []attribute.KeyValue{
-		telemetry.WithErrorReason(telemetry.StatusUnderLimit),
+		telemetry.WithReason(telemetry.StatusUnderLimit),
 		telemetry.WithDecision("accepted"),
 	})
 	return nil
