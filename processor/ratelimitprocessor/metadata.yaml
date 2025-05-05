@@ -20,3 +20,13 @@ telemetry:
       sum:
         value_type: int
         monotonic: true
+    ratelimit.requests_duration:
+      enabled: true
+      description: Duration of rate limit requests
+      unit: ms
+      histogram: 
+        value_type: double
+
+        
+
+
