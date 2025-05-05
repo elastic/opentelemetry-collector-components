@@ -211,7 +211,12 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	mp := metric.NewMeterProvider(metric.WithReader(reader))
 	otel.SetMeterProvider(mp)
 
-	cfg := createDefaultConfig().(*Config)
+	cfg := &Config{
+		Rate:             1,
+		Burst:            2,
+		MetadataKeys:     []string{"x-elastic-project-id"},
+		ThrottleBehavior: ThrottleBehaviorError,
+	}
 	server, rl := newTestGubernatorRateLimiter(t, cfg, mp)
 
 	//We provide the x-elastic-project-id in oder to set the ProjectID

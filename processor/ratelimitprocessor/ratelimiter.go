@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/collector/client"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var (
@@ -56,13 +57,17 @@ const (
 	ProjectID = "x-elastic-project-id"
 )
 
-func getProjectIDFromMetadata(ctx context.Context) string {
+func attrsFromMetadata(ctx context.Context, metadataKeys []string, attrs []attribute.KeyValue) []attribute.KeyValue {
 	clientInfo := client.FromContext(ctx)
-	values := clientInfo.Metadata.Get(ProjectID)
-	if len(values) > 0 {
-		return values[0]
+
+	for _, key := range metadataKeys {
+		values := clientInfo.Metadata.Get(key)
+		if len(values) > 0 {
+			attrs = append(attrs, attribute.String(key, strings.Join(values, ",")))
+		}
 	}
-	return ""
+
+	return attrs
 }
 
 func getUniqueKey(ctx context.Context, metadataKeys []string) string {

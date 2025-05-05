@@ -31,12 +31,13 @@ const (
 	outcomeKey     = "outcome"
 	errorReasonKey = "error_reason"
 	descisionKey   = "ratelimit_decision"
-	limitReasonKey = "reason"
 
-	TooLarge   ErrorReason = "too_large"
-	BadRequest ErrorReason = "bad_request"
-	Invalid    ErrorReason = "invalid"
-	TooMany    ErrorReason = "too_many"
+	TooLarge         ErrorReason = "too_large"
+	BadRequest       ErrorReason = "bad_request"
+	Invalid          ErrorReason = "invalid"
+	TooMany          ErrorReason = "too_many"
+	StatusUnderLimit ErrorReason = "underl_limit"
+	StatusOverLimit  ErrorReason = "throttled"
 
 	SignalTrace  = "trace"
 	SignalMetric = "metric"
@@ -54,11 +55,6 @@ func WithProjectID(project string) attribute.KeyValue {
 // WithDecision returns decision attribute with key.
 func WithDecision(decision string) attribute.KeyValue {
 	return attribute.String(descisionKey, decision)
-}
-
-// WithLimitReason returns limitReason attribute with key.
-func WithLimitReason(limitReason string) attribute.KeyValue {
-	return attribute.String(limitReasonKey, limitReason)
 }
 
 // WithProtocol returns a protocol attribute with key.
