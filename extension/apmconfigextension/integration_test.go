@@ -265,7 +265,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 			},
 			{
-				name: "neither service.environment nor deployment.environment is an OpenTelemetry identifying attribute",
+				name: "supported OpenTelemetry identifying attribute",
 				opampMessages: []inOutOpamp{
 					{
 						agentToServer: &protobufs.AgentToServer{
@@ -299,7 +299,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 									},
 									{
 										Key:   "deployment.environment",
-										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "integration-test"}},
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "integration-test-0"}},
 									},
 								},
 							},
@@ -307,6 +307,17 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						expectedServerToAgent: &protobufs.ServerToAgent{
 							InstanceUid:  []byte("test-3"),
 							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("abcd"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"": {
+											Body:        []byte(`{"transaction_max_spans":"1"}`),
+											ContentType: "text/json",
+										},
+									},
+								},
+							},
 						},
 					},
 					{
@@ -343,7 +354,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 					},
 				},
 				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {
-					err := writeAgentIndex(client, "abcd", map[string]string{"name": "test-agent3", "environment": "integration-test"}, map[string]string{"transaction_max_spans": "2"})
+					err := writeAgentIndex(client, "abcd", map[string]string{"name": "test-agent3", "environment": "integration-test-0"}, map[string]string{"transaction_max_spans": "1"})
+					require.NoError(t, err)
+					err = writeAgentIndex(client, "abcd", map[string]string{"name": "test-agent3", "environment": "integration-test"}, map[string]string{"transaction_max_spans": "2"})
 					require.NoError(t, err)
 				},
 			},
