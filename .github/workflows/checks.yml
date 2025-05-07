@@ -162,7 +162,7 @@ jobs:
         run: |
           make -j2 gogenerate && make -j2 license-update
           if [[ -n $(git status -s) ]]; then
-            echo 'Generated code is out of date, please run "make generate" and commit the changes in this PR.'
+            echo 'Generated code is out of date, please run "make generate && make license-update" and commit the changes in this PR.'
             exit 1
           fi
   unittest-matrix:
