@@ -71,7 +71,6 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			r.requestTelemetry(ctx, []attribute.KeyValue{
 				telemetry.WithReason(telemetry.StatusOverLimit),
 				telemetry.WithDecision("throttled"),
-				telemetry.WithThrottleBehavior("error"),
 			})
 			return errTooManyRequests
 		}
@@ -81,7 +80,6 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			r.requestTelemetry(ctx, []attribute.KeyValue{
 				telemetry.WithReason(telemetry.TooManyRequests),
 				telemetry.WithDecision("throttled"),
-				telemetry.WithThrottleBehavior("delay"),
 			})
 			return errTooManyRequests
 		}
@@ -89,14 +87,15 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		defer timer.Stop()
 		select {
 		case <-ctx.Done():
-			r.requestTelemetry(ctx, []attribute.KeyValue{
-				telemetry.WithReason(telemetry.StatusOverLimit),
-				telemetry.WithDecision("throttled"),
-				telemetry.WithThrottleBehavior("delay"),
-			})
 			return ctx.Err()
 		case <-timer.C:
 		}
+		r.requestTelemetry(ctx, []attribute.KeyValue{
+			telemetry.WithReason(telemetry.StatusOverLimit),
+			telemetry.WithDecision("throttled"),
+			telemetry.WithThrottleBehavior("delay"),
+		})
+		return nil
 	}
 
 	r.requestTelemetry(ctx, []attribute.KeyValue{

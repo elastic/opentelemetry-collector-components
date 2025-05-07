@@ -170,7 +170,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				telemetry.WithDecision("throttled"),
 				telemetry.WithLimitThreshold(limitBucket),
 			})
-			return nil
+			return errTooManyRequests
 		case ThrottleBehaviorDelay:
 			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
 			timer := time.NewTimer(delay)
@@ -186,7 +186,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				telemetry.WithDecision("throttled"),
 				telemetry.WithLimitThreshold(limitBucket),
 			})
-			return nil
+			return errTooManyRequests
 		}
 	}
 

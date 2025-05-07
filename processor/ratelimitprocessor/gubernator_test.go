@@ -125,7 +125,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 			resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}}
 			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.NoError(t, err)
+			assert.EqualError(t, err, "too many requests")
 			require.NotNil(t, req)
 			require.Len(t, req.Requests, 1)
 			// CreatedAt is based on time.Now(). Check it is not nil, then nil it out for the next assertion.
@@ -154,9 +154,9 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 			err = rateLimiter.RateLimit(context.Background(), 1)
 			switch behavior {
 			case ThrottleBehaviorError:
-				assert.NoError(t, err)
+				assert.EqualError(t, err, "too many requests")
 			case ThrottleBehaviorDelay:
-				assert.NoError(t, err)
+				assert.EqualError(t, err, "too many requests")
 				assert.GreaterOrEqual(t, time.Now(), reqTime.Add(100*time.Millisecond))
 			}
 
@@ -198,12 +198,12 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 
 	// Each unique combination of metadata keys should get its own rate limit.
 	err = rateLimiter.RateLimit(clientContext1, 1)
-	assert.NoError(t, err)
+	assert.EqualError(t, err, "too many requests")
 	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
 	assert.Equal(t, "metadata_key:value1", req.Requests[0].UniqueKey)
 
 	err = rateLimiter.RateLimit(clientContext2, 1)
-	assert.NoError(t, err)
+	assert.EqualError(t, err, "too many requests")
 	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
 	assert.Equal(t, "metadata_key:value2", req.Requests[0].UniqueKey)
 }
@@ -223,13 +223,13 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	server, rl := newTestGubernatorRateLimiter(t, cfg, mp)
 
 	// We provide the x-elastic-project-id in order to set the ProjectID
-	clientContext1 := client.NewContext(context.Background(), client.Info{
+	clientContext := client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{
 			"x-elastic-project-id": {"TestProjectID"},
 		}),
 	})
 
-	err := rl.Start(clientContext1, componenttest.NewNopHost())
+	err := rl.Start(clientContext, componenttest.NewNopHost())
 	require.NoError(t, err)
 
 	getProjectIDFromAttrs := func(attrs []attribute.KeyValue) string {
@@ -264,10 +264,11 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	// Under limit case
 	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
 		return &gubernator.GetRateLimitsResp{
-			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}},
+			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT, Remaining: 1}},
 		}, nil
 	}
-	err = rl.RateLimit(clientContext1, 1)
+
+	err = rl.RateLimit(clientContext, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), getRatelimitRequests())
 
@@ -277,15 +278,15 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT, ResetTime: time.Now().Add(100 * time.Millisecond).UnixMilli()}},
 		}, nil
 	}
-	err = rl.RateLimit(clientContext1, 1)
-	assert.NoError(t, err)
+	err = rl.RateLimit(clientContext, 1)
+	assert.EqualError(t, err, "too many requests")
 	assert.Equal(t, int64(2), getRatelimitRequests())
 
 	// Error from server
 	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
 		return nil, errors.New("server error")
 	}
-	err = rl.RateLimit(clientContext1, 1)
+	err = rl.RateLimit(clientContext, 1)
 	assert.Error(t, err)
 	assert.Equal(t, int64(3), getRatelimitRequests())
 
@@ -295,7 +296,7 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 			Responses: []*gubernator.RateLimitResp{{Error: "custom error"}},
 		}, nil
 	}
-	err = rl.RateLimit(clientContext1, 1)
+	err = rl.RateLimit(clientContext, 1)
 	assert.Error(t, err)
 	assert.Equal(t, int64(4), getRatelimitRequests())
 }
@@ -339,10 +340,10 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 			require.NoError(t, err)
 
 			err = rl.RateLimit(ctx, 1)
-			assert.NoError(t, err)
 
 			var attrs []attribute.KeyValue
 			if pctUsed == 100 {
+				assert.EqualError(t, err, "too many requests")
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", 0.95),
 					telemetry.WithProcessorID(processorID),
@@ -351,6 +352,7 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 					attribute.String("reason", "over_limit"),
 				}
 			} else {
+				assert.NoError(t, err)
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", getLimitThresholdBucket(float64(pctUsed)/100)),
 					telemetry.WithProcessorID(processorID),
