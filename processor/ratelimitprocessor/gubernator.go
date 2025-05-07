@@ -151,7 +151,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 
 	limitBucket := getLimitThresholdBucket(limitPercentUsed)
-	if resp.GetStatus() != gubernator.Status_UNDER_LIMIT {
+	if resp.GetStatus() == gubernator.Status_OVER_LIMIT || resp.Remaining == 0 {
 		// Same logic as local
 		switch r.cfg.ThrottleBehavior {
 		case ThrottleBehaviorError:
@@ -165,24 +165,23 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				telemetry.WithReason(telemetry.StatusOverLimit),
 				telemetry.WithDecision("throttled"),
 				telemetry.WithLimitThreshold(limitBucket),
-				telemetry.WithThrottleBehavior("error"),
 			})
-			return errTooManyRequests
+			return nil
 		case ThrottleBehaviorDelay:
 			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
 			timer := time.NewTimer(delay)
 			defer timer.Stop()
 			select {
 			case <-ctx.Done():
-				r.requestTelemetry(ctx, []attribute.KeyValue{
-					telemetry.WithReason(telemetry.StatusOverLimit),
-					telemetry.WithDecision("throttled"),
-					telemetry.WithLimitThreshold(limitBucket),
-					telemetry.WithThrottleBehavior("delay"),
-				})
 				return ctx.Err()
 			case <-timer.C:
 			}
+			r.requestTelemetry(ctx, []attribute.KeyValue{
+				telemetry.WithReason(telemetry.StatusOverLimit),
+				telemetry.WithDecision("throttled"),
+				telemetry.WithLimitThreshold(limitBucket),
+			})
+			return nil
 		}
 	}
 

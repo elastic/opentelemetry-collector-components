@@ -20,7 +20,10 @@ package ratelimitprocessor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -40,6 +43,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
@@ -151,7 +155,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 			err = rateLimiter.RateLimit(context.Background(), 1)
 			switch behavior {
 			case ThrottleBehaviorError:
-				assert.EqualError(t, err, "too many requests")
+				assert.NoError(t, err)
 			case ThrottleBehaviorDelay:
 				assert.NoError(t, err)
 				assert.GreaterOrEqual(t, time.Now(), reqTime.Add(100*time.Millisecond))
@@ -205,7 +209,7 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	assert.Equal(t, "metadata_key:value2", req.Requests[0].UniqueKey)
 }
 
-// Ensures that specific metrics are returned in case of relevant respsonses of GetRateLimits
+// Ensures that specific metrics are returned in case of relevant responses of GetRateLimits
 func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	reader := metric.NewManualReader()
 	mp := metric.NewMeterProvider(metric.WithReader(reader))
@@ -219,7 +223,7 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	}
 	server, rl := newTestGubernatorRateLimiter(t, cfg, mp)
 
-	//We provide the x-elastic-project-id in oder to set the ProjectID
+	// We provide the x-elastic-project-id in order to set the ProjectID
 	clientContext1 := client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{
 			"x-elastic-project-id": {"TestProjectID"},
@@ -268,14 +272,14 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), getRatelimitRequests())
 
-	// // Over limit case
+	// Over limit case
 	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
 		return &gubernator.GetRateLimitsResp{
 			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT, ResetTime: time.Now().Add(100 * time.Millisecond).UnixMilli()}},
 		}, nil
 	}
 	err = rl.RateLimit(clientContext1, 1)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, int64(2), getRatelimitRequests())
 
 	// Error from server
@@ -295,6 +299,104 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 	err = rl.RateLimit(clientContext1, 1)
 	assert.Error(t, err)
 	assert.Equal(t, int64(4), getRatelimitRequests())
+}
+
+func TestRateLimitThresholdAttribute(t *testing.T) {
+	limitUsedPercent := []int64{20, 30, 60, 80, 90, 95, 100}
+	projectID := "TestProjectID"
+
+	reader := metric.NewManualReader()
+	mp := metric.NewMeterProvider(metric.WithReader(reader))
+	otel.SetMeterProvider(mp)
+
+	cfg := &Config{
+		Rate:             1,
+		Burst:            2,
+		MetadataKeys:     []string{"project_id"},
+		ThrottleBehavior: ThrottleBehaviorDelay,
+	}
+
+	// We provide the project_id in order to set the ProjectID
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"project_id": {projectID},
+		}),
+	})
+
+	for _, pctUsed := range limitUsedPercent {
+		t.Run(strconv.Itoa(int(pctUsed)), func(t *testing.T) {
+			server, rl := newTestGubernatorRateLimiter(t, cfg, mp)
+			server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
+				return &gubernator.GetRateLimitsResp{
+					Responses: []*gubernator.RateLimitResp{{
+						Status:    gubernator.Status_UNDER_LIMIT,
+						Limit:     100,
+						Remaining: 100 - pctUsed}},
+				}, nil
+			}
+
+			err := rl.Start(ctx, componenttest.NewNopHost())
+			require.NoError(t, err)
+
+			err = rl.RateLimit(ctx, 1)
+			assert.NoError(t, err)
+
+			var attrs []attribute.KeyValue
+			if pctUsed == 100 {
+				attrs = []attribute.KeyValue{
+					attribute.Float64("limit_threshold", 0.95),
+					telemetry.WithProjectID(projectID),
+					attribute.String("ratelimit_decision", "throttled"),
+					attribute.String("reason", "over_limit"),
+				}
+			} else {
+				fmt.Println("getLimitThresholdBucket(float64(pctUsed)/100) = ", getLimitThresholdBucket(float64(pctUsed)/100))
+				attrs = []attribute.KeyValue{
+					attribute.Float64("limit_threshold", getLimitThresholdBucket(float64(pctUsed)/100)),
+					telemetry.WithProjectID(projectID),
+					attribute.String("ratelimit_decision", "accepted"),
+					attribute.String("reason", "under_limit"),
+				}
+			}
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(context.Background(), &rm))
+			assertMetrics(t, rm, "otelcol_ratelimit.requests", 1, map[string]struct{}{}, attrs...)
+		})
+	}
+}
+
+func assertMetrics(t *testing.T, rm metricdata.ResourceMetrics, name string, v int64, ignoredDimensions map[string]struct{}, expectedAttrs ...attribute.KeyValue) {
+	t.Helper()
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != name {
+				break
+			}
+
+			dp := m.Data.(metricdata.Sum[int64]).DataPoints
+			for i := range dp {
+				actualAttrs := dp[i].Attributes.ToSlice()
+
+				// Removed ignored dimensions from actualAttrs
+				filteredAttrs := make([]attribute.KeyValue, 0, len(actualAttrs))
+				for i := range actualAttrs {
+					if _, found := ignoredDimensions[string(actualAttrs[i].Key)]; !found {
+						filteredAttrs = append(filteredAttrs, actualAttrs[i])
+					}
+				}
+
+				if !reflect.DeepEqual(expectedAttrs, filteredAttrs) {
+					continue
+				}
+
+				require.Equal(t, v, dp[i].Value)
+				return
+			}
+			require.Fail(t, "metric with specified attributes could not be found", name)
+		}
+	}
+	assert.Fail(t, "metric could not be found", name)
 }
 
 type testServer struct {
