@@ -36,12 +36,8 @@ func TestSetupTelemetry(t *testing.T) {
 	require.NoError(t, err)
 	defer tb.Shutdown()
 	tb.RatelimitRequests.Add(context.Background(), 1)
-	tb.RatelimitRequestsDuration.Record(context.Background(), 1)
 	AssertEqualRatelimitRequests(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
-		metricdatatest.IgnoreTimestamp())
-	AssertEqualRatelimitRequestsDuration(t, testTel,
-		[]metricdata.HistogramDataPoint[float64]{{}}, metricdatatest.IgnoreValue(),
 		metricdatatest.IgnoreTimestamp())
 
 	require.NoError(t, testTel.Shutdown(context.Background()))

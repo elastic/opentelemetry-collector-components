@@ -53,18 +53,3 @@ func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
-
-func AssertEqualRatelimitRequestsDuration(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[float64], opts ...metricdatatest.Option) {
-	want := metricdata.Metrics{
-		Name:        "otelcol_ratelimit.requests_duration",
-		Description: "Duration of rate limit requests",
-		Unit:        "ms",
-		Data: metricdata.Histogram[float64]{
-			Temporality: metricdata.CumulativeTemporality,
-			DataPoints:  dps,
-		},
-	}
-	got, err := tt.GetMetric("otelcol_ratelimit.requests_duration")
-	require.NoError(t, err)
-	metricdatatest.AssertEqual(t, want, got, opts...)
-}

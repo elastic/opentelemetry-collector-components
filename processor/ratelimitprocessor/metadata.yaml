@@ -20,9 +20,21 @@ telemetry:
       sum:
         value_type: int
         monotonic: true
-    ratelimit.requests_duration:
-      enabled: true
-      description: Duration of rate limit requests
-      unit: ms
-      histogram: 
-        value_type: double
+      attributes: ["project_id", "processor_id", "ratelimit_decision", "limit_threshold", "reason"]
+
+attributes:
+  project_id:
+    description: project id
+    type: string
+  processor_id:
+    description: processor id
+    type: string
+  ratelimit_decision:
+    description: rate limit decision
+    type: string
+  limit_threshold:
+    description: rate limit threshold
+    type: double
+  reason:
+    description: rate limit reason
+    type: string

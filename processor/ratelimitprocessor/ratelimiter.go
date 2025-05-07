@@ -53,10 +53,6 @@ type RateLimiter interface {
 // limiting by IP (e.g. to avoid DDoS), consider running OpenTelemetry
 // Collector behind a WAF/API Gateway/proxy.
 
-const (
-	ProjectID = "x-elastic-project-id"
-)
-
 func attrsFromMetadata(ctx context.Context, metadataKeys []string, attrs []attribute.KeyValue) []attribute.KeyValue {
 	clientInfo := client.FromContext(ctx)
 

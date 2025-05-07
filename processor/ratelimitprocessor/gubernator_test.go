@@ -20,7 +20,6 @@ package ratelimitprocessor
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"reflect"
 	"strconv"
@@ -304,7 +303,7 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 func TestRateLimitThresholdAttribute(t *testing.T) {
 	limitUsedPercent := []int64{20, 30, 60, 80, 90, 95, 100}
 	projectID := "TestProjectID"
-
+	processorID := "ratelimit/abc123"
 	reader := metric.NewManualReader()
 	mp := metric.NewMeterProvider(metric.WithReader(reader))
 	otel.SetMeterProvider(mp)
@@ -345,14 +344,15 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 			if pctUsed == 100 {
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", 0.95),
+					telemetry.WithProcessorID(processorID),
 					telemetry.WithProjectID(projectID),
 					attribute.String("ratelimit_decision", "throttled"),
 					attribute.String("reason", "over_limit"),
 				}
 			} else {
-				fmt.Println("getLimitThresholdBucket(float64(pctUsed)/100) = ", getLimitThresholdBucket(float64(pctUsed)/100))
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", getLimitThresholdBucket(float64(pctUsed)/100)),
+					telemetry.WithProcessorID(processorID),
 					telemetry.WithProjectID(projectID),
 					attribute.String("ratelimit_decision", "accepted"),
 					attribute.String("reason", "under_limit"),

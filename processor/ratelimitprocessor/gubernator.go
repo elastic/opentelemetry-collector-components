@@ -118,6 +118,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	if err != nil {
 		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
 		r.requestTelemetry(ctx, []attribute.KeyValue{
+			telemetry.WithProcessorID(r.set.ID.String()),
 			telemetry.WithReason(telemetry.RequestErr),
 			telemetry.WithDecision("accepted"),
 		})
@@ -128,6 +129,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	responses := getRateLimitsResp.GetResponses()
 	if n := len(responses); n != 1 {
 		r.requestTelemetry(ctx, []attribute.KeyValue{
+			telemetry.WithProcessorID(r.set.ID.String()),
 			telemetry.WithReason(telemetry.RequestErr),
 			telemetry.WithDecision("accepted"),
 		})
@@ -137,6 +139,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	if resp.GetError() != "" {
 		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
 		r.requestTelemetry(ctx, []attribute.KeyValue{
+			telemetry.WithProcessorID(r.set.ID.String()),
 			telemetry.WithReason(telemetry.LimitError),
 			telemetry.WithDecision("accepted"),
 		})
@@ -162,6 +165,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 			)
 			r.requestTelemetry(ctx, []attribute.KeyValue{
+				telemetry.WithProcessorID(r.set.ID.String()),
 				telemetry.WithReason(telemetry.StatusOverLimit),
 				telemetry.WithDecision("throttled"),
 				telemetry.WithLimitThreshold(limitBucket),
@@ -177,6 +181,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			case <-timer.C:
 			}
 			r.requestTelemetry(ctx, []attribute.KeyValue{
+				telemetry.WithProcessorID(r.set.ID.String()),
 				telemetry.WithReason(telemetry.StatusOverLimit),
 				telemetry.WithDecision("throttled"),
 				telemetry.WithLimitThreshold(limitBucket),
@@ -186,6 +191,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 
 	r.requestTelemetry(ctx, []attribute.KeyValue{
+		telemetry.WithProcessorID(r.set.ID.String()),
 		telemetry.WithReason(telemetry.StatusUnderLimit),
 		telemetry.WithDecision("accepted"),
 		telemetry.WithLimitThreshold(limitBucket),

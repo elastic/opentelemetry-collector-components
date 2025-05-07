@@ -40,11 +40,10 @@ func Tracer(settings component.TelemetrySettings) trace.Tracer {
 // TelemetryBuilder provides an interface for components to report telemetry
 // as defined in metadata and user config.
 type TelemetryBuilder struct {
-	meter                     metric.Meter
-	mu                        sync.Mutex
-	registrations             []metric.Registration
-	RatelimitRequests         metric.Int64Counter
-	RatelimitRequestsDuration metric.Float64Histogram
+	meter             metric.Meter
+	mu                sync.Mutex
+	registrations     []metric.Registration
+	RatelimitRequests metric.Int64Counter
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -80,12 +79,6 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		"otelcol_ratelimit.requests",
 		metric.WithDescription("Number of rate-limiting requests"),
 		metric.WithUnit("{requests}"),
-	)
-	errs = errors.Join(errs, err)
-	builder.RatelimitRequestsDuration, err = builder.meter.Float64Histogram(
-		"otelcol_ratelimit.requests_duration",
-		metric.WithDescription("Duration of rate limit requests"),
-		metric.WithUnit("ms"),
 	)
 	errs = errors.Join(errs, err)
 	return &builder, errs

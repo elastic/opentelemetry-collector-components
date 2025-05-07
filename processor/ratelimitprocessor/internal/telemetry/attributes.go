@@ -27,6 +27,7 @@ type Reason string
 
 const (
 	projectIDKey        = "project_id"
+	processorIDKey      = "processor_id"
 	protocolKey         = "protocol"
 	outcomeKey          = "outcome"
 	reasonKey           = "reason"
@@ -34,20 +35,12 @@ const (
 	limitThresholdKey   = "limit_threshold"
 	throttleBehaviorKey = "throttle_behavior"
 
-	TooLarge         Reason = "too_large"
-	BadRequest       Reason = "bad_request"
-	Invalid          Reason = "invalid"
 	TooManyRequests  Reason = "too_many_requests"
 	StatusUnderLimit Reason = "under_limit"
 	StatusOverLimit  Reason = "over_limit"
 
-	SignalTrace  = "trace"
-	SignalMetric = "metric"
-	SignalLog    = "log"
-
-	ClientError Reason = "client_error"
-	LimitError  Reason = "limit_error"
-	RequestErr  Reason = "request_error"
+	LimitError Reason = "limit_error"
+	RequestErr Reason = "request_error"
 )
 
 // WithProjectID returns a project ID attribute with key.
@@ -55,19 +48,14 @@ func WithProjectID(project string) attribute.KeyValue {
 	return attribute.String(projectIDKey, project)
 }
 
+// WithProcessorID returns a processor ID attribute with key.
+func WithProcessorID(project string) attribute.KeyValue {
+	return attribute.String(processorIDKey, project)
+}
+
 // WithDecision returns decision attribute with key.
 func WithDecision(decision string) attribute.KeyValue {
 	return attribute.String(decisionKey, decision)
-}
-
-// WithProtocol returns a protocol attribute with key.
-func WithProtocol(protocol string) attribute.KeyValue {
-	return attribute.String(protocolKey, protocol)
-}
-
-// WithOutcome returns an outcome attribute with key.
-func WithOutcome(outcome string) attribute.KeyValue {
-	return attribute.String(outcomeKey, outcome)
 }
 
 // WithReason returns a reason attribute with key.

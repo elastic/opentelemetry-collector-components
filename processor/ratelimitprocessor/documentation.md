@@ -13,11 +13,3 @@ Number of rate-limiting requests
 | Unit | Metric Type | Value Type | Monotonic |
 | ---- | ----------- | ---------- | --------- |
 | {requests} | Sum | Int | true |
-
-### otelcol_ratelimit.requests_duration
-
-Duration of rate limit requests
-
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| ms | Histogram | Double |
