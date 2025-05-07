@@ -20,12 +20,9 @@ telemetry:
       sum:
         value_type: int
         monotonic: true
-      attributes: ["project_id", "processor_id", "ratelimit_decision", "limit_threshold", "reason"]
+      attributes: ["processor_id", "ratelimit_decision", "limit_threshold", "reason"]
 
 attributes:
-  project_id:
-    description: project id
-    type: string
   processor_id:
     description: processor id
     type: string

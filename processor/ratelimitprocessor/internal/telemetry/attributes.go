@@ -26,7 +26,6 @@ import (
 type Reason string
 
 const (
-	projectIDKey        = "project_id"
 	processorIDKey      = "processor_id"
 	reasonKey           = "reason"
 	decisionKey         = "ratelimit_decision"
@@ -40,11 +39,6 @@ const (
 	LimitError Reason = "limit_error"
 	RequestErr Reason = "request_error"
 )
-
-// WithProjectID returns a project ID attribute with key.
-func WithProjectID(project string) attribute.KeyValue {
-	return attribute.String(projectIDKey, project)
-}
 
 // WithProcessorID returns a processor ID attribute with key.
 func WithProcessorID(project string) attribute.KeyValue {

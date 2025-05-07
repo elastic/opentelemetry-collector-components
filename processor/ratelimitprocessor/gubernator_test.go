@@ -308,10 +308,11 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 	mp := metric.NewMeterProvider(metric.WithReader(reader))
 	otel.SetMeterProvider(mp)
 
+	metadataKey := "project_id"
 	cfg := &Config{
 		Rate:             1,
 		Burst:            2,
-		MetadataKeys:     []string{"project_id"},
+		MetadataKeys:     []string{metadataKey},
 		ThrottleBehavior: ThrottleBehaviorDelay,
 	}
 
@@ -345,7 +346,7 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", 0.95),
 					telemetry.WithProcessorID(processorID),
-					telemetry.WithProjectID(projectID),
+					attribute.String(metadataKey, projectID),
 					attribute.String("ratelimit_decision", "throttled"),
 					attribute.String("reason", "over_limit"),
 				}
@@ -353,7 +354,7 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", getLimitThresholdBucket(float64(pctUsed)/100)),
 					telemetry.WithProcessorID(processorID),
-					telemetry.WithProjectID(projectID),
+					attribute.String(metadataKey, projectID),
 					attribute.String("ratelimit_decision", "accepted"),
 					attribute.String("reason", "under_limit"),
 				}

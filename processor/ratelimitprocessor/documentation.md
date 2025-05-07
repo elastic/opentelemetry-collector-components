@@ -13,3 +13,12 @@ Number of rate-limiting requests
 | Unit | Metric Type | Value Type | Monotonic |
 | ---- | ----------- | ---------- | --------- |
 | {requests} | Sum | Int | true |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| processor_id | processor id | Any Str |
+| ratelimit_decision | rate limit decision | Any Str |
+| limit_threshold | rate limit threshold | Any Double |
+| reason | rate limit reason | Any Str |
