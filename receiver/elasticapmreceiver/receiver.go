@@ -231,16 +231,24 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 		// TODO translate events to pdata types
 		switch event.Type() {
 		case modelpb.MetricEventType:
+
 			rm := md.ResourceMetrics().AppendEmpty()
 			sm := rm.ScopeMetrics().AppendEmpty()
 			metricset := event.GetMetricset()
 
+			// span_breakdown metrics don't have Samples - value is directly in event.Span.SelfTime.*
+			if metricset.Name == "span_breakdown" {
+				r.translateBreakdownMetricsToOtel(rm, event)
+			}
+
+			samples := metricset.GetSamples()
+
 			// TODO interval, doc_count
 			// TODO how can we attach metricset.name?
-			for _, sample := range metricset.GetSamples() {
+			for _, sample := range samples {
 				m := sm.Metrics().AppendEmpty()
 				m.SetName(sample.GetName())
-				m.SetUnit(sample.GetUnit())
+
 				// TODO set attributes (dimensions/labels)
 				switch sample.GetType() {
 				case modelpb.MetricType_METRIC_TYPE_COUNTER:
@@ -251,6 +259,16 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 					dp := m.SetEmptyGauge().DataPoints().AppendEmpty()
 					dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 					dp.SetDoubleValue(sample.GetValue())
+				// TOOD: This is up for discussion.
+				case modelpb.MetricType_METRIC_TYPE_UNSPECIFIED:
+					if sample.GetValue() != 0 {
+						dp := m.SetEmptyGauge().DataPoints().AppendEmpty()
+						dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
+						val := sample.GetValue()
+						dp.SetDoubleValue(val)
+						mappers.SetDerivedFieldsCommon(event, dp.Attributes())
+						mappers.TranslateToOtelResourceAttributes(event, dp.Attributes())
+					}
 				case modelpb.MetricType_METRIC_TYPE_HISTOGRAM:
 					// TODO histograms
 				case modelpb.MetricType_METRIC_TYPE_SUMMARY:
@@ -298,6 +316,43 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
+}
+
+func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm pmetric.ResourceMetrics, event *modelpb.APMEvent) {
+	sm := rm.ScopeMetrics().AppendEmpty()
+	sum_metric := sm.Metrics().AppendEmpty()
+	sum_metric.SetName("span.self_time.sum.us")
+
+	//TODO: without Unit, the es exporter throws this:
+	// error	elasticsearchexporter@v0.124.1/bulkindexer.go:367	failed to index document	{"index": "metrics-generic.otel-default", "error.type": "illegal_argument_exception", "error.reason": ""}
+	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter.flushBulkIndexer
+	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367
+	sum_metric.SetUnit("us")
+	sum_dp := createBreakdownMetricsCommon(sum_metric, event)
+	sum_dp.SetIntValue(int64(event.Span.SelfTime.Sum))
+
+	count_metric := sm.Metrics().AppendEmpty()
+	count_metric.SetName("span.self_time.count")
+	count_metric.SetUnit("count")
+	count_metric_dp := createBreakdownMetricsCommon(count_metric, event)
+	count_metric_dp.SetDoubleValue(float64(event.Span.SelfTime.Count))
+
+	mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
+}
+
+func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent) pmetric.NumberDataPoint {
+	g := metric.SetEmptyGauge()
+	dp := g.DataPoints().AppendEmpty()
+
+	attr := dp.Attributes()
+	attr.PutStr("transaction.name", event.Transaction.Name)
+	attr.PutStr("transaction.type", event.Transaction.Type)
+	attr.PutStr("span.type", event.Span.Type)
+	attr.PutStr("span.subtype", event.Span.Subtype)
+	attr.PutStr("processor.event", "metric")
+	dp.SetTimestamp(pcommon.Timestamp(event.Timestamp))
+
+	return dp
 }
 
 func (r *elasticAPMReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) {
