@@ -29,12 +29,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	configContentType = "text/json"
-	// deprecated since semconv v.1.27.0, used for backwards compatibility
-	// with iOS SDK
-	deploymentEnvironmentKey = "deployment.environment"
-)
+const configContentType = "text/json"
 
 var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
 
@@ -56,7 +51,7 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfi
 		switch attr.GetKey() {
 		case string(semconv.ServiceNameKey):
 			serviceParams.Name = attr.GetValue().GetStringValue()
-		case string(semconv.DeploymentEnvironmentNameKey), deploymentEnvironmentKey:
+		case string(semconv.DeploymentEnvironmentNameKey):
 			serviceParams.Environment = attr.GetValue().GetStringValue()
 		}
 	}
