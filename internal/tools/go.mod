@@ -10,7 +10,7 @@ require (
 	go.opentelemetry.io/build-tools/chloggen v0.22.0
 	go.opentelemetry.io/build-tools/multimod v0.22.0
 	go.opentelemetry.io/collector/cmd/builder v0.125.0
-	go.opentelemetry.io/collector/cmd/mdatagen v0.124.0
+	go.opentelemetry.io/collector/cmd/mdatagen v0.123.0
 	golang.org/x/vuln v1.1.4
 )
 

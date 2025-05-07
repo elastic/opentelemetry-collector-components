@@ -28,8 +28,6 @@ type Reason string
 const (
 	projectIDKey        = "project_id"
 	processorIDKey      = "processor_id"
-	protocolKey         = "protocol"
-	outcomeKey          = "outcome"
 	reasonKey           = "reason"
 	decisionKey         = "ratelimit_decision"
 	limitThresholdKey   = "limit_threshold"
