@@ -77,7 +77,7 @@ func createExtension(_ context.Context, set extension.Settings, cfg component.Co
 		}()
 
 		wg.Wait()
-		return centralconfig.NewFetcherAPMWatcher(fetcher, extCfg.AgentConfig.CacheDuration, telemetry.Logger), nil
+		return centralconfig.NewFetcherAPMWatcher(fetcher, telemetry.Logger), nil
 	}
 	return newApmConfigExtension(cfg.(*Config), set, elasticsearchRemoteConfig), nil
 }
