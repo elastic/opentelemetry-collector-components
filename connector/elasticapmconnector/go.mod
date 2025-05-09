@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector
 
-go 1.23.6
+go 1.23.8
 
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced
