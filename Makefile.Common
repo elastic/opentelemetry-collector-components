@@ -75,6 +75,7 @@ lint: $(LINT) misspell
 .PHONY: generate
 generate: $(MDATAGEN)
 	$(GOCMD) generate ./...
+	goimports -w ./
 
 .PHONY: moddownload
 moddownload:

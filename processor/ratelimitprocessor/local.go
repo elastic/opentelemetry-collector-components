@@ -22,8 +22,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/time/rate"
 )
 
@@ -34,11 +38,16 @@ type localRateLimiter struct {
 	set processor.Settings
 	// TODO use an LRU to keep a cap on the number of limiters.
 	// When the LRU capacity is exceeded, reuse the evicted limiter.
-	limiters sync.Map
+	limiters         sync.Map
+	telemetryBuilder *metadata.TelemetryBuilder
 }
 
 func newLocalRateLimiter(cfg *Config, set processor.Settings) (*localRateLimiter, error) {
-	return &localRateLimiter{cfg: cfg, set: set}, nil
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
+	if err != nil {
+		return nil, err
+	}
+	return &localRateLimiter{cfg: cfg, set: set, telemetryBuilder: telemetryBuilder}, nil
 }
 
 func (r *localRateLimiter) Start(ctx context.Context, host component.Host) error {
@@ -59,20 +68,44 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	switch r.cfg.ThrottleBehavior {
 	case ThrottleBehaviorError:
 		if ok := limiter.AllowN(time.Now(), hits); !ok {
+			r.requestTelemetry(ctx, []attribute.KeyValue{
+				telemetry.WithReason(telemetry.StatusOverLimit),
+				telemetry.WithDecision("throttled"),
+			})
 			return errTooManyRequests
 		}
 	case ThrottleBehaviorDelay:
-		r := limiter.ReserveN(time.Now(), hits)
-		if !r.OK() {
+		lr := limiter.ReserveN(time.Now(), hits)
+		if !lr.OK() {
+			r.requestTelemetry(ctx, []attribute.KeyValue{
+				telemetry.WithReason(telemetry.TooManyRequests),
+				telemetry.WithDecision("throttled"),
+			})
 			return errTooManyRequests
 		}
-		timer := time.NewTimer(r.Delay())
+		timer := time.NewTimer(lr.Delay())
 		defer timer.Stop()
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-timer.C:
 		}
+		r.requestTelemetry(ctx, []attribute.KeyValue{
+			telemetry.WithReason(telemetry.StatusOverLimit),
+			telemetry.WithDecision("throttled"),
+			telemetry.WithThrottleBehavior("delay"),
+		})
+		return nil
 	}
+
+	r.requestTelemetry(ctx, []attribute.KeyValue{
+		telemetry.WithReason(telemetry.StatusUnderLimit),
+		telemetry.WithDecision("accepted"),
+	})
 	return nil
+}
+
+func (r *localRateLimiter) requestTelemetry(ctx context.Context, baseAttrs []attribute.KeyValue) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
+	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
 }
