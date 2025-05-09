@@ -65,6 +65,7 @@ gotidy:
 
 .PHONY: gogenerate
 gogenerate:
+	@command -v goimports >/dev/null 2>&1 || go install golang.org/x/tools/cmd/goimports@v0.33.0
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="generate"
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="fmt"
 
