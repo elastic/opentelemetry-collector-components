@@ -21,12 +21,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opamp-go/protobufs"
-	semconv "go.opentelemetry.io/collector/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.28.0"
 	"go.uber.org/zap"
 )
 
@@ -36,42 +35,28 @@ var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
 
 type fetcherAPMWatcher struct {
 	configFetcher agentcfg.Fetcher
-	cacheDuration time.Duration
-
-	// OpAMP instanceID to service mapping
-	uidToService map[string]agentcfg.Service
-
-	logger *zap.Logger
+	logger        *zap.Logger
 }
 
-func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, cacheDuration time.Duration, logger *zap.Logger) *fetcherAPMWatcher {
+func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, logger *zap.Logger) *fetcherAPMWatcher {
 	return &fetcherAPMWatcher{
 		configFetcher: fetcher,
-		cacheDuration: cacheDuration,
-		uidToService:  make(map[string]agentcfg.Service),
 		logger:        logger,
 	}
 }
 
-func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
-	if agentDescription := agentMsg.GetAgentDescription(); agentDescription != nil {
-		var serviceParams agentcfg.Service
-		for _, attr := range agentDescription.GetIdentifyingAttributes() {
-			switch attr.GetKey() {
-			case semconv.AttributeServiceName:
-				serviceParams.Name = attr.GetValue().GetStringValue()
-			case semconv.AttributeDeploymentEnvironment:
-				serviceParams.Environment = attr.GetValue().GetStringValue()
-			}
-		}
-		// only update the internal cache if service name is set
-		if serviceParams.Name != "" {
-			fw.uidToService[string(agentMsg.GetInstanceUid())] = serviceParams
+func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfig.InstanceUid, agentAttrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+	var serviceParams agentcfg.Service
+	for _, attr := range agentAttrs {
+		switch attr.GetKey() {
+		case string(semconv.ServiceNameKey):
+			serviceParams.Name = attr.GetValue().GetStringValue()
+		case string(semconv.DeploymentEnvironmentNameKey):
+			serviceParams.Environment = attr.GetValue().GetStringValue()
 		}
 	}
 
-	serviceParams, ok := fw.uidToService[string(agentMsg.GetInstanceUid())]
-	if !ok || serviceParams.Name == "" {
+	if serviceParams.Name == "" {
 		return nil, fmt.Errorf("%w: service.name attribute must be provided", apmconfig.UnidentifiedAgent)
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{
@@ -79,6 +64,8 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentMsg *protobu
 	})
 	if err != nil {
 		return nil, err
+	} else if len(result.Source.Settings) == 0 {
+		return nil, nil
 	}
 
 	marshallConfig, err := json.Marshal(result.Source.Settings)
