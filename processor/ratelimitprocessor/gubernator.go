@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -48,6 +49,8 @@ type gubernatorRateLimiter struct {
 	conn             *grpc.ClientConn
 	client           gubernator.V1Client
 	telemetryBuilder *metadata.TelemetryBuilder
+
+	activeRequests int64 // Tracking concurrent RateLimit calls
 }
 
 func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
@@ -99,6 +102,20 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 }
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
+	startTime := time.Now()
+	atomic.AddInt64(&r.activeRequests, 1)
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		r.requestDurationTelemetry(ctx, duration, []attribute.KeyValue{
+			telemetry.WithProcessorID(r.set.ID.String()),
+		})
+
+		r.requestConcurrentTelemetry(ctx, atomic.LoadInt64(&r.activeRequests), []attribute.KeyValue{
+			telemetry.WithProcessorID(r.set.ID.String()),
+		})
+		atomic.AddInt64(&r.activeRequests, -1)
+	}()
+
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
 
 	createdAt := time.Now().UnixMilli()
@@ -202,6 +219,16 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 func (r *gubernatorRateLimiter) requestTelemetry(ctx context.Context, baseAttrs []attribute.KeyValue) {
 	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
 	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+}
+
+func (r *gubernatorRateLimiter) requestDurationTelemetry(ctx context.Context, duration float64, baseAttrs []attribute.KeyValue) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
+	r.telemetryBuilder.RatelimitRequestDuration.Record(ctx, duration, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+}
+
+func (r *gubernatorRateLimiter) requestConcurrentTelemetry(ctx context.Context, activeRequests int64, baseAttrs []attribute.KeyValue) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
+	r.telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, activeRequests, metric.WithAttributeSet(attribute.NewSet(attrs...)))
 }
 
 func getLimitThresholdBucket(percentUsed float64) float64 {
