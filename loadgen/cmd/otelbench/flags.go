@@ -133,7 +133,6 @@ func Init() error {
 
 	// `concurrency` is similar to `agents` config in apmbench
 	// Each value passed into `concurrency` list will be used as loadgenreceiver `concurrency` config
-	Config.ConcurrencyList = []int{1} // default
 	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with",
 		func(input string) error {
 			var concurrencyList []int

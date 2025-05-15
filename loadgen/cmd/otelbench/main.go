@@ -116,6 +116,12 @@ func main() {
 	}
 	flag.Parse()
 
+	// default to running with concurrency=1
+	if Config.ConcurrencyList == nil {
+		fmt.Fprintln(os.Stderr, "concurrency is unset, defaulting to 1. This may result in lower throughput")
+		Config.ConcurrencyList = []int{1}
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
