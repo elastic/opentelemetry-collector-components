@@ -33,34 +33,42 @@ import (
 )
 
 type remoteConfigCallbacks struct {
+	*types.Callbacks
 	configClient apmconfig.RemoteConfigClient
 
-	lastConfigHash sync.Map
-	logger         *zap.Logger
+	agentState sync.Map
+	logger     *zap.Logger
 }
 
-func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *types.Callbacks {
+type agentInfo struct {
+	agentUid              apmconfig.InstanceUid
+	identifyingAttributes apmconfig.IdentifyingAttributes
+	lastConfigHash        []byte
+}
+
+func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *remoteConfigCallbacks {
 	opampCallbacks := &remoteConfigCallbacks{
-		configClient:   configClient,
-		lastConfigHash: sync.Map{},
-		logger:         logger,
+		configClient: configClient,
+		agentState:   sync.Map{},
+		logger:       logger,
 	}
 
 	connectionCallbacks := types.ConnectionCallbacks{}
 	connectionCallbacks.SetDefaults()
-	connectionCallbacks.OnMessage = opampCallbacks.OnMessage
+	connectionCallbacks.OnMessage = opampCallbacks.onMessage
 
-	remoteConfigCallbacks := types.Callbacks{}
-	remoteConfigCallbacks.OnConnecting = func(request *http.Request) types.ConnectionResponse {
-		return types.ConnectionResponse{
-			Accept:         true,
-			HTTPStatusCode: 200,
+	opampCallbacks.Callbacks = &types.Callbacks{
+		OnConnecting: func(request *http.Request) types.ConnectionResponse {
+			return types.ConnectionResponse{
+				Accept:         true,
+				HTTPStatusCode: 200,
 
-			ConnectionCallbacks: connectionCallbacks,
-		}
+				ConnectionCallbacks: connectionCallbacks,
+			}
+		},
 	}
 
-	return &remoteConfigCallbacks
+	return opampCallbacks
 }
 
 func (rc *remoteConfigCallbacks) serverError(msg string, message *protobufs.ServerToAgent, logFields ...zap.Field) *protobufs.ServerToAgent {
@@ -77,7 +85,7 @@ func (rc *remoteConfigCallbacks) serverError(msg string, message *protobufs.Serv
 // as a response to the Agent.
 // For plain HTTP requests once OnMessage returns and the response is sent
 // to the Agent the OnConnectionClose message will be called immediately.
-func (rc *remoteConfigCallbacks) OnMessage(ctx context.Context, conn types.Connection, message *protobufs.AgentToServer) *protobufs.ServerToAgent {
+func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Connection, message *protobufs.AgentToServer) *protobufs.ServerToAgent {
 	serverToAgent := protobufs.ServerToAgent{}
 	serverToAgent.Capabilities = uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig)
 	serverToAgent.InstanceUid = message.GetInstanceUid()
@@ -88,15 +96,31 @@ func (rc *remoteConfigCallbacks) OnMessage(ctx context.Context, conn types.Conne
 	}
 
 	agentUid := hex.EncodeToString(message.GetInstanceUid())
-	agentUidField := zap.String("instance_uid", agentUid)
+	if message.GetAgentDescription() != nil {
+		// new description might lead to another remote configuration
+		rc.agentState.Store(agentUid, agentInfo{
+			agentUid:              message.GetInstanceUid(),
+			identifyingAttributes: message.AgentDescription.IdentifyingAttributes,
+		})
+	}
 
+	agentUidField := zap.String("instance_uid", agentUid)
 	if message.GetAgentDisconnect() != nil {
 		rc.logger.Info("Disconnecting the agent from the remote configuration service", agentUidField)
-		rc.lastConfigHash.Delete(agentUid)
+		rc.agentState.Delete(agentUid)
 		return &serverToAgent
 	}
 
-	remoteConfig, err := rc.configClient.RemoteConfig(ctx, message)
+	loadedAgent, _ := rc.agentState.LoadOrStore(agentUid, agentInfo{
+		agentUid: message.GetInstanceUid(),
+	})
+	agent, ok := loadedAgent.(agentInfo)
+	if !ok {
+		rc.logger.Warn("unexpected type in agentState cache", agentUidField)
+		return rc.serverError("internal error: invalid agent state", &serverToAgent)
+	}
+
+	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agent.agentUid, agent.identifyingAttributes)
 	if err != nil {
 		// remote config client could not identify the agent
 		if errors.Is(err, apmconfig.UnidentifiedAgent) {
@@ -110,8 +134,9 @@ func (rc *remoteConfigCallbacks) OnMessage(ctx context.Context, conn types.Conne
 
 	if message.GetRemoteConfigStatus() != nil && message.GetRemoteConfigStatus().Status == protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED && bytes.Equal(remoteConfig.ConfigHash, message.RemoteConfigStatus.GetLastRemoteConfigHash()) {
 		rc.logger.Info("Remote config applied", zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)), agentUidField)
-		rc.lastConfigHash.Store(agentUid, message.RemoteConfigStatus.GetLastRemoteConfigHash())
-	} else if lastHash, found := rc.lastConfigHash.Load(agentUid); !found || !bytes.Equal(lastHash.([]byte), remoteConfig.ConfigHash) {
+		agent.lastConfigHash = message.GetRemoteConfigStatus().GetLastRemoteConfigHash()
+		rc.agentState.Store(agentUid, agent)
+	} else if !bytes.Equal(agent.lastConfigHash, remoteConfig.ConfigHash) {
 		rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)))
 		serverToAgent.RemoteConfig = remoteConfig
 	}
