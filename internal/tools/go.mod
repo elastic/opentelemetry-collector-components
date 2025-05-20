@@ -11,6 +11,7 @@ require (
 	go.opentelemetry.io/build-tools/multimod v0.22.0
 	go.opentelemetry.io/collector/cmd/builder v0.125.0
 	go.opentelemetry.io/collector/cmd/mdatagen v0.125.0
+	golang.org/x/tools v0.31.0
 	golang.org/x/vuln v1.1.4
 )
 
@@ -236,7 +237,6 @@ require (
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/telemetry v0.0.0-20240522233618-39ace7a40ae7 // indirect
 	golang.org/x/text v0.24.0 // indirect
-	golang.org/x/tools v0.31.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250219182151-9fdb1cabc7b2 // indirect
 	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect

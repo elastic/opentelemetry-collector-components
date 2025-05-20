@@ -40,11 +40,6 @@ const (
 	RequestErr Reason = "request_error"
 )
 
-// WithProcessorID returns a processor ID attribute with key.
-func WithProcessorID(project string) attribute.KeyValue {
-	return attribute.String(processorIDKey, project)
-}
-
 // WithDecision returns decision attribute with key.
 func WithDecision(decision string) attribute.KeyValue {
 	return attribute.String(decisionKey, decision)
