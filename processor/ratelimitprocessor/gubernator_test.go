@@ -83,11 +83,16 @@ func newTestGubernatorRateLimiter(t *testing.T, cfg *Config, mp *metric.MeterPro
 	if mp == nil {
 		mp = metric.NewMeterProvider()
 	}
+
+	telemetrySettings := component.TelemetrySettings{MeterProvider: mp, Logger: zap.NewNop()}
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
+	assert.NoError(t, err)
+
 	rl, err = newGubernatorRateLimiter(cfg, processor.Settings{
 		ID:                component.NewIDWithName(metadata.Type, "abc123"),
-		TelemetrySettings: component.TelemetrySettings{MeterProvider: mp, Logger: zap.NewNop()},
+		TelemetrySettings: telemetrySettings,
 		BuildInfo:         component.NewDefaultBuildInfo(),
-	})
+	}, telemetryBuilder)
 
 	require.NoError(t, err)
 	t.Cleanup(func() {
