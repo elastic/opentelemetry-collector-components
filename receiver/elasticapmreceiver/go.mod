@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver
 
-go 1.23.6
+go 1.23.8
 
 require (
 	github.com/cespare/xxhash v1.1.0
