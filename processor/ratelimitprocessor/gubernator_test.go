@@ -372,15 +372,15 @@ func assertMetrics(t *testing.T, rm metricdata.ResourceMetrics, name string, v i
 
 			dp := m.Data.(metricdata.Sum[int64]).DataPoints
 			for i := range dp {
-				actualAttrs := dp[i].Attributes.ToSlice()
+				// actualAttrs := dp[i].Attributes.ToSlice()
 
-				// Removed ignored dimensions from actualAttrs
-				filteredAttrs := make([]attribute.KeyValue, 0, len(actualAttrs))
-				for i := range actualAttrs {
-					if _, found := ignoredDimensions[string(actualAttrs[i].Key)]; !found {
-						filteredAttrs = append(filteredAttrs, actualAttrs[i])
-					}
-				}
+				// // Removed ignored dimensions from actualAttrs
+				// filteredAttrs := make([]attribute.KeyValue, 0, len(actualAttrs))
+				// for i := range actualAttrs {
+				// 	if _, found := ignoredDimensions[string(actualAttrs[i].Key)]; !found {
+				// 		filteredAttrs = append(filteredAttrs, actualAttrs[i])
+				// 	}
+				// }
 
 				// if !reflect.DeepEqual(expectedAttrs, filteredAttrs) {
 				// 	continue
