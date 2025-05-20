@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
 
-go 1.23.6
+go 1.23.8
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.18.0
