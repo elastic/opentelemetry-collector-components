@@ -28,6 +28,8 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/processor/processortest"
+	"go.opentelemetry.io/otel/metric/noop"
+	"go.uber.org/zap"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 )
@@ -39,9 +41,13 @@ func newTestLocalRateLimiter(t *testing.T, cfg *Config) *localRateLimiter {
 	}
 	require.Nil(t, cfg.Gubernator)
 
-	telemetrySettings := component.TelemetrySettings{}
+	telemetrySettings := component.TelemetrySettings{
+		MeterProvider: noop.NewMeterProvider(),
+		Logger:        zap.NewNop(),
+	}
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	assert.NoError(t, err)
+
 	rl, err := newLocalRateLimiter(cfg, processortest.NewNopSettings(processortest.NopType), telemetryBuilder)
 	require.NoError(t, err)
 	t.Cleanup(func() {
