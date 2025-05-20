@@ -42,7 +42,6 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
@@ -304,7 +303,6 @@ func TestGubernatorRateLimiter_RateLimit_Meterprovider(t *testing.T) {
 func TestRateLimitThresholdAttribute(t *testing.T) {
 	limitUsedPercent := []int64{20, 30, 60, 80, 90, 95, 100}
 	projectID := "TestProjectID"
-	processorID := "ratelimit/abc123"
 	reader := metric.NewManualReader()
 	mp := metric.NewMeterProvider(metric.WithReader(reader))
 	otel.SetMeterProvider(mp)
@@ -346,7 +344,6 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 				assert.EqualError(t, err, "too many requests")
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", 0.95),
-					telemetry.WithProcessorID(processorID),
 					attribute.String(metadataKey, projectID),
 					attribute.String("ratelimit_decision", "throttled"),
 					attribute.String("reason", "over_limit"),
@@ -355,7 +352,6 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 				assert.NoError(t, err)
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", getLimitThresholdBucket(float64(pctUsed)/100)),
-					telemetry.WithProcessorID(processorID),
 					attribute.String(metadataKey, projectID),
 					attribute.String("ratelimit_decision", "accepted"),
 					attribute.String("reason", "under_limit"),
