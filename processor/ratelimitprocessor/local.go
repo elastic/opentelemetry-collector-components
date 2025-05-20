@@ -42,11 +42,7 @@ type localRateLimiter struct {
 	telemetryBuilder *metadata.TelemetryBuilder
 }
 
-func newLocalRateLimiter(cfg *Config, set processor.Settings) (*localRateLimiter, error) {
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
-	if err != nil {
-		return nil, err
-	}
+func newLocalRateLimiter(cfg *Config, set processor.Settings, telemetryBuilder *metadata.TelemetryBuilder) (*localRateLimiter, error) {
 	return &localRateLimiter{cfg: cfg, set: set, telemetryBuilder: telemetryBuilder}, nil
 }
 
