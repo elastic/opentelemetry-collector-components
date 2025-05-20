@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -341,14 +342,12 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", 0.95),
 					attribute.String("ratelimit_decision", "throttled"),
-					attribute.String("reason", "over_limit"),
 					attribute.String("x-elastic-project-id", "TestProjectID"),
 				}
 			} else {
 				assert.NoError(t, err)
 				attrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", getLimitThresholdBucket(float64(pctUsed)/100)),
-					attribute.String("x-elastic-project-id", "TestProjectID"),
 					attribute.String("ratelimit_decision", "accepted"),
 					attribute.String("reason", "under_limit"),
 					attribute.String("x-elastic-project-id", "TestProjectID"),
@@ -372,19 +371,18 @@ func assertMetrics(t *testing.T, rm metricdata.ResourceMetrics, name string, v i
 
 			dp := m.Data.(metricdata.Sum[int64]).DataPoints
 			for i := range dp {
-				// actualAttrs := dp[i].Attributes.ToSlice()
+				actualAttrs := dp[i].Attributes.ToSlice()
+				// Removed ignored dimensions from actualAttrs
+				filteredAttrs := make([]attribute.KeyValue, 0, len(actualAttrs))
+				for i := range actualAttrs {
+					if _, found := ignoredDimensions[string(actualAttrs[i].Key)]; !found {
+						filteredAttrs = append(filteredAttrs, actualAttrs[i])
+					}
+				}
 
-				// // Removed ignored dimensions from actualAttrs
-				// filteredAttrs := make([]attribute.KeyValue, 0, len(actualAttrs))
-				// for i := range actualAttrs {
-				// 	if _, found := ignoredDimensions[string(actualAttrs[i].Key)]; !found {
-				// 		filteredAttrs = append(filteredAttrs, actualAttrs[i])
-				// 	}
-				// }
-
-				// if !reflect.DeepEqual(expectedAttrs, filteredAttrs) {
-				// 	continue
-				// }
+				if !reflect.DeepEqual(expectedAttrs, filteredAttrs) {
+					continue
+				}
 
 				require.Equal(t, v, dp[i].Value)
 				return
