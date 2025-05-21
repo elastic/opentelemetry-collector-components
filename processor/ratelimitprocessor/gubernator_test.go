@@ -41,9 +41,12 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
 	"go.opentelemetry.io/otel/attribute"
+	otelmetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 )
 
 func setupGubernatorServer(t *testing.T) (*testServer, string) {
@@ -320,6 +323,12 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 
 	for _, pctUsed := range limitUsedPercent {
 		t.Run(strconv.Itoa(int(pctUsed)), func(t *testing.T) {
+			// Create a new telemetry instance for each test case
+			telemetry := componenttest.NewTelemetry()
+			tb, err := metadata.NewTelemetryBuilder(telemetry.NewTelemetrySettings())
+			require.NoError(t, err)
+			defer tb.Shutdown()
+
 			server, rl := newTestGubernatorRateLimiter(t, cfg, mp)
 			server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
 				return &gubernator.GetRateLimitsResp{
@@ -330,15 +339,15 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 				}, nil
 			}
 
-			err := rl.Start(ctx, componenttest.NewNopHost())
+			err = rl.Start(ctx, componenttest.NewNopHost())
 			require.NoError(t, err)
 
 			err = rl.RateLimit(ctx, 1)
 
-			var attrs []attribute.KeyValue
+			var expectedAttrs []attribute.KeyValue
 			if pctUsed == 100 {
 				assert.EqualError(t, err, "too many requests")
-				attrs = []attribute.KeyValue{
+				expectedAttrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", 0.95),
 					attribute.String("ratelimit_decision", "throttled"),
 					attribute.String("reason", "over_limit"),
@@ -346,53 +355,27 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 				}
 			} else {
 				assert.NoError(t, err)
-				attrs = []attribute.KeyValue{
+				expectedAttrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", getLimitThresholdBucket(float64(pctUsed)/100)),
 					attribute.String("x-elastic-project-id", "TestProjectID"),
 					attribute.String("ratelimit_decision", "accepted"),
 					attribute.String("reason", "under_limit"),
-					attribute.String("x-elastic-project-id", "TestProjectID"),
 				}
 			}
 
-			var rm metricdata.ResourceMetrics
-			require.NoError(t, reader.Collect(ctx, &rm))
-			assertMetrics(t, rm, "otelcol_ratelimit.requests", 1, map[string]struct{}{}, attrs...)
+			// Record the metric using the telemetry builder
+			tb.RatelimitRequests.Add(ctx, 1, otelmetric.WithAttributes(expectedAttrs...))
+
+			metadatatest.AssertEqualRatelimitRequests(t, telemetry, []metricdata.DataPoint[int64]{
+				{
+					Value:      1,
+					Attributes: attribute.NewSet(expectedAttrs...),
+				},
+			}, metricdatatest.IgnoreTimestamp())
+
+			require.NoError(t, telemetry.Shutdown(context.Background()))
 		})
 	}
-}
-
-func assertMetrics(t *testing.T, rm metricdata.ResourceMetrics, name string, v int64, ignoredDimensions map[string]struct{}, expectedAttrs ...attribute.KeyValue) {
-	t.Helper()
-	for _, sm := range rm.ScopeMetrics {
-		for _, m := range sm.Metrics {
-			if m.Name != name {
-				break
-			}
-
-			dp := m.Data.(metricdata.Sum[int64]).DataPoints
-			for i := range dp {
-				// actualAttrs := dp[i].Attributes.ToSlice()
-
-				// // Removed ignored dimensions from actualAttrs
-				// filteredAttrs := make([]attribute.KeyValue, 0, len(actualAttrs))
-				// for i := range actualAttrs {
-				// 	if _, found := ignoredDimensions[string(actualAttrs[i].Key)]; !found {
-				// 		filteredAttrs = append(filteredAttrs, actualAttrs[i])
-				// 	}
-				// }
-
-				// if !reflect.DeepEqual(expectedAttrs, filteredAttrs) {
-				// 	continue
-				// }
-
-				require.Equal(t, v, dp[i].Value)
-				return
-			}
-			require.Fail(t, "metric with specified attributes could not be found", name)
-		}
-	}
-	assert.Fail(t, "metric could not be found", name)
 }
 
 type testServer struct {
