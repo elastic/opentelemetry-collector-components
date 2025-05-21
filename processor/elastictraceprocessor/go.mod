@@ -7,6 +7,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.124.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.124.1
 	github.com/stretchr/testify v1.10.0
+	go.opentelemetry.io/collector/client v1.28.1
 	go.opentelemetry.io/collector/component v1.30.0
 	go.opentelemetry.io/collector/component/componenttest v0.124.0
 	go.opentelemetry.io/collector/confmap v1.30.0
@@ -15,6 +16,7 @@ require (
 	go.opentelemetry.io/collector/pdata v1.30.0
 	go.opentelemetry.io/collector/processor v1.30.0
 	go.opentelemetry.io/collector/processor/processortest v0.124.0
+	go.opentelemetry.io/collector/semconv v0.124.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
 )
@@ -49,7 +51,6 @@ require (
 	go.opentelemetry.io/collector/pdata/testdata v0.124.0 // indirect
 	go.opentelemetry.io/collector/pipeline v0.124.0 // indirect
 	go.opentelemetry.io/collector/processor/xprocessor v0.124.0 // indirect
-	go.opentelemetry.io/collector/semconv v0.124.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.10.0 // indirect
 	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/log v0.11.0 // indirect
