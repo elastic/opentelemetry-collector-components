@@ -65,6 +65,7 @@ gotidy:
 
 .PHONY: gogenerate
 gogenerate:
+	# This is a workaround for a bug in mdatagen upstream: https://github.com/open-telemetry/opentelemetry-collector/issues/13069
 	@command -v goimports >/dev/null 2>&1 || $(MAKE) -B install-tools
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="generate"
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="fmt"
