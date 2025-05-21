@@ -85,11 +85,16 @@ func newTestGubernatorRateLimiter(t *testing.T, cfg *Config, mp *metric.MeterPro
 	if mp == nil {
 		mp = metric.NewMeterProvider()
 	}
+
+	telemetrySettings := component.TelemetrySettings{MeterProvider: mp, Logger: zap.NewNop()}
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
+	assert.NoError(t, err)
+
 	rl, err = newGubernatorRateLimiter(cfg, processor.Settings{
 		ID:                component.NewIDWithName(metadata.Type, "abc123"),
-		TelemetrySettings: component.TelemetrySettings{MeterProvider: mp, Logger: zap.NewNop()},
+		TelemetrySettings: telemetrySettings,
 		BuildInfo:         component.NewDefaultBuildInfo(),
-	})
+	}, telemetryBuilder)
 
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -350,14 +355,12 @@ func TestRateLimitThresholdAttribute(t *testing.T) {
 				expectedAttrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", 0.95),
 					attribute.String("ratelimit_decision", "throttled"),
-					attribute.String("reason", "over_limit"),
 					attribute.String("x-elastic-project-id", "TestProjectID"),
 				}
 			} else {
 				assert.NoError(t, err)
 				expectedAttrs = []attribute.KeyValue{
 					attribute.Float64("limit_threshold", getLimitThresholdBucket(float64(pctUsed)/100)),
-					attribute.String("x-elastic-project-id", "TestProjectID"),
 					attribute.String("ratelimit_decision", "accepted"),
 					attribute.String("reason", "under_limit"),
 				}

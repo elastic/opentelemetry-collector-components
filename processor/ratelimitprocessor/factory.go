@@ -57,10 +57,15 @@ func getRateLimiter(
 	set processor.Settings,
 ) (*sharedcomponent.Component[rateLimiterComponent], error) {
 	return rateLimiters.LoadOrStore(config, func() (rateLimiterComponent, error) {
-		if config.Gubernator != nil {
-			return newGubernatorRateLimiter(config, set)
+		telemetryBuilder, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
+		if err != nil {
+			return nil, err
 		}
-		return newLocalRateLimiter(config, set)
+
+		if config.Gubernator != nil {
+			return newGubernatorRateLimiter(config, set, telemetryBuilder)
+		}
+		return newLocalRateLimiter(config, set, telemetryBuilder)
 	})
 }
 

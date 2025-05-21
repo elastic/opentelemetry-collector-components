@@ -20,10 +20,10 @@ telemetry:
       sum:
         value_type: int
         monotonic: true
-      attributes: ["ratelimit_decision", "limit_threshold", "reason"]
+      attributes: ["decision", "limit_threshold", "reason"]
 
 attributes:
-  ratelimit_decision:
+  decision:
     description: rate limit decision
     type: string
   limit_threshold:

@@ -50,14 +50,8 @@ type gubernatorRateLimiter struct {
 	telemetryBuilder *metadata.TelemetryBuilder
 }
 
-func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
+func newGubernatorRateLimiter(cfg *Config, set processor.Settings, telemetryBuilder *metadata.TelemetryBuilder) (*gubernatorRateLimiter, error) {
 	var behavior int32
-
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
-	if err != nil {
-		return nil, err
-	}
-
 	for _, b := range cfg.Gubernator.Behavior {
 		value, ok := gubernator.Behavior_value[strings.ToUpper(string(b))]
 		if !ok {
