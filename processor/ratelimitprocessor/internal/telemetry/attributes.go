@@ -26,15 +26,11 @@ import (
 type Reason string
 
 const (
-	processorIDKey      = "processor_id"
-	reasonKey           = "reason"
-	decisionKey         = "ratelimit_decision"
-	limitThresholdKey   = "limit_threshold"
-	throttleBehaviorKey = "throttle_behavior"
+	reasonKey         = "reason"
+	decisionKey       = "ratelimit_decision"
+	limitThresholdKey = "limit_threshold"
 
-	TooManyRequests  Reason = "too_many_requests"
 	StatusUnderLimit Reason = "under_limit"
-	StatusOverLimit  Reason = "over_limit"
 
 	LimitError Reason = "limit_error"
 	RequestErr Reason = "request_error"
@@ -53,9 +49,4 @@ func WithReason(reason Reason) attribute.KeyValue {
 // WithLimitThreshold returns limit threshold with key.
 func WithLimitThreshold(limitThreshold float64) attribute.KeyValue {
 	return attribute.Float64(limitThresholdKey, limitThreshold)
-}
-
-// WithThrottleBehavior returns throttle behavior attribute with key.
-func WithThrottleBehavior(throttleBehavior string) attribute.KeyValue {
-	return attribute.String(throttleBehaviorKey, throttleBehavior)
 }
