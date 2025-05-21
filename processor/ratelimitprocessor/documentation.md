@@ -18,6 +18,6 @@ Number of rate-limiting requests
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
-| ratelimit_decision | rate limit decision | Any Str |
+| decision | rate limit decision | Any Str |
 | limit_threshold | rate limit threshold | Any Double |
 | reason | rate limit reason | Any Str |
