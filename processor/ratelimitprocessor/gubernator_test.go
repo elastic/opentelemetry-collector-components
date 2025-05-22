@@ -392,3 +392,61 @@ func (s *testServer) GetRateLimits(ctx context.Context, req *gubernator.GetRateL
 	}
 	return nil, status.Errorf(codes.Unimplemented, "method GetRateLimits not implemented")
 }
+
+func TestGubernatorRateLimiter_RequestDuration(t *testing.T) {
+	reader := metric.NewManualReader()
+	mp := metric.NewMeterProvider(metric.WithReader(reader))
+	otel.SetMeterProvider(mp)
+
+	cfg := &Config{
+		Rate:             1,
+		Burst:            2,
+		MetadataKeys:     []string{"x-elastic-project-id"},
+		ThrottleBehavior: ThrottleBehaviorDelay,
+	}
+
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-project-id": {"TestProjectID"},
+		}),
+	})
+
+	// Create a new telemetry instance for each test case
+	telemetry := componenttest.NewTelemetry()
+	tb, err := metadata.NewTelemetryBuilder(telemetry.NewTelemetrySettings())
+	require.NoError(t, err)
+	defer tb.Shutdown()
+
+	server, rl := newTestGubernatorRateLimiter(t, cfg, mp)
+	server.getRateLimits = func(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
+		return &gubernator.GetRateLimitsResp{
+			Responses: []*gubernator.RateLimitResp{{
+				Status:    gubernator.Status_UNDER_LIMIT,
+				Limit:     100,
+				Remaining: 80}},
+		}, nil
+	}
+
+	err = rl.Start(ctx, componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	err = rl.RateLimit(ctx, 1)
+	assert.NoError(t, err)
+
+	// Record the metric using the telemetry builder
+	tb.RatelimitRequestDuration.Record(ctx, 0.05)
+
+	metadatatest.AssertEqualRatelimitRequestDuration(t, telemetry, []metricdata.HistogramDataPoint[float64]{
+		{
+			Attributes:   attribute.NewSet(),
+			Count:        1,
+			Sum:          0.05,
+			Min:          metricdata.NewExtrema(0.05),
+			Max:          metricdata.NewExtrema(0.05),
+			Bounds:       []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+			BucketCounts: []uint64{0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+		},
+	}, metricdatatest.IgnoreTimestamp())
+
+	require.NoError(t, telemetry.Shutdown(context.Background()))
+}
