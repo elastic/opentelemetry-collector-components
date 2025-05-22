@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -369,6 +370,41 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+func TestMetrics(t *testing.T) {
+	var inputFiles_error = []struct {
+		inputNdJsonFileName        string
+		outputExpectedYamlFileName string
+	}{
+		{"metricsets.ndjson", "metricsets_expected.yaml"},
+	}
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			Endpoint: testEndpoint,
+		},
+	}
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	nextMetrics := new(consumertest.MetricsSink)
+	receiver, _ := factory.CreateMetrics(context.Background(), set, cfg, nextMetrics)
+
+	if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+		t.Errorf("Starting receiver failed: %v", err)
+	}
+	defer func() {
+		if err := receiver.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
+
+	for _, tt := range inputFiles_error {
+		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
+			runComparisonForMetrics(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextMetrics, testEndpoint)
+		})
+	}
+}
+
 var inputFiles = []struct {
 	inputNdJsonFileName        string
 	outputExpectedYamlFileName string
@@ -461,4 +497,19 @@ func runComparisonForErrors(t *testing.T, inputJsonFileName string, expectedYaml
 	expectedLogs, err := golden.ReadLogs(expectedFile)
 	require.NoError(t, err)
 	require.NoError(t, plogtest.CompareLogs(expectedLogs, actualLogs))
+}
+
+func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
+	nextMetric *consumertest.MetricsSink, testEndpoint string,
+) {
+
+	nextMetric.Reset()
+	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
+	actualMetrics := nextMetric.AllMetrics()[0]
+	expectedFile := filepath.Join(testData, expectedYamlFileName)
+	// Use this line to generate the expected yaml file:
+	golden.WriteMetrics(t, expectedFile, actualMetrics)
+	expectedMetrics, err := golden.ReadMetrics(expectedFile)
+	require.NoError(t, err)
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics))
 }

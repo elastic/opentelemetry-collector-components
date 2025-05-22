@@ -78,6 +78,10 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 	}
 }
 
+func SetDerivedFieldsForMetrics(event *modelpb.APMEvent, attributes pcommon.Map) {
+	attributes.PutStr(elasticattr.ProcessorEvent, "metric")
+}
+
 // Shared across spans and transactions
 func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))

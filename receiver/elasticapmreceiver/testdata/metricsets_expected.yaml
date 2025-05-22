@@ -1,0 +1,63 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: 1234_service-12a3
+        - key: service.version
+          value:
+            stringValue: ""
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+    scopeMetrics:
+      - scope: {}
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asInt: "633288"
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: span.subtype
+                      value:
+                        stringValue: mysql
+                    - key: span.type
+                      value:
+                        stringValue: db
+                    - key: transaction.name
+                      value:
+                        stringValue: GET /
+                    - key: transaction.type
+                      value:
+                        stringValue: request
+                  timeUnixNano: "1000000"
+            name: span.self_time.sum.us
+            unit: us
+          - gauge:
+              dataPoints:
+                - asDouble: 1
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: span.subtype
+                      value:
+                        stringValue: mysql
+                    - key: span.type
+                      value:
+                        stringValue: db
+                    - key: transaction.name
+                      value:
+                        stringValue: GET /
+                    - key: transaction.type
+                      value:
+                        stringValue: request
+                  timeUnixNano: "1000000"
+            name: span.self_time.count
+            unit: count
+        scope: {}

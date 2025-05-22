@@ -236,7 +236,7 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 			sm := rm.ScopeMetrics().AppendEmpty()
 			metricset := event.GetMetricset()
 
-			// span_breakdown metrics don't have Samples - value is directly in event.Span.SelfTime.*
+			// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
 			if metricset.Name == "span_breakdown" {
 				r.translateBreakdownMetricsToOtel(rm, event)
 			}
@@ -266,8 +266,9 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 						dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 						val := sample.GetValue()
 						dp.SetDoubleValue(val)
+
 						mappers.SetDerivedFieldsCommon(event, dp.Attributes())
-						mappers.TranslateToOtelResourceAttributes(event, dp.Attributes())
+						mappers.SetDerivedFieldsForMetrics(event, dp.Attributes())
 					}
 				case modelpb.MetricType_METRIC_TYPE_HISTOGRAM:
 					// TODO histograms
@@ -276,6 +277,8 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 				default:
 					return fmt.Errorf("unhandled metric type %q", sample.GetType())
 				}
+
+				mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
 			}
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
@@ -338,6 +341,8 @@ func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm pmetric.Resource
 	count_metric_dp.SetDoubleValue(float64(event.Span.SelfTime.Count))
 
 	mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
+	mappers.SetDerivedFieldsForMetrics(event, sum_dp.Attributes())
+	mappers.SetDerivedFieldsForMetrics(event, count_metric_dp.Attributes())
 }
 
 func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent) pmetric.NumberDataPoint {
