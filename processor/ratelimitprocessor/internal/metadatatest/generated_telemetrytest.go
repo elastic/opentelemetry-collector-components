@@ -38,6 +38,35 @@ func NewSettings(tt *componenttest.Telemetry) processor.Settings {
 	return set
 }
 
+func AssertEqualRatelimitConcurrentRequests(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.concurrent_requests",
+		Description: "Number of in-flight requests at any given time",
+		Unit:        "{requests}",
+		Data: metricdata.Gauge[int64]{
+			DataPoints: dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.concurrent_requests")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualRatelimitRequestDuration(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[float64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.request_duration",
+		Description: "Time(in seconds) taken to process a rate limit request",
+		Unit:        "{seconds}",
+		Data: metricdata.Histogram[float64]{
+			Temporality: metricdata.CumulativeTemporality,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.request_duration")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
 func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.requests",

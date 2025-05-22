@@ -19,6 +19,8 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"sync/atomic"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -26,8 +28,11 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 )
 
 type rateLimiterProcessor struct {
@@ -57,6 +62,12 @@ type ProfilesRateLimiterProcessor struct {
 	rateLimiterProcessor
 	count func(profiles pprofile.Profiles) int
 	next  func(ctx context.Context, profiles pprofile.Profiles) error
+}
+
+type rateLimiter struct {
+	cfg              *Config
+	telemetryBuilder *metadata.TelemetryBuilder
+	activeRequests   int64
 }
 
 func NewLogsRateLimiterProcessor(
@@ -244,4 +255,31 @@ func getProfilesCountFunc(strategy Strategy) func(pd pprofile.Profiles) int {
 	}
 	// cannot happen, prevented by config.Validate()
 	return nil
+}
+
+func (r *rateLimiter) withTelemetry(ctx context.Context, fn func() error) error {
+	startTime := time.Now()
+	atomic.AddInt64(&r.activeRequests, 1)
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		r.requestDurationTelemetry(ctx, duration)
+		r.requestConcurrentTelemetry(ctx, atomic.LoadInt64(&r.activeRequests))
+		atomic.AddInt64(&r.activeRequests, -1)
+	}()
+	return fn()
+}
+
+func (r *rateLimiter) requestTelemetry(ctx context.Context, baseAttrs []attribute.KeyValue) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
+	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+}
+
+func (r *rateLimiter) requestDurationTelemetry(ctx context.Context, duration float64) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, []attribute.KeyValue{})
+	r.telemetryBuilder.RatelimitRequestDuration.Record(ctx, duration, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+}
+
+func (r *rateLimiter) requestConcurrentTelemetry(ctx context.Context, activeRequests int64) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, []attribute.KeyValue{})
+	r.telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, activeRequests, metric.WithAttributeSet(attribute.NewSet(attrs...)))
 }
