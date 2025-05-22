@@ -82,7 +82,7 @@ func createLogsProcessor(
 	}
 	return NewLogsRateLimiterProcessor(
 		rateLimiter,
-		config,
+		config.Strategy,
 		func(ctx context.Context, ld plog.Logs) error {
 			return nextConsumer.ConsumeLogs(ctx, ld)
 		},
@@ -102,7 +102,7 @@ func createMetricsProcessor(
 	}
 	return NewMetricsRateLimiterProcessor(
 		rateLimiter,
-		config,
+		config.Strategy,
 		func(ctx context.Context, md pmetric.Metrics) error {
 			return nextConsumer.ConsumeMetrics(ctx, md)
 		},
@@ -122,7 +122,7 @@ func createTracesProcessor(
 	}
 	return NewTracesRateLimiterProcessor(
 		rateLimiter,
-		config,
+		config.Strategy,
 		func(ctx context.Context, td ptrace.Traces) error {
 			return nextConsumer.ConsumeTraces(ctx, td)
 		},
@@ -142,7 +142,7 @@ func createProfilesProcessor(
 	}
 	return NewProfilesRateLimiterProcessor(
 		rateLimiter,
-		config,
+		config.Strategy,
 		func(ctx context.Context, td pprofile.Profiles) error {
 			return nextConsumer.ConsumeProfiles(ctx, td)
 		},

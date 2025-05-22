@@ -37,10 +37,7 @@ import (
 
 type rateLimiterProcessor struct {
 	component.Component
-	rl               RateLimiter
-	activeRequests   int64
-	telemetryBuilder *metadata.TelemetryBuilder
-	cfg              *Config
+	rl RateLimiter
 }
 
 type LogsRateLimiterProcessor struct {
@@ -67,66 +64,68 @@ type ProfilesRateLimiterProcessor struct {
 	next  func(ctx context.Context, profiles pprofile.Profiles) error
 }
 
+type rateLimiter struct {
+	cfg              *Config
+	telemetryBuilder *metadata.TelemetryBuilder
+	activeRequests   int64
+}
+
 func NewLogsRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
-	config *Config,
+	strategy Strategy,
 	next func(ctx context.Context, logs plog.Logs) error,
 ) *LogsRateLimiterProcessor {
 	return &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
 			Component: rateLimiter,
 			rl:        rateLimiter.Unwrap(),
-			cfg:       config,
 		},
-		count: getLogsCountFunc(config.Strategy),
+		count: getLogsCountFunc(strategy),
 		next:  next,
 	}
 }
 
 func NewMetricsRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
-	config *Config,
+	strategy Strategy,
 	next func(ctx context.Context, metrics pmetric.Metrics) error,
 ) *MetricsRateLimiterProcessor {
 	return &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
 			Component: rateLimiter,
 			rl:        rateLimiter.Unwrap(),
-			cfg:       config,
 		},
-		count: getMetricsCountFunc(config.Strategy),
+		count: getMetricsCountFunc(strategy),
 		next:  next,
 	}
 }
 
 func NewTracesRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
-	config *Config,
+	strategy Strategy,
 	next func(ctx context.Context, traces ptrace.Traces) error,
 ) *TracesRateLimiterProcessor {
 	return &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
 			Component: rateLimiter,
 			rl:        rateLimiter.Unwrap(),
-			cfg:       config,
 		},
-		count: getTracesCountFunc(config.Strategy),
+		count: getTracesCountFunc(strategy),
 		next:  next,
 	}
 }
 
 func NewProfilesRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
-	config *Config,
+	strategy Strategy,
 	next func(ctx context.Context, profiles pprofile.Profiles) error,
 ) *ProfilesRateLimiterProcessor {
 	return &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
 			Component: rateLimiter,
 			rl:        rateLimiter.Unwrap(),
-			cfg:       config,
 		},
-		count: getProfilesCountFunc(config.Strategy),
+		count: getProfilesCountFunc(strategy),
 		next:  next,
 	}
 }
@@ -147,66 +146,36 @@ func (r *ProfilesRateLimiterProcessor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: false}
 }
 
-func (br *rateLimiterProcessor) withTelemetry(ctx context.Context, durationFn func(context.Context, float64), concurrentFn func(context.Context, int64), fn func() error) error {
-	startTime := time.Now()
-	atomic.AddInt64(&br.activeRequests, 1)
-	defer func() {
-		duration := time.Since(startTime).Seconds()
-		durationFn(ctx, duration)
-		concurrentFn(ctx, atomic.LoadInt64(&br.activeRequests))
-		atomic.AddInt64(&br.activeRequests, -1)
-	}()
-	return fn()
-}
-
 func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	hits := r.count(ld)
-	return r.withTelemetry(ctx, r.requestDurationTelemetry, r.requestConcurrentTelemetry, func() error {
-		if err := r.rl.RateLimit(ctx, hits); err != nil {
-			return err
-		}
-		return r.next(ctx, ld)
-	})
+	if err := r.rl.RateLimit(ctx, hits); err != nil {
+		return err
+	}
+	return r.next(ctx, ld)
 }
 
 func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	hits := r.count(md)
-	return r.withTelemetry(ctx, r.requestDurationTelemetry, r.requestConcurrentTelemetry, func() error {
-		if err := r.rl.RateLimit(ctx, hits); err != nil {
-			return err
-		}
-		return r.next(ctx, md)
-	})
+	if err := r.rl.RateLimit(ctx, hits); err != nil {
+		return err
+	}
+	return r.next(ctx, md)
 }
 
 func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	hits := r.count(td)
-	return r.withTelemetry(ctx, r.requestDurationTelemetry, r.requestConcurrentTelemetry, func() error {
-		if err := r.rl.RateLimit(ctx, hits); err != nil {
-			return err
-		}
-		return r.next(ctx, td)
-	})
+	if err := r.rl.RateLimit(ctx, hits); err != nil {
+		return err
+	}
+	return r.next(ctx, td)
 }
 
 func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
 	hits := r.count(pd)
-	return r.withTelemetry(ctx, r.requestDurationTelemetry, r.requestConcurrentTelemetry, func() error {
-		if err := r.rl.RateLimit(ctx, hits); err != nil {
-			return err
-		}
-		return r.next(ctx, pd)
-	})
-}
-
-func (br *rateLimiterProcessor) requestDurationTelemetry(ctx context.Context, duration float64) {
-	attrs := attrsFromMetadata(ctx, br.cfg.MetadataKeys, []attribute.KeyValue{})
-	br.telemetryBuilder.RatelimitRequestDuration.Record(ctx, duration, metric.WithAttributeSet(attribute.NewSet(attrs...)))
-}
-
-func (br *rateLimiterProcessor) requestConcurrentTelemetry(ctx context.Context, activeRequests int64) {
-	attrs := attrsFromMetadata(ctx, br.cfg.MetadataKeys, []attribute.KeyValue{})
-	br.telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, activeRequests, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+	if err := r.rl.RateLimit(ctx, hits); err != nil {
+		return err
+	}
+	return r.next(ctx, pd)
 }
 
 func getLogsCountFunc(strategy Strategy) func(ld plog.Logs) int {
@@ -286,4 +255,31 @@ func getProfilesCountFunc(strategy Strategy) func(pd pprofile.Profiles) int {
 	}
 	// cannot happen, prevented by config.Validate()
 	return nil
+}
+
+func (r *rateLimiter) withTelemetry(ctx context.Context, fn func() error) error {
+	startTime := time.Now()
+	atomic.AddInt64(&r.activeRequests, 1)
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		r.requestDurationTelemetry(ctx, duration)
+		r.requestConcurrentTelemetry(ctx, atomic.LoadInt64(&r.activeRequests))
+		atomic.AddInt64(&r.activeRequests, -1)
+	}()
+	return fn()
+}
+
+func (r *rateLimiter) requestTelemetry(ctx context.Context, baseAttrs []attribute.KeyValue) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
+	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+}
+
+func (r *rateLimiter) requestDurationTelemetry(ctx context.Context, duration float64) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, []attribute.KeyValue{})
+	r.telemetryBuilder.RatelimitRequestDuration.Record(ctx, duration, metric.WithAttributeSet(attribute.NewSet(attrs...)))
+}
+
+func (r *rateLimiter) requestConcurrentTelemetry(ctx context.Context, activeRequests int64) {
+	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, []attribute.KeyValue{})
+	r.telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, activeRequests, metric.WithAttributeSet(attribute.NewSet(attrs...)))
 }

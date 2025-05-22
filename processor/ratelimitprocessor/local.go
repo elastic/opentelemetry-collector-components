@@ -20,30 +20,36 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 	"golang.org/x/time/rate"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 )
 
 var _ RateLimiter = (*localRateLimiter)(nil)
 
 type localRateLimiter struct {
-	cfg *Config
-	set processor.Settings
+	rateLimiter rateLimiter
+	set         processor.Settings
 	// TODO use an LRU to keep a cap on the number of limiters.
 	// When the LRU capacity is exceeded, reuse the evicted limiter.
-	limiters         sync.Map
-	telemetryBuilder *metadata.TelemetryBuilder
+	limiters sync.Map
 }
 
 func newLocalRateLimiter(cfg *Config, set processor.Settings, telemetryBuilder *metadata.TelemetryBuilder) (*localRateLimiter, error) {
-	return &localRateLimiter{cfg: cfg, set: set, telemetryBuilder: telemetryBuilder}, nil
+	return &localRateLimiter{
+		rateLimiter: rateLimiter{
+			cfg:              cfg,
+			telemetryBuilder: telemetryBuilder,
+		},
+		set: set,
+	}, nil
 }
 
 func (r *localRateLimiter) Start(ctx context.Context, host component.Host) error {
@@ -56,15 +62,25 @@ func (r *localRateLimiter) Shutdown(ctx context.Context) error {
 }
 
 func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
+	startTime := time.Now()
+	atomic.AddInt64(&r.rateLimiter.activeRequests, 1)
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		r.rateLimiter.requestDurationTelemetry(ctx, duration)
+
+		r.rateLimiter.requestConcurrentTelemetry(ctx, atomic.LoadInt64(&r.rateLimiter.activeRequests))
+		atomic.AddInt64(&r.rateLimiter.activeRequests, -1)
+	}()
+
 	// Each (shared) processor gets its own rate limiter,
 	// so it's enough to use client metadata-based unique key.
-	key := getUniqueKey(ctx, r.cfg.MetadataKeys)
-	v, _ := r.limiters.LoadOrStore(key, rate.NewLimiter(rate.Limit(r.cfg.Rate), r.cfg.Burst))
+	key := getUniqueKey(ctx, r.rateLimiter.cfg.MetadataKeys)
+	v, _ := r.limiters.LoadOrStore(key, rate.NewLimiter(rate.Limit(r.rateLimiter.cfg.Rate), r.rateLimiter.cfg.Burst))
 	limiter := v.(*rate.Limiter)
-	switch r.cfg.ThrottleBehavior {
+	switch r.rateLimiter.cfg.ThrottleBehavior {
 	case ThrottleBehaviorError:
 		if ok := limiter.AllowN(time.Now(), hits); !ok {
-			r.requestTelemetry(ctx, []attribute.KeyValue{
+			r.rateLimiter.requestTelemetry(ctx, []attribute.KeyValue{
 				telemetry.WithDecision("throttled"),
 			})
 			return errTooManyRequests
@@ -72,7 +88,7 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	case ThrottleBehaviorDelay:
 		lr := limiter.ReserveN(time.Now(), hits)
 		if !lr.OK() {
-			r.requestTelemetry(ctx, []attribute.KeyValue{
+			r.rateLimiter.requestTelemetry(ctx, []attribute.KeyValue{
 				telemetry.WithDecision("throttled"),
 			})
 			return errTooManyRequests
@@ -84,20 +100,15 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			return ctx.Err()
 		case <-timer.C:
 		}
-		r.requestTelemetry(ctx, []attribute.KeyValue{
+		r.rateLimiter.requestTelemetry(ctx, []attribute.KeyValue{
 			telemetry.WithDecision("throttled"),
 		})
 		return nil
 	}
 
-	r.requestTelemetry(ctx, []attribute.KeyValue{
+	r.rateLimiter.requestTelemetry(ctx, []attribute.KeyValue{
 		telemetry.WithReason(telemetry.StatusUnderLimit),
 		telemetry.WithDecision("accepted"),
 	})
 	return nil
-}
-
-func (r *localRateLimiter) requestTelemetry(ctx context.Context, baseAttrs []attribute.KeyValue) {
-	attrs := attrsFromMetadata(ctx, r.cfg.MetadataKeys, baseAttrs)
-	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(attrs...)))
 }
