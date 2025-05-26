@@ -195,55 +195,82 @@ func getTelemetryAttrs(ctx context.Context, metadataKeys []string, err error) []
 	return attrs
 }
 
+func rateLimit(
+	ctx context.Context,
+	hits int,
+	rateLimit func(ctx context.Context, n int) error,
+	metadataKeys []string,
+	telemetryBuilder *metadata.TelemetryBuilder,
+) error {
+	err := rateLimit(ctx, hits)
+
+	attrs := getTelemetryAttrs(ctx, metadataKeys, err)
+	telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
+
+	return err
+}
+
 func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	hits := r.count(ld)
-	err := r.rl.RateLimit(ctx, hits)
 
-	attrs := getTelemetryAttrs(ctx, r.metadataKeys, err)
-	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
-
-	if err != nil {
+	if err := rateLimit(
+		ctx,
+		hits,
+		r.rl.RateLimit,
+		r.metadataKeys,
+		r.telemetryBuilder,
+	); err != nil {
 		return err
 	}
+
 	return r.next(ctx, ld)
 }
 
 func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	hits := r.count(md)
-	err := r.rl.RateLimit(ctx, hits)
 
-	attrs := getTelemetryAttrs(ctx, r.metadataKeys, err)
-	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
-
-	if err != nil {
+	if err := rateLimit(
+		ctx,
+		hits,
+		r.rl.RateLimit,
+		r.metadataKeys,
+		r.telemetryBuilder,
+	); err != nil {
 		return err
 	}
+
 	return r.next(ctx, md)
 }
 
 func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	hits := r.count(td)
-	err := r.rl.RateLimit(ctx, hits)
 
-	attrs := getTelemetryAttrs(ctx, r.metadataKeys, err)
-	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
-
-	if err != nil {
+	if err := rateLimit(
+		ctx,
+		hits,
+		r.rl.RateLimit,
+		r.metadataKeys,
+		r.telemetryBuilder,
+	); err != nil {
 		return err
 	}
+
 	return r.next(ctx, td)
 }
 
 func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
 	hits := r.count(pd)
-	err := r.rl.RateLimit(ctx, hits)
 
-	attrs := getTelemetryAttrs(ctx, r.metadataKeys, err)
-	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
-
-	if err != nil {
+	if err := rateLimit(
+		ctx,
+		hits,
+		r.rl.RateLimit,
+		r.metadataKeys,
+		r.telemetryBuilder,
+	); err != nil {
 		return err
 	}
+
 	return r.next(ctx, pd)
 }
 
