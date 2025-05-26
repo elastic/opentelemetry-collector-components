@@ -41,7 +41,7 @@ type apmConfigExtension struct {
 var _ component.Component = (*apmConfigExtension)(nil)
 
 func newApmConfigExtension(cfg *Config, set extension.Settings, clientFactory configClientFactory) *apmConfigExtension {
-	return &apmConfigExtension{telemetrySettings: set.TelemetrySettings, opampServer: server.New(nil), extensionConfig: cfg, clientFactory: clientFactory}
+	return &apmConfigExtension{telemetrySettings: set.TelemetrySettings, opampServer: server.New(newLoggerFromZap(set.Logger)), extensionConfig: cfg, clientFactory: clientFactory}
 }
 
 func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) error {
