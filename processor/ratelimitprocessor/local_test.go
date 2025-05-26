@@ -25,8 +25,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/processor/processortest"
+	"go.opentelemetry.io/otel/metric/noop"
+	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 )
 
 // newTestLocalRateLimiter creates a new localRateLimiter.
@@ -36,7 +41,14 @@ func newTestLocalRateLimiter(t *testing.T, cfg *Config) *localRateLimiter {
 	}
 	require.Nil(t, cfg.Gubernator)
 
-	rl, err := newLocalRateLimiter(cfg, processortest.NewNopSettings(processortest.NopType))
+	telemetrySettings := component.TelemetrySettings{
+		MeterProvider: noop.NewMeterProvider(),
+		Logger:        zap.NewNop(),
+	}
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
+	assert.NoError(t, err)
+
+	rl, err := newLocalRateLimiter(cfg, processortest.NewNopSettings(processortest.NopType), telemetryBuilder)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := rl.Shutdown(context.Background())

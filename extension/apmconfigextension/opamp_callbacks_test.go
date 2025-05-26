@@ -19,22 +19,22 @@ package apmconfigextension
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/open-telemetry/opamp-go/protobufs"
-	"github.com/open-telemetry/opamp-go/server/types"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
 
 type remoteConfigMock struct {
-	remoteConfigFn func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error)
+	remoteConfigFn func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error)
 }
 
-func (f *remoteConfigMock) RemoteConfig(ctx context.Context, msg *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
-	return f.remoteConfigFn(ctx, msg)
+func (f *remoteConfigMock) RemoteConfig(ctx context.Context, id apmconfig.InstanceUid, attrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+	return f.remoteConfigFn(ctx, id, attrs)
 }
 
 func TestOnMessage(t *testing.T) {
@@ -45,7 +45,7 @@ func TestOnMessage(t *testing.T) {
 
 	testcases := map[string]struct {
 		opampMessages []inOutOpamp
-		callbacks     *types.Callbacks
+		callbacks     *remoteConfigCallbacks
 	}{
 		"empty AgentToServer message, no instance_uid": {
 			opampMessages: []inOutOpamp{
@@ -62,7 +62,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return nil, nil
 				},
 			}, zap.NewNop()),
@@ -84,7 +84,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return nil, errors.New("testing error")
 				},
 			}, zap.NewNop()),
@@ -107,7 +107,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return nil, apmconfig.UnidentifiedAgent
 				},
 			}, zap.NewNop()),
@@ -149,7 +149,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return &protobufs.AgentRemoteConfig{
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
@@ -192,7 +192,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return &protobufs.AgentRemoteConfig{
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
@@ -235,7 +235,39 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, *protobufs.AgentToServer) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+					return &protobufs.AgentRemoteConfig{
+						ConfigHash: []byte("abcd"),
+						Config: &protobufs.AgentConfigMap{
+							ConfigMap: map[string]*protobufs.AgentConfigFile{
+								"": {
+									ContentType: "text/json",
+									Body:        []byte(`{"test":"aaa"}`),
+								},
+							},
+						},
+					}, nil
+				},
+			}, zap.NewNop()),
+		},
+		"agent changes AgentDescription": {
+			opampMessages: []inOutOpamp{
+				{
+					agentToServer: &protobufs.AgentToServer{
+						InstanceUid: []byte("test"),
+						RemoteConfigStatus: &protobufs.RemoteConfigStatus{
+							LastRemoteConfigHash: []byte("abcd"),
+							Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+						},
+					},
+					expectedServerToAgent: &protobufs.ServerToAgent{
+						InstanceUid:  []byte("test"),
+						Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+					},
+				},
+			},
+			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
+				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
 					return &protobufs.AgentRemoteConfig{
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
@@ -257,6 +289,21 @@ func TestOnMessage(t *testing.T) {
 			connectionCallbacks := tt.callbacks.OnConnecting(nil).ConnectionCallbacks
 			for i := range tt.opampMessages {
 				assert.Equal(t, tt.opampMessages[i].expectedServerToAgent, connectionCallbacks.OnMessage(context.TODO(), nil, tt.opampMessages[i].agentToServer))
+
+				// assert resources cleanup on AgentDisconnect
+				if len(tt.opampMessages[i].agentToServer.InstanceUid) > 0 {
+					assert.Equal(t, &protobufs.ServerToAgent{
+						InstanceUid:  tt.opampMessages[i].agentToServer.InstanceUid,
+						Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+					}, connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+						InstanceUid:     tt.opampMessages[i].agentToServer.InstanceUid,
+						AgentDisconnect: &protobufs.AgentDisconnect{},
+					}))
+					assert.False(t, func() bool {
+						_, found := tt.callbacks.agentState.Load(hex.EncodeToString(tt.opampMessages[i].agentToServer.InstanceUid))
+						return found
+					}())
+				}
 			}
 		})
 	}

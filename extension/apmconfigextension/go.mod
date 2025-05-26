@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
 
-go 1.23.6
+go 1.23.8
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.18.0
@@ -93,11 +93,10 @@ require (
 	github.com/knadh/koanf/v2 v2.2.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/open-telemetry/opamp-go v0.19.0
+	github.com/open-telemetry/opamp-go v0.19.1-0.20250423191708-8d78a5169350
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	go.opentelemetry.io/collector/pdata v1.31.0 // indirect
-	go.opentelemetry.io/collector/semconv v0.125.0
-	go.opentelemetry.io/otel v1.35.0 // indirect
+	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
