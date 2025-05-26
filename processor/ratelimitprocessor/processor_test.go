@@ -19,14 +19,13 @@ package ratelimitprocessor
 
 import (
 	"context"
-	"testing"
-
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -269,13 +268,21 @@ func TestConsume_Profiles(t *testing.T) {
 func testRateLimitRequests(t *testing.T, tt testTelemetry) {
 	values := getSumValues(t, "otelcol_ratelimit.requests", tt)
 	require.Equal(t, 2, len(values))
-	require.Equal(t, []attribute.KeyValue{
-		telemetry.WithDecision("accepted"),
-		telemetry.WithReason(telemetry.StatusUnderLimit),
-	}, values[0].Attributes.ToSlice())
-	require.Equal(t, []attribute.KeyValue{
-		telemetry.WithDecision("throttled"),
-	}, values[1].Attributes.ToSlice())
+
+	// we compare the attributes list instead of the data
+	// points, since they can come in different order
+	attrs := [][]attribute.KeyValue{
+		values[0].Attributes.ToSlice(),
+		values[1].Attributes.ToSlice(),
+	}
+	expectedAttrs := [][]attribute.KeyValue{
+		{
+			telemetry.WithDecision("accepted"),
+			telemetry.WithReason(telemetry.StatusUnderLimit),
+		}, {
+			telemetry.WithDecision("throttled"),
+		}}
+	require.ElementsMatch(t, expectedAttrs, attrs)
 }
 
 type testTelemetry struct {
