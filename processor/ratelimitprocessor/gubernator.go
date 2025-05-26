@@ -34,8 +34,6 @@ import (
 
 var _ RateLimiter = (*gubernatorRateLimiter)(nil)
 
-var limitPercentDims = []float64{0.95, 0.90, 0.85, 0.75, 0.50, 0.25}
-
 type gubernatorRateLimiter struct {
 	cfg      *Config
 	set      processor.Settings
