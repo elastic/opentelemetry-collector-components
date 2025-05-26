@@ -232,8 +232,9 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 		switch event.Type() {
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()
-			r.elasticMetricsToOtelMetrics(&rm, event, timestamp, ctx)
-
+			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestamp, ctx); err != nil {
+				return err
+			}
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
