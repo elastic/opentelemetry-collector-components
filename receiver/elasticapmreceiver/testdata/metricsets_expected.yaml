@@ -35,7 +35,7 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170422281000000"
             name: span.self_time.sum.us
             unit: us
           - gauge:
@@ -57,7 +57,7 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170422281000000"
             name: span.self_time.count
             unit: count
         scope: {}
@@ -90,7 +90,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421364000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421364000000"
             name: go.memstats.heap.sys.bytes
         scope: {}
   - resource:
@@ -122,7 +122,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421366000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421366000000"
             name: system.process.cgroup.memory.mem.limit.bytes
           - gauge:
               dataPoints:
@@ -137,7 +137,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421366000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421366000000"
             name: system.process.cgroup.memory.mem.usage.bytes
         scope: {}
   - resource:
@@ -169,7 +169,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421367000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.cfs.quota.us
           - gauge:
               dataPoints:
@@ -184,7 +184,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421367000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.periods
           - gauge:
               dataPoints:
@@ -199,7 +199,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421367000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.throttled.periods
           - gauge:
               dataPoints:
@@ -214,7 +214,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421367000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.throttled.ns
           - gauge:
               dataPoints:
@@ -229,7 +229,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421367000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpuacct.id
           - gauge:
               dataPoints:
@@ -244,7 +244,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421367000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpuacct.total.ns
           - gauge:
               dataPoints:
@@ -259,7 +259,7 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421367000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.cfs.period.us
           - gauge:
               dataPoints:
@@ -274,6 +274,6 @@ resourceMetrics:
                     - key: timestamp.us
                       value:
                         intValue: "1496170421367000"
-                  timeUnixNano: "1000000"
+                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.id
         scope: {}
