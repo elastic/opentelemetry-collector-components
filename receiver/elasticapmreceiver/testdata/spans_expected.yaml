@@ -62,7 +62,7 @@ resourceSpans:
             endTimeUnixNano: "1532976822422581000"
             name: GET /api/types
             parentSpanId: abcdef0123456789
-            spanId: abcdef0123456700
+            spanId: 01af25874dec69dd
             startTimeUnixNano: "1532976822281000000"
             status:
               code: 1
@@ -130,7 +130,7 @@ resourceSpans:
             endTimeUnixNano: "1532976822313592981"
             name: GET /api/types
             parentSpanId: "0000000011111111"
-            spanId: 1234abcdef567895
+            spanId: ab45781d265894fe
             startTimeUnixNano: "1532976822281000000"
             status: {}
             traceId: abcdef0123456789abcdef9876543210
@@ -197,7 +197,7 @@ resourceSpans:
             endTimeUnixNano: "1532976822284564298"
             name: GET /api/types
             parentSpanId: abcdefabcdef7890
-            spanId: 0123456a89012345
+            spanId: ab23456a89012345
             startTimeUnixNano: "1532976822281000000"
             status: {}
             traceId: abcdef0123456789abcdef9876543210
@@ -631,7 +631,7 @@ resourceSpans:
             endTimeUnixNano: "1532975583585205000"
             name: Request
             parentSpanId: abcdef0123456789
-            spanId: ""
+            spanId: 01af25874dec69dd
             startTimeUnixNano: "1532975583584217000"
             status:
               code: 1
@@ -711,7 +711,7 @@ resourceSpans:
             endTimeUnixNano: "1532976822422581000"
             name: Rabbitmq receive
             parentSpanId: abcdef0123456789
-            spanId: ""
+            spanId: 01af25874dec69dd
             startTimeUnixNano: "1532976822281000000"
             status: {}
             traceId: fdedef0123456789abcdef9876543210
@@ -778,7 +778,7 @@ resourceSpans:
             endTimeUnixNano: "1625572686060463200"
             name: SELECT FROM p_details
             parentSpanId: abcdef0123456789
-            spanId: abcdef0123456700
+            spanId: 01af25874dec69dd
             startTimeUnixNano: "1625572685682272000"
             status:
               code: 1
