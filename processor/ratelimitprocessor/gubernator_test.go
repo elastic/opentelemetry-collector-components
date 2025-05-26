@@ -20,10 +20,11 @@ package ratelimitprocessor
 import (
 	"context"
 	"errors"
-	"go.opentelemetry.io/collector/client"
 	"net"
 	"testing"
 	"time"
+
+	"go.opentelemetry.io/collector/client"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

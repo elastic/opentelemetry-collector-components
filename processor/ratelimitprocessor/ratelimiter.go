@@ -20,8 +20,9 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 import (
 	"context"
 	"errors"
-	"go.opentelemetry.io/otel/attribute"
 	"strings"
+
+	"go.opentelemetry.io/otel/attribute"
 
 	"go.opentelemetry.io/collector/client"
 )
