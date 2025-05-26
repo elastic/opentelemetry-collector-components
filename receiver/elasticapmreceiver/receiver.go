@@ -231,55 +231,9 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 		// TODO translate events to pdata types
 		switch event.Type() {
 		case modelpb.MetricEventType:
-
 			rm := md.ResourceMetrics().AppendEmpty()
-			sm := rm.ScopeMetrics().AppendEmpty()
-			metricset := event.GetMetricset()
+			r.elasticMetricsToOtelMetrics(&rm, event, timestamp, ctx)
 
-			// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
-			if metricset.Name == "span_breakdown" {
-				r.translateBreakdownMetricsToOtel(rm, event)
-			}
-
-			samples := metricset.GetSamples()
-
-			// TODO interval, doc_count
-			// TODO how can we attach metricset.name?
-			for _, sample := range samples {
-				m := sm.Metrics().AppendEmpty()
-				m.SetName(sample.GetName())
-
-				// TODO set attributes (dimensions/labels)
-				switch sample.GetType() {
-				case modelpb.MetricType_METRIC_TYPE_COUNTER:
-					dp := m.SetEmptySum().DataPoints().AppendEmpty()
-					dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
-					dp.SetDoubleValue(sample.GetValue())
-				case modelpb.MetricType_METRIC_TYPE_GAUGE:
-					dp := m.SetEmptyGauge().DataPoints().AppendEmpty()
-					dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
-					dp.SetDoubleValue(sample.GetValue())
-				// TOOD: This is up for discussion.
-				case modelpb.MetricType_METRIC_TYPE_UNSPECIFIED:
-					if sample.GetValue() != 0 {
-						dp := m.SetEmptyGauge().DataPoints().AppendEmpty()
-						dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
-						val := sample.GetValue()
-						dp.SetDoubleValue(val)
-
-						mappers.SetDerivedFieldsCommon(event, dp.Attributes())
-						mappers.SetDerivedFieldsForMetrics(event, dp.Attributes())
-					}
-				case modelpb.MetricType_METRIC_TYPE_HISTOGRAM:
-					// TODO histograms
-				case modelpb.MetricType_METRIC_TYPE_SUMMARY:
-					// TODO summaries
-				default:
-					return fmt.Errorf("unhandled metric type %q", sample.GetType())
-				}
-
-				mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
-			}
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
@@ -321,7 +275,58 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 	return errors.Join(errs...)
 }
 
-func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm pmetric.ResourceMetrics, event *modelpb.APMEvent) {
+func (r *elasticAPMReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) error {
+	sm := rm.ScopeMetrics().AppendEmpty()
+	metricset := event.GetMetricset()
+
+	// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
+	if metricset.Name == "span_breakdown" {
+		r.translateBreakdownMetricsToOtel(rm, event)
+		return nil
+	}
+
+	samples := metricset.GetSamples()
+
+	// TODO interval, doc_count
+	for _, sample := range samples {
+		m := sm.Metrics().AppendEmpty()
+		m.SetName(sample.GetName())
+
+		switch sample.GetType() {
+		case modelpb.MetricType_METRIC_TYPE_COUNTER:
+			dp := m.SetEmptySum().DataPoints().AppendEmpty()
+			dp.SetDoubleValue(sample.GetValue())
+			r.populateDataPointCommon(&dp, event, timestamp)
+		// Type does not seem to be enforced in APM server, and many agents sent `unspecified` type.
+		case modelpb.MetricType_METRIC_TYPE_GAUGE, modelpb.MetricType_METRIC_TYPE_UNSPECIFIED:
+			dp := m.SetEmptyGauge().DataPoints().AppendEmpty()
+			dp.SetDoubleValue(sample.GetValue())
+			r.populateDataPointCommon(&dp, event, timestamp)
+		case modelpb.MetricType_METRIC_TYPE_HISTOGRAM:
+			// TODO histograms
+		case modelpb.MetricType_METRIC_TYPE_SUMMARY:
+			// TODO summaries
+		default:
+			return fmt.Errorf("unhandled metric type %q", sample.GetType())
+		}
+		mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
+	}
+
+	return nil
+}
+
+type otelDataPoint interface {
+	SetTimestamp(pcommon.Timestamp)
+	Attributes() pcommon.Map
+}
+
+func (r *elasticAPMReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestamp time.Time) {
+	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
+	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
+	mappers.SetDerivedFieldsForMetrics(event, dp.Attributes())
+}
+
+func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent) {
 	sm := rm.ScopeMetrics().AppendEmpty()
 	sum_metric := sm.Metrics().AppendEmpty()
 	sum_metric.SetName("span.self_time.sum.us")

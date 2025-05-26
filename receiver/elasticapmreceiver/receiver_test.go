@@ -508,8 +508,9 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 	actualMetrics := nextMetric.AllMetrics()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	// Use this line to generate the expected yaml file:
-	golden.WriteMetrics(t, expectedFile, actualMetrics)
+	// golden.WriteMetrics(t, expectedFile, actualMetrics)
 	expectedMetrics, err := golden.ReadMetrics(expectedFile)
 	require.NoError(t, err)
-	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics))
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics, pmetrictest.IgnoreMetricsOrder()))
+
 }
