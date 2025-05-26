@@ -20,10 +20,10 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/otel/attribute"
 	"strings"
 
 	"go.opentelemetry.io/collector/client"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 var (
@@ -52,20 +52,6 @@ type RateLimiter interface {
 // high cardinality: tenant ID would be a good choice. For rate
 // limiting by IP (e.g. to avoid DDoS), consider running OpenTelemetry
 // Collector behind a WAF/API Gateway/proxy.
-
-func attrsFromMetadata(ctx context.Context, metadataKeys []string, attrs []attribute.KeyValue) []attribute.KeyValue {
-	clientInfo := client.FromContext(ctx)
-
-	for _, key := range metadataKeys {
-		values := clientInfo.Metadata.Get(key)
-		if len(values) > 0 {
-			attrs = append(attrs, attribute.String(key, strings.Join(values, ",")))
-		}
-	}
-
-	return attrs
-}
-
 func getUniqueKey(ctx context.Context, metadataKeys []string) string {
 	if len(metadataKeys) == 0 {
 		return "default"
@@ -89,4 +75,19 @@ func getUniqueKey(ctx context.Context, metadataKeys []string) string {
 		}
 	}
 	return uniqueKey.String()
+}
+
+// getAttrsFromContext looks up for the metadata keys in the
+// context and returns the values as attributes.
+func getAttrsFromContext(ctx context.Context, metadataKeys []string) []attribute.KeyValue {
+	clientInfo := client.FromContext(ctx)
+
+	attrs := make([]attribute.KeyValue, 0, len(metadataKeys))
+	for _, key := range metadataKeys {
+		values := clientInfo.Metadata.Get(key)
+		if len(values) > 0 {
+			attrs = append(attrs, attribute.String(key, strings.Join(values, ",")))
+		}
+	}
+	return attrs
 }

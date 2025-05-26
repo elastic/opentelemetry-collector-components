@@ -19,6 +19,12 @@ package ratelimitprocessor
 
 import (
 	"context"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -108,9 +114,15 @@ func TestConsume_Logs(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	tt := newTestTelemetry()
+	set := tt.newTelemetrySettings()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
+	require.NoError(t, err)
+
 	consumed := false
 	rl := rateLimiterProcessor{
-		rl: rateLimiter,
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
 	}
 	processor := &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -132,6 +144,8 @@ func TestConsume_Logs(t *testing.T) {
 	err = processor.ConsumeLogs(context.Background(), logs)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
+
+	testRateLimitRequests(t, tt)
 }
 
 func TestConsume_Metrics(t *testing.T) {
@@ -139,9 +153,15 @@ func TestConsume_Metrics(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	tt := newTestTelemetry()
+	set := tt.newTelemetrySettings()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
+	require.NoError(t, err)
+
 	consumed := false
 	rl := rateLimiterProcessor{
-		rl: rateLimiter,
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -163,6 +183,8 @@ func TestConsume_Metrics(t *testing.T) {
 	err = processor.ConsumeMetrics(context.Background(), metrics)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
+
+	testRateLimitRequests(t, tt)
 }
 
 func TestConsume_Traces(t *testing.T) {
@@ -170,9 +192,15 @@ func TestConsume_Traces(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	tt := newTestTelemetry()
+	set := tt.newTelemetrySettings()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
+	require.NoError(t, err)
+
 	consumed := false
 	rl := rateLimiterProcessor{
-		rl: rateLimiter,
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
 	}
 	processor := &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -194,6 +222,8 @@ func TestConsume_Traces(t *testing.T) {
 	err = processor.ConsumeTraces(context.Background(), traces)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
+
+	testRateLimitRequests(t, tt)
 }
 
 func TestConsume_Profiles(t *testing.T) {
@@ -201,9 +231,15 @@ func TestConsume_Profiles(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	tt := newTestTelemetry()
+	set := tt.newTelemetrySettings()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
+	require.NoError(t, err)
+
 	consumed := false
 	rl := rateLimiterProcessor{
-		rl: rateLimiter,
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
 	}
 	processor := &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -225,4 +261,58 @@ func TestConsume_Profiles(t *testing.T) {
 	err = processor.ConsumeProfiles(context.Background(), profiles)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
+
+	testRateLimitRequests(t, tt)
+}
+
+func testRateLimitRequests(t *testing.T, tt testTelemetry) {
+	values := getSumValues(t, "otelcol_ratelimit.requests", tt)
+	require.Equal(t, 2, len(values))
+	require.Equal(t, []attribute.KeyValue{
+		telemetry.WithDecision("accepted"),
+		telemetry.WithReason(telemetry.StatusUnderLimit),
+	}, values[0].Attributes.ToSlice())
+	require.Equal(t, []attribute.KeyValue{
+		telemetry.WithDecision("throttled"),
+	}, values[1].Attributes.ToSlice())
+}
+
+type testTelemetry struct {
+	reader        *metric.ManualReader
+	meterProvider *metric.MeterProvider
+}
+
+func newTestTelemetry() testTelemetry {
+	reader := metric.NewManualReader()
+	return testTelemetry{
+		reader:        reader,
+		meterProvider: metric.NewMeterProvider(metric.WithReader(reader)),
+	}
+}
+
+func (tt *testTelemetry) newTelemetrySettings() component.TelemetrySettings {
+	set := componenttest.NewNopTelemetrySettings()
+	set.MeterProvider = tt.meterProvider
+	return set
+}
+
+func (tt *testTelemetry) getMetric(name string, got metricdata.ResourceMetrics) metricdata.Metrics {
+	for _, sm := range got.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == name {
+				return m
+			}
+		}
+	}
+
+	return metricdata.Metrics{}
+}
+
+func getSumValues(t *testing.T, name string, tt testTelemetry) []metricdata.DataPoint[int64] {
+	var md metricdata.ResourceMetrics
+	require.NoError(t, tt.reader.Collect(context.Background(), &md))
+
+	m := tt.getMetric(name, md).Data
+	g := m.(metricdata.Sum[int64])
+	return g.DataPoints
 }

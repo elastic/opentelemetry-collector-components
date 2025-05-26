@@ -19,20 +19,28 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-
+	"errors"
+	"fmt"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
 )
 
 type rateLimiterProcessor struct {
 	component.Component
-	rl RateLimiter
+	rl               RateLimiter
+	metadataKeys     []string
+	telemetryBuilder *metadata.TelemetryBuilder
 }
 
 type LogsRateLimiterProcessor struct {
@@ -61,62 +69,90 @@ type ProfilesRateLimiterProcessor struct {
 
 func NewLogsRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
+	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, logs plog.Logs) error,
-) *LogsRateLimiterProcessor {
+) (*LogsRateLimiterProcessor, error) {
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
+	}
+
 	return &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
-			Component: rateLimiter,
-			rl:        rateLimiter.Unwrap(),
+			Component:        rateLimiter,
+			rl:               rateLimiter.Unwrap(),
+			telemetryBuilder: telemetryBuilder,
 		},
 		count: getLogsCountFunc(strategy),
 		next:  next,
-	}
+	}, nil
 }
 
 func NewMetricsRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
+	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, metrics pmetric.Metrics) error,
-) *MetricsRateLimiterProcessor {
+) (*MetricsRateLimiterProcessor, error) {
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
+	}
+
 	return &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
-			Component: rateLimiter,
-			rl:        rateLimiter.Unwrap(),
+			Component:        rateLimiter,
+			rl:               rateLimiter.Unwrap(),
+			telemetryBuilder: telemetryBuilder,
 		},
 		count: getMetricsCountFunc(strategy),
 		next:  next,
-	}
+	}, nil
 }
 
 func NewTracesRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
+	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, traces ptrace.Traces) error,
-) *TracesRateLimiterProcessor {
+) (*TracesRateLimiterProcessor, error) {
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
+	}
+
 	return &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
-			Component: rateLimiter,
-			rl:        rateLimiter.Unwrap(),
+			Component:        rateLimiter,
+			rl:               rateLimiter.Unwrap(),
+			telemetryBuilder: telemetryBuilder,
 		},
 		count: getTracesCountFunc(strategy),
 		next:  next,
-	}
+	}, nil
 }
 
 func NewProfilesRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
+	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, profiles pprofile.Profiles) error,
-) *ProfilesRateLimiterProcessor {
+) (*ProfilesRateLimiterProcessor, error) {
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
+	}
+
 	return &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
-			Component: rateLimiter,
-			rl:        rateLimiter.Unwrap(),
+			Component:        rateLimiter,
+			rl:               rateLimiter.Unwrap(),
+			telemetryBuilder: telemetryBuilder,
 		},
 		count: getProfilesCountFunc(strategy),
 		next:  next,
-	}
+	}, nil
 }
 
 func (r *LogsRateLimiterProcessor) Capabilities() consumer.Capabilities {
@@ -135,9 +171,37 @@ func (r *ProfilesRateLimiterProcessor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: false}
 }
 
+func getTelemetryAttrs(ctx context.Context, metadataKeys []string, err error) []attribute.KeyValue {
+	attrs := getAttrsFromContext(ctx, metadataKeys)
+
+	switch {
+	case err == nil:
+		attrs = append(attrs,
+			telemetry.WithReason(telemetry.StatusUnderLimit),
+			telemetry.WithDecision("accepted"),
+		)
+	case errors.Is(err, errRateLimitInternalError) || strings.HasPrefix(err.Error(), "expected 1 response"):
+		attrs = append(attrs,
+			telemetry.WithReason(telemetry.RequestErr),
+			telemetry.WithDecision("accepted"),
+		)
+	case errors.Is(err, errTooManyRequests):
+		attrs = append(attrs,
+			telemetry.WithDecision("throttled"),
+		)
+	}
+
+	return attrs
+}
+
 func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	hits := r.count(ld)
-	if err := r.rl.RateLimit(ctx, hits); err != nil {
+	err := r.rl.RateLimit(ctx, hits)
+
+	attrs := getTelemetryAttrs(ctx, r.metadataKeys, err)
+	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
+
+	if err != nil {
 		return err
 	}
 	return r.next(ctx, ld)
@@ -145,7 +209,12 @@ func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs
 
 func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	hits := r.count(md)
-	if err := r.rl.RateLimit(ctx, hits); err != nil {
+	err := r.rl.RateLimit(ctx, hits)
+
+	attrs := getTelemetryAttrs(ctx, r.metadataKeys, err)
+	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
+
+	if err != nil {
 		return err
 	}
 	return r.next(ctx, md)
@@ -153,7 +222,12 @@ func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pme
 
 func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	hits := r.count(td)
-	if err := r.rl.RateLimit(ctx, hits); err != nil {
+	err := r.rl.RateLimit(ctx, hits)
+
+	attrs := getTelemetryAttrs(ctx, r.metadataKeys, err)
+	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
+
+	if err != nil {
 		return err
 	}
 	return r.next(ctx, td)
@@ -161,7 +235,12 @@ func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrac
 
 func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
 	hits := r.count(pd)
-	if err := r.rl.RateLimit(ctx, hits); err != nil {
+	err := r.rl.RateLimit(ctx, hits)
+
+	attrs := getTelemetryAttrs(ctx, r.metadataKeys, err)
+	r.telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
+
+	if err != nil {
 		return err
 	}
 	return r.next(ctx, pd)
