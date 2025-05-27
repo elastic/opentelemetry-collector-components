@@ -298,7 +298,7 @@ func (r *elasticAPMReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMet
 			dp := m.SetEmptySum().DataPoints().AppendEmpty()
 			dp.SetDoubleValue(sample.GetValue())
 			r.populateDataPointCommon(&dp, event, timestamp)
-		// Type does not seem to be enforced in APM server, and many agents sent `unspecified` type.
+		// Type does not seem to be enforced in APM server, and many agents send `unspecified` type.
 		case modelpb.MetricType_METRIC_TYPE_GAUGE, modelpb.MetricType_METRIC_TYPE_UNSPECIFIED:
 			dp := m.SetEmptyGauge().DataPoints().AppendEmpty()
 			dp.SetDoubleValue(sample.GetValue())
