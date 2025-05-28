@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
@@ -181,14 +180,14 @@ func getTelemetryAttrs(ctx context.Context, metadataKeys []string, err error) []
 			telemetry.WithReason(telemetry.StatusUnderLimit),
 			telemetry.WithDecision("accepted"),
 		)
-	case errors.Is(err, errRateLimitInternalError) || strings.HasPrefix(err.Error(), "expected 1 response"):
-		attrs = append(attrs,
-			telemetry.WithReason(telemetry.RequestErr),
-			telemetry.WithDecision("accepted"),
-		)
 	case errors.Is(err, errTooManyRequests):
 		attrs = append(attrs,
 			telemetry.WithDecision("throttled"),
+		)
+	default:
+		attrs = append(attrs,
+			telemetry.WithReason(telemetry.RequestErr),
+			telemetry.WithDecision("accepted"),
 		)
 	}
 
