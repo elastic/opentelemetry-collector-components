@@ -21,13 +21,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
+
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
@@ -35,6 +34,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func TestGetCountFunc_Logs(t *testing.T) {
@@ -115,9 +115,8 @@ func TestConsume_Logs(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
-	tt := newTestTelemetry()
-	set := tt.newTelemetrySettings()
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
 
 	consumed := false
@@ -154,9 +153,8 @@ func TestConsume_Metrics(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
-	tt := newTestTelemetry()
-	set := tt.newTelemetrySettings()
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
 
 	consumed := false
@@ -193,9 +191,8 @@ func TestConsume_Traces(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
-	tt := newTestTelemetry()
-	set := tt.newTelemetrySettings()
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
 
 	consumed := false
@@ -232,10 +229,10 @@ func TestConsume_Profiles(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
-	tt := newTestTelemetry()
-	set := tt.newTelemetrySettings()
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(set)
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
+	defer telemetryBuilder.Shutdown()
 
 	consumed := false
 	rl := rateLimiterProcessor{
@@ -266,26 +263,27 @@ func TestConsume_Profiles(t *testing.T) {
 	testRateLimitRequests(t, tt)
 }
 
-func testRateLimitRequests(t *testing.T, tt testTelemetry) {
-	values := getSumValues(t, "otelcol_ratelimit.requests", tt)
-	require.Equal(t, 2, len(values))
-
-	// we compare the attributes list instead of the data
-	// points, since they can come in different order
-	attrs := [][]attribute.KeyValue{
-		values[0].Attributes.ToSlice(),
-		values[1].Attributes.ToSlice(),
-	}
-	expectedAttrs := [][]attribute.KeyValue{
+func testRateLimitRequests(t *testing.T, tel *componenttest.Telemetry) {
+	metadatatest.AssertEqualRatelimitRequests(t, tel, []metricdata.DataPoint[int64]{
 		{
-			telemetry.WithDecision("accepted"),
-			telemetry.WithReason(telemetry.StatusUnderLimit),
-		}, {
-			telemetry.WithDecision("throttled"),
-		}}
-	require.ElementsMatch(t, expectedAttrs, attrs)
+			Value: 1,
+			Attributes: attribute.NewSet(
+				[]attribute.KeyValue{
+					telemetry.WithDecision("accepted"),
+					telemetry.WithReason(telemetry.StatusUnderLimit),
+				}...),
+		},
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				[]attribute.KeyValue{
+					telemetry.WithDecision("throttled"),
+				}...),
+		},
+	}, metricdatatest.IgnoreTimestamp())
 }
 
+/*
 type testTelemetry struct {
 	reader        *metric.ManualReader
 	meterProvider *metric.MeterProvider
@@ -325,3 +323,5 @@ func getSumValues(t *testing.T, name string, tt testTelemetry) []metricdata.Data
 	g := m.(metricdata.Sum[int64])
 	return g.DataPoints
 }
+
+*/
