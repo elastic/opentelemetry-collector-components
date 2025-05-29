@@ -40,3 +40,14 @@ ratelimit/invalid_type:
   rate: 100
   burst: 200
   type: invalid
+
+ratelimit/overrides:
+  rate: 100
+  burst: 200
+  type: gubernator
+  overrides:  
+    project_id:123:
+      rate: 100
+      burst: 200
+      strategy: bytes
+      throttle_behavior: delay
