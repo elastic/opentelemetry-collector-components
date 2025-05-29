@@ -107,15 +107,13 @@ func TestLoadConfig(t *testing.T) {
 				RateLimitSettings: RateLimitSettings{
 					Rate:             100,
 					Burst:            200,
-					Strategy:         StrategyRateLimitRequests,
+					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 				},
-				Overrides: map[string]RateLimitSettings{
+				Overrides: map[string]RateLimitOverride{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
-						Rate:             100,
-						Burst:            200,
-						Strategy:         StrategyRateLimitBytes,
-						ThrottleBehavior: ThrottleBehaviorDelay,
+						Rate:  ptr(300),
+						Burst: ptr(400),
 					},
 				},
 			},
@@ -163,4 +161,8 @@ func TestLoadConfig(t *testing.T) {
 			require.Equal(t, tt.expected, cfg)
 		})
 	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
