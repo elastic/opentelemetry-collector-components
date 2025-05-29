@@ -34,25 +34,6 @@ const (
 	msgEmptyField = "%s field value is empty"
 )
 
-// RateLimitSettings holds the core rate limiting configuration.
-type RateLimitSettings struct {
-	// Strategy holds the rate limiting strategy.
-	//
-	// Defaults to "requests".
-	Strategy Strategy `mapstructure:"strategy"`
-
-	// Rate holds bucket refill rate, in tokens per second.
-	Rate int `mapstructure:"rate"`
-
-	// Burst holds the maximum capacity of rate limit buckets.
-	Burst int `mapstructure:"burst"`
-
-	// ThrottleBehavior holds the behavior when rate limit is exceeded.
-	//
-	// Defaults to "error"
-	ThrottleBehavior ThrottleBehavior `mapstructure:"throttle_behavior"`
-}
-
 // Config holds configuration for the ratelimit processor.
 type Config struct {
 	// Gubernator holds configuration for Gubernator,
@@ -73,7 +54,34 @@ type Config struct {
 	// Overrides holds a list of overrides for the rate limiter.
 	//
 	// Defaults to empty
-	Overrides map[string]RateLimitSettings `mapstructure:"overrides"`
+	Overrides map[string]RateLimitOverride `mapstructure:"overrides"`
+}
+
+// RateLimitSettings holds the core rate limiting configuration.
+type RateLimitSettings struct {
+	// Strategy holds the rate limiting strategy.
+	//
+	// Defaults to "requests".
+	Strategy Strategy `mapstructure:"strategy"`
+
+	// Rate holds bucket refill rate, in tokens per second.
+	Rate int `mapstructure:"rate"`
+
+	// Burst holds the maximum capacity of rate limit buckets.
+	Burst int `mapstructure:"burst"`
+
+	// ThrottleBehavior holds the behavior when rate limit is exceeded.
+	//
+	// Defaults to "error"
+	ThrottleBehavior ThrottleBehavior `mapstructure:"throttle_behavior"`
+}
+
+type RateLimitOverride struct {
+	// Rate holds bucket refill rate, in tokens per second.
+	Rate *int `mapstructure:"rate"`
+
+	// Burst holds the maximum capacity of rate limit buckets.
+	Burst *int `mapstructure:"burst"`
 }
 
 // Strategy identifies the rate-limiting strategy: requests, records, or bytes.
@@ -144,6 +152,21 @@ func (r *RateLimitSettings) Validate() error {
 	}
 	if err := r.ThrottleBehavior.Validate(); err != nil {
 		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
+}
+
+func (r *RateLimitOverride) Validate() error {
+	var errs []error
+	if r.Rate != nil {
+		if *r.Rate <= 0 {
+			errs = append(errs, fmt.Errorf("rate must be greater than zero"))
+		}
+	}
+	if r.Burst != nil {
+		if *r.Burst <= 0 {
+			errs = append(errs, fmt.Errorf("burst must be greater than zero"))
+		}
 	}
 	return errors.Join(errs...)
 }
