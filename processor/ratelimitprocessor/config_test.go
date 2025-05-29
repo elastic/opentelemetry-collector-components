@@ -101,7 +101,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "overrides",
+			name: "overrides_all",
 			expected: &Config{
 				Type: GubernatorRateLimiter,
 				RateLimitSettings: RateLimitSettings{
@@ -113,6 +113,38 @@ func TestLoadConfig(t *testing.T) {
 				Overrides: map[string]RateLimitOverride{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Rate:  ptr(300),
+						Burst: ptr(400),
+					},
+				},
+			},
+		},
+		{
+			name: "overrides_rate",
+			expected: &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
+				Overrides: map[string]RateLimitOverride{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						Rate: ptr(300),
+					},
+				},
+			},
+		},
+		{
+			name: "overrides_burst",
+			expected: &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
+				Overrides: map[string]RateLimitOverride{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Burst: ptr(400),
 					},
 				},
