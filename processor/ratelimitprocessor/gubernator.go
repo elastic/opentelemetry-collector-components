@@ -86,6 +86,7 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
+
 	createdAt := time.Now().UnixMilli()
 	getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
 		Requests: []*gubernator.RateLimitReq{{
@@ -116,7 +117,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		return errRateLimitInternalError
 	}
 
-	if resp.GetStatus() != gubernator.Status_UNDER_LIMIT {
+	if resp.GetStatus() == gubernator.Status_OVER_LIMIT {
 		// Same logic as local
 		switch r.cfg.ThrottleBehavior {
 		case ThrottleBehaviorError:
@@ -138,5 +139,6 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			}
 		}
 	}
+
 	return nil
 }

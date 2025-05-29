@@ -41,7 +41,7 @@ type apmConfigExtension struct {
 var _ component.Component = (*apmConfigExtension)(nil)
 
 func newApmConfigExtension(cfg *Config, set extension.Settings, clientFactory configClientFactory) *apmConfigExtension {
-	return &apmConfigExtension{telemetrySettings: set.TelemetrySettings, opampServer: server.New(nil), extensionConfig: cfg, clientFactory: clientFactory}
+	return &apmConfigExtension{telemetrySettings: set.TelemetrySettings, opampServer: server.New(newLoggerFromZap(set.Logger)), extensionConfig: cfg, clientFactory: clientFactory}
 }
 
 func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) error {
@@ -52,7 +52,7 @@ func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) er
 		return err
 	}
 
-	return op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: *newRemoteConfigCallbacks(remoteConfigClient, op.telemetrySettings.Logger)}})
+	return op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: *newRemoteConfigCallbacks(remoteConfigClient, op.telemetrySettings.Logger).Callbacks}})
 }
 
 func (op *apmConfigExtension) Shutdown(ctx context.Context) error {

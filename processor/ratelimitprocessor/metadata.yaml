@@ -10,3 +10,22 @@ tests:
   config:
     rate: 1
     burst: 1
+
+telemetry:
+  metrics:
+    ratelimit.requests:
+      enabled: true
+      description: Number of rate-limiting requests
+      unit: "{requests}"
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: ["decision", "reason"]
+
+attributes:
+  decision:
+    description: rate limit decision
+    type: string
+  reason:
+    description: rate limit reason
+    type: string

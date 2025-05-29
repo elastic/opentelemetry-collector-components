@@ -124,6 +124,8 @@ Usage of ./otelbench:
 
 ## Example usage
 
+**It is recommended to explicitly configure `concurrency` to roughly the number of threads of the system running otelbench. Otherwise, `concurrency` will default to 1, and load generation will be single threaded and will send to target with only 1 connection, resulting in an underestimated throughput.**
+
 To send to a local apm-server
 
 ```shell

@@ -77,11 +77,12 @@ func createLogsProcessor(
 	}
 	return NewLogsRateLimiterProcessor(
 		rateLimiter,
+		set.TelemetrySettings,
 		config.Strategy,
 		func(ctx context.Context, ld plog.Logs) error {
 			return nextConsumer.ConsumeLogs(ctx, ld)
 		},
-	), nil
+	)
 }
 
 func createMetricsProcessor(
@@ -97,11 +98,12 @@ func createMetricsProcessor(
 	}
 	return NewMetricsRateLimiterProcessor(
 		rateLimiter,
+		set.TelemetrySettings,
 		config.Strategy,
 		func(ctx context.Context, md pmetric.Metrics) error {
 			return nextConsumer.ConsumeMetrics(ctx, md)
 		},
-	), nil
+	)
 }
 
 func createTracesProcessor(
@@ -117,11 +119,12 @@ func createTracesProcessor(
 	}
 	return NewTracesRateLimiterProcessor(
 		rateLimiter,
+		set.TelemetrySettings,
 		config.Strategy,
 		func(ctx context.Context, td ptrace.Traces) error {
 			return nextConsumer.ConsumeTraces(ctx, td)
 		},
-	), nil
+	)
 }
 
 func createProfilesProcessor(
@@ -137,9 +140,10 @@ func createProfilesProcessor(
 	}
 	return NewProfilesRateLimiterProcessor(
 		rateLimiter,
+		set.TelemetrySettings,
 		config.Strategy,
 		func(ctx context.Context, td pprofile.Profiles) error {
 			return nextConsumer.ConsumeProfiles(ctx, td)
 		},
-	), nil
+	)
 }

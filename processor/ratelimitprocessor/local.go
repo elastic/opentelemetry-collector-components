@@ -41,11 +41,11 @@ func newLocalRateLimiter(cfg *Config, set processor.Settings) (*localRateLimiter
 	return &localRateLimiter{cfg: cfg, set: set}, nil
 }
 
-func (r *localRateLimiter) Start(ctx context.Context, host component.Host) error {
+func (r *localRateLimiter) Start(_ context.Context, _ component.Host) error {
 	return nil
 }
 
-func (r *localRateLimiter) Shutdown(ctx context.Context) error {
+func (r *localRateLimiter) Shutdown(_ context.Context) error {
 	r.limiters = sync.Map{}
 	return nil
 }
@@ -62,11 +62,11 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			return errTooManyRequests
 		}
 	case ThrottleBehaviorDelay:
-		r := limiter.ReserveN(time.Now(), hits)
-		if !r.OK() {
+		lr := limiter.ReserveN(time.Now(), hits)
+		if !lr.OK() {
 			return errTooManyRequests
 		}
-		timer := time.NewTimer(r.Delay())
+		timer := time.NewTimer(lr.Delay())
 		defer timer.Stop()
 		select {
 		case <-ctx.Done():
@@ -74,5 +74,6 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		case <-timer.C:
 		}
 	}
+
 	return nil
 }
