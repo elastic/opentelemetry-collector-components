@@ -91,6 +91,8 @@ func getAttrsFromContext(ctx context.Context, metadataKeys []string) []attribute
 		}
 	}
 	return attrs
+}
+
 // resolveRateLimitSettings returns the rate limit settings for the given unique key.
 // If no override is found, the default rate limit settings are returned.
 func resolveRateLimitSettings(cfg *Config, uniqueKey string) RateLimitSettings {

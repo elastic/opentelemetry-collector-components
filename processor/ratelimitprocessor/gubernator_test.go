@@ -102,7 +102,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 					Burst:            2,
 					ThrottleBehavior: behavior,
 				},
-			}, nil)
+			})
 			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 			require.NoError(t, err)
 
@@ -166,7 +166,7 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 			ThrottleBehavior: ThrottleBehaviorError,
 		},
 		MetadataKeys: []string{"metadata_key"},
-	}, nil)
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
