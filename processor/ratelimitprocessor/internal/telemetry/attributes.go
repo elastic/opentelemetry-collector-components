@@ -32,7 +32,6 @@ const (
 
 	StatusUnderLimit Reason = "under_limit"
 
-	LimitError Reason = "limit_error"
 	RequestErr Reason = "request_error"
 )
 
