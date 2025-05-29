@@ -131,7 +131,6 @@ func createDefaultConfig() component.Config {
 	}
 }
 
-
 func (r *RateLimitSettings) Validate() error {
 	var errs []error
 	if r.Rate <= 0 {
@@ -223,4 +222,3 @@ func (b GubernatorBehavior) Validate() error {
 	sort.Strings(validNames)
 	return fmt.Errorf("invalid Gubernator behavior %q, expected one of %q", b, validNames)
 }
-

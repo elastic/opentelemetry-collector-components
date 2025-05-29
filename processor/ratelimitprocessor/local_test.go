@@ -98,7 +98,7 @@ func TestLocalRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 			Burst:            burst,
 			ThrottleBehavior: ThrottleBehaviorError,
 		},
-		MetadataKeys:     []string{"metadata_key"},
+		MetadataKeys: []string{"metadata_key"},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
