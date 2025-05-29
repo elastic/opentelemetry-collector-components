@@ -111,7 +111,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 				},
 				Overrides: map[string]RateLimitSettings{
-					"project_id:123": {
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Rate:             100,
 						Burst:            200,
 						Strategy:         StrategyRateLimitBytes,

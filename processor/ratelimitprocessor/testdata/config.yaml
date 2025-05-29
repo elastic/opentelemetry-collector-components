@@ -46,7 +46,7 @@ ratelimit/overrides:
   burst: 200
   type: gubernator
   overrides:  
-    project_id:123:
+    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
       rate: 100
       burst: 200
       strategy: bytes
