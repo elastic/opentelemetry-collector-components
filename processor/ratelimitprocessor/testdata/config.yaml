@@ -53,3 +53,14 @@ ratelimit/invalid_gubernator_behavior:
     endpoint: localhost:1081
     behavior:
       - foo
+
+ratelimit/overrides:
+  rate: 100
+  burst: 200
+  overrides:  
+    project_id:123:
+      rate: 100
+      burst: 200
+      strategy: bytes
+      throttle_behavior: delay
+  

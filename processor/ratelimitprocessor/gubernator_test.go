@@ -96,7 +96,13 @@ func TestGubernatorRateLimiter_StartStop(t *testing.T) {
 func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
 		t.Run(string(behavior), func(t *testing.T) {
-			server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: behavior})
+			server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             1,
+					Burst:            2,
+					ThrottleBehavior: behavior,
+				},
+			}, nil)
 			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 			require.NoError(t, err)
 
@@ -154,11 +160,13 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            2,
-		MetadataKeys:     []string{"metadata_key"},
-		ThrottleBehavior: ThrottleBehaviorError,
-	})
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            2,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
+		MetadataKeys: []string{"metadata_key"},
+	}, nil)
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 

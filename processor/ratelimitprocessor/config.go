@@ -34,20 +34,8 @@ const (
 	msgEmptyField = "%s field value is empty"
 )
 
-// Config holds configuration for the ratelimit processor.
-type Config struct {
-	// Gubernator holds configuration for Gubernator,
-	// to control distributed rate limiting.
-	//
-	// If Gubernator is nil, then rate limiting is performed
-	// locally to the collector.
-	Gubernator *GubernatorConfig `mapstructure:"gubernator"`
-
-	// MetadataKeys holds a list of client metadata keys for
-	// defining the rate limiting key, in addition to the
-	// processor ID.
-	MetadataKeys []string `mapstructure:"metadata_keys"`
-
+// RateLimitSettings holds the core rate limiting configuration.
+type RateLimitSettings struct {
 	// Strategy holds the rate limiting strategy.
 	//
 	// Defaults to "requests".
@@ -63,6 +51,29 @@ type Config struct {
 	//
 	// Defaults to "error"
 	ThrottleBehavior ThrottleBehavior `mapstructure:"throttle_behavior"`
+}
+
+// Config holds configuration for the ratelimit processor.
+type Config struct {
+	// Gubernator holds configuration for Gubernator,
+	// to control distributed rate limiting.
+	//
+	// If Gubernator is nil, then rate limiting is performed
+	// locally to the collector.
+	Gubernator *GubernatorConfig `mapstructure:"gubernator"`
+
+	// MetadataKeys holds a list of client metadata keys for
+	// defining the rate limiting key, in addition to the
+	// processor ID.
+	MetadataKeys []string `mapstructure:"metadata_keys"`
+
+	// Embed the rate limit settings
+	RateLimitSettings `mapstructure:",squash"`
+
+	// Overrides holds a list of overrides for the rate limiter.
+	//
+	// Defaults to empty
+	Overrides map[string]RateLimitSettings `mapstructure:"overrides"`
 }
 
 // Strategy identifies the rate-limiting strategy: requests, records, or bytes.
@@ -113,18 +124,45 @@ type GubernatorBehavior string
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		Strategy:         StrategyRateLimitRequests,
-		ThrottleBehavior: ThrottleBehaviorError,
+		RateLimitSettings: RateLimitSettings{
+			Strategy:         StrategyRateLimitRequests,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	}
+}
+
+
+func (r *RateLimitSettings) Validate() error {
+	var errs []error
+	if r.Rate <= 0 {
+		errs = append(errs, fmt.Errorf("rate must be greater than zero"))
+	}
+	if r.Burst <= 0 {
+		errs = append(errs, fmt.Errorf("burst must be greater than zero"))
+	}
+	if err := r.Strategy.Validate(); err != nil {
+		errs = append(errs, err)
+	}
+	if err := r.ThrottleBehavior.Validate(); err != nil {
+		errs = append(errs, err)
+	}
+	return errors.Join(errs...)
 }
 
 func (config *Config) Validate() error {
 	var errs []error
-	if config.Rate <= 0 {
-		errs = append(errs, fmt.Errorf("rate must be greater than zero"))
+	if err := config.RateLimitSettings.Validate(); err != nil {
+		errs = append(errs, err)
 	}
-	if config.Burst <= 0 {
-		errs = append(errs, fmt.Errorf("burst must be greater than zero"))
+	if config.Gubernator != nil {
+		if err := config.Gubernator.Validate(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for key, override := range config.Overrides {
+		if err := override.Validate(); err != nil {
+			errs = append(errs, fmt.Errorf("override %q: %w", key, err))
+		}
 	}
 	return errors.Join(errs...)
 }
@@ -185,3 +223,4 @@ func (b GubernatorBehavior) Validate() error {
 	sort.Strings(validNames)
 	return fmt.Errorf("invalid Gubernator behavior %q, expected one of %q", b, validNames)
 }
+
