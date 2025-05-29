@@ -57,17 +57,6 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		}
 	}
 
-	// servers where the Kibana/ES connection is not enabled (server responds with 403)
-	// https://github.com/elastic/apm/blob/main/specs/agents/configuration.md#dealing-with-errors
-	if r.fetcherFactory == nil {
-		r.settings.Logger.Warn("no agent configuration fetcher available")
-
-		return func(w http.ResponseWriter, req *http.Request) {
-			w.WriteHeader(http.StatusForbidden)
-			encodeJsonLogError(w, mapBodyError("remote configuration fetcher not enabled"))
-		}
-	}
-
 	fetcher, err := r.fetcherFactory(ctx, host)
 	if err != nil {
 		r.settings.Logger.Error(fmt.Sprintf("could not start agent configuration fetcher: %s", err.Error()))
@@ -76,6 +65,15 @@ func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, ho
 		return func(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			encodeJsonLogError(w, mapBodyError(err.Error()))
+		}
+	} else if fetcher == nil {
+		// servers where the Kibana/ES connection is not enabled (server responds with 403)
+		// https://github.com/elastic/apm/blob/main/specs/agents/configuration.md#dealing-with-errors
+		r.settings.Logger.Warn("no agent configuration fetcher available")
+
+		return func(w http.ResponseWriter, req *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			encodeJsonLogError(w, mapBodyError("remote configuration fetcher not enabled"))
 		}
 	}
 

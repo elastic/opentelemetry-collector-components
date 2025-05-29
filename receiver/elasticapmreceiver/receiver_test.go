@@ -56,7 +56,9 @@ func (f *fetcherMock) Fetch(ctx context.Context, query agentcfg.Query) (agentcfg
 
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	rcvr, err := newElasticAPMReceiver(nil, &Config{
+	rcvr, err := newElasticAPMReceiver(func(ctx context.Context, h component.Host) (agentcfg.Fetcher, error) {
+		return nil, nil
+	}, &Config{
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint: testEndpoint,
 		},
@@ -335,7 +337,7 @@ func TestAgentCfgHandler(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	var inputFiles_error = []struct {
+	inputFiles_error := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
 	}{
@@ -412,7 +414,6 @@ func TestTransactionsAndSpans(t *testing.T) {
 }
 
 func sendInput(t *testing.T, inputJsonFileName string, expectedYamlFileName string, testEndpoint string) {
-
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
@@ -433,7 +434,6 @@ func sendInput(t *testing.T, inputJsonFileName string, expectedYamlFileName stri
 func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
 	nextTrace *consumertest.TracesSink, testEndpoint string,
 ) {
-
 	nextTrace.Reset()
 
 	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
@@ -450,7 +450,6 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 func runComparisonForErrors(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
 	nextLog *consumertest.LogsSink, testEndpoint string,
 ) {
-
 	nextLog.Reset()
 
 	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
