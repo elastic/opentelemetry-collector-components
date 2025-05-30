@@ -23,11 +23,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configgrpc"
-	"go.opentelemetry.io/collector/confmap"
-
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
 )
 
 const (
@@ -101,11 +98,22 @@ const (
 
 // GubernatorConfig holds Gubernator-specific configuration for the ratelimit processor.
 type GubernatorConfig struct {
-	configgrpc.ClientConfig `mapstructure:",squash"`
-
 	// Behavior holds a list of Gubernator behaviors. If this is unspecified,
 	// Gubernator's default batching behavior is used.
 	Behavior []GubernatorBehavior `mapstructure:"behavior"`
+
+	// Namespace in which the gubernator instances are deployed into.
+	Namespace string `mapstructure:"namespace"`
+
+	// K8sEndpointSelector is the selector used when listing the endpoints API
+	// to find peers.
+	K8sEndpointSelector string `mapstructure:"k8s_endpoint_selector"`
+
+	// GRCPPort is the port on which Gubernator gRPC server is listening.
+	GRCPPort int `mapstructure:"grpc_port"`
+
+	// HTTPPort is the port on which Gubernator HTTP server is listening.
+	HTTPPort int `mapstructure:"http_port"`
 }
 
 // GubernatorBehavior controls Gubernator's behavior.
@@ -160,16 +168,13 @@ func (s ThrottleBehavior) Validate() error {
 	)
 }
 
-func (config *GubernatorConfig) Unmarshal(parser *confmap.Conf) error {
-	clientConfig := configgrpc.NewDefaultClientConfig()
-	config.ClientConfig = *clientConfig
-	return parser.Unmarshal(config)
-}
-
 func (config *GubernatorConfig) Validate() error {
 	var errs []error
-	if config.Endpoint == "" {
-		errs = append(errs, fmt.Errorf(msgEmptyField, "gubernator.endpoint"))
+	if config.Namespace == "" {
+		errs = append(errs, fmt.Errorf(msgEmptyField, "gubernator.namespace"))
+	}
+	if config.HTTPPort == config.GRCPPort {
+		errs = append(errs, fmt.Errorf("gubernator.grpc_port and gubernator.http_port must be different"))
 	}
 	return errors.Join(errs...)
 }

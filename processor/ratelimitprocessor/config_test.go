@@ -60,7 +60,12 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "gubernator",
 			expected: &Config{
-				Gubernator:       &GubernatorConfig{ClientConfig: *grpcClientConfig},
+				Gubernator: &GubernatorConfig{
+					Namespace: "test",
+					GRCPPort:  10101,
+					HTTPPort:  10102,
+					Behavior:  []GubernatorBehavior{"global"},
+				},
 				Rate:             100,
 				Burst:            200,
 				Strategy:         StrategyRateLimitRequests,
@@ -71,8 +76,10 @@ func TestLoadConfig(t *testing.T) {
 			name: "gubernator_behavior",
 			expected: &Config{
 				Gubernator: &GubernatorConfig{
-					ClientConfig: *grpcClientConfig,
-					Behavior:     []GubernatorBehavior{"global", "duration_is_gregorian"},
+					Namespace: "test",
+					GRCPPort:  10101,
+					HTTPPort:  10102,
+					Behavior:  []GubernatorBehavior{"global", "duration_is_gregorian"},
 				},
 				Rate:             100,
 				Burst:            200,
@@ -109,6 +116,14 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name:        "invalid_gubernator_behavior",
 			expectedErr: `invalid Gubernator behavior "foo", expected one of ["batching" "drain_over_limit" "duration_is_gregorian" "global" "multi_region" "no_batching" "reset_remaining"]`,
+		},
+		{
+			name:        "invalid_gubernator_namespace",
+			expectedErr: `gubernator.namespace field value is empty`,
+		},
+		{
+			name:        "invalid_gubernator_ports",
+			expectedErr: `gubernator.grpc_port and gubernator.http_port must be different`,
 		},
 	}
 
