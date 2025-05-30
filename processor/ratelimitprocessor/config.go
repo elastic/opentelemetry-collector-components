@@ -105,10 +105,6 @@ type GubernatorConfig struct {
 	// Namespace in which the gubernator instances are deployed into.
 	Namespace string `mapstructure:"namespace"`
 
-	// K8sEndpointSelector is the selector used when listing the endpoints API
-	// to find peers.
-	K8sEndpointSelector string `mapstructure:"k8s_endpoint_selector"`
-
 	// GRCPPort is the port on which Gubernator gRPC server is listening.
 	GRCPPort int `mapstructure:"grpc_port"`
 
