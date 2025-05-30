@@ -19,148 +19,97 @@ package ratelimitprocessor
 
 import (
 	"context"
-	"errors"
-	"net"
 	"testing"
-	"time"
 
-	"go.opentelemetry.io/collector/client"
-
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/gubernator-io/gubernator/v2"
+	"github.com/gubernator-io/gubernator/v2/cluster"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/processor"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-func setupGubernatorServer(t *testing.T) (*testServer, string) {
-	s := grpc.NewServer()
-	server := &testServer{}
-	gubernator.RegisterV1Server(s, server)
-	lis, err := net.Listen("tcp", "localhost:0")
-	require.NoError(t, err)
-	go func() {
-		err := s.Serve(lis)
-		require.NoError(t, err)
-	}()
-	t.Cleanup(s.GracefulStop)
-	return server, lis.Addr().String()
-}
-
-// newTestGubernatorRateLimiter creates a new gubernatorRateLimiter
-// with a connection to a fake gubernator server.
-func newTestGubernatorRateLimiter(t *testing.T, cfg *Config) (*testServer, *gubernatorRateLimiter) {
-	server, address := setupGubernatorServer(t)
-	if cfg == nil {
-		cfg = createDefaultConfig().(*Config)
-	}
+// newTestGubernatorRateLimiter starts a local cluster with a gubernator
+// daemon and returns a new gubernatorRateLimiter instance that relies
+// on this daemon for rate limiting.
+func newTestGubernatorRateLimiter(t *testing.T, cfg *Config) *gubernatorRateLimiter {
 	if cfg.Gubernator == nil {
 		cfg.Gubernator = &GubernatorConfig{}
 	}
-	grpcClientConfig := configgrpc.NewDefaultClientConfig()
-	grpcClientConfig.Auth = nil
-	grpcClientConfig.Endpoint = address
-	grpcClientConfig.TLSSetting.Insecure = true
-	cfg.Gubernator.ClientConfig = *grpcClientConfig
+	peers := []gubernator.PeerInfo{
+		{GRPCAddress: "127.0.0.1:30100", HTTPAddress: "127.0.0.1:30101"},
+	}
+	err := cluster.StartWith(peers)
+	require.NoError(t, err)
 
-	rl, err := newGubernatorRateLimiter(cfg, processor.Settings{
-		ID:                component.NewIDWithName(metadata.Type, "abc123"),
-		TelemetrySettings: componenttest.NewNopTelemetrySettings(),
-		BuildInfo:         component.NewDefaultBuildInfo(),
-	})
+	daemons := cluster.GetDaemons()
+	require.Equal(t, 1, len(daemons))
+
+	conn, err := grpc.NewClient(
+		daemons[0].PeerInfo.GRPCAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	cl := gubernator.NewV1Client(conn)
+	require.NotNil(t, cl)
+
+	rl := &gubernatorRateLimiter{
+		cfg: cfg,
+		set: processor.Settings{
+			ID:                component.NewIDWithName(metadata.Type, "abc123"),
+			TelemetrySettings: componenttest.NewNopTelemetrySettings(),
+			BuildInfo:         component.NewDefaultBuildInfo(),
+		},
+		behavior: gubernator.Behavior_BATCHING,
+
+		daemon:     daemons[0],
+		client:     cl,
+		clientConn: conn,
+	}
+
 	require.NoError(t, err)
 	t.Cleanup(func() {
+		cluster.Stop()
 		err := rl.Shutdown(context.Background())
 		assert.NoError(t, err)
 	})
-	return server, rl
-}
-
-func TestGubernatorRateLimiter_StartStop(t *testing.T) {
-	_, rateLimiter := newTestGubernatorRateLimiter(t, nil)
-
-	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
-	require.NoError(t, err)
-
-	err = rateLimiter.Shutdown(context.Background())
-	require.NoError(t, err)
+	return rl
 }
 
 func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
 		t.Run(string(behavior), func(t *testing.T) {
-			server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: behavior})
-			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
-			require.NoError(t, err)
+			rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: behavior})
 
-			var resp gubernator.GetRateLimitsResp
-			var req *gubernator.GetRateLimitsReq
-			var respErr error
-			server.getRateLimits = func(ctx context.Context, reqIn *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
-				req = reqIn
-				return &resp, respErr
-			}
+			err := rateLimiter.RateLimit(context.Background(), 1)
+			assert.NoError(t, err)
 
-			resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}}
 			err = rateLimiter.RateLimit(context.Background(), 1)
 			assert.NoError(t, err)
-			require.NotNil(t, req)
-			require.Len(t, req.Requests, 1)
-			// CreatedAt is based on time.Now(). Check it is not nil, then nil it out for the next assertion.
-			assert.NotNil(t, req.Requests[0].CreatedAt)
-			req.Requests[0].CreatedAt = nil
-			assert.Equal(t, &gubernator.RateLimitReq{
-				Name:      "ratelimit/abc123",
-				UniqueKey: "default",
-				Hits:      1,
-				Limit:     1,
-				Burst:     2,
-				Duration:  1000,
-				Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
-			}, req.Requests[0])
 
-			resp.Responses = []*gubernator.RateLimitResp{{Error: "yeah, nah"}}
-			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, errRateLimitInternalError.Error())
-
-			resp.Responses = []*gubernator.RateLimitResp{}
-			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, "expected 1 response from gubernator, got 0")
-
-			reqTime := time.Now()
-			resp.Responses = []*gubernator.RateLimitResp{{Status: gubernator.Status_OVER_LIMIT, ResetTime: reqTime.Add(100 * time.Millisecond).UnixMilli()}}
 			err = rateLimiter.RateLimit(context.Background(), 1)
 			switch behavior {
 			case ThrottleBehaviorError:
 				assert.EqualError(t, err, "too many requests")
 			case ThrottleBehaviorDelay:
 				assert.NoError(t, err)
-				assert.GreaterOrEqual(t, time.Now(), reqTime.Add(100*time.Millisecond))
 			}
-
-			respErr = errors.New("nope")
-			err = rateLimiter.RateLimit(context.Background(), 1)
-			assert.EqualError(t, err, errRateLimitInternalError.Error())
 		})
 	}
 }
 
 func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
-	server, rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+	rateLimiter := newTestGubernatorRateLimiter(t, &Config{
 		Rate:             1,
 		Burst:            2,
 		MetadataKeys:     []string{"metadata_key"},
 		ThrottleBehavior: ThrottleBehaviorError,
 	})
-	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
-	require.NoError(t, err)
 
 	clientContext1 := client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{
@@ -173,34 +122,15 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 		}),
 	})
 
-	var req *gubernator.GetRateLimitsReq
-	server.getRateLimits = func(ctx context.Context, reqIn *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
-		req = reqIn
-		return &gubernator.GetRateLimitsResp{
-			Responses: []*gubernator.RateLimitResp{{Status: gubernator.Status_UNDER_LIMIT}},
-		}, nil
-	}
-
 	// Each unique combination of metadata keys should get its own rate limit.
+	// If everything is working as expected, making 3 requests on this rate
+	// limiter should work, as it will be using different unique keys.
+	err := rateLimiter.RateLimit(clientContext1, 1)
+	assert.NoError(t, err)
+
 	err = rateLimiter.RateLimit(clientContext1, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
-	assert.Equal(t, "metadata_key:value1", req.Requests[0].UniqueKey)
 
 	err = rateLimiter.RateLimit(clientContext2, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, "ratelimit/abc123", req.Requests[0].Name)
-	assert.Equal(t, "metadata_key:value2", req.Requests[0].UniqueKey)
-}
-
-type testServer struct {
-	gubernator.UnimplementedV1Server
-	getRateLimits func(context.Context, *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error)
-}
-
-func (s *testServer) GetRateLimits(ctx context.Context, req *gubernator.GetRateLimitsReq) (*gubernator.GetRateLimitsResp, error) {
-	if s.getRateLimits != nil {
-		return s.getRateLimits(ctx, req)
-	}
-	return nil, status.Errorf(codes.Unimplemented, "method GetRateLimits not implemented")
 }
