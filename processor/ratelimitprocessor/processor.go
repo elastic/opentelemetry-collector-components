@@ -214,6 +214,7 @@ func rateLimit(
 	inflight *int64,
 ) error {
 	startTime := time.Now()
+	atomic.AddInt64(inflight, 1)
 	current := atomic.LoadInt64(inflight)
 	telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, current)
 	defer func() {
