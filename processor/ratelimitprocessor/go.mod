@@ -6,6 +6,7 @@ require (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced
 	github.com/google/go-cmp v0.7.0
 	github.com/gubernator-io/gubernator/v2 v2.13.0
+	github.com/sirupsen/logrus v1.9.2
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/collector/client v1.31.0
 	go.opentelemetry.io/collector/component v1.31.0
@@ -21,6 +22,7 @@ require (
 	go.opentelemetry.io/collector/processor v1.31.0
 	go.opentelemetry.io/collector/processor/processortest v0.125.0
 	go.opentelemetry.io/collector/processor/xprocessor v0.125.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/metric v1.35.0
 	go.opentelemetry.io/otel/sdk/metric v1.35.0
@@ -84,7 +86,6 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/segmentio/fasthash v1.0.2 // indirect
-	github.com/sirupsen/logrus v1.9.2 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otellogrus v0.2.1 // indirect
 	github.com/uptrace/opentelemetry-go-extra/otelutil v0.2.1 // indirect
@@ -106,7 +107,6 @@ require (
 	go.opentelemetry.io/collector/pdata/testdata v0.125.0 // indirect
 	go.opentelemetry.io/collector/pipeline v0.125.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.10.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.25.0 // indirect
