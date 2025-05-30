@@ -66,7 +66,7 @@ type CacheConfig struct {
 	// used entries will be evicted.
 	Capacity uint32 `mapstructure:"capacity"`
 
-	// TTL defines the duration for which API Key verification
+	// TTL defines the duration before the cache key gets evicted
 	TTL time.Duration `mapstructure:"ttl"`
 }
 
