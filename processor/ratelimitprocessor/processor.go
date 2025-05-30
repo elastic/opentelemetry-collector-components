@@ -99,7 +99,7 @@ func NewMetricsRateLimiterProcessor(
 	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, metrics pmetric.Metrics) error,
-	inflight *int64,
+	inflight *int64, // used to calculate concurrent requests
 ) (*MetricsRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -213,15 +213,14 @@ func rateLimit(
 	telemetryBuilder *metadata.TelemetryBuilder,
 	inflight *int64,
 ) error {
-	startTime := time.Now()
-	atomic.AddInt64(inflight, 1)
-	current := atomic.LoadInt64(inflight)
+	current := atomic.AddInt64(inflight, 1)
 	telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, current)
-	defer func() {
-		duration := time.Since(startTime).Seconds()
-		telemetryBuilder.RatelimitRequestDuration.Record(ctx, duration)
+
+	defer func(start time.Time) {
 		atomic.AddInt64(inflight, -1)
-	}()
+		telemetryBuilder.RatelimitRequestDuration.Record(ctx, time.Since(start).Seconds())
+	}(time.Now())
+
 	err := rateLimit(ctx, hits)
 
 	attrs := getTelemetryAttrs(ctx, metadataKeys, err)
