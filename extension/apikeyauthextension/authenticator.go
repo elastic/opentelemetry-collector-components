@@ -102,6 +102,8 @@ func newAuthenticator(cfg *Config, set component.TelemetrySettings) (*authentica
 	if err != nil {
 		return nil, err
 	}
+	cache.SetLifetime(cfg.Cache.TTL)
+
 	authenticator := &authenticator{
 		config:            cfg,
 		telemetrySettings: set,

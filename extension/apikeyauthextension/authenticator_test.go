@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v8/typedapi/security/hasprivileges"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
@@ -203,6 +204,30 @@ func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
 	clientInfo = client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+}
+
+func TestAuthenticator_CacheTTL(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		h := newCannedHasPrivilegesHandler(successfulResponse)
+		h.ServeHTTP(w, r)
+		calls++
+	})
+	config := createDefaultConfig().(*Config)
+	config.Cache.TTL = time.Nanosecond
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	for i := 0; i < 10; i++ {
+		ctx, err := authenticator.Authenticate(context.Background(), map[string][]string{
+			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret1"))},
+		})
+		require.NoError(t, err)
+		clientInfo := client.FromContext(ctx)
+		assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+		assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+		assert.Equal(t, i+1, calls) // every attempt should be a cache miss due to the short TTL
+		time.Sleep(time.Millisecond)
+	}
 }
 
 func TestAuthenticator_AuthorizationHeader(t *testing.T) {
