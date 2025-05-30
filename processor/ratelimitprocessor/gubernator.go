@@ -106,6 +106,9 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, _ component.Host) err
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC client connection: %w", err)
+	}
 	r.client = gubernator.NewV1Client(conn)
 	return nil
 }
