@@ -277,14 +277,16 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 }
 
 func (r *elasticAPMReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) error {
-	sm := rm.ScopeMetrics().AppendEmpty()
+
 	metricset := event.GetMetricset()
 
 	// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
 	if metricset.Name == "span_breakdown" {
-		r.translateBreakdownMetricsToOtel(rm, event)
+		r.translateBreakdownMetricsToOtel(rm, event, timestamp)
 		return nil
 	}
+
+	sm := rm.ScopeMetrics().AppendEmpty()
 
 	samples := metricset.GetSamples()
 
@@ -324,10 +326,10 @@ type otelDataPoint interface {
 func (r *elasticAPMReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestamp time.Time) {
 	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
-	mappers.SetDerivedFieldsForMetrics(event, dp.Attributes())
+	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 }
 
-func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent) {
+func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) {
 	sm := rm.ScopeMetrics().AppendEmpty()
 	sum_metric := sm.Metrics().AppendEmpty()
 	sum_metric.SetName("span.self_time.sum.us")
@@ -337,23 +339,22 @@ func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm *pmetric.Resourc
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter.flushBulkIndexer
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367
 	sum_metric.SetUnit("us")
-	sum_dp := createBreakdownMetricsCommon(sum_metric, event)
+	sum_dp := createBreakdownMetricsCommon(sum_metric, event, timestamp)
 	sum_dp.SetIntValue(int64(event.Span.SelfTime.Sum))
 
 	count_metric := sm.Metrics().AppendEmpty()
 	count_metric.SetName("span.self_time.count")
-	count_metric.SetUnit("count")
-	count_metric_dp := createBreakdownMetricsCommon(count_metric, event)
+	count_metric.SetUnit("{span}")
+	count_metric_dp := createBreakdownMetricsCommon(count_metric, event, timestamp)
 	count_metric_dp.SetDoubleValue(float64(event.Span.SelfTime.Count))
 
 	mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
-	mappers.SetDerivedFieldsForMetrics(event, sum_dp.Attributes())
-	mappers.SetDerivedFieldsForMetrics(event, count_metric_dp.Attributes())
 }
 
-func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent) pmetric.NumberDataPoint {
+func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent, timestamp time.Time) pmetric.NumberDataPoint {
 	g := metric.SetEmptyGauge()
 	dp := g.DataPoints().AppendEmpty()
+	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 
 	attr := dp.Attributes()
 	attr.PutStr("transaction.name", event.Transaction.Name)
@@ -361,7 +362,8 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	attr.PutStr("span.type", event.Span.Type)
 	attr.PutStr("span.subtype", event.Span.Subtype)
 	attr.PutStr("processor.event", "metric")
-	dp.SetTimestamp(pcommon.Timestamp(event.Timestamp))
+
+	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 
 	return dp
 }

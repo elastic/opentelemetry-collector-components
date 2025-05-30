@@ -78,7 +78,7 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 	}
 }
 
-func SetDerivedFieldsForMetrics(event *modelpb.APMEvent, attributes pcommon.Map) {
+func SetDerivedFieldsForMetrics(attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "metric")
 }
 
