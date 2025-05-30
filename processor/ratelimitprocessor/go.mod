@@ -50,7 +50,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.1 // indirect
-	github.com/google/go-cmp v0.7.0
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
