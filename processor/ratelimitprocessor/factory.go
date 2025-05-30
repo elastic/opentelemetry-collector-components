@@ -75,6 +75,8 @@ func createLogsProcessor(
 	if err != nil {
 		return nil, err
 	}
+
+	var inflight int64
 	return NewLogsRateLimiterProcessor(
 		rateLimiter,
 		set.TelemetrySettings,
@@ -82,6 +84,7 @@ func createLogsProcessor(
 		func(ctx context.Context, ld plog.Logs) error {
 			return nextConsumer.ConsumeLogs(ctx, ld)
 		},
+		&inflight,
 	)
 }
 

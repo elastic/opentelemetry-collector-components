@@ -40,10 +40,12 @@ func Tracer(settings component.TelemetrySettings) trace.Tracer {
 // TelemetryBuilder provides an interface for components to report telemetry
 // as defined in metadata and user config.
 type TelemetryBuilder struct {
-	meter             metric.Meter
-	mu                sync.Mutex
-	registrations     []metric.Registration
-	RatelimitRequests metric.Int64Counter
+	meter                       metric.Meter
+	mu                          sync.Mutex
+	registrations               []metric.Registration
+	RatelimitConcurrentRequests metric.Int64Gauge
+	RatelimitRequestDuration    metric.Float64Histogram
+	RatelimitRequests           metric.Int64Counter
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -75,6 +77,19 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	}
 	builder.meter = Meter(settings)
 	var err, errs error
+	builder.RatelimitConcurrentRequests, err = builder.meter.Int64Gauge(
+		"otelcol_ratelimit.concurrent_requests",
+		metric.WithDescription("Number of in-flight requests at any given time"),
+		metric.WithUnit("{requests}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitRequestDuration, err = builder.meter.Float64Histogram(
+		"otelcol_ratelimit.request_duration",
+		metric.WithDescription("Time(in seconds) taken to process a rate limit request"),
+		metric.WithUnit("{seconds}"),
+		metric.WithExplicitBucketBoundaries([]float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1, 5, 10}...),
+	)
+	errs = errors.Join(errs, err)
 	builder.RatelimitRequests, err = builder.meter.Int64Counter(
 		"otelcol_ratelimit.requests",
 		metric.WithDescription("Number of rate-limiting requests"),

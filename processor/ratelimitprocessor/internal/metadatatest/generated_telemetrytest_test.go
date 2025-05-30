@@ -36,7 +36,15 @@ func TestSetupTelemetry(t *testing.T) {
 	tb, err := metadata.NewTelemetryBuilder(testTel.NewTelemetrySettings())
 	require.NoError(t, err)
 	defer tb.Shutdown()
+	tb.RatelimitConcurrentRequests.Record(context.Background(), 1)
+	tb.RatelimitRequestDuration.Record(context.Background(), 1)
 	tb.RatelimitRequests.Add(context.Background(), 1)
+	AssertEqualRatelimitConcurrentRequests(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualRatelimitRequestDuration(t, testTel,
+		[]metricdata.HistogramDataPoint[float64]{{}}, metricdatatest.IgnoreValue(),
+		metricdatatest.IgnoreTimestamp())
 	AssertEqualRatelimitRequests(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())

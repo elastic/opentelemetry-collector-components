@@ -21,9 +21,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
+	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -34,6 +34,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 )
 
 type rateLimiterProcessor struct {
@@ -41,6 +43,7 @@ type rateLimiterProcessor struct {
 	rl               RateLimiter
 	metadataKeys     []string
 	telemetryBuilder *metadata.TelemetryBuilder
+	inflight         *int64
 }
 
 type LogsRateLimiterProcessor struct {
@@ -72,6 +75,7 @@ func NewLogsRateLimiterProcessor(
 	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, logs plog.Logs) error,
+	inflight *int64,
 ) (*LogsRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -83,6 +87,7 @@ func NewLogsRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			inflight:         inflight,
 		},
 		count: getLogsCountFunc(strategy),
 		next:  next,
@@ -200,7 +205,16 @@ func rateLimit(
 	rateLimit func(ctx context.Context, n int) error,
 	metadataKeys []string,
 	telemetryBuilder *metadata.TelemetryBuilder,
+	inflight *int64,
 ) error {
+	startTime := time.Now()
+	atomic.AddInt64(inflight, 1)
+	telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, *inflight)
+	defer func() {
+		duration := time.Since(startTime).Seconds()
+		telemetryBuilder.RatelimitRequestDuration.Record(ctx, duration)
+		atomic.AddInt64(inflight, -1)
+	}()
 	err := rateLimit(ctx, hits)
 
 	attrs := getTelemetryAttrs(ctx, metadataKeys, err)
@@ -218,6 +232,7 @@ func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
+		r.inflight,
 	); err != nil {
 		return err
 	}
@@ -234,6 +249,7 @@ func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pme
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
+		r.inflight,
 	); err != nil {
 		return err
 	}
@@ -250,6 +266,7 @@ func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrac
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
+		r.inflight,
 	); err != nil {
 		return err
 	}
@@ -266,6 +283,7 @@ func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd p
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
+		r.inflight,
 	); err != nil {
 		return err
 	}
