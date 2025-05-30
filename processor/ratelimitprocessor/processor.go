@@ -99,6 +99,7 @@ func NewMetricsRateLimiterProcessor(
 	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, metrics pmetric.Metrics) error,
+	inflight *int64,
 ) (*MetricsRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -110,6 +111,7 @@ func NewMetricsRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			inflight:         inflight,
 		},
 		count: getMetricsCountFunc(strategy),
 		next:  next,
@@ -121,6 +123,7 @@ func NewTracesRateLimiterProcessor(
 	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, traces ptrace.Traces) error,
+	inflight *int64,
 ) (*TracesRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -132,6 +135,7 @@ func NewTracesRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			inflight:         inflight,
 		},
 		count: getTracesCountFunc(strategy),
 		next:  next,
@@ -143,6 +147,7 @@ func NewProfilesRateLimiterProcessor(
 	telemetrySettings component.TelemetrySettings,
 	strategy Strategy,
 	next func(ctx context.Context, profiles pprofile.Profiles) error,
+	inflight *int64,
 ) (*ProfilesRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -154,6 +159,7 @@ func NewProfilesRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			inflight:         inflight,
 		},
 		count: getProfilesCountFunc(strategy),
 		next:  next,
