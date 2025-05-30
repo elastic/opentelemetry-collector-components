@@ -113,7 +113,7 @@ func TestAuthenticator_ApplicationPrivileges(t *testing.T) {
 				Privileges:  []string{"read", "write"},
 			}},
 		}, body)
-		_ = json.NewEncoder(w).Encode(successfulResponse)
+		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
 	})
 
 	config := createDefaultConfig().(*Config)
