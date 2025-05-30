@@ -75,6 +75,8 @@ func createLogsProcessor(
 	if err != nil {
 		return nil, err
 	}
+
+	var inflight int64
 	return NewLogsRateLimiterProcessor(
 		rateLimiter,
 		set.TelemetrySettings,
@@ -82,6 +84,7 @@ func createLogsProcessor(
 		func(ctx context.Context, ld plog.Logs) error {
 			return nextConsumer.ConsumeLogs(ctx, ld)
 		},
+		&inflight,
 	)
 }
 
@@ -96,6 +99,7 @@ func createMetricsProcessor(
 	if err != nil {
 		return nil, err
 	}
+	var inflight int64
 	return NewMetricsRateLimiterProcessor(
 		rateLimiter,
 		set.TelemetrySettings,
@@ -103,6 +107,7 @@ func createMetricsProcessor(
 		func(ctx context.Context, md pmetric.Metrics) error {
 			return nextConsumer.ConsumeMetrics(ctx, md)
 		},
+		&inflight,
 	)
 }
 
@@ -117,6 +122,7 @@ func createTracesProcessor(
 	if err != nil {
 		return nil, err
 	}
+	var inflight int64
 	return NewTracesRateLimiterProcessor(
 		rateLimiter,
 		set.TelemetrySettings,
@@ -124,6 +130,7 @@ func createTracesProcessor(
 		func(ctx context.Context, td ptrace.Traces) error {
 			return nextConsumer.ConsumeTraces(ctx, td)
 		},
+		&inflight,
 	)
 }
 
@@ -138,6 +145,7 @@ func createProfilesProcessor(
 	if err != nil {
 		return nil, err
 	}
+	var inflight int64
 	return NewProfilesRateLimiterProcessor(
 		rateLimiter,
 		set.TelemetrySettings,
@@ -145,5 +153,6 @@ func createProfilesProcessor(
 		func(ctx context.Context, td pprofile.Profiles) error {
 			return nextConsumer.ConsumeProfiles(ctx, td)
 		},
+		&inflight,
 	)
 }
