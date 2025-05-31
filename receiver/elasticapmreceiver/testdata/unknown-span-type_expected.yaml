@@ -162,7 +162,7 @@ resourceSpans:
             kind: 3
             name: SELECT FROM product_types
             parentSpanId: 945254c567a5417e
-            spanId: 0aaaaaaaaaaaaaaa
+            spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
             status:
               code: 1

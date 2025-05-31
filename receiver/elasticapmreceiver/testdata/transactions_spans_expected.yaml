@@ -162,7 +162,7 @@ resourceSpans:
             kind: 3
             name: SELECT FROM product_types
             parentSpanId: 945254c567a5417e
-            spanId: 0aaaaaaaaaaaaaaa
+            spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
             status:
               code: 1
@@ -230,7 +230,7 @@ resourceSpans:
             endTimeUnixNano: "1496170407186592981"
             name: GET /api/types
             parentSpanId: 945254c567a5417e
-            spanId: 1aaaaaaaaaaaaaaa
+            spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
@@ -297,7 +297,7 @@ resourceSpans:
             endTimeUnixNano: "1496170407157564298"
             name: GET /api/types
             parentSpanId: 945254c567a5417e
-            spanId: 2aaaaaaaaaaaaaaa
+            spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
@@ -364,7 +364,7 @@ resourceSpans:
             endTimeUnixNano: "1496170407167980298"
             name: GET /api/types
             parentSpanId: 945254c567a5417e
-            spanId: 3aaaaaaaaaaaaaaa
+            spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
@@ -659,7 +659,7 @@ resourceSpans:
             endTimeUnixNano: "1496170422284781912"
             name: SELECT FROM product_types
             parentSpanId: 85925e55b43f4342
-            spanId: 15aaaaaaaaaaaaaa
+            spanId: 85925e55b43f4342
             startTimeUnixNano: "1496170422281000000"
             status: {}
             traceId: 85925e55b43f4342aaaaaaaaaaaaaaaa

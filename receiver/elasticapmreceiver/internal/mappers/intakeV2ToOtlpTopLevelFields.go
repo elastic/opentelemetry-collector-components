@@ -56,7 +56,7 @@ func SetTopLevelFieldsCommon(event *modelpb.APMEvent, t TopLevelFieldSetter, log
 
 	if event.Transaction != nil && event.Transaction.Id != "" {
 		transactionId, err := SpanIdFromHex(event.Transaction.Id)
-		if err != nil {
+		if err == nil {
 			t.SetSpanID(transactionId)
 		} else {
 			logger.Error("failed to parse transaction ID", zap.String("transaction_id", (event.Transaction.Id)))
