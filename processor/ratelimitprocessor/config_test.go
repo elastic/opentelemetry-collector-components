@@ -42,29 +42,35 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "local",
 			expected: &Config{
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
 			},
 		},
 		{
 			name: "strategy",
 			expected: &Config{
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitBytes,
-				ThrottleBehavior: ThrottleBehaviorError,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
 			},
 		},
 		{
 			name: "gubernator",
 			expected: &Config{
-				Gubernator:       &GubernatorConfig{ClientConfig: *grpcClientConfig},
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
+				Gubernator: &GubernatorConfig{ClientConfig: *grpcClientConfig},
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
 			},
 		},
 		{
@@ -74,20 +80,73 @@ func TestLoadConfig(t *testing.T) {
 					ClientConfig: *grpcClientConfig,
 					Behavior:     []GubernatorBehavior{"global", "duration_is_gregorian"},
 				},
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
 			},
 		},
 		{
 			name: "metadata_keys",
 			expected: &Config{
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
-				MetadataKeys:     []string{"project_id"},
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
+				MetadataKeys: []string{"project_id"},
+			},
+		},
+		{
+			name: "overrides_all",
+			expected: &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
+				Overrides: map[string]RateLimitOverride{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						Rate:  ptr(300),
+						Burst: ptr(400),
+					},
+				},
+			},
+		},
+		{
+			name: "overrides_rate",
+			expected: &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
+				Overrides: map[string]RateLimitOverride{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						Rate: ptr(300),
+					},
+				},
+			},
+		},
+		{
+			name: "overrides_burst",
+			expected: &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+				},
+				Overrides: map[string]RateLimitOverride{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						Burst: ptr(400),
+					},
+				},
 			},
 		},
 		{
@@ -133,4 +192,8 @@ func TestLoadConfig(t *testing.T) {
 			require.Equal(t, tt.expected, cfg)
 		})
 	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
