@@ -190,19 +190,19 @@ func (r *ProfilesRateLimiterProcessor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: false}
 }
 
-func getTelemetryAttrs(attrs []attribute.KeyValue, err error) []attribute.KeyValue {
+func getTelemetryAttrs(attrsCommon []attribute.KeyValue, err error) (attrs []attribute.KeyValue) {
 	switch {
 	case err == nil:
-		attrs = append(attrs,
+		attrs = append(attrsCommon,
 			telemetry.WithReason(telemetry.StatusUnderLimit),
 			telemetry.WithDecision("accepted"),
 		)
 	case errors.Is(err, errTooManyRequests):
-		attrs = append(attrs,
+		attrs = append(attrsCommon,
 			telemetry.WithDecision("throttled"),
 		)
 	default:
-		attrs = append(attrs,
+		attrs = append(attrsCommon,
 			telemetry.WithReason(telemetry.RequestErr),
 			telemetry.WithDecision("accepted"),
 		)
@@ -220,18 +220,18 @@ func rateLimit(
 	inflight *int64,
 ) error {
 	current := atomic.AddInt64(inflight, 1)
-	attrs := getAttrsFromContext(ctx, metadataKeys)
-	telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, current, metric.WithAttributes(attrs...))
+	attrsCommon := getAttrsFromContext(ctx, metadataKeys)
+	telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, current, metric.WithAttributes(attrsCommon...))
 
 	defer func(start time.Time) {
 		atomic.AddInt64(inflight, -1)
-		telemetryBuilder.RatelimitRequestDuration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrs...))
+		telemetryBuilder.RatelimitRequestDuration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrsCommon...))
 	}(time.Now())
 
 	err := rateLimit(ctx, hits)
 
-	attrs = getTelemetryAttrs(attrs, err)
-	telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
+	attrRequests := getTelemetryAttrs(attrsCommon, err)
+	telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrRequests...))
 
 	return err
 }
