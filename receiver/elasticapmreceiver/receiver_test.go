@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +57,9 @@ func (f *fetcherMock) Fetch(ctx context.Context, query agentcfg.Query) (agentcfg
 
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	rcvr, err := newElasticAPMReceiver(nil, &Config{
+	rcvr, err := newElasticAPMReceiver(func(ctx context.Context, h component.Host) (agentcfg.Fetcher, error) {
+		return nil, nil
+	}, &Config{
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint: testEndpoint,
 		},
@@ -335,7 +338,7 @@ func TestAgentCfgHandler(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	var inputFiles_error = []struct {
+	inputFiles_error := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
 	}{
@@ -365,6 +368,41 @@ func TestErrors(t *testing.T) {
 	for _, tt := range inputFiles_error {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForErrors(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextLog, testEndpoint)
+		})
+	}
+}
+
+func TestMetrics(t *testing.T) {
+	var inputFiles_error = []struct {
+		inputNdJsonFileName        string
+		outputExpectedYamlFileName string
+	}{
+		{"metricsets.ndjson", "metricsets_expected.yaml"},
+	}
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			Endpoint: testEndpoint,
+		},
+	}
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	nextMetrics := new(consumertest.MetricsSink)
+	receiver, _ := factory.CreateMetrics(context.Background(), set, cfg, nextMetrics)
+
+	if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+		t.Errorf("Starting receiver failed: %v", err)
+	}
+	defer func() {
+		if err := receiver.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
+
+	for _, tt := range inputFiles_error {
+		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
+			runComparisonForMetrics(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextMetrics, testEndpoint)
 		})
 	}
 }
@@ -412,7 +450,6 @@ func TestTransactionsAndSpans(t *testing.T) {
 }
 
 func sendInput(t *testing.T, inputJsonFileName string, expectedYamlFileName string, testEndpoint string) {
-
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
@@ -433,7 +470,6 @@ func sendInput(t *testing.T, inputJsonFileName string, expectedYamlFileName stri
 func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
 	nextTrace *consumertest.TracesSink, testEndpoint string,
 ) {
-
 	nextTrace.Reset()
 
 	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
@@ -450,7 +486,6 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 func runComparisonForErrors(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
 	nextLog *consumertest.LogsSink, testEndpoint string,
 ) {
-
 	nextLog.Reset()
 
 	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
@@ -461,4 +496,20 @@ func runComparisonForErrors(t *testing.T, inputJsonFileName string, expectedYaml
 	expectedLogs, err := golden.ReadLogs(expectedFile)
 	require.NoError(t, err)
 	require.NoError(t, plogtest.CompareLogs(expectedLogs, actualLogs))
+}
+
+func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
+	nextMetric *consumertest.MetricsSink, testEndpoint string,
+) {
+
+	nextMetric.Reset()
+	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
+	actualMetrics := nextMetric.AllMetrics()[0]
+	expectedFile := filepath.Join(testData, expectedYamlFileName)
+	// Use this line to generate the expected yaml file:
+	// golden.WriteMetrics(t, expectedFile, actualMetrics)
+	expectedMetrics, err := golden.ReadMetrics(expectedFile)
+	require.NoError(t, err)
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics, pmetrictest.IgnoreMetricsOrder()))
+
 }

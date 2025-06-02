@@ -1,0 +1,10 @@
+type: apikeyauth
+scope_name: github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension
+
+status:
+  class: extension
+  stability:
+    development: [extension]
+
+tests:
+  config:
