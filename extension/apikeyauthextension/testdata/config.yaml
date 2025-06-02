@@ -1,0 +1,12 @@
+apikeyauth: {}
+apikeyauth/application_privileges:
+  application_privileges:
+    - application: my_app
+      privileges: [read, write]
+      resources: ['*']
+apikeyauth/invalid_cache_capacity:
+  cache:
+    capacity: 0
+apikeyauth/invalid_cache_ttl:
+  cache:
+    ttl: 0s

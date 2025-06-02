@@ -19,6 +19,7 @@ excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension
   - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension
+  - github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension
   - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
   - github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor
   - github.com/elastic/opentelemetry-collector-components/loadgen

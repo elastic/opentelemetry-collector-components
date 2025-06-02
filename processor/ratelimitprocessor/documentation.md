@@ -6,6 +6,22 @@
 
 The following telemetry is emitted by this component.
 
+### otelcol_ratelimit.concurrent_requests
+
+Number of in-flight requests at any given time
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| {requests} | Gauge | Int |
+
+### otelcol_ratelimit.request_duration
+
+Time(in seconds) taken to process a rate limit request
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| {seconds} | Histogram | Double |
+
 ### otelcol_ratelimit.requests
 
 Number of rate-limiting requests
@@ -19,5 +35,4 @@ Number of rate-limiting requests
 | Name | Description | Values |
 | ---- | ----------- | ------ |
 | decision | rate limit decision | Any Str |
-| limit_threshold | rate limit threshold | Any Double |
 | reason | rate limit reason | Any Str |

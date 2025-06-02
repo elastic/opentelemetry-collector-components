@@ -57,15 +57,10 @@ func getRateLimiter(
 	set processor.Settings,
 ) (*sharedcomponent.Component[rateLimiterComponent], error) {
 	return rateLimiters.LoadOrStore(config, func() (rateLimiterComponent, error) {
-		telemetryBuilder, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
-		if err != nil {
-			return nil, err
-		}
-
 		if config.Gubernator != nil {
-			return newGubernatorRateLimiter(config, set, telemetryBuilder)
+			return newGubernatorRateLimiter(config, set)
 		}
-		return newLocalRateLimiter(config, set, telemetryBuilder)
+		return newLocalRateLimiter(config, set)
 	})
 }
 
@@ -80,13 +75,17 @@ func createLogsProcessor(
 	if err != nil {
 		return nil, err
 	}
+
+	var inflight int64
 	return NewLogsRateLimiterProcessor(
 		rateLimiter,
+		set.TelemetrySettings,
 		config.Strategy,
 		func(ctx context.Context, ld plog.Logs) error {
 			return nextConsumer.ConsumeLogs(ctx, ld)
 		},
-	), nil
+		&inflight,
+	)
 }
 
 func createMetricsProcessor(
@@ -100,13 +99,16 @@ func createMetricsProcessor(
 	if err != nil {
 		return nil, err
 	}
+	var inflight int64
 	return NewMetricsRateLimiterProcessor(
 		rateLimiter,
+		set.TelemetrySettings,
 		config.Strategy,
 		func(ctx context.Context, md pmetric.Metrics) error {
 			return nextConsumer.ConsumeMetrics(ctx, md)
 		},
-	), nil
+		&inflight,
+	)
 }
 
 func createTracesProcessor(
@@ -120,13 +122,16 @@ func createTracesProcessor(
 	if err != nil {
 		return nil, err
 	}
+	var inflight int64
 	return NewTracesRateLimiterProcessor(
 		rateLimiter,
+		set.TelemetrySettings,
 		config.Strategy,
 		func(ctx context.Context, td ptrace.Traces) error {
 			return nextConsumer.ConsumeTraces(ctx, td)
 		},
-	), nil
+		&inflight,
+	)
 }
 
 func createProfilesProcessor(
@@ -140,11 +145,14 @@ func createProfilesProcessor(
 	if err != nil {
 		return nil, err
 	}
+	var inflight int64
 	return NewProfilesRateLimiterProcessor(
 		rateLimiter,
+		set.TelemetrySettings,
 		config.Strategy,
 		func(ctx context.Context, td pprofile.Profiles) error {
 			return nextConsumer.ConsumeProfiles(ctx, td)
 		},
-	), nil
+		&inflight,
+	)
 }
