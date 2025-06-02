@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
+
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	"github.com/sirupsen/logrus"
@@ -56,6 +58,12 @@ func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, err
 	log := logrus.New()
 	log.SetLevel(l)
 	log.SetFormatter(&logrus.JSONFormatter{})
+	log.AddHook(otellogrus.NewHook(otellogrus.WithLevels(
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+		logrus.ErrorLevel,
+		logrus.WarnLevel,
+	)))
 
 	conf, err := gubernator.SetupDaemonConfig(log, nil)
 	if err != nil {
