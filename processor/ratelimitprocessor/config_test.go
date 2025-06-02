@@ -46,6 +46,7 @@ func TestLoadConfig(t *testing.T) {
 				Burst:            200,
 				Strategy:         StrategyRateLimitRequests,
 				ThrottleBehavior: ThrottleBehaviorError,
+				Type:             LocalRateLimiter,
 			},
 		},
 		{
@@ -55,36 +56,17 @@ func TestLoadConfig(t *testing.T) {
 				Burst:            200,
 				Strategy:         StrategyRateLimitBytes,
 				ThrottleBehavior: ThrottleBehaviorError,
+				Type:             LocalRateLimiter,
 			},
 		},
 		{
 			name: "gubernator",
 			expected: &Config{
-				Gubernator: &GubernatorConfig{
-					Namespace: "test",
-					GRCPPort:  10101,
-					HTTPPort:  10102,
-					Behavior:  []GubernatorBehavior{"global"},
-				},
 				Rate:             100,
 				Burst:            200,
 				Strategy:         StrategyRateLimitRequests,
 				ThrottleBehavior: ThrottleBehaviorError,
-			},
-		},
-		{
-			name: "gubernator_behavior",
-			expected: &Config{
-				Gubernator: &GubernatorConfig{
-					Namespace: "test",
-					GRCPPort:  10101,
-					HTTPPort:  10102,
-					Behavior:  []GubernatorBehavior{"global", "duration_is_gregorian"},
-				},
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
+				Type:             GubernatorRateLimiter,
 			},
 		},
 		{
@@ -95,6 +77,7 @@ func TestLoadConfig(t *testing.T) {
 				Strategy:         StrategyRateLimitRequests,
 				ThrottleBehavior: ThrottleBehaviorError,
 				MetadataKeys:     []string{"project_id"},
+				Type:             LocalRateLimiter,
 			},
 		},
 		{
@@ -114,16 +97,8 @@ func TestLoadConfig(t *testing.T) {
 			expectedErr: `invalid throttle behavior "foo", expected one of ["error" "delay"]`,
 		},
 		{
-			name:        "invalid_gubernator_behavior",
-			expectedErr: `invalid Gubernator behavior "foo", expected one of ["batching" "drain_over_limit" "duration_is_gregorian" "global" "multi_region" "no_batching" "reset_remaining"]`,
-		},
-		{
-			name:        "invalid_gubernator_namespace",
-			expectedErr: `gubernator.namespace field value is empty`,
-		},
-		{
-			name:        "invalid_gubernator_ports",
-			expectedErr: `gubernator.grpc_port and gubernator.http_port must be different`,
+			name:        "invalid_type",
+			expectedErr: `invalid rate limiter type "invalid", expected one of ["local" "gubernator"]`,
 		},
 	}
 

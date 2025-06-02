@@ -20,25 +20,15 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 import (
 	"errors"
 	"fmt"
-	"sort"
-	"strings"
 
-	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/component"
-)
-
-const (
-	msgEmptyField = "%s field value is empty"
 )
 
 // Config holds configuration for the ratelimit processor.
 type Config struct {
-	// Gubernator holds configuration for Gubernator,
-	// to control distributed rate limiting.
-	//
-	// If Gubernator is nil, then rate limiting is performed
-	// locally to the collector.
-	Gubernator *GubernatorConfig `mapstructure:"gubernator"`
+	// Type of the rate limiter. Options are "gubernator" or
+	// "local". Default is "local".
+	Type RateLimiterType `mapstructure:"type"`
 
 	// MetadataKeys holds a list of client metadata keys for
 	// defining the rate limiting key, in addition to the
@@ -96,21 +86,16 @@ const (
 	ThrottleBehaviorDelay ThrottleBehavior = "delay"
 )
 
-// GubernatorConfig holds Gubernator-specific configuration for the ratelimit processor.
-type GubernatorConfig struct {
-	// Behavior holds a list of Gubernator behaviors. If this is unspecified,
-	// Gubernator's default batching behavior is used.
-	Behavior []GubernatorBehavior `mapstructure:"behavior"`
+// RateLimiterType identifies the type of rate limiter
+type RateLimiterType string
 
-	// Namespace in which the gubernator instances are deployed into.
-	Namespace string `mapstructure:"namespace"`
+const (
+	// LocalRateLimiter to indicate a local rate limiter should be used
+	LocalRateLimiter RateLimiterType = "local"
 
-	// GRCPPort is the port on which Gubernator gRPC server is listening.
-	GRCPPort int `mapstructure:"grpc_port"`
-
-	// HTTPPort is the port on which Gubernator HTTP server is listening.
-	HTTPPort int `mapstructure:"http_port"`
-}
+	// GubernatorRateLimiter to indicate gubernator should be used
+	GubernatorRateLimiter RateLimiterType = "gubernator"
+)
 
 // GubernatorBehavior controls Gubernator's behavior.
 type GubernatorBehavior string
@@ -119,6 +104,7 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		Strategy:         StrategyRateLimitRequests,
 		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
 	}
 }
 
@@ -164,25 +150,16 @@ func (s ThrottleBehavior) Validate() error {
 	)
 }
 
-func (config *GubernatorConfig) Validate() error {
-	var errs []error
-	if config.Namespace == "" {
-		errs = append(errs, fmt.Errorf(msgEmptyField, "gubernator.namespace"))
-	}
-	if config.HTTPPort == config.GRCPPort {
-		errs = append(errs, fmt.Errorf("gubernator.grpc_port and gubernator.http_port must be different"))
-	}
-	return errors.Join(errs...)
-}
-
-func (b GubernatorBehavior) Validate() error {
-	if _, ok := gubernator.Behavior_value[strings.ToUpper(string(b))]; ok {
+func (t RateLimiterType) Validate() error {
+	switch t {
+	case LocalRateLimiter, GubernatorRateLimiter:
 		return nil
 	}
-	validNames := make([]string, 0, len(gubernator.Behavior_name))
-	for _, name := range gubernator.Behavior_name {
-		validNames = append(validNames, strings.ToLower(name))
-	}
-	sort.Strings(validNames)
-	return fmt.Errorf("invalid Gubernator behavior %q, expected one of %q", b, validNames)
+	return fmt.Errorf(
+		"invalid rate limiter type %q, expected one of %q",
+		t, []string{
+			string(LocalRateLimiter),
+			string(GubernatorRateLimiter),
+		},
+	)
 }

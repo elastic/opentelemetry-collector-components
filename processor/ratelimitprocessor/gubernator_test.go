@@ -38,9 +38,6 @@ import (
 // daemon and returns a new gubernatorRateLimiter instance that relies
 // on this daemon for rate limiting.
 func newTestGubernatorRateLimiter(t *testing.T, cfg *Config) *gubernatorRateLimiter {
-	if cfg.Gubernator == nil {
-		cfg.Gubernator = &GubernatorConfig{}
-	}
 	peers := []gubernator.PeerInfo{
 		{GRPCAddress: "127.0.0.1:30100", HTTPAddress: "127.0.0.1:30101"},
 	}

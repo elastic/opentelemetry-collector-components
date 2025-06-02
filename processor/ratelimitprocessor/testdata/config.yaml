@@ -10,23 +10,7 @@ ratelimit/strategy:
 ratelimit/gubernator:
   rate: 100
   burst: 200
-  gubernator:
-    namespace: test
-    grpc_port: 10101
-    http_port: 10102
-    behavior:
-      - global
-
-ratelimit/gubernator_behavior:
-  rate: 100
-  burst: 200
-  gubernator:
-    namespace: test
-    grpc_port: 10101
-    http_port: 10102
-    behavior:
-      - global
-      - duration_is_gregorian
+  type: gubernator
 
 ratelimit/metadata_keys:
   metadata_keys:
@@ -52,28 +36,7 @@ ratelimit/invalid_throttle_behavior:
   burst: 1
   throttle_behavior: foo
 
-ratelimit/invalid_gubernator_behavior:
-  rate: 1
-  burst: 1
-  gubernator:
-    behavior:
-      - foo
-
-ratelimit/invalid_gubernator_namespace:
+ratelimit/invalid_type:
   rate: 100
   burst: 200
-  gubernator:
-    grpc_port: 10101
-    http_port: 10102
-    behavior:
-      - global
-
-ratelimit/invalid_gubernator_ports:
-  rate: 100
-  burst: 200
-  gubernator:
-    namespace: test
-    grpc_port: 1
-    http_port: 1
-    behavior:
-      - global
+  type: invalid

@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -49,7 +48,7 @@ type gubernatorRateLimiter struct {
 	clientConn *grpc.ClientConn
 }
 
-func newGubernatorDaemonConfig(cfgGubernator *GubernatorConfig, logger *zap.Logger) (gubernator.DaemonConfig, error) {
+func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, error) {
 	l, err := logrus.ParseLevel(logger.Level().String())
 	if err != nil {
 		return gubernator.DaemonConfig{}, err
@@ -62,26 +61,12 @@ func newGubernatorDaemonConfig(cfgGubernator *GubernatorConfig, logger *zap.Logg
 	if err != nil {
 		return gubernator.DaemonConfig{}, fmt.Errorf("failed to setup gubernator daemon config: %w", err)
 	}
-	conf.PeerDiscoveryType = "k8s"
-	conf.K8PoolConf.Namespace = cfgGubernator.Namespace
-	conf.K8PoolConf.Mechanism = gubernator.WatchPods
-	conf.K8PoolConf.PodPort = fmt.Sprintf("%d", cfgGubernator.GRCPPort)
-	conf.HTTPListenAddress = fmt.Sprintf("0.0.0.0:%d", cfgGubernator.HTTPPort)
-	conf.GRPCListenAddress = fmt.Sprintf("0.0.0.0:%d", cfgGubernator.GRCPPort)
+
 	return conf, nil
 }
 
 func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
-	var behavior int32
-	for _, b := range cfg.Gubernator.Behavior {
-		value, ok := gubernator.Behavior_value[strings.ToUpper(string(b))]
-		if !ok {
-			return nil, fmt.Errorf("invalid behavior %q", b)
-		}
-		behavior |= value
-	}
-
-	daemonCfg, err := newGubernatorDaemonConfig(cfg.Gubernator, set.Logger)
+	daemonCfg, err := newGubernatorDaemonConfig(set.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gubernator daemon config: %w", err)
 	}
@@ -89,7 +74,7 @@ func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorR
 	return &gubernatorRateLimiter{
 		cfg:       cfg,
 		set:       set,
-		behavior:  gubernator.Behavior(behavior),
+		behavior:  gubernator.Behavior(0), // BATCHING behavior
 		daemonCfg: daemonCfg,
 	}, nil
 }

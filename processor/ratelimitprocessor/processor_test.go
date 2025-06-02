@@ -111,7 +111,12 @@ func TestGetCountFunc_Profiles(t *testing.T) {
 }
 
 func TestConsume_Logs(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: 1, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            1,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
@@ -149,7 +154,12 @@ func TestConsume_Logs(t *testing.T) {
 }
 
 func TestConsume_Metrics(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: 1, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            1,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
@@ -187,7 +197,12 @@ func TestConsume_Metrics(t *testing.T) {
 }
 
 func TestConsume_Traces(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: 1, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            1,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
@@ -225,7 +240,12 @@ func TestConsume_Traces(t *testing.T) {
 }
 
 func TestConsume_Profiles(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: 1, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            1,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
@@ -282,46 +302,3 @@ func testRateLimitRequests(t *testing.T, tel *componenttest.Telemetry) {
 		},
 	}, metricdatatest.IgnoreTimestamp())
 }
-
-/*
-type testTelemetry struct {
-	reader        *metric.ManualReader
-	meterProvider *metric.MeterProvider
-}
-
-func newTestTelemetry() testTelemetry {
-	reader := metric.NewManualReader()
-	return testTelemetry{
-		reader:        reader,
-		meterProvider: metric.NewMeterProvider(metric.WithReader(reader)),
-	}
-}
-
-func (tt *testTelemetry) newTelemetrySettings() component.TelemetrySettings {
-	set := componenttest.NewNopTelemetrySettings()
-	set.MeterProvider = tt.meterProvider
-	return set
-}
-
-func (tt *testTelemetry) getMetric(name string, got metricdata.ResourceMetrics) metricdata.Metrics {
-	for _, sm := range got.ScopeMetrics {
-		for _, m := range sm.Metrics {
-			if m.Name == name {
-				return m
-			}
-		}
-	}
-
-	return metricdata.Metrics{}
-}
-
-func getSumValues(t *testing.T, name string, tt testTelemetry) []metricdata.DataPoint[int64] {
-	var md metricdata.ResourceMetrics
-	require.NoError(t, tt.reader.Collect(context.Background(), &md))
-
-	m := tt.getMetric(name, md).Data
-	g := m.(metricdata.Sum[int64])
-	return g.DataPoints
-}
-
-*/
