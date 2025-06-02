@@ -292,7 +292,12 @@ func TestConsume_Profiles(t *testing.T) {
 }
 
 func TestConcurrentRequestsTelemetry(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 10, Burst: 10, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             10,
+		Burst:            10,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
