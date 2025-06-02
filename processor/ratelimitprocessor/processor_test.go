@@ -40,12 +40,14 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 )
 
-var inflight int64
-
-var clientContext = client.NewContext(context.Background(), client.Info{
-	Metadata: client.NewMetadata(map[string][]string{
-		"x-elastic-project-id": {"TestProjectID"},
-	})})
+var (
+	inflight      int64
+	clientContext = client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-project-id": {"TestProjectID"},
+		}),
+	})
+)
 
 func TestGetCountFunc_Logs(t *testing.T) {
 	logs := plog.NewLogs()
