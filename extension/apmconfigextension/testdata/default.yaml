@@ -1,0 +1,6 @@
+# The following entry initializes the default apmconfig extension.
+# The full name of this extension is `apmconfig` and can be referenced in pipelines by 'apmconfig'.
+opamp:
+  protocols:
+    http:
+      endpoint: "localhost:4320"
