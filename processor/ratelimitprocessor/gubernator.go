@@ -21,15 +21,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
+
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
-
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
 )
 
 var _ RateLimiter = (*gubernatorRateLimiter)(nil)
@@ -39,48 +44,78 @@ type gubernatorRateLimiter struct {
 	set      processor.Settings
 	behavior gubernator.Behavior
 
-	conn   *grpc.ClientConn
-	client gubernator.V1Client
+	daemonCfg  gubernator.DaemonConfig
+	daemon     *gubernator.Daemon
+	client     gubernator.V1Client
+	clientConn *grpc.ClientConn
+}
+
+func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, error) {
+	l, err := logrus.ParseLevel(logger.Level().String())
+	if err != nil {
+		return gubernator.DaemonConfig{}, err
+	}
+	log := logrus.New()
+	log.SetLevel(l)
+	log.SetFormatter(&logrus.JSONFormatter{})
+	log.AddHook(otellogrus.NewHook(otellogrus.WithLevels(
+		logrus.PanicLevel,
+		logrus.FatalLevel,
+		logrus.ErrorLevel,
+		logrus.WarnLevel,
+	)))
+
+	conf, err := gubernator.SetupDaemonConfig(log, nil)
+	if err != nil {
+		return gubernator.DaemonConfig{}, fmt.Errorf("failed to setup gubernator daemon config: %w", err)
+	}
+
+	return conf, nil
 }
 
 func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
-	var behavior int32
-	for _, b := range cfg.Gubernator.Behavior {
-		value, ok := gubernator.Behavior_value[strings.ToUpper(string(b))]
-		if !ok {
-			return nil, fmt.Errorf("invalid behavior %q", b)
-		}
-		behavior |= value
+	daemonCfg, err := newGubernatorDaemonConfig(set.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gubernator daemon config: %w", err)
 	}
+
 	return &gubernatorRateLimiter{
-		cfg:      cfg,
-		set:      set,
-		behavior: gubernator.Behavior(behavior),
+		cfg:       cfg,
+		set:       set,
+		behavior:  gubernator.Behavior(0), // BATCHING behavior
+		daemonCfg: daemonCfg,
 	}, nil
 }
 
-func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) error {
-	if r.cfg.Gubernator.Auth != nil && r.cfg.Gubernator.Auth.AuthenticatorID.String() == "" {
-		// if we do not set this explicitly to nil, then it will fail when creating the connection with:
-		// `failed to resolve authenticator "": authenticator not found`
-		r.cfg.Gubernator.Auth = nil
-	}
-	conn, err := r.cfg.Gubernator.ToClientConn(ctx, host, r.set.TelemetrySettings)
+func (r *gubernatorRateLimiter) Start(ctx context.Context, _ component.Host) error {
+	daemon, err := gubernator.SpawnDaemon(ctx, r.daemonCfg)
 	if err != nil {
-		return fmt.Errorf("failed to connect to gubernator: %w", err)
+		return fmt.Errorf("failed to spawn gubernator daemon: %w", err)
 	}
-	r.conn = conn
-	r.client = gubernator.NewV1Client(r.conn)
+	r.daemon = daemon
+
+	conn, err := grpc.NewClient(
+		r.daemonCfg.GRPCListenAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC client connection: %w", err)
+	}
+	r.client = gubernator.NewV1Client(conn)
 	return nil
 }
 
-func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
-	if r.conn != nil {
-		err := r.conn.Close()
-		r.conn = nil
-		r.client = nil
-		return err
+func (r *gubernatorRateLimiter) Shutdown(_ context.Context) error {
+	if r.daemon != nil {
+		r.daemon.Close()
+		r.daemon = nil
 	}
+	if r.clientConn != nil {
+		_ = r.clientConn.Close()
+		r.clientConn = nil
+	}
+	r.client = nil
 	return nil
 }
 
@@ -89,17 +124,19 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 
 	createdAt := time.Now().UnixMilli()
 	getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
-		Requests: []*gubernator.RateLimitReq{{
-			Name:      r.set.ID.String(),
-			UniqueKey: uniqueKey,
-			Hits:      int64(hits),
-			Behavior:  r.behavior,
-			Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
-			Limit:     int64(r.cfg.Rate), // rate is per second
-			Burst:     int64(r.cfg.Burst),
-			Duration:  1000, // duration is in milliseconds, i.e. 1s
-			CreatedAt: &createdAt,
-		}},
+		Requests: []*gubernator.RateLimitReq{
+			{
+				Name:      r.set.ID.String(),
+				UniqueKey: uniqueKey,
+				Hits:      int64(hits),
+				Behavior:  r.behavior,
+				Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
+				Limit:     int64(r.cfg.Rate), // rate is per second
+				Burst:     int64(r.cfg.Burst),
+				Duration:  1000, // duration is in milliseconds, i.e. 1s
+				CreatedAt: &createdAt,
+			},
+		},
 	})
 	if err != nil {
 		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))

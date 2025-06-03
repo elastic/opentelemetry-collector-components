@@ -57,7 +57,7 @@ func getRateLimiter(
 	set processor.Settings,
 ) (*sharedcomponent.Component[rateLimiterComponent], error) {
 	return rateLimiters.LoadOrStore(config, func() (rateLimiterComponent, error) {
-		if config.Gubernator != nil {
+		if config.Type == GubernatorRateLimiter {
 			return newGubernatorRateLimiter(config, set)
 		}
 		return newLocalRateLimiter(config, set)

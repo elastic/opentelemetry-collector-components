@@ -20,28 +20,15 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 import (
 	"errors"
 	"fmt"
-	"sort"
-	"strings"
 
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configgrpc"
-	"go.opentelemetry.io/collector/confmap"
-
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/gubernator"
-)
-
-const (
-	msgEmptyField = "%s field value is empty"
 )
 
 // Config holds configuration for the ratelimit processor.
 type Config struct {
-	// Gubernator holds configuration for Gubernator,
-	// to control distributed rate limiting.
-	//
-	// If Gubernator is nil, then rate limiting is performed
-	// locally to the collector.
-	Gubernator *GubernatorConfig `mapstructure:"gubernator"`
+	// Type of the rate limiter. Options are "gubernator" or
+	// "local". Default is "local".
+	Type RateLimiterType `mapstructure:"type"`
 
 	// MetadataKeys holds a list of client metadata keys for
 	// defining the rate limiting key, in addition to the
@@ -99,14 +86,16 @@ const (
 	ThrottleBehaviorDelay ThrottleBehavior = "delay"
 )
 
-// GubernatorConfig holds Gubernator-specific configuration for the ratelimit processor.
-type GubernatorConfig struct {
-	configgrpc.ClientConfig `mapstructure:",squash"`
+// RateLimiterType identifies the type of rate limiter
+type RateLimiterType string
 
-	// Behavior holds a list of Gubernator behaviors. If this is unspecified,
-	// Gubernator's default batching behavior is used.
-	Behavior []GubernatorBehavior `mapstructure:"behavior"`
-}
+const (
+	// LocalRateLimiter to indicate a local rate limiter should be used
+	LocalRateLimiter RateLimiterType = "local"
+
+	// GubernatorRateLimiter to indicate gubernator should be used
+	GubernatorRateLimiter RateLimiterType = "gubernator"
+)
 
 // GubernatorBehavior controls Gubernator's behavior.
 type GubernatorBehavior string
@@ -115,6 +104,7 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		Strategy:         StrategyRateLimitRequests,
 		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
 	}
 }
 
@@ -160,28 +150,16 @@ func (s ThrottleBehavior) Validate() error {
 	)
 }
 
-func (config *GubernatorConfig) Unmarshal(parser *confmap.Conf) error {
-	clientConfig := configgrpc.NewDefaultClientConfig()
-	config.ClientConfig = *clientConfig
-	return parser.Unmarshal(config)
-}
-
-func (config *GubernatorConfig) Validate() error {
-	var errs []error
-	if config.Endpoint == "" {
-		errs = append(errs, fmt.Errorf(msgEmptyField, "gubernator.endpoint"))
-	}
-	return errors.Join(errs...)
-}
-
-func (b GubernatorBehavior) Validate() error {
-	if _, ok := gubernator.Behavior_value[strings.ToUpper(string(b))]; ok {
+func (t RateLimiterType) Validate() error {
+	switch t {
+	case LocalRateLimiter, GubernatorRateLimiter:
 		return nil
 	}
-	validNames := make([]string, 0, len(gubernator.Behavior_name))
-	for _, name := range gubernator.Behavior_name {
-		validNames = append(validNames, strings.ToLower(name))
-	}
-	sort.Strings(validNames)
-	return fmt.Errorf("invalid Gubernator behavior %q, expected one of %q", b, validNames)
+	return fmt.Errorf(
+		"invalid rate limiter type %q, expected one of %q",
+		t, []string{
+			string(LocalRateLimiter),
+			string(GubernatorRateLimiter),
+		},
+	)
 }

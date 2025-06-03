@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -34,9 +36,9 @@ func newTestLocalRateLimiter(t *testing.T, cfg *Config) *localRateLimiter {
 	if cfg == nil {
 		cfg = createDefaultConfig().(*Config)
 	}
-	require.Nil(t, cfg.Gubernator)
+	require.Equal(t, LocalRateLimiter, cfg.Type)
 
-	rl, err := newLocalRateLimiter(cfg, processortest.NewNopSettings(processortest.NopType))
+	rl, err := newLocalRateLimiter(cfg, processortest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := rl.Shutdown(context.Background())
@@ -60,7 +62,7 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 		t.Run(string(behavior), func(t *testing.T) {
 			burst := 2
 			rateLimiter := newTestLocalRateLimiter(t, &Config{
-				Rate: 10, Burst: burst, ThrottleBehavior: behavior,
+				Rate: 10, Burst: burst, ThrottleBehavior: behavior, Type: LocalRateLimiter,
 			})
 			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 			require.NoError(t, err)
@@ -95,6 +97,7 @@ func TestLocalRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 		Burst:            burst,
 		MetadataKeys:     []string{"metadata_key"},
 		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
