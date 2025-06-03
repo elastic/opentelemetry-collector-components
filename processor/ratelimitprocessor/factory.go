@@ -85,6 +85,7 @@ func createLogsProcessor(
 			return nextConsumer.ConsumeLogs(ctx, ld)
 		},
 		&inflight,
+		config.MetadataKeys,
 	)
 }
 
@@ -108,6 +109,7 @@ func createMetricsProcessor(
 			return nextConsumer.ConsumeMetrics(ctx, md)
 		},
 		&inflight,
+		config.MetadataKeys,
 	)
 }
 
@@ -131,6 +133,7 @@ func createTracesProcessor(
 			return nextConsumer.ConsumeTraces(ctx, td)
 		},
 		&inflight,
+		config.MetadataKeys,
 	)
 }
 
@@ -154,5 +157,6 @@ func createProfilesProcessor(
 			return nextConsumer.ConsumeProfiles(ctx, td)
 		},
 		&inflight,
+		config.MetadataKeys,
 	)
 }

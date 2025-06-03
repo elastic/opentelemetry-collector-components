@@ -76,6 +76,7 @@ func NewLogsRateLimiterProcessor(
 	strategy Strategy,
 	next func(ctx context.Context, logs plog.Logs) error,
 	inflight *int64,
+	metadataKeys []string,
 ) (*LogsRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -88,6 +89,7 @@ func NewLogsRateLimiterProcessor(
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
 			inflight:         inflight,
+			metadataKeys:     metadataKeys,
 		},
 		count: getLogsCountFunc(strategy),
 		next:  next,
@@ -100,6 +102,7 @@ func NewMetricsRateLimiterProcessor(
 	strategy Strategy,
 	next func(ctx context.Context, metrics pmetric.Metrics) error,
 	inflight *int64, // used to calculate concurrent requests
+	metadataKeys []string,
 ) (*MetricsRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -112,6 +115,7 @@ func NewMetricsRateLimiterProcessor(
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
 			inflight:         inflight,
+			metadataKeys:     metadataKeys,
 		},
 		count: getMetricsCountFunc(strategy),
 		next:  next,
@@ -124,6 +128,7 @@ func NewTracesRateLimiterProcessor(
 	strategy Strategy,
 	next func(ctx context.Context, traces ptrace.Traces) error,
 	inflight *int64,
+	metadataKeys []string,
 ) (*TracesRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -136,6 +141,7 @@ func NewTracesRateLimiterProcessor(
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
 			inflight:         inflight,
+			metadataKeys:     metadataKeys,
 		},
 		count: getTracesCountFunc(strategy),
 		next:  next,
@@ -148,6 +154,7 @@ func NewProfilesRateLimiterProcessor(
 	strategy Strategy,
 	next func(ctx context.Context, profiles pprofile.Profiles) error,
 	inflight *int64,
+	metadataKeys []string,
 ) (*ProfilesRateLimiterProcessor, error) {
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
 	if err != nil {
@@ -160,6 +167,7 @@ func NewProfilesRateLimiterProcessor(
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
 			inflight:         inflight,
+			metadataKeys:     metadataKeys,
 		},
 		count: getProfilesCountFunc(strategy),
 		next:  next,
@@ -182,21 +190,19 @@ func (r *ProfilesRateLimiterProcessor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: false}
 }
 
-func getTelemetryAttrs(ctx context.Context, metadataKeys []string, err error) []attribute.KeyValue {
-	attrs := getAttrsFromContext(ctx, metadataKeys)
-
+func getTelemetryAttrs(attrsCommon []attribute.KeyValue, err error) (attrs []attribute.KeyValue) {
 	switch {
 	case err == nil:
-		attrs = append(attrs,
+		attrs = append(attrsCommon,
 			telemetry.WithReason(telemetry.StatusUnderLimit),
 			telemetry.WithDecision("accepted"),
 		)
 	case errors.Is(err, errTooManyRequests):
-		attrs = append(attrs,
+		attrs = append(attrsCommon,
 			telemetry.WithDecision("throttled"),
 		)
 	default:
-		attrs = append(attrs,
+		attrs = append(attrsCommon,
 			telemetry.WithReason(telemetry.RequestErr),
 			telemetry.WithDecision("accepted"),
 		)
@@ -214,17 +220,18 @@ func rateLimit(
 	inflight *int64,
 ) error {
 	current := atomic.AddInt64(inflight, 1)
-	telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, current)
+	attrsCommon := getAttrsFromContext(ctx, metadataKeys)
+	telemetryBuilder.RatelimitConcurrentRequests.Record(ctx, current, metric.WithAttributes(attrsCommon...))
 
 	defer func(start time.Time) {
 		atomic.AddInt64(inflight, -1)
-		telemetryBuilder.RatelimitRequestDuration.Record(ctx, time.Since(start).Seconds())
+		telemetryBuilder.RatelimitRequestDuration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrsCommon...))
 	}(time.Now())
 
 	err := rateLimit(ctx, hits)
 
-	attrs := getTelemetryAttrs(ctx, metadataKeys, err)
-	telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrs...))
+	attrRequests := getTelemetryAttrs(attrsCommon, err)
+	telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrRequests...))
 
 	return err
 }
