@@ -29,6 +29,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -39,7 +40,14 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 )
 
-var inflight int64
+var (
+	inflight      int64
+	clientContext = client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-project-id": {"TestProjectID"},
+		}),
+	})
+)
 
 func TestGetCountFunc_Logs(t *testing.T) {
 	logs := plog.NewLogs()
@@ -128,6 +136,7 @@ func TestConsume_Logs(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -141,12 +150,12 @@ func TestConsume_Logs(t *testing.T) {
 	}
 
 	logs := plog.NewLogs()
-	err = processor.ConsumeLogs(context.Background(), logs)
+	err = processor.ConsumeLogs(clientContext, logs)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
 
 	consumed = false
-	err = processor.ConsumeLogs(context.Background(), logs)
+	err = processor.ConsumeLogs(clientContext, logs)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
 
@@ -167,6 +176,7 @@ func TestConsume_Metrics(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -180,12 +190,12 @@ func TestConsume_Metrics(t *testing.T) {
 	}
 
 	metrics := pmetric.NewMetrics()
-	err = processor.ConsumeMetrics(context.Background(), metrics)
+	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
 
 	consumed = false
-	err = processor.ConsumeMetrics(context.Background(), metrics)
+	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
 
@@ -206,6 +216,7 @@ func TestConsume_Traces(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -219,12 +230,12 @@ func TestConsume_Traces(t *testing.T) {
 	}
 
 	traces := ptrace.NewTraces()
-	err = processor.ConsumeTraces(context.Background(), traces)
+	err = processor.ConsumeTraces(clientContext, traces)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
 
 	consumed = false
-	err = processor.ConsumeTraces(context.Background(), traces)
+	err = processor.ConsumeTraces(clientContext, traces)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
 
@@ -246,6 +257,7 @@ func TestConsume_Profiles(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -259,12 +271,12 @@ func TestConsume_Profiles(t *testing.T) {
 	}
 
 	profiles := pprofile.NewProfiles()
-	err = processor.ConsumeProfiles(context.Background(), profiles)
+	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
 
 	consumed = false
-	err = processor.ConsumeProfiles(context.Background(), profiles)
+	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
 
@@ -295,6 +307,7 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -315,7 +328,7 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-startCh
-			_ = processor.ConsumeMetrics(context.Background(), metrics)
+			_ = processor.ConsumeMetrics(clientContext, metrics)
 		}()
 	}
 
@@ -343,6 +356,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 				[]attribute.KeyValue{
 					telemetry.WithDecision("accepted"),
 					telemetry.WithReason(telemetry.StatusUnderLimit),
+					attribute.String("x-elastic-project-id", "TestProjectID"),
 				}...),
 		},
 		{
@@ -350,10 +364,24 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 			Attributes: attribute.NewSet(
 				[]attribute.KeyValue{
 					telemetry.WithDecision("throttled"),
+					attribute.String("x-elastic-project-id", "TestProjectID"),
 				}...),
 		},
 	}, metricdatatest.IgnoreTimestamp())
 
-	metadatatest.AssertEqualRatelimitRequestDuration(t, tel, []metricdata.HistogramDataPoint[float64]{{}}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
-	metadatatest.AssertEqualRatelimitConcurrentRequests(t, tel, []metricdata.DataPoint[int64]{{Value: 1}}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+	metadatatest.AssertEqualRatelimitRequestDuration(t, tel, []metricdata.HistogramDataPoint[float64]{
+		{
+			Attributes: attribute.NewSet(
+				attribute.String("x-elastic-project-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+	metadatatest.AssertEqualRatelimitConcurrentRequests(t, tel, []metricdata.DataPoint[int64]{
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				attribute.String("x-elastic-project-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
 }
