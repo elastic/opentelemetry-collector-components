@@ -19,11 +19,21 @@ package apmconfigextension // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"errors"
+	"net"
+	"net/http"
+	"sync"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/open-telemetry/opamp-go/server"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/extension"
+	"go.uber.org/zap"
+)
+
+const (
+	defaultOpAMPPath = "/v1/opamp"
 )
 
 type configClientFactory = func(context.Context, component.Host, component.TelemetrySettings) (apmconfig.RemoteConfigClient, error)
@@ -32,7 +42,8 @@ type apmConfigExtension struct {
 	telemetrySettings component.TelemetrySettings
 
 	extensionConfig *Config
-	opampServer     server.OpAMPServer
+	serverHTTP      *http.Server
+	shutdownWG      sync.WaitGroup
 	clientFactory   configClientFactory
 
 	cancelFn context.CancelFunc
@@ -41,7 +52,7 @@ type apmConfigExtension struct {
 var _ component.Component = (*apmConfigExtension)(nil)
 
 func newApmConfigExtension(cfg *Config, set extension.Settings, clientFactory configClientFactory) *apmConfigExtension {
-	return &apmConfigExtension{telemetrySettings: set.TelemetrySettings, opampServer: server.New(newLoggerFromZap(set.Logger)), extensionConfig: cfg, clientFactory: clientFactory}
+	return &apmConfigExtension{telemetrySettings: set.TelemetrySettings, extensionConfig: cfg, clientFactory: clientFactory}
 }
 
 func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) error {
@@ -52,12 +63,47 @@ func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) er
 		return err
 	}
 
-	return op.opampServer.Start(server.StartSettings{ListenEndpoint: op.extensionConfig.OpAMP.Server.Endpoint, Settings: server.Settings{Callbacks: *newRemoteConfigCallbacks(remoteConfigClient, op.telemetrySettings.Logger).Callbacks}})
+	opampHandler, conContext, err := server.New(newLoggerFromZap(op.telemetrySettings.Logger)).Attach(server.Settings{Callbacks: *newRemoteConfigCallbacks(remoteConfigClient, op.telemetrySettings.Logger).Callbacks})
+	if err != nil {
+		return err
+	}
+
+	httpMux := http.NewServeMux()
+	httpMux.HandleFunc(defaultOpAMPPath, opampHandler)
+
+	op.serverHTTP, err = op.extensionConfig.OpAMP.ServerConfig.ToServer(ctx, host, op.telemetrySettings, httpMux)
+	if err != nil {
+		return err
+	}
+	op.serverHTTP.ConnContext = conContext
+
+	op.telemetrySettings.Logger.Info("Starting HTTP server", zap.String("endpoint", op.extensionConfig.OpAMP.ServerConfig.Endpoint))
+	var hln net.Listener
+	if hln, err = op.extensionConfig.OpAMP.ServerConfig.ToListener(ctx); err != nil {
+		return err
+	}
+
+	op.shutdownWG.Add(1)
+	go func() {
+		defer op.shutdownWG.Done()
+
+		if errHTTP := op.serverHTTP.Serve(hln); errHTTP != nil && !errors.Is(errHTTP, http.ErrServerClosed) {
+			componentstatus.ReportStatus(host, componentstatus.NewFatalErrorEvent(errHTTP))
+		}
+	}()
+	return nil
 }
 
 func (op *apmConfigExtension) Shutdown(ctx context.Context) error {
+	var err error
+
 	if op.cancelFn != nil {
 		op.cancelFn()
 	}
-	return op.opampServer.Stop(ctx)
+
+	if op.serverHTTP != nil {
+		err = op.serverHTTP.Shutdown(ctx)
+	}
+	op.shutdownWG.Wait()
+	return err
 }

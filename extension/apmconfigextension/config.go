@@ -18,10 +18,18 @@
 package apmconfigextension // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension"
 
 import (
+	"errors"
 	"time"
 
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/confmap"
+)
+
+const (
+	// Protocol values.
+	protoHTTP = "opamp::protocols::http"
 )
 
 type Config struct {
@@ -35,11 +43,39 @@ type AgentConfig struct {
 }
 
 type OpAMPConfig struct {
-	Server OpAMPServerConfig `mapstructure:"server"`
+	// Protocols is the configuration for the supported protocols, currently
+	// HTTP (TBD: websocket).
+	Protocols `mapstructure:"protocols"`
 }
 
-type OpAMPServerConfig struct {
-	Endpoint string `mapstructure:"endpoint"`
+// Protocols is the configuration for the supported protocols.
+type Protocols struct {
+	ServerConfig *confighttp.ServerConfig `mapstructure:"http"`
+	// prevent unkeyed literal initialization
+	_ struct{}
 }
 
 var _ component.Config = (*Config)(nil)
+
+// Validate checks the receiver configuration is valid
+func (cfg *Config) Validate() error {
+	if cfg.OpAMP.Protocols.ServerConfig == nil {
+		return errors.New("must specify at least one protocol when using the apmconfig extension")
+	}
+	return nil
+}
+
+// Unmarshal a confmap.Conf into the config struct.
+func (cfg *Config) Unmarshal(conf *confmap.Conf) error {
+	// first load the config normally
+	err := conf.Unmarshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	if !conf.IsSet(protoHTTP) {
+		cfg.OpAMP.Protocols.ServerConfig = nil
+	}
+
+	return nil
+}
