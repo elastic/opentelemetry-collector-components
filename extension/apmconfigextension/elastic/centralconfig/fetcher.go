@@ -75,7 +75,7 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfi
 
 	return &protobufs.AgentRemoteConfig{ConfigHash: []byte(result.Source.Etag), Config: &protobufs.AgentConfigMap{
 		ConfigMap: map[string]*protobufs.AgentConfigFile{
-			"": {
+			"elastic": {
 				Body:        marshallConfig,
 				ContentType: configContentType,
 			},
