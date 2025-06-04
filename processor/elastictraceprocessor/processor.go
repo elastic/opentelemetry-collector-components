@@ -67,26 +67,27 @@ func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 
 		serviceName, _ := attributes.Get("service.name")
 
-		dataStreamType := "logs" // Default to traces; adjust based on logic
+		dataStreamType := "traces"
 
 		attributes.PutStr("data_stream.type", dataStreamType)
 		attributes.PutStr("data_stream.dataset", "apm."+serviceName.AsString())
 		attributes.PutStr("data_stream.namespace", "default") // Use a default or configurable namespace
 
 		scopeSpans := resourceSpan.ScopeSpans()
-
 		for j := 0; j < scopeSpans.Len(); j++ {
+
 			scopeSpan := scopeSpans.At(j)
 			spans := scopeSpan.Spans()
 
 			for k := 0; k < spans.Len(); k++ {
+
 				span := spans.At(k)
 				attributes := span.Attributes()
-
-				// Add "@timestamp" attribute
 				timestamp := span.StartTimestamp().AsTime().Format(time.RFC3339Nano)
 				attributes.PutStr("timestamp", timestamp)
+
 			}
+
 		}
 	}
 	p.enricher.Enrich(td)
@@ -114,7 +115,6 @@ func translateResourceMetadata(resource pcommon.Resource) {
 	})
 }
 
-// Helper function to replace dots in attribute keys
 func replaceDots(key string) string {
 	return strings.ReplaceAll(key, ".", "_")
 }
