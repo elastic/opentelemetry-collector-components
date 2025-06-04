@@ -20,6 +20,7 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 )
@@ -61,6 +62,11 @@ type RateLimitSettings struct {
 	//
 	// Defaults to "error"
 	ThrottleBehavior ThrottleBehavior `mapstructure:"throttle_behavior"`
+
+	// ThrottleInterval holds the time interval for throttling.
+	//
+	// Defaults to 1s
+	ThrottleInterval time.Duration `mapstructure:"throttle_interval"`
 }
 
 type RateLimitOverride struct {
@@ -69,6 +75,13 @@ type RateLimitOverride struct {
 
 	// Burst holds the maximum capacity of rate limit buckets.
 	Burst *int `mapstructure:"burst"`
+
+	// ThrottleInterval holds the time interval for throttling.
+	// It only has an effect when the rate limiter type
+	// is "gubernator".
+	//
+	// Defaults to 1s
+	ThrottleInterval *time.Duration `mapstructure:"throttle_interval"`
 }
 
 // Strategy identifies the rate-limiting strategy: requests, records, or bytes.
@@ -125,8 +138,29 @@ func createDefaultConfig() component.Config {
 		RateLimitSettings: RateLimitSettings{
 			Strategy:         StrategyRateLimitRequests,
 			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: 1 * time.Second,
 		},
 	}
+}
+
+// resolveRateLimitSettings returns the rate limit settings for the given unique key.
+// If no override is found, the default rate limit settings are returned.
+func resolveRateLimitSettings(cfg *Config, uniqueKey string) RateLimitSettings {
+	result := cfg.RateLimitSettings
+	if len(cfg.Overrides) > 0 {
+		if override, ok := cfg.Overrides[uniqueKey]; ok {
+			if override.Rate != nil {
+				result.Rate = *override.Rate
+			}
+			if override.Burst != nil {
+				result.Burst = *override.Burst
+			}
+			if override.ThrottleInterval != nil {
+				result.ThrottleInterval = *override.ThrottleInterval
+			}
+		}
+	}
+	return result
 }
 
 func (r *RateLimitSettings) Validate() error {
@@ -143,6 +177,9 @@ func (r *RateLimitSettings) Validate() error {
 	if err := r.ThrottleBehavior.Validate(); err != nil {
 		errs = append(errs, err)
 	}
+	if r.ThrottleInterval <= 0 {
+		errs = append(errs, fmt.Errorf("throttle_interval must be greater than zero"))
+	}
 	return errors.Join(errs...)
 }
 
@@ -157,6 +194,9 @@ func (r *RateLimitOverride) Validate() error {
 		if *r.Burst <= 0 {
 			errs = append(errs, fmt.Errorf("burst must be greater than zero"))
 		}
+	}
+	if r.ThrottleInterval != nil && *r.ThrottleInterval <= 0 {
+		errs = append(errs, fmt.Errorf("throttle_interval must be greater than zero"))
 	}
 	return errors.Join(errs...)
 }

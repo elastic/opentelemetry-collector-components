@@ -134,7 +134,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
 				Limit:     int64(cfg.Rate), // rate is per second
 				Burst:     int64(cfg.Burst),
-				Duration:  1000, // duration is in milliseconds, i.e. 1s
+				Duration:  cfg.ThrottleInterval.Milliseconds(), // duration is in milliseconds, i.e. 1s
 				CreatedAt: &createdAt,
 			},
 		},

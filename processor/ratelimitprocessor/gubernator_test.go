@@ -20,6 +20,7 @@ package ratelimitprocessor
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/gubernator-io/gubernator/v2"
@@ -86,6 +87,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 					Rate:             1,
 					Burst:            2,
 					ThrottleBehavior: behavior,
+					ThrottleInterval: 1 * time.Second,
 				},
 			})
 
@@ -112,6 +114,7 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 			Rate:             1,
 			Burst:            2,
 			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: 1 * time.Second,
 		},
 		MetadataKeys: []string{"metadata_key"},
 	})
