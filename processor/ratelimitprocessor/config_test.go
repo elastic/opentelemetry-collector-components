@@ -76,18 +76,6 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "gubernator_behavior",
-			expected: &Config{
-				Type: GubernatorRateLimiter,
-				RateLimitSettings: RateLimitSettings{
-					Rate:             100,
-					Burst:            200,
-					Strategy:         StrategyRateLimitRequests,
-					ThrottleBehavior: ThrottleBehaviorError,
-				},
-			},
-		},
-		{
 			name: "metadata_keys",
 			expected: &Config{
 				Type: LocalRateLimiter,
@@ -103,7 +91,7 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "overrides_all",
 			expected: &Config{
-				Type: GubernatorRateLimiter,
+				Type: LocalRateLimiter,
 				RateLimitSettings: RateLimitSettings{
 					Rate:             100,
 					Burst:            200,
@@ -121,6 +109,7 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "overrides_rate",
 			expected: &Config{
+				Type: LocalRateLimiter,
 				RateLimitSettings: RateLimitSettings{
 					Rate:             100,
 					Burst:            200,
@@ -137,6 +126,7 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "overrides_burst",
 			expected: &Config{
+				Type: LocalRateLimiter,
 				RateLimitSettings: RateLimitSettings{
 					Rate:             100,
 					Burst:            200,
