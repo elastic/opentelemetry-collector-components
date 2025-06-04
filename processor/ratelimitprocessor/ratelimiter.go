@@ -22,6 +22,8 @@ import (
 	"errors"
 	"strings"
 
+	"go.opentelemetry.io/otel/attribute"
+
 	"go.opentelemetry.io/collector/client"
 )
 
@@ -74,4 +76,19 @@ func getUniqueKey(ctx context.Context, metadataKeys []string) string {
 		}
 	}
 	return uniqueKey.String()
+}
+
+// getAttrsFromContext looks up for the metadata keys in the
+// context and returns the values as attributes.
+func getAttrsFromContext(ctx context.Context, metadataKeys []string) []attribute.KeyValue {
+	clientInfo := client.FromContext(ctx)
+
+	attrs := make([]attribute.KeyValue, 0, len(metadataKeys))
+	for _, key := range metadataKeys {
+		values := clientInfo.Metadata.Get(key)
+		if len(values) > 0 {
+			attrs = append(attrs, attribute.String(key, strings.Join(values, ",")))
+		}
+	}
+	return attrs
 }

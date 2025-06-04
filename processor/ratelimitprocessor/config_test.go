@@ -46,6 +46,7 @@ func TestLoadConfig(t *testing.T) {
 				Burst:            200,
 				Strategy:         StrategyRateLimitRequests,
 				ThrottleBehavior: ThrottleBehaviorError,
+				Type:             LocalRateLimiter,
 			},
 		},
 		{
@@ -55,29 +56,17 @@ func TestLoadConfig(t *testing.T) {
 				Burst:            200,
 				Strategy:         StrategyRateLimitBytes,
 				ThrottleBehavior: ThrottleBehaviorError,
+				Type:             LocalRateLimiter,
 			},
 		},
 		{
 			name: "gubernator",
 			expected: &Config{
-				Gubernator:       &GubernatorConfig{ClientConfig: *grpcClientConfig},
 				Rate:             100,
 				Burst:            200,
 				Strategy:         StrategyRateLimitRequests,
 				ThrottleBehavior: ThrottleBehaviorError,
-			},
-		},
-		{
-			name: "gubernator_behavior",
-			expected: &Config{
-				Gubernator: &GubernatorConfig{
-					ClientConfig: *grpcClientConfig,
-					Behavior:     []GubernatorBehavior{"global", "duration_is_gregorian"},
-				},
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
+				Type:             GubernatorRateLimiter,
 			},
 		},
 		{
@@ -88,6 +77,7 @@ func TestLoadConfig(t *testing.T) {
 				Strategy:         StrategyRateLimitRequests,
 				ThrottleBehavior: ThrottleBehaviorError,
 				MetadataKeys:     []string{"project_id"},
+				Type:             LocalRateLimiter,
 			},
 		},
 		{
@@ -107,8 +97,8 @@ func TestLoadConfig(t *testing.T) {
 			expectedErr: `invalid throttle behavior "foo", expected one of ["error" "delay"]`,
 		},
 		{
-			name:        "invalid_gubernator_behavior",
-			expectedErr: `invalid Gubernator behavior "foo", expected one of ["batching" "drain_over_limit" "duration_is_gregorian" "global" "multi_region" "no_batching" "reset_remaining"]`,
+			name:        "invalid_type",
+			expectedErr: `invalid rate limiter type "invalid", expected one of ["local" "gubernator"]`,
 		},
 	}
 

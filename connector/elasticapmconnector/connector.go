@@ -46,7 +46,11 @@ func newElasticAPMConnector(
 	set connector.Settings,
 	nextConsumer consumer.Metrics,
 ) (*elasticapmConnector, error) {
-	lsmintervalSettings := processor.Settings(set)
+	lsmintervalSettings := processor.Settings{
+		ID:                set.ID,
+		TelemetrySettings: set.TelemetrySettings,
+		BuildInfo:         set.BuildInfo,
+	}
 	lsmintervalSettings.ID = component.NewIDWithName(lsmintervalFactory.Type(), set.ID.Name())
 	lsminterval, err := lsmintervalFactory.CreateMetrics(
 		ctx,

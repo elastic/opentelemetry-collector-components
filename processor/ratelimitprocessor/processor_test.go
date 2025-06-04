@@ -19,15 +19,34 @@ package ratelimitprocessor
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"testing"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
+)
+
+var (
+	inflight      int64
+	clientContext = client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-project-id": {"TestProjectID"},
+		}),
+	})
 )
 
 func TestGetCountFunc_Logs(t *testing.T) {
@@ -104,13 +123,25 @@ func TestGetCountFunc_Profiles(t *testing.T) {
 }
 
 func TestConsume_Logs(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: 1, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            1,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
 
 	consumed := false
 	rl := rateLimiterProcessor{
-		rl: rateLimiter,
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
+		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -124,24 +155,38 @@ func TestConsume_Logs(t *testing.T) {
 	}
 
 	logs := plog.NewLogs()
-	err = processor.ConsumeLogs(context.Background(), logs)
+	err = processor.ConsumeLogs(clientContext, logs)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
 
 	consumed = false
-	err = processor.ConsumeLogs(context.Background(), logs)
+	err = processor.ConsumeLogs(clientContext, logs)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
+
+	testRateLimitTelemetry(t, tt)
 }
 
 func TestConsume_Metrics(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: 1, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            1,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
 
 	consumed := false
 	rl := rateLimiterProcessor{
-		rl: rateLimiter,
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
+		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -155,24 +200,38 @@ func TestConsume_Metrics(t *testing.T) {
 	}
 
 	metrics := pmetric.NewMetrics()
-	err = processor.ConsumeMetrics(context.Background(), metrics)
+	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
 
 	consumed = false
-	err = processor.ConsumeMetrics(context.Background(), metrics)
+	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
+
+	testRateLimitTelemetry(t, tt)
 }
 
 func TestConsume_Traces(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: 1, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            1,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
 
 	consumed := false
 	rl := rateLimiterProcessor{
-		rl: rateLimiter,
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
+		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -186,24 +245,39 @@ func TestConsume_Traces(t *testing.T) {
 	}
 
 	traces := ptrace.NewTraces()
-	err = processor.ConsumeTraces(context.Background(), traces)
+	err = processor.ConsumeTraces(clientContext, traces)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
 
 	consumed = false
-	err = processor.ConsumeTraces(context.Background(), traces)
+	err = processor.ConsumeTraces(clientContext, traces)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
+
+	testRateLimitTelemetry(t, tt)
 }
 
 func TestConsume_Profiles(t *testing.T) {
-	rateLimiter := newTestLocalRateLimiter(t, &Config{Rate: 1, Burst: 1, ThrottleBehavior: ThrottleBehaviorError})
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             1,
+		Burst:            1,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
+	require.NoError(t, err)
+	defer telemetryBuilder.Shutdown()
+
 	consumed := false
 	rl := rateLimiterProcessor{
-		rl: rateLimiter,
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
+		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
 	}
 	processor := &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -217,12 +291,122 @@ func TestConsume_Profiles(t *testing.T) {
 	}
 
 	profiles := pprofile.NewProfiles()
-	err = processor.ConsumeProfiles(context.Background(), profiles)
+	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
 
 	consumed = false
-	err = processor.ConsumeProfiles(context.Background(), profiles)
+	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "too many requests")
+
+	testRateLimitTelemetry(t, tt)
+}
+
+func TestConcurrentRequestsTelemetry(t *testing.T) {
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		Rate:             10,
+		Burst:            10,
+		ThrottleBehavior: ThrottleBehaviorError,
+		Type:             LocalRateLimiter,
+	})
+	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
+	require.NoError(t, err)
+
+	var (
+		consumedCount int32
+		wg            sync.WaitGroup
+		startCh       = make(chan struct{})
+		numWorkers    = 2
+		blockCh       = make(chan struct{})
+
+		readyWg sync.WaitGroup // readyWg to wait until all workers are inflight
+	)
+
+	readyWg.Add(numWorkers)
+	rl := rateLimiterProcessor{
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
+		inflight:         &inflight,
+		metadataKeys:     []string{"x-elastic-project-id"},
+	}
+	processor := &MetricsRateLimiterProcessor{
+		rateLimiterProcessor: rl,
+		count: func(pmetric.Metrics) int {
+			return 1
+		},
+		next: func(ctx context.Context, md pmetric.Metrics) error {
+			atomic.AddInt32(&consumedCount, 1)
+			readyWg.Done()
+			<-blockCh
+			return nil
+		},
+	}
+
+	metrics := pmetric.NewMetrics()
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-startCh
+			_ = processor.ConsumeMetrics(clientContext, metrics)
+		}()
+	}
+
+	close(startCh)
+	readyWg.Wait()
+
+	m, err := tt.GetMetric("otelcol_ratelimit.concurrent_requests")
+	require.NoError(t, err, "expected to observe otelcol_ratelimit.concurrent_requests")
+	for _, dp := range m.Data.(metricdata.Gauge[int64]).DataPoints {
+		if assert.Equal(t, int64(2), dp.Value, "expected to observe otelcol_ratelimit.concurrent_requests == 2") {
+			break
+		}
+	}
+
+	// Release both goroutines
+	close(blockCh)
+	wg.Wait()
+}
+
+func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
+	metadatatest.AssertEqualRatelimitRequests(t, tel, []metricdata.DataPoint[int64]{
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				[]attribute.KeyValue{
+					telemetry.WithDecision("accepted"),
+					telemetry.WithReason(telemetry.StatusUnderLimit),
+					attribute.String("x-elastic-project-id", "TestProjectID"),
+				}...),
+		},
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				[]attribute.KeyValue{
+					telemetry.WithDecision("throttled"),
+					attribute.String("x-elastic-project-id", "TestProjectID"),
+				}...),
+		},
+	}, metricdatatest.IgnoreTimestamp())
+
+	metadatatest.AssertEqualRatelimitRequestDuration(t, tel, []metricdata.HistogramDataPoint[float64]{
+		{
+			Attributes: attribute.NewSet(
+				attribute.String("x-elastic-project-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+	metadatatest.AssertEqualRatelimitConcurrentRequests(t, tel, []metricdata.DataPoint[int64]{
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				attribute.String("x-elastic-project-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
 }

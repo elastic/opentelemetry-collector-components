@@ -9,17 +9,22 @@ connect into. The extension will reply with an [OpAMP ServerToAgent
 message](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#servertoagent-message)
 with the corresponding remote configuration fields.
 
-Central configuration was build for Elastic's APM agents which are identified by
+Central configuration was built for Elastic's APM agents which are identified by
 the
 [service.name](https://www.elastic.co/guide/en/ecs/1.12/ecs-service.html#field-service-name)
 and
 [service.environment](https://www.elastic.co/guide/en/ecs/1.12/ecs-service.html#field-service-environment)
-(optional) attributes. These attributes **must** be set on the
+(optional) attributes. The equivalent OpenTelemetry Semantic Conventions
+attributes are:
+  - [service.name](https://github.com/open-telemetry/semantic-conventions/blob/v1.32.0/docs/attributes-registry/service.md)
+  - [deployment.environment.name](https://github.com/open-telemetry/semantic-conventions/blob/v1.32.0/docs/attributes-registry/deployment.md)
+
+These attributes (`service.name` and optionally `deployment.environment.name`) **must** be set on the
 [AgentDescription.identifying_attributes](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agentdescriptionidentifying_attributes)
 field during the first send
 [AgentToServer](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agenttoserver-message)
-message. As the `AgentDescription` should not be send if not changed, the
-extension will maintain an internal mapping between the `agent.instance_id` and
+message. As the `AgentDescription` should not be sent if not changed, the
+extension will maintain an internal mapping between the `Agent.instance_uid` and
 its service identifing attributes.
 
 The [ServerToAgent.ReportFullState
@@ -29,7 +34,7 @@ will be set in the following cases:
 - The agent did not include the `service.name` identifing attributes during the
 first message.
 - The OpAMP server was not able to identify the agent (undefined
-`agent.instance_id`).
+`Agent.instance_uid`).
 
 The agent **must** return a message with the corresponding
 `AgentDescription.identifying_attributes`.
