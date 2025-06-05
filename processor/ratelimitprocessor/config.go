@@ -166,10 +166,10 @@ func resolveRateLimitSettings(cfg *Config, uniqueKey string) RateLimitSettings {
 func (r *RateLimitSettings) Validate() error {
 	var errs []error
 	if r.Rate <= 0 {
-		errs = append(errs, fmt.Errorf("rate must be greater than zero"))
+		errs = append(errs, errors.New("rate must be greater than zero"))
 	}
 	if r.Burst <= 0 {
-		errs = append(errs, fmt.Errorf("burst must be greater than zero"))
+		errs = append(errs, errors.New("burst must be greater than zero"))
 	}
 	if err := r.Strategy.Validate(); err != nil {
 		errs = append(errs, err)
