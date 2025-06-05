@@ -146,18 +146,18 @@ func createDefaultConfig() component.Config {
 // resolveRateLimitSettings returns the rate limit settings for the given unique key.
 // If no override is found, the default rate limit settings are returned.
 func resolveRateLimitSettings(cfg *Config, uniqueKey string) RateLimitSettings {
+	// We start from the default settings
 	result := cfg.RateLimitSettings
-	if len(cfg.Overrides) > 0 {
-		if override, ok := cfg.Overrides[uniqueKey]; ok {
-			if override.Rate != nil {
-				result.Rate = *override.Rate
-			}
-			if override.Burst != nil {
-				result.Burst = *override.Burst
-			}
-			if override.ThrottleInterval != nil {
-				result.ThrottleInterval = *override.ThrottleInterval
-			}
+	if override, ok := cfg.Overrides[uniqueKey]; ok {
+		// If an override is found, we apply it
+		if override.Rate != nil {
+			result.Rate = *override.Rate
+		}
+		if override.Burst != nil {
+			result.Burst = *override.Burst
+		}
+		if override.ThrottleInterval != nil {
+			result.ThrottleInterval = *override.ThrottleInterval
 		}
 	}
 	return result
