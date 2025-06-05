@@ -125,7 +125,7 @@ func TestOnMessage(t *testing.T) {
 							ConfigHash: []byte("abcd"),
 							Config: &protobufs.AgentConfigMap{
 								ConfigMap: map[string]*protobufs.AgentConfigFile{
-									"": {
+									"elastic": {
 										Body:        []byte(`{"test":"aaa"}`),
 										ContentType: "text/json",
 									},
@@ -154,7 +154,7 @@ func TestOnMessage(t *testing.T) {
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
 							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"": {
+								"elastic": {
 									ContentType: "text/json",
 									Body:        []byte(`{"test":"aaa"}`),
 								},
@@ -181,7 +181,7 @@ func TestOnMessage(t *testing.T) {
 							ConfigHash: []byte("abcd"),
 							Config: &protobufs.AgentConfigMap{
 								ConfigMap: map[string]*protobufs.AgentConfigFile{
-									"": {
+									"elastic": {
 										Body:        []byte(`{"test":"aaa"}`),
 										ContentType: "text/json",
 									},
@@ -197,7 +197,7 @@ func TestOnMessage(t *testing.T) {
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
 							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"": {
+								"elastic": {
 									ContentType: "text/json",
 									Body:        []byte(`{"test":"aaa"}`),
 								},
@@ -224,7 +224,7 @@ func TestOnMessage(t *testing.T) {
 							ConfigHash: []byte("abcd"),
 							Config: &protobufs.AgentConfigMap{
 								ConfigMap: map[string]*protobufs.AgentConfigFile{
-									"": {
+									"elastic": {
 										Body:        []byte(`{"test":"aaa"}`),
 										ContentType: "text/json",
 									},
@@ -240,7 +240,7 @@ func TestOnMessage(t *testing.T) {
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
 							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"": {
+								"elastic": {
 									ContentType: "text/json",
 									Body:        []byte(`{"test":"aaa"}`),
 								},
@@ -272,7 +272,7 @@ func TestOnMessage(t *testing.T) {
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
 							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"": {
+								"elastic": {
 									ContentType: "text/json",
 									Body:        []byte(`{"test":"aaa"}`),
 								},

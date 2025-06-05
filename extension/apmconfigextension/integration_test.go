@@ -143,7 +143,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"": {
+										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"124"}`),
 											ContentType: "text/json",
 										},
@@ -193,7 +193,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"": {
+										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"124"}`),
 											ContentType: "text/json",
 										},
@@ -247,7 +247,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"": {
+										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"2"}`),
 											ContentType: "text/json",
 										},
@@ -332,7 +332,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"": {
+										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"2"}`),
 											ContentType: "text/json",
 										},

@@ -30,6 +30,7 @@ import (
 )
 
 const configContentType = "text/json"
+const configFileName = "elastic"
 
 var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
 
@@ -75,7 +76,7 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfi
 
 	return &protobufs.AgentRemoteConfig{ConfigHash: []byte(result.Source.Etag), Config: &protobufs.AgentConfigMap{
 		ConfigMap: map[string]*protobufs.AgentConfigFile{
-			"": {
+			configFileName: {
 				Body:        marshallConfig,
 				ContentType: configContentType,
 			},
