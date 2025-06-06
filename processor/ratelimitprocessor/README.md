@@ -18,7 +18,7 @@ a in-memory rate limiter, or makes use of a [gubernator](https://github.com/gube
 | `type`              | Type of rate limiter. Options are `local` or `gubernator`.                                                                                                                                                        | No       | `local`    |
 | `overrides`         | Map of metadata key overrides for the rate limiter. See the possible overrides and examples below.                                                                                                                | No       |            |
 
-### Possible overrides:
+### Overrides
 
 You can override one or more of the following fields:
 
@@ -26,7 +26,7 @@ You can override one or more of the following fields:
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|
 | `rate`              | Bucket refill rate, in tokens per second.                                                                                                                                                                         | No       |            |
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | No       |            |
-| `throttle_interval` | Time interval for throttling. It has effect only when `type` is `gubernator`.                                                                                                                                     | No       | `1s`       |
+| `throttle_interval` | Time interval for throttling. It has effect only when `type` is `gubernator`.                                                                                                                                     | No       |            |
 
 ### Examples
 
