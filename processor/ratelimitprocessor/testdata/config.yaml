@@ -40,3 +40,41 @@ ratelimit/invalid_type:
   rate: 100
   burst: 200
   type: invalid
+
+ratelimit/overrides_all:
+  rate: 100
+  burst: 200
+  strategy: bytes
+  throttle_behavior: error
+  overrides:  
+    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+      rate: 300
+      burst: 400
+
+ratelimit/overrides_rate:
+  rate: 100
+  burst: 200
+  strategy: bytes
+  throttle_behavior: error
+  overrides:  
+    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+      rate: 300
+  
+ratelimit/overrides_burst:
+  rate: 100
+  burst: 200
+  strategy: bytes
+  throttle_behavior: error
+  overrides:  
+    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+      burst: 400
+  
+ratelimit/overrides_throttle_interval:
+  rate: 100
+  burst: 200
+  strategy: bytes
+  throttle_behavior: error
+  overrides:  
+    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+      rate: 400
+      throttle_interval: 10s

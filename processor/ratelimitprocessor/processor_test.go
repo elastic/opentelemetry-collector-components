@@ -124,10 +124,12 @@ func TestGetCountFunc_Profiles(t *testing.T) {
 
 func TestConsume_Logs(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            1,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -169,10 +171,12 @@ func TestConsume_Logs(t *testing.T) {
 
 func TestConsume_Metrics(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            1,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -214,10 +218,12 @@ func TestConsume_Metrics(t *testing.T) {
 
 func TestConsume_Traces(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            1,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -259,10 +265,12 @@ func TestConsume_Traces(t *testing.T) {
 
 func TestConsume_Profiles(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            1,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -305,10 +313,12 @@ func TestConsume_Profiles(t *testing.T) {
 
 func TestConcurrentRequestsTelemetry(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             10,
-		Burst:            10,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             10,
+			Burst:            10,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)

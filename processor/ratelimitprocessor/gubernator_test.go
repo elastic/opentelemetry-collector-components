@@ -20,6 +20,7 @@ package ratelimitprocessor
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/gubernator-io/gubernator/v2"
@@ -81,7 +82,14 @@ func newTestGubernatorRateLimiter(t *testing.T, cfg *Config) *gubernatorRateLimi
 func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
 		t.Run(string(behavior), func(t *testing.T) {
-			rateLimiter := newTestGubernatorRateLimiter(t, &Config{Rate: 1, Burst: 2, ThrottleBehavior: behavior})
+			rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             1,
+					Burst:            2,
+					ThrottleBehavior: behavior,
+					ThrottleInterval: 1 * time.Second,
+				},
+			})
 
 			err := rateLimiter.RateLimit(context.Background(), 1)
 			assert.NoError(t, err)
@@ -102,10 +110,13 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	rateLimiter := newTestGubernatorRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            2,
-		MetadataKeys:     []string{"metadata_key"},
-		ThrottleBehavior: ThrottleBehaviorError,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            2,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: 1 * time.Second,
+		},
+		MetadataKeys: []string{"metadata_key"},
 	})
 
 	clientContext1 := client.NewContext(context.Background(), client.Info{
