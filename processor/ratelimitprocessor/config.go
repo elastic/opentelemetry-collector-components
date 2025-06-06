@@ -69,7 +69,7 @@ type RateLimitSettings struct {
 	ThrottleInterval time.Duration `mapstructure:"throttle_interval"`
 }
 
-type RateLimitOverride struct {
+type RateLimitOverrides struct {
 	// Rate holds bucket refill rate, in tokens per second.
 	Rate *int `mapstructure:"rate"`
 
