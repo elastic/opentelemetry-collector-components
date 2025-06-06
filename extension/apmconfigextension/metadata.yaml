@@ -10,6 +10,10 @@ status:
 
 tests:
   config:
+    opamp:
+      protocols:
+        http:
+          endpoint: localhost:8200
     agent_config:
       elasticsearch:
         endpoint: http://localhost:8200

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/extension"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
@@ -43,6 +44,10 @@ func NewFactory() extension.Factory {
 
 func createDefaultConfig() component.Config {
 	defaultElasticSearchClient := configelasticsearch.NewDefaultClientConfig()
+	httpCfg := confighttp.NewDefaultServerConfig()
+	httpCfg.Endpoint = "localhost:4320"
+	httpCfg.TLSSetting = nil
+
 	return &Config{
 		AgentConfig: AgentConfig{
 			Elasticsearch: defaultElasticSearchClient,
@@ -50,8 +55,8 @@ func createDefaultConfig() component.Config {
 			CacheDuration: 30 * time.Second,
 		},
 		OpAMP: OpAMPConfig{
-			Server: OpAMPServerConfig{
-				Endpoint: "127.0.0.1:4320",
+			Protocols: Protocols{
+				ServerConfig: &httpCfg,
 			},
 		},
 	}

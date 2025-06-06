@@ -64,24 +64,80 @@ unique remote configuration.
 
 ![Extension workflow](./extension-workflow.png "Extension workflow")
 
-## Extension sample configuration
+## Getting started
+
+All that is required to enable the apmconfig extension is to include it in the extensions definitions:
 
 ```
 extensions:
-  basicauth:
-   client_auth:
-     username: changeme
-     password: changeme
+  bearertokenauth:
+    scheme: "APIKey"
+    token: "<ENCODED_ELASTICSEACH_APIKEY>"
 
-apmconfig:
-  agent_config:
-   elasticsearch:
-     endpoint: "https://127.0.0.1:9200"
-     tls:
-       ca_file: path_to_ca-cert.pem
+  apmconfig:
+    agent_config:
+     elasticsearch:
+       endpoint: "<ELASTICSEACH_ENDPOINT>"
        auth:
-         authenticator: basicauth
-  opamp:
-    server:
-      endpoint: ":4320"
+         authenticator: bearertokenauth
+    opamp:
+      protocols:
+        http:
+          endpoint: ":4320"
+```
+
+
+## Advanced configuration
+
+The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
+
+### TLS and mTLS settings
+
+You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the extension.
+
+Example configuration:
+
+```yaml
+extensions:
+  apmconfig:
+    opamp:
+      protocols:
+        http:
+          endpoint: ":4320"
+          tls:
+            cert_file: server.crt
+            key_file: server.key
+   ...
+```
+
+📚 OpenTelemetry TLS server configuration:
+https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configtls/README.md#server-configuration
+
+### Authentication settings
+
+In addition to TLS, you can configure authentication to ensure that only authorized agents can communicate with the extension.
+
+The apmconfig extension supports any [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md). We recommend using the [apikeyauth extension](https://github.com/elastic/opentelemetry-collector-components/tree/main/extension/apikeyauthextension) to authenticate with Elastic APM API keys (HTTP headers must include a valid API Key):
+
+```yaml
+extensions:
+  apikeyauth:
+    endpoint: "<YOUR_ELASTICSEARCH_ENDPOINT>"
+    application_privileges:
+      - application: "apm"
+        privileges:
+          - "event:write"
+        resources:
+          - "-"
+  apmconfig:
+    opamp:
+      protocols:
+        http:
+          endpoint: ":4320"
+          tls:
+            cert_file: server.crt
+            key_file: server.key
+          auth:
+            authenticator: apikeyauth
+   ...
 ```

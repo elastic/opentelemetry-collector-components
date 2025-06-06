@@ -40,6 +40,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/extension/extensiontest"
 	"google.golang.org/protobuf/proto"
 )
@@ -378,8 +379,13 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				CacheDuration: 100 * time.Millisecond,
 			},
 			OpAMP: OpAMPConfig{
-				Server: OpAMPServerConfig{
-					Endpoint: opAMPTestEndpoint,
+				Protocols: Protocols{
+					ServerConfig: func() *confighttp.ServerConfig {
+						httpCfg := confighttp.NewDefaultServerConfig()
+						httpCfg.Endpoint = opAMPTestEndpoint
+						httpCfg.TLSSetting = nil
+						return &httpCfg
+					}(),
 				},
 			},
 		}
