@@ -49,10 +49,12 @@ func createDefaultConfig() component.Config {
 	httpCfg.TLSSetting = nil
 
 	return &Config{
-		AgentConfig: AgentConfig{
-			Elasticsearch: defaultElasticSearchClient,
-			// using apm-server default
-			CacheDuration: 30 * time.Second,
+		Fetcher: FetcherConfig{
+			Elasticsearch: &ElasticsearchFetcher{
+				ClientConfig: defaultElasticSearchClient,
+				// using apm-server default
+				CacheDuration: 30 * time.Second,
+			},
 		},
 		OpAMP: OpAMPConfig{
 			Protocols: Protocols{
@@ -65,11 +67,11 @@ func createDefaultConfig() component.Config {
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
 	extCfg := cfg.(*Config)
 	elasticsearchRemoteConfig := func(ctx context.Context, host component.Host, telemetry component.TelemetrySettings) (apmconfig.RemoteConfigClient, error) {
-		esClient, err := extCfg.AgentConfig.Elasticsearch.ToClient(ctx, host, telemetry)
+		esClient, err := extCfg.Fetcher.Elasticsearch.ClientConfig.ToClient(ctx, host, telemetry)
 		if err != nil {
 			return nil, err
 		}
-		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.AgentConfig.CacheDuration, telemetry.Logger)
+		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.Fetcher.Elasticsearch.CacheDuration, telemetry.Logger)
 
 		var wg sync.WaitGroup
 		wg.Add(1)

@@ -75,7 +75,7 @@ extensions:
     token: "<ENCODED_ELASTICSEACH_APIKEY>"
 
   apmconfig:
-    agent_config:
+    fetcher:
      elasticsearch:
        endpoint: "<ELASTICSEACH_ENDPOINT>"
        auth:
@@ -89,9 +89,17 @@ extensions:
 
 ## Advanced configuration
 
+### Remote configurations fetcher
+
+The apmconfig extension fetches remote configuration data from an Elasticsearch cluster. This is configured under the `fetcher::elasticsearch` section.
+
+All available Elasticsearch client configuration options can be found [here](https://github.com/elastic/opentelemetry-lib/blob/v0.18.0/config/configelasticsearch/configclient.go#L69). The configuration embeds the [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md), allowing the use of standard authentication extensions such as [bearertokenauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/bearertokenauthextension) and [basicauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/basicauthextension).
+
+### OpAMP server
+
 The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
 
-### TLS and mTLS settings
+#### TLS and mTLS settings
 
 You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the extension.
 
@@ -113,7 +121,7 @@ extensions:
 📚 OpenTelemetry TLS server configuration:
 https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configtls/README.md#server-configuration
 
-### Authentication settings
+#### Authentication settings
 
 In addition to TLS, you can configure authentication to ensure that only authorized agents can communicate with the extension.
 
