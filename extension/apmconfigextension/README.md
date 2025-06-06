@@ -89,7 +89,7 @@ extensions:
 
 ## Advanced configuration
 
-The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
+The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
 
 ### TLS and mTLS settings
 
@@ -117,7 +117,7 @@ https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/confi
 
 In addition to TLS, you can configure authentication to ensure that only authorized agents can communicate with the extension.
 
-The apmconfig extension supports any [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configauth/README.md). We recommend using the [apikeyauth extension](https://github.com/elastic/opentelemetry-collector-components/tree/main/extension/apikeyauthextension) to authenticate with Elastic APM API keys (HTTP headers must include a valid API Key):
+The apmconfig extension supports any [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md). We recommend using the [apikeyauth extension](https://github.com/elastic/opentelemetry-collector-components/tree/main/extension/apikeyauthextension) to authenticate with Elastic APM API keys (HTTP headers must include a valid API Key):
 
 ```yaml
 extensions:
