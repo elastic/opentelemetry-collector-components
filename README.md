@@ -23,6 +23,8 @@ In order to build a collector with a custom component, e.g. for testing purposes
    For example, when building on macOS in order to run through the Linux Docker image that is built by the `builddocker` make target 
    (see next bullet) - use the following command:
    ```shell
+   make install-tools
+   make install-tools
    GOOS=linux CGO_ENABLED=0 make genelasticcol
    ```
    The resulting binary will be placed in the `_build` directory.
