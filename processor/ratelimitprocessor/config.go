@@ -187,16 +187,16 @@ func (r *RateLimitOverrides) Validate() error {
 	var errs []error
 	if r.Rate != nil {
 		if *r.Rate <= 0 {
-			errs = append(errs, fmt.Errorf("rate must be greater than zero"))
+			errs = append(errs, errors.New("rate must be greater than zero"))
 		}
 	}
 	if r.Burst != nil {
 		if *r.Burst <= 0 {
-			errs = append(errs, fmt.Errorf("burst must be greater than zero"))
+			errs = append(errs, errors.New("burst must be greater than zero"))
 		}
 	}
 	if r.ThrottleInterval != nil && *r.ThrottleInterval <= 0 {
-		errs = append(errs, fmt.Errorf("throttle_interval must be greater than zero"))
+		errs = append(errs, errors.New("throttle_interval must be greater than zero"))
 	}
 	return errors.Join(errs...)
 }
