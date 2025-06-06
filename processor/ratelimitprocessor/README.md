@@ -58,6 +58,20 @@ processors:
 
 You can configure the Gubernator using `GUBER_*` [environment variables](https://github.com/gubernator-io/gubernator/blob/master/example.conf).
 
+Example when using as a distributed rate limiter (Gubernator) with throttle interval:
+
+```yaml
+processors:
+  ratelimiter:
+    metadata_keys:
+    - x-elastic-project-id
+    rate: 1000
+    burst: 10000
+    strategy: requests
+    type: gubernator
+    throttle_interval: 10s # has effect only when `type` is `gubernator`
+```
+
 Example when using as a distributed rate limiter (Gubernator) with overrides:
 
 ```yaml
@@ -73,5 +87,5 @@ processors:
       project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
         rate: 2000
         burst: 20000
-        throttle_interval: 10s
+        throttle_interval: 10s # has effect only when `type` is `gubernator`
 ```
