@@ -42,7 +42,7 @@ type Config struct {
 	// Overrides holds a list of overrides for the rate limiter.
 	//
 	// Defaults to empty
-	Overrides map[string]RateLimitOverride `mapstructure:"overrides"`
+	Overrides map[string]RateLimitOverrides `mapstructure:"overrides"`
 }
 
 // RateLimitSettings holds the core rate limiting configuration.

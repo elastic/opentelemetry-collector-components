@@ -104,7 +104,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
-				Overrides: map[string]RateLimitOverride{
+				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Rate:  ptr(300),
 						Burst: ptr(400),
@@ -123,7 +123,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
-				Overrides: map[string]RateLimitOverride{
+				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Rate: ptr(300),
 					},
@@ -141,7 +141,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
-				Overrides: map[string]RateLimitOverride{
+				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Burst: ptr(400),
 					},
@@ -159,7 +159,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
-				Overrides: map[string]RateLimitOverride{
+				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Rate:             ptr(400),
 						ThrottleInterval: ptr(10 * time.Second),
@@ -221,7 +221,7 @@ func TestResolveRateLimitSettings(t *testing.T) {
 			ThrottleBehavior: ThrottleBehaviorError,
 			ThrottleInterval: 1 * time.Second,
 		},
-		Overrides: map[string]RateLimitOverride{
+		Overrides: map[string]RateLimitOverrides{
 			"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 				Rate:             ptr(300),
 				Burst:            ptr(400),
