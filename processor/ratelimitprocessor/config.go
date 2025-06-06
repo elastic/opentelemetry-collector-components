@@ -183,7 +183,7 @@ func (r *RateLimitSettings) Validate() error {
 	return errors.Join(errs...)
 }
 
-func (r *RateLimitOverride) Validate() error {
+func (r *RateLimitOverrides) Validate() error {
 	var errs []error
 	if r.Rate != nil {
 		if *r.Rate <= 0 {
