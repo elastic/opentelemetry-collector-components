@@ -127,7 +127,7 @@ func TestOnMessage(t *testing.T) {
 								ConfigMap: map[string]*protobufs.AgentConfigFile{
 									"elastic": {
 										Body:        []byte(`{"test":"aaa"}`),
-										ContentType: "text/json",
+										ContentType: "application/json",
 									},
 								},
 							},
@@ -155,7 +155,7 @@ func TestOnMessage(t *testing.T) {
 						Config: &protobufs.AgentConfigMap{
 							ConfigMap: map[string]*protobufs.AgentConfigFile{
 								"elastic": {
-									ContentType: "text/json",
+									ContentType: "application/json",
 									Body:        []byte(`{"test":"aaa"}`),
 								},
 							},
@@ -183,7 +183,7 @@ func TestOnMessage(t *testing.T) {
 								ConfigMap: map[string]*protobufs.AgentConfigFile{
 									"elastic": {
 										Body:        []byte(`{"test":"aaa"}`),
-										ContentType: "text/json",
+										ContentType: "application/json",
 									},
 								},
 							},
@@ -198,7 +198,7 @@ func TestOnMessage(t *testing.T) {
 						Config: &protobufs.AgentConfigMap{
 							ConfigMap: map[string]*protobufs.AgentConfigFile{
 								"elastic": {
-									ContentType: "text/json",
+									ContentType: "application/json",
 									Body:        []byte(`{"test":"aaa"}`),
 								},
 							},
@@ -226,7 +226,7 @@ func TestOnMessage(t *testing.T) {
 								ConfigMap: map[string]*protobufs.AgentConfigFile{
 									"elastic": {
 										Body:        []byte(`{"test":"aaa"}`),
-										ContentType: "text/json",
+										ContentType: "application/json",
 									},
 								},
 							},
@@ -241,7 +241,7 @@ func TestOnMessage(t *testing.T) {
 						Config: &protobufs.AgentConfigMap{
 							ConfigMap: map[string]*protobufs.AgentConfigFile{
 								"elastic": {
-									ContentType: "text/json",
+									ContentType: "application/json",
 									Body:        []byte(`{"test":"aaa"}`),
 								},
 							},
@@ -273,7 +273,7 @@ func TestOnMessage(t *testing.T) {
 						Config: &protobufs.AgentConfigMap{
 							ConfigMap: map[string]*protobufs.AgentConfigFile{
 								"elastic": {
-									ContentType: "text/json",
+									ContentType: "application/json",
 									Body:        []byte(`{"test":"aaa"}`),
 								},
 							},

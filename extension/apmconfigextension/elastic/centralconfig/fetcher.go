@@ -29,7 +29,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const configContentType = "text/json"
+const configContentType = "application/json"
 const configFileName = "elastic"
 
 var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
