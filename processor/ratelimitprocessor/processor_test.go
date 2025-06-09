@@ -44,7 +44,7 @@ var (
 	inflight      int64
 	clientContext = client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-project-id": {"TestProjectID"},
+			"tenant-id": {"TestProjectID"},
 		}),
 	})
 )
@@ -143,7 +143,7 @@ func TestConsume_Logs(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"tenant-id"},
 	}
 	processor := &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -190,7 +190,7 @@ func TestConsume_Metrics(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"tenant-id"},
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -237,7 +237,7 @@ func TestConsume_Traces(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"tenant-id"},
 	}
 	processor := &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -285,7 +285,7 @@ func TestConsume_Profiles(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"tenant-id"},
 	}
 	processor := &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -342,7 +342,7 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"tenant-id"},
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -391,7 +391,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 				[]attribute.KeyValue{
 					telemetry.WithDecision("accepted"),
 					telemetry.WithReason(telemetry.StatusUnderLimit),
-					attribute.String("x-elastic-project-id", "TestProjectID"),
+					attribute.String("tenant-id", "TestProjectID"),
 				}...),
 		},
 		{
@@ -399,7 +399,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 			Attributes: attribute.NewSet(
 				[]attribute.KeyValue{
 					telemetry.WithDecision("throttled"),
-					attribute.String("x-elastic-project-id", "TestProjectID"),
+					attribute.String("tenant-id", "TestProjectID"),
 				}...),
 		},
 	}, metricdatatest.IgnoreTimestamp())
@@ -407,7 +407,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 	metadatatest.AssertEqualRatelimitRequestDuration(t, tel, []metricdata.HistogramDataPoint[float64]{
 		{
 			Attributes: attribute.NewSet(
-				attribute.String("x-elastic-project-id", "TestProjectID"),
+				attribute.String("tenant-id", "TestProjectID"),
 			),
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
@@ -415,7 +415,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 		{
 			Value: 1,
 			Attributes: attribute.NewSet(
-				attribute.String("x-elastic-project-id", "TestProjectID"),
+				attribute.String("tenant-id", "TestProjectID"),
 			),
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
