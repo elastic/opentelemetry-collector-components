@@ -29,8 +29,10 @@ import (
 	"go.uber.org/zap"
 )
 
-const configContentType = "application/json"
-const configFileName = "elastic"
+const (
+	configContentType = "application/json"
+	configFileName    = "elastic"
+)
 
 var _ apmconfig.RemoteConfigClient = (*fetcherAPMWatcher)(nil)
 
@@ -65,8 +67,6 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfi
 	})
 	if err != nil {
 		return nil, err
-	} else if len(result.Source.Settings) == 0 {
-		return nil, nil
 	}
 
 	marshallConfig, err := json.Marshal(result.Source.Settings)
