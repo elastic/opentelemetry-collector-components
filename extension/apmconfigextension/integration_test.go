@@ -372,7 +372,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 		extFactory := NewFactory()
 		cfg := &Config{
-			Fetcher: FetcherConfig{
+			Source: SourceConfig{
 				Elasticsearch: &ElasticsearchFetcher{
 					ClientConfig: configelasticsearch.ClientConfig{
 						Endpoints: []string{esEndpoint},

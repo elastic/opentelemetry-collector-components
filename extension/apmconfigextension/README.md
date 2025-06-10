@@ -75,7 +75,7 @@ extensions:
     token: "<ENCODED_ELASTICSEACH_APIKEY>"
 
   apmconfig:
-    fetcher:
+    source:
      elasticsearch:
        endpoint: "<ELASTICSEACH_ENDPOINT>"
        auth:
@@ -89,9 +89,9 @@ extensions:
 
 ## Advanced configuration
 
-### Remote configurations fetcher
+### Remote configurations source
 
-The apmconfig extension fetches remote configuration data from an Elasticsearch cluster. This is configured under the `fetcher::elasticsearch` section.
+The apmconfig extension retrieves remote configuration data from an Elasticsearch cluster. This is configured under the `source::elasticsearch` section.
 
 All available Elasticsearch client configuration options can be found [here](https://github.com/elastic/opentelemetry-lib/blob/v0.18.0/config/configelasticsearch/configclient.go#L69). The configuration embeds the [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md), allowing the use of standard authentication extensions such as [bearertokenauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/bearertokenauthextension) and [basicauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/basicauthextension).
 

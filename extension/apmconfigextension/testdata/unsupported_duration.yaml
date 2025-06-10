@@ -1,4 +1,4 @@
-fetcher:
+source:
   elasticsearch:
     endpoint: "https://test"
     cache_duration: 0s

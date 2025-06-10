@@ -14,6 +14,6 @@ tests:
       protocols:
         http:
           endpoint: localhost:8200
-    fetcher:
+    source:
       elasticsearch:
         endpoint: http://localhost:8200

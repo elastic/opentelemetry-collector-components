@@ -34,7 +34,7 @@ func TestUnmarshalDefaultConfig(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 	require.NoError(t, cm.Unmarshal(&cfg))
 	assert.Equal(t, factory.CreateDefaultConfig(), cfg)
-	assert.EqualError(t, xconfmap.Validate(cfg), "fetcher::elasticsearch::clientconfig: exactly one of [endpoint, endpoints, cloudid] must be specified")
+	assert.EqualError(t, xconfmap.Validate(cfg), "source::elasticsearch::clientconfig: exactly one of [endpoint, endpoints, cloudid] must be specified")
 }
 
 func TestUnmarshalConfigInvalidProtocol(t *testing.T) {
@@ -60,5 +60,5 @@ func TestUnmarshalConfigInvalidCacheDuration(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig()
 	require.NoError(t, cm.Unmarshal(&cfg))
-	assert.EqualError(t, xconfmap.Validate(cfg), "fetcher::elasticsearch: cache_duration requires positive value")
+	assert.EqualError(t, xconfmap.Validate(cfg), "source::elasticsearch: cache_duration requires positive value")
 }

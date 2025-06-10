@@ -34,14 +34,14 @@ const (
 )
 
 type Config struct {
-	// Fetcher defines the remote configuration fetcher settings.
-	Fetcher FetcherConfig `mapstructure:"fetcher"`
+	// Source defines the remote configuration source settings.
+	Source SourceConfig `mapstructure:"source"`
 
 	// OpAMP defines the configuration for the embedded OpAMP server.
 	OpAMP OpAMPConfig `mapstructure:"opamp"`
 }
 
-type FetcherConfig struct {
+type SourceConfig struct {
 	// Elasticsearch configures a fetcher that retrieves remote configuration
 	// data from an Elasticsearch cluster.
 	Elasticsearch *ElasticsearchFetcher `mapstructure:"elasticsearch"`
