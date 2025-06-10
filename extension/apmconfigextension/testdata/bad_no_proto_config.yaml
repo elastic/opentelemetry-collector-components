@@ -1,5 +1,5 @@
 opamp:
   protocols:
-agent_config:
+source:
   elasticsearch:
     endpoint: "https://testing/opamp"

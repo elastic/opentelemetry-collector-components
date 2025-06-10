@@ -34,7 +34,7 @@ func TestUnmarshalDefaultConfig(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 	require.NoError(t, cm.Unmarshal(&cfg))
 	assert.Equal(t, factory.CreateDefaultConfig(), cfg)
-	assert.EqualError(t, xconfmap.Validate(cfg), "agent_config::elasticsearch: exactly one of [endpoint, endpoints, cloudid] must be specified")
+	assert.EqualError(t, xconfmap.Validate(cfg), "source::elasticsearch::clientconfig: exactly one of [endpoint, endpoints, cloudid] must be specified")
 }
 
 func TestUnmarshalConfigInvalidProtocol(t *testing.T) {
@@ -52,4 +52,13 @@ func TestUnmarshalConfigEmptyProtocols(t *testing.T) {
 	cfg := factory.CreateDefaultConfig()
 	require.NoError(t, cm.Unmarshal(&cfg))
 	assert.EqualError(t, xconfmap.Validate(cfg), "must specify at least one protocol when using the apmconfig extension")
+}
+
+func TestUnmarshalConfigInvalidCacheDuration(t *testing.T) {
+	cm, err := confmaptest.LoadConf(filepath.Join("testdata", "unsupported_duration.yaml"))
+	require.NoError(t, err)
+	factory := NewFactory()
+	cfg := factory.CreateDefaultConfig()
+	require.NoError(t, cm.Unmarshal(&cfg))
+	assert.EqualError(t, xconfmap.Validate(cfg), "source::elasticsearch: cache_duration requires positive value")
 }

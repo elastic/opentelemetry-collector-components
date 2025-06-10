@@ -372,11 +372,13 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 		extFactory := NewFactory()
 		cfg := &Config{
-			AgentConfig: AgentConfig{
-				Elasticsearch: configelasticsearch.ClientConfig{
-					Endpoints: []string{esEndpoint},
+			Source: SourceConfig{
+				Elasticsearch: &ElasticsearchFetcher{
+					ClientConfig: configelasticsearch.ClientConfig{
+						Endpoints: []string{esEndpoint},
+					},
+					CacheDuration: 100 * time.Millisecond,
 				},
-				CacheDuration: 100 * time.Millisecond,
 			},
 			OpAMP: OpAMPConfig{
 				Protocols: Protocols{

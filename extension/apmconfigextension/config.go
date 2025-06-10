@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
 
 const (
@@ -33,13 +34,26 @@ const (
 )
 
 type Config struct {
-	AgentConfig AgentConfig `mapstructure:"agent_config"`
-	OpAMP       OpAMPConfig `mapstructure:"opamp"`
+	// Source defines the remote configuration source settings.
+	Source SourceConfig `mapstructure:"source"`
+
+	// OpAMP defines the configuration for the embedded OpAMP server.
+	OpAMP OpAMPConfig `mapstructure:"opamp"`
 }
 
-type AgentConfig struct {
-	Elasticsearch configelasticsearch.ClientConfig `mapstructure:"elasticsearch"`
-	CacheDuration time.Duration                    `mapstructure:"cache_duration"`
+type SourceConfig struct {
+	// Elasticsearch configures a fetcher that retrieves remote configuration
+	// data from an Elasticsearch cluster.
+	Elasticsearch *ElasticsearchFetcher `mapstructure:"elasticsearch"`
+}
+
+type ElasticsearchFetcher struct {
+	// Elasticsearch client configuration.
+	configelasticsearch.ClientConfig `mapstructure:",squash"`
+
+	// CacheDuration specifies how long the fetched remote configuration for an agent
+	// should be cached before fetching it again from Elasticsearch.
+	CacheDuration time.Duration `mapstructure:"cache_duration"`
 }
 
 type OpAMPConfig struct {
@@ -55,7 +69,21 @@ type Protocols struct {
 	_ struct{}
 }
 
-var _ component.Config = (*Config)(nil)
+var (
+	_ xconfmap.Validator  = (*Config)(nil)
+	_ xconfmap.Validator  = (*ElasticsearchFetcher)(nil)
+	_ confmap.Unmarshaler = (*Config)(nil)
+	_ component.Config    = (*Config)(nil)
+)
+
+// Validate checks the receiver configuration is valid
+func (cfg *ElasticsearchFetcher) Validate() error {
+	if cfg.CacheDuration <= 0 {
+		return errors.New("cache_duration requires positive value")
+	}
+
+	return nil
+}
 
 // Validate checks the receiver configuration is valid
 func (cfg *Config) Validate() error {

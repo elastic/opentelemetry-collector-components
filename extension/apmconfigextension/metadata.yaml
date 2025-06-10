@@ -14,6 +14,6 @@ tests:
       protocols:
         http:
           endpoint: localhost:8200
-    agent_config:
+    source:
       elasticsearch:
         endpoint: http://localhost:8200
