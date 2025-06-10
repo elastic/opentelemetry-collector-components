@@ -177,17 +177,6 @@ func TestOnMessage(t *testing.T) {
 					expectedServerToAgent: &protobufs.ServerToAgent{
 						InstanceUid:  []byte("test"),
 						Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
-						RemoteConfig: &protobufs.AgentRemoteConfig{
-							ConfigHash: []byte("abcd"),
-							Config: &protobufs.AgentConfigMap{
-								ConfigMap: map[string]*protobufs.AgentConfigFile{
-									"elastic": {
-										Body:        []byte(`{"test":"aaa"}`),
-										ContentType: "application/json",
-									},
-								},
-							},
-						},
 					},
 				},
 			},
