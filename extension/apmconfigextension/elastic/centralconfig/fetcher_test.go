@@ -92,7 +92,7 @@ func TestRemoteConfig(t *testing.T) {
 					ConfigMap: map[string]*protobufs.AgentConfigFile{
 						"elastic": {
 							Body:        []byte(`{"test":"aaa"}`),
-							ContentType: "text/json",
+							ContentType: "application/json",
 						},
 					},
 				},
