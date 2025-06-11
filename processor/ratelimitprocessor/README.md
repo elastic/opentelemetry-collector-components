@@ -36,7 +36,7 @@ Example when using as a local rate limiter:
 processors:
   ratelimiter:
     metadata_keys:
-    - tenant-id
+    - x-tenant-id
     rate: 1000
     burst: 10000
     strategy: requests
@@ -49,7 +49,7 @@ Example when using as a distributed rate limiter (Gubernator):
 processors:
   ratelimiter:
     metadata_keys:
-    - tenant-id
+    - x-tenant-id
     rate: 1000
     burst: 10000
     strategy: requests
@@ -64,7 +64,7 @@ Example when using as a distributed rate limiter (Gubernator) with throttle inte
 processors:
   ratelimiter:
     metadata_keys:
-    - tenant-id
+    - x-tenant-id
     rate: 1000
     burst: 10000
     strategy: requests
@@ -78,7 +78,7 @@ Example when using as a distributed rate limiter (Gubernator) with overrides:
 processors:
   ratelimiter:
     metadata_keys:
-    - tenant-id
+    - x-tenant-id
     rate: 1000
     burst: 10000
     strategy: requests
