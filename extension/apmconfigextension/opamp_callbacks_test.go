@@ -181,7 +181,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.Query) (*protobufs.AgentRemoteConfig, error) {
 					return &protobufs.AgentRemoteConfig{
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{

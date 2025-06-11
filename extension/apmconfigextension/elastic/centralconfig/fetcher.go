@@ -48,6 +48,19 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, logger *zap.Logger) *fetcher
 	}
 }
 
+// RemoteConfig implements the apmconfig.RemoteConfigClient interface. It is responsible
+// for fetching the remote configuration for a given service.
+//
+// The function first extracts the service.name and deployment.environment.name from the identifying attributes
+// of the query. A service.name is required.
+//
+// It then uses the elasticsearch fetcher to retrieve the configuration, passing along the
+// Etag from the last known configuration hash. If the new configuration's Etag matches the old one,
+// the function returns nil, indicating no update is needed.
+//
+// If the configuration has changed, the new settings are marshalled to JSON and,
+// along with the new Etag (used as the ConfigHash), is then returned
+// inside a protobufs.AgentRemoteConfig struct.
 func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, query apmconfig.Query) (*protobufs.AgentRemoteConfig, error) {
 	var serviceParams agentcfg.Service
 	for _, attr := range query.IdentifyingAttributes {

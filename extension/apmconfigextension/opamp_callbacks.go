@@ -40,12 +40,6 @@ type remoteConfigCallbacks struct {
 	logger     *zap.Logger
 }
 
-type agentInfo struct {
-	agentUid              apmconfig.InstanceUid
-	identifyingAttributes apmconfig.IdentifyingAttributes
-	lastConfigHash        []byte
-}
-
 func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *remoteConfigCallbacks {
 	opampCallbacks := &remoteConfigCallbacks{
 		configClient: configClient,
