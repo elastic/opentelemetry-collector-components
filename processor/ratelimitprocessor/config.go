@@ -105,6 +105,10 @@ const (
 	// and records. Bear in mind that this strategy may impact
 	// CPU and memory usage.
 	StrategyRateLimitBytes Strategy = "bytes"
+
+	// DefaultThrottleInterval is the default value for the
+	// throttle interval.
+	DefaultThrottleInterval time.Duration = 1 * time.Second
 )
 
 // ThrottleBehavior identifies the behavior when rate limit is exceeded.
@@ -138,7 +142,7 @@ func createDefaultConfig() component.Config {
 		RateLimitSettings: RateLimitSettings{
 			Strategy:         StrategyRateLimitRequests,
 			ThrottleBehavior: ThrottleBehaviorError,
-			ThrottleInterval: 1 * time.Second,
+			ThrottleInterval: DefaultThrottleInterval,
 		},
 	}
 }
