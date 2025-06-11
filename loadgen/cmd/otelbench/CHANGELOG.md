@@ -4,6 +4,12 @@
 
 <!-- next version -->
 
+## v0.1.2
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Log a warning if `concurrency` is not configured (#573)
+
 ## v0.1.1
 
 ### 🧰 Bug fixes 🧰
