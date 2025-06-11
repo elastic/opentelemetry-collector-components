@@ -32,9 +32,15 @@ type (
 	IdentifyingAttributes []*protobufs.KeyValue
 )
 
+type Query struct {
+	InstanceUid           []byte
+	IdentifyingAttributes []*protobufs.KeyValue
+	LastConfigHash        []byte
+}
+
 // RemoteConfigClient is an adapter interface that can be used between different
 // remote configuration providers.
 type RemoteConfigClient interface {
 	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
-	RemoteConfig(context.Context, InstanceUid, IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error)
+	RemoteConfig(context.Context, Query) (*protobufs.AgentRemoteConfig, error)
 }

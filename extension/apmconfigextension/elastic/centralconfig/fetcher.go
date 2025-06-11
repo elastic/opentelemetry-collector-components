@@ -48,9 +48,9 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, logger *zap.Logger) *fetcher
 	}
 }
 
-func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfig.InstanceUid, agentAttrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, query apmconfig.Query) (*protobufs.AgentRemoteConfig, error) {
 	var serviceParams agentcfg.Service
-	for _, attr := range agentAttrs {
+	for _, attr := range query.IdentifyingAttributes {
 		switch attr.GetKey() {
 		case string(semconv.ServiceNameKey):
 			serviceParams.Name = attr.GetValue().GetStringValue()
@@ -64,9 +64,12 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfi
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{
 		Service: serviceParams,
+		Etag:    string(query.LastConfigHash),
 	})
 	if err != nil {
 		return nil, err
+	} else if string(query.LastConfigHash) == result.Source.Etag {
+		return nil, nil
 	}
 
 	marshallConfig, err := json.Marshal(result.Source.Settings)
