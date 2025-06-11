@@ -196,6 +196,39 @@ func TestOnMessage(t *testing.T) {
 				},
 			}, zap.NewNop()),
 		},
+		"agent failed to apply remote config": {
+			opampMessages: []inOutOpamp{
+				{
+					agentToServer: &protobufs.AgentToServer{
+						InstanceUid: []byte("test"),
+						RemoteConfigStatus: &protobufs.RemoteConfigStatus{
+							LastRemoteConfigHash: []byte("abcd"),
+							Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
+							ErrorMessage:         "oh noes!",
+						},
+					},
+					expectedServerToAgent: &protobufs.ServerToAgent{
+						InstanceUid:  []byte("test"),
+						Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+					},
+				},
+			},
+			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
+				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+					return &protobufs.AgentRemoteConfig{
+						ConfigHash: []byte("abcd"),
+						Config: &protobufs.AgentConfigMap{
+							ConfigMap: map[string]*protobufs.AgentConfigFile{
+								"elastic": {
+									ContentType: "application/json",
+									Body:        []byte(`{"test":"aaa"}`),
+								},
+							},
+						},
+					}, nil
+				},
+			}, zap.NewNop()),
+		},
 		"agent applies with old remote config": {
 			opampMessages: []inOutOpamp{
 				{
