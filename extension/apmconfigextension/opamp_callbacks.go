@@ -119,6 +119,12 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 		rc.logger.Warn("unexpected type in agentState cache", agentUidField)
 		return rc.serverError("internal error: invalid agent state", &serverToAgent)
 	}
+	remoteConfigStatus := message.GetRemoteConfigStatus()
+	if remoteConfigStatus != nil {
+		agent.lastConfigHash = remoteConfigStatus.GetLastRemoteConfigHash()
+		rc.logger.Info("Remote config status", agentUidField, zap.String("lastRemoteConfigHash", hex.EncodeToString(agent.lastConfigHash)), zap.String("status", remoteConfigStatus.GetStatus().String()), zap.String("errorMessage", remoteConfigStatus.ErrorMessage))
+		rc.agentState.Store(agentUid, agent)
+	}
 
 	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agent.agentUid, agent.identifyingAttributes)
 	if err != nil {
@@ -132,11 +138,7 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 		return &serverToAgent
 	}
 
-	if message.GetRemoteConfigStatus() != nil && message.GetRemoteConfigStatus().Status == protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED && bytes.Equal(remoteConfig.ConfigHash, message.RemoteConfigStatus.GetLastRemoteConfigHash()) {
-		rc.logger.Info("Remote config applied", zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)), agentUidField)
-		agent.lastConfigHash = message.GetRemoteConfigStatus().GetLastRemoteConfigHash()
-		rc.agentState.Store(agentUid, agent)
-	} else if !bytes.Equal(agent.lastConfigHash, remoteConfig.ConfigHash) {
+	if !bytes.Equal(agent.lastConfigHash, remoteConfig.ConfigHash) {
 		rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)))
 		serverToAgent.RemoteConfig = remoteConfig
 	}
