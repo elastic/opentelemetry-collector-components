@@ -125,10 +125,16 @@ func serveEmbeddedConf() (string, *http.Server, error) {
 
 	s := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write(collectorConfig)
+			if _, err := w.Write(collectorConfig); err != nil {
+				fmt.Fprintln(os.Stderr, fmt.Errorf("embedded config: error writing http response: %w", err))
+			}
 		}),
 	}
-	go s.Serve(listener)
+	go func() {
+		if err := s.Serve(listener); err != http.ErrServerClosed {
+			fmt.Fprintln(os.Stderr, fmt.Errorf("embedded config: http server error: %w", err))
+		}
+	}()
 	return fmt.Sprintf("http://%s/", listener.Addr().String()), s, nil
 }
 
