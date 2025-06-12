@@ -18,7 +18,6 @@
 package apmconfigextension // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension"
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -132,10 +131,8 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 		return &serverToAgent
 	}
 
-	if !bytes.Equal(agent.LastConfigHash, remoteConfig.ConfigHash) {
-		rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)))
-		serverToAgent.RemoteConfig = remoteConfig
-	}
+	rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)))
+	serverToAgent.RemoteConfig = remoteConfig
 
 	return &serverToAgent
 }

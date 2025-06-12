@@ -41,6 +41,6 @@ type Query struct {
 // remote configuration providers.
 type RemoteConfigClient interface {
 	// RemoteConfig returns the upstream remote configuration that needs to
-	// be applied. Nil if no remote configuration is available for the specified service.
+	// be applied. Nil if no new remote configuration is available for the specified service.
 	RemoteConfig(context.Context, Query) (*protobufs.AgentRemoteConfig, error)
 }
