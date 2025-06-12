@@ -61,9 +61,9 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, logger *zap.Logger) *fetcher
 // If the configuration has changed, the new settings are marshalled to JSON and,
 // along with the new Etag (used as the ConfigHash), is then returned
 // inside a protobufs.AgentRemoteConfig struct.
-func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, query apmconfig.Query) (*protobufs.AgentRemoteConfig, error) {
+func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentAttrs apmconfig.IdentifyingAttributes, lastHash apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 	var serviceParams agentcfg.Service
-	for _, attr := range query.IdentifyingAttributes {
+	for _, attr := range agentAttrs {
 		switch attr.GetKey() {
 		case string(semconv.ServiceNameKey):
 			serviceParams.Name = attr.GetValue().GetStringValue()
@@ -77,11 +77,11 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, query apmconfig.Q
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{
 		Service: serviceParams,
-		Etag:    string(query.LastConfigHash),
+		Etag:    string(lastHash),
 	})
 	if err != nil {
 		return nil, err
-	} else if string(query.LastConfigHash) == result.Source.Etag {
+	} else if string(lastHash) == result.Source.Etag {
 		return nil, nil
 	}
 

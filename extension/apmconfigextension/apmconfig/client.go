@@ -26,8 +26,7 @@ import (
 
 var UnidentifiedAgent = errors.New("agent could not be identified")
 
-// Query represents a request from an agent for its remote configuration source.
-type Query struct {
+type (
 	// A unique identifier for the specific agent instance.
 	// protobufs.AgentToServer.InstanceUid
 	InstanceUid []byte
@@ -35,12 +34,12 @@ type Query struct {
 	IdentifyingAttributes []*protobufs.KeyValue
 	// The hash of the agent's current configuration, used for caching.
 	LastConfigHash []byte
-}
+)
 
 // RemoteConfigClient is an adapter interface that can be used between different
 // remote configuration providers.
 type RemoteConfigClient interface {
 	// RemoteConfig returns the upstream remote configuration that needs to
 	// be applied. Nil if no new remote configuration is available for the specified service.
-	RemoteConfig(context.Context, Query) (*protobufs.AgentRemoteConfig, error)
+	RemoteConfig(context.Context, IdentifyingAttributes, LastConfigHash) (*protobufs.AgentRemoteConfig, error)
 }

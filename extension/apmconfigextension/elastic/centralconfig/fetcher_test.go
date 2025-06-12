@@ -39,16 +39,14 @@ func (f *agentFetcherMock) Fetch(ctx context.Context, query agentcfg.Query) (age
 
 func TestRemoteConfig(t *testing.T) {
 	testcases := map[string]struct {
-		query         apmconfig.Query
+		agentAttrs    apmconfig.IdentifyingAttributes
+		lastHash      apmconfig.LastConfigHash
 		mockedFetchFn func(context.Context, agentcfg.Query) (agentcfg.Result, error)
 
 		expectedRemoteConfig *protobufs.AgentRemoteConfig
 		expectedError        error
 	}{
 		"no identifying attributes": {
-			query: apmconfig.Query{
-				InstanceUid: []byte("test-agent"),
-			},
 			mockedFetchFn: func(context.Context, agentcfg.Query) (agentcfg.Result, error) {
 				return agentcfg.Result{}, nil
 			},
@@ -56,13 +54,10 @@ func TestRemoteConfig(t *testing.T) {
 			expectedError:        apmconfig.UnidentifiedAgent,
 		},
 		"no service.name identifying attribute": {
-			query: apmconfig.Query{
-				InstanceUid: []byte("test-agent"),
-				IdentifyingAttributes: []*protobufs.KeyValue{
-					{
-						Key:   "deployment.environment",
-						Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
-					},
+			agentAttrs: []*protobufs.KeyValue{
+				{
+					Key:   "deployment.environment",
+					Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
 				},
 			},
 			mockedFetchFn: func(context.Context, agentcfg.Query) (agentcfg.Result, error) {
@@ -72,13 +67,10 @@ func TestRemoteConfig(t *testing.T) {
 			expectedError:        apmconfig.UnidentifiedAgent,
 		},
 		"valid service.name": {
-			query: apmconfig.Query{
-				InstanceUid: []byte("test-agent"),
-				IdentifyingAttributes: []*protobufs.KeyValue{
-					{
-						Key:   "service.name",
-						Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
-					},
+			agentAttrs: []*protobufs.KeyValue{
+				{
+					Key:   "service.name",
+					Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
 				},
 			},
 			mockedFetchFn: func(context.Context, agentcfg.Query) (agentcfg.Result, error) {
@@ -105,13 +97,10 @@ func TestRemoteConfig(t *testing.T) {
 			expectedError: nil,
 		},
 		"empty remote config for all services": {
-			query: apmconfig.Query{
-				InstanceUid: []byte("test-agent"),
-				IdentifyingAttributes: []*protobufs.KeyValue{
-					{
-						Key:   "service.name",
-						Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
-					},
+			agentAttrs: []*protobufs.KeyValue{
+				{
+					Key:   "service.name",
+					Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
 				},
 			},
 			mockedFetchFn: func(context.Context, agentcfg.Query) (agentcfg.Result, error) {
@@ -136,16 +125,13 @@ func TestRemoteConfig(t *testing.T) {
 			expectedError: nil,
 		},
 		"last config hash matches etag": {
-			query: apmconfig.Query{
-				InstanceUid: []byte("test-agent"),
-				IdentifyingAttributes: []*protobufs.KeyValue{
-					{
-						Key:   "service.name",
-						Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
-					},
+			agentAttrs: []*protobufs.KeyValue{
+				{
+					Key:   "service.name",
+					Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
 				},
-				LastConfigHash: []byte("-"),
 			},
+			lastHash: []byte("-"),
 			mockedFetchFn: func(context.Context, agentcfg.Query) (agentcfg.Result, error) {
 				return agentcfg.Result{
 					Source: agentcfg.Source{
@@ -158,13 +144,10 @@ func TestRemoteConfig(t *testing.T) {
 			expectedError:        nil,
 		},
 		"fetcher error": {
-			query: apmconfig.Query{
-				InstanceUid: []byte("test-agent"),
-				IdentifyingAttributes: []*protobufs.KeyValue{
-					{
-						Key:   "service.name",
-						Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
-					},
+			agentAttrs: []*protobufs.KeyValue{
+				{
+					Key:   "service.name",
+					Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
 				},
 			},
 			mockedFetchFn: func(context.Context, agentcfg.Query) (agentcfg.Result, error) {
@@ -181,7 +164,7 @@ func TestRemoteConfig(t *testing.T) {
 				fetchFn: tt.mockedFetchFn,
 			}, zap.NewNop())
 
-			actualRemoteConfig, actualError := fetcher.RemoteConfig(context.Background(), tt.query)
+			actualRemoteConfig, actualError := fetcher.RemoteConfig(context.Background(), tt.agentAttrs, tt.lastHash)
 			if tt.expectedError != nil {
 				assert.ErrorContains(t, actualError, tt.expectedError.Error())
 			}
