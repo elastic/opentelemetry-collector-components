@@ -111,7 +111,7 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 }
 
 //go:embed config.yaml
-var configYaml []byte
+var collectorConfig []byte
 
 // serveEmbeddedConf serves an embedded collector config such that the otelbench binary can function without dependency
 // on a collector config in the file system.
@@ -123,7 +123,7 @@ func serveEmbeddedConf() (string, *http.Server, error) {
 
 	s := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write(configYaml)
+			w.Write(collectorConfig)
 		}),
 	}
 	go s.Serve(listener)
