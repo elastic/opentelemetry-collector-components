@@ -122,7 +122,7 @@ func Init() error {
 		},
 	)
 
-	flag.StringVar(&Config.CollectorConfigPath, "config", "config.yaml", "path to collector config yaml")
+	flag.StringVar(&Config.CollectorConfigPath, "config", "", "path to collector config yaml. If empty, the embedded config.yaml will be used.")
 
 	flag.BoolVar(&Config.ExporterOTLP, "exporter-otlp", true, "benchmark exporter otlp")
 	flag.BoolVar(&Config.ExporterOTLPHTTP, "exporter-otlphttp", true, "benchmark exporter otlphttp")

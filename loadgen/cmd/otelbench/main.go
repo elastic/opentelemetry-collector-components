@@ -19,8 +19,11 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"testing"
@@ -107,6 +110,26 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 	})
 }
 
+//go:embed config.yaml
+var configYaml []byte
+
+// serveEmbeddedConf serves an embedded collector config such that the otelbench binary can function without dependency
+// on a collector config in the file system.
+func serveEmbeddedConf() (string, *http.Server, error) {
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return "", nil, err
+	}
+
+	s := &http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write(configYaml)
+		}),
+	}
+	go s.Serve(listener)
+	return fmt.Sprintf("http://%s/", listener.Addr().String()), s, nil
+}
+
 func main() {
 	testing.Init()
 	if err := Init(); err != nil {
@@ -115,6 +138,18 @@ func main() {
 		os.Exit(2)
 	}
 	flag.Parse()
+
+	// default to embedded collector config
+	if Config.CollectorConfigPath == "" {
+		url, srv, err := serveEmbeddedConf()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, fmt.Errorf("error serving embedded collector config: %w", err))
+			flag.Usage()
+			os.Exit(3)
+		}
+		defer srv.Close()
+		Config.CollectorConfigPath = url
+	}
 
 	// default to running with concurrency=1
 	if Config.ConcurrencyList == nil {
