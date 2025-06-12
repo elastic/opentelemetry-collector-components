@@ -99,6 +99,35 @@ func TestRemoteConfig(t *testing.T) {
 			},
 			expectedError: nil,
 		},
+		"empty remote config for all services": {
+			agentUid: apmconfig.InstanceUid("test-agent"),
+			agentAttrs: apmconfig.IdentifyingAttributes{
+				&protobufs.KeyValue{
+					Key:   "service.name",
+					Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "dev"}},
+				},
+			},
+			mockedFetchFn: func(context.Context, agentcfg.Query) (agentcfg.Result, error) {
+				return agentcfg.Result{
+					Source: agentcfg.Source{
+						Etag:     "-",
+						Settings: agentcfg.Settings{},
+					},
+				}, nil
+			},
+			expectedRemoteConfig: &protobufs.AgentRemoteConfig{
+				ConfigHash: []byte("-"),
+				Config: &protobufs.AgentConfigMap{
+					ConfigMap: map[string]*protobufs.AgentConfigFile{
+						"elastic": {
+							Body:        []byte(`{}`),
+							ContentType: "application/json",
+						},
+					},
+				},
+			},
+			expectedError: nil,
+		},
 		"fetcher error": {
 			agentUid: apmconfig.InstanceUid("test-agent"),
 			agentAttrs: apmconfig.IdentifyingAttributes{

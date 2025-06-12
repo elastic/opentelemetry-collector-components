@@ -123,6 +123,53 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {},
 			},
 			{
+				name: "agent receives empty remote config",
+				opampMessages: []inOutOpamp{
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test"),
+							AgentDescription: &protobufs.AgentDescription{
+								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent-empty"}},
+									},
+								},
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("-"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"elastic": {
+											Body:        []byte(`{}`),
+											ContentType: "application/json",
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test"),
+							RemoteConfigStatus: &protobufs.RemoteConfigStatus{
+								LastRemoteConfigHash: []byte("-"),
+								Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+						},
+					},
+				},
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {},
+			},
+			{
 				name: "agent without config applies remote",
 				opampMessages: []inOutOpamp{
 					{
@@ -287,6 +334,17 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						expectedServerToAgent: &protobufs.ServerToAgent{
 							InstanceUid:  []byte("test-3"),
 							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("-"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"elastic": {
+											Body:        []byte(`{}`),
+											ContentType: "application/json",
+										},
+									},
+								},
+							},
 						},
 					},
 					{
@@ -308,6 +366,17 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						expectedServerToAgent: &protobufs.ServerToAgent{
 							InstanceUid:  []byte("test-3"),
 							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("-"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"elastic": {
+											Body:        []byte(`{}`),
+											ContentType: "application/json",
+										},
+									},
+								},
+							},
 						},
 					},
 					{
