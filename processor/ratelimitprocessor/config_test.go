@@ -20,6 +20,7 @@ package ratelimitprocessor
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
@@ -42,42 +43,128 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name: "local",
 			expected: &Config{
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
-				Type:             LocalRateLimiter,
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
 			},
 		},
 		{
 			name: "strategy",
 			expected: &Config{
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitBytes,
-				ThrottleBehavior: ThrottleBehaviorError,
-				Type:             LocalRateLimiter,
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
 			},
 		},
 		{
 			name: "gubernator",
 			expected: &Config{
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
-				Type:             GubernatorRateLimiter,
+				Type: GubernatorRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
 			},
 		},
 		{
 			name: "metadata_keys",
 			expected: &Config{
-				Rate:             100,
-				Burst:            200,
-				Strategy:         StrategyRateLimitRequests,
-				ThrottleBehavior: ThrottleBehaviorError,
-				MetadataKeys:     []string{"project_id"},
-				Type:             LocalRateLimiter,
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
+				MetadataKeys: []string{"project_id"},
+			},
+		},
+		{
+			name: "overrides_all",
+			expected: &Config{
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
+				Overrides: map[string]RateLimitOverrides{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						Rate:  ptr(300),
+						Burst: ptr(400),
+					},
+				},
+			},
+		},
+		{
+			name: "overrides_rate",
+			expected: &Config{
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
+				Overrides: map[string]RateLimitOverrides{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						Rate: ptr(300),
+					},
+				},
+			},
+		},
+		{
+			name: "overrides_burst",
+			expected: &Config{
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
+				Overrides: map[string]RateLimitOverrides{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						Burst: ptr(400),
+					},
+				},
+			},
+		},
+		{
+			name: "overrides_throttle_interval",
+			expected: &Config{
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
+				Overrides: map[string]RateLimitOverrides{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						Rate:             ptr(400),
+						ThrottleInterval: ptr(10 * time.Second),
+					},
+				},
 			},
 		},
 		{
@@ -123,4 +210,43 @@ func TestLoadConfig(t *testing.T) {
 			require.Equal(t, tt.expected, cfg)
 		})
 	}
+}
+
+func TestResolveRateLimitSettings(t *testing.T) {
+	cfg := &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate:             100,
+			Burst:            200,
+			Strategy:         StrategyRateLimitRequests,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: 1 * time.Second,
+		},
+		Overrides: map[string]RateLimitOverrides{
+			"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+				Rate:             ptr(300),
+				Burst:            ptr(400),
+				ThrottleInterval: ptr(10 * time.Second),
+			},
+		},
+	}
+
+	t.Run("no override", func(t *testing.T) {
+		result := resolveRateLimitSettings(cfg, "default")
+		require.Equal(t, cfg.RateLimitSettings, result)
+	})
+
+	t.Run("override", func(t *testing.T) {
+		result := resolveRateLimitSettings(cfg, "project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292")
+		require.Equal(t, RateLimitSettings{
+			Rate:             300,
+			Burst:            400,
+			Strategy:         StrategyRateLimitRequests,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: 10 * time.Second,
+		}, result)
+	})
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
