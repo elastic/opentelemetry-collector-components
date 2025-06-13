@@ -48,7 +48,20 @@ func NewFetcherAPMWatcher(fetcher agentcfg.Fetcher, logger *zap.Logger) *fetcher
 	}
 }
 
-func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfig.InstanceUid, agentAttrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+// RemoteConfig implements the apmconfig.RemoteConfigClient interface. It is responsible
+// for fetching the remote configuration for a given service.
+//
+// The function first extracts the service.name and deployment.environment.name from the identifying attributes
+// of the query. A service.name is required.
+//
+// It then uses the elasticsearch fetcher to retrieve the configuration, passing along the
+// Etag from the last known configuration hash. If the new configuration's Etag matches the old one,
+// the function returns nil, indicating no update is needed.
+//
+// If the configuration has changed, the new settings are marshalled to JSON and,
+// along with the new Etag (used as the ConfigHash), is then returned
+// inside a protobufs.AgentRemoteConfig struct.
+func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentAttrs apmconfig.IdentifyingAttributes, lastHash apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 	var serviceParams agentcfg.Service
 	for _, attr := range agentAttrs {
 		switch attr.GetKey() {
@@ -64,9 +77,12 @@ func (fw *fetcherAPMWatcher) RemoteConfig(ctx context.Context, agentUid apmconfi
 	}
 	result, err := fw.configFetcher.Fetch(ctx, agentcfg.Query{
 		Service: serviceParams,
+		Etag:    string(lastHash),
 	})
 	if err != nil {
 		return nil, err
+	} else if string(lastHash) == result.Source.Etag {
+		return nil, nil
 	}
 
 	marshallConfig, err := json.Marshal(result.Source.Settings)

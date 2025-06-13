@@ -18,7 +18,6 @@
 package apmconfigextension // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension"
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -43,7 +42,7 @@ type remoteConfigCallbacks struct {
 type agentInfo struct {
 	agentUid              apmconfig.InstanceUid
 	identifyingAttributes apmconfig.IdentifyingAttributes
-	lastConfigHash        []byte
+	lastConfigHash        apmconfig.LastConfigHash
 }
 
 func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *remoteConfigCallbacks {
@@ -126,7 +125,7 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 		rc.agentState.Store(agentUid, agent)
 	}
 
-	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agent.agentUid, agent.identifyingAttributes)
+	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agent.identifyingAttributes, agent.lastConfigHash)
 	if err != nil {
 		// remote config client could not identify the agent
 		if errors.Is(err, apmconfig.UnidentifiedAgent) {
@@ -138,10 +137,8 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 		return &serverToAgent
 	}
 
-	if !bytes.Equal(agent.lastConfigHash, remoteConfig.ConfigHash) {
-		rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)))
-		serverToAgent.RemoteConfig = remoteConfig
-	}
+	rc.logger.Info("Sending new remote configuration", agentUidField, zap.String("hash", hex.EncodeToString(remoteConfig.ConfigHash)))
+	serverToAgent.RemoteConfig = remoteConfig
 
 	return &serverToAgent
 }

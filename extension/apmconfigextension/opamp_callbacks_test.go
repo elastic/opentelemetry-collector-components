@@ -30,11 +30,11 @@ import (
 )
 
 type remoteConfigMock struct {
-	remoteConfigFn func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error)
+	remoteConfigFn func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error)
 }
 
-func (f *remoteConfigMock) RemoteConfig(ctx context.Context, id apmconfig.InstanceUid, attrs apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
-	return f.remoteConfigFn(ctx, id, attrs)
+func (f *remoteConfigMock) RemoteConfig(ctx context.Context, attrs apmconfig.IdentifyingAttributes, lastHash apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+	return f.remoteConfigFn(ctx, attrs, lastHash)
 }
 
 func TestOnMessage(t *testing.T) {
@@ -62,7 +62,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 					return nil, nil
 				},
 			}, zap.NewNop()),
@@ -84,7 +84,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 					return nil, errors.New("testing error")
 				},
 			}, zap.NewNop()),
@@ -107,7 +107,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 					return nil, apmconfig.UnidentifiedAgent
 				},
 			}, zap.NewNop()),
@@ -149,19 +149,27 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
-					return &protobufs.AgentRemoteConfig{
-						ConfigHash: []byte("abcd"),
-						Config: &protobufs.AgentConfigMap{
-							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"elastic": {
-									ContentType: "application/json",
-									Body:        []byte(`{"test":"aaa"}`),
+				remoteConfigFn: func() func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+					var cached bool
+					return func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						if cached {
+							return nil, nil
+						} else {
+							cached = true
+							return &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("abcd"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"elastic": {
+											ContentType: "application/json",
+											Body:        []byte(`{"test":"aaa"}`),
+										},
+									},
 								},
-							},
-						},
-					}, nil
-				},
+							}, nil
+						}
+					}
+				}(),
 			}, zap.NewNop()),
 		},
 		"agent applying remote config": {
@@ -181,18 +189,8 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
-					return &protobufs.AgentRemoteConfig{
-						ConfigHash: []byte("abcd"),
-						Config: &protobufs.AgentConfigMap{
-							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"elastic": {
-									ContentType: "application/json",
-									Body:        []byte(`{"test":"aaa"}`),
-								},
-							},
-						},
-					}, nil
+				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+					return nil, nil
 				},
 			}, zap.NewNop()),
 		},
@@ -214,18 +212,8 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
-					return &protobufs.AgentRemoteConfig{
-						ConfigHash: []byte("abcd"),
-						Config: &protobufs.AgentConfigMap{
-							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"elastic": {
-									ContentType: "application/json",
-									Body:        []byte(`{"test":"aaa"}`),
-								},
-							},
-						},
-					}, nil
+				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+					return nil, nil
 				},
 			}, zap.NewNop()),
 		},
@@ -257,7 +245,7 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
+				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 					return &protobufs.AgentRemoteConfig{
 						ConfigHash: []byte("abcd"),
 						Config: &protobufs.AgentConfigMap{
@@ -289,18 +277,8 @@ func TestOnMessage(t *testing.T) {
 				},
 			},
 			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.InstanceUid, apmconfig.IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error) {
-					return &protobufs.AgentRemoteConfig{
-						ConfigHash: []byte("abcd"),
-						Config: &protobufs.AgentConfigMap{
-							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"elastic": {
-									ContentType: "application/json",
-									Body:        []byte(`{"test":"aaa"}`),
-								},
-							},
-						},
-					}, nil
+				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+					return nil, nil
 				},
 			}, zap.NewNop()),
 		},

@@ -26,15 +26,20 @@ import (
 
 var UnidentifiedAgent = errors.New("agent could not be identified")
 
-// protobufs.AgentToServer.InstanceUid
 type (
-	InstanceUid           []byte
+	// A unique identifier for the specific agent instance.
+	// protobufs.AgentToServer.InstanceUid
+	InstanceUid []byte
+	// Attributes like service.name used to identify the service being monitored.
 	IdentifyingAttributes []*protobufs.KeyValue
+	// The hash of the agent's current configuration, used for caching.
+	LastConfigHash []byte
 )
 
 // RemoteConfigClient is an adapter interface that can be used between different
 // remote configuration providers.
 type RemoteConfigClient interface {
-	// RemoteConfig returns the upstream remote configuration that needs to be applied. Empty RemoteConfig Attrs if no remote configuration is available for the specified service.
-	RemoteConfig(context.Context, InstanceUid, IdentifyingAttributes) (*protobufs.AgentRemoteConfig, error)
+	// RemoteConfig returns the upstream remote configuration that needs to
+	// be applied. Nil if no new remote configuration is available for the specified service.
+	RemoteConfig(context.Context, IdentifyingAttributes, LastConfigHash) (*protobufs.AgentRemoteConfig, error)
 }
