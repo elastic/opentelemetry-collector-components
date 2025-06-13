@@ -4,7 +4,7 @@ go 1.23.8
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.18.0
-	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-00010101000000-000000000000
+	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250613082151-282de5af1c9b
 	github.com/elastic/opentelemetry-lib v0.18.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
@@ -111,5 +111,3 @@ require (
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/elastic/opentelemetry-collector-components/internal/testutil => ../../internal/testutil
