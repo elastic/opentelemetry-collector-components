@@ -33,10 +33,12 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 )
 
 var _ processor.Metrics = (*Processor)(nil)
@@ -75,6 +77,7 @@ const (
 )
 
 type Processor struct {
+	telemetryBuilder   *metadata.TelemetryBuilder
 	cfg                *config.Config
 	sortedMetadataKeys []string
 
@@ -97,7 +100,18 @@ type Processor struct {
 	logger        *zap.Logger
 }
 
-func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, next consumer.Metrics) (*Processor, error) {
+func newProcessor(
+	telemetrySettings component.TelemetrySettings,
+	cfg *config.Config,
+	ivlDefs []intervalDef,
+	log *zap.Logger,
+	next consumer.Metrics,
+) (*Processor, error) {
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
+	}
+
 	dbOpts := &pebble.Options{
 		Merger: &pebble.Merger{
 			Name: "pmetrics_merger",
@@ -133,6 +147,7 @@ func newProcessor(cfg *config.Config, ivlDefs []intervalDef, log *zap.Logger, ne
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Processor{
+		telemetryBuilder:   telemetryBuilder,
 		cfg:                cfg,
 		sortedMetadataKeys: sortedMetadataKeys,
 		dataDir:            dataDir,
@@ -190,6 +205,7 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 			timer.Reset(time.Until(to))
 		}
 	}()
+	p.registerPebbleMetrics()
 	return nil
 }
 
@@ -571,6 +587,79 @@ func (p *Processor) exportForInterval(
 		return exportedDPCount, errors.Join(errs...)
 	}
 	return exportedDPCount, nil
+}
+
+func (p *Processor) registerPebbleMetrics() {
+	p.telemetryBuilder.RegisterLsmintervalPebbleFlushesCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(m.Flush.Count)
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleFlushedBytesCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(int64(m.Levels[0].BytesFlushed))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleCompactionsCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(m.Compact.Count)
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleIngestedBytesCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics().Total()
+		io.Observe(int64(m.BytesIngested))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleCompactedBytesReadCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics().Total()
+		io.Observe(int64(m.BytesRead))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleCompactedBytesWrittenCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics().Total()
+		io.Observe(int64(m.BytesCompacted))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleTotalMemtableSizeCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(int64(m.MemTable.Size))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleTotalDiskUsageCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(int64(m.DiskSpaceUsage()))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleReadAmplificationCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics().Total()
+		io.Observe(int64(m.Sublevels))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleSstablesCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics().Total()
+		io.Observe(m.NumFiles)
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleReadersMemoryCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(m.TableCache.Size)
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebblePendingCompactionCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(int64(m.Compact.EstimatedDebt))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleMarkedForCompactionFilesCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(int64(m.Compact.MarkedFiles))
+		return nil
+	})
+	p.telemetryBuilder.RegisterLsmintervalPebbleKeysTombstonesCallback(func(ctx context.Context, io metric.Int64Observer) error {
+		m := p.db.Metrics()
+		io.Observe(int64(m.Keys.TombstoneCount))
+		return nil
+	})
 }
 
 func newBatch(db *pebble.DB) *pebble.Batch {

@@ -12,3 +12,117 @@ status:
 tests:
   config:
 
+telemetry:
+  metrics:
+    lsminterval.pebble_flushes:
+      enabled: true
+      description: The number of pebble memtable flushes to disk.
+      unit: "1"
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_flushed_bytes:
+      enabled: true
+      description: The size in bytes written by pebble during flush.
+      unit: By
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_compactions:
+      enabled: true
+      description: The number of pebble table compactions.
+      unit: "1"
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_ingested_bytes:
+      enabled: true
+      description: The size in bytes ingested to pebble.
+      unit: By
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_compacted_bytes_read:
+      enabled: true
+      description: The size in bytes read by pebble during compaction.
+      unit: By
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_compacted_bytes_written:
+      enabled: true
+      description: The size in bytes written by pebble during compaction.
+      unit: By
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_total_memtable_size:
+      enabled: true
+      description: The current size in bytes of pebble memtable.
+      unit: By
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_total_disk_usage:
+      enabled: true
+      description: The current size in bytes of disk used by pebble, including live and obsolete files.
+      unit: By
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_read_amplification:
+      enabled: true
+      description: The current pebble db read amplification.
+      unit: "1"
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_sstables:
+      enabled: true
+      description: The current number of pebble storage engine SSTables.
+      unit: "1"
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_readers_memory:
+      enabled: true
+      description: The estimated size in bytes of memory used by pebble index and filter blocks.
+      unit: By
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_pending_compaction:
+      enabled: true
+      description: The estimated size in bytes of pending compaction in pebble.
+      unit: By
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_marked_for_compaction_files:
+      enabled: true
+      description: The current number of pebble SSTables marked for compaction.
+      unit: "1"
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_keys_tombstones:
+      enabled: true
+      description: The approximate number of delete keys across the pebble storage engine.
+      unit: "1"
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
