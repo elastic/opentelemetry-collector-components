@@ -6,6 +6,34 @@
 
 The following telemetry is emitted by this component.
 
+### otelcol_lsminterval.exported_bytes
+
+The size in bytes of metric data points exported by the processor.
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| By | Sum | Int | true |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| interval | The processing interval. | Any Str |
+
+### otelcol_lsminterval.exported_data_points
+
+The count of metric data points exported by the processor.
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| {count} | Sum | Int | true |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| interval | The processing interval. | Any Str |
+
 ### otelcol_lsminterval.pebble_compacted_bytes_read
 
 The size in bytes read by pebble during compaction.
@@ -117,3 +145,19 @@ The current size in bytes of pebble memtable.
 | Unit | Metric Type | Value Type |
 | ---- | ----------- | ---------- |
 | By | Gauge | Int |
+
+### otelcol_lsminterval.processed_bytes
+
+The size in bytes of metric data points processed by the processor.
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| By | Sum | Int | true |
+
+### otelcol_lsminterval.processed_data_points
+
+The count of metric data points processed by the processor.
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| {count} | Sum | Int | true |

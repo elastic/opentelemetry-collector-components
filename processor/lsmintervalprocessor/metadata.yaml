@@ -12,8 +12,43 @@ status:
 tests:
   config:
 
+attributes:
+  interval:
+    description: The processing interval.
+    type: string
+
 telemetry:
   metrics:
+    lsminterval.processed_data_points:
+      enabled: true
+      description: The count of metric data points processed by the processor.
+      unit: "{count}"
+      sum:
+        value_type: int
+        monotonic: true
+    lsminterval.processed_bytes:
+      enabled: true
+      description: The size in bytes of metric data points processed by the processor.
+      unit: By
+      sum:
+        value_type: int
+        monotonic: true
+    lsminterval.exported_data_points:
+      enabled: true
+      description: The count of metric data points exported by the processor.
+      unit: "{count}"
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: [interval]
+    lsminterval.exported_bytes:
+      enabled: true
+      description: The size in bytes of metric data points exported by the processor.
+      unit: By
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: [interval]
     lsminterval.pebble_flushes:
       enabled: true
       description: The number of pebble memtable flushes to disk.

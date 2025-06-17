@@ -45,6 +45,8 @@ type TelemetryBuilder struct {
 	meter                                     metric.Meter
 	mu                                        sync.Mutex
 	registrations                             []metric.Registration
+	LsmintervalExportedBytes                  metric.Int64Counter
+	LsmintervalExportedDataPoints             metric.Int64Counter
 	LsmintervalPebbleCompactedBytesRead       metric.Int64ObservableCounter
 	LsmintervalPebbleCompactedBytesWritten    metric.Int64ObservableCounter
 	LsmintervalPebbleCompactions              metric.Int64ObservableCounter
@@ -59,6 +61,8 @@ type TelemetryBuilder struct {
 	LsmintervalPebbleSstables                 metric.Int64ObservableGauge
 	LsmintervalPebbleTotalDiskUsage           metric.Int64ObservableGauge
 	LsmintervalPebbleTotalMemtableSize        metric.Int64ObservableGauge
+	LsmintervalProcessedBytes                 metric.Int64Counter
+	LsmintervalProcessedDataPoints            metric.Int64Counter
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -310,6 +314,18 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	}
 	builder.meter = Meter(settings)
 	var err, errs error
+	builder.LsmintervalExportedBytes, err = builder.meter.Int64Counter(
+		"otelcol_lsminterval.exported_bytes",
+		metric.WithDescription("The size in bytes of metric data points exported by the processor."),
+		metric.WithUnit("By"),
+	)
+	errs = errors.Join(errs, err)
+	builder.LsmintervalExportedDataPoints, err = builder.meter.Int64Counter(
+		"otelcol_lsminterval.exported_data_points",
+		metric.WithDescription("The count of metric data points exported by the processor."),
+		metric.WithUnit("{count}"),
+	)
+	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleCompactedBytesRead, err = builder.meter.Int64ObservableCounter(
 		"otelcol_lsminterval.pebble_compacted_bytes_read",
 		metric.WithDescription("The size in bytes read by pebble during compaction."),
@@ -392,6 +408,18 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		"otelcol_lsminterval.pebble_total_memtable_size",
 		metric.WithDescription("The current size in bytes of pebble memtable."),
 		metric.WithUnit("By"),
+	)
+	errs = errors.Join(errs, err)
+	builder.LsmintervalProcessedBytes, err = builder.meter.Int64Counter(
+		"otelcol_lsminterval.processed_bytes",
+		metric.WithDescription("The size in bytes of metric data points processed by the processor."),
+		metric.WithUnit("By"),
+	)
+	errs = errors.Join(errs, err)
+	builder.LsmintervalProcessedDataPoints, err = builder.meter.Int64Counter(
+		"otelcol_lsminterval.processed_data_points",
+		metric.WithDescription("The count of metric data points processed by the processor."),
+		metric.WithUnit("{count}"),
 	)
 	errs = errors.Join(errs, err)
 	return &builder, errs

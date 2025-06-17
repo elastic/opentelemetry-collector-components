@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 
@@ -346,18 +347,31 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 
 	clientInfo := client.FromContext(ctx)
 	clientMetadata := make([]merger.KeyValues, 0, len(p.sortedMetadataKeys))
+	attributes := make([]attribute.KeyValue, 0, len(p.sortedMetadataKeys))
 	for _, k := range p.sortedMetadataKeys {
 		if values := clientInfo.Metadata.Get(k); len(values) != 0 {
 			clientMetadata = append(clientMetadata, merger.KeyValues{
 				Key:    k,
 				Values: values,
 			})
+			attributes = append(attributes, attribute.StringSlice(k, values))
 		}
 	}
 
 	if err := p.mergeToBatch(mb, clientMetadata); err != nil {
 		return fmt.Errorf("failed to merge the value to batch: %w", err)
 	}
+
+	p.telemetryBuilder.LsmintervalProcessedDataPoints.Add(
+		ctx,
+		int64(md.DataPointCount()),
+		metric.WithAttributes(attributes...),
+	)
+	p.telemetryBuilder.LsmintervalProcessedBytes.Add(
+		ctx,
+		int64(len(mb.value)+len(mb.key)),
+		metric.WithAttributes(attributes...),
+	)
 
 	// Call next for the metrics remaining in the input
 	if err := p.next.ConsumeMetrics(ctx, nextMD); err != nil {
@@ -563,20 +577,35 @@ func (p *Processor) exportForInterval(
 				}
 			}
 		}
+		var attributes []attribute.KeyValue
 		if n := len(key.Metadata); n != 0 {
+			attributes = make([]attribute.KeyValue, 0, n)
 			metadataMap := make(map[string][]string, n)
 			for _, kvs := range key.Metadata {
 				metadataMap[kvs.Key] = kvs.Values
+				attributes = append(attributes, attribute.StringSlice(kvs.Key, kvs.Values))
 			}
 			info := client.FromContext(ctx)
 			info.Metadata = client.NewMetadata(metadataMap)
 			ctx = client.NewContext(ctx, info)
 		}
+		attributes = append(attributes, attribute.String("interval", ivl.Duration.String()))
 		if err := p.next.ConsumeMetrics(ctx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
 			continue
 		}
-		exportedDPCount += finalMetrics.DataPointCount()
+		cnt := finalMetrics.DataPointCount()
+		exportedDPCount += cnt
+		p.telemetryBuilder.LsmintervalExportedDataPoints.Add(
+			ctx,
+			int64(cnt),
+			metric.WithAttributes(attributes...),
+		)
+		p.telemetryBuilder.LsmintervalExportedBytes.Add(
+			ctx,
+			int64(len(iter.Key())+len(iter.Value())),
+			metric.WithAttributes(attributes...),
+		)
 	}
 	if rangeHasData {
 		if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
