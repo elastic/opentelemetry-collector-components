@@ -24,7 +24,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -36,25 +37,42 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
+	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
+	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 var update = flag.Bool("update", false, "Update golden files")
 
 func TestConnector_LogsToMetrics(t *testing.T) {
+	oneCardinalityLimitConfig := lsmconfig.LimitConfig{
+		MaxCardinality: 1,
+		Overflow: lsmconfig.OverflowConfig{
+			Attributes: []lsmconfig.Attribute{{Key: "test_overflow", Value: any(true)}},
+		},
+	}
+	oneCardinalityAggregationConfig := Config{
+		Aggregation: &AggregationConfig{
+			ResourceLimit:  oneCardinalityLimitConfig,
+			ScopeLimit:     oneCardinalityLimitConfig,
+			MetricLimit:    oneCardinalityLimitConfig,
+			DatapointLimit: oneCardinalityLimitConfig,
+		},
+	}
+
 	testCases := []struct {
 		name string
+		cfg  *Config
 	}{
-		{name: "logs/service_summary"},
+		// output should remain the same for all provided configs
+		{name: "logs/service_summary", cfg: &Config{}},
+		{name: "logs/service_summary", cfg: &oneCardinalityAggregationConfig},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
-			cfg := &Config{}
-			l2m := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
+			l2m := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), tc.cfg, nextMetrics)
 
 			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadLogs(filepath.Join(dir, "input.yaml"))
@@ -77,18 +95,35 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 }
 
 func TestConnector_MetricsToMetrics(t *testing.T) {
+	oneCardinalityLimitConfig := lsmconfig.LimitConfig{
+		MaxCardinality: 1,
+		Overflow: lsmconfig.OverflowConfig{
+			Attributes: []lsmconfig.Attribute{{Key: "test_overflow", Value: any(true)}},
+		},
+	}
+	oneCardinalityAggregationConfig := Config{
+		Aggregation: &AggregationConfig{
+			ResourceLimit:  oneCardinalityLimitConfig,
+			ScopeLimit:     oneCardinalityLimitConfig,
+			MetricLimit:    oneCardinalityLimitConfig,
+			DatapointLimit: oneCardinalityLimitConfig,
+		},
+	}
+
 	testCases := []struct {
 		name string
+		cfg  *Config
 	}{
-		{name: "metrics/service_summary"},
+		// output should remain the same for all provided configs
+		{name: "metrics/service_summary", cfg: &Config{}},
+		{name: "metrics/service_summary", cfg: &oneCardinalityAggregationConfig},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
-			cfg := &Config{}
-			m2m := newMetricsConnector(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
+			m2m := newMetricsConnector(t, connectortest.NewNopSettings(metadata.Type), tc.cfg, nextMetrics)
 
 			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
@@ -111,19 +146,37 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 }
 
 func TestConnector_TracesToMetrics(t *testing.T) {
+	fourCardinalityLimitConfig := lsmconfig.LimitConfig{
+		MaxCardinality: 4, // min limit to prevent overflow behavior
+		Overflow: lsmconfig.OverflowConfig{
+			Attributes: []lsmconfig.Attribute{{Key: "test_overflow", Value: any(true)}},
+		},
+	}
+	fourCardinalityAggregationConfig := Config{
+		Aggregation: &AggregationConfig{
+			ResourceLimit:  fourCardinalityLimitConfig,
+			ScopeLimit:     fourCardinalityLimitConfig,
+			MetricLimit:    fourCardinalityLimitConfig,
+			DatapointLimit: fourCardinalityLimitConfig,
+		},
+	}
+
 	testCases := []struct {
 		name string
+		cfg  *Config
 	}{
-		{name: "traces/transaction_metrics"},
-		{name: "traces/span_metrics"},
+		// output should remain the same for all provided configs
+		{name: "traces/transaction_metrics", cfg: &Config{}},
+		{name: "traces/transaction_metrics", cfg: &fourCardinalityAggregationConfig},
+		{name: "traces/span_metrics", cfg: &Config{}},
+		{name: "traces/span_metrics", cfg: &fourCardinalityAggregationConfig},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
-			cfg := &Config{}
-			t2m := newTracesConnector(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
+			t2m := newTracesConnector(t, connectortest.NewNopSettings(metadata.Type), tc.cfg, nextMetrics)
 
 			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
@@ -162,6 +215,7 @@ func TestConnector_AggregationDirectory(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, entries)
 }
+
 func TestConnector_AggregationMetadataKeys(t *testing.T) {
 	cfg := &Config{Aggregation: &AggregationConfig{MetadataKeys: []string{"k"}}}
 
