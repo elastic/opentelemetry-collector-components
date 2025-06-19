@@ -22,20 +22,27 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"net/http"
-	"sync"
+	"time"
 
+	"github.com/elastic/go-freelru"
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/open-telemetry/opamp-go/protobufs"
 	"github.com/open-telemetry/opamp-go/server/types"
 	"go.uber.org/zap"
 )
 
+const (
+	cacheCapacity = 1000
+	cacheTTL      = 10 * time.Second
+)
+
 type remoteConfigCallbacks struct {
 	*types.Callbacks
 	configClient apmconfig.RemoteConfigClient
 
-	agentState sync.Map
+	agentState freelru.Cache[string, *agentInfo]
 	logger     *zap.Logger
 }
 
@@ -45,10 +52,20 @@ type agentInfo struct {
 	lastConfigHash        apmconfig.LastConfigHash
 }
 
-func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) *remoteConfigCallbacks {
+func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) (*remoteConfigCallbacks, error) {
+	cache, err := freelru.NewSharded[string, *agentInfo](cacheCapacity, func(key string) uint32 {
+		h := fnv.New32a()
+		h.Write([]byte(key))
+		return h.Sum32()
+	})
+	if err != nil {
+		return nil, err
+	}
+	cache.SetLifetime(cacheTTL)
+
 	opampCallbacks := &remoteConfigCallbacks{
 		configClient: configClient,
-		agentState:   sync.Map{},
+		agentState:   cache,
 		logger:       logger,
 	}
 
@@ -67,7 +84,7 @@ func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger 
 		},
 	}
 
-	return opampCallbacks
+	return opampCallbacks, nil
 }
 
 func (rc *remoteConfigCallbacks) serverError(msg string, message *protobufs.ServerToAgent, logFields ...zap.Field) *protobufs.ServerToAgent {
@@ -97,7 +114,7 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 	agentUid := hex.EncodeToString(message.GetInstanceUid())
 	if message.GetAgentDescription() != nil {
 		// new description might lead to another remote configuration
-		rc.agentState.Store(agentUid, agentInfo{
+		_ = rc.agentState.Add(agentUid, &agentInfo{
 			agentUid:              message.GetInstanceUid(),
 			identifyingAttributes: message.AgentDescription.IdentifyingAttributes,
 		})
@@ -106,26 +123,26 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 	agentUidField := zap.String("instance_uid", agentUid)
 	if message.GetAgentDisconnect() != nil {
 		rc.logger.Info("Disconnecting the agent from the remote configuration service", agentUidField)
-		rc.agentState.Delete(agentUid)
+		_ = rc.agentState.Remove(agentUid)
 		return &serverToAgent
 	}
 
-	loadedAgent, _ := rc.agentState.LoadOrStore(agentUid, agentInfo{
-		agentUid: message.GetInstanceUid(),
-	})
-	agent, ok := loadedAgent.(agentInfo)
-	if !ok {
-		rc.logger.Warn("unexpected type in agentState cache", agentUidField)
-		return rc.serverError("internal error: invalid agent state", &serverToAgent)
-	}
-	remoteConfigStatus := message.GetRemoteConfigStatus()
-	if remoteConfigStatus != nil {
-		agent.lastConfigHash = remoteConfigStatus.GetLastRemoteConfigHash()
-		rc.logger.Info("Remote config status", agentUidField, zap.String("lastRemoteConfigHash", hex.EncodeToString(agent.lastConfigHash)), zap.String("status", remoteConfigStatus.GetStatus().String()), zap.String("errorMessage", remoteConfigStatus.ErrorMessage))
-		rc.agentState.Store(agentUid, agent)
+	loadedAgent, found := rc.agentState.GetAndRefresh(agentUid, cacheTTL)
+	if !found {
+		loadedAgent = &agentInfo{
+			agentUid: message.InstanceUid,
+		}
+		_ = rc.agentState.Add(agentUid, loadedAgent)
 	}
 
-	remoteConfig, err := rc.configClient.RemoteConfig(ctx, agent.identifyingAttributes, agent.lastConfigHash)
+	remoteConfigStatus := message.GetRemoteConfigStatus()
+	if remoteConfigStatus != nil {
+		loadedAgent.lastConfigHash = remoteConfigStatus.GetLastRemoteConfigHash()
+		rc.logger.Info("Remote config status", agentUidField, zap.String("lastRemoteConfigHash", hex.EncodeToString(loadedAgent.lastConfigHash)), zap.String("status", remoteConfigStatus.GetStatus().String()), zap.String("errorMessage", remoteConfigStatus.ErrorMessage))
+		rc.agentState.Add(agentUid, loadedAgent)
+	}
+
+	remoteConfig, err := rc.configClient.RemoteConfig(ctx, loadedAgent.identifyingAttributes, loadedAgent.lastConfigHash)
 	if err != nil {
 		// remote config client could not identify the agent
 		if errors.Is(err, apmconfig.UnidentifiedAgent) {

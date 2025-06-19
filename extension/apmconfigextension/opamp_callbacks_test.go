@@ -44,8 +44,8 @@ func TestOnMessage(t *testing.T) {
 	}
 
 	testcases := map[string]struct {
-		opampMessages []inOutOpamp
-		callbacks     *remoteConfigCallbacks
+		opampMessages    []inOutOpamp
+		callbacksFactory func() (*remoteConfigCallbacks, error)
 	}{
 		"empty AgentToServer message, no instance_uid": {
 			opampMessages: []inOutOpamp{
@@ -61,11 +61,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, nil
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func() (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(&remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, nil
+					},
+				}, zap.NewNop())
+			},
 		},
 		"remote config provider error": {
 			opampMessages: []inOutOpamp{
@@ -83,11 +85,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, errors.New("testing error")
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func() (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(&remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, errors.New("testing error")
+					},
+				}, zap.NewNop())
+			},
 		},
 		"remote config provider unidentified error": {
 			opampMessages: []inOutOpamp{
@@ -106,11 +110,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, apmconfig.UnidentifiedAgent
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func() (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(&remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, apmconfig.UnidentifiedAgent
+					},
+				}, zap.NewNop())
+			},
 		},
 		"agent without config applies remote": {
 			opampMessages: []inOutOpamp{
@@ -148,29 +154,31 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func() func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					var cached bool
-					return func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-						if cached {
-							return nil, nil
-						} else {
-							cached = true
-							return &protobufs.AgentRemoteConfig{
-								ConfigHash: []byte("abcd"),
-								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"elastic": {
-											ContentType: "application/json",
-											Body:        []byte(`{"test":"aaa"}`),
+			callbacksFactory: func() (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(&remoteConfigMock{
+					remoteConfigFn: func() func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						var cached bool
+						return func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+							if cached {
+								return nil, nil
+							} else {
+								cached = true
+								return &protobufs.AgentRemoteConfig{
+									ConfigHash: []byte("abcd"),
+									Config: &protobufs.AgentConfigMap{
+										ConfigMap: map[string]*protobufs.AgentConfigFile{
+											"elastic": {
+												ContentType: "application/json",
+												Body:        []byte(`{"test":"aaa"}`),
+											},
 										},
 									},
-								},
-							}, nil
+								}, nil
+							}
 						}
-					}
-				}(),
-			}, zap.NewNop()),
+					}(),
+				}, zap.NewNop())
+			},
 		},
 		"agent applying remote config": {
 			opampMessages: []inOutOpamp{
@@ -188,11 +196,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, nil
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func() (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(&remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, nil
+					},
+				}, zap.NewNop())
+			},
 		},
 		"agent failed to apply remote config": {
 			opampMessages: []inOutOpamp{
@@ -211,11 +221,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, nil
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func() (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(&remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, nil
+					},
+				}, zap.NewNop())
+			},
 		},
 		"agent applies with old remote config": {
 			opampMessages: []inOutOpamp{
@@ -244,21 +256,23 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return &protobufs.AgentRemoteConfig{
-						ConfigHash: []byte("abcd"),
-						Config: &protobufs.AgentConfigMap{
-							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"elastic": {
-									ContentType: "application/json",
-									Body:        []byte(`{"test":"aaa"}`),
+			callbacksFactory: func() (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(&remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return &protobufs.AgentRemoteConfig{
+							ConfigHash: []byte("abcd"),
+							Config: &protobufs.AgentConfigMap{
+								ConfigMap: map[string]*protobufs.AgentConfigFile{
+									"elastic": {
+										ContentType: "application/json",
+										Body:        []byte(`{"test":"aaa"}`),
+									},
 								},
 							},
-						},
-					}, nil
-				},
-			}, zap.NewNop()),
+						}, nil
+					},
+				}, zap.NewNop())
+			},
 		},
 		"agent changes AgentDescription": {
 			opampMessages: []inOutOpamp{
@@ -276,17 +290,21 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, nil
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func() (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(&remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, nil
+					},
+				}, zap.NewNop())
+			},
 		},
 	}
 
 	for name, tt := range testcases {
 		t.Run(name, func(t *testing.T) {
-			connectionCallbacks := tt.callbacks.OnConnecting(nil).ConnectionCallbacks
+			callbacks, err := tt.callbacksFactory()
+			assert.NoError(t, err)
+			connectionCallbacks := callbacks.OnConnecting(nil).ConnectionCallbacks
 			for i := range tt.opampMessages {
 				assert.Equal(t, tt.opampMessages[i].expectedServerToAgent, connectionCallbacks.OnMessage(context.TODO(), nil, tt.opampMessages[i].agentToServer))
 
@@ -300,7 +318,7 @@ func TestOnMessage(t *testing.T) {
 						AgentDisconnect: &protobufs.AgentDisconnect{},
 					}))
 					assert.False(t, func() bool {
-						_, found := tt.callbacks.agentState.Load(hex.EncodeToString(tt.opampMessages[i].agentToServer.InstanceUid))
+						found := callbacks.agentState.Contains(hex.EncodeToString(tt.opampMessages[i].agentToServer.InstanceUid))
 						return found
 					}())
 				}

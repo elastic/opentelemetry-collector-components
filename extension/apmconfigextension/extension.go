@@ -63,7 +63,12 @@ func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) er
 		return err
 	}
 
-	opampHandler, conContext, err := server.New(newLoggerFromZap(op.telemetrySettings.Logger)).Attach(server.Settings{Callbacks: *newRemoteConfigCallbacks(remoteConfigClient, op.telemetrySettings.Logger).Callbacks})
+	opampCallbacks, err := newRemoteConfigCallbacks(remoteConfigClient, op.telemetrySettings.Logger)
+	if err != nil {
+		return err
+	}
+
+	opampHandler, conContext, err := server.New(newLoggerFromZap(op.telemetrySettings.Logger)).Attach(server.Settings{Callbacks: *opampCallbacks.Callbacks})
 	if err != nil {
 		return err
 	}
