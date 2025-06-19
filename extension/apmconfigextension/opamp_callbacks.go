@@ -33,17 +33,23 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	cacheCapacity = 1000
-	cacheTTL      = 10 * time.Second
-)
-
 type remoteConfigCallbacks struct {
 	*types.Callbacks
 	configClient apmconfig.RemoteConfigClient
 
 	agentState freelru.Cache[string, *agentInfo]
-	logger     *zap.Logger
+	ttl        time.Duration
+
+	logger *zap.Logger
+}
+
+type cacheConfig struct {
+	// capacity defines the maximum number of agents
+	// results to cache. Once this is reached, the least recently
+	// used entries will be evicted.
+	capacity uint32
+	// TTL defines the duration before the cache key gets evicted
+	ttl time.Duration
 }
 
 type agentInfo struct {
@@ -52,8 +58,8 @@ type agentInfo struct {
 	lastConfigHash        apmconfig.LastConfigHash
 }
 
-func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger *zap.Logger) (*remoteConfigCallbacks, error) {
-	cache, err := freelru.NewSharded[string, *agentInfo](cacheCapacity, func(key string) uint32 {
+func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, ttlConfig cacheConfig, logger *zap.Logger) (*remoteConfigCallbacks, error) {
+	cache, err := freelru.NewSharded[string, *agentInfo](ttlConfig.capacity, func(key string) uint32 {
 		h := fnv.New32a()
 		h.Write([]byte(key))
 		return h.Sum32()
@@ -61,12 +67,13 @@ func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, logger 
 	if err != nil {
 		return nil, err
 	}
-	cache.SetLifetime(cacheTTL)
+	cache.SetLifetime(ttlConfig.ttl)
 
 	opampCallbacks := &remoteConfigCallbacks{
 		configClient: configClient,
 		agentState:   cache,
 		logger:       logger,
+		ttl:          ttlConfig.ttl,
 	}
 
 	connectionCallbacks := types.ConnectionCallbacks{}
@@ -127,7 +134,7 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 		return &serverToAgent
 	}
 
-	loadedAgent, found := rc.agentState.GetAndRefresh(agentUid, cacheTTL)
+	loadedAgent, found := rc.agentState.GetAndRefresh(agentUid, rc.ttl)
 	if !found {
 		loadedAgent = &agentInfo{
 			agentUid: message.InstanceUid,
