@@ -39,7 +39,7 @@ const (
 
 var defaultCacheConfig = cacheConfig{
 	// Cache capacity for active agents
-	capacity: 1000,
+	capacity: 1024,
 	// TTL for each cached agent entry (30s heartbeat interval)
 	// Allows ~4 missed heartbeats before cache eviction
 	ttl: 30 * 4 * time.Second,
