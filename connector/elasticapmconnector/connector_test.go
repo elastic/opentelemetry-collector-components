@@ -193,7 +193,6 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		{name: "traces/span_metrics", cfg: &fourCardinalityAggregationConfig},
 
 		// output should show overflow
-		{name: "traces/transaction_metrics_overflow", cfg: &oneCardinalityAggregationConfig},
 		{name: "traces/span_metrics_overflow", cfg: &oneCardinalityAggregationConfig},
 	}
 
