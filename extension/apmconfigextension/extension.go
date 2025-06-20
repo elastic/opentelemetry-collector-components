@@ -23,7 +23,6 @@ import (
 	"net"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/open-telemetry/opamp-go/server"
@@ -36,14 +35,6 @@ import (
 const (
 	defaultOpAMPPath = "/v1/opamp"
 )
-
-var defaultCacheConfig = cacheConfig{
-	// Cache capacity for active agents
-	capacity: 1024,
-	// TTL for each cached agent entry (30s heartbeat interval)
-	// Allows ~4 missed heartbeats before cache eviction
-	ttl: 30 * 4 * time.Second,
-}
 
 type configClientFactory = func(context.Context, component.Host, component.TelemetrySettings) (apmconfig.RemoteConfigClient, error)
 
@@ -72,7 +63,7 @@ func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) er
 		return err
 	}
 
-	opampCallbacks, err := newRemoteConfigCallbacks(remoteConfigClient, defaultCacheConfig, op.telemetrySettings.Logger)
+	opampCallbacks, err := newRemoteConfigCallbacks(remoteConfigClient, op.extensionConfig.OpAMP.Cache, op.telemetrySettings.Logger)
 	if err != nil {
 		return err
 	}

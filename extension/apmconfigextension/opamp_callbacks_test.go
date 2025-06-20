@@ -390,9 +390,9 @@ func TestOnMessage_EvictedCapacityLRU(t *testing.T) {
 		remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 			return nil, nil
 		},
-	}, cacheConfig{
-		capacity: 1,
-		ttl:      10 * time.Second,
+	}, CacheConfig{
+		Capacity: 1,
+		TTL:      10 * time.Second,
 	}, zap.NewNop())
 	assert.NoError(t, err)
 
@@ -429,9 +429,9 @@ func TestOnMessage_EvictedTTLLRU(t *testing.T) {
 		remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 			return nil, nil
 		},
-	}, cacheConfig{
-		capacity: 2,
-		ttl:      time.Nanosecond,
+	}, CacheConfig{
+		Capacity: 2,
+		TTL:      time.Nanosecond,
 	}, zap.NewNop())
 	assert.NoError(t, err)
 

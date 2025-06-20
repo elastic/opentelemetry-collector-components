@@ -43,35 +43,26 @@ type remoteConfigCallbacks struct {
 	logger *zap.Logger
 }
 
-type cacheConfig struct {
-	// capacity defines the maximum number of agents
-	// results to cache. Once this is reached, the least recently
-	// used entries will be evicted.
-	capacity uint32
-	// TTL defines the duration before the cache key gets evicted
-	ttl time.Duration
-}
-
 type agentInfo struct {
 	agentUid              apmconfig.InstanceUid
 	identifyingAttributes apmconfig.IdentifyingAttributes
 	lastConfigHash        apmconfig.LastConfigHash
 }
 
-func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, ttlConfig cacheConfig, logger *zap.Logger) (*remoteConfigCallbacks, error) {
-	cache, err := freelru.NewSharded[string, *agentInfo](ttlConfig.capacity, func(key string) uint32 {
+func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, ttlConfig CacheConfig, logger *zap.Logger) (*remoteConfigCallbacks, error) {
+	cache, err := freelru.NewSharded[string, *agentInfo](ttlConfig.Capacity, func(key string) uint32 {
 		return uint32(xxhash.Sum64String(key))
 	})
 	if err != nil {
 		return nil, err
 	}
-	cache.SetLifetime(ttlConfig.ttl)
+	cache.SetLifetime(ttlConfig.TTL)
 
 	opampCallbacks := &remoteConfigCallbacks{
 		configClient: configClient,
 		agentState:   cache,
 		logger:       logger,
-		ttl:          ttlConfig.ttl,
+		ttl:          ttlConfig.TTL,
 	}
 
 	connectionCallbacks := types.ConnectionCallbacks{}
