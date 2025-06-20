@@ -7,32 +7,32 @@ elasticapm:
       max_cardinality: 1
       overflow:
         attributes:
-          - key: "k1"
-            value: "v1"
-          - key: "k2"
-            value: "v2"
+          - key: "overflow"
+            value: true
+          - key: "other_overflow_label"
+            value: "overflow"
     scope_limit:
       max_cardinality: 1
       overflow:
         attributes:
-          - key: "k1"
-            value: "v1"
-          - key: "k2"
-            value: "v2"
+          - key: "overflow"
+            value: true
+          - key: "other_overflow_label"
+            value: "overflow"
     metric_limit:
       max_cardinality: 1
       overflow:
         attributes:
-          - key: "k1"
-            value: "v1"
-          - key: "k2"
-            value: "v2"
+          - key: "overflow"
+            value: true
+          - key: "other_overflow_label"
+            value: "overflow"
     datapoint_limit:
       max_cardinality: 1
       overflow:
         attributes:
-          - key: "k1"
-            value: "v1"
-          - key: "k2"
-            value: "v2"
+          - key: "overflow"
+            value: true
+          - key: "other_overflow_label"
+            value: "overflow"
 

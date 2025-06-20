@@ -39,11 +39,43 @@ By default, aggregated metrics will be exported without any client metadata. It 
 propagate client metadata from input to exported metrics by specifying a list of metadata keys
 in `elasticapm::aggregation::metadata_keys`.
 
+By default, cardinality for aggregated metrics will be limited.
+Each limit defines a `max_cardinality` and a list of `attributes` that will be added to the overflow metric.
+There are four limits that can be configured: 
+- `elasticapm::aggregation::resource_limit`: configures the max cardinality of resources
+- `elasticapm::aggregation::scop_limit`: configures the max cardinality of scopes within a resource
+- `elasticapm::aggregation::metric_limit`: configures the max cardinality of metrics within a scope
+- `elasticapm::aggregation::datapoint_limit`: configures the max cardinality of metrics within a scope
+
 ```yaml
 elasticapm:
   aggregation:
     directory: /path/to/aggregation/directory
     metadata_keys: [list, of, metadata, keys]
+    resource_limit:
+      max_cardinality: 8000
+      overflow:
+        attributes:
+          - key: "overflow"
+            value: true
+    scope_limit:
+      max_cardinality: 4000
+      overflow:
+        attributes:
+          - key: "overflow"
+            value: true
+    metric_limit:
+      max_cardinality: 4000
+      overflow:
+        attributes:
+          - key: "overflow"
+            value: true
+    datapoint_limit:
+      max_cardinality: 4000
+      overflow:
+        attributes:
+          - key: "overflow"
+            value: true
 ```
 
 ### Metrics produced by the connector

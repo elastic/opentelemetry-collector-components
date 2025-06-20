@@ -53,8 +53,8 @@ func TestConfig(t *testing.T) {
 						MaxCardinality: 1,
 						Overflow: lsmconfig.OverflowConfig{
 							Attributes: []lsmconfig.Attribute{
-								{Key: "k1", Value: "v1"},
-								{Key: "k2", Value: "v2"},
+								{Key: "overflow", Value: true},
+								{Key: "other_overflow_label", Value: "overflow"},
 							},
 						},
 					},
@@ -62,8 +62,8 @@ func TestConfig(t *testing.T) {
 						MaxCardinality: 1,
 						Overflow: lsmconfig.OverflowConfig{
 							Attributes: []lsmconfig.Attribute{
-								{Key: "k1", Value: "v1"},
-								{Key: "k2", Value: "v2"},
+								{Key: "overflow", Value: true},
+								{Key: "other_overflow_label", Value: "overflow"},
 							},
 						},
 					},
@@ -71,8 +71,8 @@ func TestConfig(t *testing.T) {
 						MaxCardinality: 1,
 						Overflow: lsmconfig.OverflowConfig{
 							Attributes: []lsmconfig.Attribute{
-								{Key: "k1", Value: "v1"},
-								{Key: "k2", Value: "v2"},
+								{Key: "overflow", Value: true},
+								{Key: "other_overflow_label", Value: "overflow"},
 							},
 						},
 					},
@@ -80,8 +80,8 @@ func TestConfig(t *testing.T) {
 						MaxCardinality: 1,
 						Overflow: lsmconfig.OverflowConfig{
 							Attributes: []lsmconfig.Attribute{
-								{Key: "k1", Value: "v1"},
-								{Key: "k2", Value: "v2"},
+								{Key: "overflow", Value: true},
+								{Key: "other_overflow_label", Value: "overflow"},
 							},
 						},
 					},
