@@ -66,6 +66,9 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 		// output should remain the same for all provided configs
 		{name: "logs/service_summary", cfg: &Config{}},
 		{name: "logs/service_summary", cfg: &oneCardinalityAggregationConfig},
+
+		// output should show overflow behavior
+		{name: "logs/service_summary_overflow", cfg: &oneCardinalityAggregationConfig},
 	}
 
 	for _, tc := range testCases {
@@ -117,6 +120,9 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 		// output should remain the same for all provided configs
 		{name: "metrics/service_summary", cfg: &Config{}},
 		{name: "metrics/service_summary", cfg: &oneCardinalityAggregationConfig},
+
+		// output should show overflow
+		{name: "metrics/service_summary_overflow", cfg: &oneCardinalityAggregationConfig},
 	}
 
 	for _, tc := range testCases {
@@ -161,6 +167,21 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		},
 	}
 
+	oneCardinalityLimitConfig := lsmconfig.LimitConfig{
+		MaxCardinality: 1,
+		Overflow: lsmconfig.OverflowConfig{
+			Attributes: []lsmconfig.Attribute{{Key: "test_overflow", Value: any(true)}},
+		},
+	}
+	oneCardinalityAggregationConfig := Config{
+		Aggregation: &AggregationConfig{
+			ResourceLimit:  oneCardinalityLimitConfig,
+			ScopeLimit:     oneCardinalityLimitConfig,
+			MetricLimit:    oneCardinalityLimitConfig,
+			DatapointLimit: oneCardinalityLimitConfig,
+		},
+	}
+
 	testCases := []struct {
 		name string
 		cfg  *Config
@@ -170,6 +191,10 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		{name: "traces/transaction_metrics", cfg: &fourCardinalityAggregationConfig},
 		{name: "traces/span_metrics", cfg: &Config{}},
 		{name: "traces/span_metrics", cfg: &fourCardinalityAggregationConfig},
+
+		// output should show overflow
+		{name: "traces/transaction_metrics_overflow", cfg: &oneCardinalityAggregationConfig},
+		{name: "traces/span_metrics_overflow", cfg: &oneCardinalityAggregationConfig},
 	}
 
 	for _, tc := range testCases {
