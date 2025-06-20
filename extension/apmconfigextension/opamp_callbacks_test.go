@@ -46,7 +46,7 @@ func TestOnMessage(t *testing.T) {
 
 	testcases := map[string]struct {
 		opampMessages    []inOutOpamp
-		callbacksFactory func() (*remoteConfigCallbacks, error)
+		callbacksFactory func(context.Context) (*remoteConfigCallbacks, error)
 	}{
 		"empty AgentToServer message, no instance_uid": {
 			opampMessages: []inOutOpamp{
@@ -62,8 +62,8 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacksFactory: func() (*remoteConfigCallbacks, error) {
-				return newRemoteConfigCallbacks(&remoteConfigMock{
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 						return nil, nil
 					},
@@ -86,8 +86,8 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacksFactory: func() (*remoteConfigCallbacks, error) {
-				return newRemoteConfigCallbacks(&remoteConfigMock{
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 						return nil, errors.New("testing error")
 					},
@@ -111,8 +111,8 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacksFactory: func() (*remoteConfigCallbacks, error) {
-				return newRemoteConfigCallbacks(&remoteConfigMock{
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 						return nil, apmconfig.UnidentifiedAgent
 					},
@@ -155,8 +155,8 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacksFactory: func() (*remoteConfigCallbacks, error) {
-				return newRemoteConfigCallbacks(&remoteConfigMock{
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 					remoteConfigFn: func() func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 						var cached bool
 						return func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
@@ -197,8 +197,8 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacksFactory: func() (*remoteConfigCallbacks, error) {
-				return newRemoteConfigCallbacks(&remoteConfigMock{
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 						return nil, nil
 					},
@@ -222,8 +222,8 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacksFactory: func() (*remoteConfigCallbacks, error) {
-				return newRemoteConfigCallbacks(&remoteConfigMock{
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 						return nil, nil
 					},
@@ -257,8 +257,8 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacksFactory: func() (*remoteConfigCallbacks, error) {
-				return newRemoteConfigCallbacks(&remoteConfigMock{
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 						return &protobufs.AgentRemoteConfig{
 							ConfigHash: []byte("abcd"),
@@ -291,8 +291,8 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacksFactory: func() (*remoteConfigCallbacks, error) {
-				return newRemoteConfigCallbacks(&remoteConfigMock{
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 						return nil, nil
 					},
@@ -303,7 +303,9 @@ func TestOnMessage(t *testing.T) {
 
 	for name, tt := range testcases {
 		t.Run(name, func(t *testing.T) {
-			callbacks, err := tt.callbacksFactory()
+			ctx, cancelFn := context.WithCancel(context.Background())
+			defer cancelFn()
+			callbacks, err := tt.callbacksFactory(ctx)
 			assert.NoError(t, err)
 			connectionCallbacks := callbacks.OnConnecting(nil).ConnectionCallbacks
 			for i := range tt.opampMessages {
@@ -329,7 +331,9 @@ func TestOnMessage(t *testing.T) {
 }
 
 func TestOnMessageLRU(t *testing.T) {
-	callbacksMock, err := newRemoteConfigCallbacks(&remoteConfigMock{
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	callbacksMock, err := newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 		remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 			return nil, nil
 		},
@@ -386,7 +390,9 @@ func TestOnMessageLRU(t *testing.T) {
 
 func TestOnMessage_EvictedCapacityLRU(t *testing.T) {
 	// testing evicted entries because capacity
-	callbacksMock, err := newRemoteConfigCallbacks(&remoteConfigMock{
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	callbacksMock, err := newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 		remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 			return nil, nil
 		},
@@ -424,20 +430,21 @@ func TestOnMessage_EvictedCapacityLRU(t *testing.T) {
 }
 
 func TestOnMessage_EvictedTTLLRU(t *testing.T) {
-	// testing evicted entries because capacity
-	callbacksMock, err := newRemoteConfigCallbacks(&remoteConfigMock{
+	// testing evicted entries purged because ttl
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	callbacksMock, err := newRemoteConfigCallbacks(ctx, &remoteConfigMock{
 		remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
 			return nil, nil
 		},
 	}, CacheConfig{
 		Capacity: 2,
-		TTL:      time.Nanosecond,
+		TTL:      10 * time.Millisecond,
 	}, zap.NewNop())
 	assert.NoError(t, err)
 
 	connectionCallbacks := callbacksMock.OnConnecting(nil).ConnectionCallbacks
 	firstUid, secondUid2 := []byte("test"), []byte("test2")
-	encodedInstanceUid, encodedInstanceUid2 := hex.EncodeToString(firstUid), hex.EncodeToString(secondUid2)
 
 	// new agent
 	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
@@ -447,12 +454,8 @@ func TestOnMessage_EvictedTTLLRU(t *testing.T) {
 	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
 		InstanceUid: secondUid2,
 	})
-
 	assert.Equal(t, 2, callbacksMock.agentState.Len())
-	_, found := callbacksMock.agentState.Get(encodedInstanceUid)
-	assert.False(t, found)
-	assert.Equal(t, 1, callbacksMock.agentState.Len())
-	_, found = callbacksMock.agentState.Get(encodedInstanceUid2)
-	assert.False(t, found)
+
+	time.Sleep(20 * time.Millisecond)
 	assert.Equal(t, 0, callbacksMock.agentState.Len())
 }

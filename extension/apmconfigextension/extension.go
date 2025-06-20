@@ -63,7 +63,7 @@ func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) er
 		return err
 	}
 
-	opampCallbacks, err := newRemoteConfigCallbacks(remoteConfigClient, op.extensionConfig.OpAMP.Cache, op.telemetrySettings.Logger)
+	opampCallbacks, err := newRemoteConfigCallbacks(ctx, remoteConfigClient, op.extensionConfig.OpAMP.Cache, op.telemetrySettings.Logger)
 	if err != nil {
 		return err
 	}

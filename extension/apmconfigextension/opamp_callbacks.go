@@ -49,7 +49,7 @@ type agentInfo struct {
 	lastConfigHash        apmconfig.LastConfigHash
 }
 
-func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, ttlConfig CacheConfig, logger *zap.Logger) (*remoteConfigCallbacks, error) {
+func newRemoteConfigCallbacks(ctx context.Context, configClient apmconfig.RemoteConfigClient, ttlConfig CacheConfig, logger *zap.Logger) (*remoteConfigCallbacks, error) {
 	cache, err := freelru.NewSharded[string, *agentInfo](ttlConfig.Capacity, func(key string) uint32 {
 		return uint32(xxhash.Sum64String(key))
 	})
@@ -57,6 +57,21 @@ func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, ttlConf
 		return nil, err
 	}
 	cache.SetLifetime(ttlConfig.TTL)
+	// Purge expired entries from the cache
+	if ttlConfig.TTL > 0 {
+		go func() {
+			ticker := time.NewTicker(ttlConfig.TTL)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					cache.PurgeExpired()
+				}
+			}
+		}()
+	}
 
 	opampCallbacks := &remoteConfigCallbacks{
 		configClient: configClient,
