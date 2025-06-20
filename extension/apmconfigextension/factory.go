@@ -42,6 +42,14 @@ func NewFactory() extension.Factory {
 	)
 }
 
+var defaultCacheConfig = CacheConfig{
+	// Cache capacity for active agents
+	Capacity: 1024,
+	// TTL for each cached agent entry (30s heartbeat interval)
+	// Allows ~4 missed heartbeats before cache eviction
+	TTL: 30 * 4 * time.Second,
+}
+
 func createDefaultConfig() component.Config {
 	defaultElasticSearchClient := configelasticsearch.NewDefaultClientConfig()
 	httpCfg := confighttp.NewDefaultServerConfig()
@@ -60,6 +68,7 @@ func createDefaultConfig() component.Config {
 			Protocols: Protocols{
 				ServerConfig: &httpCfg,
 			},
+			Cache: defaultCacheConfig,
 		},
 	}
 }

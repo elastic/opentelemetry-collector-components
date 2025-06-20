@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/open-telemetry/opamp-go/protobufs"
@@ -44,8 +45,8 @@ func TestOnMessage(t *testing.T) {
 	}
 
 	testcases := map[string]struct {
-		opampMessages []inOutOpamp
-		callbacks     *remoteConfigCallbacks
+		opampMessages    []inOutOpamp
+		callbacksFactory func(context.Context) (*remoteConfigCallbacks, error)
 	}{
 		"empty AgentToServer message, no instance_uid": {
 			opampMessages: []inOutOpamp{
@@ -61,11 +62,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, nil
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, nil
+					},
+				}, defaultCacheConfig, zap.NewNop())
+			},
 		},
 		"remote config provider error": {
 			opampMessages: []inOutOpamp{
@@ -83,11 +86,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, errors.New("testing error")
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, errors.New("testing error")
+					},
+				}, defaultCacheConfig, zap.NewNop())
+			},
 		},
 		"remote config provider unidentified error": {
 			opampMessages: []inOutOpamp{
@@ -106,11 +111,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, apmconfig.UnidentifiedAgent
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, apmconfig.UnidentifiedAgent
+					},
+				}, defaultCacheConfig, zap.NewNop())
+			},
 		},
 		"agent without config applies remote": {
 			opampMessages: []inOutOpamp{
@@ -148,29 +155,31 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func() func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					var cached bool
-					return func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-						if cached {
-							return nil, nil
-						} else {
-							cached = true
-							return &protobufs.AgentRemoteConfig{
-								ConfigHash: []byte("abcd"),
-								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"elastic": {
-											ContentType: "application/json",
-											Body:        []byte(`{"test":"aaa"}`),
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+					remoteConfigFn: func() func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						var cached bool
+						return func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+							if cached {
+								return nil, nil
+							} else {
+								cached = true
+								return &protobufs.AgentRemoteConfig{
+									ConfigHash: []byte("abcd"),
+									Config: &protobufs.AgentConfigMap{
+										ConfigMap: map[string]*protobufs.AgentConfigFile{
+											"elastic": {
+												ContentType: "application/json",
+												Body:        []byte(`{"test":"aaa"}`),
+											},
 										},
 									},
-								},
-							}, nil
+								}, nil
+							}
 						}
-					}
-				}(),
-			}, zap.NewNop()),
+					}(),
+				}, defaultCacheConfig, zap.NewNop())
+			},
 		},
 		"agent applying remote config": {
 			opampMessages: []inOutOpamp{
@@ -188,11 +197,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, nil
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, nil
+					},
+				}, defaultCacheConfig, zap.NewNop())
+			},
 		},
 		"agent failed to apply remote config": {
 			opampMessages: []inOutOpamp{
@@ -211,11 +222,13 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, nil
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, nil
+					},
+				}, defaultCacheConfig, zap.NewNop())
+			},
 		},
 		"agent applies with old remote config": {
 			opampMessages: []inOutOpamp{
@@ -244,21 +257,23 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return &protobufs.AgentRemoteConfig{
-						ConfigHash: []byte("abcd"),
-						Config: &protobufs.AgentConfigMap{
-							ConfigMap: map[string]*protobufs.AgentConfigFile{
-								"elastic": {
-									ContentType: "application/json",
-									Body:        []byte(`{"test":"aaa"}`),
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return &protobufs.AgentRemoteConfig{
+							ConfigHash: []byte("abcd"),
+							Config: &protobufs.AgentConfigMap{
+								ConfigMap: map[string]*protobufs.AgentConfigFile{
+									"elastic": {
+										ContentType: "application/json",
+										Body:        []byte(`{"test":"aaa"}`),
+									},
 								},
 							},
-						},
-					}, nil
-				},
-			}, zap.NewNop()),
+						}, nil
+					},
+				}, defaultCacheConfig, zap.NewNop())
+			},
 		},
 		"agent changes AgentDescription": {
 			opampMessages: []inOutOpamp{
@@ -276,17 +291,23 @@ func TestOnMessage(t *testing.T) {
 					},
 				},
 			},
-			callbacks: newRemoteConfigCallbacks(&remoteConfigMock{
-				remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
-					return nil, nil
-				},
-			}, zap.NewNop()),
+			callbacksFactory: func(ctx context.Context) (*remoteConfigCallbacks, error) {
+				return newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+					remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+						return nil, nil
+					},
+				}, defaultCacheConfig, zap.NewNop())
+			},
 		},
 	}
 
 	for name, tt := range testcases {
 		t.Run(name, func(t *testing.T) {
-			connectionCallbacks := tt.callbacks.OnConnecting(nil).ConnectionCallbacks
+			ctx, cancelFn := context.WithCancel(context.Background())
+			defer cancelFn()
+			callbacks, err := tt.callbacksFactory(ctx)
+			assert.NoError(t, err)
+			connectionCallbacks := callbacks.OnConnecting(nil).ConnectionCallbacks
 			for i := range tt.opampMessages {
 				assert.Equal(t, tt.opampMessages[i].expectedServerToAgent, connectionCallbacks.OnMessage(context.TODO(), nil, tt.opampMessages[i].agentToServer))
 
@@ -300,11 +321,141 @@ func TestOnMessage(t *testing.T) {
 						AgentDisconnect: &protobufs.AgentDisconnect{},
 					}))
 					assert.False(t, func() bool {
-						_, found := tt.callbacks.agentState.Load(hex.EncodeToString(tt.opampMessages[i].agentToServer.InstanceUid))
+						found := callbacks.agentState.Contains(hex.EncodeToString(tt.opampMessages[i].agentToServer.InstanceUid))
 						return found
 					}())
 				}
 			}
 		})
 	}
+}
+
+func TestOnMessageLRU(t *testing.T) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	callbacksMock, err := newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+		remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+			return nil, nil
+		},
+	}, defaultCacheConfig, zap.NewNop())
+	assert.NoError(t, err)
+
+	connectionCallbacks := callbacksMock.OnConnecting(nil).ConnectionCallbacks
+	instanceUid := []byte("test")
+	encodedInstanceUid := hex.EncodeToString(instanceUid)
+
+	// no new agent
+	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{})
+	assert.Equal(t, 0, callbacksMock.agentState.Len())
+
+	// new agent
+	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+		InstanceUid: instanceUid,
+	})
+	assert.Equal(t, 1, callbacksMock.agentState.Len())
+	cachedAgent, found := callbacksMock.agentState.Get(encodedInstanceUid)
+	assert.True(t, found)
+	assert.Equal(t, agentInfo{
+		agentUid: []byte(instanceUid),
+	}, *cachedAgent)
+
+	// updates cached agent
+	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+		InstanceUid: []byte(instanceUid),
+		RemoteConfigStatus: &protobufs.RemoteConfigStatus{
+			LastRemoteConfigHash: []byte("abcd"),
+			Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING,
+		},
+	})
+	assert.Equal(t, 1, callbacksMock.agentState.Len())
+	cachedAgent, found = callbacksMock.agentState.Get(encodedInstanceUid)
+	assert.True(t, found)
+	assert.Equal(t, agentInfo{
+		agentUid:       []byte(instanceUid),
+		lastConfigHash: []byte("abcd"),
+	}, *cachedAgent)
+
+	// new agent description removes cached agent's last hash
+	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+		InstanceUid:      []byte(instanceUid),
+		AgentDescription: &protobufs.AgentDescription{},
+	})
+	assert.Equal(t, 1, callbacksMock.agentState.Len())
+	cachedAgent, found = callbacksMock.agentState.Get(encodedInstanceUid)
+	assert.True(t, found)
+	assert.Equal(t, agentInfo{
+		agentUid: []byte(instanceUid),
+	}, *cachedAgent)
+}
+
+func TestOnMessage_EvictedCapacityLRU(t *testing.T) {
+	// testing evicted entries because capacity
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	callbacksMock, err := newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+		remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+			return nil, nil
+		},
+	}, CacheConfig{
+		Capacity: 1,
+		TTL:      10 * time.Second,
+	}, zap.NewNop())
+	assert.NoError(t, err)
+
+	connectionCallbacks := callbacksMock.OnConnecting(nil).ConnectionCallbacks
+	firstUid, secondUid2 := []byte("test"), []byte("test2")
+	encodedInstanceUid, encodedInstanceUid2 := hex.EncodeToString(firstUid), hex.EncodeToString(secondUid2)
+
+	// new agent
+	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+		InstanceUid: firstUid,
+	})
+	assert.Equal(t, 1, callbacksMock.agentState.Len())
+	cachedAgent, found := callbacksMock.agentState.Get(encodedInstanceUid)
+	assert.True(t, found)
+	assert.Equal(t, agentInfo{
+		agentUid: firstUid,
+	}, *cachedAgent)
+
+	// second agent should evict first one
+	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+		InstanceUid: secondUid2,
+	})
+	assert.Equal(t, 1, callbacksMock.agentState.Len())
+	cachedAgent, found = callbacksMock.agentState.Get(encodedInstanceUid2)
+	assert.True(t, found)
+	assert.Equal(t, agentInfo{
+		agentUid: secondUid2,
+	}, *cachedAgent)
+}
+
+func TestOnMessage_EvictedTTLLRU(t *testing.T) {
+	// testing evicted entries purged because ttl
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	callbacksMock, err := newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+		remoteConfigFn: func(context.Context, apmconfig.IdentifyingAttributes, apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+			return nil, nil
+		},
+	}, CacheConfig{
+		Capacity: 2,
+		TTL:      10 * time.Millisecond,
+	}, zap.NewNop())
+	assert.NoError(t, err)
+
+	connectionCallbacks := callbacksMock.OnConnecting(nil).ConnectionCallbacks
+	firstUid, secondUid2 := []byte("test"), []byte("test2")
+
+	// new agent
+	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+		InstanceUid: firstUid,
+	})
+	// second agent
+	_ = connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+		InstanceUid: secondUid2,
+	})
+	assert.Equal(t, 2, callbacksMock.agentState.Len())
+
+	time.Sleep(20 * time.Millisecond)
+	assert.Equal(t, 0, callbacksMock.agentState.Len())
 }
