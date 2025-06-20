@@ -5,7 +5,7 @@ go 1.23.8
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/elastic/apm-data v1.18.0
-	github.com/elastic/go-elasticsearch/v8 v8.18.0
+	github.com/elastic/go-elasticsearch/v8 v8.18.1
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9
 	github.com/elastic/opentelemetry-lib v0.18.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.125.0
