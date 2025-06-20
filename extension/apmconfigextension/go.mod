@@ -3,6 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/apmconfig
 go 1.23.8
 
 require (
+	github.com/cespare/xxhash v1.1.0
 	github.com/elastic/go-elasticsearch/v8 v8.18.0
 	github.com/elastic/go-freelru v0.16.0
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250613082151-282de5af1c9b

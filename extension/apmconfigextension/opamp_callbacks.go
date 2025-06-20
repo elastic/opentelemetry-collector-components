@@ -22,10 +22,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"net/http"
 	"time"
 
+	"github.com/cespare/xxhash"
 	"github.com/elastic/go-freelru"
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
 	"github.com/open-telemetry/opamp-go/protobufs"
@@ -60,9 +60,7 @@ type agentInfo struct {
 
 func newRemoteConfigCallbacks(configClient apmconfig.RemoteConfigClient, ttlConfig cacheConfig, logger *zap.Logger) (*remoteConfigCallbacks, error) {
 	cache, err := freelru.NewSharded[string, *agentInfo](ttlConfig.capacity, func(key string) uint32 {
-		h := fnv.New32a()
-		h.Write([]byte(key))
-		return h.Sum32()
+		return uint32(xxhash.Sum64String(key))
 	})
 	if err != nil {
 		return nil, err
