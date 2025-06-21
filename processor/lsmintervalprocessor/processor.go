@@ -262,6 +262,10 @@ func (p *Processor) Shutdown(ctx context.Context) error {
 		// All future operations are invalid after db is closed
 		p.db = nil
 	}
+	if p.telemetryBuilder != nil {
+		p.telemetryBuilder.Shutdown()
+		p.telemetryBuilder = nil
+	}
 	return nil
 }
 
