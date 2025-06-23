@@ -4,6 +4,19 @@
 
 <!-- next version -->
 
+## v0.2.0
+
+### 🛑 Breaking changes 🛑
+
+- `otelbench`: Use embedded collector config instead of searching for config.yaml in file system if `-config` is not specified (#615)
+  Removes dependency on config.yaml being present in file system
+
+## v0.1.2
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Log a warning if `concurrency` is not configured (#573)
+
 ## v0.1.1
 
 ### 🧰 Bug fixes 🧰

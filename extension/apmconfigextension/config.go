@@ -18,28 +18,104 @@
 package apmconfigextension // import "github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension"
 
 import (
+	"errors"
 	"time"
 
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/confmap"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
+)
+
+const (
+	// Protocol values.
+	protoHTTP = "opamp::protocols::http"
 )
 
 type Config struct {
-	AgentConfig AgentConfig `mapstructure:"agent_config"`
-	OpAMP       OpAMPConfig `mapstructure:"opamp"`
+	// Source defines the remote configuration source settings.
+	Source SourceConfig `mapstructure:"source"`
+
+	// OpAMP defines the configuration for the embedded OpAMP server.
+	OpAMP OpAMPConfig `mapstructure:"opamp"`
 }
 
-type AgentConfig struct {
-	Elasticsearch configelasticsearch.ClientConfig `mapstructure:"elasticsearch"`
-	CacheDuration time.Duration                    `mapstructure:"cache_duration"`
+type SourceConfig struct {
+	// Elasticsearch configures a fetcher that retrieves remote configuration
+	// data from an Elasticsearch cluster.
+	Elasticsearch *ElasticsearchFetcher `mapstructure:"elasticsearch"`
+}
+
+type ElasticsearchFetcher struct {
+	// Elasticsearch client configuration.
+	configelasticsearch.ClientConfig `mapstructure:",squash"`
+
+	// CacheDuration specifies how long the fetched remote configuration for an agent
+	// should be cached before fetching it again from Elasticsearch.
+	CacheDuration time.Duration `mapstructure:"cache_duration"`
 }
 
 type OpAMPConfig struct {
-	Server OpAMPServerConfig `mapstructure:"server"`
+	// Protocols is the configuration for the supported protocols, currently
+	// HTTP (TBD: websocket).
+	Protocols `mapstructure:"protocols"`
+	// Cache holds configuration related to agents caching
+	Cache CacheConfig `mapstructure:"cache"`
 }
 
-type OpAMPServerConfig struct {
-	Endpoint string `mapstructure:"endpoint"`
+type CacheConfig struct {
+	// Capacity defines the maximum number of agents to cache.
+	// Once this is reached, the least recently
+	// used entries will be evicted.
+	Capacity uint32 `mapstructure:"capacity"`
+
+	// TTL defines the duration before the cache key gets evicted
+	TTL time.Duration `mapstructure:"ttl"`
 }
 
-var _ component.Config = (*Config)(nil)
+// Protocols is the configuration for the supported protocols.
+type Protocols struct {
+	ServerConfig *confighttp.ServerConfig `mapstructure:"http"`
+	// prevent unkeyed literal initialization
+	_ struct{}
+}
+
+var (
+	_ xconfmap.Validator  = (*Config)(nil)
+	_ xconfmap.Validator  = (*ElasticsearchFetcher)(nil)
+	_ confmap.Unmarshaler = (*Config)(nil)
+	_ component.Config    = (*Config)(nil)
+)
+
+// Validate checks the receiver configuration is valid
+func (cfg *ElasticsearchFetcher) Validate() error {
+	if cfg.CacheDuration <= 0 {
+		return errors.New("cache_duration requires positive value")
+	}
+
+	return nil
+}
+
+// Validate checks the receiver configuration is valid
+func (cfg *Config) Validate() error {
+	if cfg.OpAMP.Protocols.ServerConfig == nil {
+		return errors.New("must specify at least one protocol when using the apmconfig extension")
+	}
+	return nil
+}
+
+// Unmarshal a confmap.Conf into the config struct.
+func (cfg *Config) Unmarshal(conf *confmap.Conf) error {
+	// first load the config normally
+	err := conf.Unmarshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	if !conf.IsSet(protoHTTP) {
+		cfg.OpAMP.Protocols.ServerConfig = nil
+	}
+
+	return nil
+}

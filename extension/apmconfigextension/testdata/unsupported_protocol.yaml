@@ -1,0 +1,4 @@
+opamp:
+  protocols:
+    ws:
+      endpoint: "localhost:4320"

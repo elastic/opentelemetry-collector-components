@@ -1,0 +1,5 @@
+opamp:
+  protocols:
+source:
+  elasticsearch:
+    endpoint: "https://testing/opamp"

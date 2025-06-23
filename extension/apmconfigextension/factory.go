@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/extension"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
@@ -41,18 +42,33 @@ func NewFactory() extension.Factory {
 	)
 }
 
+var defaultCacheConfig = CacheConfig{
+	// Cache capacity for active agents
+	Capacity: 1024,
+	// TTL for each cached agent entry (30s heartbeat interval)
+	// Allows ~4 missed heartbeats before cache eviction
+	TTL: 30 * 4 * time.Second,
+}
+
 func createDefaultConfig() component.Config {
 	defaultElasticSearchClient := configelasticsearch.NewDefaultClientConfig()
+	httpCfg := confighttp.NewDefaultServerConfig()
+	httpCfg.Endpoint = "localhost:4320"
+	httpCfg.TLSSetting = nil
+
 	return &Config{
-		AgentConfig: AgentConfig{
-			Elasticsearch: defaultElasticSearchClient,
-			// using apm-server default
-			CacheDuration: 30 * time.Second,
+		Source: SourceConfig{
+			Elasticsearch: &ElasticsearchFetcher{
+				ClientConfig: defaultElasticSearchClient,
+				// using apm-server default
+				CacheDuration: 30 * time.Second,
+			},
 		},
 		OpAMP: OpAMPConfig{
-			Server: OpAMPServerConfig{
-				Endpoint: "127.0.0.1:4320",
+			Protocols: Protocols{
+				ServerConfig: &httpCfg,
 			},
+			Cache: defaultCacheConfig,
 		},
 	}
 }
@@ -60,11 +76,11 @@ func createDefaultConfig() component.Config {
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
 	extCfg := cfg.(*Config)
 	elasticsearchRemoteConfig := func(ctx context.Context, host component.Host, telemetry component.TelemetrySettings) (apmconfig.RemoteConfigClient, error) {
-		esClient, err := extCfg.AgentConfig.Elasticsearch.ToClient(ctx, host, telemetry)
+		esClient, err := extCfg.Source.Elasticsearch.ClientConfig.ToClient(ctx, host, telemetry)
 		if err != nil {
 			return nil, err
 		}
-		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.AgentConfig.CacheDuration, telemetry.Logger)
+		fetcher := agentcfg.NewElasticsearchFetcher(esClient, extCfg.Source.Elasticsearch.CacheDuration, telemetry.Logger)
 
 		var wg sync.WaitGroup
 		wg.Add(1)

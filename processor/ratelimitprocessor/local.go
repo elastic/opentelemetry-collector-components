@@ -54,9 +54,11 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	// Each (shared) processor gets its own rate limiter,
 	// so it's enough to use client metadata-based unique key.
 	key := getUniqueKey(ctx, r.cfg.MetadataKeys)
-	v, _ := r.limiters.LoadOrStore(key, rate.NewLimiter(rate.Limit(r.cfg.Rate), r.cfg.Burst))
+	cfg := resolveRateLimitSettings(r.cfg, key)
+
+	v, _ := r.limiters.LoadOrStore(key, rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst))
 	limiter := v.(*rate.Limiter)
-	switch r.cfg.ThrottleBehavior {
+	switch cfg.ThrottleBehavior {
 	case ThrottleBehaviorError:
 		if ok := limiter.AllowN(time.Now(), hits); !ok {
 			return errTooManyRequests

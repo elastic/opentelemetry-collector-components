@@ -53,7 +53,7 @@ agents use only a single configuration file or section, meaning the map will
 contain only one entry—and in this case, the key may be an empty string.
 - Since the configuration is encoded in JSON, the
 [content_type](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L948C12-L948C24)
-field in the `AgentRemoteConfig` is set to `text/json`.
+field in the `AgentRemoteConfig` is set to `application/json`.
 - Each `AgentRemoteConfig` message should contain a [hash
 identifier](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L929)
 that the Agent SHOULD include value in subsequent
@@ -64,24 +64,120 @@ unique remote configuration.
 
 ![Extension workflow](./extension-workflow.png "Extension workflow")
 
-## Extension sample configuration
+## Getting started
+
+All that is required to enable the apmconfig extension is to include it in the extensions definitions:
 
 ```
 extensions:
-  basicauth:
-   client_auth:
-     username: changeme
-     password: changeme
+  bearertokenauth:
+    scheme: "APIKey"
+    token: "<ENCODED_ELASTICSEACH_APIKEY>"
 
-apmconfig:
-  agent_config:
-   elasticsearch:
-     endpoint: "https://127.0.0.1:9200"
-     tls:
-       ca_file: path_to_ca-cert.pem
+  apmconfig:
+    source:
+     elasticsearch:
+       endpoint: "<ELASTICSEACH_ENDPOINT>"
        auth:
-         authenticator: basicauth
-  opamp:
-    server:
-      endpoint: ":4320"
+         authenticator: bearertokenauth
+    opamp:
+      protocols:
+        http:
+          endpoint: ":4320"
+```
+
+
+## Advanced configuration
+
+### Remote configurations source
+
+The apmconfig extension retrieves remote configuration data from an Elasticsearch cluster. This is configured under the `source::elasticsearch` section.
+
+All available Elasticsearch client configuration options can be found [here](https://github.com/elastic/opentelemetry-lib/blob/v0.18.0/config/configelasticsearch/configclient.go#L69). The configuration embeds the [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md), allowing the use of standard authentication extensions such as [bearertokenauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/bearertokenauthextension) and [basicauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/basicauthextension).
+
+### OpAMP server
+
+The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
+
+#### TLS and mTLS settings
+
+You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the extension.
+
+Example configuration:
+
+```yaml
+extensions:
+  apmconfig:
+    opamp:
+      protocols:
+        http:
+          endpoint: ":4320"
+          tls:
+            cert_file: server.crt
+            key_file: server.key
+   ...
+```
+
+📚 OpenTelemetry TLS server configuration:
+https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configtls/README.md#server-configuration
+
+#### Authentication settings
+
+In addition to TLS, you can configure authentication to ensure that only authorized agents can communicate with the extension and retrieve their corresponding remote configurations.
+
+The apmconfig extension supports any [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md). We recommend using the [apikeyauth extension](https://github.com/elastic/opentelemetry-collector-components/tree/main/extension/apikeyauthextension) to authenticate with Elasticsearch API keys:
+
+```yaml
+extensions:
+  apikeyauth:
+    endpoint: "<YOUR_ELASTICSEARCH_ENDPOINT>"
+    application_privileges:
+      - application: "apm"
+        privileges:
+          - "config_agent:read"
+        resources:
+          - "-"
+  apmconfig:
+    opamp:
+      protocols:
+        http:
+          auth:
+            authenticator: apikeyauth
+   ...
+```
+
+The server will expect incoming HTTP requests to include an API key with sufficient privileges, using the following header format:
+```
+Authorization: ApiKey <base64(id:api_key)>
+```
+
+An API key with the minimum required application permissions (as verified with the configuration above) can be created via Kibana by navigating to: `Observability → Applications → Settings → Agent Keys`, or by using the Elasticsearch Security API:
+
+```
+POST /_security/api_key
+{
+  "name": "apmconfig-opamp-test-sdk",
+  "metadata": {
+    "application": "apm"
+  },
+  "role_descriptors": {
+    "apm": {
+      "cluster": [],
+      "indices": [],
+      "applications": [
+        {
+          "application": "apm",
+          "privileges": [
+            "config_agent:read"
+          ],
+          "resources": [
+            "*"
+          ]
+        }
+      ],
+      "run_as": [],
+      "metadata": {}
+    }
+  }
+}
 ```

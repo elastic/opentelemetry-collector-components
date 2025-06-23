@@ -44,7 +44,7 @@ var (
 	inflight      int64
 	clientContext = client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-project-id": {"TestProjectID"},
+			"x-tenant-id": {"TestProjectID"},
 		}),
 	})
 )
@@ -124,10 +124,12 @@ func TestGetCountFunc_Profiles(t *testing.T) {
 
 func TestConsume_Logs(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            1,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -141,7 +143,7 @@ func TestConsume_Logs(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"x-tenant-id"},
 	}
 	processor := &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -169,10 +171,12 @@ func TestConsume_Logs(t *testing.T) {
 
 func TestConsume_Metrics(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            1,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -186,7 +190,7 @@ func TestConsume_Metrics(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"x-tenant-id"},
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -214,10 +218,12 @@ func TestConsume_Metrics(t *testing.T) {
 
 func TestConsume_Traces(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            1,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -231,7 +237,7 @@ func TestConsume_Traces(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"x-tenant-id"},
 	}
 	processor := &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -259,10 +265,12 @@ func TestConsume_Traces(t *testing.T) {
 
 func TestConsume_Profiles(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             1,
-		Burst:            1,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -277,7 +285,7 @@ func TestConsume_Profiles(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"x-tenant-id"},
 	}
 	processor := &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -305,10 +313,12 @@ func TestConsume_Profiles(t *testing.T) {
 
 func TestConcurrentRequestsTelemetry(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Rate:             10,
-		Burst:            10,
-		ThrottleBehavior: ThrottleBehaviorError,
-		Type:             LocalRateLimiter,
+		Type: LocalRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Rate:             10,
+			Burst:            10,
+			ThrottleBehavior: ThrottleBehaviorError,
+		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -332,7 +342,7 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		inflight:         &inflight,
-		metadataKeys:     []string{"x-elastic-project-id"},
+		metadataKeys:     []string{"x-tenant-id"},
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -381,7 +391,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 				[]attribute.KeyValue{
 					telemetry.WithDecision("accepted"),
 					telemetry.WithReason(telemetry.StatusUnderLimit),
-					attribute.String("x-elastic-project-id", "TestProjectID"),
+					attribute.String("x-tenant-id", "TestProjectID"),
 				}...),
 		},
 		{
@@ -389,7 +399,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 			Attributes: attribute.NewSet(
 				[]attribute.KeyValue{
 					telemetry.WithDecision("throttled"),
-					attribute.String("x-elastic-project-id", "TestProjectID"),
+					attribute.String("x-tenant-id", "TestProjectID"),
 				}...),
 		},
 	}, metricdatatest.IgnoreTimestamp())
@@ -397,7 +407,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 	metadatatest.AssertEqualRatelimitRequestDuration(t, tel, []metricdata.HistogramDataPoint[float64]{
 		{
 			Attributes: attribute.NewSet(
-				attribute.String("x-elastic-project-id", "TestProjectID"),
+				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
@@ -405,7 +415,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 		{
 			Value: 1,
 			Attributes: attribute.NewSet(
-				attribute.String("x-elastic-project-id", "TestProjectID"),
+				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())

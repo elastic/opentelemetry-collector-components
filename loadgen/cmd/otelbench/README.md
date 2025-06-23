@@ -11,7 +11,7 @@ Usage of ./otelbench:
   -concurrency list
         comma-separated list of concurrency (number of simulated agents) to run each benchmark with
   -config string
-        path to collector config yaml (default "config.yaml")
+        path to collector config yaml. If empty, the config.yaml embedded in the binary will be used.
   -endpoint value
         target server endpoint for both otlp and otlphttp exporters (default to value in config yaml), equivalent to setting both -endpoint-otlp and -endpoint-otlphttp
   -endpoint-otlp value
@@ -101,7 +101,7 @@ Usage of ./otelbench:
   -test.paniconexit0
         panic on call to os.Exit(0)
   -test.parallel n
-        run at most n tests in parallel (default 11)
+        run at most n tests in parallel (default 16)
   -test.run regexp
         run only tests and examples matching regexp
   -test.short

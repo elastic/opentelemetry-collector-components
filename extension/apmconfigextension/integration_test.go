@@ -40,6 +40,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/extension/extensiontest"
 	"google.golang.org/protobuf/proto"
 )
@@ -122,6 +123,53 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {},
 			},
 			{
+				name: "agent receives empty remote config",
+				opampMessages: []inOutOpamp{
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test"),
+							AgentDescription: &protobufs.AgentDescription{
+								IdentifyingAttributes: []*protobufs.KeyValue{
+									{
+										Key:   "service.name",
+										Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: "test-agent-empty"}},
+									},
+								},
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("-"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"elastic": {
+											Body:        []byte(`{}`),
+											ContentType: "application/json",
+										},
+									},
+								},
+							},
+						},
+					},
+					{
+						agentToServer: &protobufs.AgentToServer{
+							InstanceUid: []byte("test"),
+							RemoteConfigStatus: &protobufs.RemoteConfigStatus{
+								LastRemoteConfigHash: []byte("-"),
+								Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+							},
+						},
+						expectedServerToAgent: &protobufs.ServerToAgent{
+							InstanceUid:  []byte("test"),
+							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+						},
+					},
+				},
+				agentCfgIndexModifier: func(t *testing.T, client *elasticsearch.Client) {},
+			},
+			{
 				name: "agent without config applies remote",
 				opampMessages: []inOutOpamp{
 					{
@@ -143,9 +191,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"": {
+										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"124"}`),
-											ContentType: "text/json",
+											ContentType: "application/json",
 										},
 									},
 								},
@@ -193,9 +241,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"": {
+										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"124"}`),
-											ContentType: "text/json",
+											ContentType: "application/json",
 										},
 									},
 								},
@@ -247,9 +295,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"": {
+										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"2"}`),
-											ContentType: "text/json",
+											ContentType: "application/json",
 										},
 									},
 								},
@@ -286,6 +334,17 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						expectedServerToAgent: &protobufs.ServerToAgent{
 							InstanceUid:  []byte("test-3"),
 							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("-"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"elastic": {
+											Body:        []byte(`{}`),
+											ContentType: "application/json",
+										},
+									},
+								},
+							},
 						},
 					},
 					{
@@ -307,6 +366,17 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 						expectedServerToAgent: &protobufs.ServerToAgent{
 							InstanceUid:  []byte("test-3"),
 							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
+							RemoteConfig: &protobufs.AgentRemoteConfig{
+								ConfigHash: []byte("-"),
+								Config: &protobufs.AgentConfigMap{
+									ConfigMap: map[string]*protobufs.AgentConfigFile{
+										"elastic": {
+											Body:        []byte(`{}`),
+											ContentType: "application/json",
+										},
+									},
+								},
+							},
 						},
 					},
 					{
@@ -332,9 +402,9 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
 									ConfigMap: map[string]*protobufs.AgentConfigFile{
-										"": {
+										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"2"}`),
-											ContentType: "text/json",
+											ContentType: "application/json",
 										},
 									},
 								},
@@ -371,15 +441,23 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 		extFactory := NewFactory()
 		cfg := &Config{
-			AgentConfig: AgentConfig{
-				Elasticsearch: configelasticsearch.ClientConfig{
-					Endpoints: []string{esEndpoint},
+			Source: SourceConfig{
+				Elasticsearch: &ElasticsearchFetcher{
+					ClientConfig: configelasticsearch.ClientConfig{
+						Endpoints: []string{esEndpoint},
+					},
+					CacheDuration: 100 * time.Millisecond,
 				},
-				CacheDuration: 100 * time.Millisecond,
 			},
 			OpAMP: OpAMPConfig{
-				Server: OpAMPServerConfig{
-					Endpoint: opAMPTestEndpoint,
+				Cache: defaultCacheConfig,
+				Protocols: Protocols{
+					ServerConfig: func() *confighttp.ServerConfig {
+						httpCfg := confighttp.NewDefaultServerConfig()
+						httpCfg.Endpoint = opAMPTestEndpoint
+						httpCfg.TLSSetting = nil
+						return &httpCfg
+					}(),
 				},
 			},
 		}

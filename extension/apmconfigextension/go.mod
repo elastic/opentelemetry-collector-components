@@ -3,14 +3,19 @@ module github.com/elastic/opentelemetry-collector-components/extension/apmconfig
 go 1.23.8
 
 require (
+	github.com/cespare/xxhash v1.1.0
 	github.com/elastic/go-elasticsearch/v8 v8.18.0
-	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-00010101000000-000000000000
+	github.com/elastic/go-freelru v0.16.0
+	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250613082151-282de5af1c9b
 	github.com/elastic/opentelemetry-lib v0.18.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
-	go.opentelemetry.io/collector/component v1.31.0
+	go.opentelemetry.io/collector/component v1.33.0
+	go.opentelemetry.io/collector/component/componentstatus v0.127.0
 	go.opentelemetry.io/collector/component/componenttest v0.125.0
+	go.opentelemetry.io/collector/config/confighttp v0.125.0
 	go.opentelemetry.io/collector/confmap v1.31.0
+	go.opentelemetry.io/collector/confmap/xconfmap v0.125.0
 	go.opentelemetry.io/collector/extension v1.31.0
 	go.opentelemetry.io/collector/extension/extensiontest v0.125.0
 	go.uber.org/goleak v1.3.0
@@ -65,14 +70,14 @@ require (
 	go.opentelemetry.io/collector/client v1.31.0 // indirect
 	go.opentelemetry.io/collector/config/configauth v0.125.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.31.0 // indirect
-	go.opentelemetry.io/collector/config/confighttp v0.125.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v0.125.0 // indirect
 	go.opentelemetry.io/collector/config/configopaque v1.31.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v1.31.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionauth v1.31.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.125.0 // indirect
-	go.opentelemetry.io/collector/featuregate v1.31.0 // indirect
-	go.opentelemetry.io/collector/internal/telemetry v0.125.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.33.0 // indirect
+	go.opentelemetry.io/collector/internal/telemetry v0.127.0 // indirect
+	go.opentelemetry.io/collector/pipeline v0.127.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.10.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.19.0 // indirect
@@ -94,7 +99,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/open-telemetry/opamp-go v0.19.1-0.20250423191708-8d78a5169350
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	go.opentelemetry.io/collector/pdata v1.31.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.33.0 // indirect
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
@@ -104,9 +109,7 @@ require (
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
-	google.golang.org/grpc v1.72.0 // indirect
+	google.golang.org/grpc v1.72.1 // indirect
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/elastic/opentelemetry-collector-components/internal/testutil => ../../internal/testutil

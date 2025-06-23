@@ -1,0 +1,8 @@
+source:
+  elasticsearch:
+    endpoint: "https://test"
+    cache_duration: 0s
+opamp:
+  protocols:
+    http:
+      endpoint: "localhost:4320"

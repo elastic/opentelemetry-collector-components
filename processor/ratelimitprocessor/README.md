@@ -14,7 +14,21 @@ a in-memory rate limiter, or makes use of a [gubernator](https://github.com/gube
 | `rate`              | Bucket refill rate, in tokens per second.                                                                                                                                                                         | Yes      |            |
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | Yes      |            |
 | `throttle_behavior` | Processor behavior for when the rate limit is exceeded. Options are `error`, return an error immediately on throttle and does not send the event, and `delay`, delay the sending until it is no longer throttled. | Yes      | `error`    |
+| `throttle_interval` | Time interval for throttling. It has effects only when `type` is `gubernator`.                                                                                                                                    | No       | `1s`       |
 | `type`              | Type of rate limiter. Options are `local` or `gubernator`.                                                                                                                                                        | No       | `local`    |
+| `overrides`         | Allows customizing rate limiting parameters for specific metadata key-value pairs. Use this to apply different rate limits to different tenants, projects, or other entities identified by metadata. Each override is keyed by a metadata value and can specify custom `rate`, `burst`, and `throttle_interval` settings that take precedence over the global configuration for matching requests. | No       |            |
+
+### Overrides
+
+You can override one or more of the following fields:
+
+| Field               | Description                                                                                                                                                                                                       | Required | Default    |
+|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|
+| `rate`              | Bucket refill rate, in tokens per second.                                                                                                                                                                         | No       |            |
+| `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | No       |            |
+| `throttle_interval` | Time interval for throttling. It has effect only when `type` is `gubernator`.                                                                                                                                     | No       |            |
+
+### Examples
 
 Example when using as a local rate limiter:
 
@@ -22,7 +36,7 @@ Example when using as a local rate limiter:
 processors:
   ratelimiter:
     metadata_keys:
-    - x-elastic-project-id
+    - x-tenant-id
     rate: 1000
     burst: 10000
     strategy: requests
@@ -35,7 +49,7 @@ Example when using as a distributed rate limiter (Gubernator):
 processors:
   ratelimiter:
     metadata_keys:
-    - x-elastic-project-id
+    - x-tenant-id
     rate: 1000
     burst: 10000
     strategy: requests
@@ -43,3 +57,35 @@ processors:
 ```
 
 You can configure the Gubernator using `GUBER_*` [environment variables](https://github.com/gubernator-io/gubernator/blob/master/example.conf).
+
+Example when using as a distributed rate limiter (Gubernator) with throttle interval:
+
+```yaml
+processors:
+  ratelimiter:
+    metadata_keys:
+    - x-tenant-id
+    rate: 1000
+    burst: 10000
+    strategy: requests
+    type: gubernator
+    throttle_interval: 10s # has effect only when `type` is `gubernator`
+```
+
+Example when using as a distributed rate limiter (Gubernator) with overrides:
+
+```yaml
+processors:
+  ratelimiter:
+    metadata_keys:
+    - x-tenant-id
+    rate: 1000
+    burst: 10000
+    strategy: requests
+    type: gubernator
+    overrides:
+      project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+        rate: 2000
+        burst: 20000
+        throttle_interval: 10s # has effect only when `type` is `gubernator`
+```

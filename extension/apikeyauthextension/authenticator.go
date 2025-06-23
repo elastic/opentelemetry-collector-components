@@ -240,10 +240,6 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 		32, // key length
 		sha512.New,
 	)
-	if err != nil {
-		return ctx, err
-	}
-
 	if cacheEntry, ok := a.cache.Get(cacheKey); ok {
 		if subtle.ConstantTimeCompare(cacheEntry.key, derivedKey) == 0 {
 			// Client has specified an API Key with a colliding ID,
