@@ -338,7 +338,7 @@ func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm *pmetric.Resourc
 	sum_metric.SetName("span.self_time.sum.us")
 
 	//TODO: without Unit, the es exporter throws this:
-	// error	elasticsearchexporter@v0.124.1/bulkindexer.go:367	failed to routing document	{"routing": "metrics-generic.otel-default", "error.type": "illegal_argument_exception", "error.reason": ""}
+	// error	elasticsearchexporter@v0.124.1/bulkindexer.go:367	failed to index document	{"index": "metrics-generic.otel-default", "error.type": "illegal_argument_exception", "error.reason": ""}
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter.flushBulkIndexer
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367
 	sum_metric.SetUnit("us")
