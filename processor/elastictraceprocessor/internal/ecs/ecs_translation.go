@@ -23,6 +23,9 @@ func replaceDots(key string) string {
 	return strings.ReplaceAll(key, ".", "_")
 }
 
+// This is based to what found in the apm-data repo
+// (e.g https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go)
+// plus other extra fields
 func isSupportedAttribute(attr string) bool {
 	switch attr {
 	// service.*

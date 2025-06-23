@@ -20,7 +20,7 @@ package elastictraceprocessor // import "github.com/elastic/opentelemetry-collec
 import (
 	"context"
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/ecs"
-	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/index"
+	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/routing"
 	"github.com/elastic/opentelemetry-lib/enrichments/trace"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
@@ -54,22 +54,34 @@ func (p *Processor) Capabilities() consumer.Capabilities {
 }
 
 func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	resourceSpans := td.ResourceSpans()
-	for i := 0; i < resourceSpans.Len(); i++ {
-		resourceSpan := resourceSpans.At(i)
-		resource := resourceSpan.Resource()
-		ecs.TranslateResourceMetadata(resource)
-		index.EncodeDataStream(resource, "traces")
+	if isECS(ctx) {
+		resourceSpans := td.ResourceSpans()
+		for i := 0; i < resourceSpans.Len(); i++ {
+			resourceSpan := resourceSpans.At(i)
+			resource := resourceSpan.Resource()
+			ecs.TranslateResourceMetadata(resource)
+			routing.EncodeDataStream(resource, "traces")
+
+		}
 	}
+
 	p.enricher.Enrich(td)
-	ecsCtx := client.NewContext(ctx, withMappingMode(client.FromContext(ctx), "ecs"))
-	return p.next.ConsumeTraces(ecsCtx, td)
+
+	return p.next.ConsumeTraces(ctx, td)
 }
 
-func withMappingMode(info client.Info, mode string) client.Info {
-	return client.Info{
-		Addr:     info.Addr,
-		Auth:     info.Auth,
-		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {mode}}),
+func isECS(ctx context.Context) bool {
+	clientCtx := client.FromContext(ctx)
+	mappingMode := getMetadataValue(clientCtx)
+	if mappingMode == "ecs" {
+		return true
 	}
+	return false
+}
+
+func getMetadataValue(info client.Info) string {
+	if values := info.Metadata.Get("x-elastic-mapping-mode"); len(values) > 0 {
+		return values[0]
+	}
+	return ""
 }
