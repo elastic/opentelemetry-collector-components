@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package routing
+package routing // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/routing"
 
 import "go.opentelemetry.io/collector/pdata/pcommon"
 

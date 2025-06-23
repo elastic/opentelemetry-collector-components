@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package ecs
+package ecs // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/ecs"
 
 import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
