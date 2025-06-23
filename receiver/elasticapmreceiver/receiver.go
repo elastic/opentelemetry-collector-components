@@ -22,12 +22,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go.opentelemetry.io/collector/client"
 	"hash"
 	"net"
 	"net/http"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/collector/client"
 
 	"github.com/cespare/xxhash"
 	"github.com/elastic/apm-data/input/elasticapm"

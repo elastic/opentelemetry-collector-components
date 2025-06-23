@@ -18,10 +18,11 @@
 package ecs // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/ecs"
 
 import (
+	"strings"
+
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv26 "go.opentelemetry.io/collector/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
-	"strings"
 )
 
 func TranslateResourceMetadata(resource pcommon.Resource) {

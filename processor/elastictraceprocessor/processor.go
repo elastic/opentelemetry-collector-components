@@ -19,6 +19,7 @@ package elastictraceprocessor // import "github.com/elastic/opentelemetry-collec
 
 import (
 	"context"
+
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/routing"
 	"github.com/elastic/opentelemetry-lib/enrichments/trace"
@@ -73,10 +74,7 @@ func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 func isECS(ctx context.Context) bool {
 	clientCtx := client.FromContext(ctx)
 	mappingMode := getMetadataValue(clientCtx)
-	if mappingMode == "ecs" {
-		return true
-	}
-	return false
+	return mappingMode == "ecs"
 }
 
 func getMetadataValue(info client.Info) string {
