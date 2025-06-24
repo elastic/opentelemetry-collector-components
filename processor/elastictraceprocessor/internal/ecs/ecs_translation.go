@@ -50,7 +50,9 @@ func isSupportedAttribute(attr string) bool {
 	case semconv.AttributeServiceName,
 		semconv.AttributeServiceVersion,
 		semconv.AttributeServiceInstanceID,
-		semconv.AttributeServiceNamespace:
+		semconv.AttributeServiceNamespace,
+		"service.language.name",
+		"service.language.version":
 		return true
 
 	// deployment.*

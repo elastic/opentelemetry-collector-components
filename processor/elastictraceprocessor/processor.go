@@ -62,7 +62,10 @@ func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 			resource := resourceSpan.Resource()
 			ecs.TranslateResourceMetadata(resource)
 			routing.EncodeDataStream(resource, "traces")
-
+			// We expect that the following resource attributes are already present, added by the receiver.
+			p.enricher.Config.Resource.AgentName.Enabled = false
+			p.enricher.Config.Resource.AgentVersion.Enabled = false
+			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
 
