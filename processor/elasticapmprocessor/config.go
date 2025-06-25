@@ -17,7 +17,7 @@
 
 package elastictraceprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
 
-import "github.com/elastic/opentelemetry-lib/enrichments/trace/config"
+import "github.com/elastic/opentelemetry-lib/enrichments/config"
 
 type Config struct {
 	config.Config `mapstructure:",squash"`
