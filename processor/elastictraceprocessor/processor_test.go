@@ -61,7 +61,7 @@ func TestProcessor(t *testing.T) {
 			tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
 
 			require.NoError(t, err)
-			require.IsType(t, &Processor{}, tp)
+			require.IsType(t, &TraceProcessor{}, tp)
 
 			dir := filepath.Join("testdata", tc)
 			inputTraces, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
