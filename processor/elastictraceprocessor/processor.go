@@ -20,38 +20,94 @@ package elastictraceprocessor // import "github.com/elastic/opentelemetry-collec
 import (
 	"context"
 
-	"github.com/elastic/opentelemetry-lib/enrichments/trace"
+	"github.com/elastic/opentelemetry-lib/enrichments"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 )
 
-var _ processor.Traces = (*Processor)(nil)
+var _ processor.Traces = (*TraceProcessor)(nil)
+var _ processor.Metrics = (*MetricProcessor)(nil)
+var _ processor.Logs = (*LogProcessor)(nil)
 
-type Processor struct {
+type TraceProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
 	next     consumer.Traces
-	enricher *trace.Enricher
+	enricher *enrichments.Enricher
 	logger   *zap.Logger
 }
 
-func newProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *Processor {
-	return &Processor{
+func newTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
+	return &TraceProcessor{
 		next:     next,
 		logger:   logger,
-		enricher: trace.NewEnricher(cfg.Config),
+		enricher: enrichments.NewEnricher(cfg.Config),
 	}
 }
 
-func (p *Processor) Capabilities() consumer.Capabilities {
+func (p *TraceProcessor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: true}
 }
 
-func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	p.enricher.Enrich(td)
+type LogProcessor struct {
+	component.StartFunc
+	component.ShutdownFunc
+
+	next     consumer.Logs
+	enricher *enrichments.Enricher
+	logger   *zap.Logger
+}
+
+func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
+	return &LogProcessor{
+		next:     next,
+		logger:   logger,
+		enricher: enrichments.NewEnricher(cfg.Config),
+	}
+}
+
+func (p *LogProcessor) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: true}
+}
+
+type MetricProcessor struct {
+	component.StartFunc
+	component.ShutdownFunc
+
+	next     consumer.Metrics
+	enricher *enrichments.Enricher
+	logger   *zap.Logger
+}
+
+func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
+	return &MetricProcessor{
+		next:     next,
+		logger:   logger,
+		enricher: enrichments.NewEnricher(cfg.Config),
+	}
+}
+
+func (p *MetricProcessor) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: true}
+}
+
+func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+	p.enricher.EnrichTraces(td)
 	return p.next.ConsumeTraces(ctx, td)
+}
+
+func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	p.enricher.EnrichMetrics(md)
+	return p.next.ConsumeMetrics(ctx, md)
+}
+
+func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	p.enricher.EnrichLogs(ld)
+	return p.next.ConsumeLogs(ctx, ld)
 }
