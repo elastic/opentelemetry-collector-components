@@ -43,7 +43,7 @@ By default, cardinality for aggregated metrics will be limited.
 Each limit defines a `max_cardinality` and a list of `attributes` that will be added to the overflow metric.
 There are four limits that can be configured: 
 - `elasticapm::aggregation::resource_limit`: configures the max cardinality of resources
-- `elasticapm::aggregation::scop_limit`: configures the max cardinality of scopes within a resource
+- `elasticapm::aggregation::scope_limit`: configures the max cardinality of scopes within a resource
 - `elasticapm::aggregation::metric_limit`: configures the max cardinality of metrics within a scope
 - `elasticapm::aggregation::datapoint_limit`: configures the max cardinality of metrics within a scope
 
