@@ -24,10 +24,12 @@ import (
 )
 
 var (
-	Type      = component.MustNewType("elastictrace")
-	ScopeName = "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
+	Type      = component.MustNewType("elasticapm")
+	ScopeName = "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
 )
 
 const (
-	TracesStability = component.StabilityLevelAlpha
+	TracesStability  = component.StabilityLevelAlpha
+	MetricsStability = component.StabilityLevelAlpha
+	LogsStability    = component.StabilityLevelAlpha
 )

@@ -37,7 +37,7 @@ import (
 	"go.opentelemetry.io/collector/processor/processortest"
 )
 
-var typ = component.MustNewType("elastictrace")
+var typ = component.MustNewType("elasticapm")
 
 func TestComponentFactoryType(t *testing.T) {
 	require.Equal(t, typ, NewFactory().Type())
@@ -54,6 +54,20 @@ func TestComponentLifecycle(t *testing.T) {
 		createFn func(ctx context.Context, set processor.Settings, cfg component.Config) (component.Component, error)
 		name     string
 	}{
+
+		{
+			name: "logs",
+			createFn: func(ctx context.Context, set processor.Settings, cfg component.Config) (component.Component, error) {
+				return factory.CreateLogs(ctx, set, cfg, consumertest.NewNop())
+			},
+		},
+
+		{
+			name: "metrics",
+			createFn: func(ctx context.Context, set processor.Settings, cfg component.Config) (component.Component, error) {
+				return factory.CreateMetrics(ctx, set, cfg, consumertest.NewNop())
+			},
+		},
 
 		{
 			name: "traces",
