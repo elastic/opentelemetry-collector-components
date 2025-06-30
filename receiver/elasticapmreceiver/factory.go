@@ -58,7 +58,7 @@ func createDefaultConfig() component.Config {
 	defaultESClientConfig.Endpoint = defaultESEndpoint
 
 	// TODO: Remove this once we have a proper way to configure TLS
-	defaultServerConfig.TLSSetting = nil
+	defaultServerConfig.TLS = nil
 
 	return &Config{
 		ServerConfig: defaultServerConfig,
