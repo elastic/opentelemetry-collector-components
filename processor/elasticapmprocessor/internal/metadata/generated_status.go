@@ -30,6 +30,4 @@ var (
 
 const (
 	TracesStability = component.StabilityLevelAlpha
-	LogsStability = component.StabilityLevelAlpha
-	MetricsStability = component.StabilityLevelAlpha
 )
