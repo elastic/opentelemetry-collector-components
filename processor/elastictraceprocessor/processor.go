@@ -20,7 +20,10 @@ package elastictraceprocessor // import "github.com/elastic/opentelemetry-collec
 import (
 	"context"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/ecs"
+	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/routing"
 	"github.com/elastic/opentelemetry-lib/enrichments/trace"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -52,6 +55,34 @@ func (p *Processor) Capabilities() consumer.Capabilities {
 }
 
 func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+	if isECS(ctx) {
+		resourceSpans := td.ResourceSpans()
+		for i := 0; i < resourceSpans.Len(); i++ {
+			resourceSpan := resourceSpans.At(i)
+			resource := resourceSpan.Resource()
+			ecs.TranslateResourceMetadata(resource)
+			routing.EncodeDataStream(resource, "traces")
+			// We expect that the following resource attributes are already present, added by the receiver.
+			p.enricher.Config.Resource.AgentName.Enabled = false
+			p.enricher.Config.Resource.AgentVersion.Enabled = false
+			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
+		}
+	}
+
 	p.enricher.Enrich(td)
+
 	return p.next.ConsumeTraces(ctx, td)
+}
+
+func isECS(ctx context.Context) bool {
+	clientCtx := client.FromContext(ctx)
+	mappingMode := getMetadataValue(clientCtx)
+	return mappingMode == "ecs"
+}
+
+func getMetadataValue(info client.Info) string {
+	if values := info.Metadata.Get("x-elastic-mapping-mode"); len(values) > 0 {
+		return values[0]
+	}
+	return ""
 }

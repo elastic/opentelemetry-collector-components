@@ -12,6 +12,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.125.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
+	go.opentelemetry.io/collector/client v1.35.0
 	go.opentelemetry.io/collector/component v1.35.0
 	go.opentelemetry.io/collector/component/componentstatus v0.129.0
 	go.opentelemetry.io/collector/component/componenttest v0.129.0
@@ -100,7 +101,6 @@ require (
 	go.elastic.co/apm/v2 v2.6.3 // indirect
 	go.elastic.co/fastjson v1.4.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/collector/client v1.35.0 // indirect
 	go.opentelemetry.io/collector/config/configauth v0.129.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.35.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v0.129.0 // indirect

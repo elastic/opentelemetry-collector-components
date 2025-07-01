@@ -28,6 +28,8 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/collector/client"
+
 	"github.com/cespare/xxhash"
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
@@ -99,8 +101,9 @@ func newElasticAPMReceiver(fetcher agentCfgFetcherFactory, cfg *Config, set rece
 // Start runs an HTTP server for receiving data from Elastic APM agents.
 func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) error {
 	ctx, r.cancelFn = context.WithCancel(ctx)
-	if err := r.startHTTPServer(ctx, host); err != nil {
-		return errors.Join(err, r.Shutdown(ctx))
+	ecsCtx := withECSMappingMode(ctx)
+	if err := r.startHTTPServer(ecsCtx, host); err != nil {
+		return errors.Join(err, r.Shutdown(ecsCtx))
 	}
 	return nil
 }
@@ -108,7 +111,7 @@ func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) err
 func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	httpMux := http.NewServeMux()
 
-	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler())
+	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(ctx))
 	httpMux.HandleFunc(agentConfigPath, r.newElasticAPMConfigsHandler(ctx, host))
 	// TODO rum v2, v3
 
@@ -154,7 +157,8 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errMsg string, statusC
 	// TODO
 }
 
-func (r *elasticAPMReceiver) newElasticAPMEventsHandler() http.HandlerFunc {
+func (r *elasticAPMReceiver) newElasticAPMEventsHandler(ctx context.Context) http.HandlerFunc {
+
 	var (
 		// TODO make semaphore size configurable and/or find a different way
 		// to limit concurrency that fits better with OTel Collector.
@@ -174,16 +178,16 @@ func (r *elasticAPMReceiver) newElasticAPMEventsHandler() http.HandlerFunc {
 		Semaphore:    sem,
 	})
 
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
 		statusCode := http.StatusAccepted
 
 		var elasticapmResult elasticapm.Result
 		baseEvent := &modelpb.APMEvent{}
 		baseEvent.Event = &modelpb.Event{}
 		streamErr := elasticapmProcessor.HandleStream(
-			r.Context(),
+			ctx,
 			baseEvent,
-			r.Body,
+			req.Body,
 			batchSize,
 			batchProcessor,
 			&elasticapmResult,
@@ -255,19 +259,19 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 		}
 	}
 	var errs []error
-	if numRecords := ld.LogRecordCount(); numRecords != 0 {
+	if numRecords := ld.LogRecordCount(); numRecords != 0 && r.nextLogs != nil {
 		ctx := r.obsreport.StartLogsOp(ctx)
 		err := r.nextLogs.ConsumeLogs(ctx, ld)
 		r.obsreport.EndLogsOp(ctx, dataFormatElasticAPM, numRecords, err)
 		errs = append(errs, err)
 	}
-	if numDataPoints := md.DataPointCount(); numDataPoints != 0 {
+	if numDataPoints := md.DataPointCount(); numDataPoints != 0 && r.nextMetrics != nil {
 		ctx := r.obsreport.StartMetricsOp(ctx)
 		err := r.nextMetrics.ConsumeMetrics(ctx, md)
 		r.obsreport.EndMetricsOp(ctx, dataFormatElasticAPM, numDataPoints, err)
 		errs = append(errs, err)
 	}
-	if numSpans := td.SpanCount(); numSpans != 0 {
+	if numSpans := td.SpanCount(); numSpans != 0 && r.nextTraces != nil {
 		ctx := r.obsreport.StartTracesOp(ctx)
 		err := r.nextTraces.ConsumeTraces(ctx, td)
 		r.obsreport.EndTracesOp(ctx, dataFormatElasticAPM, numSpans, err)
@@ -445,4 +449,16 @@ func (r *elasticAPMReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelp
 type jsonError struct {
 	Message  string `json:"message"`
 	Document string `json:"document,omitempty"`
+}
+
+func withECSMappingMode(ctx context.Context) context.Context {
+	return client.NewContext(ctx, withMappingMode(client.FromContext(ctx), "ecs"))
+}
+
+func withMappingMode(info client.Info, mode string) client.Info {
+	return client.Info{
+		Addr:     info.Addr,
+		Auth:     info.Auth,
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {mode}}),
+	}
 }
