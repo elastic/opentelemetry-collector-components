@@ -41,7 +41,7 @@ func TestVerifyConnection(t *testing.T) {
 
 	settings := componenttest.NewNopTelemetrySettings()
 	httpClientConfig := confighttp.NewDefaultClientConfig()
-	httpClientConfig.Auth = &configauth.Authentication{
+	httpClientConfig.Auth = &configauth.Config{
 		AuthenticatorID: component.NewID(metadata.Type),
 	}
 

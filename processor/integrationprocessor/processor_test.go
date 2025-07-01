@@ -52,7 +52,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "empty pipeline",
 			setup: func(config *Config) {
 				config.Name = "empty"
-				config.Pipeline = pipeline.MustNewID("logs")
+				config.Pipeline = pipeline.NewID(pipeline.SignalLogs)
 			},
 			inputFile:    "logs.yaml",
 			expectedFile: "logs-no-processing.yaml",
@@ -68,7 +68,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "undefined pipeline",
 			setup: func(config *Config) {
 				config.Name = "empty"
-				config.Pipeline = pipeline.MustNewID("traces")
+				config.Pipeline = pipeline.NewID(pipeline.SignalTraces)
 			},
 			startErr: `component "traces" not found`,
 		},
@@ -77,7 +77,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "use variable",
 			setup: func(config *Config) {
 				config.Name = "addattribute"
-				config.Pipeline = pipeline.MustNewID("logs")
+				config.Pipeline = pipeline.NewID(pipeline.SignalLogs)
 				config.Parameters = map[string]any{
 					"resource": "test",
 				}
@@ -89,7 +89,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "missing variable",
 			setup: func(config *Config) {
 				config.Name = "addattribute"
-				config.Pipeline = pipeline.MustNewID("logs")
+				config.Pipeline = pipeline.NewID(pipeline.SignalLogs)
 			},
 			startErr: `variable "resource" not found`,
 		},
@@ -98,7 +98,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "correct order in multiple processors",
 			setup: func(config *Config) {
 				config.Name = "multipleprocessors"
-				config.Pipeline = pipeline.MustNewID("logs")
+				config.Pipeline = pipeline.NewID(pipeline.SignalLogs)
 				config.Parameters = map[string]any{
 					"resource": "test",
 				}
