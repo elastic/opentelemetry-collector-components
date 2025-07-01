@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"testing"
 	"time"
 
@@ -138,6 +139,16 @@ func serveEmbeddedConf() (string, *http.Server, error) {
 	return fmt.Sprintf("http://%s/", listener.Addr().String()), s, nil
 }
 
+// getBenchCount returns the value of -test.count flag or 1 if not set
+func getBenchCount() int {
+	if countFlag := flag.Lookup("test.count"); countFlag != nil {
+		if n, err := strconv.Atoi(countFlag.Value.String()); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 1
+}
+
 func main() {
 	testing.Init()
 	if err := Init(); err != nil {
@@ -187,33 +198,43 @@ func main() {
 		}
 	}
 
+	// Get the benchmark count from -test.count flag
+	count := getBenchCount()
 	for _, concurrency := range Config.ConcurrencyList {
 		for _, signal := range getSignals() {
 			for _, exporter := range getExporters() {
 				benchName := fullBenchmarkName(signal, exporter, concurrency)
-				t := time.Now().UTC()
-				result := runBench(ctx, signal, exporter, concurrency, func(b *testing.B) {
-					if fetcher == nil {
+				for i := 0; i < count; i++ {
+					// Format display name with iteration number if running multiple times
+					displayName := benchName
+					if count > 1 {
+						displayName = fmt.Sprintf("%s-%d", benchName, i+1)
+					}
+
+					t := time.Now().UTC()
+					result := runBench(ctx, signal, exporter, concurrency, func(b *testing.B) {
+						if fetcher == nil {
+							return
+						}
+						// after each run wait a bit to capture late metric arrivals
+						time.Sleep(10 * time.Second)
+						stats, err := fetcher.FetchStats(ctx, t, time.Now().UTC())
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
+							return
+						}
+						for unit, n := range stats {
+							b.ReportMetric(n, unit)
+						}
+					})
+					// write benchmark result to stdout, as stderr may be cluttered with collector logs
+					fmt.Printf("%-*s\t%s\n", maxLen, displayName, result.String())
+					// break early if context was canceled
+					select {
+					case <-ctx.Done():
 						return
+					default:
 					}
-					// after each run wait a bit to capture late metric arrivals
-					time.Sleep(10 * time.Second)
-					stats, err := fetcher.FetchStats(ctx, t, time.Now().UTC())
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error while fetching remote stats %s", err)
-						return
-					}
-					for unit, n := range stats {
-						b.ReportMetric(n, unit)
-					}
-				})
-				// write benchmark result to stdout, as stderr may be cluttered with collector logs
-				fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
-				// break early if context was canceled
-				select {
-				case <-ctx.Done():
-					return
-				default:
 				}
 			}
 		}
