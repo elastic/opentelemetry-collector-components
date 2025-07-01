@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -133,8 +134,17 @@ func Init() error {
 
 	// `concurrency` is similar to `agents` config in apmbench
 	// Each value passed into `concurrency` list will be used as loadgenreceiver `concurrency` config
-	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with",
+	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with. Use 'auto' to set concurrency based on GOMAXPROCS",
 		func(input string) error {
+			// Handle 'auto' value specially
+			if input == "auto" {
+				// Use the current GOMAXPROCS value
+				n := runtime.GOMAXPROCS(0)
+				fmt.Printf("using GOMAXPROCS value %d for concurrency\n", n)
+				Config.ConcurrencyList = append(Config.ConcurrencyList, n)
+				return nil
+			}
+
 			var concurrencyList []int
 			for _, val := range strings.Split(input, ",") {
 				val = strings.TrimSpace(val)
