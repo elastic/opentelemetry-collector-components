@@ -24,7 +24,7 @@ import (
 
 	"go.opentelemetry.io/collector/client"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
