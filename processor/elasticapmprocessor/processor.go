@@ -15,13 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
+package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
 
 import (
 	"context"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/ecs"
-	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/routing"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 	"github.com/elastic/opentelemetry-lib/enrichments"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
@@ -58,7 +58,7 @@ func (p *TraceProcessor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: true}
 }
 
-func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	if isECS(ctx) {
 		resourceSpans := td.ResourceSpans()
 		for i := 0; i < resourceSpans.Len(); i++ {
@@ -73,7 +73,7 @@ func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 		}
 	}
 
-	p.enricher.Enrich(td)
+	p.enricher.EnrichTraces(td)
 
 	return p.next.ConsumeTraces(ctx, td)
 }

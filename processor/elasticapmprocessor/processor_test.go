@@ -91,7 +91,7 @@ func TestProcessorECS(t *testing.T) {
 	tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
 
 	require.NoError(t, err)
-	require.IsType(t, &Processor{}, tp)
+	require.IsType(t, &TraceProcessor{}, tp)
 
 	inputTraces, err := golden.ReadTraces("testdata/ecs/elastic_span_db/input.yaml")
 	require.NoError(t, err)
