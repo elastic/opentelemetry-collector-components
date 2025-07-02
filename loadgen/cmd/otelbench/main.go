@@ -205,12 +205,6 @@ func main() {
 			for _, exporter := range getExporters() {
 				benchName := fullBenchmarkName(signal, exporter, concurrency)
 				for i := 0; i < count; i++ {
-					// Format display name with iteration number if running multiple times
-					displayName := benchName
-					if count > 1 {
-						displayName = fmt.Sprintf("%s-%d", benchName, i+1)
-					}
-
 					t := time.Now().UTC()
 					result := runBench(ctx, signal, exporter, concurrency, func(b *testing.B) {
 						if fetcher == nil {
@@ -228,7 +222,7 @@ func main() {
 						}
 					})
 					// write benchmark result to stdout, as stderr may be cluttered with collector logs
-					fmt.Printf("%-*s\t%s\n", maxLen, displayName, result.String())
+					fmt.Printf("%-*s\t%s\n", maxLen, benchName, result.String())
 					// break early if context was canceled
 					select {
 					case <-ctx.Done():
