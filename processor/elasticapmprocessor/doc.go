@@ -15,10 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elastictraceprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
+//go:generate mdatagen metadata.yaml
 
-import "github.com/elastic/opentelemetry-lib/enrichments/trace/config"
-
-type Config struct {
-	config.Config `mapstructure:",squash"`
-}
+// Package elasticapmprocessor enriches the traces with Elastic specific attributes.
+package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"

@@ -15,7 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//go:generate mdatagen metadata.yaml
+package routing // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 
-// Package elastictraceprocessor enriches the traces with Elastic specific attributes.
-package elastictraceprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
+import "go.opentelemetry.io/collector/pdata/pcommon"
+
+func EncodeDataStream(resource pcommon.Resource, dataStreamType string) {
+	attributes := resource.Attributes()
+
+	attributes.PutStr("data_stream.type", dataStreamType)
+	attributes.PutStr("data_stream.dataset", "apm")
+	attributes.PutStr("data_stream.namespace", "default") //TODO: make this configurable
+}

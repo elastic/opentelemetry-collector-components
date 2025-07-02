@@ -124,9 +124,7 @@ func buildQuery(r *http.Request) (agentcfg.Query, error) {
 			},
 		}
 	default:
-		if err := fmt.Errorf("%s: %s", msgMethodUnsupported, r.Method); err != nil {
-			return query, err
-		}
+		return query, fmt.Errorf("%s: %s", msgMethodUnsupported, r.Method)
 	}
 	if query.Service.Name == "" {
 		return query, errors.New(agentcfg.ServiceName + " is required")

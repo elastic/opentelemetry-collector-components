@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elastictraceprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
+package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
 
 import (
 	"context"
@@ -24,7 +24,7 @@ import (
 
 	"go.opentelemetry.io/collector/client"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
@@ -61,7 +61,7 @@ func TestProcessor(t *testing.T) {
 			tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
 
 			require.NoError(t, err)
-			require.IsType(t, &Processor{}, tp)
+			require.IsType(t, &TraceProcessor{}, tp)
 
 			dir := filepath.Join("testdata", tc)
 			inputTraces, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
@@ -91,7 +91,7 @@ func TestProcessorECS(t *testing.T) {
 	tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
 
 	require.NoError(t, err)
-	require.IsType(t, &Processor{}, tp)
+	require.IsType(t, &TraceProcessor{}, tp)
 
 	inputTraces, err := golden.ReadTraces("testdata/ecs/elastic_span_db/input.yaml")
 	require.NoError(t, err)
