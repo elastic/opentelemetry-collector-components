@@ -50,7 +50,7 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.129.0
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.129.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.15.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.6.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.6.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.6.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.2.0
@@ -74,7 +74,7 @@ providers:
 replaces:
   - github.com/elastic/opentelemetry-collector-components/pkg/integrations => ../pkg/integrations
   - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor => ../processor/elasticinframetricsprocessor
-  - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
+  - github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor => ../processor/elasticapmprocessor
   - github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor => ../processor/integrationprocessor
   - github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor => ../processor/lsmintervalprocessor
   - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ../receiver/loadgenreceiver
