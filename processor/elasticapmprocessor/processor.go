@@ -66,7 +66,6 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 			resource := resourceSpan.Resource()
 			ecs.TranslateResourceMetadata(resource)
 			routing.EncodeDataStream(resource, "traces")
-			// We expect that the following resource attributes are already present, added by the receiver.
 			p.enricher.Config.Resource.AgentName.Enabled = false
 			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
@@ -134,11 +133,35 @@ func (p *MetricProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	if isECS(ctx) {
+		resourceMetrics := md.ResourceMetrics()
+		for i := 0; i < resourceMetrics.Len(); i++ {
+			resourceMetric := resourceMetrics.At(i)
+			resource := resourceMetric.Resource()
+			ecs.TranslateResourceMetadata(resource)
+			routing.EncodeDataStream(resource, "metrics")
+			p.enricher.Config.Resource.AgentName.Enabled = false
+			p.enricher.Config.Resource.AgentVersion.Enabled = false
+			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
+		}
+	}
 	p.enricher.EnrichMetrics(md)
 	return p.next.ConsumeMetrics(ctx, md)
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	if isECS(ctx) {
+		resourceLogs := ld.ResourceLogs()
+		for i := 0; i < resourceLogs.Len(); i++ {
+			resourceLog := resourceLogs.At(i)
+			resource := resourceLog.Resource()
+			ecs.TranslateResourceMetadata(resource)
+			routing.EncodeDataStream(resource, "logs")
+			p.enricher.Config.Resource.AgentName.Enabled = false
+			p.enricher.Config.Resource.AgentVersion.Enabled = false
+			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
+		}
+	}
 	p.enricher.EnrichLogs(ld)
 	return p.next.ConsumeLogs(ctx, ld)
 }
