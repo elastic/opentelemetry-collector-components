@@ -134,23 +134,23 @@ func Init() error {
 
 	// `concurrency` is similar to `agents` config in apmbench
 	// Each value passed into `concurrency` list will be used as loadgenreceiver `concurrency` config
-	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with. Use 'auto' to set concurrency based on GOMAXPROCS",
+	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with. Use 'auto' to set concurrency based on available CPU cores(GOMAXPROCS)",
 		func(input string) error {
-			// Handle 'auto' value specially
-			if input == "auto" {
-				// Use the current GOMAXPROCS value
-				n := runtime.GOMAXPROCS(0)
-				fmt.Printf("using GOMAXPROCS value %d for concurrency\n", n)
-				Config.ConcurrencyList = append(Config.ConcurrencyList, n)
-				return nil
-			}
-
 			var concurrencyList []int
 			for _, val := range strings.Split(input, ",") {
 				val = strings.TrimSpace(val)
 				if val == "" {
 					continue
 				}
+
+				// Handle 'auto' by using GOMAXPROCS
+				if val == "auto" {
+					n := runtime.GOMAXPROCS(0)
+					fmt.Fprintf(os.Stderr, "using GOMAXPROCS value %d for concurrency\n", n)
+					concurrencyList = append(concurrencyList, n)
+					continue
+				}
+
 				n, err := strconv.Atoi(val)
 				if err != nil || n <= 0 {
 					return fmt.Errorf("invalid value %q for -concurrency", val)

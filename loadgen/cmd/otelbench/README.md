@@ -9,7 +9,7 @@ Usage of ./otelbench:
   -api-key string
         API key for target server
   -concurrency list
-        comma-separated list of concurrency (number of simulated agents) to run each benchmark with
+        comma-separated list of concurrency (number of simulated agents) to run each benchmark with. Use 'auto' to set concurrency based on available CPU cores (GOMAXPROCS), or 'auto:N' to use N% of available cores (e.g., 'auto:50' for 50%)
   -config string
         path to collector config yaml. If empty, the config.yaml embedded in the binary will be used.
   -endpoint value
@@ -169,14 +169,14 @@ If you want to contribute to any go files, you need to create a changelog entry:
 ## Create new release
 
 There are two ways you can trigger a new release:
+
 - Manually, by triggering the GH actions workflow `bump-otelbench`.
 - Automatically, by updating the VERSION field in the Makefile.
 
-The `bump-otelbench` workflow will check the new version increased in regards to the previous version. 
+The `bump-otelbench` workflow will check the new version increased in regards to the previous version.
 If it did, then a new PR will be opened, updating the CHANGELOG file and removing
 the changelog fragments.
 
 Once this PR has been merged, a new workflow, `release-otelbench` will be triggered. The `otelbench` image
 is built and pushed to `docker.elastic.co/observability-ci/otelbench` registry. The new image should have
 as a tag the newest `otelbench` version.
-
