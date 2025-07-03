@@ -9,7 +9,10 @@ Usage of ./otelbench:
   -api-key string
         API key for target server
   -concurrency list
-        comma-separated list of concurrency (number of simulated agents) to run each benchmark with. Use 'auto' to set concurrency based on available CPU cores (GOMAXPROCS), or 'auto:N' to use N% of available cores (e.g., 'auto:50' for 50%)
+        comma-separated list of concurrency (number of simulated agents) to run each benchmark with. Supports:
+        - numeric values (e.g., "1,4,8")
+        - "auto" to use available CPU cores (GOMAXPROCS)
+        - "auto:Nx" for multipliers (e.g., "auto:2x" for double, "auto:0.5x" for half)
   -config string
         path to collector config yaml. If empty, the config.yaml embedded in the binary will be used.
   -endpoint value
