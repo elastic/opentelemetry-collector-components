@@ -49,23 +49,36 @@ func NewFactory() connector.Factory {
 
 // createDefaultConfig creates the default configuration.
 func createDefaultConfig() component.Config {
+	defaultOverflowConfig := lsmconfig.OverflowConfig{
+		Attributes: []lsmconfig.Attribute{
+			{
+				Key:   "overflow",
+				Value: true,
+			},
+			{
+				Key:   "component",
+				Value: "connector/elasticapmconnector",
+			},
+		},
+	}
+
 	return &Config{
 		Aggregation: &AggregationConfig{
 			ResourceLimit: lsmconfig.LimitConfig{
 				MaxCardinality: 8000,
-				Overflow:       lsmconfig.OverflowConfig{},
+				Overflow:       defaultOverflowConfig,
 			},
 			ScopeLimit: lsmconfig.LimitConfig{
 				MaxCardinality: 4000,
-				Overflow:       lsmconfig.OverflowConfig{},
+				Overflow:       defaultOverflowConfig,
 			},
 			MetricLimit: lsmconfig.LimitConfig{
 				MaxCardinality: 4000,
-				Overflow:       lsmconfig.OverflowConfig{},
+				Overflow:       defaultOverflowConfig,
 			},
 			DatapointLimit: lsmconfig.LimitConfig{
 				MaxCardinality: 4000,
-				Overflow:       lsmconfig.OverflowConfig{},
+				Overflow:       defaultOverflowConfig,
 			},
 		},
 	}
