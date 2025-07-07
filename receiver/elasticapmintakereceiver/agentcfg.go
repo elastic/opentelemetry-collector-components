@@ -43,7 +43,7 @@ const (
 	msgMethodUnsupported = "method not supported"
 )
 
-func (r *elasticapmintakereceiver) newElasticAPMConfigsHandler(ctx context.Context, host component.Host) http.HandlerFunc {
+func (r *elasticAPMIntakeReceiver) newElasticAPMConfigsHandler(ctx context.Context, host component.Host) http.HandlerFunc {
 	mapBodyError := func(err string) map[string]string {
 		return map[string]string{"error": err}
 	}

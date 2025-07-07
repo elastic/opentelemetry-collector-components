@@ -57,7 +57,7 @@ func (f *fetcherMock) Fetch(ctx context.Context, query agentcfg.Query) (agentcfg
 
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	rcvr, err := newelasticapmintakereceiver(func(ctx context.Context, h component.Host) (agentcfg.Fetcher, error) {
+	rcvr, err := newElasticAPMIntakeReceiver(func(ctx context.Context, h component.Host) (agentcfg.Fetcher, error) {
 		return nil, nil
 	}, &Config{
 		ServerConfig: confighttp.ServerConfig{
@@ -124,7 +124,7 @@ func TestAgentCfgHandlerInvalidFetcher(t *testing.T) {
 	}
 
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	rcvr, err := newelasticapmintakereceiver(invalidFetcher, &Config{
+	rcvr, err := newElasticAPMIntakeReceiver(invalidFetcher, &Config{
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint: testEndpoint,
 		},
@@ -298,7 +298,7 @@ func TestAgentCfgHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
-			rcvr, err := newelasticapmintakereceiver(tt.fetcher, &Config{
+			rcvr, err := newElasticAPMIntakeReceiver(tt.fetcher, &Config{
 				ServerConfig: confighttp.ServerConfig{
 					Endpoint: testEndpoint,
 				},

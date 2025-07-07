@@ -79,8 +79,8 @@ func createLogsReceiver(
 	consumer consumer.Logs,
 ) (receiver.Logs, error) {
 	oCfg := cfg.(*Config)
-	r, err := receivers.LoadOrStore(oCfg, func() (*elasticapmintakereceiver, error) {
-		return newelasticapmintakereceiver(esFetcherFactory(oCfg, set), oCfg, set)
+	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMIntakeReceiver, error) {
+		return newElasticAPMIntakeReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -121,8 +121,8 @@ func createMetricsReceiver(
 	consumer consumer.Metrics,
 ) (receiver.Metrics, error) {
 	oCfg := cfg.(*Config)
-	r, err := receivers.LoadOrStore(oCfg, func() (*elasticapmintakereceiver, error) {
-		return newelasticapmintakereceiver(esFetcherFactory(oCfg, set), oCfg, set)
+	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMIntakeReceiver, error) {
+		return newElasticAPMIntakeReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -139,8 +139,8 @@ func createTracesReceiver(
 	consumer consumer.Traces,
 ) (receiver.Traces, error) {
 	oCfg := cfg.(*Config)
-	r, err := receivers.LoadOrStore(oCfg, func() (*elasticapmintakereceiver, error) {
-		return newelasticapmintakereceiver(esFetcherFactory(oCfg, set), oCfg, set)
+	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMIntakeReceiver, error) {
+		return newElasticAPMIntakeReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -149,4 +149,4 @@ func createTracesReceiver(
 	return r, nil
 }
 
-var receivers = sharedcomponent.NewMap[*Config, *elasticapmintakereceiver]()
+var receivers = sharedcomponent.NewMap[*Config, *elasticAPMIntakeReceiver]()

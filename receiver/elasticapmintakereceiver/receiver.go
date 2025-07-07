@@ -60,8 +60,8 @@ const (
 
 type agentCfgFetcherFactory = func(context.Context, component.Host) (agentcfg.Fetcher, error)
 
-// elasticapmintakereceiver implements support for receiving Logs, Metrics, and Traces from Elastic APM agents.
-type elasticapmintakereceiver struct {
+// elasticAPMIntakeReceiver implements support for receiving Logs, Metrics, and Traces from Elastic APM agents.
+type elasticAPMIntakeReceiver struct {
 	cfg       *Config
 	obsreport *receiverhelper.ObsReport
 	settings  receiver.Settings
@@ -77,10 +77,10 @@ type elasticapmintakereceiver struct {
 	cancelFn       context.CancelFunc
 }
 
-// newelasticapmintakereceiver just creates the OpenTelemetry receiver services. It is the caller's
+// newElasticAPMIntakeReceiver just creates the OpenTelemetry receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods to end it.
-func newelasticapmintakereceiver(fetcher agentCfgFetcherFactory, cfg *Config, set receiver.Settings) (*elasticapmintakereceiver, error) {
+func newElasticAPMIntakeReceiver(fetcher agentCfgFetcherFactory, cfg *Config, set receiver.Settings) (*elasticAPMIntakeReceiver, error) {
 	obsreport, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{
 		ReceiverID:             set.ID,
 		Transport:              "http",
@@ -90,7 +90,7 @@ func newelasticapmintakereceiver(fetcher agentCfgFetcherFactory, cfg *Config, se
 		return nil, err
 	}
 
-	return &elasticapmintakereceiver{
+	return &elasticAPMIntakeReceiver{
 		cfg:            cfg,
 		settings:       set,
 		obsreport:      obsreport,
@@ -99,7 +99,7 @@ func newelasticapmintakereceiver(fetcher agentCfgFetcherFactory, cfg *Config, se
 }
 
 // Start runs an HTTP server for receiving data from Elastic APM agents.
-func (r *elasticapmintakereceiver) Start(ctx context.Context, host component.Host) error {
+func (r *elasticAPMIntakeReceiver) Start(ctx context.Context, host component.Host) error {
 	ctx, r.cancelFn = context.WithCancel(ctx)
 	ecsCtx := withECSMappingMode(ctx)
 	if err := r.startHTTPServer(ecsCtx, host); err != nil {
@@ -108,7 +108,7 @@ func (r *elasticapmintakereceiver) Start(ctx context.Context, host component.Hos
 	return nil
 }
 
-func (r *elasticapmintakereceiver) startHTTPServer(ctx context.Context, host component.Host) error {
+func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	httpMux := http.NewServeMux()
 
 	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(ctx))
@@ -141,7 +141,7 @@ func (r *elasticapmintakereceiver) startHTTPServer(ctx context.Context, host com
 }
 
 // Shutdown is a method to turn off receiving.
-func (r *elasticapmintakereceiver) Shutdown(ctx context.Context) error {
+func (r *elasticAPMIntakeReceiver) Shutdown(ctx context.Context) error {
 	var err error
 	if r.cancelFn != nil {
 		r.cancelFn()
@@ -157,7 +157,7 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errMsg string, statusC
 	// TODO
 }
 
-func (r *elasticapmintakereceiver) newElasticAPMEventsHandler(ctx context.Context) http.HandlerFunc {
+func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctx context.Context) http.HandlerFunc {
 
 	var (
 		// TODO make semaphore size configurable and/or find a different way
@@ -209,7 +209,7 @@ func (r *elasticapmintakereceiver) newElasticAPMEventsHandler(ctx context.Contex
 	}
 }
 
-func (r *elasticapmintakereceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
+func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
 	ld := plog.NewLogs()
 	md := pmetric.NewMetrics()
 	td := ptrace.NewTraces()
@@ -280,7 +280,7 @@ func (r *elasticapmintakereceiver) processBatch(ctx context.Context, batch *mode
 	return errors.Join(errs...)
 }
 
-func (r *elasticapmintakereceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) error {
+func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) error {
 
 	metricset := event.GetMetricset()
 
@@ -327,13 +327,13 @@ type otelDataPoint interface {
 	Attributes() pcommon.Map
 }
 
-func (r *elasticapmintakereceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestamp time.Time) {
+func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestamp time.Time) {
 	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 }
 
-func (r *elasticapmintakereceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) {
+func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) {
 	sm := rm.ScopeMetrics().AppendEmpty()
 	sum_metric := sm.Metrics().AppendEmpty()
 	sum_metric.SetName("span.self_time.sum.us")
@@ -372,7 +372,7 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	return dp
 }
 
-func (r *elasticapmintakereceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) {
+func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) {
 	sl := rl.ScopeLogs().AppendEmpty()
 	l := sl.LogRecords().AppendEmpty()
 
@@ -386,7 +386,7 @@ func (r *elasticapmintakereceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 	}
 }
 
-func (r *elasticapmintakereceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestamp time.Time) ptrace.Span {
+func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestamp time.Time) ptrace.Span {
 	ss := rs.ScopeSpans().AppendEmpty()
 	s := ss.Spans().AppendEmpty()
 
@@ -398,7 +398,7 @@ func (r *elasticapmintakereceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	return s
 }
 
-func (r *elasticapmintakereceiver) elasticSpanLinksToOTelSpanLinks(event *modelpb.APMEvent, s ptrace.Span) {
+func (r *elasticAPMIntakeReceiver) elasticSpanLinksToOTelSpanLinks(event *modelpb.APMEvent, s ptrace.Span) {
 	if event.Span != nil && event.Span.Links != nil {
 		for _, link := range event.Span.Links {
 			ptraceSpanLink := s.Links().AppendEmpty()
@@ -419,7 +419,7 @@ func (r *elasticapmintakereceiver) elasticSpanLinksToOTelSpanLinks(event *modelp
 	}
 }
 
-func (r *elasticapmintakereceiver) elasticTransactionToOtelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
+func (r *elasticAPMIntakeReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
 	s.SetName(event.Transaction.Name)
 
 	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
@@ -434,7 +434,7 @@ func (r *elasticapmintakereceiver) elasticTransactionToOtelSpan(s *ptrace.Span, 
 	}
 }
 
-func (r *elasticapmintakereceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
+func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
 	span := event.GetSpan()
 	s.SetName(span.GetName())
 
