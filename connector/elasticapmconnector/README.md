@@ -45,7 +45,7 @@ There are four limits that can be configured:
 - `elasticapm::aggregation::resource_limit`: configures the max cardinality of resources
 - `elasticapm::aggregation::scope_limit`: configures the max cardinality of scopes within a resource
 - `elasticapm::aggregation::metric_limit`: configures the max cardinality of metrics within a scope
-- `elasticapm::aggregation::datapoint_limit`: configures the max cardinality of metrics within a scope
+- `elasticapm::aggregation::datapoint_limit`: configures the max cardinality of datapoints within a metric
 
 ```yaml
 elasticapm:
