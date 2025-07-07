@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticapmreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver"
+package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver"
 
 import (
 	"context"
@@ -34,7 +34,7 @@ import (
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/apm-data/model/modelprocessor"
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
@@ -60,8 +60,8 @@ const (
 
 type agentCfgFetcherFactory = func(context.Context, component.Host) (agentcfg.Fetcher, error)
 
-// elasticAPMReceiver implements support for receiving Logs, Metrics, and Traces from Elastic APM agents.
-type elasticAPMReceiver struct {
+// elasticapmintakereceiver implements support for receiving Logs, Metrics, and Traces from Elastic APM agents.
+type elasticapmintakereceiver struct {
 	cfg       *Config
 	obsreport *receiverhelper.ObsReport
 	settings  receiver.Settings
@@ -77,10 +77,10 @@ type elasticAPMReceiver struct {
 	cancelFn       context.CancelFunc
 }
 
-// newElasticAPMReceiver just creates the OpenTelemetry receiver services. It is the caller's
+// newelasticapmintakereceiver just creates the OpenTelemetry receiver services. It is the caller's
 // responsibility to invoke the respective Start*Reception methods as well
 // as the various Stop*Reception methods to end it.
-func newElasticAPMReceiver(fetcher agentCfgFetcherFactory, cfg *Config, set receiver.Settings) (*elasticAPMReceiver, error) {
+func newelasticapmintakereceiver(fetcher agentCfgFetcherFactory, cfg *Config, set receiver.Settings) (*elasticapmintakereceiver, error) {
 	obsreport, err := receiverhelper.NewObsReport(receiverhelper.ObsReportSettings{
 		ReceiverID:             set.ID,
 		Transport:              "http",
@@ -90,7 +90,7 @@ func newElasticAPMReceiver(fetcher agentCfgFetcherFactory, cfg *Config, set rece
 		return nil, err
 	}
 
-	return &elasticAPMReceiver{
+	return &elasticapmintakereceiver{
 		cfg:            cfg,
 		settings:       set,
 		obsreport:      obsreport,
@@ -99,7 +99,7 @@ func newElasticAPMReceiver(fetcher agentCfgFetcherFactory, cfg *Config, set rece
 }
 
 // Start runs an HTTP server for receiving data from Elastic APM agents.
-func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) error {
+func (r *elasticapmintakereceiver) Start(ctx context.Context, host component.Host) error {
 	ctx, r.cancelFn = context.WithCancel(ctx)
 	ecsCtx := withECSMappingMode(ctx)
 	if err := r.startHTTPServer(ecsCtx, host); err != nil {
@@ -108,7 +108,7 @@ func (r *elasticAPMReceiver) Start(ctx context.Context, host component.Host) err
 	return nil
 }
 
-func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
+func (r *elasticapmintakereceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	httpMux := http.NewServeMux()
 
 	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(ctx))
@@ -141,7 +141,7 @@ func (r *elasticAPMReceiver) startHTTPServer(ctx context.Context, host component
 }
 
 // Shutdown is a method to turn off receiving.
-func (r *elasticAPMReceiver) Shutdown(ctx context.Context) error {
+func (r *elasticapmintakereceiver) Shutdown(ctx context.Context) error {
 	var err error
 	if r.cancelFn != nil {
 		r.cancelFn()
@@ -157,7 +157,7 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errMsg string, statusC
 	// TODO
 }
 
-func (r *elasticAPMReceiver) newElasticAPMEventsHandler(ctx context.Context) http.HandlerFunc {
+func (r *elasticapmintakereceiver) newElasticAPMEventsHandler(ctx context.Context) http.HandlerFunc {
 
 	var (
 		// TODO make semaphore size configurable and/or find a different way
@@ -209,7 +209,7 @@ func (r *elasticAPMReceiver) newElasticAPMEventsHandler(ctx context.Context) htt
 	}
 }
 
-func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
+func (r *elasticapmintakereceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
 	ld := plog.NewLogs()
 	md := pmetric.NewMetrics()
 	td := ptrace.NewTraces()
@@ -280,7 +280,7 @@ func (r *elasticAPMReceiver) processBatch(ctx context.Context, batch *modelpb.Ba
 	return errors.Join(errs...)
 }
 
-func (r *elasticAPMReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) error {
+func (r *elasticapmintakereceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) error {
 
 	metricset := event.GetMetricset()
 
@@ -327,13 +327,13 @@ type otelDataPoint interface {
 	Attributes() pcommon.Map
 }
 
-func (r *elasticAPMReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestamp time.Time) {
+func (r *elasticapmintakereceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestamp time.Time) {
 	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 }
 
-func (r *elasticAPMReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) {
+func (r *elasticapmintakereceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) {
 	sm := rm.ScopeMetrics().AppendEmpty()
 	sum_metric := sm.Metrics().AppendEmpty()
 	sum_metric.SetName("span.self_time.sum.us")
@@ -372,7 +372,7 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	return dp
 }
 
-func (r *elasticAPMReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) {
+func (r *elasticapmintakereceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) {
 	sl := rl.ScopeLogs().AppendEmpty()
 	l := sl.LogRecords().AppendEmpty()
 
@@ -386,7 +386,7 @@ func (r *elasticAPMReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, 
 	}
 }
 
-func (r *elasticAPMReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestamp time.Time) ptrace.Span {
+func (r *elasticapmintakereceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestamp time.Time) ptrace.Span {
 	ss := rs.ScopeSpans().AppendEmpty()
 	s := ss.Spans().AppendEmpty()
 
@@ -398,7 +398,7 @@ func (r *elasticAPMReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, ev
 	return s
 }
 
-func (r *elasticAPMReceiver) elasticSpanLinksToOTelSpanLinks(event *modelpb.APMEvent, s ptrace.Span) {
+func (r *elasticapmintakereceiver) elasticSpanLinksToOTelSpanLinks(event *modelpb.APMEvent, s ptrace.Span) {
 	if event.Span != nil && event.Span.Links != nil {
 		for _, link := range event.Span.Links {
 			ptraceSpanLink := s.Links().AppendEmpty()
@@ -419,7 +419,7 @@ func (r *elasticAPMReceiver) elasticSpanLinksToOTelSpanLinks(event *modelpb.APME
 	}
 }
 
-func (r *elasticAPMReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
+func (r *elasticapmintakereceiver) elasticTransactionToOtelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
 	s.SetName(event.Transaction.Name)
 
 	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
@@ -434,7 +434,7 @@ func (r *elasticAPMReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, event 
 	}
 }
 
-func (r *elasticAPMReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
+func (r *elasticapmintakereceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
 	span := event.GetSpan()
 	s.SetName(span.GetName())
 

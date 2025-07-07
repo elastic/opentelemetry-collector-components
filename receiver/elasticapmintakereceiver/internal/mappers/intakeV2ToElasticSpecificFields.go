@@ -18,11 +18,11 @@
 // This file contains mappings where we move intakeV2 fields into Attributes and Resource attributes on OTel events
 // These fields are not covered by SemConv and are specific to Elastic
 
-package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
+package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
 	"github.com/elastic/apm-data/model/modelpb"
-	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal"
+	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 

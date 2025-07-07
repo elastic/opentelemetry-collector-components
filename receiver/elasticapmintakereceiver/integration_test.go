@@ -17,7 +17,7 @@
 
 //go:build integration
 
-package elasticapmreceiver
+package elasticapmintakereceiver
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"github.com/stretchr/testify/assert"

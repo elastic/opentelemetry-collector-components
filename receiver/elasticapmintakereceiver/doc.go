@@ -17,5 +17,5 @@
 
 //go:generate mdatagen metadata.yaml
 
-// Package elasticapmreceiver implements a receiver for the Elastic APM agent protocol.
-package elasticapmreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver"
+// Package elasticapmintakereceiver implements a receiver for the Elastic APM agent protocol.
+package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver"
