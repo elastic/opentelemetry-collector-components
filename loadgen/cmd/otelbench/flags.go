@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -133,7 +134,7 @@ func Init() error {
 
 	// `concurrency` is similar to `agents` config in apmbench
 	// Each value passed into `concurrency` list will be used as loadgenreceiver `concurrency` config
-	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with",
+	flag.Func("concurrency", "comma-separated `list` of concurrency (number of simulated agents) to run each benchmark with. Supports numeric values (e.g., \"1,4,8\"), \"auto\" to use available CPU cores, or \"auto:Nx\" for multipliers (e.g., \"auto:2x\" for double, \"auto:0.5x\" for half)",
 		func(input string) error {
 			var concurrencyList []int
 			for _, val := range strings.Split(input, ",") {
@@ -141,6 +142,30 @@ func Init() error {
 				if val == "" {
 					continue
 				}
+
+				// Handle 'auto' with optional multiplier and derive the concurrency
+				multiplier := 1.0
+				if strings.HasPrefix(val, "auto") {
+					// Try to parse multiplier if provided (auto:Nx format), otherwise default to 1
+					if idx := strings.IndexByte(val, ':'); idx >= 0 && idx < len(val)-1 {
+						multStr := val[idx+1:]
+						if strings.HasSuffix(multStr, "x") {
+							// parse the multiplier, ignore errors
+							if m, err := strconv.ParseFloat(strings.TrimSuffix(multStr, "x"), 64); err == nil && m > 0 {
+								multiplier = m
+							}
+						}
+					}
+
+					n := int(float64(runtime.GOMAXPROCS(0)) * multiplier)
+					if n < 1 {
+						n = 1
+					}
+					fmt.Fprintf(os.Stderr, "using %gx of GOMAXPROCS (%d cores):  %d for concurrency\n", multiplier, runtime.GOMAXPROCS(0), n)
+					concurrencyList = append(concurrencyList, n)
+					continue
+				}
+
 				n, err := strconv.Atoi(val)
 				if err != nil || n <= 0 {
 					return fmt.Errorf("invalid value %q for -concurrency", val)
