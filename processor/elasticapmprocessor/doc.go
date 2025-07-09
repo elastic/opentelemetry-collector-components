@@ -17,5 +17,5 @@
 
 //go:generate mdatagen metadata.yaml
 
-// Package elastictraceprocessor enriches the traces with Elastic specific attributes.
-package elastictraceprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
+// Package elasticapmprocessor enriches the traces with Elastic specific attributes.
+package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
