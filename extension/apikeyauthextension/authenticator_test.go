@@ -74,7 +74,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 400,
 			}),
-			expectedErr: `rpc error: code = Internal desc = error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
+			expectedErr: `error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
@@ -170,7 +170,7 @@ func TestAuthenticator_Caching(t *testing.T) {
 	_, err = authenticator.Authenticate(context.Background(), map[string][]string{
 		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id2:secret2"))},
 	})
-	assert.EqualError(t, err, `rpc error: code = InvalidArgument desc = API Key "id2" unauthorized`)
+	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = API Key "id2" unauthorized`)
 }
 
 func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
@@ -183,7 +183,7 @@ func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
 	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
 		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret1"))},
 	})
-	require.EqualError(t, err, `rpc error: code = Internal desc = error computing cache key: missing header "X-Tenant-Id"`)
+	require.EqualError(t, err, `error computing cache key: missing header "X-Tenant-Id"`)
 
 	ctx, err := authenticator.Authenticate(context.Background(), map[string][]string{
 		"X-Tenant-Id":   {"tenant1"},

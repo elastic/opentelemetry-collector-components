@@ -224,6 +224,10 @@ func (a *authenticator) getCacheKey(id string, headers map[string][]string) (str
 
 // Authenticate validates an ApiKey scheme Authorization header,
 // passing it to Elasticsearch for checking privileges.
+//
+// Callers can use status.FromError(err) to get the status code
+// and message from the returned error. If no status.Status is returned,
+// the error should be considered an internal error.
 func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]string) (context.Context, error) {
 	authHeaderValue, id, err := a.parseAuthorizationHeader(headers)
 	if err != nil {
@@ -232,7 +236,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	cacheKey, err := a.getCacheKey(id, headers)
 	if err != nil {
-		return ctx, status.Error(codes.Internal, err.Error())
+		return ctx, err
 	}
 
 	derivedKey := pbkdf2.Key(
@@ -247,7 +251,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			// Client has specified an API Key with a colliding ID,
 			// but whose secret component does not match the one in
 			// the cache.
-			return ctx, status.Errorf(codes.InvalidArgument,
+			return ctx, status.Errorf(codes.Unauthenticated,
 				"API Key %q unauthorized", id,
 			)
 		}
@@ -259,9 +263,9 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
-		return ctx, status.Error(codes.Internal, fmt.Sprintf(
+		return ctx, fmt.Errorf(
 			"error checking privileges for API Key %q: %v", id, err,
-		))
+		)
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{
