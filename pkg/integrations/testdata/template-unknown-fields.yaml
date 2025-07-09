@@ -17,7 +17,6 @@ extensions:
   someextension:
 
 pipelines:
-  extensions: [somextension]
   metrics:
     receiver: foo
     processors: [someprocessor, otherprocessor]

@@ -2,7 +2,7 @@ module-sets:
   edot-base:
     version: v0.124.0
     modules:
-      - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver
+      - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
       - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor

@@ -32,6 +32,8 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension/extensionauth"
 	"golang.org/x/crypto/pbkdf2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/security/hasprivileges"
@@ -222,10 +224,14 @@ func (a *authenticator) getCacheKey(id string, headers map[string][]string) (str
 
 // Authenticate validates an ApiKey scheme Authorization header,
 // passing it to Elasticsearch for checking privileges.
+//
+// Callers can use status.FromError(err) to get the status code
+// and message from the returned error. If no status.Status is returned,
+// the error should be considered an internal error.
 func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]string) (context.Context, error) {
 	authHeaderValue, id, err := a.parseAuthorizationHeader(headers)
 	if err != nil {
-		return ctx, err
+		return ctx, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	cacheKey, err := a.getCacheKey(id, headers)
@@ -240,28 +246,26 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 		32, // key length
 		sha512.New,
 	)
-	if err != nil {
-		return ctx, err
-	}
-
 	if cacheEntry, ok := a.cache.Get(cacheKey); ok {
 		if subtle.ConstantTimeCompare(cacheEntry.key, derivedKey) == 0 {
 			// Client has specified an API Key with a colliding ID,
 			// but whose secret component does not match the one in
 			// the cache.
-			return ctx, fmt.Errorf("API Key %q unauthorized", id)
+			return ctx, status.Errorf(codes.Unauthenticated,
+				"API Key %q unauthorized", id,
+			)
 		}
 		if cacheEntry.err != nil {
-			return ctx, cacheEntry.err
+			return ctx, status.Error(codes.Unauthenticated, cacheEntry.err.Error())
 		}
-		clientInfo := client.FromContext(ctx)
-		clientInfo.Auth = cacheEntry.data
-		return client.NewContext(ctx, clientInfo), nil
+		return newCtxWithAuthData(ctx, cacheEntry.data), nil
 	}
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
-		return ctx, err
+		return ctx, fmt.Errorf(
+			"error checking privileges for API Key %q: %v", id, err,
+		)
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{
@@ -269,7 +273,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			err: fmt.Errorf("API Key %q unauthorized", id),
 		}
 		a.cache.Add(cacheKey, cacheEntry)
-		return ctx, cacheEntry.err
+		return ctx, status.Error(codes.PermissionDenied, cacheEntry.err.Error())
 	}
 	cacheEntry := &cacheEntry{
 		key: derivedKey,
@@ -279,7 +283,11 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 		},
 	}
 	a.cache.Add(cacheKey, cacheEntry)
+	return newCtxWithAuthData(ctx, cacheEntry.data), nil
+}
+
+func newCtxWithAuthData(ctx context.Context, authData *authData) context.Context {
 	clientInfo := client.FromContext(ctx)
-	clientInfo.Auth = cacheEntry.data
-	return client.NewContext(ctx, clientInfo), nil
+	clientInfo.Auth = authData
+	return client.NewContext(ctx, clientInfo)
 }

@@ -60,6 +60,18 @@ type OpAMPConfig struct {
 	// Protocols is the configuration for the supported protocols, currently
 	// HTTP (TBD: websocket).
 	Protocols `mapstructure:"protocols"`
+	// Cache holds configuration related to agents caching
+	Cache CacheConfig `mapstructure:"cache"`
+}
+
+type CacheConfig struct {
+	// Capacity defines the maximum number of agents to cache.
+	// Once this is reached, the least recently
+	// used entries will be evicted.
+	Capacity uint32 `mapstructure:"capacity"`
+
+	// TTL defines the duration before the cache key gets evicted
+	TTL time.Duration `mapstructure:"ttl"`
 }
 
 // Protocols is the configuration for the supported protocols.
