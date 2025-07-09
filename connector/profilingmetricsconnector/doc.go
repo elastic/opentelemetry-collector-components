@@ -16,4 +16,4 @@
 // under the License.
 
 // Package profilingmetricsconnector provides a connector to generate metrics from profiling data.
-package profilingmetricsconnector
+package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"

@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector
 
-go 1.24.4
+go 1.23.8
 
 require (
 	github.com/stretchr/testify v1.10.0

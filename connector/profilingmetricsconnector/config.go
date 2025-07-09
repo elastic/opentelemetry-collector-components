@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package profilingmetricsconnector
+package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"
 
 // Config represents the receiver config settings within the collector's config.yaml
 type Config struct {
