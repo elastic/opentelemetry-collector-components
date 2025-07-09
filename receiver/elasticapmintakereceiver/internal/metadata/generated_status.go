@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	Type      = component.MustNewType("elasticapm")
+	Type      = component.MustNewType("elasticapmintake")
 	ScopeName = "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver"
 )
 
