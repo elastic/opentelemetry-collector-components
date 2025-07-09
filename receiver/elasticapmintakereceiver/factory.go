@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticapmreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver"
+package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver"
 
 import (
 	"context"
@@ -26,8 +26,8 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/sharedcomponent"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/sharedcomponent"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 )
@@ -79,8 +79,8 @@ func createLogsReceiver(
 	consumer consumer.Logs,
 ) (receiver.Logs, error) {
 	oCfg := cfg.(*Config)
-	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(esFetcherFactory(oCfg, set), oCfg, set)
+	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMIntakeReceiver, error) {
+		return newElasticAPMIntakeReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -121,8 +121,8 @@ func createMetricsReceiver(
 	consumer consumer.Metrics,
 ) (receiver.Metrics, error) {
 	oCfg := cfg.(*Config)
-	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(esFetcherFactory(oCfg, set), oCfg, set)
+	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMIntakeReceiver, error) {
+		return newElasticAPMIntakeReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -139,8 +139,8 @@ func createTracesReceiver(
 	consumer consumer.Traces,
 ) (receiver.Traces, error) {
 	oCfg := cfg.(*Config)
-	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMReceiver, error) {
-		return newElasticAPMReceiver(esFetcherFactory(oCfg, set), oCfg, set)
+	r, err := receivers.LoadOrStore(oCfg, func() (*elasticAPMIntakeReceiver, error) {
+		return newElasticAPMIntakeReceiver(esFetcherFactory(oCfg, set), oCfg, set)
 	})
 	if err != nil {
 		return nil, err
@@ -149,4 +149,4 @@ func createTracesReceiver(
 	return r, nil
 }
 
-var receivers = sharedcomponent.NewMap[*Config, *elasticAPMReceiver]()
+var receivers = sharedcomponent.NewMap[*Config, *elasticAPMIntakeReceiver]()

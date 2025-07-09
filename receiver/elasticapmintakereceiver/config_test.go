@@ -15,14 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticapmreceiver
+package elasticapmintakereceiver
 
 import (
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package attr // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal"
+package attr // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
 
 // These constants hold attribute names that are defined by the Elastic APM data model and do not match
 // any SemConv attribute. These fields are not used by the UI, and store information related to a specific span type

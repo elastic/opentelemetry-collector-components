@@ -24,7 +24,7 @@
 // Package sharedcomponent exposes functionality for components
 // to register against a shared key, such as a configuration object, in order to be reused across signal types.
 // This is particularly useful when the component relies on a shared resource such as os.File or http.Server.
-package sharedcomponent // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/sharedcomponent"
+package sharedcomponent // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/sharedcomponent"
 
 import (
 	"context"

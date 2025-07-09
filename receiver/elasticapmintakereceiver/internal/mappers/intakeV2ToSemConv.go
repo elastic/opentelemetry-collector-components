@@ -17,7 +17,7 @@
 
 // This file contains all the mapping from IntakeV2 fields to OTel Semantic Convention
 
-package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/mappers"
+package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
 	"strings"

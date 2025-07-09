@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticapmreceiver
+package elasticapmintakereceiver
 
 import (
 	"bytes"
@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
@@ -57,7 +57,7 @@ func (f *fetcherMock) Fetch(ctx context.Context, query agentcfg.Query) (agentcfg
 
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	rcvr, err := newElasticAPMReceiver(func(ctx context.Context, h component.Host) (agentcfg.Fetcher, error) {
+	rcvr, err := newElasticAPMIntakeReceiver(func(ctx context.Context, h component.Host) (agentcfg.Fetcher, error) {
 		return nil, nil
 	}, &Config{
 		ServerConfig: confighttp.ServerConfig{
@@ -124,7 +124,7 @@ func TestAgentCfgHandlerInvalidFetcher(t *testing.T) {
 	}
 
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	rcvr, err := newElasticAPMReceiver(invalidFetcher, &Config{
+	rcvr, err := newElasticAPMIntakeReceiver(invalidFetcher, &Config{
 		ServerConfig: confighttp.ServerConfig{
 			Endpoint: testEndpoint,
 		},
@@ -298,7 +298,7 @@ func TestAgentCfgHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
-			rcvr, err := newElasticAPMReceiver(tt.fetcher, &Config{
+			rcvr, err := newElasticAPMIntakeReceiver(tt.fetcher, &Config{
 				ServerConfig: confighttp.ServerConfig{
 					Endpoint: testEndpoint,
 				},

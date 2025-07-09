@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticapmreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver"
+package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver"
 
 import (
 	"context"
@@ -43,7 +43,7 @@ const (
 	msgMethodUnsupported = "method not supported"
 )
 
-func (r *elasticAPMReceiver) newElasticAPMConfigsHandler(ctx context.Context, host component.Host) http.HandlerFunc {
+func (r *elasticAPMIntakeReceiver) newElasticAPMConfigsHandler(ctx context.Context, host component.Host) http.HandlerFunc {
 	mapBodyError := func(err string) map[string]string {
 		return map[string]string{"error": err}
 	}

@@ -37,7 +37,7 @@ receivers:
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.129.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver v0.0.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.129.0
@@ -85,5 +85,5 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension => ../extension/configintegrationextension
   - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension => ../extension/fileintegrationextension
   - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector => ../connector/elasticapmconnector
-  - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmreceiver => ../receiver/elasticapmreceiver
+  - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver => ../receiver/elasticapmintakereceiver
   - github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver => ../receiver/integrationreceiver
