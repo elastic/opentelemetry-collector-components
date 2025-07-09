@@ -11,7 +11,7 @@
 - `otelbench`: Run benchmarks for multiple iterations to get more accurate results (#644)
   Use -test.count flag to run benchmarks n times
 - `otelbench`: Add support for `auto` value to concurrency flag to use GOMAXPROCS value (#575)
-  set the concurrency value based on the number of CPU cores available and provide allow multipliers (e.g., "auto:2x" for double, "auto:0.5x" for half).
+  set the concurrency value based on the number of CPU cores available and allow multipliers (e.g., "auto:2x" for double, "auto:0.5x" for half).
 
 ## v0.2.0
 
