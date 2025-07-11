@@ -1,0 +1,11 @@
+type: profilingmetrics
+scope_name: github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: connector
+  stability:
+    development:
+      - profiles_to_metrics
+  distributions: []
+
