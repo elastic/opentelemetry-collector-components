@@ -19,7 +19,6 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -32,6 +31,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
@@ -197,7 +198,7 @@ func getTelemetryAttrs(attrsCommon []attribute.KeyValue, err error) (attrs []att
 			telemetry.WithReason(telemetry.StatusUnderLimit),
 			telemetry.WithDecision("accepted"),
 		)
-	case errors.Is(err, errTooManyRequests):
+	case status.Code(err) == codes.ResourceExhausted:
 		attrs = append(attrsCommon,
 			telemetry.WithDecision("throttled"),
 		)
@@ -211,8 +212,7 @@ func getTelemetryAttrs(attrsCommon []attribute.KeyValue, err error) (attrs []att
 	return attrs
 }
 
-func rateLimit(
-	ctx context.Context,
+func rateLimit(ctx context.Context,
 	hits int,
 	rateLimit func(ctx context.Context, n int) error,
 	metadataKeys []string,

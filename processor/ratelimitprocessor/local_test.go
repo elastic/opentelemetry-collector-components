@@ -80,7 +80,7 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 			err = rateLimiter.RateLimit(context.Background(), 1) // should fail
 			switch behavior {
 			case ThrottleBehaviorError:
-				assert.EqualError(t, err, "too many requests")
+				assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 				// retry every 20ms to ensure that RateLimit will recover from error when bucket refills after 1 second
 				assert.Eventually(t, func() bool {
 					return rateLimiter.RateLimit(context.Background(), 1) == nil

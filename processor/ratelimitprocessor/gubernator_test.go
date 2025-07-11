@@ -100,7 +100,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 			err = rateLimiter.RateLimit(context.Background(), 1)
 			switch behavior {
 			case ThrottleBehaviorError:
-				assert.EqualError(t, err, "too many requests")
+				assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 			case ThrottleBehaviorDelay:
 				assert.NoError(t, err)
 			}
