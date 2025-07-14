@@ -145,12 +145,11 @@ func (r *gubernatorRateLimiter) deleteRequests(uniqueKey string, hits int) error
 	if !exists {
 		return fmt.Errorf("unexpected: current requests entry does not exist for this unique key %s", uniqueKey)
 	} else {
-		r.currentRequests[uniqueKey] = current - 1
+		r.currentRequests[uniqueKey] = current - hits
 		if r.currentRequests[uniqueKey] < 0 {
 			return fmt.Errorf("unexpected: current request for unique key %s reached a negative value", uniqueKey)
 		}
 	}
-	current = r.currentRequests[uniqueKey]
 	r.currentRequestsMx.Unlock()
 	return nil
 }
