@@ -66,18 +66,16 @@ func (c *profilesToMetricsConnector) extractMetricsFromProfiles(profiles pprofil
 	metrics := pmetric.NewMetrics()
 
 	dictionary := profiles.ProfilesDictionary()
-	resourceProfiles := profiles.ResourceProfiles()
-	for i := 0; i < resourceProfiles.Len(); i++ {
-		resourceProfile := resourceProfiles.At(i)
+	resourceProfiles := profiles.ResourceProfiles().All()
+	for _, resourceProfile := range resourceProfiles {
 		resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
 
 		// Copy resource attributes
 		resourceProfile.Resource().Attributes().CopyTo(resourceMetrics.Resource().Attributes())
 
 		// Process each scope's profiles
-		scopeProfiles := resourceProfile.ScopeProfiles()
-		for j := 0; j < scopeProfiles.Len(); j++ {
-			scopeProfile := scopeProfiles.At(j)
+		scopeProfiles := resourceProfile.ScopeProfiles().All()
+		for _, scopeProfile := range scopeProfiles {
 			scopeMetrics := resourceMetrics.ScopeMetrics().AppendEmpty()
 
 			// Copy scope information
@@ -94,18 +92,15 @@ func (c *profilesToMetricsConnector) extractMetricsFromProfiles(profiles pprofil
 // extractMetricsFromScopeProfiles extracts basic metrics from scope-level profile data.
 func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary pprofile.ProfilesDictionary, scopeProfile pprofile.ScopeProfiles,
 	scopeMetrics pmetric.ScopeMetrics) {
-	profiles := scopeProfile.Profiles()
+	profiles := scopeProfile.Profiles().All()
 
-	for i := 0; i < profiles.Len(); i++ {
-		profile := profiles.At(i)
-
+	for _, profile := range profiles {
 		// Add basic sample count metric.
 		c.addSampleCountMetric(profile, scopeMetrics)
 
 		// Collect frame type information.
 		frameTypeCounts := make(map[string]int64)
-		for j := 0; j < profile.Sample().Len(); j++ {
-			sample := profile.Sample().At(j)
+		for _, sample := range profile.Sample().All() {
 			c.collectFrameTypeCounts(dictionary, sample, frameTypeCounts)
 		}
 
