@@ -15,5 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:generate mdatagen metadata.yaml
+
 // Package profilingmetricsconnector provides a connector to generate metrics from profiling data.
 package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"
