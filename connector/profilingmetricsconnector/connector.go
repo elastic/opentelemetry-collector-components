@@ -97,11 +97,12 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 	for _, profile := range profiles {
 		// Add basic sample count metric.
 		c.addSampleCountMetric(profile, scopeMetrics)
+		locIndices := profile.LocationIndices()
 
 		// Collect frame type information.
 		frameTypeCounts := make(map[string]int64)
 		for _, sample := range profile.Sample().All() {
-			c.collectFrameTypeCounts(dictionary, sample, frameTypeCounts)
+			c.collectFrameTypeCounts(dictionary, locIndices, sample, frameTypeCounts)
 		}
 
 		// Add metric for frame types.
@@ -110,11 +111,16 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 }
 
 // collectFrameTypeCounts walks all locations/frames of a sample and collects the frame type information.
-func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.ProfilesDictionary, sample pprofile.Sample, frameTypeCounts map[string]int64) {
+func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice, sample pprofile.Sample, frameTypeCounts map[string]int64) {
 	locationTable := dictionary.LocationTable()
 	attrTable := dictionary.AttributeTable()
 
-	for li := sample.LocationsStartIndex(); li < sample.LocationsStartIndex()+sample.LocationsLength(); li++ {
+	for sli := sample.LocationsStartIndex(); sli < sample.LocationsStartIndex()+sample.LocationsLength(); sli++ {
+		if int(sli) >= locationIndices.Len() {
+			continue
+		}
+
+		li := locationIndices.At(int(sli))
 		if int(li) >= locationTable.Len() {
 			continue
 		}

@@ -98,6 +98,9 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	loc := locTable.AppendEmpty()
 	loc.AttributeIndices().Append(0)
 
+	// Add location index to the profile's location indices
+	prof.LocationIndices().Append(0)
+
 	// Set sample to reference the location
 	sample.SetLocationsStartIndex(0)
 	sample.SetLocationsLength(1)
@@ -156,6 +159,10 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	locGo.AttributeIndices().Append(0)
 	locPy := locTable.AppendEmpty()
 	locPy.AttributeIndices().Append(1)
+
+	// Add location indices to the profile's location indices
+	prof.LocationIndices().Append(0)
+	prof.LocationIndices().Append(1)
 
 	// Add two samples, each referencing a different location
 	sampleGo := prof.Sample().AppendEmpty()
