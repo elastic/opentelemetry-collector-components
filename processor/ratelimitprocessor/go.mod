@@ -3,6 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/ratelimit
 go 1.23.8
 
 require (
+	github.com/elastic/go-freelru v0.16.0
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced
 	github.com/gubernator-io/gubernator/v2 v2.13.0
 	github.com/sirupsen/logrus v1.9.2
@@ -27,6 +28,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.36.0
 	go.opentelemetry.io/otel/sdk/metric v1.36.0
 	go.opentelemetry.io/otel/trace v1.36.0
+	go.uber.org/atomic v1.9.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.11.0

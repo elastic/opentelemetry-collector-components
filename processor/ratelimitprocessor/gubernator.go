@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
@@ -50,6 +51,9 @@ type gubernatorRateLimiter struct {
 	daemon     *gubernator.Daemon
 	client     gubernator.V1Client
 	clientConn *grpc.ClientConn
+
+	currentRequests   map[string]int
+	currentRequestsMx sync.RWMutex
 }
 
 func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, error) {
@@ -82,10 +86,11 @@ func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorR
 	}
 
 	return &gubernatorRateLimiter{
-		cfg:       cfg,
-		set:       set,
-		behavior:  gubernator.Behavior(0), // BATCHING behavior
-		daemonCfg: daemonCfg,
+		cfg:             cfg,
+		set:             set,
+		behavior:        gubernator.Behavior(0), // BATCHING behavior
+		daemonCfg:       daemonCfg,
+		currentRequests: make(map[string]int),
 	}, nil
 }
 
@@ -118,6 +123,35 @@ func (r *gubernatorRateLimiter) Shutdown(_ context.Context) error {
 		r.clientConn = nil
 	}
 	r.client = nil
+	return nil
+}
+
+func (r *gubernatorRateLimiter) addRequests(uniqueKey string, hits int) int {
+	r.currentRequestsMx.Lock()
+	current, exists := r.currentRequests[uniqueKey]
+	if !exists {
+		r.currentRequests[uniqueKey] = hits
+	} else {
+		r.currentRequests[uniqueKey] = current + hits
+	}
+	current = r.currentRequests[uniqueKey]
+	r.currentRequestsMx.Unlock()
+	return current
+}
+
+func (r *gubernatorRateLimiter) deleteRequests(uniqueKey string, hits int) error {
+	r.currentRequestsMx.Lock()
+	current, exists := r.currentRequests[uniqueKey]
+	if !exists {
+		return fmt.Errorf("unexpected: current requests entry does not exist for this unique key %s", uniqueKey)
+	} else {
+		r.currentRequests[uniqueKey] = current - 1
+		if r.currentRequests[uniqueKey] < 0 {
+			return fmt.Errorf("unexpected: current request for unique key %s reached a negative value", uniqueKey)
+		}
+	}
+	current = r.currentRequests[uniqueKey]
+	r.currentRequestsMx.Unlock()
 	return nil
 }
 
@@ -169,13 +203,16 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			)
 			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
 		case ThrottleBehaviorDelay:
-			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
+			current := r.addRequests(uniqueKey, hits)
+			delay := time.Duration(resp.GetResetTime()-createdAt+int64(current)*cfg.ThrottleInterval.Milliseconds()) * time.Millisecond
 			timer := time.NewTimer(delay)
 			defer timer.Stop()
 			select {
 			case <-ctx.Done():
+				_ = r.deleteRequests(uniqueKey, hits)
 				return ctx.Err()
 			case <-timer.C:
+				return r.deleteRequests(uniqueKey, hits)
 			}
 		}
 	}
