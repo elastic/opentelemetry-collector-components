@@ -376,9 +376,11 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		metric.WithAttributes(attributes...),
 	)
 
-	// Call next for the metrics remaining in the input
-	if err := p.next.ConsumeMetrics(ctx, nextMD); err != nil {
-		errs = append(errs, err)
+	// Call next for the metrics remaining in the input if any
+	if nextMD.DataPointCount() > 0 {
+		if err := p.next.ConsumeMetrics(ctx, nextMD); err != nil {
+			errs = append(errs, err)
+		}
 	}
 
 	if len(errs) > 0 {

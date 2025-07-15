@@ -70,8 +70,7 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
-			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
 }
@@ -104,8 +103,7 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
-			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
 }
@@ -139,8 +137,7 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
-			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
 }
@@ -192,14 +189,13 @@ func TestConnector_AggregationMetadataKeys(t *testing.T) {
 	err = l2m.Shutdown(context.Background())
 	require.NoError(t, err)
 
-	// There should be three calls to the next metrics consumer:
-	// - one for each call to ConsumeLogs above with any metrics
-	//   that lsminterval doesn't understand: total of 3
+	// There should be six calls to the next metrics consumer:
 	// - one for each interval (3) for each client (2): total of 6
-	require.Len(t, callInfo, 9)
+	// Note that for the sync consume call, the lsminterval will
+	// only do this when it has metrics which is configured as
+	// passthrough - none for our tests.
+	require.Len(t, callInfo, 6)
 	assert.Equal(t, callInfo, []client.Info{
-		client1Info,              // remainder
-		client2Info, client2Info, // remainder
 		client1Info, client2Info, // 1m
 		client1Info, client2Info, // 10m
 		client1Info, client2Info, // 60m
