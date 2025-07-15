@@ -9,8 +9,8 @@ require (
 	github.com/jcchavezs/porto v0.7.0
 	go.opentelemetry.io/build-tools/chloggen v0.23.1
 	go.opentelemetry.io/build-tools/multimod v0.23.1
-	go.opentelemetry.io/collector/cmd/builder v0.129.0
-	go.opentelemetry.io/collector/cmd/mdatagen v0.129.0
+	go.opentelemetry.io/collector/cmd/builder v0.130.0
+	go.opentelemetry.io/collector/cmd/mdatagen v0.130.0
 	golang.org/x/tools v0.33.0
 	golang.org/x/vuln v1.1.4
 )
@@ -217,8 +217,8 @@ require (
 	go.opentelemetry.io/collector/confmap v1.36.0 // indirect
 	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.36.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.36.0 // indirect
-	go.opentelemetry.io/collector/filter v0.129.0 // indirect
-	go.opentelemetry.io/collector/internal/telemetry v0.129.0 // indirect
+	go.opentelemetry.io/collector/filter v0.130.0 // indirect
+	go.opentelemetry.io/collector/internal/telemetry v0.130.0 // indirect
 	go.opentelemetry.io/collector/pdata v1.36.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.11.0 // indirect
 	go.opentelemetry.io/otel v1.36.0 // indirect
