@@ -27,9 +27,9 @@ import (
 	"github.com/tj/assert"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configoptional"
-	"go.opentelemetry.io/collector/confmap"
 
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension/internal/metadata"
@@ -42,7 +42,9 @@ func TestVerifyConnection(t *testing.T) {
 
 	settings := componenttest.NewNopTelemetrySettings()
 	httpClientConfig := confighttp.NewDefaultClientConfig()
-	getOrInsertDefault(t, &httpClientConfig.Auth).AuthenticatorID = component.NewID(metadata.Type)
+	httpClientConfig.Auth = configoptional.Some(configauth.Config{
+		AuthenticatorID: component.NewID(metadata.Type),
+	})
 
 	testcases := map[string]struct {
 		verificationMode     tlscommon.TLSVerificationMode
@@ -167,16 +169,4 @@ type extensionsMap map[component.ID]component.Component
 
 func (m extensionsMap) GetExtensions() map[component.ID]component.Component {
 	return m
-}
-
-func getOrInsertDefault[T any](t *testing.T, opt *configoptional.Optional[T]) *T {
-	if opt.HasValue() {
-		return opt.Get()
-	}
-
-	empty := confmap.NewFromStringMap(map[string]any{})
-	require.NoError(t, empty.Unmarshal(opt))
-	val := opt.Get()
-	require.NotNil(t, "Expected a default value to be set for %T", val)
-	return val
 }
