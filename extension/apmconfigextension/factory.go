@@ -54,7 +54,6 @@ func createDefaultConfig() component.Config {
 	defaultElasticSearchClient := configelasticsearch.NewDefaultClientConfig()
 	httpCfg := confighttp.NewDefaultServerConfig()
 	httpCfg.Endpoint = "localhost:4320"
-	httpCfg.TLS = nil
 
 	return &Config{
 		Source: SourceConfig{
