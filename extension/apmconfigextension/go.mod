@@ -75,20 +75,21 @@ require (
 	go.opentelemetry.io/collector/config/configcompression v1.36.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v0.130.0 // indirect
 	go.opentelemetry.io/collector/config/configopaque v1.36.0 // indirect
+	go.opentelemetry.io/collector/config/configoptional v0.130.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v1.36.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionauth v1.36.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.130.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.36.0 // indirect
 	go.opentelemetry.io/collector/internal/telemetry v0.130.0 // indirect
 	go.opentelemetry.io/collector/pipeline v0.130.0 // indirect
-	go.opentelemetry.io/contrib/bridges/otelzap v0.11.0 // indirect
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
+	go.opentelemetry.io/contrib/bridges/otelzap v0.12.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.62.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.19.0 // indirect
-	go.opentelemetry.io/otel/log v0.12.2 // indirect
+	go.opentelemetry.io/otel/log v0.13.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.36.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v1.37.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
-	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
 require (
