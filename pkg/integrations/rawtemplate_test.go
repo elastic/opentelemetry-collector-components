@@ -71,20 +71,20 @@ func TestRawTemplateResolve(t *testing.T) {
 					},
 				},
 				Pipelines: map[pipeline.ID]PipelineConfig{
-					pipeline.MustNewID("metrics"): {
+					pipeline.NewID(pipeline.SignalMetrics): {
 						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
 							component.MustNewID("otherprocessor"),
 						},
 					},
-					pipeline.MustNewID("logs"): {
+					pipeline.NewID(pipeline.SignalLogs): {
 						Receiver: idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{
 							component.MustNewID("third"),
 						},
 					},
-					pipeline.MustNewIDWithName("logs", "raw"): {
+					pipeline.NewIDWithName(pipeline.SignalLogs, "raw"): {
 						Receiver:   idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{},
 					},
@@ -95,7 +95,7 @@ func TestRawTemplateResolve(t *testing.T) {
 			title: "selected pipeline",
 			file:  "template-simple.yaml",
 			pipelines: []pipeline.ID{
-				pipeline.MustNewID("metrics"),
+				pipeline.NewID(pipeline.SignalMetrics),
 			},
 			params: map[string]any{
 				"somevalue": "xxx",
@@ -111,7 +111,7 @@ func TestRawTemplateResolve(t *testing.T) {
 					component.MustNewID("someprocessor"):  nil,
 				},
 				Pipelines: map[pipeline.ID]PipelineConfig{
-					pipeline.MustNewID("metrics"): {
+					pipeline.NewID(pipeline.SignalMetrics): {
 						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
@@ -125,7 +125,7 @@ func TestRawTemplateResolve(t *testing.T) {
 			title: "complex type in variable",
 			file:  "template-simple.yaml",
 			pipelines: []pipeline.ID{
-				pipeline.MustNewID("metrics"),
+				pipeline.NewID(pipeline.SignalMetrics),
 			},
 			params: map[string]any{
 				"somevalue": map[string]any{
@@ -147,7 +147,7 @@ func TestRawTemplateResolve(t *testing.T) {
 					component.MustNewID("someprocessor"):  nil,
 				},
 				Pipelines: map[pipeline.ID]PipelineConfig{
-					pipeline.MustNewID("metrics"): {
+					pipeline.NewID(pipeline.SignalMetrics): {
 						Receiver: idPtr(component.MustNewID("foo")),
 						Processors: []component.ID{
 							component.MustNewID("someprocessor"),
@@ -161,7 +161,7 @@ func TestRawTemplateResolve(t *testing.T) {
 			title: "selected pipeline with name",
 			file:  "template-simple.yaml",
 			pipelines: []pipeline.ID{
-				pipeline.MustNewIDWithName("logs", "raw"),
+				pipeline.NewIDWithName(pipeline.SignalLogs, "raw"),
 			},
 			params: map[string]any{
 				"value":      "bar",
@@ -180,7 +180,7 @@ func TestRawTemplateResolve(t *testing.T) {
 				},
 				Processors: nil,
 				Pipelines: map[pipeline.ID]PipelineConfig{
-					pipeline.MustNewIDWithName("logs", "raw"): {
+					pipeline.NewIDWithName(pipeline.SignalLogs, "raw"): {
 						Receiver:   idPtr(component.MustNewID("bar")),
 						Processors: []component.ID{},
 					},
@@ -191,7 +191,7 @@ func TestRawTemplateResolve(t *testing.T) {
 			title: "missing variable",
 			file:  "template-simple.yaml",
 			pipelines: []pipeline.ID{
-				pipeline.MustNewID("metrics"),
+				pipeline.NewID(pipeline.SignalMetrics),
 			},
 			expectedErr: "variable \"somevalue\" not found",
 		},
@@ -199,7 +199,7 @@ func TestRawTemplateResolve(t *testing.T) {
 			title: "missing pipeline",
 			file:  "template-simple.yaml",
 			pipelines: []pipeline.ID{
-				pipeline.MustNewID("traces"),
+				pipeline.NewID(pipeline.SignalTraces),
 			},
 			expectedErr: "selecting pipelines: component \"traces\" not found",
 		},

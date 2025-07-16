@@ -455,7 +455,6 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 					ServerConfig: func() *confighttp.ServerConfig {
 						httpCfg := confighttp.NewDefaultServerConfig()
 						httpCfg.Endpoint = opAMPTestEndpoint
-						httpCfg.TLSSetting = nil
 						return &httpCfg
 					}(),
 				},

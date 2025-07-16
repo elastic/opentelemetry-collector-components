@@ -1,0 +1,14 @@
+elasticapmintake:
+
+elasticapmintake/elasticsearch_agentcfg:
+  agent_config:
+    enabled: true
+    cache_duration: 10s
+    elasticsearch:
+      endpoint: "http://localhost:8200"
+
+elasticapmintake/invalid_elasticsearch_agentcfg:
+  agent_config:
+    enabled: true
+    elasticsearch:
+      endpoint: ""

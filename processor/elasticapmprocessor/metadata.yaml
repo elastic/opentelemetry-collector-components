@@ -1,0 +1,8 @@
+type: elasticapm
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor
+
+status:
+  class: processor
+  stability:
+    alpha: [traces, metrics, logs]
+  distributions: []

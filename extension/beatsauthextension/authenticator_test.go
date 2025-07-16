@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configauth"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/configoptional"
 
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension/internal/metadata"
@@ -41,9 +42,9 @@ func TestVerifyConnection(t *testing.T) {
 
 	settings := componenttest.NewNopTelemetrySettings()
 	httpClientConfig := confighttp.NewDefaultClientConfig()
-	httpClientConfig.Auth = &configauth.Authentication{
+	httpClientConfig.Auth = configoptional.Some(configauth.Config{
 		AuthenticatorID: component.NewID(metadata.Type),
-	}
+	})
 
 	testcases := map[string]struct {
 		verificationMode     tlscommon.TLSVerificationMode

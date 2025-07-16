@@ -164,7 +164,7 @@ func TestConsume_Logs(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeLogs(clientContext, logs)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "too many requests")
+	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 
 	testRateLimitTelemetry(t, tt)
 }
@@ -211,7 +211,7 @@ func TestConsume_Metrics(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "too many requests")
+	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 
 	testRateLimitTelemetry(t, tt)
 }
@@ -258,7 +258,7 @@ func TestConsume_Traces(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeTraces(clientContext, traces)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "too many requests")
+	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 
 	testRateLimitTelemetry(t, tt)
 }
@@ -306,7 +306,7 @@ func TestConsume_Profiles(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "too many requests")
+	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 
 	testRateLimitTelemetry(t, tt)
 }
