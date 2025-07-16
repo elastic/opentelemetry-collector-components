@@ -61,6 +61,12 @@ func (c *profilesToMetricsConnector) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+// origin helps to differentiate metrics from various profiling kinds, like on-CPU and off-CPU profiling.
+type origin struct {
+	typ  string
+	unit string
+}
+
 // extractMetricsFromProfiles extracts basic metrics from the profiles data.
 func (c *profilesToMetricsConnector) extractMetricsFromProfiles(profiles pprofile.Profiles) pmetric.Metrics {
 	metrics := pmetric.NewMetrics()
@@ -95,6 +101,19 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 	profiles := scopeProfile.Profiles().All()
 
 	for _, profile := range profiles {
+		st := profile.SampleType()
+		if st.Len() != 1 {
+			// Opinionated check to make sure we have only a single SampleTyp, which is what OTel eBPF profiler generates.
+			continue
+		}
+		typStrIdx := int(st.At(0).TypeStrindex())
+		unitStrIdx := int(st.At(0).UnitStrindex())
+
+		origin := origin{
+			typ:  dictionary.StringTable().At(typStrIdx),
+			unit: dictionary.StringTable().At(unitStrIdx),
+		}
+
 		// Add basic sample count metric.
 		c.addSampleCountMetric(profile, scopeMetrics)
 		locIndices := profile.LocationIndices()
@@ -106,7 +125,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 		}
 
 		// Add metric for frame types.
-		c.addAggregatedFrameTypeMetrics(frameTypeCounts, scopeMetrics, profile.Time())
+		c.addAggregatedFrameTypeMetrics(origin, frameTypeCounts, scopeMetrics, profile.Time())
 	}
 }
 
@@ -132,8 +151,8 @@ func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.
 			}
 			attr := attrTable.At(int(idx))
 			if attr.Key() == string(semconv.ProfileFrameTypeKey) {
-				language := attr.Value().Str()
-				frameTypeCounts[language]++
+				typ := attr.Value().Str()
+				frameTypeCounts[typ]++
 				break
 			}
 		}
@@ -141,10 +160,10 @@ func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.
 }
 
 // addAggregatedFrameTypeMetrics converts and adds frame type information as metric to the scopeMetrics.
-func (c *profilesToMetricsConnector) addAggregatedFrameTypeMetrics(frameTypeCounts map[string]int64, scopeMetrics pmetric.ScopeMetrics, ts pcommon.Timestamp) {
-	for lang, count := range frameTypeCounts {
+func (c *profilesToMetricsConnector) addAggregatedFrameTypeMetrics(origin origin, frameTypeCounts map[string]int64, scopeMetrics pmetric.ScopeMetrics, ts pcommon.Timestamp) {
+	for typ, count := range frameTypeCounts {
 		metric := scopeMetrics.Metrics().AppendEmpty()
-		metric.SetName(c.config.MetricsPrefix + "samples.frame_type." + lang)
+		metric.SetName(c.config.MetricsPrefix + "samples.frame_type." + typ)
 		metric.SetDescription("")
 		metric.SetUnit("1")
 
@@ -155,6 +174,8 @@ func (c *profilesToMetricsConnector) addAggregatedFrameTypeMetrics(frameTypeCoun
 		dataPoint := sum.DataPoints().AppendEmpty()
 		dataPoint.SetIntValue(count)
 		dataPoint.SetTimestamp(ts)
+
+		dataPoint.Attributes().PutStr("profile.type_unit", origin.typ+"_"+origin.unit)
 	}
 }
 
