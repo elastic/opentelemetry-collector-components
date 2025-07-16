@@ -19,6 +19,7 @@ package ratelimitprocessor
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,6 +69,8 @@ func newTestGubernatorRateLimiter(t *testing.T, cfg *Config) *gubernatorRateLimi
 		daemon:     daemons[0],
 		client:     cl,
 		clientConn: conn,
+
+		currentRequests: make(map[string]int),
 	}
 
 	require.NoError(t, err)
@@ -141,4 +144,29 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 
 	err = rateLimiter.RateLimit(clientContext2, 1)
 	assert.NoError(t, err)
+}
+
+func TestGubernatorRateLimiter_MultipleRequests_Delay(t *testing.T) {
+	rl := newTestGubernatorRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1, // request per second
+			Burst:            1, // capacity only for one
+			ThrottleBehavior: ThrottleBehaviorDelay,
+			ThrottleInterval: 100 * time.Millisecond, // add 1 token after 100ms
+		},
+		MetadataKeys: []string{"metadata_key"},
+	})
+
+	// Simulate 2 requests hitting the rate limit simultaneously
+	requests := 3
+	var wg sync.WaitGroup
+	wg.Add(requests)
+	for i := 0; i < requests; i++ {
+		go func() {
+			defer wg.Done()
+			err := rl.RateLimit(context.Background(), 1)
+			require.NoError(t, err)
+		}()
+	}
+	wg.Wait()
 }
