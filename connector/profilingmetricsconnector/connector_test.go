@@ -53,10 +53,16 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 
 	// Create a profiles object that will result in at least one metric.
 	profiles := pprofile.NewProfiles()
+	profiles.ProfilesDictionary().StringTable().Append("sample")
+	profiles.ProfilesDictionary().StringTable().Append("count")
+
 	// Add a ResourceProfile with one ScopeProfile and one Profile with one sample.
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
+	st := prof.SampleType().AppendEmpty()
+	st.SetTypeStrindex(0)
+	st.SetUnitStrindex(1)
 	prof.Sample().AppendEmpty() // Add a sample to ensure metric count > 0
 
 	// Expect ConsumeMetrics to be called once.
@@ -79,9 +85,14 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 
 	// Create a profiles object with a sample that has a location with a frame type attribute.
 	profiles := pprofile.NewProfiles()
+	profiles.ProfilesDictionary().StringTable().Append("sample")
+	profiles.ProfilesDictionary().StringTable().Append("count")
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
+	st := prof.SampleType().AppendEmpty()
+	st.SetTypeStrindex(0)
+	st.SetUnitStrindex(1)
 	sample := prof.Sample().AppendEmpty()
 
 	// Setup dictionary tables
@@ -138,9 +149,14 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	}
 
 	profiles := pprofile.NewProfiles()
+	profiles.ProfilesDictionary().StringTable().Append("sample")
+	profiles.ProfilesDictionary().StringTable().Append("count")
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
+	st := prof.SampleType().AppendEmpty()
+	st.SetTypeStrindex(0)
+	st.SetUnitStrindex(1)
 
 	dict := profiles.ProfilesDictionary()
 	locTable := dict.LocationTable()
@@ -228,9 +244,14 @@ func TestConsumeProfiles_ConsumeMetricsError(t *testing.T) {
 
 	// Create a profiles object that will result in at least one metric.
 	profiles := pprofile.NewProfiles()
+	profiles.ProfilesDictionary().StringTable().Append("sample")
+	profiles.ProfilesDictionary().StringTable().Append("count")
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
+	st := prof.SampleType().AppendEmpty()
+	st.SetTypeStrindex(0)
+	st.SetUnitStrindex(1)
 	prof.Sample().AppendEmpty()
 
 	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.Anything).Return(errors.New("consume error")).Once()
