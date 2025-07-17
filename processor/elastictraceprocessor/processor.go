@@ -22,7 +22,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/routing"
-	"github.com/elastic/opentelemetry-lib/enrichments/trace"
+	"github.com/elastic/opentelemetry-lib/enrichments"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -38,7 +38,7 @@ type Processor struct {
 	component.ShutdownFunc
 
 	next     consumer.Traces
-	enricher *trace.Enricher
+	enricher *enrichments.Enricher
 	logger   *zap.Logger
 }
 
@@ -46,7 +46,7 @@ func newProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *Proces
 	return &Processor{
 		next:     next,
 		logger:   logger,
-		enricher: trace.NewEnricher(cfg.Config),
+		enricher: enrichments.NewEnricher(cfg.Config),
 	}
 }
 
@@ -69,7 +69,7 @@ func (p *Processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 		}
 	}
 
-	p.enricher.Enrich(td)
+	p.enricher.EnrichTraces(td)
 
 	return p.next.ConsumeTraces(ctx, td)
 }
