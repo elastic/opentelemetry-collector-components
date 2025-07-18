@@ -107,13 +107,13 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 		ar.inflightConcurrency.Add(1)
 		go func() {
 			defer ar.inflightConcurrency.Done()
-			next := ptrace.NewTraces() // per-worker temporary container to avoid allocs
 			for {
 				select {
 				case <-startCtx.Done():
 					return
 				default:
 				}
+				next := ptrace.NewTraces() // per-worker temporary container to avoid allocs
 				if next.IsReadOnly() {
 					// As the optimization to reuse pdata is not compatible with fanoutconsumer,
 					// i.e. in pipelines where there are more than 1 consumer,
