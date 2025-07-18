@@ -4,7 +4,7 @@ go 1.23.8
 
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced
-	github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.4.0
+	github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.8.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.129.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.129.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.129.0
