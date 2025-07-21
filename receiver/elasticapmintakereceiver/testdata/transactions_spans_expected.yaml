@@ -1,6 +1,12 @@
 resourceSpans:
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
+        - key: service.instance.id
+          value:
+            stringValue: special-name
         - key: service.name
           value:
             stringValue: serviceabc
@@ -13,7 +19,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -82,6 +88,9 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -94,7 +103,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -169,6 +178,9 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -181,7 +193,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -236,6 +248,9 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -248,7 +263,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -303,6 +318,9 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -315,7 +333,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -370,6 +388,9 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -382,7 +403,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -440,6 +461,9 @@ resourceSpans:
             traceId: 85925e55b43f4340aaaaaaaaaaaaaaaa
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -452,7 +476,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -510,6 +534,9 @@ resourceSpans:
             traceId: 85925e55b43f4341aaaaaaaaaaaaaaaa
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -522,7 +549,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -580,6 +607,9 @@ resourceSpans:
             traceId: 85925e55b43f4342aaaaaaaaaaaaaaaa
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
         - key: service.name
           value:
             stringValue: serviceabc
@@ -592,7 +622,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name

@@ -13,7 +13,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -28,6 +28,12 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: host.arch
+          value:
+            stringValue: "x64"
+        - key: service.instance.id
+          value:
+            stringValue: node-123
     scopeSpans:
       - scope: {}
         spans:
@@ -82,7 +88,7 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: agent.name
@@ -97,6 +103,12 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: host.arch
+          value:
+            stringValue: "x64"
+        - key: service.instance.id
+          value:
+            stringValue: node-123
     scopeSpans:
       - scope: {}
         spans:

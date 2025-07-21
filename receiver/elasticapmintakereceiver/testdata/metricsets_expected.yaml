@@ -13,6 +13,9 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
     scopeMetrics:
       - metrics:
           - gauge:
@@ -74,6 +77,9 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
     scopeMetrics:
       - metrics:
           - gauge:
@@ -106,6 +112,9 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
     scopeMetrics:
       - metrics:
           - gauge:
@@ -153,6 +162,9 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
     scopeMetrics:
       - metrics:
           - gauge:
