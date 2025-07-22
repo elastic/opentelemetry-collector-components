@@ -26,6 +26,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
+	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 type sharedcomponentKey struct {
@@ -48,7 +49,39 @@ func NewFactory() connector.Factory {
 
 // createDefaultConfig creates the default configuration.
 func createDefaultConfig() component.Config {
-	return &Config{}
+	defaultOverflowConfig := lsmconfig.OverflowConfig{
+		Attributes: []lsmconfig.Attribute{
+			{
+				Key:   "overflow",
+				Value: true,
+			},
+			{
+				Key:   "component",
+				Value: "connector/elasticapmconnector",
+			},
+		},
+	}
+
+	return &Config{
+		Aggregation: &AggregationConfig{
+			ResourceLimit: lsmconfig.LimitConfig{
+				MaxCardinality: 8000,
+				Overflow:       defaultOverflowConfig,
+			},
+			ScopeLimit: lsmconfig.LimitConfig{
+				MaxCardinality: 4000,
+				Overflow:       defaultOverflowConfig,
+			},
+			MetricLimit: lsmconfig.LimitConfig{
+				MaxCardinality: 4000,
+				Overflow:       defaultOverflowConfig,
+			},
+			DatapointLimit: lsmconfig.LimitConfig{
+				MaxCardinality: 4000,
+				Overflow:       defaultOverflowConfig,
+			},
+		},
+	}
 }
 
 func createLogsToMetrics(
