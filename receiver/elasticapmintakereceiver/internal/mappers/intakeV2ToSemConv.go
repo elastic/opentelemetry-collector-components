@@ -39,9 +39,9 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 		attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
 	}
 	translateCloudAttributes(event, attributes)
-	// translateContainerAndKubernetesAttributes(event, attributes)
-	// translateProcessUserNetworkAttributes(event, attributes)
-	// translateFaasAttributes(event, attributes)
+	translateContainerAndKubernetesAttributes(event, attributes)
+	translateProcessUserNetworkAttributes(event, attributes)
+	translateFaasAttributes(event, attributes)
 }
 
 // SemConv defines a well known list of values of telemetry.sdk.language: https://opentelemetry.io/docs/specs/semconv/attributes-registry/telemetry/
@@ -189,11 +189,11 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 		}
 	}
 
-	if event.Network.Connection.Type != "" {
+	if event.Network != nil && event.Network.Connection != nil && event.Network.Connection.Type != "" {
 		attributes.PutStr(semconv.AttributeNetworkConnectionType, event.Network.Connection.Type)
 	}
 
-	if event.Client.Ip != nil && event.Client.Ip.String() != "" {
+	if event.Client != nil && event.Client.Ip != nil && event.Client.Ip.String() != "" {
 		attributes.PutStr(semconv.AttributeClientAddress, event.Client.Ip.String())
 	}
 }
@@ -212,13 +212,8 @@ func translateFaasAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 		if event.Faas.TriggerType != "" {
 			attributes.PutStr(semconv.AttributeFaaSTrigger, event.Faas.TriggerType)
 		}
-		if event.Faas.ColdStart != nil && *event.Faas.ColdStart {
-			attributes.PutBool(semconv.AttributeFaaSColdstart, true)
-		} else {
-			attributes.PutBool(semconv.AttributeFaaSColdstart, false)
-		}
-		if event.Faas.Execution != "" {
-			attributes.PutStr(semconv.AttributeFaaSInvocationID, event.Faas.Execution)
+		if event.Faas.ColdStart != nil {
+			attributes.PutBool(semconv.AttributeFaaSColdstart, *event.Faas.ColdStart)
 		}
 	}
 }
