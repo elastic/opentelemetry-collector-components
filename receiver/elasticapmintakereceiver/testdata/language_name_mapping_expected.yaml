@@ -22,6 +22,9 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: container.id
+          value:
+            stringValue: container-id
         - key: agent.name
           value:
             stringValue: elastic-dotnet

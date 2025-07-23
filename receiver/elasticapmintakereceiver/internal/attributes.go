@@ -30,4 +30,7 @@ const (
 	HTTPResponseEncodedBodySize = "http.response.encoded_body_size"
 	HTTPResponseTransferSize    = "http.response.transfer_size"
 	SpanMessageBody             = "span.message.body"
+	CloudProjectID              = "cloud.project.id"
+	CloudProjectName            = "cloud.project.name"
+	TriggerRequestId            = "faas.trigger.request.id"
 )

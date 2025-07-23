@@ -19,6 +19,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -90,6 +138,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: prod
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -160,6 +256,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -230,6 +374,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -303,6 +495,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -402,6 +642,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -501,6 +789,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -600,6 +936,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -680,6 +1064,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -762,6 +1194,54 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
         - key: agent.name
           value:
             stringValue: elastic-node
