@@ -1,6 +1,15 @@
 resourceLogs:
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: service.instance.id
+          value:
+            stringValue: node-xyz
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -25,7 +34,7 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: cloud.provider
@@ -120,6 +129,15 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -144,7 +162,7 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: cloud.provider
@@ -218,6 +236,15 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -242,7 +269,7 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: cloud.provider
@@ -318,6 +345,15 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -342,7 +378,7 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: testing
         - key: cloud.provider
@@ -421,6 +457,15 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
+        - key: host.arch
+          value:
+            stringValue: "x64"
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -445,7 +490,7 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
-        - key: deployment.environment.name
+        - key: deployment.environment
           value:
             stringValue: staging
         - key: cloud.provider
