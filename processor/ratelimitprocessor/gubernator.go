@@ -213,9 +213,12 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	rate := float64(r.cfg.Rate)
 	currentWindow := now.Truncate(cfg.EWMAWindow)
 	previousWindow := currentWindow.Add(-cfg.EWMAWindow)
-
-	currentMetricsKey := fmt.Sprintf("%s-%d", uniqueKey, currentWindow.UnixMilli())
-	previousMetricsKey := fmt.Sprintf("%s-%d", uniqueKey, previousWindow.UnixMilli())
+	currentMetricsKey := fmt.Sprintf("%s-%d", uniqueKey,
+		currentWindow.UnixMilli(),
+	)
+	previousMetricsKey := fmt.Sprintf("%s-%d", uniqueKey,
+		previousWindow.UnixMilli(),
+	)
 
 	// ----------------------- PEEK PHASE -----------------------
 	peekResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
@@ -259,13 +262,18 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 		return 0, err
 	}
 
-	currentBytes, currentRate := bytesAndRateFromResponse(peekResponses[0], cfg.EWMAWindow)
-	_, previousRate := bytesAndRateFromResponse(peekResponses[1], cfg.EWMAWindow)
+	// For the current rate, we want to calculate the rate based on the time
+	// elapsed to prevent the limit from dropping at the start of a new window.
+	elapsed := now.Sub(currentWindow)
+	currentRate := rateFromResponse(peekResponses[0], elapsed)
+	// We want to calculate the previous rate based on the EWMA window since
+	// entire window has elapsed.
+	previousRate := rateFromResponse(peekResponses[1], cfg.EWMAWindow)
 
 	dynamicLimit := computeDynamicLimit(currentRate, previousRate, rate, cfg)
 
 	// If this request would exceed the dynamic limit, return the limit early.
-	if float64(currentBytes)+float64(hits) > dynamicLimit {
+	if float64(currentRate*elapsed.Seconds())+float64(hits) > dynamicLimit {
 		return dynamicLimit, nil
 	}
 
@@ -304,7 +312,7 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	resp := responses[0]
 
 	// We calculate the new dynamic limit *after* recording the accepted hits.
-	_, currentRate = bytesAndRateFromResponse(resp, cfg.EWMAWindow)
+	currentRate = rateFromResponse(resp, elapsed)
 	return computeDynamicLimit(currentRate, previousRate, rate, cfg), nil
 }
 
@@ -320,9 +328,9 @@ func computeDynamicLimit(currentRate, previousRate float64, min float64, cfg Dyn
 		return previousRate * cfg.EWMAMultiplier
 	}
 
-	// If both rates are available, calculate the new dynamic limit using
-	// an EWMA formula. The current rate is weighted more heavily than the
-	// previous rate.
+	// If both rates are available, calculate the new dynamic limit using an
+	// EWMA formula. The current rate is weighted according to the
+	// recentWindowWeight.
 	previousWeight := 1 - cfg.RecentWindowWeight
 	ewma := cfg.RecentWindowWeight*currentRate + previousWeight*previousRate
 
@@ -331,9 +339,7 @@ func computeDynamicLimit(currentRate, previousRate float64, min float64, cfg Dyn
 	// limit is at least the static threshold.
 	// A high EWMAMultiplier can lead to a very reactive and potentially unstable
 	// rate limit, while a low value will result in a more conservative and stable limit.
-	return math.Max(min,
-		math.Min(ewma, previousRate)*cfg.EWMAMultiplier,
-	)
+	return math.Max(min, math.Min(ewma, previousRate)*cfg.EWMAMultiplier)
 }
 
 func validateGubernatorResponse(logger *zap.Logger, res []*gubernator.RateLimitResp,
@@ -354,9 +360,6 @@ func validateGubernatorResponse(logger *zap.Logger, res []*gubernator.RateLimitR
 	return nil
 }
 
-func bytesAndRateFromResponse(
-	resp *gubernator.RateLimitResp, window time.Duration,
-) (bytes, rate float64) {
-	b := float64(resp.GetLimit() - resp.GetRemaining())
-	return b, b / window.Seconds()
+func rateFromResponse(resp *gubernator.RateLimitResp, window time.Duration) float64 {
+	return float64(resp.GetLimit()-resp.GetRemaining()) / window.Seconds()
 }

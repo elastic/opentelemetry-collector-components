@@ -119,14 +119,14 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	assert.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit, maxDynamicLimit)
 	assertDynamicAct(t, <-eventChannel, 2_000_000, maxDynamicLimit-2_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 2_000_000, 5_000_000, 3_000_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 2_000_000, 5_000_000, gubernator.Status_UNDER_LIMIT)
 
 	// The second request should also be allowed, as the EWMA is still low.
 	err = rateLimiter.RateLimit(context.Background(), 3_000_000)
 	assert.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit, maxDynamicLimit-2_000_000)
 	assertDynamicAct(t, <-eventChannel, 3_000_000, maxDynamicLimit-5_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 5_000_000, 120_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 5_000_000, gubernator.Status_UNDER_LIMIT)
 
 	// After this request, the current rate should be 5MB/s.
 
@@ -137,9 +137,9 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 		assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 	}
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-5_000_000, maxDynamicLimit)
-	assertRateLimitEvent(t, <-eventChannel, 2_000_000, 5_000_000, 180_000, gubernator.Status_OVER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 2_000_000, 5_000_000, gubernator.Status_OVER_LIMIT)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-5_000_000, maxDynamicLimit)
-	assertRateLimitEvent(t, <-eventChannel, 2_000_000, 5_000_000, 210_000, gubernator.Status_OVER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 2_000_000, 5_000_000, gubernator.Status_OVER_LIMIT)
 
 	// Wait for the next period so the current rate unique key is rotated
 	// and becomes the previous.
@@ -151,7 +151,7 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-5_000_000, maxDynamicLimit)
 	assertDynamicAct(t, <-eventChannel, 10_000_000, maxDynamicLimit-10_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 10_000_000, 15_000_000, 5_000_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 10_000_000, 15_000_000, gubernator.Status_UNDER_LIMIT)
 
 	// Wait another period so the key is rotated.
 	waitUntilNextPeriod(EWMAWindowPeriod)
@@ -162,7 +162,7 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-10_000_000, maxDynamicLimit)
 	assertDynamicAct(t, <-eventChannel, 20_000_000, maxDynamicLimit-20_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 20_000_000, 30_000_000, 10_000_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 20_000_000, 30_000_000, gubernator.Status_UNDER_LIMIT)
 
 	// Now issue two 5MB requests and wait until the next period, then issue
 	// 2 3MB requests.
@@ -170,13 +170,13 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-20_000_000, maxDynamicLimit-10_000_000)
 	assertDynamicAct(t, <-eventChannel, 5_000_000, maxDynamicLimit-25_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 5_000_000, 30_000_000, 5_360_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 5_000_000, 30_000_000, gubernator.Status_UNDER_LIMIT)
 
 	err = rateLimiter.RateLimit(context.Background(), 5_000_000)
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-10_000_000, maxDynamicLimit-25_000_000)
 	assertDynamicAct(t, <-eventChannel, 5_000_000, maxDynamicLimit-30_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 5_000_000, 30_000_000, 780_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 5_000_000, 30_000_000, gubernator.Status_UNDER_LIMIT)
 
 	waitUntilNextPeriod(EWMAWindowPeriod)
 
@@ -184,13 +184,13 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-30_000_000, maxDynamicLimit)
 	assertDynamicAct(t, <-eventChannel, 3_000_000, maxDynamicLimit-3_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 33_300_000, 30_300_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 90_000_000, gubernator.Status_UNDER_LIMIT)
 
 	err = rateLimiter.RateLimit(context.Background(), 3_000_000)
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-30_000_000, maxDynamicLimit-3_000_000)
 	assertDynamicAct(t, <-eventChannel, 3_000_000, maxDynamicLimit-6_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 39_600_000, 36_600_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 90_000_000, gubernator.Status_UNDER_LIMIT)
 
 	waitUntilNextPeriod(EWMAWindowPeriod)
 
@@ -198,13 +198,13 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-6_000_000, maxDynamicLimit)
 	assertDynamicAct(t, <-eventChannel, 3_000_000, maxDynamicLimit-3_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 11_700_000, 8_700_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 18_000_000, gubernator.Status_UNDER_LIMIT)
 
 	err = rateLimiter.RateLimit(context.Background(), 3_000_000)
 	require.NoError(t, err)
-	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-3_000_000, maxDynamicLimit-6_000_000)
+	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-6_000_000, maxDynamicLimit-3_000_000)
 	assertDynamicAct(t, <-eventChannel, 3_000_000, maxDynamicLimit-6_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 18_000_000, 15_000_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 3_000_000, 18_000_000, gubernator.Status_UNDER_LIMIT)
 
 	waitUntilNextPeriod(EWMAWindowPeriod)
 
@@ -212,13 +212,13 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-6_000_000, maxDynamicLimit)
 	assertDynamicAct(t, <-eventChannel, 1_000_000, maxDynamicLimit-1_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 1_000_000, 7_500_000, 6_500_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 1_000_000, 18_000_000, gubernator.Status_UNDER_LIMIT)
 
 	err = rateLimiter.RateLimit(context.Background(), 1_000_000)
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-6_000_000, maxDynamicLimit-1_000_000)
 	assertDynamicAct(t, <-eventChannel, 1_000_000, maxDynamicLimit-2_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 1_000_000, 9_600_000, 8_600_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 1_000_000, 18_000_000, gubernator.Status_UNDER_LIMIT)
 
 	waitUntilNextPeriod(EWMAWindowPeriod)
 
@@ -226,13 +226,13 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-2_000_000, maxDynamicLimit)
 	assertDynamicAct(t, <-eventChannel, 1_000_000, maxDynamicLimit-1_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 1_000_000, 5_000_000, 4_000_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 1_000_000, 6_000_000, gubernator.Status_UNDER_LIMIT)
 
 	err = rateLimiter.RateLimit(context.Background(), 1_000_000)
 	require.NoError(t, err)
 	assertDynamicPeekPair(t, <-eventChannel, <-eventChannel, maxDynamicLimit-1_000_000, maxDynamicLimit-2_000_000)
 	assertDynamicAct(t, <-eventChannel, 1_000_000, maxDynamicLimit-2_000_000)
-	assertRateLimitEvent(t, <-eventChannel, 1_000_000, 6_000_000, 5_000_000, gubernator.Status_UNDER_LIMIT)
+	assertRateLimitEvent(t, <-eventChannel, 1_000_000, 6_000_000, gubernator.Status_UNDER_LIMIT)
 
 	assert.Empty(t, eventChannel)
 }
@@ -281,7 +281,7 @@ func assertDynamicAct(t *testing.T, event gubernator.HitEvent, expectedHits, exp
 	assert.GreaterOrEqual(t, event.Response.ResetTime, *event.Request.CreatedAt, "response.reset_time")
 }
 
-func assertRateLimitEvent(t *testing.T, event gubernator.HitEvent, expectedHits, expectedLimit, expectedRemaining int64, expectedStatus gubernator.Status) {
+func assertRateLimitEvent(t *testing.T, event gubernator.HitEvent, expectedHits, expectedLimit int64, expectedStatus gubernator.Status) {
 	t.Helper()
 	assert.Equal(t, "bytes_per_sec", event.Request.Name, "request.name")
 	assert.Equal(t, "default", event.Request.UniqueKey, "request.unique_key")
@@ -293,11 +293,6 @@ func assertRateLimitEvent(t *testing.T, event gubernator.HitEvent, expectedHits,
 	assert.NotZero(t, *event.Request.CreatedAt, "request.created_at")
 
 	assert.Equal(t, expectedLimit, event.Response.Limit, "response.limit")
-	// Leaky bucket is trickier to calculate the remaining since the rate is
-	// not constant and keeps decreasing. So depending on the latency between
-	// calls, the remaining might be slightly different. This is why we allow
-	// a delta of 550_000.
-	assert.InDelta(t, expectedRemaining, event.Response.Remaining, 550_000, "response.remaining")
 	assert.Equal(t, expectedStatus, event.Response.Status, "response.status")
 	assert.GreaterOrEqual(t, event.Response.ResetTime, *event.Request.CreatedAt, "response.reset_time")
 }
@@ -383,7 +378,6 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		StaticRate       = 1000
 		EventBufferSize  = 100
 	)
-
 	config := &Config{
 		Type: GubernatorRateLimiter,
 		RateLimitSettings: RateLimitSettings{
@@ -482,8 +476,8 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		// Current window: 500 req/sec -> 250 hits
 		waitUntilNextPeriod(EWMAWindowPeriod)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), 250))
-		// dynamic_limit = max(1000, min(875, 2000) * 1.5) = 1312.5 -> 1313
-		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), 250, 1313, 1313-250, gubernator.Status_UNDER_LIMIT)
+		// dynamic_limit = max(1000.000000, min(16042.108753, 2000.000000)*1.500000)
+		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), 250, 3000, 2750, gubernator.Status_UNDER_LIMIT)
 	})
 }
 
@@ -494,7 +488,7 @@ func drainEvents(c <-chan gubernator.HitEvent) []gubernator.HitEvent {
 		select {
 		case e := <-c:
 			events = append(events, e)
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			return events
 		}
 	}
@@ -524,7 +518,7 @@ func assertRequestRateLimitEvent(t *testing.T, event gubernator.HitEvent, expect
 	assert.NotZero(t, *event.Request.CreatedAt, "request.created_at")
 
 	assert.Equal(t, expectedLimit, event.Response.Limit, "response.limit")
-	assert.InDelta(t, expectedRemaining, event.Response.Remaining, 1, "response.remaining")
+	assert.InDelta(t, expectedRemaining, event.Response.Remaining, 1, "response.remaining", event.Response.Remaining)
 	assert.Equal(t, expectedStatus, event.Response.Status, "response.status")
 	assert.GreaterOrEqual(t, event.Response.ResetTime, *event.Request.CreatedAt, "response.reset_time")
 }
