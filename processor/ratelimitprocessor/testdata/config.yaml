@@ -78,3 +78,14 @@ ratelimit/overrides_throttle_interval:
     project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
       rate: 400
       throttle_interval: 10s
+
+ratelimit/dynamic_rate_limit:
+  rate: 100
+  burst: 200
+  type: gubernator
+  strategy: bytes
+  throttle_behavior: error
+  dynamic_limits:
+    enabled: true
+    ewma_multiplier: 1.5
+    ewma_window: 1m

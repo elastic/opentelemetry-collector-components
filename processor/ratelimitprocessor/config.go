@@ -39,10 +39,47 @@ type Config struct {
 	// Embed the rate limit settings
 	RateLimitSettings `mapstructure:",squash"`
 
+	// DynamicRateLimiting holds the dynamic rate limiting configuration.
+	// This is only applicable when the rate limiter type is "gubernator".
+	DynamicRateLimiting `mapstructure:"dynamic_limits"`
+
 	// Overrides holds a list of overrides for the rate limiter.
 	//
 	// Defaults to empty
 	Overrides map[string]RateLimitOverrides `mapstructure:"overrides"`
+}
+
+// DynamicRateLimiting defines settings for dynamic rate limiting.
+type DynamicRateLimiting struct {
+	// Enabled tells the processor to use dynamic rate limiting.
+	Enabled bool `mapstructure:"enabled"`
+	// EWMAMultiplier is the factor by which the current EWMA is multiplied
+	// to get the dynamic part of the limit. Defaults to 1.5.
+	EWMAMultiplier float64 `mapstructure:"ewma_multiplier"`
+	// EWMAWindow defines the time window for the Exponentially Weighted Moving Average.
+	// A common value would be "5m" for a 5-minute window.
+	EWMAWindow time.Duration `mapstructure:"ewma_window"`
+	// RecentWindowWeight is the weight given to the recent window of the EWMA.
+	// Defaults to 0.75.
+	RecentWindowWeight float64 `mapstructure:"recent_window_weight"`
+}
+
+// Validate checks the DynamicRateLimiting configuration.
+func (d *DynamicRateLimiting) Validate() error {
+	if !d.Enabled {
+		return nil
+	}
+	var errs []error
+	if d.EWMAMultiplier < 1 {
+		errs = append(errs, errors.New("ewma_multiplier must be greater than or equal to 1"))
+	}
+	if d.EWMAWindow <= 0 {
+		errs = append(errs, errors.New("ewma_window must be greater than zero"))
+	}
+	if d.RecentWindowWeight < 0 || d.RecentWindowWeight > 0.99 {
+		errs = append(errs, errors.New("recent_window_weight must be between 0 and 0.99"))
+	}
+	return errors.Join(errs...)
 }
 
 // RateLimitSettings holds the core rate limiting configuration.
@@ -86,6 +123,19 @@ type RateLimitOverrides struct {
 
 // Strategy identifies the rate-limiting strategy: requests, records, or bytes.
 type Strategy string
+
+func (s Strategy) String() string {
+	switch s {
+	case StrategyRateLimitRequests:
+		return "requests_per_sec"
+	case StrategyRateLimitRecords:
+		return "records_per_sec"
+	case StrategyRateLimitBytes:
+		return "bytes_per_sec"
+	default:
+		return string(s) // NOTE(marclop) shouldn't happen due to validation.
+	}
+}
 
 const (
 	// StrategyRateLimitRequests identifies the strategy for
@@ -143,6 +193,11 @@ func createDefaultConfig() component.Config {
 			Strategy:         StrategyRateLimitRequests,
 			ThrottleBehavior: ThrottleBehaviorError,
 			ThrottleInterval: DefaultThrottleInterval,
+		},
+		DynamicRateLimiting: DynamicRateLimiting{
+			EWMAMultiplier:     1.5,
+			EWMAWindow:         5 * time.Minute,
+			RecentWindowWeight: 0.75,
 		},
 	}
 }
@@ -209,6 +264,11 @@ func (config *Config) Validate() error {
 	var errs []error
 	if err := config.RateLimitSettings.Validate(); err != nil {
 		errs = append(errs, err)
+	}
+	if config.Type == GubernatorRateLimiter {
+		if err := config.DynamicRateLimiting.Validate(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	for key, override := range config.Overrides {
 		if err := override.Validate(); err != nil {

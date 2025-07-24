@@ -17,6 +17,7 @@ a in-memory rate limiter, or makes use of a [gubernator](https://github.com/gube
 | `throttle_interval` | Time interval for throttling. It has effects only when `type` is `gubernator`.                                                                                                                                    | No       | `1s`       |
 | `type`              | Type of rate limiter. Options are `local` or `gubernator`.                                                                                                                                                        | No       | `local`    |
 | `overrides`         | Allows customizing rate limiting parameters for specific metadata key-value pairs. Use this to apply different rate limits to different tenants, projects, or other entities identified by metadata. Each override is keyed by a metadata value and can specify custom `rate`, `burst`, and `throttle_interval` settings that take precedence over the global configuration for matching requests. | No       |            |
+| `dynamic_limits`    | Holds the dynamic rate limiting configuration. This is only applicable when the rate limiter type is `gubernator`.                                                                                                   | No       |            |
 
 ### Overrides
 
@@ -27,6 +28,91 @@ You can override one or more of the following fields:
 | `rate`              | Bucket refill rate, in tokens per second.                                                                                                                                                                         | No       |            |
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | No       |            |
 | `throttle_interval` | Time interval for throttling. It has effect only when `type` is `gubernator`.                                                                                                                                     | No       |            |
+
+### Dynamic Rate Limiting
+
+| Field                  | Description                                                                                                                                                                                                       | Required | Default    |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|
+| `enabled`              | Enables the dynamic rate limiting feature.                                                                                                                                                                        | No       | `false`    |
+| `ewma_multiplier`      | The factor by which the current EWMA is multiplied to get the dynamic part of the limit.                                                                                                                            | No       | `1.5`      |
+| `ewma_window`          | The time window for the Exponentially Weighted Moving Average.                                                                                                                                                    | No       | `5m`       |
+| `recent_window_weight` | The weight given to the recent window of the EWMA.                                                                                                                                                                | No       | `0.75`     |
+
+### Dynamic Rate Limiting Deep Dive
+
+The dynamic rate limiting feature uses a sliding window approach with an Exponentially Weighted Moving Average (EWMA) to adjust the rate limit based on recent traffic patterns. This allows the processor to be more responsive to changes in traffic volume, preventing sudden spikes from overwhelming downstream services while also allowing for higher throughput when traffic is low.
+
+The system maintains two time windows:
+
+*   **Current Window**: The most recent time window, defined by `ewma_window`.
+*   **Previous Window**: The time window immediately preceding the current one.
+
+The dynamic limit is calculated using the following formula:
+
+```
+ewma = (recent_window_weight * current_rate) + ((1 - recent_window_weight) * previous_rate)
+dynamic_limit = max(static_rate, min(ewma, previous_rate) * ewma_multiplier)
+```
+
+Where:
+
+*   `current_rate`: The rate of traffic in the current window.
+*   `previous_rate`: The rate of traffic in the previous window.
+*   `static_rate`: The configured `rate` in the main configuration.
+*   `recent_window_weight`: The weight given to the `current_rate` in the EWMA calculation.
+*   `ewma_multiplier`: A factor to prevent the dynamic limit from growing too quickly.
+
+Let's walk through a few examples to illustrate the behavior of the dynamic rate limiter.
+
+Assume the following configuration:
+
+*   `ewma_window`: 5m
+*   `recent_window_weight`: 0.75
+*   `ewma_multiplier`: 1.5
+*   `rate`: 1000 requests/second (this is our `static_rate`)
+
+**Scenario 1: Initial Traffic**
+
+1.  **First 5 minutes**: 120,000 requests are received (400 requests/second). `previous_rate` is 0.
+    *   Since `previous_rate` is 0, the `dynamic_limit` is capped at the `static_rate` of 1000.
+2.  **Next 5 minutes**: 150,000 requests are received (500 requests/second). `previous_rate` is 400.
+    *   `ewma = (0.75 * 500) + (0.25 * 400) = 375 + 100 = 475`
+    *   `dynamic_limit = max(1000, min(475, 400) * 1.5) = max(1000, 400 * 1.5) = max(1000, 600) = 1000`
+    *   The `dynamic_limit` remains at the `static_rate` as the traffic is below the threshold.
+
+**Scenario 2: Ramping Up Traffic**
+
+1.  **Previous window rate**: 900 requests/second.
+2.  **Current window rate**: 1200 requests/second.
+    *   `ewma = (0.75 * 1200) + (0.25 * 900) = 900 + 225 = 1125`
+    *   `dynamic_limit = max(1000, min(1125, 900) * 1.5) = max(1000, 900 * 1.5) = max(1000, 1350) = 1350`
+    *   The `dynamic_limit` increases to 1350, allowing more traffic.
+
+**Scenario 3: Sustained High Traffic**
+
+1.  **Previous window rate**: 1500 requests/second.
+2.  **Current window rate**: 1600 requests/second.
+    *   `ewma = (0.75 * 1600) + (0.25 * 1500) = 1200 + 375 = 1575`
+    *   `dynamic_limit = max(1000, min(1575, 1500) * 1.5) = max(1000, 1500 * 1.5) = max(1000, 2250) = 2250`
+    *   The `dynamic_limit` continues to increase as the high traffic is sustained.
+
+**Scenario 4: Traffic Spike**
+
+1.  **Previous window rate**: 1000 requests/second.
+2.  **Current window rate**: 3000 requests/second.
+    *   `ewma = (0.75 * 3000) + (0.25 * 1000) = 2250 + 250 = 2500`
+    *   `dynamic_limit = max(1000, min(2500, 1000) * 1.5) = max(1000, 1000 * 1.5) = max(1000, 1500) = 1500`
+    *   The `ewma_multiplier` dampens the response to the spike, preventing the limit from jumping to 2500 immediately.
+
+**Scenario 5: Traffic Reduction**
+
+1.  **Previous window rate**: 2000 requests/second.
+2.  **Current window rate**: 500 requests/second.
+    *   `ewma = (0.75 * 500) + (0.25 * 2000) = 375 + 500 = 875`
+    *   `dynamic_limit = max(1000, min(875, 2000) * 1.5) = max(1000, 875 * 1.5) = max(1000, 1312.5) = 1312.5`
+    *   The `dynamic_limit` decreases, but not as drastically as the traffic reduction, providing a buffer.
+
+This mechanism allows the rate limiter to adapt to sustained increases in traffic, while the `ewma_multiplier` prevents abrupt changes that could destabilize the system.
 
 ### Examples
 
@@ -88,4 +174,21 @@ processors:
         rate: 2000
         burst: 20000
         throttle_interval: 10s # has effect only when `type` is `gubernator`
+```
+
+Example when using as a distributed rate limiter (Gubernator) with dynamic rate limiting:
+
+```yaml
+processors:
+  ratelimiter:
+    rate: 100
+    # NOTE burst isn't used when dynamic limits are enabled.
+    burst: 200
+    type: gubernator
+    strategy: bytes
+    throttle_behavior: error
+    dynamic_limits:
+      enabled: true
+      ewma_multiplier: 1.5
+      ewma_window: 1m
 ```

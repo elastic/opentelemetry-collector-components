@@ -31,6 +31,12 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 )
 
+var defaultDynamicRateLimiting = DynamicRateLimiting{
+	EWMAMultiplier:     1.5,
+	EWMAWindow:         5 * time.Minute,
+	RecentWindowWeight: 0.75,
+}
+
 func TestLoadConfig(t *testing.T) {
 	grpcClientConfig := configgrpc.NewDefaultClientConfig()
 	grpcClientConfig.Endpoint = "localhost:1081"
@@ -51,6 +57,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
 		},
 		{
@@ -64,6 +71,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
 		},
 		{
@@ -77,6 +85,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
 		},
 		{
@@ -90,7 +99,8 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
-				MetadataKeys: []string{"project_id"},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
+				MetadataKeys:        []string{"project_id"},
 			},
 		},
 		{
@@ -104,6 +114,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Rate:  ptr(300),
@@ -123,6 +134,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Rate: ptr(300),
@@ -141,6 +153,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Burst: ptr(400),
@@ -159,11 +172,31 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
 				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
 						Rate:             ptr(400),
 						ThrottleInterval: ptr(10 * time.Second),
 					},
+				},
+			},
+		},
+		{
+			name: "dynamic_rate_limit",
+			expected: &Config{
+				Type: GubernatorRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200, // Unused for dynamic.
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
+				DynamicRateLimiting: DynamicRateLimiting{
+					Enabled:            true,
+					EWMAMultiplier:     1.5,
+					EWMAWindow:         time.Minute,
+					RecentWindowWeight: 0.75,
 				},
 			},
 		},
