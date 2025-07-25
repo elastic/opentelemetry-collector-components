@@ -114,7 +114,7 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 					return
 				default:
 				}
-				if next.IsReadOnly() {
+				if ar.cfg.DisablePdataReuse || next.IsReadOnly() {
 					// As the optimization to reuse pdata is not compatible with fanoutconsumer,
 					// i.e. in pipelines where there are more than 1 consumer,
 					// as fanoutconsumer will mark the pdata struct as read only and cannot be reused.
