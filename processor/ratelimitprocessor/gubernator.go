@@ -154,7 +154,6 @@ func (r *gubernatorRateLimiter) calculateRateAndBurst(ctx context.Context,
 	}
 
 	result := int(math.Round(limit))
-	fmt.Println("Calculated dynamic limit:", result)
 	return result, result
 }
 
@@ -251,14 +250,13 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	drc := newDynamicRateContext(uniqueKey, now, r.cfg.DynamicRateLimiting, float64(cfg.Rate))
 
 	// Get current and previous window rates
-	currentRate, previousRate, err := r.getCurrentAndPreviousRates(ctx, drc)
+	_, previousRate, err := r.getCurrentAndPreviousRates(ctx, drc)
 	if err != nil {
 		return 0, err
 	}
 
 	// Record the hits and recalculate the limit
 	lim, err := r.getRateLimits(ctx, drc, hits, previousRate)
-	fmt.Printf("* Calculation(%d): current rate: %f, previous rate: %f, dynamic limit: %f\n", hits, currentRate, previousRate, lim)
 	return lim, err
 }
 
@@ -368,7 +366,6 @@ func computeDynamicLimit(currentRate, previousRate float64,
 	recentWeight := cfg.RecentWindowWeight
 	historicalWeight := 1 - recentWeight
 	ewma := recentWeight*currentRate + historicalWeight*previousRate
-	fmt.Println("EWMA:", ewma, "currentRate:", currentRate, "previousRate:", previousRate, "recentWeight:", recentWeight, "historicalWeight:", historicalWeight)
 
 	// Apply multiplier with bounds checking
 	dynamicLimit := ewma * cfg.EWMAMultiplier
