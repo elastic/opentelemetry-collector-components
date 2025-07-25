@@ -265,7 +265,7 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		reqsSec := int64(400)
 		actual := reqsSec * int64(EWMAWindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
-		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, StaticRate, StaticRate-actual, gubernator.Status_UNDER_LIMIT)
+		assertRequestRateLimitEvent(t, "default", findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, StaticRate, StaticRate-actual, gubernator.Status_UNDER_LIMIT)
 
 		waitUntilNextPeriod(EWMAWindowPeriod)
 
@@ -274,7 +274,7 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		actual = reqsSec * int64(EWMAWindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
 		// previous_rate is 400. dynamic_limit should be 1000.
-		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, StaticRate, StaticRate-actual, gubernator.Status_UNDER_LIMIT)
+		assertRequestRateLimitEvent(t, "default", findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, StaticRate, StaticRate-actual, gubernator.Status_UNDER_LIMIT)
 	})
 
 	t.Run("Scenario 2: Ramping Up Traffic", func(t *testing.T) {
@@ -294,7 +294,7 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		actual = reqsSec * int64(EWMAWindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
 		// dynamic_limit = max(1000, min(1125, 900) * 1.5) = 1350
-		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 1350, 1350-actual, gubernator.Status_UNDER_LIMIT)
+		assertRequestRateLimitEvent(t, "default", findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 1350, 1350-actual, gubernator.Status_UNDER_LIMIT)
 	})
 
 	t.Run("Scenario 3: Sustained High Traffic", func(t *testing.T) {
@@ -314,7 +314,7 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		actual = reqsSec * int64(EWMAWindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
 		// dynamic_limit = max(1000, min(1575, 1500) * 1.5) = 2250
-		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 2250, 2250-actual, gubernator.Status_UNDER_LIMIT)
+		assertRequestRateLimitEvent(t, "default", findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 2250, 2250-actual, gubernator.Status_UNDER_LIMIT)
 	})
 
 	t.Run("Scenario 4: Traffic Spike", func(t *testing.T) {
@@ -335,13 +335,13 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		reqsSec = 10007 // This will result in 1501 hits
 		actual = reqsSec * int64(EWMAWindowPeriod) / int64(time.Second)
 		require.Error(t, rateLimiter.RateLimit(context.Background(), int(actual)))
-		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 1500, 1500, gubernator.Status_OVER_LIMIT)
+		assertRequestRateLimitEvent(t, "default", findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 1500, 1500, gubernator.Status_OVER_LIMIT)
 
 		// A smaller request should be allowed, the bucket was not drained.
 		reqsSec = 5000 // This will result in 750 hits (5000 * 150ms / 1000ms)
 		actual = reqsSec * int64(EWMAWindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
-		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 1500, 1500-actual, gubernator.Status_UNDER_LIMIT)
+		assertRequestRateLimitEvent(t, "default", findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 1500, 1500-actual, gubernator.Status_UNDER_LIMIT)
 	})
 
 	t.Run("Scenario 5: Traffic Reduction", func(t *testing.T) {
@@ -361,7 +361,173 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		actual = reqsSec * int64(EWMAWindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
 		// dynamic_limit = max(1000.000000, min(16042.108753, 2000.000000)*1.500000)
-		assertRequestRateLimitEvent(t, findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 3000, 3000-actual, gubernator.Status_UNDER_LIMIT)
+		assertRequestRateLimitEvent(t, "default", findLastRequestRateLimitEvent(drainEvents(eventChannel), t), actual, 3000, 3000-actual, gubernator.Status_UNDER_LIMIT)
+	})
+}
+
+func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
+	const (
+		EWMAWindowPeriod = 150 * time.Millisecond
+		StaticRate       = 1000
+		EventBufferSize  = 20
+	)
+
+	verify := func(evc <-chan gubernator.HitEvent, rate int64, uniqKey string,
+		status gubernator.Status, remaining int64, inDelta bool,
+	) {
+		t.Helper()
+		staticEvent := findLastRequestRateLimitEvent(drainEvents(evc), t)
+		defer func() {
+			if t.Failed() {
+				t.Logf("Event: %s", staticEvent.Response.String())
+			}
+		}()
+		assert.Equal(t, uniqKey, staticEvent.Request.UniqueKey)
+		assert.Equal(t, int64(rate), staticEvent.Request.Limit, "%s should use override rate", uniqKey)
+		assert.Equal(t, status, staticEvent.Response.Status, "%s Status mismatch", uniqKey)
+		if inDelta {
+			assert.GreaterOrEqual(t, staticEvent.Response.Remaining, remaining,
+				"%s Remaining tokens should be at least the expected delta", uniqKey,
+			)
+		} else {
+			assert.Equal(t, remaining, staticEvent.Response.Remaining,
+				"%s Remaining tokens should reflect static limit", uniqKey,
+			)
+		}
+	}
+
+	t.Run("override_with_static_only_disables_dynamic", func(t *testing.T) {
+		eventChannel := make(chan gubernator.HitEvent, EventBufferSize)
+		// OVERRIDES
+		rate := 500 // Static override rate for the test
+		throttleInterval := 100 * time.Millisecond
+		rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+			Type: GubernatorRateLimiter,
+			RateLimitSettings: RateLimitSettings{
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
+				ThrottleInterval: time.Second,
+				Rate:             StaticRate,
+				Burst:            0,
+			},
+			DynamicRateLimiting: DynamicRateLimiting{
+				Enabled:            true,
+				EWMAMultiplier:     2.0,
+				EWMAWindow:         EWMAWindowPeriod,
+				RecentWindowWeight: 0.75,
+			},
+			MetadataKeys: []string{"x-tenant-id"},
+			Overrides: map[string]RateLimitOverrides{
+				"x-tenant-id:static-tenant": {
+					StaticOnly:       true,
+					Rate:             ptr(rate), // Lower than global rate to make test clearer
+					ThrottleInterval: ptr(throttleInterval),
+				},
+			},
+		}, eventChannel)
+
+		// Create context for static tenant
+		staticTenantCtx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"static-tenant"},
+			}),
+		})
+
+		// Test the static tenant at various traffic levels
+		waitUntilNextPeriod(throttleInterval)
+
+		// Test 1: Should allow traffic within static limit (499 req/sec)
+		require.NoError(t, rateLimiter.RateLimit(staticTenantCtx, 499))
+		verify(eventChannel, int64(rate), "x-tenant-id:static-tenant",
+			gubernator.Status_UNDER_LIMIT, int64(rate-499), false,
+		)
+
+		// Now exceed the static limit
+		assert.EqualError(t, rateLimiter.RateLimit(staticTenantCtx, 1000),
+			"rpc error: code = ResourceExhausted desc = too many requests",
+		)
+		// record the time when the static limit was depleted
+		verify(eventChannel, int64(rate), "x-tenant-id:static-tenant",
+			gubernator.Status_OVER_LIMIT, 0, true,
+		)
+
+		// Test 2: Verify traffic is processed normally within the static limit
+		waitUntilNextPeriod(throttleInterval)
+
+		// Since we've replenished the tokens by now, we should be able to send
+		// up to rate - 1 requests (499 req/sec)
+		drain := rate - 1
+		require.NoError(t, rateLimiter.RateLimit(staticTenantCtx, drain))
+		verify(eventChannel, int64(rate), "x-tenant-id:static-tenant",
+			gubernator.Status_UNDER_LIMIT, int64(rate-drain), true,
+		)
+	})
+
+	t.Run("override_without_static_only_uses_override_rate_as_baseline", func(t *testing.T) {
+		eventChannel := make(chan gubernator.HitEvent, EventBufferSize)
+
+		rate := 100 // Override rate for the test
+		throttleInterval := 100 * time.Millisecond
+
+		rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+			Type: GubernatorRateLimiter,
+			RateLimitSettings: RateLimitSettings{
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
+				ThrottleInterval: time.Second,
+				Rate:             StaticRate,
+			},
+			DynamicRateLimiting: DynamicRateLimiting{
+				Enabled:            true,
+				EWMAMultiplier:     2.0,
+				EWMAWindow:         EWMAWindowPeriod,
+				RecentWindowWeight: 0.75,
+			},
+			MetadataKeys: []string{"x-tenant-id"},
+			Overrides: map[string]RateLimitOverrides{
+				"x-tenant-id:dynamic-tenant": {
+					// StaticOnly is false (default), so dynamic scaling should work
+					Rate:             ptr(rate), // Override rate but still allow dynamic scaling
+					ThrottleInterval: ptr(throttleInterval),
+				},
+			},
+		}, eventChannel)
+
+		// Test that the override rate is used as the baseline (not the global rate)
+		waitUntilNextPeriod(EWMAWindowPeriod)
+
+		dynamicTenantCtx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"dynamic-tenant"},
+			}),
+		})
+
+		// Send traffic within the override rate to establish baseline
+		require.NoError(t, rateLimiter.RateLimit(dynamicTenantCtx, int(rate)))
+
+		verify(eventChannel, int64(rate), "x-tenant-id:dynamic-tenant",
+			gubernator.Status_UNDER_LIMIT, 0, false,
+		)
+
+		// Test that the override rate is used as the baseline (not the global rate)
+		waitUntilNextPeriod(EWMAWindowPeriod)
+
+		// Send traffic within the override rate to establish baseline
+
+		reqsSec := 300
+		proRatedCurrent := float64(rate) / float64(EWMAWindowPeriod.Seconds())
+		dynLimit := computeDynamicLimit(float64(reqsSec), proRatedCurrent, float64(rate), DynamicRateLimiting{
+			EWMAMultiplier:     2.0,
+			EWMAWindow:         EWMAWindowPeriod,
+			RecentWindowWeight: 0.75,
+		})
+		t.Log("requests/sec:", reqsSec, "limit:", dynLimit, "proRatedCurrent:", proRatedCurrent)
+		require.NoError(t, rateLimiter.RateLimit(dynamicTenantCtx, int(reqsSec)))
+
+		dynamicLimit := int64(1333)
+		verify(eventChannel, dynamicLimit, "x-tenant-id:dynamic-tenant",
+			gubernator.Status_UNDER_LIMIT, dynamicLimit-int64(reqsSec), false,
+		)
 	})
 }
 
@@ -390,10 +556,19 @@ func findLastRequestRateLimitEvent(events []gubernator.HitEvent, t *testing.T) g
 	return gubernator.HitEvent{}
 }
 
-func assertRequestRateLimitEvent(t *testing.T, event gubernator.HitEvent, expectedHits, expectedLimit, expectedRemaining int64, expectedStatus gubernator.Status) {
+func assertRequestRateLimitEvent(t *testing.T, uniqueKey string,
+	event gubernator.HitEvent,
+	expectedHits, expectedLimit, expectedRemaining int64,
+	expectedStatus gubernator.Status,
+) {
+	defer func() {
+		if t.Failed() {
+			t.Logf("Event: %s", event.Response.String())
+		}
+	}()
 	t.Helper()
 	assert.Equal(t, "requests_per_sec", event.Request.Name, "request.name")
-	assert.Equal(t, "default", event.Request.UniqueKey, "request.unique_key")
+	assert.Equal(t, uniqueKey, event.Request.UniqueKey, "request.unique_key")
 	assert.Equal(t, expectedHits, event.Request.Hits, "request.hits")
 	assert.Equal(t, expectedLimit, event.Request.Limit, "request.limit")
 	assert.Equal(t, expectedLimit, event.Request.Burst, "request.burst")
@@ -403,6 +578,6 @@ func assertRequestRateLimitEvent(t *testing.T, event gubernator.HitEvent, expect
 
 	assert.Equal(t, expectedLimit, event.Response.Limit, "response.limit")
 	assert.InDelta(t, expectedRemaining, event.Response.Remaining, 1, "response.remaining", event.Response.Remaining)
-	assert.Equal(t, expectedStatus, event.Response.Status, "response.status")
+	assert.Equal(t, gubernator.Status_name[int32(expectedStatus)], gubernator.Status_name[int32(event.Response.Status)])
 	assert.GreaterOrEqual(t, event.Response.ResetTime, *event.Request.CreatedAt, "response.reset_time")
 }

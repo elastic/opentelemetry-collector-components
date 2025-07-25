@@ -182,6 +182,25 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "overrides_static_only",
+			expected: &Config{
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
+				Overrides: map[string]RateLimitOverrides{
+					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+						StaticOnly: true,
+					},
+				},
+			},
+		},
+		{
 			name: "dynamic_rate_limit",
 			expected: &Config{
 				Type: GubernatorRateLimiter,

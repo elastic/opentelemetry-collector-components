@@ -79,6 +79,15 @@ ratelimit/overrides_throttle_interval:
       rate: 400
       throttle_interval: 10s
 
+ratelimit/overrides_static_only:
+  rate: 100
+  burst: 200
+  strategy: bytes
+  throttle_behavior: error
+  overrides:
+    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+      static_only: true
+
 ratelimit/dynamic_rate_limit:
   rate: 100
   burst: 200
