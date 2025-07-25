@@ -104,9 +104,14 @@ type RateLimitSettings struct {
 	//
 	// Defaults to 1s
 	ThrottleInterval time.Duration `mapstructure:"throttle_interval"`
+
+	disableDynamic bool `mapstructure:"-"`
 }
 
 type RateLimitOverrides struct {
+	// Rate holds the override rate limit.
+	StaticOnly bool `mapstructure:"static_only"`
+
 	// Rate holds bucket refill rate, in tokens per second.
 	Rate *int `mapstructure:"rate"`
 
@@ -217,6 +222,9 @@ func resolveRateLimitSettings(cfg *Config, uniqueKey string) RateLimitSettings {
 		}
 		if override.ThrottleInterval != nil {
 			result.ThrottleInterval = *override.ThrottleInterval
+		}
+		if override.StaticOnly {
+			result.disableDynamic = true
 		}
 	}
 	return result
