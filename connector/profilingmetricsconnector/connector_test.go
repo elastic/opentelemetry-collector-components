@@ -45,7 +45,10 @@ func (m *mockMetricsConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Met
 
 func TestConsumeProfiles_WithMetrics(t *testing.T) {
 	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
+	cfg := &Config{
+		MetricsPrefix: "test.",
+		ByFrameType:   true,
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
@@ -77,7 +80,10 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 
 func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
+	cfg := &Config{
+		MetricsPrefix: "test.",
+		ByFrameType:   true,
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
@@ -154,7 +160,10 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 
 func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
+	cfg := &Config{
+		MetricsPrefix: "test.",
+		ByFrameType:   true,
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,

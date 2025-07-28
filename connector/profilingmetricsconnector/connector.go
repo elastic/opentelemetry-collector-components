@@ -19,6 +19,8 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"context"
+	"errors"
+	"regexp"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -29,10 +31,20 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
+var (
+	errInvalAgg = errors.New("invalid aggregation configuration")
+)
+
 // profilesToMetricsConnector implements xconnector.Profiles
 type profilesToMetricsConnector struct {
 	nextConsumer consumer.Metrics
 	config       *Config
+	aggregations []aggregation
+}
+
+type aggregation struct {
+	re    *regexp.Regexp
+	label string
 }
 
 // Capabilities returns the consumer capabilities.
@@ -54,6 +66,25 @@ func (c *profilesToMetricsConnector) ConsumeProfiles(ctx context.Context, profil
 }
 
 func (c *profilesToMetricsConnector) Start(ctx context.Context, host component.Host) error {
+	c.aggregations = make([]aggregation, 0, len(c.config.CustomAggregations))
+
+	for _, agg := range c.config.CustomAggregations {
+		if agg.Label == "" || agg.Match == "" {
+			// Both, label and match, need to be set.
+			return errInvalAgg
+		}
+
+		// Precompile all regular expressions at startup to do it only once.
+		re, err := regexp.Compile(agg.Match)
+		if err != nil {
+			return err
+		}
+		c.aggregations = append(c.aggregations, aggregation{
+			re:    re,
+			label: agg.Label,
+		})
+	}
+
 	return nil
 }
 
@@ -118,14 +149,30 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 		c.addSampleCountMetric(profile, scopeMetrics)
 		locIndices := profile.LocationIndices()
 
-		// Collect frame type information.
-		frameTypeCounts := make(map[string]int64)
-		for _, sample := range profile.Sample().All() {
-			c.collectFrameTypeCounts(dictionary, locIndices, sample, frameTypeCounts)
+		if c.config.ByFrameType {
+			// Collect frame type information.
+			frameTypeCounts := make(map[string]int64)
+			for _, sample := range profile.Sample().All() {
+				c.collectFrameTypeCounts(dictionary, locIndices, sample, frameTypeCounts)
+			}
+
+			// Add metric for frame types.
+			c.addAggregatedFrameTypeMetrics(origin, frameTypeCounts, scopeMetrics, profile.Time())
 		}
 
-		// Add metric for frame types.
-		c.addAggregatedFrameTypeMetrics(origin, frameTypeCounts, scopeMetrics, profile.Time())
+		if c.config.ByClassification {
+			classificationCounts := make(map[string]int64)
+			for _, sample := range profile.Sample().All() {
+				c.collectClassificationCounts(dictionary, locIndices, sample, classificationCounts)
+			}
+		}
+
+		if len(c.aggregations) > 0 {
+			costumAggregationCounts := make(map[string]int64)
+			for _, sample := range profile.Sample().All() {
+				c.collectCostumAggregationCounts(dictionary, locIndices, sample, costumAggregationCounts)
+			}
+		}
 	}
 }
 
@@ -177,6 +224,100 @@ func (c *profilesToMetricsConnector) addAggregatedFrameTypeMetrics(origin origin
 		dataPoint.SetTimestamp(ts)
 		dataPoint.Attributes().PutStr("frame.type", typ)
 		dataPoint.Attributes().PutStr("profile.type_unit", origin.typ+"_"+origin.unit)
+	}
+}
+
+// collectClassificationCounts walks all locations/frames of a sample and collects the classification information.
+func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice, sample pprofile.Sample, classificationCounts map[string]int64) {
+	locationTable := dictionary.LocationTable()
+	attrTable := dictionary.AttributeTable()
+	funcTable := dictionary.FunctionTable()
+	strTable := dictionary.StringTable()
+
+	for sli := sample.LocationsStartIndex(); sli < sample.LocationsStartIndex()+sample.LocationsLength(); sli++ {
+		if int(sli) >= locationIndices.Len() {
+			continue
+		}
+
+		li := locationIndices.At(int(sli))
+		if int(li) >= locationTable.Len() {
+			continue
+		}
+		loc := locationTable.At(int(li))
+
+		var frameType string
+		for _, idx := range loc.AttributeIndices().All() {
+			if int(idx) >= attrTable.Len() {
+				continue
+			}
+			attr := attrTable.At(int(idx))
+			if attr.Key() == string(semconv.ProfileFrameTypeKey) {
+				frameType = attr.Value().Str()
+				break
+			}
+		}
+
+		switch frameType {
+		case "":
+			// No proper frame type information is available for this location.
+			continue
+		case semconv.ProfileFrameTypeGo.Value.AsString():
+		case semconv.ProfileFrameTypeJVM.Value.AsString():
+		default:
+			//  At the moment only hotspot and go are supported.
+			continue
+		}
+
+		for _, line := range loc.Line().All() {
+			fnIdx := line.FunctionIndex
+			fnEntry := funcTable.At(int(fnIdx()))
+
+			fnStr := strTable.At(int(fnEntry.NameStrindex()))
+
+			switch frameType {
+			case semconv.ProfileFrameTypeGo.Value.AsString():
+				golangInfo := extractGolangInfo(fnStr)
+				classificationCounts[golangInfo.pack] += 1
+			case semconv.ProfileFrameTypeJVM.Value.AsString():
+				hotspotInfo, err := extractHotspotInfo(fnStr)
+				if err != nil {
+					// Ignore the error for the moment.
+					continue
+				}
+				classificationCounts[hotspotInfo.pack+"."+hotspotInfo.class] += 1
+			}
+		}
+	}
+}
+
+// collectCostumAggregationCounts walks all locations/frames of a sample and collects costum aggregation information.
+func (c *profilesToMetricsConnector) collectCostumAggregationCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice, sample pprofile.Sample, costumAggregationCounts map[string]int64) {
+	locationTable := dictionary.LocationTable()
+	funcTable := dictionary.FunctionTable()
+	strTable := dictionary.StringTable()
+
+	for sli := sample.LocationsStartIndex(); sli < sample.LocationsStartIndex()+sample.LocationsLength(); sli++ {
+		if int(sli) >= locationIndices.Len() {
+			continue
+		}
+
+		li := locationIndices.At(int(sli))
+		if int(li) >= locationTable.Len() {
+			continue
+		}
+		loc := locationTable.At(int(li))
+
+		for _, line := range loc.Line().All() {
+			fnIdx := line.FunctionIndex
+			fnEntry := funcTable.At(int(fnIdx()))
+			fnStr := strTable.At(int(fnEntry.NameStrindex()))
+
+			for _, agg := range c.aggregations {
+				if agg.re.MatchString(fnStr) {
+					costumAggregationCounts[agg.label] += 1
+				}
+			}
+		}
 	}
 }
 

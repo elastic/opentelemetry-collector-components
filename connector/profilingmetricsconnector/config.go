@@ -17,8 +17,25 @@
 
 package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"
 
+// Aggregation applies Match as a regular expression on function strings
+// and generates a metric with Label if it matches.
+type Aggregation struct {
+	Match string `mapstructure:"match"`
+	Label string `mapstructure:"label"`
+}
+
 // Config represents the receiver config settings within the collector's config.yaml
 type Config struct {
 	// MetricsPrefix is the prefix to add to all generated metric names
 	MetricsPrefix string `mapstructure:"metrics_prefix"`
+
+	// Generate metrics based on frame type.
+	ByFrameType bool `mapstructure:"by_frametype"`
+
+	// Generate metrics based on functional classification.
+	// Currently only Java and Go are supported.
+	ByClassification bool `mapstructure:"by_classification"`
+
+	// CustomAggregations allows to generate costum metrics.
+	CustomAggregations []Aggregation `mapstructure:"aggregations"`
 }
