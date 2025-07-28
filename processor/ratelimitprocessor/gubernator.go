@@ -67,7 +67,6 @@ func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, err
 			logrus.FatalLevel,
 			logrus.ErrorLevel,
 			logrus.WarnLevel,
-			logrus.InfoLevel,
 		)))
 
 	conf, err := gubernator.SetupDaemonConfig(log, nil)
@@ -92,23 +91,20 @@ func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorR
 	}, nil
 }
 
-func (r *gubernatorRateLimiter) Start(ctx context.Context, _ component.Host) error {
-	daemon, err := gubernator.SpawnDaemon(ctx, r.daemonCfg)
+func (r *gubernatorRateLimiter) Start(ctx context.Context, _ component.Host) (err error) {
+	r.daemon, err = gubernator.SpawnDaemon(ctx, r.daemonCfg)
 	if err != nil {
 		return fmt.Errorf("failed to spawn gubernator daemon: %w", err)
 	}
-	r.daemon = daemon
 
-	conn, err := grpc.NewClient(
-		r.daemonCfg.GRPCListenAddress,
+	r.clientConn, err = grpc.NewClient(r.daemonCfg.GRPCListenAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC client connection: %w", err)
 	}
-	r.client = gubernator.NewV1Client(conn)
-	r.clientConn = conn
+	r.client = gubernator.NewV1Client(r.clientConn)
 	return nil
 }
 
@@ -137,7 +133,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			return errRateLimitInternalError
 		}
 	}
-	// Execute rate limit check
+	// Execute rate actual limit check / recording.
 	return r.executeRateLimit(ctx, cfg, uniqueKey, hits, rate, burst, now)
 }
 
@@ -152,12 +148,23 @@ func (r *gubernatorRateLimiter) calculateRateAndBurst(ctx context.Context,
 		)
 		return -1, -1 // Signal error condition
 	}
-
-	result := int(math.Round(limit))
-	return result, result
+	// The limit is in <unit> per second, multiply it by throttle interval.
+	// Burst is measured per second, so we divide it by the throttle interval.
+	limit = math.Round(limit * r.cfg.ThrottleInterval.Seconds())
+	// NOTE(marclop) we could potentially set the burst based on a multiplier.
+	burst := math.Round(limit / cfg.ThrottleInterval.Seconds())
+	return int(limit), int(burst)
 }
 
-func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context, cfg RateLimitSettings, uniqueKey string, hits, rate, burst int, now time.Time) error {
+// executeRateLimit sends the current hits to the unique key in Gubernator.
+// If the request is over the defined limits, it will either return an error
+// or delay the request based on the throttle behavior.
+// The rate is expected to be normalized by the ThrottleInterval (since that
+// determines the duration of the rate limit in Gubernator).
+// However, burst is expected to be set in a per-second manner.
+func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
+	cfg RateLimitSettings, uniqueKey string, hits, rate, burst int, now time.Time,
+) error {
 	createdAt := now.UnixMilli()
 	rateLimitResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
 		Requests: []*gubernator.RateLimitReq{
@@ -175,7 +182,11 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context, cfg RateLi
 		},
 	})
 	if err != nil {
-		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
+		r.set.Logger.Error("error executing gubernator rate limit request",
+			zap.Error(err),
+			zap.String("name", cfg.Strategy.String()),
+			zap.String("unique_key", uniqueKey),
+		)
 		return errRateLimitInternalError
 	}
 
@@ -186,27 +197,24 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context, cfg RateLi
 	); err != nil {
 		return err
 	}
-
+	r.set.Logger.Debug("gubernator rate limit response",
+		zap.String("resp", resps[0].String()),
+	)
 	if resp := resps[0]; resp.GetStatus() == gubernator.Status_OVER_LIMIT {
-		return r.handleOverLimit(ctx, resp, createdAt)
-	}
-	return nil
-}
-
-func (r *gubernatorRateLimiter) handleOverLimit(ctx context.Context, resp *gubernator.RateLimitResp, createdAt int64) error {
-	switch r.cfg.ThrottleBehavior {
-	case ThrottleBehaviorError:
-		r.set.Logger.Error("request is over the limits defined by the rate limiter",
-			zap.Error(errTooManyRequests),
-			zap.String("processor_id", r.set.ID.String()),
-			zap.Strings("metadata_keys", r.cfg.MetadataKeys),
-		)
-		return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
-	case ThrottleBehaviorDelay:
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(time.Until(time.UnixMilli(resp.GetResetTime()))):
+		switch r.cfg.ThrottleBehavior {
+		case ThrottleBehaviorError:
+			r.set.Logger.Error("request is over the defined limits",
+				zap.Error(errTooManyRequests),
+				zap.String("processor_id", r.set.ID.String()),
+				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
+			)
+			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
+		case ThrottleBehaviorDelay:
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Until(time.UnixMilli(resp.GetResetTime()))):
+			}
 		}
 	}
 	return nil
@@ -214,50 +222,68 @@ func (r *gubernatorRateLimiter) handleOverLimit(ctx context.Context, resp *guber
 
 // dynamicRateContext holds the context for dynamic rate calculation
 type dynamicRateContext struct {
-	cfg                DynamicRateLimiting
-	staticRate         float64
-	currentWindow      time.Time
-	previousWindow     time.Time
-	currentMetricsKey  string
-	previousMetricsKey string
-	elapsed            time.Duration
-	createdAt          int64
+	cfg            DynamicRateLimiting
+	staticRate     float64
+	currentWindow  time.Time
+	previousWindow time.Time
+	currentKey     string
+	previousKey    string
+	elapsed        time.Duration
+	createdAt      int64
 }
 
-func newDynamicRateContext(uniqueKey string, now time.Time, cfg DynamicRateLimiting, staticRate float64) dynamicRateContext {
-	currentWindow := now.Truncate(cfg.EWMAWindow)
-	previousWindow := currentWindow.Add(-cfg.EWMAWindow)
+func newDynamicRateContext(uniqueKey string, now time.Time,
+	cfg DynamicRateLimiting, staticRate float64,
+) dynamicRateContext {
+	currentWindow := now.Truncate(cfg.WindowDuration)
+	previousWindow := currentWindow.Add(-cfg.WindowDuration)
 	elapsed := now.Sub(currentWindow)
 	if elapsed.Milliseconds() < 0 {
 		elapsed = time.Millisecond
 	}
-
 	return dynamicRateContext{
-		cfg:                cfg,
-		staticRate:         staticRate,
-		currentWindow:      currentWindow,
-		previousWindow:     previousWindow,
-		currentMetricsKey:  fmt.Sprintf("%s-%d", uniqueKey, currentWindow.UnixMilli()),
-		previousMetricsKey: fmt.Sprintf("%s-%d", uniqueKey, previousWindow.UnixMilli()),
-		elapsed:            elapsed,
-		createdAt:          now.UnixMilli(),
+		cfg:            cfg,
+		staticRate:     staticRate,
+		currentWindow:  currentWindow,
+		previousWindow: previousWindow,
+		currentKey:     fmt.Sprintf("%s-%d", uniqueKey, currentWindow.UnixMilli()),
+		previousKey:    fmt.Sprintf("%s-%d", uniqueKey, previousWindow.UnixMilli()),
+		elapsed:        elapsed,
+		createdAt:      now.UnixMilli(),
 	}
 }
 
+// getDynamicLimit retrieves the dynamic limit from Gubernator for the given
+// unique key. The dynamic rate limit is derived from the previous rate with
+// the configured multiplier applied to it.
+// The returned rates are always normalized per second.
 func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	cfg RateLimitSettings, uniqueKey string, hits int, now time.Time,
 ) (float64, error) {
-	drc := newDynamicRateContext(uniqueKey, now, r.cfg.DynamicRateLimiting, float64(cfg.Rate))
-
+	drc := newDynamicRateContext(uniqueKey, now, r.cfg.DynamicRateLimiting,
+		// This is crucial for dynamic rate limiting, calculate the rate based
+		// on the throttle interval, not the rate itself which is set as the
+		// total reqs/events/bytes per Throttle interval, which may be > 1s.
+		float64(cfg.Rate)/r.cfg.ThrottleInterval.Seconds(),
+	)
 	// Get current and previous window rates
-	_, previousRate, err := r.getCurrentAndPreviousRates(ctx, drc)
+	current, previous, err := r.peekRates(ctx, drc)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
-
-	// Record the hits and recalculate the limit
-	lim, err := r.getRateLimits(ctx, drc, hits, previousRate)
-	return lim, err
+	// Convert the current rate to per second.
+	current += float64(hits) / float64(drc.elapsed.Seconds())
+	// If the current rate is lower than the previous, record it in the current
+	// metrics key, otherwise, just return the calculated rate.
+	// This is to ensure that we do not record hits in the current metrics key
+	// if the current rate is higher than the previous, as we want to use the
+	// previous rate to calculate the dynamic limit.
+	if current <= math.Max(drc.staticRate, previous*drc.cfg.WindowMultiplier) {
+		if err := r.recordHits(ctx, drc, hits); err != nil {
+			return -1, errRateLimitInternalError
+		}
+	}
+	return dynamicLimit(previous, drc.staticRate, drc.cfg.WindowMultiplier), nil
 }
 
 // maxDynamicLimit is a sufficiently large number to capture all traffic for dynamic sampling.
@@ -278,34 +304,38 @@ func createDynamicRateLimitRequest(uniqueKey string, hits, createdAt int64,
 		Algorithm: gubernator.Algorithm_TOKEN_BUCKET,
 		Limit:     maxDynamicLimit,
 		Burst:     maxDynamicLimit,
-		// Gubernator automatically expires the limit after the duration, so we double it to ensure
-		// that we have enough time to process the request and recalculate the limit.
-		Duration:  windowDuration.Milliseconds() * 2,
+		// Since Gubernator expires the unique key after the duration, double
+		// it to ensure the key survives until the end of the next window.
+		Duration:  windowDuration.Milliseconds()*2 + 1,
 		CreatedAt: &createdAt,
 	}
 }
 
-func (r *gubernatorRateLimiter) getCurrentAndPreviousRates(ctx context.Context, drc dynamicRateContext) (float64, float64, error) {
+// peekRates retrieves the current and previous rates from Gubernator. Rates
+// are normalized per second.
+func (r *gubernatorRateLimiter) peekRates(ctx context.Context,
+	drc dynamicRateContext,
+) (float64, float64, error) {
 	// ----------------------- PEEK PHASE -----------------------
 	peekResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
 		Requests: []*gubernator.RateLimitReq{
-			createDynamicRateLimitRequest(drc.currentMetricsKey, 0, drc.createdAt, drc.cfg.EWMAWindow),
-			createDynamicRateLimitRequest(drc.previousMetricsKey, 0, drc.createdAt, drc.cfg.EWMAWindow),
+			createDynamicRateLimitRequest(drc.currentKey, 0, drc.createdAt, drc.cfg.WindowDuration),
+			createDynamicRateLimitRequest(drc.previousKey, 0, drc.createdAt, drc.cfg.WindowDuration),
 		},
 	})
 	if err != nil {
 		r.set.Logger.Error("dynamic: error executing gubernator dynamic peek request",
 			zap.Error(err),
 		)
-		return 0, 0, errRateLimitInternalError
+		return -1, -1, errRateLimitInternalError
 	}
 
 	peekResponses := peekResp.GetResponses()
 	if err := validateGubernatorResponse(r.set.Logger, peekResponses, 2, "dynamic peek request",
-		zap.String("current_unique_key", drc.currentMetricsKey),
-		zap.String("previous_unique_key", drc.previousMetricsKey),
+		zap.String("current_unique_key", drc.currentKey),
+		zap.String("previous_unique_key", drc.previousKey),
 	); err != nil {
-		return 0, 0, err
+		return -1, -1, err
 	}
 
 	// For the current rate, we want to calculate the rate based on the time
@@ -313,66 +343,35 @@ func (r *gubernatorRateLimiter) getCurrentAndPreviousRates(ctx context.Context, 
 	currentRate := rateFromResponse(peekResponses[0], drc.elapsed)
 	// We want to calculate the previous rate based on the EWMA window since
 	// entire window has elapsed.
-	previousRate := rateFromResponse(peekResponses[1], drc.cfg.EWMAWindow)
+	previousRate := rateFromResponse(peekResponses[1], drc.cfg.WindowDuration)
 	return currentRate, previousRate, nil
 }
 
-func (r *gubernatorRateLimiter) getRateLimits(ctx context.Context,
-	drc dynamicRateContext, hits int, previousRate float64,
-) (float64, error) {
-	// ----------------------- ACT PHASE -----------------------
-	gubResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
-		Requests: []*gubernator.RateLimitReq{
-			createDynamicRateLimitRequest(drc.currentMetricsKey,
-				int64(hits), drc.createdAt, drc.cfg.EWMAWindow,
-			),
-		},
-	})
-	if err != nil {
+func (r *gubernatorRateLimiter) recordHits(ctx context.Context, drc dynamicRateContext, hits int) error {
+	// ----------------------- RECORD PHASE -----------------------
+	if _, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
+		Requests: []*gubernator.RateLimitReq{createDynamicRateLimitRequest(
+			drc.currentKey, int64(hits), drc.createdAt, drc.cfg.WindowDuration,
+		)},
+	}); err != nil {
 		r.set.Logger.Error("dynamic: error executing gubernator dynamic rate limit request",
 			zap.Error(err),
-			zap.String("unique_key", drc.currentMetricsKey),
+			zap.String("unique_key", drc.currentKey),
 			zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 		)
-		return 0, errRateLimitInternalError
+		return errRateLimitInternalError
 	}
-
-	responses := gubResp.GetResponses()
-	if err := validateGubernatorResponse(r.set.Logger, responses, 1, "dynamic rate limit request",
-		zap.String("unique_key", drc.currentMetricsKey),
-		zap.Strings("metadata_keys", r.cfg.MetadataKeys),
-	); err != nil {
-		return 0, err
-	}
-	// We calculate the new dynamic limit *after* recording the accepted hits.
-	currentRate := rateFromResponse(responses[0], drc.elapsed)
-	return computeDynamicLimit(currentRate, previousRate, drc.staticRate, drc.cfg), nil
+	return nil
 }
 
-func computeDynamicLimit(currentRate, previousRate float64,
-	staticThreshold float64, cfg DynamicRateLimiting,
-) float64 {
+// dynamicLimit calculates the dynamic limit based on the previous rate.
+func dynamicLimit(previous float64, initial float64, multiplier float64) float64 {
 	// Use static threshold when no previous rate data is available
-	if previousRate <= 0 {
-		return staticThreshold
+	if previous <= 0 {
+		return initial
 	}
-
-	// Use previous rate with multiplier when no current traffic
-	if currentRate <= 0 {
-		return previousRate * cfg.EWMAMultiplier
-	}
-
-	// Calculate EWMA when both rates are available
-	recentWeight := cfg.RecentWindowWeight
-	historicalWeight := 1 - recentWeight
-	ewma := recentWeight*currentRate + historicalWeight*previousRate
-
-	// Apply multiplier with bounds checking
-	dynamicLimit := ewma * cfg.EWMAMultiplier
-	maxAllowedLimit := previousRate * cfg.EWMAMultiplier
-
 	// Return the minimum of calculated limit and max allowed, but at least the static threshold
-	return math.Max(staticThreshold, math.Min(dynamicLimit, maxAllowedLimit))
+	return math.Max(initial, previous*multiplier)
 }
 
 func validateGubernatorResponse(logger *zap.Logger, res []*gubernator.RateLimitResp,

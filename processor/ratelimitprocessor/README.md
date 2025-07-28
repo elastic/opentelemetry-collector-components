@@ -35,91 +35,83 @@ You can override one or more of the following fields:
 | Field                  | Description                                                                                                                                                                                                       | Required | Default    |
 |------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|
 | `enabled`              | Enables the dynamic rate limiting feature.                                                                                                                                                                        | No       | `false`    |
-| `ewma_multiplier`      | The factor by which the current EWMA is multiplied to get the dynamic part of the limit.                                                                                                                            | No       | `1.5`      |
-| `ewma_window`          | The time window for the Exponentially Weighted Moving Average.                                                                                                                                                    | No       | `5m`       |
-| `recent_window_weight` | The weight given to the recent window of the EWMA.                                                                                                                                                                | No       | `0.75`     |
+| `window_multiplier`    | The factor by which the previous window rate is multiplied to get the dynamic limit.                                                                                                                             | No       | `1.3`      |
+| `window_duration`      | The time window duration for calculating traffic rates.                                                                                                                                                           | No       | `2m`       |
 
 ### Dynamic Rate Limiting Deep Dive
 
-The dynamic rate limiting feature uses a sliding window approach with an Exponentially Weighted Moving Average (EWMA) to adjust the rate limit based on recent traffic patterns. This allows the processor to be more responsive to changes in traffic volume, preventing sudden spikes from overwhelming downstream services while also allowing for higher throughput when traffic is low.
+The dynamic rate limiting feature uses a sliding window approach to adjust the rate limit based on recent traffic patterns. This allows the processor to be more responsive to changes in traffic volume, preventing sudden spikes from overwhelming downstream services while also allowing for higher throughput when traffic is sustained.
 
 The system maintains two time windows:
 
-*   **Current Window**: The most recent time window, defined by `ewma_window`.
-*   **Previous Window**: The time window immediately preceding the current one.
+* **Current Window**: The most recent time window, defined by `window_duration`.
+* **Previous Window**: The time window immediately preceding the current one.
 
-The dynamic limit is calculated using the following formula:
+The dynamic limit is calculated using the following simplified formula:
 
-```
-ewma = (recent_window_weight * current_rate) + ((1 - recent_window_weight) * previous_rate)
-dynamic_limit = max(static_rate, min(ewma * ewma_multiplier, previous_rate * ewma_multiplier))
+```text
+dynamic_limit = max(static_rate, previous_rate * window_multiplier)
 ```
 
 Where:
 
-*   `current_rate`: The rate of traffic in the current window.
-*   `previous_rate`: The rate of traffic in the previous window.
-*   `static_rate`: The configured `rate` in the main configuration.
-*   `recent_window_weight`: The weight given to the `current_rate` in the EWMA calculation.
-*   `ewma_multiplier`: A factor to prevent the dynamic limit from growing too quickly.
+* `previous_rate`: The rate of traffic in the previous window (normalized per second).
+* `static_rate`: The configured `rate` in the main configuration.
+* `window_multiplier`: A factor applied to the previous window rate to determine the dynamic limit.
 
 **Important Notes:**
 
 * When `previous_rate` is 0 (no previous traffic), the dynamic limit defaults to the `static_rate`.
-* When `current_rate` is 0 (no current traffic), the dynamic limit is set to `previous_rate * ewma_multiplier`.
-* The `min()` operation ensures the dynamic limit doesn't grow faster than `previous_rate * ewma_multiplier`, providing stability during traffic spikes.
+* The dynamic limit will always be at least the `static_rate`, ensuring a minimum level of throughput.
+* The algorithm only records traffic in the current window when the incoming rate is within acceptable bounds to prevent runaway scaling.
 
 Let's walk through a few examples to illustrate the behavior of the dynamic rate limiter.
 
 Assume the following configuration:
 
-* `ewma_window`: 5m
-* `recent_window_weight`: 0.75
-* `ewma_multiplier`: 1.5
+* `window_duration`: 2m
+* `window_multiplier`: 1.5
 * `rate`: 1000 requests/second (this is our `static_rate`)
 
-**Scenario 1: Initial Traffic**
+#### Scenario 1: Initial Traffic
 
-1. **First 5 minutes**: 120,000 requests are received (400 requests/second). `previous_rate` is 0.
-   * Since `previous_rate` is 0, the `dynamic_limit` is capped at the `static_rate` of 1000.
-2. **Next 5 minutes**: 150,000 requests are received (500 requests/second). `previous_rate` is 400.
-   * `ewma = (0.75 * 500) + (0.25 * 400) = 375 + 100 = 475`
-   * `dynamic_limit = max(1000, min(475 * 1.5, 400 * 1.5)) = max(1000, min(712.5, 600)) = max(1000, 600) = 1000`
-   * The `dynamic_limit` remains at the `static_rate` as the traffic is below the threshold.
+1. **First 2 minutes**: 120,000 requests are received (1000 requests/second). `previous_rate` is 0.
+   * Since `previous_rate` is 0, the `dynamic_limit` is set to the `static_rate` of 1000.
+2. **Next 2 minutes**: 90,000 requests are received (750 requests/second). `previous_rate` is 1000.
+   * `dynamic_limit = max(1000, 1000 * 1.5) = max(1000, 1500) = 1500`
+   * The `dynamic_limit` increases to 1500, allowing more traffic.
 
-**Scenario 2: Ramping Up Traffic**
+#### Scenario 2: Ramping Up Traffic
 
 1. **Previous window rate**: 900 requests/second.
-2. **Current window rate**: 1200 requests/second.
-   * `ewma = (0.75 * 1200) + (0.25 * 900) = 900 + 225 = 1125`
-   * `dynamic_limit = max(1000, min(1125 * 1.5, 900 * 1.5)) = max(1000, min(1687.5, 1350)) = max(1000, 1350) = 1350`
-   * The `dynamic_limit` increases to 1350, allowing more traffic.
+2. **Current window**: Incoming rate of 1200 requests/second.
+   * `dynamic_limit = max(1000, 900 * 1.5) = max(1000, 1350) = 1350`
+   * The `dynamic_limit` increases to 1350, allowing the increased traffic.
 
-**Scenario 3: Sustained High Traffic**
+#### Scenario 3: Sustained High Traffic
 
 1. **Previous window rate**: 1500 requests/second.
-2. **Current window rate**: 1600 requests/second.
-   * `ewma = (0.75 * 1600) + (0.25 * 1500) = 1200 + 375 = 1575`
-   * `dynamic_limit = max(1000, min(1575 * 1.5, 1500 * 1.5)) = max(1000, min(2362.5, 2250)) = max(1000, 2250) = 2250`
+2. **Current window**: Incoming rate of 1600 requests/second.
+   * `dynamic_limit = max(1000, 1500 * 1.5) = max(1000, 2250) = 2250`
    * The `dynamic_limit` continues to increase as the high traffic is sustained.
 
-**Scenario 4: Traffic Spike**
+#### Scenario 4: Traffic Spike Protection
 
 1. **Previous window rate**: 1000 requests/second.
-2. **Current window rate**: 3000 requests/second.
-   * `ewma = (0.75 * 3000) + (0.25 * 1000) = 2250 + 250 = 2500`
-   * `dynamic_limit = max(1000, min(2500 * 1.5, 1000 * 1.5)) = max(1000, min(3750, 1500)) = max(1000, 1500) = 1500`
-   * The `ewma_multiplier` dampens the response to the spike, preventing the limit from jumping to 3750 immediately.
+2. **Current window**: Sudden spike to 3000 requests/second.
+   * `dynamic_limit = max(1000, 1000 * 1.5) = max(1000, 1500) = 1500`
+   * The dynamic limit only allows 1500 requests/second, protecting against the spike.
+   * The excess traffic (1500+ requests/second) is throttled, preventing the spike from being recorded.
 
-**Scenario 5: Traffic Reduction**
+#### Scenario 5: Traffic Reduction
 
 1. **Previous window rate**: 2000 requests/second.
-2. **Current window rate**: 500 requests/second.
-   * `ewma = (0.75 * 500) + (0.25 * 2000) = 375 + 500 = 875`
-   * `dynamic_limit = max(1000, min(875 * 1.5, 2000 * 1.5)) = max(1000, min(1312.5, 3000)) = max(1000, 1312.5) = 1312.5`
-   * The `dynamic_limit` decreases, but not as drastically as the traffic reduction, providing a buffer.
+2. **Current window**: Reduced to 500 requests/second.
+   * `dynamic_limit = max(1000, 2000 * 1.5) = max(1000, 3000) = 3000`
+   * The `dynamic_limit` remains high initially, providing a buffer for traffic variations.
+   * As the reduced traffic continues, the limit will gradually decrease in subsequent windows.
 
-This mechanism allows the rate limiter to adapt to sustained increases in traffic, while the `ewma_multiplier` prevents abrupt changes that could destabilize the system.
+This mechanism allows the rate limiter to adapt to sustained increases in traffic while the `window_multiplier` provides protection against sudden spikes that could destabilize the system.
 
 ### Examples
 
@@ -196,6 +188,6 @@ processors:
     throttle_behavior: error
     dynamic_limits:
       enabled: true
-      ewma_multiplier: 1.5
-      ewma_window: 1m
+      window_multiplier: 1.5
+      window_duration: 1m
 ```

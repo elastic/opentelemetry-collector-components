@@ -53,15 +53,12 @@ type Config struct {
 type DynamicRateLimiting struct {
 	// Enabled tells the processor to use dynamic rate limiting.
 	Enabled bool `mapstructure:"enabled"`
-	// EWMAMultiplier is the factor by which the current EWMA is multiplied
-	// to get the dynamic part of the limit. Defaults to 1.5.
-	EWMAMultiplier float64 `mapstructure:"ewma_multiplier"`
-	// EWMAWindow defines the time window for the Exponentially Weighted Moving Average.
+	// WindowMultiplier is the factor by which the previous window rate is
+	// multiplied to get the dynamic part of the limit. Defaults to 1.5.
+	WindowMultiplier float64 `mapstructure:"window_multiplier"`
+	// WindowDuration defines the time window for the Exponentially Weighted Moving Average.
 	// A common value would be "5m" for a 5-minute window.
-	EWMAWindow time.Duration `mapstructure:"ewma_window"`
-	// RecentWindowWeight is the weight given to the recent window of the EWMA.
-	// Defaults to 0.75.
-	RecentWindowWeight float64 `mapstructure:"recent_window_weight"`
+	WindowDuration time.Duration `mapstructure:"window_duration"`
 }
 
 // Validate checks the DynamicRateLimiting configuration.
@@ -70,14 +67,11 @@ func (d *DynamicRateLimiting) Validate() error {
 		return nil
 	}
 	var errs []error
-	if d.EWMAMultiplier < 1 {
-		errs = append(errs, errors.New("ewma_multiplier must be greater than or equal to 1"))
+	if d.WindowMultiplier < 1 {
+		errs = append(errs, errors.New("window_multiplier must be greater than or equal to 1"))
 	}
-	if d.EWMAWindow <= 0 {
-		errs = append(errs, errors.New("ewma_window must be greater than zero"))
-	}
-	if d.RecentWindowWeight < 0 || d.RecentWindowWeight > 0.99 {
-		errs = append(errs, errors.New("recent_window_weight must be between 0 and 0.99"))
+	if d.WindowDuration <= 0 {
+		errs = append(errs, errors.New("window_duration must be greater than zero"))
 	}
 	return errors.Join(errs...)
 }
@@ -200,9 +194,8 @@ func createDefaultConfig() component.Config {
 			ThrottleInterval: DefaultThrottleInterval,
 		},
 		DynamicRateLimiting: DynamicRateLimiting{
-			EWMAMultiplier:     1.5,
-			EWMAWindow:         5 * time.Minute,
-			RecentWindowWeight: 0.75,
+			WindowMultiplier: 1.3,
+			WindowDuration:   2 * time.Minute,
 		},
 	}
 }

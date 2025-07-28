@@ -96,5 +96,5 @@ ratelimit/dynamic_rate_limit:
   throttle_behavior: error
   dynamic_limits:
     enabled: true
-    ewma_multiplier: 1.5
-    ewma_window: 1m
+    window_multiplier: 1.5
+    window_duration: 1m

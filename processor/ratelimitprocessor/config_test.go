@@ -32,9 +32,8 @@ import (
 )
 
 var defaultDynamicRateLimiting = DynamicRateLimiting{
-	EWMAMultiplier:     1.5,
-	EWMAWindow:         5 * time.Minute,
-	RecentWindowWeight: 0.75,
+	WindowMultiplier: 1.3,
+	WindowDuration:   2 * time.Minute,
 }
 
 func TestLoadConfig(t *testing.T) {
@@ -212,10 +211,9 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 				},
 				DynamicRateLimiting: DynamicRateLimiting{
-					Enabled:            true,
-					EWMAMultiplier:     1.5,
-					EWMAWindow:         time.Minute,
-					RecentWindowWeight: 0.75,
+					Enabled:          true,
+					WindowMultiplier: 1.5,
+					WindowDuration:   time.Minute,
 				},
 			},
 		},
