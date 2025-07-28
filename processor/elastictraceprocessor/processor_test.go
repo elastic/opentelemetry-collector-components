@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"go.opentelemetry.io/collector/client"
+
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
@@ -71,4 +73,31 @@ func TestProcessor(t *testing.T) {
 			assert.NoError(t, ptracetest.CompareTraces(expectedTraces, next.AllTraces()[0]))
 		})
 	}
+}
+
+// TestProcessorECS does a basic test to check if traces are processed correctly when ECS mode is enabled in the client metadata.
+func TestProcessorECS(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+	cancel := func() {}
+	defer cancel()
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+	next := &consumertest.TracesSink{}
+
+	tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
+
+	require.NoError(t, err)
+	require.IsType(t, &Processor{}, tp)
+
+	inputTraces, err := golden.ReadTraces("testdata/ecs/elastic_span_db/input.yaml")
+	require.NoError(t, err)
+	expectedTraces, err := golden.ReadTraces("testdata/ecs/elastic_span_db/output.yaml")
+	require.NoError(t, err)
+
+	require.NoError(t, tp.ConsumeTraces(ctx, inputTraces))
+	assert.NoError(t, ptracetest.CompareTraces(expectedTraces, next.AllTraces()[0]))
 }

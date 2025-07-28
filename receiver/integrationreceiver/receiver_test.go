@@ -53,7 +53,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "empty processing pipeline",
 			setup: func(config *Config) {
 				config.Name = "filelog"
-				config.Pipelines = []pipeline.ID{pipeline.MustNewID("logs")}
+				config.Pipelines = []pipeline.ID{pipeline.NewID(pipeline.SignalLogs)}
 				config.Parameters = map[string]any{
 					"paths": filepath.Join("testdata", "logs", "test-simple.log"),
 				}
@@ -64,7 +64,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "pipeline with processors",
 			setup: func(config *Config) {
 				config.Name = "filelog"
-				config.Pipelines = []pipeline.ID{pipeline.MustNewIDWithName("logs", "processed")}
+				config.Pipelines = []pipeline.ID{pipeline.NewIDWithName(pipeline.SignalLogs, "processed")}
 				config.Parameters = map[string]any{
 					"paths":    filepath.Join("testdata", "logs", "test-simple.log"),
 					"resource": "test",
@@ -76,7 +76,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "missing variable in processor",
 			setup: func(config *Config) {
 				config.Name = "filelog"
-				config.Pipelines = []pipeline.ID{pipeline.MustNewIDWithName("logs", "processed")}
+				config.Pipelines = []pipeline.ID{pipeline.NewIDWithName(pipeline.SignalLogs, "processed")}
 				config.Parameters = map[string]any{
 					"paths": filepath.Join("testdata", "logs", "test-simple.log"),
 				}
@@ -87,7 +87,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "receiver without factory",
 			setup: func(config *Config) {
 				config.Name = "filelog"
-				config.Pipelines = []pipeline.ID{pipeline.MustNewIDWithName("logs", "undefined")}
+				config.Pipelines = []pipeline.ID{pipeline.NewIDWithName(pipeline.SignalLogs, "undefined")}
 			},
 			startErr: `could not find receiver factory for "undefined"`,
 		},
@@ -96,7 +96,7 @@ func TestConsumeLogs(t *testing.T) {
 			title: "no receiver in pipeline",
 			setup: func(config *Config) {
 				config.Name = "no-receiver"
-				config.Pipelines = []pipeline.ID{pipeline.MustNewID("logs")}
+				config.Pipelines = []pipeline.ID{pipeline.NewID(pipeline.SignalLogs)}
 			},
 			startErr: "no receiver in pipeline configuration",
 		},

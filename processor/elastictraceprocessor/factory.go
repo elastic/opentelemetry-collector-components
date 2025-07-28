@@ -26,7 +26,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-lib/enrichments/trace/config"
+	"github.com/elastic/opentelemetry-lib/enrichments/config"
 )
 
 // NewFactory returns a processor.Factory that constructs elastic

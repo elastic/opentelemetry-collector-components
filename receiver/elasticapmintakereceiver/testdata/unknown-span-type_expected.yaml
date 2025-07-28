@@ -1,0 +1,229 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: serviceabc
+        - key: service.version
+          value:
+            stringValue: ""
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "99"
+        - key: user.email
+          value:
+            stringValue: foo@example.com
+        - key: agent.name
+          value:
+            stringValue: js-base
+        - key: agent.version
+          value:
+            stringValue: "1.3"
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1496170407154000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: transaction
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
+              - key: transaction.sampled
+                value:
+                  boolValue: true
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.type
+                value:
+                  stringValue: unknown
+              - key: transaction.result
+                value:
+                  stringValue: success
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
+              - key: http.request.method
+                value:
+                  stringValue: POST
+              - key: url.full
+                value:
+                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
+              - key: http.response.status_code
+                value:
+                  intValue: "200"
+            endTimeUnixNano: "1496170407186592981"
+            kind: 2
+            name: GET /api/types
+            parentSpanId: ""
+            spanId: 945254c567a5417e
+            startTimeUnixNano: "1496170407154000000"
+            status:
+              code: 1
+            traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: 1234_service-12a3
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1496170407154000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "3781"
+              - key: span.id
+                value:
+                  stringValue: 0aaaaaaaaaaaaaaa
+              - key: span.name
+                value:
+                  stringValue: SELECT FROM product_types
+              - key: span.type
+                value:
+                  stringValue: unknown
+              - key: span.subtype
+                value:
+                  stringValue: ""
+              - key: span.action
+                value:
+                  stringValue: ""
+              - key: span.sync
+                value:
+                  boolValue: false
+              - key: http.request.method
+                value:
+                  stringValue: GET
+              - key: http.response.status_code
+                value:
+                  intValue: "200"
+              - key: db.system
+                value:
+                  stringValue: sql
+              - key: db.namespace
+                value:
+                  stringValue: customers
+              - key: db.query.text
+                value:
+                  stringValue: SELECT * FROM product_types WHERE user_id=?
+            endTimeUnixNano: "1496170407157781912"
+            kind: 3
+            name: SELECT FROM product_types
+            parentSpanId: 945254c567a5417e
+            spanId: 945254c567a5417e
+            startTimeUnixNano: "1496170407154000000"
+            status:
+              code: 1
+            traceId: 945254c567a5417eaaaaaaaaaaaaaaaa

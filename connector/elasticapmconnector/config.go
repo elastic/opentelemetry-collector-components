@@ -183,13 +183,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		{Key: "metricset.name", DefaultValue: "service_destination"},
 	}
 
-	// TODO switch to exponential histogram once we have optimised
-	// exponential histogram merging.
-	transactionDurationHistogram := &signaltometricsconfig.Histogram{
-		Buckets: []float64{
-			5000, 10000, 25000, 50000, 75000, 100000, 250000, 500000,
-			750000, 1000000, 2500000, 5000000, 7500000, 10000000,
-		},
+	transactionDurationHistogram := &signaltometricsconfig.ExponentialHistogram{
 		Count: "Int(AdjustedCount())",
 		Value: "Microseconds(end_time - start_time)",
 	}
@@ -230,8 +224,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"_doc_count"},
 			}),
-			Unit:      "us",
-			Histogram: transactionDurationHistogram,
+			Unit:                 "us",
+			ExponentialHistogram: transactionDurationHistogram,
 		}, {
 			Name:                      "transaction.duration.summary",
 			Description:               "APM service transaction aggregated metrics as summary",
@@ -250,8 +244,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"_doc_count"},
 			}),
-			Unit:      "us",
-			Histogram: transactionDurationHistogram,
+			Unit:                 "us",
+			ExponentialHistogram: transactionDurationHistogram,
 		}, {
 			Name:                      "transaction.duration.summary",
 			Description:               "APM transaction aggregated metrics as summary",

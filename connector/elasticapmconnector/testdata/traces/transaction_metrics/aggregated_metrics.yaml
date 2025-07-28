@@ -187,7 +187,7 @@ resourceMetrics:
                         stringValue: metric
                   timeUnixNano: "1000000"
           - description: APM service transaction aggregated metrics as histogram
-            histogram:
+            exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
                 - attributes:
@@ -214,44 +214,21 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "2"
                   count: "2"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "2"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 2.2e+07
                   timeUnixNano: "1000000"
             name: transaction.duration.histogram
             unit: us
           - description: APM service transaction aggregated metrics as histogram
-            histogram:
+            exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
                 - attributes:
@@ -278,44 +255,21 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "2"
                   count: "2"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "2"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 2.2e+07
                   timeUnixNano: "1000000"
             name: transaction.duration.histogram
             unit: us
           - description: APM service transaction aggregated metrics as histogram
-            histogram:
+            exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
                 - attributes:
@@ -342,38 +296,15 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "2"
                   count: "2"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "2"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 2.2e+07
                   timeUnixNano: "1000000"
             name: transaction.duration.histogram
@@ -514,7 +445,7 @@ resourceMetrics:
     scopeMetrics:
       - metrics:
           - description: APM transaction aggregated metrics as histogram
-            histogram:
+            exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
                 - attributes:
@@ -550,38 +481,15 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "1"
                   count: "1"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "1"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 1.1e+07
                   timeUnixNano: "1000000"
                 - attributes:
@@ -617,38 +525,15 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "1"
                   count: "1"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "1"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 1.1e+07
                   timeUnixNano: "1000000"
             name: transaction.duration.histogram
@@ -742,7 +627,7 @@ resourceMetrics:
             name: transaction.duration.summary
             unit: us
           - description: APM transaction aggregated metrics as histogram
-            histogram:
+            exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
                 - attributes:
@@ -778,38 +663,15 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "1"
                   count: "1"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "1"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 1.1e+07
                   timeUnixNano: "1000000"
                 - attributes:
@@ -845,38 +707,15 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "1"
                   count: "1"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "1"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 1.1e+07
                   timeUnixNano: "1000000"
             name: transaction.duration.histogram
@@ -970,7 +809,7 @@ resourceMetrics:
             name: transaction.duration.summary
             unit: us
           - description: APM transaction aggregated metrics as histogram
-            histogram:
+            exponentialHistogram:
               aggregationTemporality: 1
               dataPoints:
                 - attributes:
@@ -1006,38 +845,15 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "1"
                   count: "1"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "1"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 1.1e+07
                   timeUnixNano: "1000000"
                 - attributes:
@@ -1073,38 +889,15 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                  bucketCounts:
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "0"
-                    - "1"
                   count: "1"
-                  explicitBounds:
-                    - 5000
-                    - 10000
-                    - 25000
-                    - 50000
-                    - 75000
-                    - 100000
-                    - 250000
-                    - 500000
-                    - 750000
-                    - 1e+06
-                    - 2.5e+06
-                    - 5e+06
-                    - 7.5e+06
-                    - 1e+07
+                  max: 1.1e+07
+                  min: 1.1e+07
+                  negative: {}
+                  positive:
+                    bucketCounts:
+                      - "1"
+                    offset: 2.4527241e+07
+                  scale: 20
                   sum: 1.1e+07
                   timeUnixNano: "1000000"
             name: transaction.duration.histogram

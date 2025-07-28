@@ -29,7 +29,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/component"
@@ -165,7 +167,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				zap.String("processor_id", r.set.ID.String()),
 				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 			)
-			return errTooManyRequests
+			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
 		case ThrottleBehaviorDelay:
 			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
 			timer := time.NewTimer(delay)

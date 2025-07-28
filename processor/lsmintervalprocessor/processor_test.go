@@ -25,11 +25,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
@@ -37,12 +36,18 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processortest"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadatatest"
 )
 
 func TestAggregation(t *testing.T) {
@@ -139,43 +144,102 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	testTel := componenttest.NewTelemetry()
+	telSettings := testTel.NewTelemetrySettings()
+	telSettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+
 	dir := filepath.Join("testdata", name)
 	md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 	require.NoError(t, err)
 
 	// Start the processor and feed the metrics
 	next := &consumertest.MetricsSink{}
-	mgp := newTestProcessor(t, config, next)
+	mgp := newTestProcessor(t, config, telSettings, next)
 	err = mgp.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 	err = mgp.ConsumeMetrics(ctx, md)
 	require.NoError(t, err)
 
-	var allMetrics []pmetric.Metrics
-	require.Eventually(t, func() bool {
-		// 1 from calling next on the input and 1 from the export
-		allMetrics = next.AllMetrics()
-		return len(allMetrics) == 2
-	}, 5*time.Second, 100*time.Millisecond)
-
 	expectedNextData, err := golden.ReadMetrics(filepath.Join(dir, "next.yaml"))
 	require.NoError(t, err)
-	assert.NoError(t, pmetrictest.CompareMetrics(expectedNextData, allMetrics[0]))
+
+	var allMetrics []pmetric.Metrics
+	require.Eventually(t, func() bool {
+		// next will be called only for cases when the input has not aggregated
+		// all the datapoints. We check if the expected next has non-zero datapoint
+		// and assert based on that.
+		allMetrics = next.AllMetrics()
+		if expectedNextData.DataPointCount() > 0 {
+			return len(allMetrics) == 2
+		}
+		return len(allMetrics) == 1
+	}, 5*time.Second, 100*time.Millisecond)
+
+	var idx int
+	if expectedNextData.DataPointCount() > 0 {
+		assert.NoError(t, pmetrictest.CompareMetrics(expectedNextData, allMetrics[idx]))
+		idx++
+	}
 
 	expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 	require.NoError(t, err)
-	assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
+	assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[idx]))
+	// Assert internal telemetry metrics.
+	metadatatest.AssertEqualLsmintervalProcessedDataPoints(t, testTel, []metricdata.DataPoint[int64]{
+		{
+			Value: int64(md.DataPointCount()),
+		},
+	}, metricdatatest.IgnoreTimestamp())
+	metadatatest.AssertEqualLsmintervalProcessedBytes(t, testTel, []metricdata.DataPoint[int64]{
+		{},
+	}, metricdatatest.IgnoreTimestamp(), metricdatatest.IgnoreValue())
+	metadatatest.AssertEqualLsmintervalExportedDataPoints(t, testTel, []metricdata.DataPoint[int64]{
+		{
+			Value:      int64(expectedExportData.DataPointCount()),
+			Attributes: attribute.NewSet(attribute.String("interval", "1s")),
+		},
+	}, metricdatatest.IgnoreTimestamp())
+	metadatatest.AssertEqualLsmintervalExportedBytes(t, testTel, []metricdata.DataPoint[int64]{
+		{
+			Attributes: attribute.NewSet(attribute.String("interval", "1s")),
+		},
+	}, metricdatatest.IgnoreTimestamp(), metricdatatest.IgnoreValue())
+	assertPebbleMetric(t, testTel)
 }
 
-func newTestProcessor(t testing.TB, cfg *config.Config, next consumer.Metrics) processor.Metrics {
+func newTestProcessor(t testing.TB, cfg *config.Config, telSettings component.TelemetrySettings, next consumer.Metrics) processor.Metrics {
 	factory := NewFactory()
 	settings := processortest.NewNopSettings(metadata.Type)
-	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+	settings.TelemetrySettings = telSettings
 	mgp, err := factory.CreateMetrics(context.Background(), settings, cfg, next)
 	require.NoError(t, err)
 	require.IsType(t, &Processor{}, mgp)
 	t.Cleanup(func() { require.NoError(t, mgp.Shutdown(context.Background())) })
 	return mgp
+}
+
+func assertPebbleMetric(t *testing.T, testTel *componenttest.Telemetry) {
+	t.Helper()
+	// Just assert that the metrics were reported from pebble.
+	checks := []func(*testing.T, *componenttest.Telemetry, []metricdata.DataPoint[int64], ...metricdatatest.Option){
+		metadatatest.AssertEqualLsmintervalPebbleCompactedBytesRead,
+		metadatatest.AssertEqualLsmintervalPebbleCompactedBytesWritten,
+		metadatatest.AssertEqualLsmintervalPebbleCompactions,
+		metadatatest.AssertEqualLsmintervalPebbleFlushedBytes,
+		metadatatest.AssertEqualLsmintervalPebbleFlushes,
+		metadatatest.AssertEqualLsmintervalPebbleIngestedBytes,
+		metadatatest.AssertEqualLsmintervalPebbleKeysTombstones,
+		metadatatest.AssertEqualLsmintervalPebbleMarkedForCompactionFiles,
+		metadatatest.AssertEqualLsmintervalPebblePendingCompaction,
+		metadatatest.AssertEqualLsmintervalPebbleReadAmplification,
+		metadatatest.AssertEqualLsmintervalPebbleReadersMemory,
+		metadatatest.AssertEqualLsmintervalPebbleSstables,
+		metadatatest.AssertEqualLsmintervalPebbleTotalDiskUsage,
+		metadatatest.AssertEqualLsmintervalPebbleTotalMemtableSize,
+	}
+	for _, f := range checks {
+		f(t, testTel, []metricdata.DataPoint[int64]{{}}, metricdatatest.IgnoreTimestamp(), metricdatatest.IgnoreValue())
+	}
 }
 
 func TestClientMetadata(t *testing.T) {
@@ -222,7 +286,8 @@ func TestClientMetadata(t *testing.T) {
 			return nil
 		},
 	))
-	p := newTestProcessor(t, cfg, next)
+	settings := processortest.NewNopSettings(metadata.Type)
+	p := newTestProcessor(t, cfg, settings.TelemetrySettings, next)
 	err := p.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 

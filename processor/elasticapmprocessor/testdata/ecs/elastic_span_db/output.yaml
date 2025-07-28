@@ -1,0 +1,105 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: ElasticAPM
+        - key: agent.version
+          value:
+            stringValue: 1.0.0
+        - key: labels.unsupported_key
+          value:
+            stringValue: foo
+        - key: data_stream.type
+          value:
+            stringValue: traces
+        - key: data_stream.dataset
+          value:
+            stringValue: apm
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: db.name
+                value:
+                  stringValue: main
+              - key: db.system
+                value:
+                  stringValue: mysql
+              - key: timestamp.us
+                value:
+                  intValue: "1581452772000000"
+              - key: span.name
+                value:
+                  stringValue: span-elastic-db
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.type
+                value:
+                  stringValue: db
+              - key: span.subtype
+                value:
+                  stringValue: mysql
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: event.success_count
+                value:
+                  intValue: "1"
+              - key: span.duration.us
+                value:
+                  intValue: "1000000"
+              - key: service.target.type
+                value:
+                  stringValue: mysql
+              - key: service.target.name
+                value:
+                  stringValue: main
+              - key: span.destination.service.resource
+                value:
+                  stringValue: mysql
+            endTimeUnixNano: "1581452773000000789"
+            events:
+              - attributes:
+                  - key: event.attr1
+                    value:
+                      stringValue: foo1
+                  - key: event.attr2
+                    value:
+                      stringValue: bar1
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
+                name: event1
+                timeUnixNano: "1581452773000000123"
+              - attributes:
+                  - key: event.attr1
+                    value:
+                      stringValue: foo2
+                  - key: event.attr2
+                    value:
+                      stringValue: bar2
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
+                name: event2
+                timeUnixNano: "1581452773000000123"
+              - attributes:
+                  - key: timestamp.us
+                    value:
+                      intValue: "1581452773000000"
+                name: event-with-no-attrs
+                timeUnixNano: "1581452773000000123"
+            name: span-elastic-db
+            parentSpanId: bcff497b5a47310f
+            spanId: ""
+            startTimeUnixNano: "1581452772000000321"
+            status: {}
+            traceId: ""

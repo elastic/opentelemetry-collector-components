@@ -74,11 +74,11 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 400,
 			}),
-			expectedErr: `status: 400, failed: [a_type], reason: a_reason`,
+			expectedErr: `error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
-			expectedErr: `API Key "id" unauthorized`,
+			expectedErr: `rpc error: code = PermissionDenied desc = API Key "id" unauthorized`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -170,7 +170,7 @@ func TestAuthenticator_Caching(t *testing.T) {
 	_, err = authenticator.Authenticate(context.Background(), map[string][]string{
 		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id2:secret2"))},
 	})
-	assert.EqualError(t, err, `API Key "id2" unauthorized`)
+	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = API Key "id2" unauthorized`)
 }
 
 func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
@@ -259,7 +259,7 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 		},
 		"missing_header": {
 			headers:     map[string][]string{},
-			expectedErr: `missing header "Authorization"`,
+			expectedErr: `rpc error: code = Unauthenticated desc = missing header "Authorization"`,
 		},
 		"invalid_scheme": {
 			headers: map[string][]string{
@@ -267,13 +267,13 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 					"Bearer " + base64.StdEncoding.EncodeToString([]byte("id:secret")),
 				},
 			},
-			expectedErr: `ApiKey prefix not found`,
+			expectedErr: `rpc error: code = Unauthenticated desc = ApiKey prefix not found`,
 		},
 		"invalid_base64": {
 			headers: map[string][]string{
 				"Authorization": {"ApiKey not_base64"},
 			},
-			expectedErr: "illegal base64 data at input byte 3",
+			expectedErr: "rpc error: code = Unauthenticated desc = illegal base64 data at input byte 3",
 		},
 		"invalid_encoded_apikey": {
 			headers: map[string][]string{
@@ -281,7 +281,7 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 					"ApiKey " + base64.StdEncoding.EncodeToString([]byte("junk")),
 				},
 			},
-			expectedErr: "invalid API Key",
+			expectedErr: "rpc error: code = Unauthenticated desc = invalid API Key",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

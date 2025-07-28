@@ -123,9 +123,9 @@ https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/confi
 
 #### Authentication settings
 
-In addition to TLS, you can configure authentication to ensure that only authorized agents can communicate with the extension.
+In addition to TLS, you can configure authentication to ensure that only authorized agents can communicate with the extension and retrieve their corresponding remote configurations.
 
-The apmconfig extension supports any [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md). We recommend using the [apikeyauth extension](https://github.com/elastic/opentelemetry-collector-components/tree/main/extension/apikeyauthextension) to authenticate with Elastic APM API keys (HTTP headers must include a valid API Key):
+The apmconfig extension supports any [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md). We recommend using the [apikeyauth extension](https://github.com/elastic/opentelemetry-collector-components/tree/main/extension/apikeyauthextension) to authenticate with Elasticsearch API keys:
 
 ```yaml
 extensions:
@@ -134,18 +134,50 @@ extensions:
     application_privileges:
       - application: "apm"
         privileges:
-          - "event:write"
+          - "config_agent:read"
         resources:
           - "-"
   apmconfig:
     opamp:
       protocols:
         http:
-          endpoint: ":4320"
-          tls:
-            cert_file: server.crt
-            key_file: server.key
           auth:
             authenticator: apikeyauth
    ...
+```
+
+The server will expect incoming HTTP requests to include an API key with sufficient privileges, using the following header format:
+```
+Authorization: ApiKey <base64(id:api_key)>
+```
+
+An API key with the minimum required application permissions (as verified with the configuration above) can be created via Kibana by navigating to: `Observability → Applications → Settings → Agent Keys`, or by using the Elasticsearch Security API:
+
+```
+POST /_security/api_key
+{
+  "name": "apmconfig-opamp-test-sdk",
+  "metadata": {
+    "application": "apm"
+  },
+  "role_descriptors": {
+    "apm": {
+      "cluster": [],
+      "indices": [],
+      "applications": [
+        {
+          "application": "apm",
+          "privileges": [
+            "config_agent:read"
+          ],
+          "resources": [
+            "*"
+          ]
+        }
+      ],
+      "run_as": [],
+      "metadata": {}
+    }
+  }
+}
 ```

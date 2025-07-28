@@ -1,0 +1,1265 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: backendspans
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "141581"
+              - key: span.id
+                value:
+                  stringValue: abcdef01234567
+              - key: span.name
+                value:
+                  stringValue: GET /api/types
+              - key: span.type
+                value:
+                  stringValue: db
+              - key: span.subtype
+                value:
+                  stringValue: postgresql
+              - key: span.action
+                value:
+                  stringValue: query.custom
+            endTimeUnixNano: "1532976822422581000"
+            name: GET /api/types
+            parentSpanId: abcdef0123456789
+            spanId: 01af25874dec69dd
+            startTimeUnixNano: "1532976822281000000"
+            status:
+              code: 1
+            traceId: fdedef0123456789abcdef9876543210
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: backendspans
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: prod
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: unknown
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "32592"
+              - key: span.id
+                value:
+                  stringValue: 1234abcdef567895
+              - key: span.name
+                value:
+                  stringValue: GET /api/types
+              - key: span.type
+                value:
+                  stringValue: request
+              - key: span.subtype
+                value:
+                  stringValue: ""
+              - key: span.action
+                value:
+                  stringValue: ""
+            endTimeUnixNano: "1532976822313592981"
+            name: GET /api/types
+            parentSpanId: "0000000011111111"
+            spanId: ab45781d265894fe
+            startTimeUnixNano: "1532976822281000000"
+            status: {}
+            traceId: abcdef0123456789abcdef9876543210
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: backendspans
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: unknown
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "3564"
+              - key: span.id
+                value:
+                  stringValue: 0123456a89012345
+              - key: span.name
+                value:
+                  stringValue: GET /api/types
+              - key: span.type
+                value:
+                  stringValue: request
+              - key: span.subtype
+                value:
+                  stringValue: http
+              - key: span.action
+                value:
+                  stringValue: ""
+            endTimeUnixNano: "1532976822284564298"
+            name: GET /api/types
+            parentSpanId: abcdefabcdef7890
+            spanId: ab23456a89012345
+            startTimeUnixNano: "1532976822281000000"
+            status: {}
+            traceId: abcdef0123456789abcdef9876543210
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: backendspans
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: unknown
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "13980"
+              - key: span.id
+                value:
+                  stringValue: abcde56a89012345
+              - key: span.name
+                value:
+                  stringValue: get /api/types
+              - key: span.type
+                value:
+                  stringValue: request
+              - key: span.subtype
+                value:
+                  stringValue: http
+              - key: span.action
+                value:
+                  stringValue: call
+              - key: span.sync
+                value:
+                  boolValue: false
+            endTimeUnixNano: "1532976822294980298"
+            name: get /api/types
+            parentSpanId: ababcdcdefefabde
+            spanId: abcde56a89012345
+            startTimeUnixNano: "1532976822281000000"
+            status: {}
+            traceId: abcdef0123456789abcdef9876543210
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: service1
+        - key: service.version
+          value:
+            stringValue: ""
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-ruby
+        - key: agent.version
+          value:
+            stringValue: "2.2"
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "3781"
+              - key: span.id
+                value:
+                  stringValue: 1234567890aaaade
+              - key: span.name
+                value:
+                  stringValue: SELECT FROM product_types
+              - key: span.type
+                value:
+                  stringValue: db
+              - key: span.subtype
+                value:
+                  stringValue: postgresql
+              - key: span.action
+                value:
+                  stringValue: query
+              - key: span.sync
+                value:
+                  boolValue: true
+              - key: service.target.name
+                value:
+                  stringValue: postgresql
+              - key: service.target.type
+                value:
+                  stringValue: db
+              - key: span.destination.service.resource
+                value:
+                  stringValue: postgres/testdb
+              - key: http.request.method
+                value:
+                  stringValue: GET
+              - key: http.response.status_code
+                value:
+                  intValue: "200"
+              - key: db.system
+                value:
+                  stringValue: sql
+              - key: db.namespace
+                value:
+                  stringValue: customers
+              - key: db.query.text
+                value:
+                  stringValue: SELECT * FROM product_types WHERE user_id=?
+            endTimeUnixNano: "1532976822284781912"
+            kind: 3
+            name: SELECT FROM product_types
+            parentSpanId: abcdef0123456789
+            spanId: 1234567890aaaade
+            startTimeUnixNano: "1532976822281000000"
+            status:
+              code: 1
+            traceId: abcdef0123456789abcdef9876543210
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: service1
+        - key: service.version
+          value:
+            stringValue: ""
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-ruby
+        - key: agent.version
+          value:
+            stringValue: "2.2"
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "3781"
+              - key: span.id
+                value:
+                  stringValue: fdc4567890aaaade
+              - key: span.name
+                value:
+                  stringValue: SELECT FROM product_types
+              - key: span.type
+                value:
+                  stringValue: db
+              - key: span.subtype
+                value:
+                  stringValue: postgresql
+              - key: span.action
+                value:
+                  stringValue: query
+              - key: span.sync
+                value:
+                  boolValue: true
+              - key: service.target.name
+                value:
+                  stringValue: postgresql
+              - key: service.target.type
+                value:
+                  stringValue: db
+              - key: span.destination.service.resource
+                value:
+                  stringValue: postgresql
+              - key: http.request.method
+                value:
+                  stringValue: GET
+              - key: http.response.status_code
+                value:
+                  intValue: "200"
+              - key: db.system
+                value:
+                  stringValue: sql
+              - key: db.namespace
+                value:
+                  stringValue: customers
+              - key: db.query.text
+                value:
+                  stringValue: SELECT * FROM product_types WHERE user_id=?
+            endTimeUnixNano: "1532976822284781912"
+            kind: 3
+            name: SELECT FROM product_types
+            parentSpanId: abcdef0123456789
+            spanId: fdc4567890aaaade
+            startTimeUnixNano: "1532976822281000000"
+            status:
+              code: 1
+            traceId: ""
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: service1
+        - key: service.version
+          value:
+            stringValue: ""
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-ruby
+        - key: agent.version
+          value:
+            stringValue: "2.2"
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "3781"
+              - key: span.id
+                value:
+                  stringValue: ute4567890aaaade
+              - key: span.name
+                value:
+                  stringValue: SELECT FROM product_types
+              - key: span.type
+                value:
+                  stringValue: db
+              - key: span.subtype
+                value:
+                  stringValue: postgresql
+              - key: span.action
+                value:
+                  stringValue: query
+              - key: span.sync
+                value:
+                  boolValue: true
+              - key: service.target.name
+                value:
+                  stringValue: postgresql
+              - key: service.target.type
+                value:
+                  stringValue: db
+              - key: span.destination.service.resource
+                value:
+                  stringValue: postgresql
+              - key: http.request.method
+                value:
+                  stringValue: GET
+              - key: http.response.status_code
+                value:
+                  intValue: "200"
+              - key: db.system
+                value:
+                  stringValue: sql
+              - key: db.namespace
+                value:
+                  stringValue: customers
+              - key: db.query.text
+                value:
+                  stringValue: SELECT * FROM product_types WHERE user_id=?
+            endTimeUnixNano: "1532976822284781912"
+            kind: 3
+            name: SELECT FROM product_types
+            parentSpanId: abcdef0123456789
+            spanId: ""
+            startTimeUnixNano: "1532976822281000000"
+            status:
+              code: 1
+            traceId: ""
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: backendspans
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532975583584217"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "988"
+              - key: span.id
+                value:
+                  stringValue: ljf4567890aaaade
+              - key: span.name
+                value:
+                  stringValue: Request
+              - key: span.type
+                value:
+                  stringValue: external
+              - key: span.subtype
+                value:
+                  stringValue: http
+              - key: span.action
+                value:
+                  stringValue: request
+              - key: service.target.name
+                value:
+                  stringValue: external
+              - key: service.target.type
+                value:
+                  stringValue: http
+              - key: span.destination.service.resource
+                value:
+                  stringValue: localhost:8080
+            endTimeUnixNano: "1532975583585205000"
+            name: Request
+            parentSpanId: abcdef0123456789
+            spanId: 01af25874dec69dd
+            startTimeUnixNano: "1532975583584217000"
+            status:
+              code: 1
+            traceId: ""
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: backendspans
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: unknown
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "141581"
+              - key: span.id
+                value:
+                  stringValue: 00xxx12312312312
+              - key: span.name
+                value:
+                  stringValue: Rabbitmq receive
+              - key: span.type
+                value:
+                  stringValue: messaging
+              - key: span.subtype
+                value:
+                  stringValue: JMS
+              - key: span.action
+                value:
+                  stringValue: receive
+              - key: messaging.system
+                value:
+                  stringValue: JMS
+              - key: messaging.operation.name
+                value:
+                  stringValue: receive
+              - key: messaging.destination.name
+                value:
+                  stringValue: new_users
+              - key: messaging.rabbitmq.destination.routing_key
+                value:
+                  stringValue: user-created-span
+            endTimeUnixNano: "1532976822422581000"
+            name: Rabbitmq receive
+            parentSpanId: abcdef0123456789
+            spanId: 01af25874dec69dd
+            startTimeUnixNano: "1532976822281000000"
+            status: {}
+            traceId: fdedef0123456789abcdef9876543210
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: backendspans
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "123"
+        - key: user.email
+          value:
+            stringValue: s@test.com
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1625572685682272"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "378191"
+              - key: span.id
+                value:
+                  stringValue: abcdef01234567
+              - key: span.name
+                value:
+                  stringValue: SELECT FROM p_details
+              - key: span.type
+                value:
+                  stringValue: db
+              - key: span.subtype
+                value:
+                  stringValue: postgresql
+              - key: span.action
+                value:
+                  stringValue: query
+            endTimeUnixNano: "1625572686060463200"
+            name: SELECT FROM p_details
+            parentSpanId: abcdef0123456789
+            spanId: 01af25874dec69dd
+            startTimeUnixNano: "1625572685682272000"
+            status:
+              code: 1
+            traceId: edcbaf0123456789abcdef9876543210

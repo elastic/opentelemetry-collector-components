@@ -450,11 +450,11 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				},
 			},
 			OpAMP: OpAMPConfig{
+				Cache: defaultCacheConfig,
 				Protocols: Protocols{
 					ServerConfig: func() *confighttp.ServerConfig {
 						httpCfg := confighttp.NewDefaultServerConfig()
 						httpCfg.Endpoint = opAMPTestEndpoint
-						httpCfg.TLSSetting = nil
 						return &httpCfg
 					}(),
 				},
