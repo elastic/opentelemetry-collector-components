@@ -161,20 +161,21 @@ func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.
 
 // addAggregatedFrameTypeMetrics converts and adds frame type information as metric to the scopeMetrics.
 func (c *profilesToMetricsConnector) addAggregatedFrameTypeMetrics(origin origin, frameTypeCounts map[string]int64, scopeMetrics pmetric.ScopeMetrics, ts pcommon.Timestamp) {
+	if len(frameTypeCounts) == 0 {
+		return
+	}
+
+	metric := scopeMetrics.Metrics().AppendEmpty()
+	metric.SetName(c.config.MetricsPrefix + "samples.frame_type")
+	metric.SetDescription("Number of profiling frames by frame type")
+	metric.SetUnit("1")
+
+	gauge := metric.SetEmptyGauge()
 	for typ, count := range frameTypeCounts {
-		metric := scopeMetrics.Metrics().AppendEmpty()
-		metric.SetName(c.config.MetricsPrefix + "samples.frame_type." + typ)
-		metric.SetDescription("")
-		metric.SetUnit("1")
-
-		sum := metric.SetEmptySum()
-		sum.SetIsMonotonic(true)
-		sum.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
-
-		dataPoint := sum.DataPoints().AppendEmpty()
+		dataPoint := gauge.DataPoints().AppendEmpty()
 		dataPoint.SetIntValue(count)
 		dataPoint.SetTimestamp(ts)
-
+		dataPoint.Attributes().PutStr("frame.type", typ)
 		dataPoint.Attributes().PutStr("profile.type_unit", origin.typ+"_"+origin.unit)
 	}
 }

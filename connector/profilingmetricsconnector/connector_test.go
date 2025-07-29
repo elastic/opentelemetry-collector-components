@@ -125,9 +125,21 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 			for j := 0; j < sm.Len(); j++ {
 				metrics := sm.At(j).Metrics()
 				for k := 0; k < metrics.Len(); k++ {
-					name := metrics.At(k).Name()
-					if name == "test.samples.frame_type.go" {
-						found = true
+					metric := metrics.At(k)
+					name := metric.Name()
+					if name == "test.samples.frame_type" {
+						// Verify it's a Gauge metric
+						if metric.Type() == pmetric.MetricTypeGauge {
+							gauge := metric.Gauge()
+							// Check if any data point has the expected frame.type attribute
+							for dp := 0; dp < gauge.DataPoints().Len(); dp++ {
+								dataPoint := gauge.DataPoints().At(dp)
+								if frameType, exists := dataPoint.Attributes().Get("frame.type"); exists && frameType.Str() == "go" {
+									found = true
+									break
+								}
+							}
+						}
 					}
 				}
 			}
@@ -198,12 +210,25 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 			for j := 0; j < sm.Len(); j++ {
 				metrics := sm.At(j).Metrics()
 				for k := 0; k < metrics.Len(); k++ {
-					name := metrics.At(k).Name()
-					if name == "test.samples.frame_type.go" {
-						foundGo = true
-					}
-					if name == "test.samples.frame_type.python" {
-						foundPy = true
+					metric := metrics.At(k)
+					name := metric.Name()
+					if name == "test.samples.frame_type" {
+						// Verify it's a Gauge metric
+						if metric.Type() == pmetric.MetricTypeGauge {
+							gauge := metric.Gauge()
+							// Check data points for both frame types
+							for dp := 0; dp < gauge.DataPoints().Len(); dp++ {
+								dataPoint := gauge.DataPoints().At(dp)
+								if frameType, exists := dataPoint.Attributes().Get("frame.type"); exists {
+									if frameType.Str() == "go" {
+										foundGo = true
+									}
+									if frameType.Str() == "python" {
+										foundPy = true
+									}
+								}
+							}
+						}
 					}
 				}
 			}
