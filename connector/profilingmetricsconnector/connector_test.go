@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
+	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
 // mockMetricsConsumer is a mock implementation of consumer.Metrics.
@@ -108,7 +109,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 
 	// Add an attribute for frame type
 	attr := attrTable.AppendEmpty()
-	attr.SetKey("profile.frame.type")
+	attr.SetKey(string(semconv.ProfileFrameTypeKey))
 	attr.Value().SetStr("go")
 
 	// Add a location referencing the attribute
@@ -137,10 +138,10 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 						// Verify it's a Gauge metric
 						if metric.Type() == pmetric.MetricTypeGauge {
 							gauge := metric.Gauge()
-							// Check if any data point has the expected frame.type attribute
+							// Check if any data point has the expected frame_type attribute
 							for dp := 0; dp < gauge.DataPoints().Len(); dp++ {
 								dataPoint := gauge.DataPoints().At(dp)
-								if frameType, exists := dataPoint.Attributes().Get("frame.type"); exists && frameType.Str() == "go" {
+								if frameType, exists := dataPoint.Attributes().Get("frame_type"); exists && frameType.Str() == "go" {
 									found = true
 									break
 								}
@@ -185,10 +186,10 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 
 	// Add two attributes for frame types
 	attrGo := attrTable.AppendEmpty()
-	attrGo.SetKey("profile.frame.type")
+	attrGo.SetKey(string(semconv.ProfileFrameTypeKey))
 	attrGo.Value().SetStr("go")
 	attrPy := attrTable.AppendEmpty()
-	attrPy.SetKey("profile.frame.type")
+	attrPy.SetKey(string(semconv.ProfileFrameTypeKey))
 	attrPy.Value().SetStr("python")
 
 	// Add two locations, each referencing a different attribute
@@ -228,7 +229,7 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 							// Check data points for both frame types
 							for dp := 0; dp < gauge.DataPoints().Len(); dp++ {
 								dataPoint := gauge.DataPoints().At(dp)
-								if frameType, exists := dataPoint.Attributes().Get("frame.type"); exists {
+								if frameType, exists := dataPoint.Attributes().Get("frame_type"); exists {
 									if frameType.Str() == "go" {
 										foundGo = true
 									}

@@ -157,7 +157,9 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 			}
 
 			// Add metric for frame types.
-			c.addAggregatedFrameTypeMetrics(origin, frameTypeCounts, scopeMetrics, profile.Time())
+			c.addMetrics(origin, frameTypeCounts,
+				"samples.frame_type", "Number of profiling frames by frame type", "frame_type",
+				scopeMetrics, profile.Time())
 		}
 
 		if c.config.ByClassification {
@@ -165,6 +167,11 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 			for _, sample := range profile.Sample().All() {
 				c.collectClassificationCounts(dictionary, locIndices, sample, classificationCounts)
 			}
+
+			// Add metric for classifications.
+			c.addMetrics(origin, classificationCounts,
+				"samples.classification", "Number of profiling frames by classification", "classification",
+				scopeMetrics, profile.Time())
 		}
 
 		if len(c.aggregations) > 0 {
@@ -172,6 +179,11 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 			for _, sample := range profile.Sample().All() {
 				c.collectCostumAggregationCounts(dictionary, locIndices, sample, costumAggregationCounts)
 			}
+
+			// Add metric for custom aggregations.
+			c.addMetrics(origin, costumAggregationCounts,
+				"samples.custom_aggregation", "Number of profiling frames by custom aggregation", "aggregation",
+				scopeMetrics, profile.Time())
 		}
 	}
 }
@@ -206,23 +218,25 @@ func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.
 	}
 }
 
-// addAggregatedFrameTypeMetrics converts and adds frame type information as metric to the scopeMetrics.
-func (c *profilesToMetricsConnector) addAggregatedFrameTypeMetrics(origin origin, frameTypeCounts map[string]int64, scopeMetrics pmetric.ScopeMetrics, ts pcommon.Timestamp) {
-	if len(frameTypeCounts) == 0 {
+// addMetrics converts and adds count information as metric to the scopeMetrics.
+func (c *profilesToMetricsConnector) addMetrics(origin origin, counts map[string]int64,
+	metricName, metricDesc, dataPointAttribute string,
+	scopeMetrics pmetric.ScopeMetrics, ts pcommon.Timestamp) {
+	if len(counts) == 0 {
 		return
 	}
 
 	metric := scopeMetrics.Metrics().AppendEmpty()
-	metric.SetName(c.config.MetricsPrefix + "samples.frame_type")
-	metric.SetDescription("Number of profiling frames by frame type")
+	metric.SetName(c.config.MetricsPrefix + metricName)
+	metric.SetDescription(metricDesc)
 	metric.SetUnit("1")
 
 	gauge := metric.SetEmptyGauge()
-	for typ, count := range frameTypeCounts {
+	for typ, count := range counts {
 		dataPoint := gauge.DataPoints().AppendEmpty()
 		dataPoint.SetIntValue(count)
 		dataPoint.SetTimestamp(ts)
-		dataPoint.Attributes().PutStr("frame.type", typ)
+		dataPoint.Attributes().PutStr(dataPointAttribute, typ)
 		dataPoint.Attributes().PutStr("profile.type_unit", origin.typ+"_"+origin.unit)
 	}
 }
