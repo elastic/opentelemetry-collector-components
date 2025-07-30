@@ -1,9 +1,6 @@
 resourceSpans:
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: backendspans
@@ -19,6 +16,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -120,9 +123,6 @@ resourceSpans:
             traceId: fdedef0123456789abcdef9876543210
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: backendspans
@@ -138,6 +138,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: prod
+        - key: deployment.environment.name
+          value:
+            stringValue: prod
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -238,9 +244,6 @@ resourceSpans:
             traceId: abcdef0123456789abcdef9876543210
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: backendspans
@@ -256,6 +259,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -356,9 +365,6 @@ resourceSpans:
             traceId: abcdef0123456789abcdef9876543210
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: backendspans
@@ -374,6 +380,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -477,9 +489,6 @@ resourceSpans:
             traceId: abcdef0123456789abcdef9876543210
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: service1
@@ -495,6 +504,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -624,9 +639,6 @@ resourceSpans:
             traceId: abcdef0123456789abcdef9876543210
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: service1
@@ -642,6 +654,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -771,9 +789,6 @@ resourceSpans:
             traceId: ""
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: service1
@@ -789,6 +804,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -918,9 +939,6 @@ resourceSpans:
             traceId: ""
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: backendspans
@@ -936,6 +954,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1046,9 +1070,6 @@ resourceSpans:
             traceId: ""
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: backendspans
@@ -1064,6 +1085,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1176,9 +1203,6 @@ resourceSpans:
             traceId: fdedef0123456789abcdef9876543210
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: backendspans
@@ -1194,6 +1218,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider

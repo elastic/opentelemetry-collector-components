@@ -37,8 +37,9 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 	}
 	attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
 	if event.Service.Environment != "" {
-		// elasticsearchexporter currently uses v1.22.0 of the OTel SemConv, so we need to use the v1.22.0 attribute
+		// elasticsearchexporter currently uses v1.22.0 of the OTel SemConv, so we need to include the v1.22.0 attribute
 		attributes.PutStr(semconv22.AttributeDeploymentEnvironment, event.Service.Environment)
+		attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
 	}
 	if event.Service.Node != nil && event.Service.Node.Name != "" {
 		attributes.PutStr(semconv.AttributeServiceInstanceID, event.Service.Node.Name)

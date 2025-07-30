@@ -1,15 +1,6 @@
 resourceSpans:
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: service.instance.id
-          value:
-            stringValue: node-123
-        - key: service.instance.id
-          value:
-            stringValue: node-123
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -25,6 +16,15 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -128,12 +128,6 @@ resourceSpans:
             traceId: 0123456789abcdef0123456789abcdef
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: service.instance.id
-          value:
-            stringValue: node-123
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -149,6 +143,15 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -263,12 +266,6 @@ resourceSpans:
             traceId: 0acd456789abcdef0123456789abcdef
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: service.instance.id
-          value:
-            stringValue: node-ABC
         - key: service.name
           value:
             stringValue: service1
@@ -284,6 +281,15 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: testing
+        - key: deployment.environment.name
+          value:
+            stringValue: testing
+        - key: service.instance.id
+          value:
+            stringValue: node-ABC
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -393,12 +399,6 @@ resourceSpans:
             traceId: 0acd456789abcdef0123456789abcdef
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: service.instance.id
-          value:
-            stringValue: node-123
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -414,6 +414,15 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -517,12 +526,6 @@ resourceSpans:
             traceId: 0123456789abcdef0123456789abcdef
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: service.instance.id
-          value:
-            stringValue: node-123
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -538,6 +541,15 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider

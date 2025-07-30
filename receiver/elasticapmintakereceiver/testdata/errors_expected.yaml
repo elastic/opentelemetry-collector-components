@@ -1,15 +1,6 @@
 resourceLogs:
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: host.name
-          value:
-            stringValue: prod.example
-        - key: service.instance.id
-          value:
-            stringValue: node-xyz
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -37,6 +28,18 @@ resourceLogs:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-xyz
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -129,15 +132,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: host.name
-          value:
-            stringValue: prod.example
-        - key: service.instance.id
-          value:
-            stringValue: node-abc
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -165,6 +159,18 @@ resourceLogs:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -236,15 +242,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: host.name
-          value:
-            stringValue: prod.example
-        - key: service.instance.id
-          value:
-            stringValue: node-abc
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -272,6 +269,18 @@ resourceLogs:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -345,15 +354,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: host.name
-          value:
-            stringValue: prod.example
-        - key: service.instance.id
-          value:
-            stringValue: node-abc
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -381,6 +381,18 @@ resourceLogs:
         - key: deployment.environment
           value:
             stringValue: testing
+        - key: deployment.environment.name
+          value:
+            stringValue: testing
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -457,15 +469,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: host.name
-          value:
-            stringValue: prod.example
-        - key: service.instance.id
-          value:
-            stringValue: node-abc
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -493,6 +496,18 @@ resourceLogs:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider

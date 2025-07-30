@@ -1,12 +1,6 @@
 resourceSpans:
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: service.instance.id
-          value:
-            stringValue: special-name
         - key: service.name
           value:
             stringValue: serviceabc
@@ -22,6 +16,15 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: special-name
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id
@@ -121,9 +124,6 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -139,6 +139,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id
@@ -241,9 +247,6 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -259,6 +262,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id
@@ -341,9 +350,6 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -359,6 +365,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id
@@ -441,9 +453,6 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -459,6 +468,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id
@@ -541,9 +556,6 @@ resourceSpans:
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -559,6 +571,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id
@@ -644,9 +662,6 @@ resourceSpans:
             traceId: 85925e55b43f4340aaaaaaaaaaaaaaaa
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -662,6 +677,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id
@@ -747,9 +768,6 @@ resourceSpans:
             traceId: 85925e55b43f4341aaaaaaaaaaaaaaaa
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -765,6 +783,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id
@@ -850,9 +874,6 @@ resourceSpans:
             traceId: 85925e55b43f4342aaaaaaaaaaaaaaaa
   - resource:
       attributes:
-        - key: host.arch
-          value:
-            stringValue: "x64"
         - key: service.name
           value:
             stringValue: serviceabc
@@ -868,6 +889,12 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: container.id
           value:
             stringValue: container-id

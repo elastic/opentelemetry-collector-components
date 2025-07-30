@@ -16,6 +16,15 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -76,12 +85,6 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: service.instance.id
-          value:
-            stringValue: node-123
     scopeSpans:
       - scope: {}
         spans:
@@ -139,6 +142,15 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -199,12 +211,6 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
-        - key: host.arch
-          value:
-            stringValue: "x64"
-        - key: service.instance.id
-          value:
-            stringValue: node-123
     scopeSpans:
       - scope: {}
         spans:
