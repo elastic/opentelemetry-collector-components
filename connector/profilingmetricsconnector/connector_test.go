@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
@@ -295,4 +296,71 @@ func TestConsumeProfiles_ConsumeMetricsError(t *testing.T) {
 	assert.Error(t, err)
 	assert.EqualError(t, err, "consume error")
 	mockConsumer.AssertExpectations(t)
+}
+
+func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
+	cfg := &Config{
+		MetricsPrefix:    "test.",
+		ByClassification: true,
+	}
+	conn := &profilesToMetricsConnector{
+		config: cfg,
+	}
+
+	// Setup dictionary tables
+	profiles := pprofile.NewProfiles()
+	dict := profiles.ProfilesDictionary()
+	strTable := dict.StringTable()
+	locTable := dict.LocationTable()
+	attrTable := dict.AttributeTable()
+	funcTable := dict.FunctionTable()
+
+	// Add strings for function name and package
+	fnNameIdx := strTable.Len()
+	strTable.Append("mypkg.myfunc")
+
+	// Add function entry
+	fnEntry := funcTable.AppendEmpty()
+	fnEntry.SetNameStrindex(int32(fnNameIdx))
+
+	// Add attribute for frame type "go"
+	attrIdx := attrTable.Len()
+	attr := attrTable.AppendEmpty()
+	attr.SetKey(string(semconv.ProfileFrameTypeKey))
+	attr.Value().SetStr("go")
+
+	// Add location referencing the attribute and function
+	locIdx := locTable.Len()
+	loc := locTable.AppendEmpty()
+	loc.AttributeIndices().Append(int32(attrIdx))
+	line := loc.Line().AppendEmpty()
+	line.SetFunctionIndex(int32(fnNameIdx))
+
+	// Prepare sample referencing the location
+	sample := pprofile.NewSample()
+	sample.SetLocationsStartIndex(0)
+	sample.SetLocationsLength(1)
+
+	// Prepare location indices
+	locationIndices := pcommon.NewInt32Slice()
+	locationIndices.Append(int32(locIdx))
+
+	// Prepare classificationCounts map
+	classificationCounts := make(map[string]map[string]int64)
+
+	// Call collectClassificationCounts
+	conn.collectClassificationCounts(dict, locationIndices, sample, classificationCounts)
+
+	// Should have one entry for frameTypeGo and package "mypkg"
+	if assert.Contains(t, classificationCounts, frameTypeGo) {
+		// The extractGolangInfo should extract "mypkg" as package
+		found := false
+		for k := range classificationCounts[frameTypeGo] {
+			if k == "mypkg" {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Expected package 'mypkg' in classificationCounts[frameTypeGo]")
+	}
 }

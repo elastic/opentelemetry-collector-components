@@ -20,6 +20,7 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 
 	"go.opentelemetry.io/collector/component"
@@ -33,6 +34,12 @@ import (
 
 var (
 	errInvalAgg = errors.New("invalid aggregation configuration")
+)
+
+var (
+	// Helper strings to keep code readable.
+	frameTypeGo  = semconv.ProfileFrameTypeGo.Value.AsString()
+	frameTypeJVM = semconv.ProfileFrameTypeJVM.Value.AsString()
 )
 
 // profilesToMetricsConnector implements xconnector.Profiles
@@ -77,7 +84,7 @@ func (c *profilesToMetricsConnector) Start(ctx context.Context, host component.H
 		// Precompile all regular expressions at startup to do it only once.
 		re, err := regexp.Compile(agg.Match)
 		if err != nil {
-			return fmt.Errorf("compiling rx for label %v: %v", agg.Label, err)
+			return fmt.Errorf("compiling regex for label %v: %v", agg.Label, err)
 		}
 		c.aggregations = append(c.aggregations, aggregation{
 			re:    re,
@@ -158,20 +165,22 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 
 			// Add metric for frame types.
 			c.addMetrics(origin, frameTypeCounts,
-				"samples.frame_type", "Number of profiling frames by frame type", "frame_type",
+				"", "samples.frame_type", "Number of profiling frames by frame type", "frame_type",
 				scopeMetrics, profile.Time())
 		}
 
 		if c.config.ByClassification {
-			classificationCounts := make(map[string]int64)
+			classificationCounts := make(map[string]map[string]int64)
 			for _, sample := range profile.Sample().All() {
 				c.collectClassificationCounts(dictionary, locIndices, sample, classificationCounts)
 			}
 
-			// Add metric for classifications.
-			c.addMetrics(origin, classificationCounts,
-				"samples.classification", "Number of profiling frames by classification", "classification",
-				scopeMetrics, profile.Time())
+			for frameType, classifications := range classificationCounts {
+				// Add metric for classifications.
+				c.addMetrics(origin, classifications,
+					frameType, "samples.classification", "Number of profiling frames by classification", "classification",
+					scopeMetrics, profile.Time())
+			}
 		}
 
 		if len(c.aggregations) > 0 {
@@ -182,7 +191,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 
 			// Add metric for custom aggregations.
 			c.addMetrics(origin, customAggregationCounts,
-				"samples.custom_aggregation", "Number of profiling frames by custom aggregation", "aggregation",
+				"", "samples.custom_aggregation", "Number of profiling frames by custom aggregation", "aggregation",
 				scopeMetrics, profile.Time())
 		}
 	}
@@ -220,7 +229,7 @@ func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.
 
 // addMetrics converts and adds count information as metric to the scopeMetrics.
 func (c *profilesToMetricsConnector) addMetrics(origin origin, counts map[string]int64,
-	metricName, metricDesc, dataPointAttribute string,
+	frameType, metricName, metricDesc, dataPointAttribute string,
 	scopeMetrics pmetric.ScopeMetrics, ts pcommon.Timestamp) {
 	if len(counts) == 0 {
 		return
@@ -236,13 +245,17 @@ func (c *profilesToMetricsConnector) addMetrics(origin origin, counts map[string
 		dataPoint := gauge.DataPoints().AppendEmpty()
 		dataPoint.SetIntValue(count)
 		dataPoint.SetTimestamp(ts)
+		if frameType != "" {
+			dataPoint.Attributes().PutStr("frame_type", frameType)
+		}
 		dataPoint.Attributes().PutStr(dataPointAttribute, typ)
 		dataPoint.Attributes().PutStr("profile.type_unit", origin.typ+"_"+origin.unit)
 	}
 }
 
 // collectClassificationCounts walks all locations/frames of a sample and collects the classification information.
-func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice, sample pprofile.Sample, classificationCounts map[string]int64) {
+func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice,
+	sample pprofile.Sample, classificationCounts map[string]map[string]int64) {
 	locationTable := dictionary.LocationTable()
 	attrTable := dictionary.AttributeTable()
 	funcTable := dictionary.FunctionTable()
@@ -275,8 +288,8 @@ func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary ppro
 		case "":
 			// No proper frame type information is available for this location.
 			continue
-		case semconv.ProfileFrameTypeGo.Value.AsString():
-		case semconv.ProfileFrameTypeJVM.Value.AsString():
+		case frameTypeGo:
+		case frameTypeJVM:
 		default:
 			//  At the moment only hotspot and go are supported.
 			continue
@@ -289,16 +302,22 @@ func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary ppro
 			fnStr := strTable.At(int(fnEntry.NameStrindex()))
 
 			switch frameType {
-			case semconv.ProfileFrameTypeGo.Value.AsString():
+			case frameTypeGo:
+				if _, exists := classificationCounts[frameTypeGo]; !exists {
+					classificationCounts[frameTypeGo] = make(map[string]int64)
+				}
 				golangInfo := extractGolangInfo(fnStr)
-				classificationCounts[golangInfo.pack] += 1
-			case semconv.ProfileFrameTypeJVM.Value.AsString():
+				classificationCounts[frameTypeGo][golangInfo.pack] += 1
+			case frameTypeJVM:
+				if _, exists := classificationCounts[frameTypeJVM]; !exists {
+					classificationCounts[frameTypeJVM] = make(map[string]int64)
+				}
 				hotspotInfo, err := extractHotspotInfo(fnStr)
 				if err != nil {
 					// Ignore the error for the moment.
 					continue
 				}
-				classificationCounts[hotspotInfo.pack+"."+hotspotInfo.class] += 1
+				classificationCounts[frameTypeJVM][hotspotInfo.pack+"."+hotspotInfo.class] += 1
 			}
 		}
 	}
