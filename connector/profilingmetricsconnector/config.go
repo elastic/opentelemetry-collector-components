@@ -36,6 +36,6 @@ type Config struct {
 	// Currently only Java and Go are supported.
 	ByClassification bool `mapstructure:"by_classification"`
 
-	// CustomAggregations allows to generate costum metrics.
+	// CustomAggregations allows to generate custom metrics.
 	CustomAggregations []Aggregation `mapstructure:"aggregations"`
 }

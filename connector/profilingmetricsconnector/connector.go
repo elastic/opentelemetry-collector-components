@@ -77,7 +77,7 @@ func (c *profilesToMetricsConnector) Start(ctx context.Context, host component.H
 		// Precompile all regular expressions at startup to do it only once.
 		re, err := regexp.Compile(agg.Match)
 		if err != nil {
-			return err
+			return fmt.Errorf("compiling rx for label %v: %v", agg.Label, err)
 		}
 		c.aggregations = append(c.aggregations, aggregation{
 			re:    re,
@@ -175,13 +175,13 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 		}
 
 		if len(c.aggregations) > 0 {
-			costumAggregationCounts := make(map[string]int64)
+			customAggregationCounts := make(map[string]int64)
 			for _, sample := range profile.Sample().All() {
-				c.collectCostumAggregationCounts(dictionary, locIndices, sample, costumAggregationCounts)
+				c.collectCustomAggregationCounts(dictionary, locIndices, sample, customAggregationCounts)
 			}
 
 			// Add metric for custom aggregations.
-			c.addMetrics(origin, costumAggregationCounts,
+			c.addMetrics(origin, customAggregationCounts,
 				"samples.custom_aggregation", "Number of profiling frames by custom aggregation", "aggregation",
 				scopeMetrics, profile.Time())
 		}
@@ -304,8 +304,8 @@ func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary ppro
 	}
 }
 
-// collectCostumAggregationCounts walks all locations/frames of a sample and collects costum aggregation information.
-func (c *profilesToMetricsConnector) collectCostumAggregationCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice, sample pprofile.Sample, costumAggregationCounts map[string]int64) {
+// collectCustomAggregationCounts walks all locations/frames of a sample and collects costum aggregation information.
+func (c *profilesToMetricsConnector) collectCustomAggregationCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice, sample pprofile.Sample, customAggregationCounts map[string]int64) {
 	locationTable := dictionary.LocationTable()
 	funcTable := dictionary.FunctionTable()
 	strTable := dictionary.StringTable()
@@ -328,7 +328,7 @@ func (c *profilesToMetricsConnector) collectCostumAggregationCounts(dictionary p
 
 			for _, agg := range c.aggregations {
 				if agg.re.MatchString(fnStr) {
-					costumAggregationCounts[agg.label] += 1
+					customAggregationCounts[agg.label] += 1
 				}
 			}
 		}
