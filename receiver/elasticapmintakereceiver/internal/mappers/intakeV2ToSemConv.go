@@ -24,6 +24,7 @@ import (
 
 	"github.com/elastic/apm-data/model/modelpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv22 "go.opentelemetry.io/collector/semconv/v1.22.0"
 	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
 )
 
@@ -36,7 +37,29 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 	}
 	attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
 	if event.Service.Environment != "" {
+		// elasticsearchexporter currently uses v1.22.0 of the OTel SemConv, so we need to include the v1.22.0 attribute
+		attributes.PutStr(semconv22.AttributeDeploymentEnvironment, event.Service.Environment)
 		attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
+	}
+	if event.Service.Node != nil && event.Service.Node.Name != "" {
+		attributes.PutStr(semconv.AttributeServiceInstanceID, event.Service.Node.Name)
+	}
+	if event.Host != nil {
+		if event.Host.Name != "" {
+			attributes.PutStr(semconv.AttributeHostName, event.Host.Name)
+		}
+		if event.Host.Id != "" {
+			attributes.PutStr(semconv.AttributeHostID, event.Host.Id)
+		}
+		if event.Host.Architecture != "" {
+			attributes.PutStr(semconv.AttributeHostArch, event.Host.Architecture)
+		}
+		if event.Host.Os.Name != "" {
+			attributes.PutStr(semconv.AttributeOSName, event.Host.Os.Name)
+			if event.Host.Os.Version != "" {
+				attributes.PutStr(semconv.AttributeOSVersion, event.Host.Os.Version)
+			}
+		}
 	}
 	translateCloudAttributes(event, attributes)
 	translateContainerAndKubernetesAttributes(event, attributes)
