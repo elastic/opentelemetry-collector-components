@@ -16,6 +16,9 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
         - key: user.email
           value:
             stringValue: user@mail.com
@@ -86,6 +89,9 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
         - key: user.email
           value:
             stringValue: user@mail.com
@@ -127,6 +133,9 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
         - key: user.email
           value:
             stringValue: user@mail.com
@@ -183,6 +192,9 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
         - key: user.email
           value:
             stringValue: user@mail.com
