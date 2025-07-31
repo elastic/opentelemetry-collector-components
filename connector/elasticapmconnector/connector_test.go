@@ -38,24 +38,22 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
-	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 var update = flag.Bool("update", false, "Update golden files")
 
 func TestConnector_LogsToMetrics(t *testing.T) {
-	oneCardinalityLimitConfig := lsmconfig.LimitConfig{
+	oneCardinalityLimitConfig := LimitConfig{
 		MaxCardinality: 1,
-		Overflow: lsmconfig.OverflowConfig{
-			Attributes: []lsmconfig.Attribute{{Key: "test_overflow", Value: any(true)}},
-		},
 	}
 	oneCardinalityAggregationConfig := Config{
 		Aggregation: &AggregationConfig{
-			ResourceLimit:  oneCardinalityLimitConfig,
-			ScopeLimit:     oneCardinalityLimitConfig,
-			MetricLimit:    oneCardinalityLimitConfig,
-			DatapointLimit: oneCardinalityLimitConfig,
+			Limit: AggregationLimitConfig{
+				ResourceLimit:  oneCardinalityLimitConfig,
+				ScopeLimit:     oneCardinalityLimitConfig,
+				MetricLimit:    oneCardinalityLimitConfig,
+				DatapointLimit: oneCardinalityLimitConfig,
+			},
 		},
 	}
 
@@ -97,18 +95,17 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 }
 
 func TestConnector_MetricsToMetrics(t *testing.T) {
-	oneCardinalityLimitConfig := lsmconfig.LimitConfig{
+	oneCardinalityLimitConfig := LimitConfig{
 		MaxCardinality: 1,
-		Overflow: lsmconfig.OverflowConfig{
-			Attributes: []lsmconfig.Attribute{{Key: "test_overflow", Value: any(true)}},
-		},
 	}
 	oneCardinalityAggregationConfig := Config{
 		Aggregation: &AggregationConfig{
-			ResourceLimit:  oneCardinalityLimitConfig,
-			ScopeLimit:     oneCardinalityLimitConfig,
-			MetricLimit:    oneCardinalityLimitConfig,
-			DatapointLimit: oneCardinalityLimitConfig,
+			Limit: AggregationLimitConfig{
+				ResourceLimit:  oneCardinalityLimitConfig,
+				ScopeLimit:     oneCardinalityLimitConfig,
+				MetricLimit:    oneCardinalityLimitConfig,
+				DatapointLimit: oneCardinalityLimitConfig,
+			},
 		},
 	}
 
@@ -150,33 +147,31 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 }
 
 func TestConnector_TracesToMetrics(t *testing.T) {
-	fourCardinalityLimitConfig := lsmconfig.LimitConfig{
+	fourCardinalityLimitConfig := LimitConfig{
 		MaxCardinality: 4, // min limit to prevent overflow behavior
-		Overflow: lsmconfig.OverflowConfig{
-			Attributes: []lsmconfig.Attribute{{Key: "test_overflow", Value: any(true)}},
-		},
 	}
 	fourCardinalityAggregationConfig := Config{
 		Aggregation: &AggregationConfig{
-			ResourceLimit:  fourCardinalityLimitConfig,
-			ScopeLimit:     fourCardinalityLimitConfig,
-			MetricLimit:    fourCardinalityLimitConfig,
-			DatapointLimit: fourCardinalityLimitConfig,
+			Limit: AggregationLimitConfig{
+				ResourceLimit:  fourCardinalityLimitConfig,
+				ScopeLimit:     fourCardinalityLimitConfig,
+				MetricLimit:    fourCardinalityLimitConfig,
+				DatapointLimit: fourCardinalityLimitConfig,
+			},
 		},
 	}
 
-	oneCardinalityLimitConfig := lsmconfig.LimitConfig{
+	oneCardinalityLimitConfig := LimitConfig{
 		MaxCardinality: 1,
-		Overflow: lsmconfig.OverflowConfig{
-			Attributes: []lsmconfig.Attribute{{Key: "test_overflow", Value: any(true)}},
-		},
 	}
 	oneCardinalityAggregationConfig := Config{
 		Aggregation: &AggregationConfig{
-			ResourceLimit:  oneCardinalityLimitConfig,
-			ScopeLimit:     oneCardinalityLimitConfig,
-			MetricLimit:    oneCardinalityLimitConfig,
-			DatapointLimit: oneCardinalityLimitConfig,
+			Limit: AggregationLimitConfig{
+				ResourceLimit:  oneCardinalityLimitConfig,
+				ScopeLimit:     oneCardinalityLimitConfig,
+				MetricLimit:    oneCardinalityLimitConfig,
+				DatapointLimit: oneCardinalityLimitConfig,
+			},
 		},
 	}
 

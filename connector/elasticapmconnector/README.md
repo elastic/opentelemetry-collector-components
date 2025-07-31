@@ -40,42 +40,26 @@ propagate client metadata from input to exported metrics by specifying a list of
 in `elasticapm::aggregation::metadata_keys`.
 
 By default, cardinality for aggregated metrics will be limited.
-Each limit defines a `max_cardinality` and a list of `attributes` that will be added to the overflow metric.
-There are four limits that can be configured: 
-- `elasticapm::aggregation::resource_limit`: configures the max cardinality of resources
-- `elasticapm::aggregation::scope_limit`: configures the max cardinality of scopes within a resource
-- `elasticapm::aggregation::metric_limit`: configures the max cardinality of metrics within a scope
-- `elasticapm::aggregation::datapoint_limit`: configures the max cardinality of datapoints within a metric
+Each limit defines a `max_cardinality`. There are four limits that can be configured: 
+- `elasticapm::aggregation::limit::resource`: configures the max cardinality of resources
+- `elasticapm::aggregation::limit::scope`: configures the max cardinality of scopes within a resource
+- `elasticapm::aggregation::limit::metric`: configures the max cardinality of metrics within a scope
+- `elasticapm::aggregation::limit::datapoint`: configures the max cardinality of datapoints within a metric
 
 ```yaml
 elasticapm:
   aggregation:
     directory: /path/to/aggregation/directory
     metadata_keys: [list, of, metadata, keys]
-    resource_limit:
-      max_cardinality: 8000
-      overflow:
-        attributes:
-          - key: "overflow"
-            value: true
-    scope_limit:
-      max_cardinality: 4000
-      overflow:
-        attributes:
-          - key: "overflow"
-            value: true
-    metric_limit:
-      max_cardinality: 4000
-      overflow:
-        attributes:
-          - key: "overflow"
-            value: true
-    datapoint_limit:
-      max_cardinality: 4000
-      overflow:
-        attributes:
-          - key: "overflow"
-            value: true
+    limit:
+      resource: 
+        max_cardinality: 8000
+      scope:
+        max_cardinality: 4000
+      metric:
+        max_cardinality: 4000
+      datapoint:
+        max_cardinality: 4000
 ```
 
 ### Metrics produced by the connector

@@ -66,17 +66,26 @@ type AggregationConfig struct {
 	// and will not be supported.
 	Intervals []time.Duration `mapstructure:"intervals"`
 
+	// Limit holds optional cardinality limits for aggregated metrics
+	Limit AggregationLimitConfig `mapstructure:"limit"`
+}
+
+type AggregationLimitConfig struct {
 	// ResourceLimit defines the max cardinality of resources
-	ResourceLimit lsmconfig.LimitConfig `mapstructure:"resource_limit"`
+	ResourceLimit LimitConfig `mapstructure:"resource"`
 
 	// ScopeLimit defines the max cardinality of scopes within a resource
-	ScopeLimit lsmconfig.LimitConfig `mapstructure:"scope_limit"`
+	ScopeLimit LimitConfig `mapstructure:"scope"`
 
 	// MetricLimit defines the max cardinality of metrics within a scope
-	MetricLimit lsmconfig.LimitConfig `mapstructure:"metric_limit"`
+	MetricLimit LimitConfig `mapstructure:"metric"`
 
 	// DatapointLimit defines the max cardinality of datapoints within a metric
-	DatapointLimit lsmconfig.LimitConfig `mapstructure:"datapoint_limit"`
+	DatapointLimit LimitConfig `mapstructure:"datapoint"`
+}
+
+type LimitConfig struct {
+	MaxCardinality int64 `mapstructure:"max_cardinality"`
 }
 
 func (cfg Config) Validate() error {
@@ -100,17 +109,41 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 			},
 		})
 	}
+
+	// Specific attribute required for APU UI compatibility
+	defaultOverflowConfig := lsmconfig.OverflowConfig{
+		Attributes: []lsmconfig.Attribute{
+			{
+				Key:   "service.name",
+				Value: "_other",
+			},
+		},
+	}
+
 	lsmConfig := &lsmconfig.Config{
 		Intervals:                      intervalsConfig,
 		ExponentialHistogramMaxBuckets: 160,
 	}
+
 	if cfg.Aggregation != nil {
 		lsmConfig.Directory = cfg.Aggregation.Directory
 		lsmConfig.MetadataKeys = cfg.Aggregation.MetadataKeys
-		lsmConfig.ResourceLimit = cfg.Aggregation.ResourceLimit
-		lsmConfig.ScopeLimit = cfg.Aggregation.ScopeLimit
-		lsmConfig.MetricLimit = cfg.Aggregation.MetricLimit
-		lsmConfig.DatapointLimit = cfg.Aggregation.DatapointLimit
+		lsmConfig.ResourceLimit = lsmconfig.LimitConfig{
+			MaxCardinality: cfg.Aggregation.Limit.ResourceLimit.MaxCardinality,
+			Overflow:       defaultOverflowConfig,
+		}
+		lsmConfig.ScopeLimit = lsmconfig.LimitConfig{
+			MaxCardinality: cfg.Aggregation.Limit.ScopeLimit.MaxCardinality,
+			Overflow:       defaultOverflowConfig,
+		}
+		lsmConfig.MetricLimit = lsmconfig.LimitConfig{
+			MaxCardinality: cfg.Aggregation.Limit.MetricLimit.MaxCardinality,
+			Overflow:       defaultOverflowConfig,
+		}
+		lsmConfig.DatapointLimit = lsmconfig.LimitConfig{
+			MaxCardinality: cfg.Aggregation.Limit.DatapointLimit.MaxCardinality,
+			Overflow:       defaultOverflowConfig,
+		}
 	}
 	return lsmConfig
 }
