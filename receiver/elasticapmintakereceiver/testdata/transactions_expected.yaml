@@ -13,9 +13,18 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -131,9 +140,18 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -260,9 +278,18 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: testing
         - key: deployment.environment.name
           value:
             stringValue: testing
+        - key: service.instance.id
+          value:
+            stringValue: node-ABC
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -384,9 +411,18 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -502,9 +538,18 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
