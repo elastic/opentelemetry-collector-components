@@ -90,7 +90,9 @@ func (a *authenticator) configureTransport(transport *http.Transport) error {
 
 		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
 		transport.TLSClientConfig.InsecureSkipVerify = beatTLSConfig.InsecureSkipVerify
+		transport.TLSClientConfig.RootCAs = a.tlsConfig.RootCAs
 	}
+
 	return nil
 }
 
