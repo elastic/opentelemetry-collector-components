@@ -3,36 +3,12 @@ elasticapm:
     directory: /path/to/aggregation/state
     metadata_keys: [a, B, c]
     intervals: [1s, 1m]
-    resource_limit:
-      max_cardinality: 1
-      overflow:
-        attributes:
-          - key: "overflow"
-            value: true
-          - key: "other_overflow_label"
-            value: "overflow"
-    scope_limit:
-      max_cardinality: 1
-      overflow:
-        attributes:
-          - key: "overflow"
-            value: true
-          - key: "other_overflow_label"
-            value: "overflow"
-    metric_limit:
-      max_cardinality: 1
-      overflow:
-        attributes:
-          - key: "overflow"
-            value: true
-          - key: "other_overflow_label"
-            value: "overflow"
-    datapoint_limit:
-      max_cardinality: 1
-      overflow:
-        attributes:
-          - key: "overflow"
-            value: true
-          - key: "other_overflow_label"
-            value: "overflow"
-
+    limit:
+      resource:
+        max_cardinality: 1
+      scope:
+        max_cardinality: 1
+      metric:
+        max_cardinality: 1
+      datapoint:
+        max_cardinality: 1

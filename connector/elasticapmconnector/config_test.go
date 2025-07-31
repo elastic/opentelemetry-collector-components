@@ -29,7 +29,6 @@ import (
 	"go.opentelemetry.io/collector/confmap/xconfmap"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
-	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 func TestConfig(t *testing.T) {
@@ -49,40 +48,18 @@ func TestConfig(t *testing.T) {
 					Directory:    "/path/to/aggregation/state",
 					MetadataKeys: []string{"a", "B", "c"},
 					Intervals:    []time.Duration{time.Second, time.Minute},
-					ResourceLimit: lsmconfig.LimitConfig{
-						MaxCardinality: 1,
-						Overflow: lsmconfig.OverflowConfig{
-							Attributes: []lsmconfig.Attribute{
-								{Key: "overflow", Value: true},
-								{Key: "other_overflow_label", Value: "overflow"},
-							},
+					Limit: AggregationLimitConfig{
+						ResourceLimit: LimitConfig{
+							MaxCardinality: 1,
 						},
-					},
-					ScopeLimit: lsmconfig.LimitConfig{
-						MaxCardinality: 1,
-						Overflow: lsmconfig.OverflowConfig{
-							Attributes: []lsmconfig.Attribute{
-								{Key: "overflow", Value: true},
-								{Key: "other_overflow_label", Value: "overflow"},
-							},
+						ScopeLimit: LimitConfig{
+							MaxCardinality: 1,
 						},
-					},
-					MetricLimit: lsmconfig.LimitConfig{
-						MaxCardinality: 1,
-						Overflow: lsmconfig.OverflowConfig{
-							Attributes: []lsmconfig.Attribute{
-								{Key: "overflow", Value: true},
-								{Key: "other_overflow_label", Value: "overflow"},
-							},
+						MetricLimit: LimitConfig{
+							MaxCardinality: 1,
 						},
-					},
-					DatapointLimit: lsmconfig.LimitConfig{
-						MaxCardinality: 1,
-						Overflow: lsmconfig.OverflowConfig{
-							Attributes: []lsmconfig.Attribute{
-								{Key: "overflow", Value: true},
-								{Key: "other_overflow_label", Value: "overflow"},
-							},
+						DatapointLimit: LimitConfig{
+							MaxCardinality: 1,
 						},
 					},
 				},
