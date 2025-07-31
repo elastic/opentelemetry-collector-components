@@ -32,13 +32,14 @@ import (
 	"go.opentelemetry.io/collector/config/configoptional"
 
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
+	"github.com/elastic/elastic-agent-libs/transport/tlscommontest"
 	"github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension/internal/metadata"
 )
 
 // It tests whether VerifyConnection is set on tls.Config
 func TestVerifyConnection(t *testing.T) {
-	testCerts := tlscommon.GenTestCerts(t)
-	fingerprint := tlscommon.GetCertFingerprint(testCerts["ca"])
+	testCerts := tlscommontest.GenTestCerts(t)
+	fingerprint := tlscommontest.GetCertFingerprint(testCerts["ca"])
 
 	settings := componenttest.NewNopTelemetrySettings()
 	httpClientConfig := confighttp.NewDefaultClientConfig()

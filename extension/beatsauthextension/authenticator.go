@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/extensionauth"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -37,10 +38,11 @@ type authenticator struct {
 	cfg       *Config
 	telemetry component.TelemetrySettings
 	tlsConfig *tlscommon.TLSConfig // set by Start
+	logger    *zap.Logger
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
-	return &authenticator{cfg: cfg, telemetry: telemetry}, nil
+	return &authenticator{cfg: cfg, telemetry: telemetry, logger: telemetry.Logger}, nil
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
@@ -79,6 +81,15 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 func (a *authenticator) configureTransport(transport *http.Transport) error {
 	if a.tlsConfig != nil {
 		// injecting verifyConnection here, keeping all other fields on TLSClientConfig intact
+
+		// should inject incoming root CA into our tls config
+		// so that we can build our custom verifyConnection method
+		// if root CA is empty, it uses system CA
+		a.tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
+		defer func() {
+			// clear it when finished
+			a.tlsConfig.RootCAs = nil
+		}()
 		beatTLSConfig := a.tlsConfig.BuildModuleClientConfig(a.cfg.TLS.ServerName)
 
 		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
