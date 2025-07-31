@@ -82,15 +82,11 @@ func (a *authenticator) configureTransport(transport *http.Transport) error {
 	if a.tlsConfig != nil {
 		// injecting verifyConnection here, keeping all other fields on TLSClientConfig intact
 
-		// should inject incoming root CA into our tls config
-		// so that we can build our custom verifyConnection method
-		// if root CA is empty, it uses system CA
+		// inject incoming root CA into our tls config
+		// because ca_trusted_fingerprint will be appended to incoming CA
 		a.tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
-		defer func() {
-			// clear it when finished
-			a.tlsConfig.RootCAs = nil
-		}()
-		beatTLSConfig := a.tlsConfig.BuildModuleClientConfig(a.cfg.TLS.ServerName)
+
+		beatTLSConfig := a.tlsConfig.BuildModuleClientConfig(transport.TLSClientConfig.ServerName)
 
 		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
 		transport.TLSClientConfig.InsecureSkipVerify = beatTLSConfig.InsecureSkipVerify

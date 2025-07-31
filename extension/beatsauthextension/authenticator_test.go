@@ -126,7 +126,6 @@ func TestVerifyConnection(t *testing.T) {
 					VerificationMode:     test.verificationMode.String(),
 					CATrustedFingerprint: test.CATrustedFingerprint,
 					CASha256:             test.CASHA256,
-					ServerName:           test.serverName,
 				},
 			}
 
