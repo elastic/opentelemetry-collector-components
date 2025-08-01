@@ -21,9 +21,10 @@ import (
 	"fmt"
 	"time"
 
-	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	signaltometricsconfig "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector/config"
 	"go.opentelemetry.io/collector/component"
+
+	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 var _ component.Config = (*Config)(nil)
@@ -64,6 +65,18 @@ type AggregationConfig struct {
 	// in all other cases -- using this configuration may lead to invalid behavior,
 	// and will not be supported.
 	Intervals []time.Duration `mapstructure:"intervals"`
+
+	// ResourceLimit defines the max cardinality of resources
+	ResourceLimit lsmconfig.LimitConfig `mapstructure:"resource_limit"`
+
+	// ScopeLimit defines the max cardinality of scopes within a resource
+	ScopeLimit lsmconfig.LimitConfig `mapstructure:"scope_limit"`
+
+	// MetricLimit defines the max cardinality of metrics within a scope
+	MetricLimit lsmconfig.LimitConfig `mapstructure:"metric_limit"`
+
+	// DatapointLimit defines the max cardinality of datapoints within a metric
+	DatapointLimit lsmconfig.LimitConfig `mapstructure:"datapoint_limit"`
 }
 
 func (cfg Config) Validate() error {
@@ -94,6 +107,10 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 	if cfg.Aggregation != nil {
 		lsmConfig.Directory = cfg.Aggregation.Directory
 		lsmConfig.MetadataKeys = cfg.Aggregation.MetadataKeys
+		lsmConfig.ResourceLimit = cfg.Aggregation.ResourceLimit
+		lsmConfig.ScopeLimit = cfg.Aggregation.ScopeLimit
+		lsmConfig.MetricLimit = cfg.Aggregation.MetricLimit
+		lsmConfig.DatapointLimit = cfg.Aggregation.DatapointLimit
 	}
 	return lsmConfig
 }
