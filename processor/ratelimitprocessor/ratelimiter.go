@@ -28,8 +28,7 @@ import (
 )
 
 var (
-	errTooManyRequests        = errors.New("too many requests")
-	errRateLimitInternalError = errors.New("rate limiter failed")
+	errTooManyRequests = errors.New("too many requests")
 )
 
 // RateLimiter provides an interface for rate limiting by some number
