@@ -205,14 +205,15 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctx context.Contex
 			result.Errors = append(result.Errors, err.Error())
 		}
 
-		if len(result.Errors) > 0 {
-			statusCode = http.StatusBadRequest
-		}
-
 		if streamErr != nil {
 			r.settings.Logger.Error("failed to process APM events stream", zap.Error(streamErr))
-			statusCode = http.StatusInternalServerError
 			result.Errors = append(result.Errors, streamErr.Error())
+		}
+
+		if len(result.Errors) > 0 {
+			statusCode = http.StatusBadRequest
+		} else if streamErr != nil {
+			statusCode = http.StatusInternalServerError
 		}
 
 		// TODO process r.Context().Err(), conditionally add to result
