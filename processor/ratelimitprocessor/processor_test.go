@@ -38,6 +38,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 )
 
 var (
@@ -123,6 +126,7 @@ func TestGetCountFunc_Profiles(t *testing.T) {
 }
 
 func TestConsume_Logs(t *testing.T) {
+
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
 		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
@@ -134,6 +138,7 @@ func TestConsume_Logs(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	observedZapCore, observedLogs := observer.New(zapcore.ErrorLevel)
 	tt := componenttest.NewTelemetry()
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
@@ -142,6 +147,7 @@ func TestConsume_Logs(t *testing.T) {
 	rl := rateLimiterProcessor{
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
+		logger:           zap.New(observedZapCore),
 		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 	}
@@ -166,6 +172,7 @@ func TestConsume_Logs(t *testing.T) {
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 
+	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
 }
 
@@ -181,6 +188,7 @@ func TestConsume_Metrics(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	observedZapCore, observedLogs := observer.New(zapcore.ErrorLevel)
 	tt := componenttest.NewTelemetry()
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
@@ -189,6 +197,7 @@ func TestConsume_Metrics(t *testing.T) {
 	rl := rateLimiterProcessor{
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
+		logger:           zap.New(observedZapCore),
 		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 	}
@@ -213,6 +222,7 @@ func TestConsume_Metrics(t *testing.T) {
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 
+	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
 }
 
@@ -228,6 +238,7 @@ func TestConsume_Traces(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	observedZapCore, observedLogs := observer.New(zapcore.ErrorLevel)
 	tt := componenttest.NewTelemetry()
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
@@ -236,6 +247,7 @@ func TestConsume_Traces(t *testing.T) {
 	rl := rateLimiterProcessor{
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
+		logger:           zap.New(observedZapCore),
 		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 	}
@@ -260,6 +272,7 @@ func TestConsume_Traces(t *testing.T) {
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 
+	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
 }
 
@@ -275,6 +288,7 @@ func TestConsume_Profiles(t *testing.T) {
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
+	observedZapCore, observedLogs := observer.New(zapcore.ErrorLevel)
 	tt := componenttest.NewTelemetry()
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
 	require.NoError(t, err)
@@ -284,6 +298,7 @@ func TestConsume_Profiles(t *testing.T) {
 	rl := rateLimiterProcessor{
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
+		logger:           zap.New(observedZapCore),
 		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 	}
@@ -308,6 +323,7 @@ func TestConsume_Profiles(t *testing.T) {
 	assert.False(t, consumed)
 	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 
+	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
 }
 
@@ -419,4 +435,23 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 			),
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+}
+
+func testRatelimitLogMetadata(t *testing.T, logEntries []observer.LoggedEntry) {
+	require.Len(t, logEntries, 1, "Expected exactly one error log entry")
+	logEntry := logEntries[0]
+	assert.Equal(t, zapcore.ErrorLevel, logEntry.Level)
+
+	fields := make(map[string]interface{})
+	for _, field := range logEntry.Context {
+		switch field.Type {
+		case zapcore.StringType:
+			fields[field.Key] = field.String
+		case zapcore.Int64Type:
+			fields[field.Key] = field.Integer
+		}
+	}
+
+	assert.Equal(t, "TestProjectID", fields["x-tenant-id"])
+	assert.Equal(t, int64(1), fields["hits"])
 }
