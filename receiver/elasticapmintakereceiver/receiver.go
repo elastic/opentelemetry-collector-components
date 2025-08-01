@@ -196,12 +196,26 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctx context.Contex
 		// TODO record metrics about errors?
 
 		var result struct {
-			Accepted int         `json:"accepted"`
-			Errors   []jsonError `json:"errors,omitempty"`
+			Accepted int      `json:"accepted"`
+			Errors   []string `json:"errors,omitempty"`
 		}
 		result.Accepted = elasticapmResult.Accepted
-		// TODO process elasticapmResult.Errors, add to result
-		// TODO process streamErr, conditionally add to result
+		result.Errors = make([]string, 0, len(elasticapmResult.Errors))
+		for _, err := range elasticapmResult.Errors {
+			result.Errors = append(result.Errors, err.Error())
+		}
+
+		if streamErr != nil {
+			r.settings.Logger.Error("failed to process APM events stream", zap.Error(streamErr))
+			result.Errors = append(result.Errors, streamErr.Error())
+		}
+
+		if len(result.Errors) > 0 {
+			statusCode = http.StatusBadRequest
+		} else if streamErr != nil {
+			statusCode = http.StatusInternalServerError
+		}
+
 		// TODO process r.Context().Err(), conditionally add to result
 
 		w.WriteHeader(statusCode)
@@ -444,11 +458,6 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	if event.Http != nil || event.Message != "" {
 		s.SetKind(ptrace.SpanKindClient)
 	}
-}
-
-type jsonError struct {
-	Message  string `json:"message"`
-	Document string `json:"document,omitempty"`
 }
 
 func withECSMappingMode(ctx context.Context) context.Context {

@@ -337,6 +337,76 @@ func TestAgentCfgHandler(t *testing.T) {
 	}
 }
 
+func TestInvalidInput(t *testing.T) {
+	inputFiles_invalid := []struct {
+		inputNdJsonFileName          string
+		expectedErrorMessageFileName string
+	}{
+		{"invalid-event.ndjson", "invalid-event-expected.txt"},
+		{"invalid-event-type.ndjson", "invalid-event-type-expected.txt"},
+		{"invalid-json-event.ndjson", "invalid-json-event-expected.txt"},
+		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.txt"},
+		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.txt"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
+	}
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			Endpoint: testEndpoint,
+		},
+	}
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	nextTrace := new(consumertest.TracesSink)
+	receiver, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
+
+	if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+		t.Errorf("Starting receiver failed: %v", err)
+	}
+	defer func() {
+		if err := receiver.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
+
+	for _, tt := range inputFiles_invalid {
+		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join(testData, tt.inputNdJsonFileName))
+			if err != nil {
+				t.Fatalf("failed to read file: %v", err)
+			}
+
+			resp, err := http.Post("http://"+testEndpoint+intakeV2EventsPath, "application/x-ndjson", bytes.NewBuffer(data))
+			if err != nil {
+				t.Fatalf("failed to send HTTP request: %v", err)
+			}
+
+			defer resp.Body.Close()
+
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("failed to read response body: %v", err)
+			}
+			bodyStr := string(bodyBytes)
+
+			expectedErrorFile := filepath.Join(testData, tt.expectedErrorMessageFileName)
+			expectedErrorBytes, err := os.ReadFile(expectedErrorFile)
+			if err != nil {
+				t.Fatalf("failed to read expected error file: %v", err)
+			}
+			expectedError := string(expectedErrorBytes)
+			if bodyStr != expectedError {
+				t.Fatalf("unexpected response body: got %q, want %q", bodyStr, expectedError)
+			}
+
+			if resp.StatusCode < http.StatusBadRequest {
+				t.Fatalf("unexpected status code - this request is invalid and should not be accepted. Status code: %v", resp.StatusCode)
+			}
+		})
+	}
+}
+
 func TestErrors(t *testing.T) {
 	inputFiles_error := []struct {
 		inputNdJsonFileName        string
