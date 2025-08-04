@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/elastic/beats/libbeat/logp"
+	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -82,7 +82,7 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 func (a *authenticator) configureTransport(transport *http.Transport) error {
 	if a.tlsConfig != nil {
 		// copy incoming root CA into our tls config
-		// because ca_trusted_fingerprint will be appended to incoming CA
+		// because ca_trusted_fingerprint will be appended to root CA
 		a.tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
 
 		beatTLSConfig := a.tlsConfig.BuildModuleClientConfig(transport.TLSClientConfig.ServerName)

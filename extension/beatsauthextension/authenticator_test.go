@@ -170,6 +170,8 @@ func TestVerifyConnection(t *testing.T) {
 	}
 }
 
+// This test suite is from `tlscommon` package in elastic-agent-libs https://github.com/khushijain21/elastic-agent-libs/blob/globalTLS/transport/tlscommon/tls_config_test.go#L495
+// It is modified to work with beatsauthextension
 func TestVerificationMode(t *testing.T) {
 	settings := componenttest.NewNopTelemetrySettings()
 	httpClientConfig := confighttp.NewDefaultClientConfig()
@@ -388,7 +390,7 @@ func TestVerificationMode(t *testing.T) {
 }
 
 // startTestServer starts a HTTP server for testing using the provided
-// ceertificates and it binds to serverAddr.
+// certificates
 //
 // All requests are responded with an HTTP 200 OK and a plain
 // text string
