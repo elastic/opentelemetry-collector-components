@@ -371,6 +371,8 @@ func TestVerificationMode(t *testing.T) {
 				if err != nil {
 					// We got the expected error, no need to check the status code
 					return
+				} else {
+					t.Fatalf("expected error, got: %v", err)
 				}
 			}
 

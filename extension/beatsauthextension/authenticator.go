@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -47,10 +46,6 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-
-	// configures logp package
-	_, _ = logp.ConfigureWithCoreLocal(logp.DefaultConfig(logp.ContainerEnvironment), a.logger.Core())
-
 	if a.cfg.TLS != nil {
 		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
 			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
