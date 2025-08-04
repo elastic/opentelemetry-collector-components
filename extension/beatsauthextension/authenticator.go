@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/elastic/beats/libbeat/logp"
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -51,7 +52,7 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
 			CATrustedFingerprint: a.cfg.TLS.CATrustedFingerprint,
 			CASha256:             a.cfg.TLS.CASha256,
-		})
+		}, logp.NewLogger(""))
 		if err != nil {
 			return err
 		}
