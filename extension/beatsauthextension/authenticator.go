@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -46,6 +47,10 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
+
+	// configures logp package
+	_, _ = logp.ConfigureWithCoreLocal(logp.DefaultConfig(logp.ContainerEnvironment), a.logger.Core())
+
 	if a.cfg.TLS != nil {
 		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
 			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
@@ -80,9 +85,7 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 
 func (a *authenticator) configureTransport(transport *http.Transport) error {
 	if a.tlsConfig != nil {
-		// injecting verifyConnection here, keeping all other fields on TLSClientConfig intact
-
-		// inject incoming root CA into our tls config
+		// copy incoming root CA into our tls config
 		// because ca_trusted_fingerprint will be appended to incoming CA
 		a.tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
 
@@ -91,6 +94,7 @@ func (a *authenticator) configureTransport(transport *http.Transport) error {
 		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
 		transport.TLSClientConfig.InsecureSkipVerify = beatTLSConfig.InsecureSkipVerify
 		transport.TLSClientConfig.RootCAs = a.tlsConfig.RootCAs
+
 	}
 
 	return nil
