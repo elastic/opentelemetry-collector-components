@@ -29,6 +29,13 @@ telemetry:
         value_type: double
         monotonic: true
         bucket_boundaries: [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0 ]
+    ratelimit.request_size:
+      enabled: true
+      description: Number of bytes in received request. Only available if strategy is rate per bytes.
+      unit: "{bytes}"
+      histogram:
+        value_type: int
+        bucket_boundaries: [ 10, 25, 50, 75, 100, 250, 500, 750, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 20000, 30000, 50000, 100_000, 200_000, 300_000, 400_000, 500_000, 600_000, 700_000, 800_000, 900_000, 1000_000, 2000_000, 3000_000, 4000_000, 5000_000, 6000_000, 7000_000, 8000_000, 9000_000 ]
     ratelimit.concurrent_requests:
       enabled: true
       description: Number of in-flight requests at any given time

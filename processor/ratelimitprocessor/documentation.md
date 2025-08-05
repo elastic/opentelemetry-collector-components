@@ -22,6 +22,14 @@ Time(in seconds) taken to process a rate limit request
 | ---- | ----------- | ---------- |
 | {seconds} | Histogram | Double |
 
+### otelcol_ratelimit.request_size
+
+Number of bytes in received request. Only available if strategy is rate per bytes.
+
+| Unit | Metric Type | Value Type |
+| ---- | ----------- | ---------- |
+| {bytes} | Histogram | Int |
+
 ### otelcol_ratelimit.requests
 
 Number of rate-limiting requests
