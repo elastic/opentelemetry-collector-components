@@ -48,11 +48,15 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	if a.cfg.TLS != nil {
+		logger, err := logp.NewZapLogger(a.logger)
+		if err != nil {
+			return err
+		}
 		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
 			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
 			CATrustedFingerprint: a.cfg.TLS.CATrustedFingerprint,
 			CASha256:             a.cfg.TLS.CASha256,
-		}, logp.NewLogger(""))
+		}, logger)
 		if err != nil {
 			return err
 		}

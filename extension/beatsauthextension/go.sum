@@ -2,8 +2,8 @@ github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZx
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/elastic/elastic-agent-libs v0.21.5 h1:YTMwaBPgOPvQnxBPv7fLpUqjw2HgY3ymC9TwdzdOD8U=
-github.com/elastic/elastic-agent-libs v0.21.5/go.mod h1:xSeIP3NtOIT4N2pPS4EyURmS1Q8mK0lWZ8Wd1Du6q3w=
+github.com/elastic/elastic-agent-libs v0.21.6 h1:hvBAi4KHaYf4hn+rTc9m6A35eZjqb1uoE2exklIdWm0=
+github.com/elastic/elastic-agent-libs v0.21.6/go.mod h1:xSeIP3NtOIT4N2pPS4EyURmS1Q8mK0lWZ8Wd1Du6q3w=
 github.com/elastic/go-ucfg v0.8.5 h1:4GB/rMpuh7qTcSFaxJUk97a/JyvFzhi6t+kaskTTLdM=
 github.com/elastic/go-ucfg v0.8.5/go.mod h1:4E8mPOLSUV9hQ7sgLEJ4bvt0KhMuDJa8joDT2QGAEKA=
 github.com/elastic/pkcs8 v1.0.0 h1:HhitlUKxhN288kcNcYkjW6/ouvuwJWd9ioxpjnD9jVA=
