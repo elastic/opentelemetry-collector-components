@@ -1,0 +1,8 @@
+elasticapm:
+  service_summary:
+    custom_resource_attributes:
+      - foo
+      - foo.404
+    custom_attributes:
+      - log.foo
+      - log.foo.404

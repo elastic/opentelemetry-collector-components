@@ -20,6 +20,7 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,7 +29,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer"
@@ -47,16 +50,23 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 		name string
 	}{
 		{name: "logs/service_summary"},
+		{name: "logs/service_summary_custom_attrs"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
+			dir := filepath.Join("testdata", tc.name)
 			cfg := &Config{}
+			cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
+			require.NoError(t, err)
+			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
+			require.NoError(t, err)
+			require.NoError(t, sub.Unmarshal(&cfg))
+
 			l2m := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
-			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadLogs(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
@@ -80,16 +90,23 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 		name string
 	}{
 		{name: "metrics/service_summary"},
+		{name: "metrics/service_summary_custom_attrs"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
+			dir := filepath.Join("testdata", tc.name)
 			cfg := &Config{}
+			cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
+			require.NoError(t, err)
+			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
+			require.NoError(t, err)
+			require.NoError(t, sub.Unmarshal(&cfg))
+
 			m2m := newMetricsConnector(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
-			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
@@ -103,6 +120,7 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
+			fmt.Println(allMetrics[0].ResourceMetrics().Len())
 			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
@@ -113,17 +131,25 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		name string
 	}{
 		{name: "traces/transaction_metrics"},
+		{name: "traces/transaction_metrics_custom_attrs"},
 		{name: "traces/span_metrics"},
+		{name: "traces/span_metrics_custom_attrs"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
+			dir := filepath.Join("testdata", tc.name)
 			cfg := &Config{}
+			cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
+			require.NoError(t, err)
+			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
+			require.NoError(t, err)
+			require.NoError(t, sub.Unmarshal(&cfg))
+
 			t2m := newTracesConnector(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
-			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
@@ -159,6 +185,7 @@ func TestConnector_AggregationDirectory(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, entries)
 }
+
 func TestConnector_AggregationMetadataKeys(t *testing.T) {
 	cfg := &Config{Aggregation: &AggregationConfig{MetadataKeys: []string{"k"}}}
 

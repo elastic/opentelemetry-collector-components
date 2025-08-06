@@ -41,12 +41,49 @@ func TestConfig(t *testing.T) {
 			expected: &Config{},
 		},
 		{
+			path: "customattrs",
+			expected: &Config{
+				ServiceSummary: CustomConfig{
+					ResourceAttributes: []string{"res.1"},
+					Attributes:         []string{"attr.1"},
+				},
+				ServiceTransaction: CustomConfig{
+					ResourceAttributes: []string{"res.2"},
+					Attributes:         []string{"attr.2"},
+				},
+				Transaction: CustomConfig{
+					ResourceAttributes: []string{"res.3"},
+					Attributes:         []string{"attr.3"},
+				},
+				SpanDestination: CustomConfig{
+					ResourceAttributes: []string{"res.4"},
+					Attributes:         []string{"attr.4"},
+				},
+			},
+		},
+		{
 			path: "full",
 			expected: &Config{
 				Aggregation: &AggregationConfig{
 					Directory:    "/path/to/aggregation/state",
 					MetadataKeys: []string{"a", "B", "c"},
 					Intervals:    []time.Duration{time.Second, time.Minute},
+				},
+				ServiceSummary: CustomConfig{
+					ResourceAttributes: []string{"res.1"},
+					Attributes:         []string{"attr.1"},
+				},
+				ServiceTransaction: CustomConfig{
+					ResourceAttributes: []string{"res.2"},
+					Attributes:         []string{"attr.2"},
+				},
+				Transaction: CustomConfig{
+					ResourceAttributes: []string{"res.3"},
+					Attributes:         []string{"attr.3"},
+				},
+				SpanDestination: CustomConfig{
+					ResourceAttributes: []string{"res.4"},
+					Attributes:         []string{"attr.4"},
 				},
 			},
 		},

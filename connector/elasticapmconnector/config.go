@@ -19,6 +19,7 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
@@ -37,7 +38,11 @@ var defaultIntervals []time.Duration = []time.Duration{
 type Config struct {
 	// Aggregation holds configuration related to aggregation of Elastic APM
 	// metrics from other signals.
-	Aggregation *AggregationConfig `mapstructure:"aggregation"`
+	Aggregation        *AggregationConfig `mapstructure:"aggregation"`
+	ServiceSummary     CustomConfig       `mapstructure:"service_summary"`
+	ServiceTransaction CustomConfig       `mapstructure:"service_transaction"`
+	Transaction        CustomConfig       `mapstructure:"transaction"`
+	SpanDestination    CustomConfig       `mapstructure:"span_destination"`
 }
 
 type AggregationConfig struct {
@@ -64,6 +69,26 @@ type AggregationConfig struct {
 	// in all other cases -- using this configuration may lead to invalid behavior,
 	// and will not be supported.
 	Intervals []time.Duration `mapstructure:"intervals"`
+}
+
+// CustomConfig defines customizations for the metrics produced by the connector.
+type CustomConfig struct {
+	// ResourceAttributes define a list of resource attributes that will be added
+	// to the aggregated metrics as optional attributes i.e. the attribute will be
+	// added to the aggregated metrics if they are present in the incoming signal,
+	// otherwise, the attribute will be ignored.
+	//
+	// NOTE: any custom attributes should have a bounded and preferably low
+	// cardinality to be performant.
+	ResourceAttributes []string `mapstructure:"custom_resource_attributes"`
+	// Attributes define a list of resource attributes that will be added to the
+	// aggregated metrics as optional attributes i.e. the attribute will be added
+	// to the aggregated metrics if they are present in the incoming signal,
+	// otherwise, the attribute will be ignored.
+	//
+	// NOTE: any custom attributes should have a bounded and preferably low
+	// cardinality to be performant.
+	Attributes []string `mapstructure:"custom_attributes"`
 }
 
 func (cfg Config) Validate() error {
@@ -99,9 +124,9 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 }
 
 func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
-	// serviceResourceAttributes is the resource attributes included in
-	// service-level aggregated metrics.
-	serviceResourceAttributes := []signaltometricsconfig.Attribute{
+	// commonResourceAttributes are resource attributes included in
+	// all aggregated metrics.
+	commonResourceAttributes := []signaltometricsconfig.Attribute{
 		{Key: "service.name"},
 		{Key: "deployment.environment"}, // service.environment
 		{Key: "telemetry.sdk.language"}, // service.language.name
@@ -115,56 +140,79 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		},
 	}
 
-	// transactionResourceAttributes is the resource attributes included
-	// in transaction group-level aggregated metrics.
-	transactionResourceAttributes := append([]signaltometricsconfig.Attribute{
-		{Key: "container.id"},
-		{Key: "k8s.pod.name"},
-		{Key: "service.version"},
-		{Key: "service.instance.id"},     // service.node.name
-		{Key: "process.runtime.name"},    // service.runtime.name
-		{Key: "process.runtime.version"}, // service.runtime.version
-		{Key: "telemetry.sdk.version"},   // service.language.version??
-		{Key: "host.name"},
-		{Key: "os.type"}, // host.os.platform
-		{Key: "faas.instance"},
-		{Key: "faas.name"},
-		{Key: "faas.version"},
-		{Key: "cloud.provider"},
-		{Key: "cloud.region"},
-		{Key: "cloud.availability_zone"},
-		{Key: "cloud.platform"}, // cloud.service.name
-		{Key: "cloud.account.id"},
-	}, serviceResourceAttributes...)
+	// serviceSummaryResourceAttributes are resource attributes for service
+	// summary metrics.
+	serviceSummaryResourceAttributes := append(
+		slices.Clone(commonResourceAttributes),
+		toSignalToMetricsAttributes(cfg.ServiceSummary.ResourceAttributes)...,
+	)
 
-	serviceSummaryAttributes := []signaltometricsconfig.Attribute{{
+	// serviceTransactionResourceAttributes are resource attributes for service
+	// transaction metrics
+	serviceTransactionResourceAttributes := append(
+		slices.Clone(commonResourceAttributes),
+		toSignalToMetricsAttributes(cfg.ServiceTransaction.ResourceAttributes)...,
+	)
+
+	// transactionResourceAttributes are resource attributes included
+	// in transaction group-level aggregated metrics.
+	transactionResourceAttributes := append(append(
+		[]signaltometricsconfig.Attribute{
+			{Key: "container.id"},
+			{Key: "k8s.pod.name"},
+			{Key: "service.version"},
+			{Key: "service.instance.id"},     // service.node.name
+			{Key: "process.runtime.name"},    // service.runtime.name
+			{Key: "process.runtime.version"}, // service.runtime.version
+			{Key: "telemetry.sdk.version"},   // service.language.version??
+			{Key: "host.name"},
+			{Key: "os.type"}, // host.os.platform
+			{Key: "faas.instance"},
+			{Key: "faas.name"},
+			{Key: "faas.version"},
+			{Key: "cloud.provider"},
+			{Key: "cloud.region"},
+			{Key: "cloud.availability_zone"},
+			{Key: "cloud.platform"}, // cloud.service.name
+			{Key: "cloud.account.id"},
+		}, commonResourceAttributes...,
+	), toSignalToMetricsAttributes(cfg.Transaction.ResourceAttributes)...)
+
+	// spanDestinationResourceAttributes are resource attributes included
+	// in service destination aggregations
+	spanDestinationResourceAttributes := append(
+		slices.Clone(commonResourceAttributes),
+		toSignalToMetricsAttributes(cfg.SpanDestination.ResourceAttributes)...,
+	)
+
+	serviceSummaryAttributes := append([]signaltometricsconfig.Attribute{{
 		Key:          "metricset.name",
 		DefaultValue: "service_summary",
-	}}
+	}}, toSignalToMetricsAttributes(cfg.ServiceSummary.Attributes)...)
 
-	serviceTransactionAttributes := []signaltometricsconfig.Attribute{
+	serviceTransactionAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "transaction.root"},
 		{Key: "transaction.type"},
 		{Key: "metricset.name", DefaultValue: "service_transaction"},
-	}
+	}, toSignalToMetricsAttributes(cfg.ServiceTransaction.Attributes)...)
 
-	transactionAttributes := []signaltometricsconfig.Attribute{
+	transactionAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "transaction.root"},
 		{Key: "transaction.name"},
 		{Key: "transaction.type"},
 		{Key: "transaction.result"},
 		{Key: "event.outcome"},
 		{Key: "metricset.name", DefaultValue: "transaction"},
-	}
+	}, toSignalToMetricsAttributes(cfg.Transaction.Attributes)...)
 
-	serviceDestinationAttributes := []signaltometricsconfig.Attribute{
+	spanDestinationAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "span.name"},
 		{Key: "event.outcome"},
 		{Key: "service.target.type"},
 		{Key: "service.target.name"},
 		{Key: "span.destination.service.resource"},
 		{Key: "metricset.name", DefaultValue: "service_destination"},
-	}
+	}, toSignalToMetricsAttributes(cfg.SpanDestination.Attributes)...)
 
 	transactionDurationHistogram := &signaltometricsconfig.ExponentialHistogram{
 		Count: "Int(AdjustedCount())",
@@ -180,21 +228,21 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 	return &signaltometricsconfig.Config{
 		Logs: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
-			IncludeResourceAttributes: serviceResourceAttributes,
+			IncludeResourceAttributes: serviceSummaryResourceAttributes,
 			Attributes:                serviceSummaryAttributes,
 			Sum:                       &signaltometricsconfig.Sum{Value: "1"},
 		}},
 
 		Datapoints: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
-			IncludeResourceAttributes: serviceResourceAttributes,
+			IncludeResourceAttributes: serviceSummaryResourceAttributes,
 			Attributes:                serviceSummaryAttributes,
 			Sum:                       &signaltometricsconfig.Sum{Value: "1"},
 		}},
 
 		Spans: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
-			IncludeResourceAttributes: serviceResourceAttributes,
+			IncludeResourceAttributes: serviceSummaryResourceAttributes,
 			Attributes:                serviceSummaryAttributes,
 			Sum: &signaltometricsconfig.Sum{
 				Value: "Int(AdjustedCount())",
@@ -202,8 +250,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		}, {
 			Name:                      "transaction.duration.histogram",
 			Description:               "APM service transaction aggregated metrics as histogram",
-			IncludeResourceAttributes: serviceResourceAttributes,
-			Attributes: append(serviceTransactionAttributes[:], signaltometricsconfig.Attribute{
+			IncludeResourceAttributes: serviceTransactionResourceAttributes,
+			Attributes: append(slices.Clone(serviceTransactionAttributes), signaltometricsconfig.Attribute{
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"_doc_count"},
 			}),
@@ -212,8 +260,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		}, {
 			Name:                      "transaction.duration.summary",
 			Description:               "APM service transaction aggregated metrics as summary",
-			IncludeResourceAttributes: serviceResourceAttributes,
-			Attributes: append(serviceTransactionAttributes[:], signaltometricsconfig.Attribute{
+			IncludeResourceAttributes: serviceTransactionResourceAttributes,
+			Attributes: append(slices.Clone(serviceTransactionAttributes), signaltometricsconfig.Attribute{
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"aggregate_metric_double"},
 			}),
@@ -223,7 +271,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Name:                      "transaction.duration.histogram",
 			Description:               "APM transaction aggregated metrics as histogram",
 			IncludeResourceAttributes: transactionResourceAttributes,
-			Attributes: append(transactionAttributes[:], signaltometricsconfig.Attribute{
+			Attributes: append(slices.Clone(transactionAttributes), signaltometricsconfig.Attribute{
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"_doc_count"},
 			}),
@@ -233,7 +281,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Name:                      "transaction.duration.summary",
 			Description:               "APM transaction aggregated metrics as summary",
 			IncludeResourceAttributes: transactionResourceAttributes,
-			Attributes: append(transactionAttributes[:], signaltometricsconfig.Attribute{
+			Attributes: append(slices.Clone(transactionAttributes), signaltometricsconfig.Attribute{
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"aggregate_metric_double"},
 			}),
@@ -242,8 +290,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		}, {
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
-			IncludeResourceAttributes: serviceResourceAttributes,
-			Attributes:                serviceDestinationAttributes,
+			IncludeResourceAttributes: spanDestinationResourceAttributes,
+			Attributes:                spanDestinationAttributes,
 			Unit:                      "us",
 			Sum: &signaltometricsconfig.Sum{
 				Value: "Double(Microseconds(end_time - start_time))",
@@ -251,8 +299,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		}, {
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
-			IncludeResourceAttributes: serviceResourceAttributes,
-			Attributes:                serviceDestinationAttributes,
+			IncludeResourceAttributes: spanDestinationResourceAttributes,
+			Attributes:                spanDestinationAttributes,
 			Sum: &signaltometricsconfig.Sum{
 				Value: "Int(AdjustedCount())",
 			},
@@ -264,8 +312,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			// values are required and the actual histogram bucket is ignored.
 			Name:                      "event.success_count",
 			Description:               "Success count as a metric for service transaction",
-			IncludeResourceAttributes: serviceResourceAttributes,
-			Attributes: append(serviceTransactionAttributes[:], signaltometricsconfig.Attribute{
+			IncludeResourceAttributes: serviceTransactionResourceAttributes,
+			Attributes: append(slices.Clone(serviceTransactionAttributes), signaltometricsconfig.Attribute{
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"aggregate_metric_double"},
 			}),
@@ -281,8 +329,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		}, {
 			Name:                      "event.success_count",
 			Description:               "Success count as a metric for service transaction",
-			IncludeResourceAttributes: serviceResourceAttributes,
-			Attributes: append(serviceTransactionAttributes[:], signaltometricsconfig.Attribute{
+			IncludeResourceAttributes: serviceTransactionResourceAttributes,
+			Attributes: append(slices.Clone(serviceTransactionAttributes), signaltometricsconfig.Attribute{
 				Key:          "elasticsearch.mapping.hints",
 				DefaultValue: []any{"aggregate_metric_double"},
 			}),
@@ -297,4 +345,17 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			},
 		}},
 	}
+}
+
+// toSignalToMetricsAttributes converts slice to string to signal to metricsa attributes
+// assuming `optional: true` for each attribute.
+func toSignalToMetricsAttributes(in []string) []signaltometricsconfig.Attribute {
+	attrs := make([]signaltometricsconfig.Attribute, 0, len(in))
+	for _, k := range in {
+		attrs = append(attrs, signaltometricsconfig.Attribute{
+			Key:      k,
+			Optional: true,
+		})
+	}
+	return attrs
 }

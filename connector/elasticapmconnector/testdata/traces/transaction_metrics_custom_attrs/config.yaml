@@ -1,0 +1,22 @@
+elasticapm:
+  service_summary:
+    custom_resource_attributes:
+      - foo
+      - foo.404
+    custom_attributes:
+      - span.foo
+      - span.foo.404
+  service_transaction:
+    custom_resource_attributes:
+      - foo
+      - foo.404
+    custom_attributes:
+      - span.foo
+      - span.foo.404
+  transaction:
+    custom_resource_attributes:
+      - foo
+      - foo.404
+    custom_attributes:
+      - span.foo
+      - span.foo.404
