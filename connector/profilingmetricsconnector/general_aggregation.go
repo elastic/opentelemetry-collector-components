@@ -18,86 +18,49 @@
 package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"
 
 import (
-	"errors"
-	"fmt"
-	"regexp"
 	"strings"
 )
 
-var (
-	// Breakdown of the regex:
-	// `(?:\S+\s+)?`
-	//   - `(?:\S+\s+)`: Non-capturing group for the optional return type (e.g., "void ", "int ", "long ").
-	//     - `\S+`: Matches one or more non-whitespace characters (the return type).
-	//     - `\s+`: Matches one or more whitespace characters.
-	//   - `?`: Makes the entire return type group optional.
-	//
-	// `(`
-	//   - Start of the first capturing group, which will contain the full class path.
-	//
-	// `[a-zA-Z_][a-zA-Z0-9_.$<>+]+`
-	//   - Matches the first segment of the class name (e.g., "org", "sun", "MyClass").
-	//   - `[a-zA-Z_]`: Starts with a letter or underscore (standard Java identifier start).
-	//   - `[a-zA-Z0-9_.$<>+]+`: Followed by one or more letters, numbers, underscores,
-	//     dots (for package separators), dollar signs (for inner classes),
-	//     angle brackets (`<`, `>`) and plus signs (`+`) for synthetic class names
-	//     like those generated for lambdas (e.g., `$$Lambda+<hidden>`).
-	//
-	// `(?:\.[a-zA-Z_][a-zA-Z0-9_.$<>+]+)*`
-	//   - Non-capturing group for subsequent package/class segments (e.g., ".apache.lucene.search").
-	//   - `\.`: Matches a literal dot.
-	//   - `[a-zA-Z_][a-zA-Z0-9_.$<>+]+`: Matches another identifier-like segment.
-	//   - `*`: Allows zero or more of these segments.
-	//
-	// `)`
-	//   - End of the first capturing group (the full class path).
-	//
-	// `\.`
-	//   - Matches the literal dot that separates the class name from the method name.
-	//
-	// `([a-zA-Z_][a-zA-Z0-9_.$<>+]+)`
-	//   - Second capturing group, for the method name itself.
-	//   - `[a-zA-Z_][a-zA-Z0-9_.$<>+]+`: Matches a valid method name, which can also include
-	//     `$` for synthetic methods (e.g., `lambda$fillGapRunnable$13`).
-	//
-	// `\(`
-	//   - Matches the literal opening parenthesis that signifies the start of method arguments.
-	hotspotRegex = regexp.MustCompile(`(?:\S+\s+)?([a-zA-Z_][a-zA-Z0-9_.$<>+]+(?:\.[a-zA-Z_][a-zA-Z0-9_.$<>+]+)*)\.([a-zA-Z_][a-zA-Z0-9_.$<>+]+)\(`)
-
-	errHotspotNoMatch = errors.New("input does not match hotspot regex")
-)
-
-// hotspotInfo holds extracted Java package and class name information.
 type hotspotInfo struct {
 	pack  string
 	class string
 }
 
 func extractHotspotInfo(funcString string) (*hotspotInfo, error) {
-	matches := hotspotRegex.FindStringSubmatch(funcString)
+	// Get rid of the arguments
+	parenthesisIdx := strings.Index(funcString, "(")
+	if parenthesisIdx == -1 {
+		parenthesisIdx = len(funcString)
+	}
+	withoutArgs := strings.TrimSpace(funcString[:parenthesisIdx])
 
-	if len(matches) < 2 {
-		return nil, fmt.Errorf("could not extract class information from string: '%s': %w",
-			funcString, errHotspotNoMatch)
+	// Extract fully qualified class name and method name.
+	lastSpaceIndex := strings.LastIndex(withoutArgs, " ")
+	var fullyQualifiedClassAndMethod string
+	if lastSpaceIndex != -1 {
+		fullyQualifiedClassAndMethod = withoutArgs[lastSpaceIndex+1:]
+	} else {
+		fullyQualifiedClassAndMethod = withoutArgs
 	}
 
-	// The first captured group is the fully qualified class name.
-	fullClassName := matches[1]
-
-	// Determine the last occurrence of a dot in the full class name.
-	// This dot separates the class name from its package path.
-	lastDotIndex := strings.LastIndex(fullClassName, ".")
-
-	var packageName string
-	var className string
-
-	if lastDotIndex == -1 {
-		// If no dot is found, it means the class is in the default package.
-		packageName = ""
-		className = fullClassName
+	// Separate fully qualified class name from the method name.
+	lastDotIndexForMethod := strings.LastIndex(fullyQualifiedClassAndMethod, ".")
+	var fullyQualifiedClassName string
+	if lastDotIndexForMethod != -1 {
+		fullyQualifiedClassName = fullyQualifiedClassAndMethod[:lastDotIndexForMethod]
 	} else {
-		packageName = fullClassName[:lastDotIndex]
-		className = fullClassName[lastDotIndex+1:]
+		fullyQualifiedClassName = fullyQualifiedClassAndMethod
+	}
+
+	// Separate package name from the class name.
+	var packageName, className string
+	lastDotIndexForPackage := strings.LastIndex(fullyQualifiedClassName, ".")
+	if lastDotIndexForPackage != -1 {
+		packageName = fullyQualifiedClassName[:lastDotIndexForPackage]
+		className = fullyQualifiedClassName[lastDotIndexForPackage+1:]
+	} else {
+		packageName = ""
+		className = fullyQualifiedClassName
 	}
 
 	return &hotspotInfo{

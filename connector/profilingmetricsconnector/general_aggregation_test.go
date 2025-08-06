@@ -113,8 +113,6 @@ func TestExtractHotspotInfo(t *testing.T) {
 				class: "MyClass",
 			},
 		},
-		{input: "void .invalidMethod()", err: errHotspotNoMatch},
-		{input: "justAMethod()", err: errHotspotNoMatch},
 	}
 
 	for _, tc := range tests {
