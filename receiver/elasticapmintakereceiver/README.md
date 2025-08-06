@@ -15,7 +15,7 @@ Receives data via HTTP using [APM IntakeV2 format](https://www.elastic.co/docs/s
 
 The main purpose of this receiver is to enable classic Elastic APM Agents to send data to an OTel collector. This way users can gradually switch to OTel without needing to potentially replace lots of APM Agents which may be also used with some manually instrumented code.
 
-The receiver currently supports the intake v2 protocol. RUM intake, and older intake protocols are not supported.
+The receiver currently supports the [Intake v2 protocol](https://github.com/elastic/apm-server/tree/main/docs/spec/v2). RUM intake, and older intake protocols, are not supported.
 
 ## Getting started
 
