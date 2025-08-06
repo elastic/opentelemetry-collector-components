@@ -110,16 +110,6 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 		})
 	}
 
-	// Specific attribute required for APU UI compatibility
-	defaultOverflowConfig := lsmconfig.OverflowConfig{
-		Attributes: []lsmconfig.Attribute{
-			{
-				Key:   "service.name",
-				Value: "_other",
-			},
-		},
-	}
-
 	lsmConfig := &lsmconfig.Config{
 		Intervals:                      intervalsConfig,
 		ExponentialHistogramMaxBuckets: 160,
@@ -130,19 +120,27 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 		lsmConfig.MetadataKeys = cfg.Aggregation.MetadataKeys
 		lsmConfig.ResourceLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limit.ResourceLimit.MaxCardinality,
-			Overflow:       defaultOverflowConfig,
+			Overflow: lsmconfig.OverflowConfig{
+				Attributes: []lsmconfig.Attribute{
+					{
+						// Specific attribute required for APU UI compatibility
+						Key:   "service.name",
+						Value: "_other",
+					},
+				},
+			},
 		}
 		lsmConfig.ScopeLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limit.ScopeLimit.MaxCardinality,
-			Overflow:       defaultOverflowConfig,
+			Overflow:       lsmconfig.OverflowConfig{},
 		}
 		lsmConfig.MetricLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limit.MetricLimit.MaxCardinality,
-			Overflow:       defaultOverflowConfig,
+			Overflow:       lsmconfig.OverflowConfig{},
 		}
 		lsmConfig.DatapointLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limit.DatapointLimit.MaxCardinality,
-			Overflow:       defaultOverflowConfig,
+			Overflow:       lsmconfig.OverflowConfig{},
 		}
 	}
 	return lsmConfig

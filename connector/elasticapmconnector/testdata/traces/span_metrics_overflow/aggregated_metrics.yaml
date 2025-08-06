@@ -31,9 +31,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: service.name
-                      value:
-                        stringValue: "_other"
           - description: Overflow metric count due to metric limit
             name: _overflow_metric
             sum:
@@ -50,9 +47,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: service.name
-                      value:
-                        stringValue: "_other"
           - description: Overflow metric count due to metric limit
             name: _overflow_metric
             sum:
@@ -69,9 +63,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: service.name
-                      value:
-                        stringValue: "_other"
           - name: service_summary
             sum:
               aggregationTemporality: 1
