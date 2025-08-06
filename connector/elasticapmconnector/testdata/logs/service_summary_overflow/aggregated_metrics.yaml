@@ -76,6 +76,9 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: "_other"
+        - key: overflow
+          value:
+            stringValue: resource
     scopeMetrics:
       - scope:
           name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector

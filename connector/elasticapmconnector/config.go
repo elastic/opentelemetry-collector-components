@@ -122,25 +122,34 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 			MaxCardinality: cfg.Aggregation.Limit.ResourceLimit.MaxCardinality,
 			Overflow: lsmconfig.OverflowConfig{
 				Attributes: []lsmconfig.Attribute{
-					{
-						// Specific attribute required for APU UI compatibility
-						Key:   "service.name",
-						Value: "_other",
-					},
+					{Key: "service.name", Value: "_other"}, // Specific attribute required for APU UI compatibility
+					{Key: "overflow", Value: "resource"},
 				},
 			},
 		}
 		lsmConfig.ScopeLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limit.ScopeLimit.MaxCardinality,
-			Overflow:       lsmconfig.OverflowConfig{},
+			Overflow: lsmconfig.OverflowConfig{
+				Attributes: []lsmconfig.Attribute{
+					{Key: "overflow", Value: "scope"},
+				},
+			},
 		}
 		lsmConfig.MetricLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limit.MetricLimit.MaxCardinality,
-			Overflow:       lsmconfig.OverflowConfig{},
+			Overflow: lsmconfig.OverflowConfig{
+				Attributes: []lsmconfig.Attribute{
+					{Key: "overflow", Value: "metric"},
+				},
+			},
 		}
 		lsmConfig.DatapointLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limit.DatapointLimit.MaxCardinality,
-			Overflow:       lsmconfig.OverflowConfig{},
+			Overflow: lsmconfig.OverflowConfig{
+				Attributes: []lsmconfig.Attribute{
+					{Key: "overflow", Value: "datapoint"},
+				},
+			},
 		}
 	}
 	return lsmConfig

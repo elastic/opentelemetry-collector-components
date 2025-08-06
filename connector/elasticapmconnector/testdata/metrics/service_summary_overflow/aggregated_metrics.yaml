@@ -79,6 +79,9 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: "_other"
+        - key: overflow
+          value:
+            stringValue: resource
     scopeMetrics:
       - metrics:
           - name: service_summary
