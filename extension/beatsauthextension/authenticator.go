@@ -27,7 +27,6 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/extensionauth"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -39,24 +38,25 @@ type authenticator struct {
 	cfg       *Config
 	telemetry component.TelemetrySettings
 	tlsConfig *tlscommon.TLSConfig // set by Start
-	logger    *zap.Logger
+	logger    *logp.Logger
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
-	return &authenticator{cfg: cfg, telemetry: telemetry, logger: telemetry.Logger}, nil
+	logger, err := logp.NewZapLogger(telemetry.Logger)
+	if err != nil {
+		return nil, err
+	}
+	return &authenticator{cfg: cfg, telemetry: telemetry, logger: logger}, nil
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	if a.cfg.TLS != nil {
-		logger, err := logp.NewZapLogger(a.logger)
-		if err != nil {
-			return err
-		}
+
 		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
 			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
 			CATrustedFingerprint: a.cfg.TLS.CATrustedFingerprint,
 			CASha256:             a.cfg.TLS.CASha256,
-		}, logger)
+		}, a.logger)
 		if err != nil {
 			return err
 		}
