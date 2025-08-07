@@ -3,3 +3,12 @@ elasticapm:
     directory: /path/to/aggregation/state
     metadata_keys: [a, B, c]
     intervals: [1s, 1m]
+    limit:
+      resource:
+        max_cardinality: 1
+      scope:
+        max_cardinality: 1
+      metric:
+        max_cardinality: 1
+      datapoint:
+        max_cardinality: 1

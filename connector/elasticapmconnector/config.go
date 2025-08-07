@@ -21,9 +21,10 @@ import (
 	"fmt"
 	"time"
 
-	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 	signaltometricsconfig "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector/config"
 	"go.opentelemetry.io/collector/component"
+
+	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 var _ component.Config = (*Config)(nil)
@@ -64,6 +65,27 @@ type AggregationConfig struct {
 	// in all other cases -- using this configuration may lead to invalid behavior,
 	// and will not be supported.
 	Intervals []time.Duration `mapstructure:"intervals"`
+
+	// Limit holds optional cardinality limits for aggregated metrics
+	Limit AggregationLimitConfig `mapstructure:"limit"`
+}
+
+type AggregationLimitConfig struct {
+	// ResourceLimit defines the max cardinality of resources
+	ResourceLimit LimitConfig `mapstructure:"resource"`
+
+	// ScopeLimit defines the max cardinality of scopes within a resource
+	ScopeLimit LimitConfig `mapstructure:"scope"`
+
+	// MetricLimit defines the max cardinality of metrics within a scope
+	MetricLimit LimitConfig `mapstructure:"metric"`
+
+	// DatapointLimit defines the max cardinality of datapoints within a metric
+	DatapointLimit LimitConfig `mapstructure:"datapoint"`
+}
+
+type LimitConfig struct {
+	MaxCardinality int64 `mapstructure:"max_cardinality"`
 }
 
 func (cfg Config) Validate() error {
@@ -87,13 +109,48 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 			},
 		})
 	}
+
 	lsmConfig := &lsmconfig.Config{
 		Intervals:                      intervalsConfig,
 		ExponentialHistogramMaxBuckets: 160,
 	}
+
 	if cfg.Aggregation != nil {
 		lsmConfig.Directory = cfg.Aggregation.Directory
 		lsmConfig.MetadataKeys = cfg.Aggregation.MetadataKeys
+		lsmConfig.ResourceLimit = lsmconfig.LimitConfig{
+			MaxCardinality: cfg.Aggregation.Limit.ResourceLimit.MaxCardinality,
+			Overflow: lsmconfig.OverflowConfig{
+				Attributes: []lsmconfig.Attribute{
+					{Key: "service.name", Value: "_other"}, // Specific attribute required for APU UI compatibility
+					{Key: "overflow", Value: "resource"},
+				},
+			},
+		}
+		lsmConfig.ScopeLimit = lsmconfig.LimitConfig{
+			MaxCardinality: cfg.Aggregation.Limit.ScopeLimit.MaxCardinality,
+			Overflow: lsmconfig.OverflowConfig{
+				Attributes: []lsmconfig.Attribute{
+					{Key: "overflow", Value: "scope"},
+				},
+			},
+		}
+		lsmConfig.MetricLimit = lsmconfig.LimitConfig{
+			MaxCardinality: cfg.Aggregation.Limit.MetricLimit.MaxCardinality,
+			Overflow: lsmconfig.OverflowConfig{
+				Attributes: []lsmconfig.Attribute{
+					{Key: "overflow", Value: "metric"},
+				},
+			},
+		}
+		lsmConfig.DatapointLimit = lsmconfig.LimitConfig{
+			MaxCardinality: cfg.Aggregation.Limit.DatapointLimit.MaxCardinality,
+			Overflow: lsmconfig.OverflowConfig{
+				Attributes: []lsmconfig.Attribute{
+					{Key: "overflow", Value: "datapoint"},
+				},
+			},
+		}
 	}
 	return lsmConfig
 }
