@@ -47,6 +47,7 @@ type rateLimiterProcessor struct {
 	telemetryBuilder *metadata.TelemetryBuilder
 	logger           *zap.Logger
 	inflight         *int64
+	strategy         Strategy
 }
 
 type LogsRateLimiterProcessor struct {
@@ -94,6 +95,7 @@ func NewLogsRateLimiterProcessor(
 			logger:           telemetrySettings.Logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
+			strategy:         strategy,
 		},
 		count: getLogsCountFunc(strategy),
 		next:  next,
@@ -121,6 +123,7 @@ func NewMetricsRateLimiterProcessor(
 			logger:           telemetrySettings.Logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
+			strategy:         strategy,
 		},
 		count: getMetricsCountFunc(strategy),
 		next:  next,
@@ -148,6 +151,7 @@ func NewTracesRateLimiterProcessor(
 			logger:           telemetrySettings.Logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
+			strategy:         strategy,
 		},
 		count: getTracesCountFunc(strategy),
 		next:  next,
@@ -174,6 +178,7 @@ func NewProfilesRateLimiterProcessor(
 			telemetryBuilder: telemetryBuilder,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
+			strategy:         strategy,
 		},
 		count: getProfilesCountFunc(strategy),
 		next:  next,
@@ -257,8 +262,15 @@ func rateLimit(ctx context.Context,
 	return err
 }
 
+func recordRequestSize(ctx context.Context, tb *metadata.TelemetryBuilder, strategy Strategy, hits int) {
+	if tb != nil && strategy == StrategyRateLimitBytes {
+		tb.RatelimitRequestSize.Record(ctx, int64(hits))
+	}
+}
+
 func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	hits := r.count(ld)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits)
 
 	if err := rateLimit(
 		ctx,
@@ -277,6 +289,7 @@ func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs
 
 func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	hits := r.count(md)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits)
 
 	if err := rateLimit(
 		ctx,
@@ -295,6 +308,7 @@ func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pme
 
 func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	hits := r.count(td)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits)
 
 	if err := rateLimit(
 		ctx,
@@ -313,6 +327,7 @@ func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrac
 
 func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
 	hits := r.count(pd)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits)
 
 	if err := rateLimit(
 		ctx,

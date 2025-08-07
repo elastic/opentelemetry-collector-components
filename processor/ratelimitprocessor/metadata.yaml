@@ -29,6 +29,45 @@ telemetry:
         value_type: double
         monotonic: true
         bucket_boundaries: [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0 ]
+    ratelimit.request_size:
+      enabled: true
+      description: Number of bytes in received request. Only available if strategy is rate per bytes.
+      unit: "{bytes}"
+      histogram:
+        value_type: int
+        bucket_boundaries: [
+          # Small requests (<1MB)
+          512,        # 0.5 KB
+          1024,       # 1 KB
+          2048,       # 2 KB
+          4096,       # 4 KB
+          8192,       # 8 KB
+          16384,      # 16 KB
+          32768,      # 32 KB
+          65536,      # 64 KB
+          131072,     # 128 KB
+          262144,     # 256 KB
+          524288,     # 512 KB
+
+          # Medium requests (1-10MB)
+          1048576,    # 1 MB
+          2097152,    # 2 MB
+          3145728,    # 3 MB
+          4194304,    # 4 MB
+          5242880,    # 5 MB
+          6291456,    # 6 MB
+          7340032,    # 7 MB
+          8388608,    # 8 MB
+          9437184,    # 9 MB
+          10485760,   # 10 MB
+
+          # Large requests (up to OTLP HTTP limit)
+          12582912,   # 12 MB
+          14680064,   # 14 MB
+          16777216,   # 16 MB
+          18874368,   # 18 MB
+          20971520    # 20 MB (OTLP HTTP max)
+        ]
     ratelimit.concurrent_requests:
       enabled: true
       description: Number of in-flight requests at any given time
