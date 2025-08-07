@@ -4,6 +4,13 @@
 
 <!-- next version -->
 
+## v0.2.2
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add disable_pdata_reuse config to the loadgenreceiver. (#686)
+  Add a config that fixes panic when batchprocessor is used.
+
 ## v0.2.1
 
 ### 💡 Enhancements 💡
