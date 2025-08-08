@@ -67,6 +67,21 @@ func AssertEqualRatelimitRequestDuration(t *testing.T, tt *componenttest.Telemet
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
 
+func AssertEqualRatelimitRequestSize(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.request_size",
+		Description: "Number of bytes in received request. Only available if strategy is rate per bytes.",
+		Unit:        "{bytes}",
+		Data: metricdata.Histogram[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.request_size")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
 func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.requests",

@@ -1,0 +1,133 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: otlp/go
+        - key: deployment.environment
+          value:
+            stringValue: qa
+        - key: service.name
+          value:
+            stringValue: foo
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+    scopeMetrics:
+      - metrics:
+          - description: Overflow metric count due to metric limit
+            name: _overflow_metric
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: <nil>.1m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 1m
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: overflow
+                      value:
+                        stringValue: metric
+          - description: Overflow metric count due to metric limit
+            name: _overflow_metric
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: <nil>.10m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 10m
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: overflow
+                      value:
+                        stringValue: metric
+          - description: Overflow metric count due to metric limit
+            name: _overflow_metric
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: <nil>.60m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 60m
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: overflow
+                      value:
+                        stringValue: metric
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.1m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 1m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.10m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 10m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "2"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.60m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 60m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector

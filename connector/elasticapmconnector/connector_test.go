@@ -25,7 +25,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -39,8 +40,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
+	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 )
 
 var update = flag.Bool("update", false, "Update golden files")
@@ -51,6 +51,9 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 	}{
 		{name: "logs/service_summary"},
 		{name: "logs/service_summary_custom_attrs"},
+		{name: "logs/service_summary_no_overflow"},
+		// output should show overflow behavior
+		{name: "logs/service_summary_overflow"},
 	}
 
 	for _, tc := range testCases {
@@ -91,6 +94,9 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 	}{
 		{name: "metrics/service_summary"},
 		{name: "metrics/service_summary_custom_attrs"},
+		{name: "metrics/service_summary_no_overflow"},
+		// output should show overflow
+		{name: "metrics/service_summary_overflow"},
 	}
 
 	for _, tc := range testCases {
@@ -132,8 +138,12 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 	}{
 		{name: "traces/transaction_metrics"},
 		{name: "traces/transaction_metrics_custom_attrs"},
+		{name: "traces/transaction_metrics_no_overflow"},
 		{name: "traces/span_metrics"},
 		{name: "traces/span_metrics_custom_attrs"},
+		{name: "traces/span_metrics_no_overflow"},
+		// output should show overflow
+		{name: "traces/span_metrics_overflow"},
 	}
 
 	for _, tc := range testCases {

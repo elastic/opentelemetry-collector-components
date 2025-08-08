@@ -126,7 +126,6 @@ func TestGetCountFunc_Profiles(t *testing.T) {
 }
 
 func TestConsume_Logs(t *testing.T) {
-
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
 		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
@@ -150,6 +149,7 @@ func TestConsume_Logs(t *testing.T) {
 		logger:           zap.New(observedZapCore),
 		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
+		strategy:         StrategyRateLimitBytes,
 	}
 	processor := &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -166,6 +166,7 @@ func TestConsume_Logs(t *testing.T) {
 	err = processor.ConsumeLogs(clientContext, logs)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
+	testRequestSize(t, tt, 1, 1)
 
 	consumed = false
 	err = processor.ConsumeLogs(clientContext, logs)
@@ -174,6 +175,7 @@ func TestConsume_Logs(t *testing.T) {
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
+	testRequestSize(t, tt, 2, 2)
 }
 
 func TestConsume_Metrics(t *testing.T) {
@@ -200,6 +202,7 @@ func TestConsume_Metrics(t *testing.T) {
 		logger:           zap.New(observedZapCore),
 		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
+		strategy:         StrategyRateLimitBytes,
 	}
 	processor := &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -216,6 +219,7 @@ func TestConsume_Metrics(t *testing.T) {
 	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
+	testRequestSize(t, tt, 1, 1)
 
 	consumed = false
 	err = processor.ConsumeMetrics(clientContext, metrics)
@@ -224,6 +228,7 @@ func TestConsume_Metrics(t *testing.T) {
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
+	testRequestSize(t, tt, 2, 2)
 }
 
 func TestConsume_Traces(t *testing.T) {
@@ -250,6 +255,7 @@ func TestConsume_Traces(t *testing.T) {
 		logger:           zap.New(observedZapCore),
 		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
+		strategy:         StrategyRateLimitBytes,
 	}
 	processor := &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -266,6 +272,7 @@ func TestConsume_Traces(t *testing.T) {
 	err = processor.ConsumeTraces(clientContext, traces)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
+	testRequestSize(t, tt, 1, 1)
 
 	consumed = false
 	err = processor.ConsumeTraces(clientContext, traces)
@@ -274,6 +281,7 @@ func TestConsume_Traces(t *testing.T) {
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
+	testRequestSize(t, tt, 2, 2)
 }
 
 func TestConsume_Profiles(t *testing.T) {
@@ -301,6 +309,7 @@ func TestConsume_Profiles(t *testing.T) {
 		logger:           zap.New(observedZapCore),
 		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
+		strategy:         StrategyRateLimitBytes,
 	}
 	processor := &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
@@ -317,6 +326,7 @@ func TestConsume_Profiles(t *testing.T) {
 	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
+	testRequestSize(t, tt, 1, 1)
 
 	consumed = false
 	err = processor.ConsumeProfiles(clientContext, profiles)
@@ -325,6 +335,7 @@ func TestConsume_Profiles(t *testing.T) {
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
+	testRequestSize(t, tt, 2, 2)
 }
 
 func TestConcurrentRequestsTelemetry(t *testing.T) {
@@ -397,6 +408,18 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 	// Release both goroutines
 	close(blockCh)
 	wg.Wait()
+}
+
+func testRequestSize(t *testing.T, tt *componenttest.Telemetry, count int, sum int) {
+	m, err := tt.GetMetric("otelcol_ratelimit.request_size")
+	require.NoError(t, err)
+
+	hist, ok := m.Data.(metricdata.Histogram[int64])
+	require.True(t, ok)
+
+	require.Equal(t, 1, len(hist.DataPoints))
+	require.Equal(t, uint64(count), hist.DataPoints[0].Count)
+	require.Equal(t, int64(sum), hist.DataPoints[0].Sum)
 }
 
 func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {

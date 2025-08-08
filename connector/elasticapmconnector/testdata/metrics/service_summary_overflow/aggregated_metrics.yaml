@@ -1,0 +1,145 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: deployment.environment
+          value:
+            stringValue: qa
+        - key: service.name
+          value:
+            stringValue: foo
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        - key: agent.name
+          value:
+            stringValue: unknown
+    scopeMetrics:
+      - metrics:
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.1m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 1m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.10m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 10m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.60m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 60m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: "_other"
+        - key: overflow
+          value:
+            stringValue: resource
+    scopeMetrics:
+      - metrics:
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.1m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 1m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.10m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 10m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+          - name: service_summary
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: service_summary.60m
+                    - key: metricset.interval
+                      value:
+                        stringValue: 60m
+                    - key: metricset.name
+                      value:
+                        stringValue: service_summary
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+        scope:
+          name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector

@@ -1,0 +1,11 @@
+elasticapm:
+  aggregation:
+    limits:
+      resource:
+        max_cardinality: 4
+      scope:
+        max_cardinality: 4
+      metric:
+        max_cardinality: 4
+      datapoint:
+        max_cardinality: 4
