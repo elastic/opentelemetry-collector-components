@@ -170,7 +170,8 @@ func TestVerifyConnection(t *testing.T) {
 	}
 }
 
-// This test suite is from `tlscommon` package in elastic-agent-libs https://github.com/khushijain21/elastic-agent-libs/blob/globalTLS/transport/tlscommon/tls_config_test.go#L495
+// This test suite is from `tlscommon` package in elastic-agent-libs
+// https://github.com/elastic/elastic-agent-libs/blob/531c75610fb3fa147cdde354b8ec5433e1b82dc3/transport/tlscommon/tls_config_test.go#L495
 // It is modified to work with beatsauthextension
 func TestVerificationMode(t *testing.T) {
 	settings := componenttest.NewNopTelemetrySettings()
