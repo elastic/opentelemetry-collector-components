@@ -1,0 +1,7 @@
+elasticapm:
+  custom_resource_attributes:
+    - res.1
+    - res.2
+  custom_span_attributes:
+    - span.1
+    - span.2

@@ -41,17 +41,17 @@ in `elasticapm::aggregation::metadata_keys`.
 
 By default, cardinality for aggregated metrics will be limited.
 Each limit defines a `max_cardinality`. There are four limits that can be configured: 
-- `elasticapm::aggregation::limit::resource`: configures the max cardinality of resources
-- `elasticapm::aggregation::limit::scope`: configures the max cardinality of scopes within a resource
-- `elasticapm::aggregation::limit::metric`: configures the max cardinality of metrics within a scope
-- `elasticapm::aggregation::limit::datapoint`: configures the max cardinality of datapoints within a metric
+- `elasticapm::aggregation::limits::resource`: configures the max cardinality of resources
+- `elasticapm::aggregation::limits::scope`: configures the max cardinality of scopes within a resource
+- `elasticapm::aggregation::limits::metric`: configures the max cardinality of metrics within a scope
+- `elasticapm::aggregation::limits::datapoint`: configures the max cardinality of datapoints within a metric
 
 ```yaml
 elasticapm:
   aggregation:
     directory: /path/to/aggregation/directory
     metadata_keys: [list, of, metadata, keys]
-    limit:
+    limits:
       resource: 
         max_cardinality: 8000
       scope:

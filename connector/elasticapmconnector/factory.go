@@ -50,7 +50,7 @@ func NewFactory() connector.Factory {
 func createDefaultConfig() component.Config {
 	return &Config{
 		Aggregation: &AggregationConfig{
-			Limit: AggregationLimitConfig{
+			Limits: AggregationLimitConfig{
 				ResourceLimit: LimitConfig{
 					MaxCardinality: 8000,
 				},

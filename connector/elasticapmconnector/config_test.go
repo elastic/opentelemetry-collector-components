@@ -42,13 +42,26 @@ func TestConfig(t *testing.T) {
 			expected: &Config{},
 		},
 		{
+			path: "customattrs",
+			expected: &Config{
+				CustomResourceAttributes: []string{
+					"res.1",
+					"res.2",
+				},
+				CustomSpanAttributes: []string{
+					"span.1",
+					"span.2",
+				},
+			},
+		},
+		{
 			path: "full",
 			expected: &Config{
 				Aggregation: &AggregationConfig{
 					Directory:    "/path/to/aggregation/state",
 					MetadataKeys: []string{"a", "B", "c"},
 					Intervals:    []time.Duration{time.Second, time.Minute},
-					Limit: AggregationLimitConfig{
+					Limits: AggregationLimitConfig{
 						ResourceLimit: LimitConfig{
 							MaxCardinality: 1,
 						},
@@ -62,6 +75,14 @@ func TestConfig(t *testing.T) {
 							MaxCardinality: 1,
 						},
 					},
+				},
+				CustomResourceAttributes: []string{
+					"res.1",
+					"res.2",
+				},
+				CustomSpanAttributes: []string{
+					"span.1",
+					"span.2",
 				},
 			},
 		},
