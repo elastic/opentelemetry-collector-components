@@ -39,9 +39,26 @@ var defaultIntervals []time.Duration = []time.Duration{
 type Config struct {
 	// Aggregation holds configuration related to aggregation of Elastic APM
 	// metrics from other signals.
-	Aggregation              *AggregationConfig `mapstructure:"aggregation"`
-	CustomResourceAttributes []string           `mapstructure:"custom_resource_attributes"`
-	CustomSpanAttributes     []string           `mapstructure:"custom_span_attributes"`
+	Aggregation *AggregationConfig `mapstructure:"aggregation"`
+
+	// CustomResourceAttributes define a list of resource attributes that will
+	// be added to all the aggregated metrics as optional attributes i.e. the
+	// attribute will be added to the aggregated metrics if they are present in
+	// the incoming signal, otherwise, the attribute will be ignored.
+	//
+	// NOTE: any custom attributes should have a bounded and preferably low
+	// cardinality to be performant.
+	CustomResourceAttributes []string `mapstructure:"custom_resource_attributes"`
+
+	// CustomSpanAttributes define a list of span attributes that will be added
+	// to the aggregated `service_transaction`, `transaction`, and `span_destination`
+	// metrics as optional attributes i.e. the attribute will be added to the
+	// aggregated metrics if they are present in the incoming signal, otherwise,
+	// the attribute will be ignored.
+	//
+	// NOTE: any custom attributes should have a bounded and preferably low
+	// cardinality to be performant.
+	CustomSpanAttributes []string `mapstructure:"custom_span_attributes"`
 }
 
 type AggregationConfig struct {
@@ -89,26 +106,6 @@ type AggregationLimitConfig struct {
 
 type LimitConfig struct {
 	MaxCardinality int64 `mapstructure:"max_cardinality"`
-}
-
-// CustomConfig defines customizations for the metrics produced by the connector.
-type CustomConfig struct {
-	// ResourceAttributes define a list of resource attributes that will be added
-	// to the aggregated metrics as optional attributes i.e. the attribute will be
-	// added to the aggregated metrics if they are present in the incoming signal,
-	// otherwise, the attribute will be ignored.
-	//
-	// NOTE: any custom attributes should have a bounded and preferably low
-	// cardinality to be performant.
-	ResourceAttributes []string `mapstructure:"custom_resource_attributes"`
-	// Attributes define a list of resource attributes that will be added to the
-	// aggregated metrics as optional attributes i.e. the attribute will be added
-	// to the aggregated metrics if they are present in the incoming signal,
-	// otherwise, the attribute will be ignored.
-	//
-	// NOTE: any custom attributes should have a bounded and preferably low
-	// cardinality to be performant.
-	Attributes []string `mapstructure:"custom_attributes"`
 }
 
 func (cfg Config) Validate() error {

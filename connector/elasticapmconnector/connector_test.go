@@ -20,7 +20,6 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -126,7 +125,6 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
-			fmt.Println(allMetrics[0].ResourceMetrics().Len())
 			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
