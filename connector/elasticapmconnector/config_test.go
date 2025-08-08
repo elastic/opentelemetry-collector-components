@@ -22,12 +22,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/confmap/xconfmap"
+
+	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 )
 
 func TestConfig(t *testing.T) {
@@ -47,6 +48,20 @@ func TestConfig(t *testing.T) {
 					Directory:    "/path/to/aggregation/state",
 					MetadataKeys: []string{"a", "B", "c"},
 					Intervals:    []time.Duration{time.Second, time.Minute},
+					Limit: AggregationLimitConfig{
+						ResourceLimit: LimitConfig{
+							MaxCardinality: 1,
+						},
+						ScopeLimit: LimitConfig{
+							MaxCardinality: 1,
+						},
+						MetricLimit: LimitConfig{
+							MaxCardinality: 1,
+						},
+						DatapointLimit: LimitConfig{
+							MaxCardinality: 1,
+						},
+					},
 				},
 			},
 		},

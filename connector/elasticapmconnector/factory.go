@@ -48,7 +48,24 @@ func NewFactory() connector.Factory {
 
 // createDefaultConfig creates the default configuration.
 func createDefaultConfig() component.Config {
-	return &Config{}
+	return &Config{
+		Aggregation: &AggregationConfig{
+			Limit: AggregationLimitConfig{
+				ResourceLimit: LimitConfig{
+					MaxCardinality: 8000,
+				},
+				ScopeLimit: LimitConfig{
+					MaxCardinality: 4000,
+				},
+				MetricLimit: LimitConfig{
+					MaxCardinality: 4000,
+				},
+				DatapointLimit: LimitConfig{
+					MaxCardinality: 4000,
+				},
+			},
+		},
+	}
 }
 
 func createLogsToMetrics(

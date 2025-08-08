@@ -1,0 +1,1 @@
+{"accepted":1,"errors":["decode error: data read error: v2.transactionRoot.Transaction: v2.transaction.ID: ReadString: expects \" or n,"]}

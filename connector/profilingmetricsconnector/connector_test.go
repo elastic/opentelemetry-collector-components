@@ -25,8 +25,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
+	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
 // mockMetricsConsumer is a mock implementation of consumer.Metrics.
@@ -45,7 +47,10 @@ func (m *mockMetricsConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Met
 
 func TestConsumeProfiles_WithMetrics(t *testing.T) {
 	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
+	cfg := &Config{
+		MetricsPrefix: "test.",
+		ByFrameType:   true,
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
@@ -77,7 +82,10 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 
 func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
+	cfg := &Config{
+		MetricsPrefix: "test.",
+		ByFrameType:   true,
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
@@ -102,7 +110,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 
 	// Add an attribute for frame type
 	attr := attrTable.AppendEmpty()
-	attr.SetKey("profile.frame.type")
+	attr.SetKey(string(semconv.ProfileFrameTypeKey))
 	attr.Value().SetStr("go")
 
 	// Add a location referencing the attribute
@@ -125,9 +133,21 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 			for j := 0; j < sm.Len(); j++ {
 				metrics := sm.At(j).Metrics()
 				for k := 0; k < metrics.Len(); k++ {
-					name := metrics.At(k).Name()
-					if name == "test.samples.frame_type.go" {
-						found = true
+					metric := metrics.At(k)
+					name := metric.Name()
+					if name == "test.samples.frame_type" {
+						// Verify it's a Gauge metric
+						if metric.Type() == pmetric.MetricTypeGauge {
+							gauge := metric.Gauge()
+							// Check if any data point has the expected frame_type attribute
+							for dp := 0; dp < gauge.DataPoints().Len(); dp++ {
+								dataPoint := gauge.DataPoints().At(dp)
+								if frameType, exists := dataPoint.Attributes().Get("frame_type"); exists && frameType.Str() == "go" {
+									found = true
+									break
+								}
+							}
+						}
 					}
 				}
 			}
@@ -142,7 +162,10 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 
 func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
+	cfg := &Config{
+		MetricsPrefix: "test.",
+		ByFrameType:   true,
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
@@ -164,10 +187,10 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 
 	// Add two attributes for frame types
 	attrGo := attrTable.AppendEmpty()
-	attrGo.SetKey("profile.frame.type")
+	attrGo.SetKey(string(semconv.ProfileFrameTypeKey))
 	attrGo.Value().SetStr("go")
 	attrPy := attrTable.AppendEmpty()
-	attrPy.SetKey("profile.frame.type")
+	attrPy.SetKey(string(semconv.ProfileFrameTypeKey))
 	attrPy.Value().SetStr("python")
 
 	// Add two locations, each referencing a different attribute
@@ -198,12 +221,25 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 			for j := 0; j < sm.Len(); j++ {
 				metrics := sm.At(j).Metrics()
 				for k := 0; k < metrics.Len(); k++ {
-					name := metrics.At(k).Name()
-					if name == "test.samples.frame_type.go" {
-						foundGo = true
-					}
-					if name == "test.samples.frame_type.python" {
-						foundPy = true
+					metric := metrics.At(k)
+					name := metric.Name()
+					if name == "test.samples.frame_type" {
+						// Verify it's a Gauge metric
+						if metric.Type() == pmetric.MetricTypeGauge {
+							gauge := metric.Gauge()
+							// Check data points for both frame types
+							for dp := 0; dp < gauge.DataPoints().Len(); dp++ {
+								dataPoint := gauge.DataPoints().At(dp)
+								if frameType, exists := dataPoint.Attributes().Get("frame_type"); exists {
+									if frameType.Str() == "go" {
+										foundGo = true
+									}
+									if frameType.Str() == "python" {
+										foundPy = true
+									}
+								}
+							}
+						}
 					}
 				}
 			}
@@ -260,4 +296,71 @@ func TestConsumeProfiles_ConsumeMetricsError(t *testing.T) {
 	assert.Error(t, err)
 	assert.EqualError(t, err, "consume error")
 	mockConsumer.AssertExpectations(t)
+}
+
+func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
+	cfg := &Config{
+		MetricsPrefix:    "test.",
+		ByClassification: true,
+	}
+	conn := &profilesToMetricsConnector{
+		config: cfg,
+	}
+
+	// Setup dictionary tables
+	profiles := pprofile.NewProfiles()
+	dict := profiles.ProfilesDictionary()
+	strTable := dict.StringTable()
+	locTable := dict.LocationTable()
+	attrTable := dict.AttributeTable()
+	funcTable := dict.FunctionTable()
+
+	// Add strings for function name and package
+	fnNameIdx := strTable.Len()
+	strTable.Append("mypkg.myfunc")
+
+	// Add function entry
+	fnEntry := funcTable.AppendEmpty()
+	fnEntry.SetNameStrindex(int32(fnNameIdx))
+
+	// Add attribute for frame type "go"
+	attrIdx := attrTable.Len()
+	attr := attrTable.AppendEmpty()
+	attr.SetKey(string(semconv.ProfileFrameTypeKey))
+	attr.Value().SetStr("go")
+
+	// Add location referencing the attribute and function
+	locIdx := locTable.Len()
+	loc := locTable.AppendEmpty()
+	loc.AttributeIndices().Append(int32(attrIdx))
+	line := loc.Line().AppendEmpty()
+	line.SetFunctionIndex(int32(fnNameIdx))
+
+	// Prepare sample referencing the location
+	sample := pprofile.NewSample()
+	sample.SetLocationsStartIndex(0)
+	sample.SetLocationsLength(1)
+
+	// Prepare location indices
+	locationIndices := pcommon.NewInt32Slice()
+	locationIndices.Append(int32(locIdx))
+
+	// Prepare classificationCounts map
+	classificationCounts := make(map[string]map[string]int64)
+
+	// Call collectClassificationCounts
+	conn.collectClassificationCounts(dict, locationIndices, sample, classificationCounts)
+
+	// Should have one entry for frameTypeGo and package "mypkg"
+	if assert.Contains(t, classificationCounts, frameTypeGo) {
+		// The extractGolangInfo should extract "mypkg" as package
+		found := false
+		for k := range classificationCounts[frameTypeGo] {
+			if k == "mypkg" {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Expected package 'mypkg' in classificationCounts[frameTypeGo]")
+	}
 }
