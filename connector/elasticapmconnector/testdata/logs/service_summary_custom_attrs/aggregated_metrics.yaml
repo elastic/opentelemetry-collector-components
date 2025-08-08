@@ -36,9 +36,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: log.foo
-                      value:
-                        stringValue: log.bar
           - name: service_summary
             sum:
               aggregationTemporality: 1
@@ -57,9 +54,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: log.foo
-                      value:
-                        stringValue: log.bar
           - name: service_summary
             sum:
               aggregationTemporality: 1
@@ -78,8 +72,5 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: log.foo
-                      value:
-                        stringValue: log.bar
         scope:
           name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector

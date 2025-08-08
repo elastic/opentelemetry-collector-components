@@ -36,9 +36,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: dp.foo
-                      value:
-                        stringValue: dp.bar
                   timeUnixNano: "1000000"
           - name: service_summary
             sum:
@@ -58,9 +55,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: dp.foo
-                      value:
-                        stringValue: dp.bar
                   timeUnixNano: "1000000"
           - name: service_summary
             sum:
@@ -80,9 +74,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: dp.foo
-                      value:
-                        stringValue: dp.bar
                   timeUnixNano: "1000000"
         scope:
           name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector

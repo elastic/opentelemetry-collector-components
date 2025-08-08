@@ -36,9 +36,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   timeUnixNano: "1000000"
           - name: service_summary
             sum:
@@ -58,9 +55,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   timeUnixNano: "1000000"
           - name: service_summary
             sum:
@@ -80,9 +74,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   timeUnixNano: "1000000"
           - description: APM span destination metrics
             name: span.destination.service.response_time.count

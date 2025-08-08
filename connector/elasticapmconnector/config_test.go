@@ -43,21 +43,13 @@ func TestConfig(t *testing.T) {
 		{
 			path: "customattrs",
 			expected: &Config{
-				ServiceSummary: CustomConfig{
-					ResourceAttributes: []string{"res.1"},
-					Attributes:         []string{"attr.1"},
+				CustomResourceAttributes: []string{
+					"res.1",
+					"res.2",
 				},
-				ServiceTransaction: CustomConfig{
-					ResourceAttributes: []string{"res.2"},
-					Attributes:         []string{"attr.2"},
-				},
-				Transaction: CustomConfig{
-					ResourceAttributes: []string{"res.3"},
-					Attributes:         []string{"attr.3"},
-				},
-				SpanDestination: CustomConfig{
-					ResourceAttributes: []string{"res.4"},
-					Attributes:         []string{"attr.4"},
+				CustomSpanAttributes: []string{
+					"span.1",
+					"span.2",
 				},
 			},
 		},
@@ -69,21 +61,13 @@ func TestConfig(t *testing.T) {
 					MetadataKeys: []string{"a", "B", "c"},
 					Intervals:    []time.Duration{time.Second, time.Minute},
 				},
-				ServiceSummary: CustomConfig{
-					ResourceAttributes: []string{"res.1"},
-					Attributes:         []string{"attr.1"},
+				CustomResourceAttributes: []string{
+					"res.1",
+					"res.2",
 				},
-				ServiceTransaction: CustomConfig{
-					ResourceAttributes: []string{"res.2"},
-					Attributes:         []string{"attr.2"},
-				},
-				Transaction: CustomConfig{
-					ResourceAttributes: []string{"res.3"},
-					Attributes:         []string{"attr.3"},
-				},
-				SpanDestination: CustomConfig{
-					ResourceAttributes: []string{"res.4"},
-					Attributes:         []string{"attr.4"},
+				CustomSpanAttributes: []string{
+					"span.1",
+					"span.2",
 				},
 			},
 		},

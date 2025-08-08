@@ -38,11 +38,9 @@ var defaultIntervals []time.Duration = []time.Duration{
 type Config struct {
 	// Aggregation holds configuration related to aggregation of Elastic APM
 	// metrics from other signals.
-	Aggregation        *AggregationConfig `mapstructure:"aggregation"`
-	ServiceSummary     CustomConfig       `mapstructure:"service_summary"`
-	ServiceTransaction CustomConfig       `mapstructure:"service_transaction"`
-	Transaction        CustomConfig       `mapstructure:"transaction"`
-	SpanDestination    CustomConfig       `mapstructure:"span_destination"`
+	Aggregation              *AggregationConfig `mapstructure:"aggregation"`
+	CustomResourceAttributes []string           `mapstructure:"custom_resource_attributes"`
+	CustomSpanAttributes     []string           `mapstructure:"custom_span_attributes"`
 }
 
 type AggregationConfig struct {
@@ -126,37 +124,33 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 	// commonResourceAttributes are resource attributes included in
 	// all aggregated metrics.
-	commonResourceAttributes := []signaltometricsconfig.Attribute{
-		{Key: "service.name"},
-		{Key: "deployment.environment"}, // service.environment
-		{Key: "telemetry.sdk.language"}, // service.language.name
+	commonResourceAttributes := append(
+		[]signaltometricsconfig.Attribute{
+			{Key: "service.name"},
+			{Key: "deployment.environment"}, // service.environment
+			{Key: "telemetry.sdk.language"}, // service.language.name
 
-		// agent.name is set via elastictraceprocessor for traces,
-		// but not for other signals. Default to "unknown" for the
-		// others.
-		{
-			Key:          "agent.name",
-			DefaultValue: "unknown",
-		},
-	}
+			// agent.name is set via elastictraceprocessor for traces,
+			// but not for other signals. Default to "unknown" for the
+			// others.
+			{
+				Key:          "agent.name",
+				DefaultValue: "unknown",
+			},
+		}, toSignalToMetricsAttributes(cfg.CustomResourceAttributes)...,
+	)
 
 	// serviceSummaryResourceAttributes are resource attributes for service
 	// summary metrics.
-	serviceSummaryResourceAttributes := append(
-		slices.Clone(commonResourceAttributes),
-		toSignalToMetricsAttributes(cfg.ServiceSummary.ResourceAttributes)...,
-	)
+	serviceSummaryResourceAttributes := slices.Clone(commonResourceAttributes)
 
 	// serviceTransactionResourceAttributes are resource attributes for service
 	// transaction metrics
-	serviceTransactionResourceAttributes := append(
-		slices.Clone(commonResourceAttributes),
-		toSignalToMetricsAttributes(cfg.ServiceTransaction.ResourceAttributes)...,
-	)
+	serviceTransactionResourceAttributes := slices.Clone(commonResourceAttributes)
 
 	// transactionResourceAttributes are resource attributes included
 	// in transaction group-level aggregated metrics.
-	transactionResourceAttributes := append(append(
+	transactionResourceAttributes := append(
 		[]signaltometricsconfig.Attribute{
 			{Key: "container.id"},
 			{Key: "k8s.pod.name"},
@@ -176,25 +170,22 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			{Key: "cloud.platform"}, // cloud.service.name
 			{Key: "cloud.account.id"},
 		}, commonResourceAttributes...,
-	), toSignalToMetricsAttributes(cfg.Transaction.ResourceAttributes)...)
+	)
 
 	// spanDestinationResourceAttributes are resource attributes included
 	// in service destination aggregations
-	spanDestinationResourceAttributes := append(
-		slices.Clone(commonResourceAttributes),
-		toSignalToMetricsAttributes(cfg.SpanDestination.ResourceAttributes)...,
-	)
+	spanDestinationResourceAttributes := slices.Clone(commonResourceAttributes)
 
-	serviceSummaryAttributes := append([]signaltometricsconfig.Attribute{{
+	serviceSummaryAttributes := []signaltometricsconfig.Attribute{{
 		Key:          "metricset.name",
 		DefaultValue: "service_summary",
-	}}, toSignalToMetricsAttributes(cfg.ServiceSummary.Attributes)...)
+	}}
 
 	serviceTransactionAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "transaction.root"},
 		{Key: "transaction.type"},
 		{Key: "metricset.name", DefaultValue: "service_transaction"},
-	}, toSignalToMetricsAttributes(cfg.ServiceTransaction.Attributes)...)
+	}, toSignalToMetricsAttributes(cfg.CustomSpanAttributes)...)
 
 	transactionAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "transaction.root"},
@@ -203,7 +194,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		{Key: "transaction.result"},
 		{Key: "event.outcome"},
 		{Key: "metricset.name", DefaultValue: "transaction"},
-	}, toSignalToMetricsAttributes(cfg.Transaction.Attributes)...)
+	}, toSignalToMetricsAttributes(cfg.CustomSpanAttributes)...)
 
 	spanDestinationAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "span.name"},
@@ -212,7 +203,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		{Key: "service.target.name"},
 		{Key: "span.destination.service.resource"},
 		{Key: "metricset.name", DefaultValue: "service_destination"},
-	}, toSignalToMetricsAttributes(cfg.SpanDestination.Attributes)...)
+	}, toSignalToMetricsAttributes(cfg.CustomSpanAttributes)...)
 
 	transactionDurationHistogram := &signaltometricsconfig.ExponentialHistogram{
 		Count: "Int(AdjustedCount())",

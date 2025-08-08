@@ -1,21 +1,7 @@
 elasticapm:
-  service_summary:
-    custom_resource_attributes:
-      - res.1
-    custom_attributes:
-      - attr.1
-  service_transaction:
-    custom_resource_attributes:
-      - res.2
-    custom_attributes:
-      - attr.2
-  transaction:
-    custom_resource_attributes:
-      - res.3
-    custom_attributes:
-      - attr.3
-  span_destination:
-    custom_resource_attributes:
-      - res.4
-    custom_attributes:
-      - attr.4
+  custom_resource_attributes:
+    - res.1
+    - res.2
+  custom_span_attributes:
+    - span.1
+    - span.2
