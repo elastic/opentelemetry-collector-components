@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
 
 	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
@@ -40,7 +39,6 @@ type authenticator struct {
 	telemetry component.TelemetrySettings
 	tlsConfig *tlscommon.TLSConfig // set by Start
 	logger    *logp.Logger
-	mx        sync.Mutex
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
@@ -94,7 +92,7 @@ func (a *authenticator) configureTransport(transport *http.Transport) error {
 		tlsConfig := *a.tlsConfig // copy before updating, configureTransport may be called concurrently
 		tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
 
-		beatTLSConfig := a.tlsConfig.BuildModuleClientConfig(transport.TLSClientConfig.ServerName)
+		beatTLSConfig := tlsConfig.BuildModuleClientConfig(transport.TLSClientConfig.ServerName)
 
 		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
 		transport.TLSClientConfig.InsecureSkipVerify = beatTLSConfig.InsecureSkipVerify
