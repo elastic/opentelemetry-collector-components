@@ -85,8 +85,8 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 
 func (a *authenticator) configureTransport(transport *http.Transport) error {
 	if a.tlsConfig != nil {
-		// copy incoming root CA into our tls config
-		// because ca_trusted_fingerprint will be appended to root CA
+		// copy incoming CertPool into our tls config
+		// because ca_trusted_fingerprint will be appended to CertPool
 		a.tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
 
 		beatTLSConfig := a.tlsConfig.BuildModuleClientConfig(transport.TLSClientConfig.ServerName)
