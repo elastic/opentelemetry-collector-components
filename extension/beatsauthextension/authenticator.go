@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
@@ -39,6 +40,7 @@ type authenticator struct {
 	telemetry component.TelemetrySettings
 	tlsConfig *tlscommon.TLSConfig // set by Start
 	logger    *logp.Logger
+	mx        sync.Mutex
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
@@ -84,7 +86,11 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 }
 
 func (a *authenticator) configureTransport(transport *http.Transport) error {
+
 	if a.tlsConfig != nil {
+		a.mx.Lock()
+		defer a.mx.Unlock()
+
 		// copy incoming CertPool into our tls config
 		// because ca_trusted_fingerprint will be appended to CertPool
 		a.tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
