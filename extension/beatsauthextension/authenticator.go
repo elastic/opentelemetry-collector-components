@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -37,19 +38,25 @@ type authenticator struct {
 	cfg       *Config
 	telemetry component.TelemetrySettings
 	tlsConfig *tlscommon.TLSConfig // set by Start
+	logger    *logp.Logger
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
-	return &authenticator{cfg: cfg, telemetry: telemetry}, nil
+	logger, err := logp.NewZapLogger(telemetry.Logger)
+	if err != nil {
+		return nil, err
+	}
+	return &authenticator{cfg: cfg, telemetry: telemetry, logger: logger}, nil
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	if a.cfg.TLS != nil {
+
 		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
 			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
 			CATrustedFingerprint: a.cfg.TLS.CATrustedFingerprint,
 			CASha256:             a.cfg.TLS.CASha256,
-		})
+		}, a.logger)
 		if err != nil {
 			return err
 		}
@@ -77,13 +84,21 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 }
 
 func (a *authenticator) configureTransport(transport *http.Transport) error {
+
 	if a.tlsConfig != nil {
-		// injecting verifyConnection here, keeping all other fields on TLSClientConfig intact
-		beatTLSConfig := a.tlsConfig.BuildModuleClientConfig(a.cfg.TLS.ServerName)
+
+		// copy incoming CertPool into our tls config
+		// because ca_trusted_fingerprint will be appended to CertPool
+		tlsConfig := *a.tlsConfig // copy before updating, configureTransport may be called concurrently
+		tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
+
+		beatTLSConfig := tlsConfig.BuildModuleClientConfig(transport.TLSClientConfig.ServerName)
 
 		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
 		transport.TLSClientConfig.InsecureSkipVerify = beatTLSConfig.InsecureSkipVerify
+
 	}
+
 	return nil
 }
 
