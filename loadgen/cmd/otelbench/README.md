@@ -160,7 +160,7 @@ For the full list of reported metrics see https://opentelemetry.io/docs/collecto
 ## Example usage with Docker image
 
 ```shell
-docker run -it docker.elastic.co/observability-ci/otelbench:v0.2.1 -endpoint-otlp=http://172.17.0.1:4317 -insecure
+docker run -it docker.elastic.co/observability-ci/otelbench:v0.2.2 -endpoint-otlp=http://172.17.0.1:4317 -insecure
 ```
 
 Remember that `localhost` does not work because otelbench runs in a container. Use `172.17.0.1` for Linux and `host.docker.internal` for macOS.
