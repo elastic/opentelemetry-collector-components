@@ -22,6 +22,7 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"os"
@@ -200,9 +201,17 @@ func main() {
 
 	// Get the benchmark count from -test.count flag
 	count := getBenchCount()
+
+	signals := getSignals()
+	exporters := getExporters()
+	if Config.Shuffle {
+		rand.Shuffle(len(signals), func(i, j int) {
+			signals[i], signals[j] = signals[j], signals[i]
+		})
+	}
 	for _, concurrency := range Config.ConcurrencyList {
-		for _, signal := range getSignals() {
-			for _, exporter := range getExporters() {
+		for _, signal := range signals {
+			for _, exporter := range exporters {
 				benchName := fullBenchmarkName(signal, exporter, concurrency)
 				for i := 0; i < count; i++ {
 					t := time.Now().UTC()
