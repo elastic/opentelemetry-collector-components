@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.get-new-version.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: '0'
 
@@ -56,7 +56,7 @@ jobs:
               "pull_requests": "write"
             }
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ steps.get_token.outputs.token }}
 
