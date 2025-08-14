@@ -49,6 +49,9 @@ var Config struct {
 
 	ConcurrencyList []int
 	Shuffle         bool
+	TracesDataPath  string
+	MetricsDataPath string
+	LogsDataPath    string
 
 	Telemetry TelemetryConfig
 }
@@ -132,6 +135,10 @@ func Init() error {
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
+
+	flag.StringVar(&Config.TracesDataPath, "traces-data-path", "", "path to traces data file (e.g. traces.json). If empty, embedded data will be used.")
+	flag.StringVar(&Config.MetricsDataPath, "metrics-data-path", "", "path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.")
+	flag.StringVar(&Config.LogsDataPath, "logs-data-path", "", "path to logs data file (e.g. logs.json). If empty, embedded data will be used.")
 
 	flag.BoolVar(&Config.Shuffle, "shuffle", false, "shuffle the order of benchmarks. This is useful for concurrent runs.")
 
@@ -333,4 +340,26 @@ func SetConcurrency(concurrency int) (configFiles []string) {
 	return setsToConfigs([]string{
 		fmt.Sprintf("receivers.loadgen.concurrency=%d", concurrency),
 	})
+}
+
+// SetDataPaths returns a config override to set the data paths for loadgenreceiver.
+// Configuration options for `traces_data_path`, `metrics_data_path`, and `logs_data_path` will update
+// the existing 'jsonl_file' option for each signal.
+func SetDataPaths(tracesPath, metricsPath, logsPath string) []string {
+	if tracesPath == "" && metricsPath == "" && logsPath == "" {
+		return nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString("receivers:\n  loadgen:\n")
+	if tracesPath != "" {
+		sb.WriteString(fmt.Sprintf("    traces:\n      jsonl_file: %q\n", tracesPath))
+	}
+	if metricsPath != "" {
+		sb.WriteString(fmt.Sprintf("    metrics:\n      jsonl_file: %q\n", metricsPath))
+	}
+	if logsPath != "" {
+		sb.WriteString(fmt.Sprintf("    logs:\n      jsonl_file: %q\n", logsPath))
+	}
+	return []string{fmt.Sprintf("yaml:%s", sb.String())}
 }
