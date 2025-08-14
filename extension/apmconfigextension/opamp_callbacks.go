@@ -155,6 +155,7 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 
 	remoteConfig, err := rc.configClient.RemoteConfig(ctx, loadedAgent.identifyingAttributes, loadedAgent.lastConfigHash)
 	if err != nil {
+		rc.logger.Error(fmt.Sprintf("error retrieving remote configuration: %s", err), agentUidField)
 		// remote config client could not identify the agent
 		if errors.Is(err, apmconfig.UnidentifiedAgent) {
 			serverToAgent.Flags = uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState)
