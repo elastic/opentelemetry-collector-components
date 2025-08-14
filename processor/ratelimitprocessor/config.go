@@ -56,8 +56,8 @@ type DynamicRateLimiting struct {
 	// WindowMultiplier is the factor by which the previous window rate is
 	// multiplied to get the dynamic part of the limit. Defaults to 1.5.
 	WindowMultiplier float64 `mapstructure:"window_multiplier"`
-	// WindowDuration defines the time window for the Exponentially Weighted Moving Average.
-	// A common value would be "5m" for a 5-minute window.
+	// WindowDuration defines the time window for which the dynamic rate limit
+	// is calculated on.
 	WindowDuration time.Duration `mapstructure:"window_duration"`
 }
 

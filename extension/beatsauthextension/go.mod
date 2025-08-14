@@ -3,13 +3,14 @@ module github.com/elastic/opentelemetry-collector-components/extension/beatsauth
 go 1.23.8
 
 require (
-	github.com/elastic/elastic-agent-libs v0.18.3
+	github.com/elastic/elastic-agent-libs v0.21.6
 	github.com/stretchr/testify v1.10.0
 	github.com/tj/assert v0.0.3
 	go.opentelemetry.io/collector/component v1.36.0
 	go.opentelemetry.io/collector/component/componenttest v0.130.0
 	go.opentelemetry.io/collector/config/configauth v0.130.0
 	go.opentelemetry.io/collector/config/confighttp v0.130.0
+	go.opentelemetry.io/collector/config/configopaque v1.36.0
 	go.opentelemetry.io/collector/config/configoptional v0.130.0
 	go.opentelemetry.io/collector/confmap v1.36.0
 	go.opentelemetry.io/collector/extension v1.36.0
@@ -50,7 +51,6 @@ require (
 	go.opentelemetry.io/collector/client v1.36.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.36.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v0.130.0 // indirect
-	go.opentelemetry.io/collector/config/configopaque v1.36.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v1.36.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.130.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.36.0 // indirect

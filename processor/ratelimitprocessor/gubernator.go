@@ -130,7 +130,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	if r.cfg.DynamicRateLimiting.Enabled && !cfg.disableDynamic {
 		rate, burst = r.calculateRateAndBurst(ctx, cfg, uniqueKey, hits, now)
 		if rate < 0 {
-			return errRateLimitInternalError
+			return fmt.Errorf("error calculating dynamic rate limit for unique key %s", uniqueKey)
 		}
 	}
 	// Execute rate actual limit check / recording.
@@ -174,7 +174,7 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 				Hits:      int64(hits),
 				Behavior:  r.behavior,
 				Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
-				Limit:     int64(rate), // rate is per second
+				Limit:     int64(rate), // rate is per ThrottleInterval, not per second.
 				Burst:     int64(burst),
 				Duration:  cfg.ThrottleInterval.Milliseconds(),
 				CreatedAt: &createdAt,
@@ -187,27 +187,24 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 			zap.String("name", cfg.Strategy.String()),
 			zap.String("unique_key", uniqueKey),
 		)
-		return errRateLimitInternalError
-	}
-
-	resps := rateLimitResp.GetResponses()
-	if err := validateGubernatorResponse(r.set.Logger, resps, 1, "rate limit request",
-		zap.String("unique_key", uniqueKey),
-		zap.Strings("metadata_keys", r.cfg.MetadataKeys),
-	); err != nil {
 		return err
 	}
-	r.set.Logger.Debug("gubernator rate limit response",
-		zap.String("resp", resps[0].String()),
-	)
-	if resp := resps[0]; resp.GetStatus() == gubernator.Status_OVER_LIMIT {
+
+	// Inside the gRPC response, we should have a single-item list of responses.
+	responses := rateLimitResp.GetResponses()
+	if n := len(responses); n != 1 {
+		return fmt.Errorf("expected 1 response from gubernator, got %d", n)
+	}
+	resp := responses[0]
+	if resp.GetError() != "" {
+		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
+		return errors.New(resp.GetError())
+	}
+
+	if resp.GetStatus() == gubernator.Status_OVER_LIMIT {
+		// Same logic as local
 		switch r.cfg.ThrottleBehavior {
 		case ThrottleBehaviorError:
-			r.set.Logger.Error("request is over the defined limits",
-				zap.Error(errTooManyRequests),
-				zap.String("processor_id", r.set.ID.String()),
-				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
-			)
 			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
 		case ThrottleBehaviorDelay:
 			select {
@@ -280,7 +277,7 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	// previous rate to calculate the dynamic limit.
 	if current <= math.Max(drc.staticRate, previous*drc.cfg.WindowMultiplier) {
 		if err := r.recordHits(ctx, drc, hits); err != nil {
-			return -1, errRateLimitInternalError
+			return -1, err
 		}
 	}
 	return dynamicLimit(previous, drc.staticRate, drc.cfg.WindowMultiplier), nil
@@ -327,21 +324,18 @@ func (r *gubernatorRateLimiter) peekRates(ctx context.Context,
 		r.set.Logger.Error("dynamic: error executing gubernator dynamic peek request",
 			zap.Error(err),
 		)
-		return -1, -1, errRateLimitInternalError
+		return -1, -1, fmt.Errorf("error executing gubernator dynamic peek request: %w", err)
 	}
 
 	peekResponses := peekResp.GetResponses()
-	if err := validateGubernatorResponse(r.set.Logger, peekResponses, 2, "dynamic peek request",
-		zap.String("current_unique_key", drc.currentKey),
-		zap.String("previous_unique_key", drc.previousKey),
-	); err != nil {
-		return -1, -1, err
+	if err := validateGubernatorResponse(peekResponses, 2, "dynamic peek request"); err != nil {
+		return -1, -1, fmt.Errorf("error validating gubernator dynamic peek response: %w", err)
 	}
 
 	// For the current rate, we want to calculate the rate based on the time
 	// elapsed to prevent the limit from dropping at the start of a new window.
 	currentRate := rateFromResponse(peekResponses[0], drc.elapsed)
-	// We want to calculate the previous rate based on the EWMA window since
+	// We want to calculate the previous rate based on the window since the
 	// entire window has elapsed.
 	previousRate := rateFromResponse(peekResponses[1], drc.cfg.WindowDuration)
 	return currentRate, previousRate, nil
@@ -359,7 +353,7 @@ func (r *gubernatorRateLimiter) recordHits(ctx context.Context, drc dynamicRateC
 			zap.String("unique_key", drc.currentKey),
 			zap.Strings("metadata_keys", r.cfg.MetadataKeys),
 		)
-		return errRateLimitInternalError
+		return fmt.Errorf("error recording hits in gubernator: %w", err)
 	}
 	return nil
 }
@@ -374,19 +368,18 @@ func dynamicLimit(previous float64, initial float64, multiplier float64) float64
 	return math.Max(initial, previous*multiplier)
 }
 
-func validateGubernatorResponse(logger *zap.Logger, res []*gubernator.RateLimitResp,
-	n int, msg string, fields ...zap.Field,
+func validateGubernatorResponse(res []*gubernator.RateLimitResp,
+	n int, msg string,
 ) error {
 	if len(res) != n {
-		fields = append(fields, zap.Int("responses", len(res)))
-		logger.Error(fmt.Sprintf("unexpected number of responses from gubernator %s", msg), fields...)
-		return errRateLimitInternalError
+		return fmt.Errorf(
+			"unexpected number of responses from gubernator %s: got %d, want %d",
+			msg, len(res), n,
+		)
 	}
 	for _, r := range res {
 		if errStr := r.GetError(); errStr != "" {
-			fields = append(fields, zap.Error(errors.New(errStr)))
-			logger.Error(fmt.Sprintf("error in gubernator %s response", msg), fields...)
-			return errRateLimitInternalError
+			return fmt.Errorf("error in gubernator %s response: %w", msg, errors.New(errStr))
 		}
 	}
 	return nil

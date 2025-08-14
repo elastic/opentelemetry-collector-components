@@ -1,0 +1,7 @@
+elasticapm:
+  custom_resource_attributes:
+    - foo
+    - foo.404
+  custom_span_attributes:
+    - span.foo
+    - span.foo.404

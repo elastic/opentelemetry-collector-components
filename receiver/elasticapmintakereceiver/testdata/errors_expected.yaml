@@ -25,9 +25,21 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-xyz
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -144,9 +156,21 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -242,9 +266,21 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -342,9 +378,21 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: testing
         - key: deployment.environment.name
           value:
             stringValue: testing
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -445,9 +493,21 @@ resourceLogs:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-abc
+        - key: host.name
+          value:
+            stringValue: prod.example
+        - key: host.arch
+          value:
+            stringValue: x64
         - key: cloud.provider
           value:
             stringValue: cloud_provider

@@ -48,6 +48,7 @@ var Config struct {
 	ExporterOTLPHTTP bool
 
 	ConcurrencyList []int
+	Shuffle         bool
 
 	Telemetry TelemetryConfig
 }
@@ -131,6 +132,8 @@ func Init() error {
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
+
+	flag.BoolVar(&Config.Shuffle, "shuffle", false, "shuffle the order of benchmarks. This is useful for concurrent runs.")
 
 	// `concurrency` is similar to `agents` config in apmbench
 	// Each value passed into `concurrency` list will be used as loadgenreceiver `concurrency` config

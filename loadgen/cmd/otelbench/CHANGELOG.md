@@ -4,6 +4,24 @@
 
 <!-- next version -->
 
+## v0.3.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add `-shuffle` flag to randomize the order of benchmarks (#704)
+  Adds a new `-shuffle` flag to randomize the order of benchmarks. This allows concurrent
+  runs to potentially target different signals, allowing multiple signals to be benchmarked
+  at once. For non-concurrent benchmarks, there shouldn't be a significant difference due
+  the execution order.
+  
+
+## v0.2.2
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add disable_pdata_reuse config to the loadgenreceiver. (#686)
+  Add a config that fixes panic when batchprocessor is used.
+
 ## v0.2.1
 
 ### 💡 Enhancements 💡
