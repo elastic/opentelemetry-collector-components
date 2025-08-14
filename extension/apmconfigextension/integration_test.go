@@ -113,10 +113,6 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							InstanceUid:  []byte("test"),
 							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
 							Flags:        uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState),
-							ErrorResponse: &protobufs.ServerErrorResponse{
-								ErrorMessage: "error retrieving remote configuration: agent could not be identified: service.name attribute must be provided",
-								Type:         protobufs.ServerErrorResponseType_ServerErrorResponseType_Unknown,
-							},
 						},
 					},
 				},
@@ -266,10 +262,6 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							InstanceUid:  []byte("test-2"),
 							Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
 							Flags:        uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState),
-							ErrorResponse: &protobufs.ServerErrorResponse{
-								ErrorMessage: "error retrieving remote configuration: agent could not be identified: service.name attribute must be provided",
-								Type:         protobufs.ServerErrorResponseType_ServerErrorResponseType_Unknown,
-							},
 						},
 					},
 					{
