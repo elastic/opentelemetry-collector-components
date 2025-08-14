@@ -54,7 +54,7 @@ type DynamicRateLimiting struct {
 	// Enabled tells the processor to use dynamic rate limiting.
 	Enabled bool `mapstructure:"enabled"`
 	// WindowMultiplier is the factor by which the previous window rate is
-	// multiplied to get the dynamic part of the limit. Defaults to 1.5.
+	// multiplied to get the dynamic part of the limit. Defaults to 1.3.
 	WindowMultiplier float64 `mapstructure:"window_multiplier"`
 	// WindowDuration defines the time window for which the dynamic rate limit
 	// is calculated on.

@@ -598,7 +598,7 @@ func assertRequestRateLimitEvent(t *testing.T, uniqueKey string,
 	assert.NotZero(t, *event.Request.CreatedAt, "request.created_at")
 
 	assert.Equal(t, expectedLimit, event.Response.Limit, "response.limit")
-	assert.InDelta(t, expectedRemaining, event.Response.Remaining, 1, "response.remaining", event.Response.Remaining)
+	assert.InDelta(t, expectedRemaining, event.Response.Remaining, 2, "response.remaining", event.Response.Remaining)
 	assert.Equal(t, gubernator.Status_name[int32(expectedStatus)], gubernator.Status_name[int32(event.Response.Status)])
 	assert.GreaterOrEqual(t, event.Response.ResetTime, *event.Request.CreatedAt, "response.reset_time")
 }

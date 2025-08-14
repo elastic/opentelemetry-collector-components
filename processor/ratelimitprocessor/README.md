@@ -42,7 +42,7 @@ You can override one or more of the following fields:
 
 The dynamic rate limiting feature uses a sliding window approach to adjust the rate limit based on recent traffic patterns. This allows the processor to be more responsive to changes in traffic volume, preventing sudden spikes from overwhelming downstream services while also allowing for higher throughput when traffic is sustained.
 
-The system maintains two time windows:
+The system maintains two windows. Eventually, the current window becomes the previous window.
 
 * **Current Window**: The most recent time window, defined by `window_duration`.
 * **Previous Window**: The time window immediately preceding the current one.
@@ -61,7 +61,7 @@ Where:
 
 **Important Notes:**
 
-* When `previous_rate` is 0 (no previous traffic), the dynamic limit defaults to the `static_rate`.
+* When `previous_rate` is `0` (no previous traffic), the dynamic limit defaults to the `static_rate`.
 * The dynamic limit will always be at least the `static_rate`, ensuring a minimum level of throughput.
 * The algorithm only records traffic in the current window when the incoming rate is within acceptable bounds to prevent runaway scaling.
 
