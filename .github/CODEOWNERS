@@ -7,3 +7,7 @@ processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/
 processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/ingest-otel-data
 processor/lsmintervalprocessor         @elastic/obs-ds-intake-services
 connector/elasticapmconnector          @elastic/obs-ds-intake-services
+extension/beatsauthextension           @elastic/elastic-agent-data-plane
+extension/fileintegrationextension     @elastic/elastic-agent-data-plane
+processor/integrationprocessor         @elastic/elastic-agent-data-plane
+pkg/integrations                       @elastic/elastic-agent-data-plane
