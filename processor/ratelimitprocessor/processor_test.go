@@ -411,15 +411,16 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 }
 
 func testRequestSize(t *testing.T, tt *componenttest.Telemetry, count int, sum int) {
-	m, err := tt.GetMetric("otelcol_ratelimit.request_size")
-	require.NoError(t, err)
-
-	hist, ok := m.Data.(metricdata.Histogram[int64])
-	require.True(t, ok)
-
-	require.Equal(t, 1, len(hist.DataPoints))
-	require.Equal(t, uint64(count), hist.DataPoints[0].Count)
-	require.Equal(t, int64(sum), hist.DataPoints[0].Sum)
+	metadatatest.AssertEqualRatelimitRequestSize(t, tt, []metricdata.HistogramDataPoint[int64]{
+		{
+			Count: uint64(count),
+			Sum:   int64(sum),
+			Attributes: attribute.NewSet(
+				[]attribute.KeyValue{
+					attribute.String("x-tenant-id", "TestProjectID"),
+				}...),
+		},
+	}, metricdatatest.IgnoreTimestamp(), metricdatatest.IgnoreValue())
 }
 
 func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {

@@ -262,15 +262,16 @@ func rateLimit(ctx context.Context,
 	return err
 }
 
-func recordRequestSize(ctx context.Context, tb *metadata.TelemetryBuilder, strategy Strategy, hits int) {
+func recordRequestSize(ctx context.Context, tb *metadata.TelemetryBuilder, strategy Strategy, hits int, metadataKeys []string) {
 	if tb != nil && strategy == StrategyRateLimitBytes {
-		tb.RatelimitRequestSize.Record(ctx, int64(hits))
+		attrsCommon := getAttrsFromContext(ctx, metadataKeys)
+		tb.RatelimitRequestSize.Record(ctx, int64(hits), metric.WithAttributes(attrsCommon...))
 	}
 }
 
 func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	hits := r.count(ld)
-	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits, r.metadataKeys)
 
 	if err := rateLimit(
 		ctx,
@@ -289,7 +290,7 @@ func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs
 
 func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	hits := r.count(md)
-	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits, r.metadataKeys)
 
 	if err := rateLimit(
 		ctx,
@@ -308,7 +309,7 @@ func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pme
 
 func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	hits := r.count(td)
-	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits, r.metadataKeys)
 
 	if err := rateLimit(
 		ctx,
@@ -327,7 +328,7 @@ func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrac
 
 func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
 	hits := r.count(pd)
-	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits, r.metadataKeys)
 
 	if err := rateLimit(
 		ctx,
