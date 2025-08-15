@@ -157,16 +157,24 @@ Optional remote OTel collector metrics will be reported as bench stats when addi
 Gauge metrics will be aggregated to average, while Counter and Histogram will be aggregated to sum.
 For the full list of reported metrics see https://opentelemetry.io/docs/collector/internal-telemetry/#basic-level-metrics.
 
+```shell
+./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
+```
+
 ## Example usage with Docker image
 
+### Basic usage
+
 ```shell
-docker run -it docker.elastic.co/observability-ci/otelbench:v0.2.1 -endpoint-otlp=http://172.17.0.1:4317 -insecure
+docker run -it docker.elastic.co/observability-ci/otelbench:v0.2.2 -endpoint-otlp=http://172.17.0.1:4317 -api-key some_api_key -insecure
 ```
 
 Remember that `localhost` does not work because otelbench runs in a container. Use `172.17.0.1` for Linux and `host.docker.internal` for macOS.
 
+### Advanced usage with custom config file
+
 ```shell
-./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
+docker run -it --volume /path/to/config.yaml:/config.yaml docker.elastic.co/observability-ci/otelbench:v0.2.2 -endpoint-otlp=http://172.17.0.1:4317 -api-key some_api_key -insecure -config=/config.yaml
 ```
 
 ## Contribute
