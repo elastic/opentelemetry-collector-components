@@ -24,6 +24,7 @@ import (
 
 	"github.com/elastic/apm-data/model/modelpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv22 "go.opentelemetry.io/collector/semconv/v1.22.0"
 	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
 )
 
@@ -36,8 +37,34 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 	}
 	attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
 	if event.Service.Environment != "" {
+		// elasticsearchexporter currently uses v1.22.0 of the OTel SemConv, so we need to include the v1.22.0 attribute
+		attributes.PutStr(semconv22.AttributeDeploymentEnvironment, event.Service.Environment)
 		attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
 	}
+	if event.Service.Node != nil && event.Service.Node.Name != "" {
+		attributes.PutStr(semconv.AttributeServiceInstanceID, event.Service.Node.Name)
+	}
+	if event.Host != nil {
+		if event.Host.Name != "" {
+			attributes.PutStr(semconv.AttributeHostName, event.Host.Name)
+		}
+		if event.Host.Id != "" {
+			attributes.PutStr(semconv.AttributeHostID, event.Host.Id)
+		}
+		if event.Host.Architecture != "" {
+			attributes.PutStr(semconv.AttributeHostArch, event.Host.Architecture)
+		}
+		if event.Host.Os.Name != "" {
+			attributes.PutStr(semconv.AttributeOSName, event.Host.Os.Name)
+			if event.Host.Os.Version != "" {
+				attributes.PutStr(semconv.AttributeOSVersion, event.Host.Os.Version)
+			}
+		}
+	}
+	translateCloudAttributes(event, attributes)
+	translateContainerAndKubernetesAttributes(event, attributes)
+	translateProcessUserNetworkAttributes(event, attributes)
+	translateFaasAttributes(event, attributes)
 }
 
 // SemConv defines a well known list of values of telemetry.sdk.language: https://opentelemetry.io/docs/specs/semconv/attributes-registry/telemetry/
@@ -93,6 +120,123 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 		}
 		if event.Span.Message.RoutingKey != "" {
 			attributes.PutStr(semconv.AttributeMessagingRabbitmqDestinationRoutingKey, event.Span.Message.RoutingKey)
+		}
+	}
+}
+
+func translateCloudAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Cloud != nil {
+		if event.Cloud.Provider != "" {
+			attributes.PutStr(semconv.AttributeCloudProvider, event.Cloud.Provider)
+		}
+		if event.Cloud.Region != "" {
+			attributes.PutStr(semconv.AttributeCloudRegion, event.Cloud.Region)
+		}
+		if event.Cloud.AvailabilityZone != "" {
+			attributes.PutStr(semconv.AttributeCloudAvailabilityZone, event.Cloud.AvailabilityZone)
+		}
+		if event.Cloud.AccountId != "" {
+			attributes.PutStr(semconv.AttributeCloudAccountID, event.Cloud.AccountId)
+		}
+		if event.Cloud.ServiceName != "" {
+			attributes.PutStr(semconv.AttributeCloudPlatform, event.Cloud.ServiceName)
+		}
+	}
+}
+
+func translateContainerAndKubernetesAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	// Container fields
+	if event.Container != nil {
+		if event.Container.Id != "" {
+			attributes.PutStr(semconv.AttributeContainerID, event.Container.Id)
+		}
+		if event.Container.Name != "" {
+			attributes.PutStr(semconv.AttributeContainerName, event.Container.Name)
+		}
+		if event.Container.Runtime != "" {
+			attributes.PutStr(semconv.AttributeContainerRuntime, event.Container.Runtime)
+		}
+		if event.Container.ImageName != "" {
+			attributes.PutStr(semconv.AttributeContainerImageName, event.Container.ImageName)
+		}
+		if event.Container.ImageTag != "" {
+			attributes.PutStr(semconv.AttributeContainerImageTags, event.Container.ImageTag)
+		}
+	}
+
+	// Kubernetes fields
+	if event.Kubernetes != nil {
+		if event.Kubernetes.Namespace != "" {
+			attributes.PutStr(semconv.AttributeK8SNamespaceName, event.Kubernetes.Namespace)
+		}
+		if event.Kubernetes.NodeName != "" {
+			attributes.PutStr(semconv.AttributeK8SNodeName, event.Kubernetes.NodeName)
+		}
+		if event.Kubernetes.PodName != "" {
+			attributes.PutStr(semconv.AttributeK8SPodName, event.Kubernetes.PodName)
+		}
+		if event.Kubernetes.PodUid != "" {
+			attributes.PutStr(semconv.AttributeK8SPodUID, event.Kubernetes.PodUid)
+		}
+	}
+}
+
+func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	// Process fields
+	if event.Process != nil {
+		if event.Process.Pid != 0 {
+			attributes.PutInt(semconv.AttributeProcessPID, int64(event.Process.Pid))
+		}
+		if event.Process.Ppid != 0 {
+			attributes.PutInt(semconv.AttributeProcessParentPID, int64(event.Process.Ppid))
+		}
+		if event.Process.Title != "" {
+			// Title is the process title. It can be the same as process name.
+			attributes.PutStr(semconv.AttributeProcessExecutableName, event.Process.Title)
+		}
+		if len(event.Process.Argv) > 0 {
+			attributes.PutStr(semconv.AttributeProcessCommandLine, strings.Join(event.Process.Argv, " "))
+		}
+		if event.Process.Executable != "" {
+			attributes.PutStr(semconv.AttributeProcessExecutablePath, event.Process.Executable)
+		}
+	}
+
+	// User fields
+	if event.User != nil {
+		if event.User.Id != "" {
+			attributes.PutStr(semconv.AttributeUserID, event.User.Id)
+		}
+		if event.User.Email != "" {
+			attributes.PutStr(semconv.AttributeUserEmail, event.User.Email)
+		}
+	}
+
+	if event.Network != nil && event.Network.Connection != nil && event.Network.Connection.Type != "" {
+		attributes.PutStr(semconv.AttributeNetworkConnectionType, event.Network.Connection.Type)
+	}
+
+	if event.Client != nil && event.Client.Ip != nil && event.Client.Ip.String() != "" {
+		attributes.PutStr(semconv.AttributeClientAddress, event.Client.Ip.String())
+	}
+}
+
+func translateFaasAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Faas != nil {
+		if event.Faas.Id != "" {
+			attributes.PutStr(semconv.AttributeFaaSInstance, event.Faas.Id)
+		}
+		if event.Faas.Name != "" {
+			attributes.PutStr(semconv.AttributeFaaSName, event.Faas.Name)
+		}
+		if event.Faas.Version != "" {
+			attributes.PutStr(semconv.AttributeFaaSVersion, event.Faas.Version)
+		}
+		if event.Faas.TriggerType != "" {
+			attributes.PutStr(semconv.AttributeFaaSTrigger, event.Faas.TriggerType)
+		}
+		if event.Faas.ColdStart != nil {
+			attributes.PutBool(semconv.AttributeFaaSColdstart, *event.Faas.ColdStart)
 		}
 	}
 }

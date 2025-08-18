@@ -40,6 +40,10 @@ type Config struct {
 	// As requests are synchronous, when concurrency is N, there will be N in-flight requests.
 	// This is similar to the `agent_replicas` config in apmsoak.
 	Concurrency int `mapstructure:"concurrency"`
+
+	// DisablePdataReuse disables the optimization that reuses pdata structures to reduce allocations.
+	// It is useful in cases where the optimization causes problems with certain downstream components, e.g. batchprocessor.
+	DisablePdataReuse bool `mapstructure:"disable_pdata_reuse"`
 }
 
 type MetricsConfig struct {

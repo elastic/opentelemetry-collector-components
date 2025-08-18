@@ -13,9 +13,21 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
         - key: agent.name
           value:
             stringValue: elastic-dotnet

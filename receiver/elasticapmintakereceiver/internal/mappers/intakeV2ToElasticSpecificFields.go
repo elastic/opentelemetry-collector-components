@@ -54,3 +54,17 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 		attributesMap.PutStr(attr.SpanMessageBody, event.Span.Message.Body)
 	}
 }
+
+func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	if event.Cloud != nil {
+		if event.Cloud.ProjectId != "" {
+			attributesMap.PutStr(attr.CloudProjectID, event.Cloud.ProjectId)
+		}
+		if event.Cloud.ProjectName != "" {
+			attributesMap.PutStr(attr.CloudProjectName, event.Cloud.ProjectName)
+		}
+	}
+	if event.Faas.TriggerRequestId != "" {
+		attributesMap.PutStr(attr.TriggerRequestId, event.Faas.TriggerRequestId)
+	}
+}

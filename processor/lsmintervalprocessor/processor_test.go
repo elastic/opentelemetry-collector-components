@@ -160,20 +160,30 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 	err = mgp.ConsumeMetrics(ctx, md)
 	require.NoError(t, err)
 
-	var allMetrics []pmetric.Metrics
-	require.Eventually(t, func() bool {
-		// 1 from calling next on the input and 1 from the export
-		allMetrics = next.AllMetrics()
-		return len(allMetrics) == 2
-	}, 5*time.Second, 100*time.Millisecond)
-
 	expectedNextData, err := golden.ReadMetrics(filepath.Join(dir, "next.yaml"))
 	require.NoError(t, err)
-	assert.NoError(t, pmetrictest.CompareMetrics(expectedNextData, allMetrics[0]))
+
+	var allMetrics []pmetric.Metrics
+	require.Eventually(t, func() bool {
+		// next will be called only for cases when the input has not aggregated
+		// all the datapoints. We check if the expected next has non-zero datapoint
+		// and assert based on that.
+		allMetrics = next.AllMetrics()
+		if expectedNextData.DataPointCount() > 0 {
+			return len(allMetrics) == 2
+		}
+		return len(allMetrics) == 1
+	}, 5*time.Second, 100*time.Millisecond)
+
+	var idx int
+	if expectedNextData.DataPointCount() > 0 {
+		assert.NoError(t, pmetrictest.CompareMetrics(expectedNextData, allMetrics[idx]))
+		idx++
+	}
 
 	expectedExportData, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 	require.NoError(t, err)
-	assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[1]))
+	assert.NoError(t, pmetrictest.CompareMetrics(expectedExportData, allMetrics[idx]))
 	// Assert internal telemetry metrics.
 	metadatatest.AssertEqualLsmintervalProcessedDataPoints(t, testTel, []metricdata.DataPoint[int64]{
 		{

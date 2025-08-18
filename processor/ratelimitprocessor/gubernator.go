@@ -175,8 +175,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		},
 	})
 	if err != nil {
-		r.set.Logger.Error("error executing gubernator rate limit request", zap.Error(err))
-		return errRateLimitInternalError
+		return err
 	}
 
 	// Inside the gRPC response, we should have a single-item list of responses.
@@ -186,20 +185,13 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 	resp := responses[0]
 	if resp.GetError() != "" {
-		r.set.Logger.Error("failed to get response from gubernator", zap.Error(errors.New(resp.GetError())))
-		return errRateLimitInternalError
+		return errors.New(resp.GetError())
 	}
 
 	if resp.GetStatus() == gubernator.Status_OVER_LIMIT {
 		// Same logic as local
 		switch r.cfg.ThrottleBehavior {
 		case ThrottleBehaviorError:
-			r.set.Logger.Error(
-				"request is over the limits defined by the rate limiter",
-				zap.Error(errTooManyRequests),
-				zap.String("processor_id", r.set.ID.String()),
-				zap.Strings("metadata_keys", r.cfg.MetadataKeys),
-			)
 			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
 		case ThrottleBehaviorDelay:
 			current := r.addRequests(uniqueKey, hits)

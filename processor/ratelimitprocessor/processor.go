@@ -31,6 +31,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -44,7 +45,9 @@ type rateLimiterProcessor struct {
 	rl               RateLimiter
 	metadataKeys     []string
 	telemetryBuilder *metadata.TelemetryBuilder
+	logger           *zap.Logger
 	inflight         *int64
+	strategy         Strategy
 }
 
 type LogsRateLimiterProcessor struct {
@@ -89,8 +92,10 @@ func NewLogsRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			logger:           telemetrySettings.Logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
+			strategy:         strategy,
 		},
 		count: getLogsCountFunc(strategy),
 		next:  next,
@@ -115,8 +120,10 @@ func NewMetricsRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			logger:           telemetrySettings.Logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
+			strategy:         strategy,
 		},
 		count: getMetricsCountFunc(strategy),
 		next:  next,
@@ -141,8 +148,10 @@ func NewTracesRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			logger:           telemetrySettings.Logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
+			strategy:         strategy,
 		},
 		count: getTracesCountFunc(strategy),
 		next:  next,
@@ -169,6 +178,7 @@ func NewProfilesRateLimiterProcessor(
 			telemetryBuilder: telemetryBuilder,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
+			strategy:         strategy,
 		},
 		count: getProfilesCountFunc(strategy),
 		next:  next,
@@ -217,6 +227,7 @@ func rateLimit(ctx context.Context,
 	rateLimit func(ctx context.Context, n int) error,
 	metadataKeys []string,
 	telemetryBuilder *metadata.TelemetryBuilder,
+	logger *zap.Logger,
 	inflight *int64,
 ) error {
 	current := atomic.AddInt64(inflight, 1)
@@ -229,6 +240,21 @@ func rateLimit(ctx context.Context,
 	}(time.Now())
 
 	err := rateLimit(ctx, hits)
+	if err != nil {
+		// enhance error logging with metadata keys
+		fields := []zap.Field{
+			zap.Int("hits", hits),
+		}
+		for _, kv := range attrsCommon {
+			switch kv.Value.Type() {
+			case attribute.STRINGSLICE:
+				fields = append(fields, zap.Strings(string(kv.Key), kv.Value.AsStringSlice()))
+			default:
+				fields = append(fields, zap.String(string(kv.Key), kv.Value.AsString()))
+			}
+		}
+		logger.Error("request is over the limits defined by the rate limiter", append(fields, zap.Error(err))...)
+	}
 
 	attrRequests := getTelemetryAttrs(attrsCommon, err)
 	telemetryBuilder.RatelimitRequests.Add(ctx, 1, metric.WithAttributes(attrRequests...))
@@ -236,8 +262,16 @@ func rateLimit(ctx context.Context,
 	return err
 }
 
+func recordRequestSize(ctx context.Context, tb *metadata.TelemetryBuilder, strategy Strategy, hits int, metadataKeys []string) {
+	if tb != nil && strategy == StrategyRateLimitBytes {
+		attrsCommon := getAttrsFromContext(ctx, metadataKeys)
+		tb.RatelimitRequestSize.Record(ctx, int64(hits), metric.WithAttributes(attrsCommon...))
+	}
+}
+
 func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	hits := r.count(ld)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits, r.metadataKeys)
 
 	if err := rateLimit(
 		ctx,
@@ -245,6 +279,7 @@ func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
+		r.logger,
 		r.inflight,
 	); err != nil {
 		return err
@@ -255,6 +290,7 @@ func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs
 
 func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	hits := r.count(md)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits, r.metadataKeys)
 
 	if err := rateLimit(
 		ctx,
@@ -262,6 +298,7 @@ func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pme
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
+		r.logger,
 		r.inflight,
 	); err != nil {
 		return err
@@ -272,6 +309,7 @@ func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pme
 
 func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	hits := r.count(td)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits, r.metadataKeys)
 
 	if err := rateLimit(
 		ctx,
@@ -279,6 +317,7 @@ func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrac
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
+		r.logger,
 		r.inflight,
 	); err != nil {
 		return err
@@ -289,6 +328,7 @@ func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrac
 
 func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
 	hits := r.count(pd)
+	recordRequestSize(ctx, r.telemetryBuilder, r.strategy, hits, r.metadataKeys)
 
 	if err := rateLimit(
 		ctx,
@@ -296,6 +336,7 @@ func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd p
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
+		r.logger,
 		r.inflight,
 	); err != nil {
 		return err

@@ -24,11 +24,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer"
@@ -36,8 +39,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
+	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 )
 
 var update = flag.Bool("update", false, "Update golden files")
@@ -47,16 +49,26 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 		name string
 	}{
 		{name: "logs/service_summary"},
+		{name: "logs/service_summary_custom_attrs"},
+		{name: "logs/service_summary_no_overflow"},
+		// output should show overflow behavior
+		{name: "logs/service_summary_overflow"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
+			dir := filepath.Join("testdata", tc.name)
 			cfg := &Config{}
+			cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
+			require.NoError(t, err)
+			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
+			require.NoError(t, err)
+			require.NoError(t, sub.Unmarshal(&cfg))
+
 			l2m := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
-			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadLogs(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
@@ -70,8 +82,7 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
-			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
 }
@@ -81,16 +92,26 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 		name string
 	}{
 		{name: "metrics/service_summary"},
+		{name: "metrics/service_summary_custom_attrs"},
+		{name: "metrics/service_summary_no_overflow"},
+		// output should show overflow
+		{name: "metrics/service_summary_overflow"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
+			dir := filepath.Join("testdata", tc.name)
 			cfg := &Config{}
+			cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
+			require.NoError(t, err)
+			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
+			require.NoError(t, err)
+			require.NoError(t, sub.Unmarshal(&cfg))
+
 			m2m := newMetricsConnector(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
-			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
@@ -104,8 +125,7 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
-			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
 }
@@ -115,17 +135,29 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		name string
 	}{
 		{name: "traces/transaction_metrics"},
+		{name: "traces/transaction_metrics_custom_attrs"},
+		{name: "traces/transaction_metrics_no_overflow"},
 		{name: "traces/span_metrics"},
+		{name: "traces/span_metrics_custom_attrs"},
+		{name: "traces/span_metrics_no_overflow"},
+		// output should show overflow
+		{name: "traces/span_metrics_overflow"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			nextMetrics := &consumertest.MetricsSink{}
 
+			dir := filepath.Join("testdata", tc.name)
 			cfg := &Config{}
+			cm, err := confmaptest.LoadConf(filepath.Join(dir, "config.yaml"))
+			require.NoError(t, err)
+			sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
+			require.NoError(t, err)
+			require.NoError(t, sub.Unmarshal(&cfg))
+
 			t2m := newTracesConnector(t, connectortest.NewNopSettings(metadata.Type), cfg, nextMetrics)
 
-			dir := filepath.Join("testdata", tc.name)
 			input, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
@@ -139,8 +171,7 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
-			assert.Equal(t, 0, allMetrics[0].MetricCount()) // should be one empty "next" metric from lsm
-			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics[1:])
+			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
 }
@@ -162,6 +193,7 @@ func TestConnector_AggregationDirectory(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, entries)
 }
+
 func TestConnector_AggregationMetadataKeys(t *testing.T) {
 	cfg := &Config{Aggregation: &AggregationConfig{MetadataKeys: []string{"k"}}}
 
@@ -192,14 +224,13 @@ func TestConnector_AggregationMetadataKeys(t *testing.T) {
 	err = l2m.Shutdown(context.Background())
 	require.NoError(t, err)
 
-	// There should be three calls to the next metrics consumer:
-	// - one for each call to ConsumeLogs above with any metrics
-	//   that lsminterval doesn't understand: total of 3
+	// There should be six calls to the next metrics consumer:
 	// - one for each interval (3) for each client (2): total of 6
-	require.Len(t, callInfo, 9)
+	// Note that for the sync consume call, the lsminterval will
+	// only do this when it has metrics which is configured as
+	// passthrough - none for our tests.
+	require.Len(t, callInfo, 6)
 	assert.Equal(t, callInfo, []client.Info{
-		client1Info,              // remainder
-		client2Info, client2Info, // remainder
 		client1Info, client2Info, // 1m
 		client1Info, client2Info, // 10m
 		client1Info, client2Info, // 60m

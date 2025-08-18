@@ -13,9 +13,51 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: special-name
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: "99"
+        - key: user.email
+          value:
+            stringValue: foo@example.com
+        - key: client.address
+          value:
+            stringValue: v4:134744072
         - key: agent.name
           value:
             stringValue: js-base
@@ -94,9 +136,45 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -181,9 +259,45 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -248,9 +362,45 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -315,9 +465,45 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -382,9 +568,45 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -452,9 +674,45 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -522,9 +780,45 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -592,9 +886,45 @@ resourceSpans:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            stringValue: node server.js
+        - key: user.id
+          value:
+            stringValue: 123user
+        - key: user.email
+          value:
+            stringValue: foo@bar.com
         - key: agent.name
           value:
             stringValue: js-base

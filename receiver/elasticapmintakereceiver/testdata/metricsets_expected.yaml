@@ -1,6 +1,9 @@
 resourceMetrics:
   - resource:
       attributes:
+        - key: process.pid
+          value:
+            intValue: "1234"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -13,6 +16,15 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
+        - key: user.email
+          value:
+            stringValue: user@mail.com
+        - key: user.id
+          value:
+            stringValue: axb123hg
     scopeMetrics:
       - metrics:
           - gauge:
@@ -62,6 +74,9 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: process.pid
+          value:
+            intValue: "1234"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -74,6 +89,15 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
+        - key: user.email
+          value:
+            stringValue: user@mail.com
+        - key: user.id
+          value:
+            stringValue: axb123hg
     scopeMetrics:
       - metrics:
           - gauge:
@@ -94,6 +118,9 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: process.pid
+          value:
+            intValue: "1234"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -106,6 +133,15 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
+        - key: user.email
+          value:
+            stringValue: user@mail.com
+        - key: user.id
+          value:
+            stringValue: axb123hg
     scopeMetrics:
       - metrics:
           - gauge:
@@ -141,6 +177,9 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: process.pid
+          value:
+            intValue: "1234"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -153,23 +192,17 @@ resourceMetrics:
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
+        - key: service.instance.id
+          value:
+            stringValue: node-1
+        - key: user.email
+          value:
+            stringValue: user@mail.com
+        - key: user.id
+          value:
+            stringValue: axb123hg
     scopeMetrics:
       - metrics:
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpu.stats.throttled.ns
           - gauge:
               dataPoints:
                 - asDouble: 2048
@@ -275,4 +308,19 @@ resourceMetrics:
                         intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.throttled.periods
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpu.stats.throttled.ns
         scope: {}

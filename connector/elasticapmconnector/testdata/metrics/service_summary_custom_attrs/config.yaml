@@ -1,0 +1,4 @@
+elasticapm:
+  custom_resource_attributes:
+    - foo
+    - foo.404
