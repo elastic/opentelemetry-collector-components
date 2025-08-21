@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/beatsauth
 go 1.23.8
 
 require (
-	github.com/elastic/elastic-agent-libs v0.21.6
+	github.com/elastic/elastic-agent-libs v0.23.1
 	github.com/stretchr/testify v1.10.0
 	github.com/tj/assert v0.0.3
 	go.opentelemetry.io/collector/component v1.36.0
