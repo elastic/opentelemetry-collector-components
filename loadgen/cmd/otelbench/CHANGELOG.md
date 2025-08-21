@@ -4,6 +4,12 @@
 
 <!-- next version -->
 
+## v0.4.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add a benchmark "mixed" that sends logs, metrics and traces at the same time (#716)
+
 ## v0.3.0
 
 ### 💡 Enhancements 💡
