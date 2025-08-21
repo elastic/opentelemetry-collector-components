@@ -159,6 +159,9 @@ func main() {
 	}
 	flag.Parse()
 
+	// DEBUG: Print the parsed data path flags to confirm they are being read.
+	fmt.Fprintf(os.Stderr, "DEBUG: Parsed logs-data-path: %q, metrics-data-path: %q, traces-data-path: %q\n", Config.LogsDataPath, Config.MetricsDataPath, Config.TracesDataPath)
+
 	// default to embedded collector config
 	if Config.CollectorConfigPath == "" {
 		url, srv, err := serveEmbeddedConf()

@@ -346,20 +346,15 @@ func SetConcurrency(concurrency int) (configFiles []string) {
 // Configuration options for `traces_data_path`, `metrics_data_path`, and `logs_data_path` will update
 // the existing 'jsonl_file' option for each signal.
 func SetDataPaths(tracesPath, metricsPath, logsPath string) []string {
-	if tracesPath == "" && metricsPath == "" && logsPath == "" {
-		return nil
-	}
-
-	var sb strings.Builder
-	sb.WriteString("receivers:\n  loadgen:\n")
+	var sets []string
 	if tracesPath != "" {
-		sb.WriteString(fmt.Sprintf("    traces:\n      jsonl_file: %q\n", tracesPath))
+		sets = append(sets, fmt.Sprintf("receivers.loadgen.traces.jsonl_file=%q", tracesPath))
 	}
 	if metricsPath != "" {
-		sb.WriteString(fmt.Sprintf("    metrics:\n      jsonl_file: %q\n", metricsPath))
+		sets = append(sets, fmt.Sprintf("receivers.loadgen.metrics.jsonl_file=%q", metricsPath))
 	}
 	if logsPath != "" {
-		sb.WriteString(fmt.Sprintf("    logs:\n      jsonl_file: %q\n", logsPath))
+		sets = append(sets, fmt.Sprintf("receivers.loadgen.logs.jsonl_file=%q", logsPath))
 	}
-	return []string{fmt.Sprintf("yaml:%s", sb.String())}
+	return setsToConfigs(sets)
 }
