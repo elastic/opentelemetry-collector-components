@@ -33,7 +33,7 @@ Usage of ./otelbench:
   -metrics
         benchmark metrics (default true)
   -mixed
-        benchmark mixed signals, i.e. logs, metrics and traces at the same time
+        benchmark mixed signals, i.e. logs, metrics and traces at the same time (default true)
   -secret-token string
         secret token for target server
   -shuffle
