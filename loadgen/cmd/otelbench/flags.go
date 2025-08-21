@@ -43,6 +43,7 @@ var Config struct {
 	Logs    bool
 	Metrics bool
 	Traces  bool
+	Mixed   bool
 
 	ExporterOTLP     bool
 	ExporterOTLPHTTP bool
@@ -132,6 +133,7 @@ func Init() error {
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
+	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics and traces at the same time")
 
 	flag.BoolVar(&Config.Shuffle, "shuffle", false, "shuffle the order of benchmarks. This is useful for concurrent runs.")
 

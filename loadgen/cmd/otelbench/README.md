@@ -9,10 +9,7 @@ Usage of ./otelbench:
   -api-key string
         API key for target server
   -concurrency list
-        comma-separated list of concurrency (number of simulated agents) to run each benchmark with. Supports:
-        - numeric values (e.g., "1,4,8")
-        - "auto" to use available CPU cores (GOMAXPROCS)
-        - "auto:Nx" for multipliers (e.g., "auto:2x" for double, "auto:0.5x" for half)
+        comma-separated list of concurrency (number of simulated agents) to run each benchmark with. Supports numeric values (e.g., "1,4,8"), "auto" to use available CPU cores, or "auto:Nx" for multipliers (e.g., "auto:2x" for double, "auto:0.5x" for half)
   -config string
         path to collector config yaml. If empty, the config.yaml embedded in the binary will be used.
   -endpoint value
@@ -35,8 +32,12 @@ Usage of ./otelbench:
         benchmark logs (default true)
   -metrics
         benchmark metrics (default true)
+  -mixed
+        benchmark mixed signals, i.e. logs, metrics and traces at the same time (default true)
   -secret-token string
         secret token for target server
+  -shuffle
+        shuffle the order of benchmarks. This is useful for concurrent runs.
   -telemetry-elasticsearch-api-key string
         optional remote Elasticsearch telemetry API key
   -telemetry-elasticsearch-index string

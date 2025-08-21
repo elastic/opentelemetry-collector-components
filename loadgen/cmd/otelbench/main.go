@@ -45,6 +45,9 @@ func getSignals() (signals []string) {
 	if Config.Traces {
 		signals = append(signals, "traces")
 	}
+	if Config.Mixed {
+		signals = append(signals, "mixed")
+	}
 	return
 }
 
@@ -69,14 +72,17 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 		logsDone := make(chan loadgenreceiver.Stats)
 		metricsDone := make(chan loadgenreceiver.Stats)
 		tracesDone := make(chan loadgenreceiver.Stats)
-		if signal != "logs" {
-			close(logsDone)
-		}
-		if signal != "metrics" {
-			close(metricsDone)
-		}
-		if signal != "traces" {
-			close(tracesDone)
+		// if we do not expect that signal, don't wait for it
+		if signal != "mixed" {
+			if signal != "logs" {
+				close(logsDone)
+			}
+			if signal != "metrics" {
+				close(metricsDone)
+			}
+			if signal != "traces" {
+				close(tracesDone)
+			}
 		}
 		stop := make(chan struct{}) // close channel to stop the loadgen collector
 		done := make(chan struct{}) // close channel to exit benchmark after stats were reported
@@ -249,10 +255,12 @@ func configs(exporter, signal string, iterations, concurrency int) (configFiles 
 	configFiles = append(configFiles, ExporterConfigs(exporter)...)
 	configFiles = append(configFiles, SetIterations(iterations)...)
 	configFiles = append(configFiles, SetConcurrency(concurrency)...)
-	for _, s := range []string{"logs", "metrics", "traces"} {
-		// Disable pipelines not relevant to the benchmark by overriding receiver and exporter to nop
-		if signal != s {
-			configFiles = append(configFiles, DisableSignal(s)...)
+	if signal != "mixed" {
+		for _, s := range []string{"logs", "metrics", "traces"} {
+			// Disable pipelines not relevant to the benchmark by overriding receiver and exporter to nop
+			if signal != s {
+				configFiles = append(configFiles, DisableSignal(s)...)
+			}
 		}
 	}
 	return
