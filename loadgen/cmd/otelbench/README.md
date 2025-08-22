@@ -30,8 +30,12 @@ Usage of ./otelbench:
         skip validating the remote server TLS certificates (default to value in config yaml)
   -logs
         benchmark logs (default true)
+  -logs-data-path string
+        path to logs data file (e.g. logs.json). If empty, embedded data will be used.
   -metrics
         benchmark metrics (default true)
+  -metrics-data-path string
+        path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.
   -mixed
         benchmark mixed signals, i.e. logs, metrics and traces at the same time (default true)
   -secret-token string
@@ -124,6 +128,8 @@ Usage of ./otelbench:
         verbose: print additional output
   -traces
         benchmark traces (default true)
+  -traces-data-path string
+        path to traces data file (e.g. traces.json). If empty, embedded data will be used.
 ```
 
 ## Example usage
