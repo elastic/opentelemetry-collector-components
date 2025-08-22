@@ -27,7 +27,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,8 +61,26 @@ func getExporters() (exporters []string) {
 	return
 }
 
-func fullBenchmarkName(signal, exporter string, concurrency int) string {
-	return fmt.Sprintf("BenchmarkOTelbench/%s-%s-%d", signal, exporter, concurrency)
+// getDataPathForSignal returns the data path for a given signal type.
+func getDataPathForSignal(signal string) string {
+	switch signal {
+	case "logs":
+		return Config.LogsDataPath
+	case "metrics":
+		return Config.MetricsDataPath
+	case "traces":
+		return Config.TracesDataPath
+	}
+	return ""
+}
+
+func fullBenchmarkName(signal, exporter string, concurrency int, dataPath string) string {
+	name := fmt.Sprintf("BenchmarkOTelbench/%s-%s", signal, exporter)
+	if dataPath != "" {
+		filename := filepath.Base(dataPath)
+		name = fmt.Sprintf("%s-%s", name, strings.TrimSuffix(filename, filepath.Ext(filename)))
+	}
+	return fmt.Sprintf("%s-%d", name, concurrency)
 }
 
 func runBench(ctx context.Context, signal, exporter string, concurrency int, reporter func(b *testing.B)) testing.BenchmarkResult {
@@ -186,7 +206,8 @@ func main() {
 	for _, concurrency := range Config.ConcurrencyList {
 		for _, signal := range getSignals() {
 			for _, exporter := range getExporters() {
-				maxLen = max(maxLen, len(fullBenchmarkName(signal, exporter, concurrency)))
+				dataPath := getDataPathForSignal(signal)
+				maxLen = max(maxLen, len(fullBenchmarkName(signal, exporter, concurrency, dataPath)))
 			}
 		}
 	}
@@ -212,7 +233,8 @@ func main() {
 	for _, concurrency := range Config.ConcurrencyList {
 		for _, signal := range signals {
 			for _, exporter := range exporters {
-				benchName := fullBenchmarkName(signal, exporter, concurrency)
+				dataPath := getDataPathForSignal(signal)
+				benchName := fullBenchmarkName(signal, exporter, concurrency, dataPath)
 				for i := 0; i < count; i++ {
 					t := time.Now().UTC()
 					result := runBench(ctx, signal, exporter, concurrency, func(b *testing.B) {
