@@ -34,13 +34,10 @@ Usage of ./otelbench:
         path to logs data file (e.g. logs.json). If empty, embedded data will be used.
   -metrics
         benchmark metrics (default true)
-<<<<<<< HEAD
   -metrics-data-path string
         path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.
-=======
   -mixed
         benchmark mixed signals, i.e. logs, metrics and traces at the same time (default true)
->>>>>>> f89497e9dfdaefd492535839e657b249bb8842b9
   -secret-token string
         secret token for target server
   -shuffle
