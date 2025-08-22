@@ -43,6 +43,7 @@ var Config struct {
 	Logs    bool
 	Metrics bool
 	Traces  bool
+	Mixed   bool
 
 	ExporterOTLP     bool
 	ExporterOTLPHTTP bool
@@ -135,6 +136,7 @@ func Init() error {
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
+	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics and traces at the same time")
 
 	flag.StringVar(&Config.TracesDataPath, "traces-data-path", "", "path to traces data file (e.g. traces.json). If empty, embedded data will be used.")
 	flag.StringVar(&Config.MetricsDataPath, "metrics-data-path", "", "path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.")
