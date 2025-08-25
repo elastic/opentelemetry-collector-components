@@ -19,6 +19,8 @@ package ratelimitprocessor
 
 import (
 	"context"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -141,4 +143,51 @@ func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 
 	err = rateLimiter.RateLimit(clientContext2, 1)
 	assert.NoError(t, err)
+}
+
+func TestGubernatorRateLimiter_MultipleRequests_Delay(t *testing.T) {
+	throttleInterval := 100 * time.Millisecond
+	rl := newTestGubernatorRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1, // request per second
+			Burst:            1, // capacity only for one
+			ThrottleBehavior: ThrottleBehaviorDelay,
+			ThrottleInterval: throttleInterval, // add 1 token after 100ms
+		},
+		MetadataKeys: []string{"metadata_key"},
+	})
+
+	// Simulate 4 requests hitting the rate limit simultaneously.
+	// The first request passes, and the next ones hit it simultaneously.
+	requests := 5
+	endingTimes := make([]time.Time, requests)
+	var wg sync.WaitGroup
+	wg.Add(requests)
+
+	for i := 0; i < requests; i++ {
+		go func(i int) {
+			defer wg.Done()
+			err := rl.RateLimit(context.Background(), 1)
+			require.NoError(t, err)
+			endingTimes[i] = time.Now()
+		}(i)
+	}
+	wg.Wait()
+
+	// Make sure all ending times have a difference of at least 100ms, as tokens are
+	// added at that rate. We need to sort them first.
+	slices.SortFunc(endingTimes, func(a, b time.Time) int {
+		if a.Before(b) {
+			return -1
+		}
+		return 1
+	})
+
+	for i := 1; i < requests; i++ {
+		diff := endingTimes[i].Sub(endingTimes[i-1]).Milliseconds()
+		minExpected := throttleInterval - 5*time.Millisecond // allow small tolerance
+		if diff < minExpected.Milliseconds() {
+			t.Fatalf("difference is %dms, requests were sent before tokens were added", diff)
+		}
+	}
 }
