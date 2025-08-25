@@ -104,10 +104,6 @@ func TestOnMessage(t *testing.T) {
 						InstanceUid:  []byte("test"),
 						Capabilities: uint64(protobufs.ServerCapabilities_ServerCapabilities_OffersRemoteConfig),
 						Flags:        uint64(protobufs.ServerToAgentFlags_ServerToAgentFlags_ReportFullState),
-						ErrorResponse: &protobufs.ServerErrorResponse{
-							ErrorMessage: "error retrieving remote configuration: agent could not be identified",
-							Type:         protobufs.ServerErrorResponseType_ServerErrorResponseType_Unknown,
-						},
 					},
 				},
 			},
