@@ -101,9 +101,8 @@ func newElasticAPMIntakeReceiver(fetcher agentCfgFetcherFactory, cfg *Config, se
 // Start runs an HTTP server for receiving data from Elastic APM agents.
 func (r *elasticAPMIntakeReceiver) Start(ctx context.Context, host component.Host) error {
 	ctx, r.cancelFn = context.WithCancel(ctx)
-	ecsCtx := withECSMappingMode(ctx)
-	if err := r.startHTTPServer(ecsCtx, host); err != nil {
-		return errors.Join(err, r.Shutdown(ecsCtx))
+	if err := r.startHTTPServer(ctx, host); err != nil {
+		return errors.Join(err, r.Shutdown(ctx))
 	}
 	return nil
 }
@@ -111,7 +110,9 @@ func (r *elasticAPMIntakeReceiver) Start(ctx context.Context, host component.Hos
 func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	httpMux := http.NewServeMux()
 
-	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(ctx))
+	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+		return withECSMappingMode(req.Context(), r.cfg.IncludeMetadata)
+	}))
 	httpMux.HandleFunc(agentConfigPath, r.newElasticAPMConfigsHandler(ctx, host))
 	// TODO rum v2, v3
 
@@ -157,7 +158,7 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errMsg string, statusC
 	// TODO
 }
 
-func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctx context.Context) http.HandlerFunc {
+func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http.Request) context.Context) http.HandlerFunc {
 
 	var (
 		// TODO make semaphore size configurable and/or find a different way
@@ -185,7 +186,7 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctx context.Contex
 		baseEvent := &modelpb.APMEvent{}
 		baseEvent.Event = &modelpb.Event{}
 		streamErr := elasticapmProcessor.HandleStream(
-			ctx,
+			ctxFunc(req),
 			baseEvent,
 			req.Body,
 			batchSize,
@@ -460,14 +461,21 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	}
 }
 
-func withECSMappingMode(ctx context.Context) context.Context {
-	return client.NewContext(ctx, withMappingMode(client.FromContext(ctx), "ecs"))
+func withECSMappingMode(ctx context.Context, includeMetadata bool) context.Context {
+	return client.NewContext(ctx, withMappingMode(client.FromContext(ctx), "ecs", includeMetadata))
 }
 
-func withMappingMode(info client.Info, mode string) client.Info {
+func withMappingMode(info client.Info, mode string, includeMetadata bool) client.Info {
+	newMeta := make(map[string][]string)
+	if includeMetadata {
+		for k := range info.Metadata.Keys() {
+			newMeta[k] = info.Metadata.Get(k)
+		}
+	}
+	newMeta["x-elastic-mapping-mode"] = []string{mode}
 	return client.Info{
 		Addr:     info.Addr,
 		Auth:     info.Auth,
-		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {mode}}),
+		Metadata: client.NewMetadata(newMeta),
 	}
 }
