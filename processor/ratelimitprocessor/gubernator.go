@@ -125,34 +125,40 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
 	cfg := resolveRateLimitSettings(r.cfg, uniqueKey)
 
-	createdAt := time.Now().UnixMilli()
-	getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
-		Requests: []*gubernator.RateLimitReq{
-			{
-				Name:      r.set.ID.String(),
-				UniqueKey: uniqueKey,
-				Hits:      int64(hits),
-				Behavior:  r.behavior,
-				Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
-				Limit:     int64(cfg.Rate), // rate is per second
-				Burst:     int64(cfg.Burst),
-				Duration:  cfg.ThrottleInterval.Milliseconds(), // duration is in milliseconds, i.e. 1s
-				CreatedAt: &createdAt,
+	makeRateLimitRequest := func() (*gubernator.RateLimitResp, error) {
+		createdAt := time.Now().UnixMilli()
+		getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
+			Requests: []*gubernator.RateLimitReq{
+				{
+					Name:      r.set.ID.String(),
+					UniqueKey: uniqueKey,
+					Hits:      int64(hits),
+					Behavior:  r.behavior,
+					Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
+					Limit:     int64(cfg.Rate), // rate is per second
+					Burst:     int64(cfg.Burst),
+					Duration:  cfg.ThrottleInterval.Milliseconds(), // duration is in milliseconds, i.e. 1s
+					CreatedAt: &createdAt,
+				},
 			},
-		},
-	})
+		})
+		if err != nil {
+			return nil, err
+		}
+		// Inside the gRPC response, we should have a single-item list of responses.
+		responses := getRateLimitsResp.GetResponses()
+		if n := len(responses); n != 1 {
+			return nil, fmt.Errorf("expected 1 response from gubernator, got %d", n)
+		}
+		resp := responses[0]
+		if resp.GetError() != "" {
+			return nil, errors.New(resp.GetError())
+		}
+		return resp, nil
+	}
+	resp, err := makeRateLimitRequest()
 	if err != nil {
 		return err
-	}
-
-	// Inside the gRPC response, we should have a single-item list of responses.
-	responses := getRateLimitsResp.GetResponses()
-	if n := len(responses); n != 1 {
-		return fmt.Errorf("expected 1 response from gubernator, got %d", n)
-	}
-	resp := responses[0]
-	if resp.GetError() != "" {
-		return errors.New(resp.GetError())
 	}
 
 	if resp.GetStatus() == gubernator.Status_OVER_LIMIT {
@@ -161,13 +167,25 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 		case ThrottleBehaviorError:
 			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
 		case ThrottleBehaviorDelay:
-			delay := time.Duration(resp.GetResetTime()-createdAt) * time.Millisecond
+			delay := time.Duration(resp.GetResetTime()-time.Now().UnixMilli()) * time.Millisecond
 			timer := time.NewTimer(delay)
 			defer timer.Stop()
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-timer.C:
+		retry:
+			for {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-timer.C:
+					resp, err = makeRateLimitRequest()
+					if err != nil {
+						return err
+					}
+					if resp.GetStatus() == gubernator.Status_UNDER_LIMIT {
+						break retry
+					}
+					delay = time.Duration(resp.GetResetTime()-time.Now().UnixMilli()) * time.Millisecond
+					timer.Reset(delay)
+				}
 			}
 		}
 	}
