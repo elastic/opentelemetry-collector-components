@@ -125,8 +125,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
 	cfg := resolveRateLimitSettings(r.cfg, uniqueKey)
 
-	var resp *gubernator.RateLimitResp
-	makeRateLimitRequest := func() error {
+	makeRateLimitRequest := func() (*gubernator.RateLimitResp, error) {
 		createdAt := time.Now().UnixMilli()
 		getRateLimitsResp, err := r.client.GetRateLimits(ctx, &gubernator.GetRateLimitsReq{
 			Requests: []*gubernator.RateLimitReq{
@@ -144,20 +143,21 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 			},
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// Inside the gRPC response, we should have a single-item list of responses.
 		responses := getRateLimitsResp.GetResponses()
 		if n := len(responses); n != 1 {
-			return fmt.Errorf("expected 1 response from gubernator, got %d", n)
+			return nil, fmt.Errorf("expected 1 response from gubernator, got %d", n)
 		}
-		resp = responses[0]
+		resp := responses[0]
 		if resp.GetError() != "" {
-			return errors.New(resp.GetError())
+			return nil, errors.New(resp.GetError())
 		}
-		return nil
+		return resp, nil
 	}
-	if err := makeRateLimitRequest(); err != nil {
+	resp, err := makeRateLimitRequest()
+	if err != nil {
 		return err
 	}
 
@@ -176,7 +176,8 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				case <-ctx.Done():
 					return ctx.Err()
 				case <-timer.C:
-					if err := makeRateLimitRequest(); err != nil {
+					resp, err = makeRateLimitRequest()
+					if err != nil {
 						return err
 					}
 					if resp.GetStatus() == gubernator.Status_UNDER_LIMIT {
