@@ -127,16 +127,17 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 				}
 				// For graceful shutdown, use ctx instead of startCtx to shield Consume* from context canceled
 				// In other words, Consume* will finish at its own pace, which may take indefinitely long.
+				recordCount := next.SpanCount()
 				if err := ar.consumer.ConsumeTraces(ctx, next); err != nil {
 					ar.logger.Error(err.Error())
 					ar.statsMu.Lock()
 					ar.stats.FailedRequests++
-					ar.stats.FailedSpans += next.SpanCount()
+					ar.stats.FailedSpans += recordCount
 					ar.statsMu.Unlock()
 				} else {
 					ar.statsMu.Lock()
 					ar.stats.Requests++
-					ar.stats.Spans += next.SpanCount()
+					ar.stats.Spans += recordCount
 					ar.statsMu.Unlock()
 				}
 			}
