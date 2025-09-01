@@ -35,12 +35,10 @@ import (
 var _ extensionauth.HTTPClient = (*authenticator)(nil)
 var _ extensionauth.GRPCClient = (*authenticator)(nil)
 var _ extension.Extension = (*authenticator)(nil)
-var defaultOutput = "elasticsearch"
 
 type authenticator struct {
 	telemetry    component.TelemetrySettings
 	httpSettings httpcommon.HTTPTransportSettings
-	output       string // users can also pass output key, this is required to switch between different http transport options
 	logger       *logp.Logger
 	client       *http.Client
 }
@@ -52,17 +50,13 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 	}
 
 	parsedCfg, err := config.NewConfigFrom(cfg)
-	beatAuthConfig := httpcommon.DefaultHTTPTransportSettings()
+	beatAuthConfig := ESDefaultTransportSettings()
 	err = parsedCfg.Unpack(&beatAuthConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed unpacking config: %w", err)
 	}
 
-	if value, ok := cfg.BeatAuthconfig["output"]; ok && value != defaultOutput {
-		return nil, fmt.Errorf("%s output is not supported: %w", value, err)
-	}
-
-	return &authenticator{httpSettings: beatAuthConfig, telemetry: telemetry, logger: logger, output: defaultOutput}, nil
+	return &authenticator{httpSettings: beatAuthConfig, telemetry: telemetry, logger: logger}, nil
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
@@ -82,25 +76,20 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 	return a.client.Transport, nil
 }
 
-// getHTTPOptions returns a list of http transport options based on configured output
-// default output if not configured is elasticsearch
+// getHTTPOptions returns a list of http transport options
+// these options are derived from beats codebase
+// Ref: https://github.com/khushijain21/beats/blob/main/libbeat/esleg/eslegclient/connection.go#L163-L171
 func (a *authenticator) getHTTPOptions() []httpcommon.TransportOption {
-	switch a.output {
-	case defaultOutput:
-		// these options are derived from beats codebase
-		// Ref: https://github.com/khushijain21/beats/blob/main/libbeat/esleg/eslegclient/connection.go#L163-L171
-		return []httpcommon.TransportOption{
-			httpcommon.WithLogger(a.logger),
-			// httpcommon.WithIOStats(s.Observer), 		// we don't have access to observer
-			httpcommon.WithKeepaliveSettings{IdleConnTimeout: a.httpSettings.IdleConnTimeout},
-			httpcommon.WithModRoundtripper(func(rt http.RoundTripper) http.RoundTripper {
-				return apmelasticsearch.WrapRoundTripper(rt)
-			}),
-			// httpcommon.WithHeaderRoundTripper(map[string]string{"User-Agent": s.UserAgent}), // we don't have access to useragent
-		}
+	return []httpcommon.TransportOption{
+		httpcommon.WithLogger(a.logger),
+		// httpcommon.WithIOStats(s.Observer), 		// we don't have access to observer
+		httpcommon.WithKeepaliveSettings{IdleConnTimeout: a.httpSettings.IdleConnTimeout},
+		httpcommon.WithModRoundtripper(func(rt http.RoundTripper) http.RoundTripper {
+			return apmelasticsearch.WrapRoundTripper(rt)
+		}),
+		// httpcommon.WithHeaderRoundTripper(map[string]string{"User-Agent": s.UserAgent}), // we don't have access to useragent
 	}
 
-	return nil
 }
 
 func (a *authenticator) PerRPCCredentials() (credentials.PerRPCCredentials, error) {

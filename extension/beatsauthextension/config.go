@@ -17,7 +17,12 @@
 
 package beatsauthextension // import "github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension"
 
-import "go.opentelemetry.io/collector/component"
+import (
+	"time"
+
+	"github.com/elastic/elastic-agent-libs/transport/httpcommon"
+	"go.opentelemetry.io/collector/component"
+)
 
 type Config struct {
 	BeatAuthconfig map[string]interface{} `mapstructure:",remain"`
@@ -25,4 +30,14 @@ type Config struct {
 
 func createDefaultConfig() component.Config {
 	return &Config{}
+}
+
+// Code from https://github.com/khushijain21/beats/blob/main/libbeat/outputs/elasticsearch/config.go#L86-L92
+// This is re-defined here to avoid importing the entire beats package
+func ESDefaultTransportSettings() httpcommon.HTTPTransportSettings {
+	transport := httpcommon.DefaultHTTPTransportSettings()
+	// The ES output differs from the common transport settings by having
+	// a 3-second idle timeout
+	transport.IdleConnTimeout = 3 * time.Second
+	return transport
 }
