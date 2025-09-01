@@ -22,8 +22,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/elastic/elastic-agent-libs/config"
 	"github.com/elastic/elastic-agent-libs/logp"
-	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
+	"github.com/elastic/elastic-agent-libs/transport/httpcommon"
+	"go.elastic.co/apm/module/apmelasticsearch/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/extensionauth"
@@ -35,68 +37,61 @@ var _ extensionauth.GRPCClient = (*authenticator)(nil)
 var _ extension.Extension = (*authenticator)(nil)
 
 type authenticator struct {
-	cfg       *Config
 	telemetry component.TelemetrySettings
-	tlsConfig *tlscommon.TLSConfig // set by Start
+	config    *Config
 	logger    *logp.Logger
+	client    *http.Client
 }
 
-func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
+func newAuthenticator(cfg component.Config, telemetry component.TelemetrySettings) (*authenticator, error) {
 	logger, err := logp.NewZapLogger(telemetry.Logger)
 	if err != nil {
 		return nil, err
 	}
-	return &authenticator{cfg: cfg, telemetry: telemetry, logger: logger}, nil
+
+	parsedCfg, err := config.NewConfigFrom(cfg)
+	beatAuthConfig := &Config{}
+	err = parsedCfg.Unpack(beatAuthConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed unpacking config: %w", err)
+	}
+
+	return &authenticator{config: beatAuthConfig, telemetry: telemetry, logger: logger}, nil
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-	if a.cfg.TLS != nil {
-
-		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
-			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
-			CATrustedFingerprint: a.cfg.TLS.CATrustedFingerprint,
-			CASha256:             a.cfg.TLS.CASha256,
-		}, a.logger)
-		if err != nil {
-			return err
-		}
-		a.tlsConfig = tlsConfig
+	var err error
+	a.client, err = a.config.HTTPSettings.Client(a.getHTTPOptions()...)
+	if err != nil {
+		return err
 	}
+	a.logger.Info("beatsauth extension has started")
 	return nil
 }
 
 func (a *authenticator) Shutdown(ctx context.Context) error {
+	a.logger.Info("beatsauth extension has stopped")
 	return nil
 }
 
 func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper, error) {
-	// At the time of writing, client.Transport is guaranteed to always have type *http.Transport.
-	// If this assumption is ever broken, we would need to create and use our own transport, and
-	// ignore the one passed in.
-	httpTransport, ok := base.(*http.Transport)
-	if !ok {
-		return nil, fmt.Errorf("http.Roundripper is not of type *http.Transport")
-	}
-	if err := a.configureTransport(httpTransport); err != nil {
-		return nil, err
-	}
-	return httpTransport, nil
+	return a.client.Transport, nil
 }
 
-func (a *authenticator) configureTransport(transport *http.Transport) error {
-
-	if a.tlsConfig != nil {
-
-		// copy incoming CertPool into our tls config
-		// because ca_trusted_fingerprint will be appended to CertPool
-		tlsConfig := *a.tlsConfig // copy before updating, configureTransport may be called concurrently
-		tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
-
-		beatTLSConfig := tlsConfig.BuildModuleClientConfig(transport.TLSClientConfig.ServerName)
-
-		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
-		transport.TLSClientConfig.InsecureSkipVerify = beatTLSConfig.InsecureSkipVerify
-
+func (a *authenticator) getHTTPOptions() []httpcommon.TransportOption {
+	switch a.config.Output {
+	case "elasticsearch":
+		// these options are derived from beats codebase
+		// Ref: https://github.com/khushijain21/beats/blob/main/libbeat/esleg/eslegclient/connection.go#L163-L171
+		return []httpcommon.TransportOption{
+			httpcommon.WithLogger(a.logger),
+			// httpcommon.WithIOStats(s.Observer), 		// we don't have access to observer
+			httpcommon.WithKeepaliveSettings{IdleConnTimeout: a.config.HTTPSettings.IdleConnTimeout},
+			httpcommon.WithModRoundtripper(func(rt http.RoundTripper) http.RoundTripper {
+				return apmelasticsearch.WrapRoundTripper(rt)
+			}),
+			// httpcommon.WithHeaderRoundTripper(map[string]string{"User-Agent": s.UserAgent}), // we don't have access to useragent
+		}
 	}
 
 	return nil
