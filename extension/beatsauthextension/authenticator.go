@@ -43,7 +43,7 @@ type authenticator struct {
 	client    *http.Client
 }
 
-func newAuthenticator(cfg component.Config, telemetry component.TelemetrySettings) (*authenticator, error) {
+func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
 	logger, err := logp.NewZapLogger(telemetry.Logger)
 	if err != nil {
 		return nil, err
@@ -63,14 +63,12 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	var err error
 	a.client, err = a.config.HTTPSettings.Client(a.getHTTPOptions()...)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create http client: %w", err)
 	}
-	a.logger.Info("beatsauth extension has started")
 	return nil
 }
 
 func (a *authenticator) Shutdown(ctx context.Context) error {
-	a.logger.Info("beatsauth extension has stopped")
 	return nil
 }
 

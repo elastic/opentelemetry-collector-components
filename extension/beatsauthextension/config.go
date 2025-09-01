@@ -25,8 +25,8 @@ import (
 )
 
 type Config struct {
-	Output       string                           `config:"output"`
-	HTTPSettings httpcommon.HTTPTransportSettings `config:"http"`
+	Output       string                           `mapstructure:"output" config:"output"`
+	HTTPSettings httpcommon.HTTPTransportSettings `mapstructure:"http" config:"http"`
 }
 
 func createDefaultConfig() component.Config {
