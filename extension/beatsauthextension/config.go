@@ -17,28 +17,12 @@
 
 package beatsauthextension // import "github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension"
 
-import (
-	"fmt"
-
-	"github.com/elastic/elastic-agent-libs/transport/httpcommon"
-	"go.opentelemetry.io/collector/component"
-)
+import "go.opentelemetry.io/collector/component"
 
 type Config struct {
-	Output       string                           `mapstructure:"output" config:"output"`
-	HTTPSettings httpcommon.HTTPTransportSettings `mapstructure:"http" config:"http"`
+	BeatAuthconfig map[string]interface{} `mapstructure:",remain"`
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{
-		Output:       "elasticsearch",
-		HTTPSettings: httpcommon.DefaultHTTPTransportSettings(),
-	}
-}
-
-func (cfg *Config) Validate() error {
-	if cfg.Output != "" && cfg.Output != "elasticsearch" {
-		return fmt.Errorf("%s output is not supported", cfg.Output)
-	}
-	return nil
+	return &Config{}
 }

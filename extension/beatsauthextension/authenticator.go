@@ -35,12 +35,14 @@ import (
 var _ extensionauth.HTTPClient = (*authenticator)(nil)
 var _ extensionauth.GRPCClient = (*authenticator)(nil)
 var _ extension.Extension = (*authenticator)(nil)
+var defaultOutput = "elasticsearch"
 
 type authenticator struct {
-	telemetry component.TelemetrySettings
-	config    *Config
-	logger    *logp.Logger
-	client    *http.Client
+	telemetry    component.TelemetrySettings
+	httpSettings httpcommon.HTTPTransportSettings
+	output       string // users can also pass output key, this is required to switch between different http transport options
+	logger       *logp.Logger
+	client       *http.Client
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
@@ -50,18 +52,22 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 	}
 
 	parsedCfg, err := config.NewConfigFrom(cfg)
-	beatAuthConfig := &Config{}
-	err = parsedCfg.Unpack(beatAuthConfig)
+	beatAuthConfig := httpcommon.DefaultHTTPTransportSettings()
+	err = parsedCfg.Unpack(&beatAuthConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed unpacking config: %w", err)
 	}
 
-	return &authenticator{config: beatAuthConfig, telemetry: telemetry, logger: logger}, nil
+	if value, ok := cfg.BeatAuthconfig["output"]; ok && value != defaultOutput {
+		return nil, fmt.Errorf("%s output is not supported: %w", value, err)
+	}
+
+	return &authenticator{httpSettings: beatAuthConfig, telemetry: telemetry, logger: logger, output: defaultOutput}, nil
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	var err error
-	a.client, err = a.config.HTTPSettings.Client(a.getHTTPOptions()...)
+	a.client, err = a.httpSettings.Client(a.getHTTPOptions()...)
 	if err != nil {
 		return fmt.Errorf("could not create http client: %w", err)
 	}
@@ -76,15 +82,17 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 	return a.client.Transport, nil
 }
 
+// getHTTPOptions returns a list of http transport options based on configured output
+// default output if not configured is elasticsearch
 func (a *authenticator) getHTTPOptions() []httpcommon.TransportOption {
-	switch a.config.Output {
-	case "elasticsearch":
+	switch a.output {
+	case defaultOutput:
 		// these options are derived from beats codebase
 		// Ref: https://github.com/khushijain21/beats/blob/main/libbeat/esleg/eslegclient/connection.go#L163-L171
 		return []httpcommon.TransportOption{
 			httpcommon.WithLogger(a.logger),
 			// httpcommon.WithIOStats(s.Observer), 		// we don't have access to observer
-			httpcommon.WithKeepaliveSettings{IdleConnTimeout: a.config.HTTPSettings.IdleConnTimeout},
+			httpcommon.WithKeepaliveSettings{IdleConnTimeout: a.httpSettings.IdleConnTimeout},
 			httpcommon.WithModRoundtripper(func(rt http.RoundTripper) http.RoundTripper {
 				return apmelasticsearch.WrapRoundTripper(rt)
 			}),
