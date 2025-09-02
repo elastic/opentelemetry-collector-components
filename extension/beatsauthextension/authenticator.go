@@ -49,8 +49,8 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 		return nil, err
 	}
 
-	parsedCfg, err := config.NewConfigFrom(cfg)
-	beatAuthConfig := ESDefaultTransportSettings()
+	parsedCfg, err := config.NewConfigFrom(cfg.BeatAuthconfig)
+	beatAuthConfig := httpcommon.HTTPTransportSettings{}
 	err = parsedCfg.Unpack(&beatAuthConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed unpacking config: %w", err)
