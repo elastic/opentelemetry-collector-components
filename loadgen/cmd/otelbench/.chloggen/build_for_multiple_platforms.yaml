@@ -4,13 +4,13 @@
 change_type: enhancement
 
 # A brief description of the change.  Surround your text with quotes ("") if it needs to start with a backtick (`).
-note: Adds <signal>-data-path config option n order to provide custom data input for your tests
+note: Updating the relevant github_action workflow to build in both amd64/arm64 platforms
 
 # It is mandatory to specify the component. Do not change this.
 component: otelbench
 
 # Mandatory: One or more tracking issues related to the change. You can use the PR number here if no issue exists.
-issues: [719]
+issues: [725]
 
 # (Optional) One or more lines of additional information to render under the primary note.
 # These lines will be padded with 2 spaces and then inserted directly into the document.
