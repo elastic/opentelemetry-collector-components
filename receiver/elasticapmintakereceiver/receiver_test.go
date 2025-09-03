@@ -489,6 +489,7 @@ var inputFiles = []struct {
 	{"transactions_spans.ndjson", "transactions_spans_expected.yaml"},
 	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml"},
 	{"span-links.ndjson", "span-links_expected.yaml"},
+	{"hostdata.ndjson", "hostdata_expected.yaml"},
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
