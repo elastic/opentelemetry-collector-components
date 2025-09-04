@@ -78,7 +78,7 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 
 // getHTTPOptions returns a list of http transport options
 // these options are derived from beats codebase
-// Ref: https://github.com/khushijain21/beats/blob/main/libbeat/esleg/eslegclient/connection.go#L163-L171
+// Ref: https://github.com/elastic/beats/blob/4dfef8b/libbeat/esleg/eslegclient/connection.go#L163-L171
 func (a *authenticator) getHTTPOptions() []httpcommon.TransportOption {
 	return []httpcommon.TransportOption{
 		httpcommon.WithLogger(a.logger),
