@@ -56,7 +56,7 @@ func TestAuthenticator(t *testing.T) {
 		t.Fatalf("could not generate certificates: %s", err)
 	}
 
-	// start server with generated cer
+	// start server with generated cert
 	serverURL := startTestServer(t, []tls.Certificate{certs})
 
 	cfg := &Config{
