@@ -61,6 +61,9 @@ func TestAuthenticator(t *testing.T) {
 
 	cfg := &Config{
 		BeatAuthconfig: map[string]any{
+			"proxy_disable":           true,
+			"timeout":                 "60s",
+			"idle_connection_timeout": "3s",
 			"ssl": map[string]any{
 				"enabled":           "true",
 				"verification_mode": "full",
@@ -82,7 +85,6 @@ func TestAuthenticator(t *testing.T) {
 	err = auth.Start(context.Background(), host)
 	require.NoError(t, err)
 
-	httpClientConfig.TLS.ServerName = "localhost"
 	client, err := httpClientConfig.ToClient(context.Background(), host, settings)
 	require.NoError(t, err)
 	require.NotNil(t, client)
