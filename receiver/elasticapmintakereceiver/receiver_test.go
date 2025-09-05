@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"io"
 	"net/http"
 	"os"
@@ -29,9 +30,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
-	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
@@ -44,7 +42,13 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
+
+	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
+
+var update = flag.Bool("update", false, "Flag to generate/updated the expected yaml files")
 
 const testData = "testdata"
 
@@ -593,7 +597,8 @@ func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusAccepted {
-		t.Fatalf("unexpected status code: %v", resp.StatusCode)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected status code: %v, resp body: %s", resp.StatusCode, bodyBytes)
 	}
 }
 
@@ -605,8 +610,10 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 	sendInput(t, inputJsonFileName, testEndpoint)
 	actualTraces := nextTrace.AllTraces()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
-	// Use this line to generate the expected yaml file:
-	// golden.WriteTraces(t, expectedFile, actualTraces)
+	if *update {
+		err := golden.WriteTraces(t, expectedFile, actualTraces)
+		assert.NoError(t, err)
+	}
 	expectedTraces, err := golden.ReadTraces(expectedFile)
 	require.NoError(t, err)
 	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
@@ -621,8 +628,10 @@ func runComparisonForErrors(t *testing.T, inputJsonFileName string, expectedYaml
 	sendInput(t, inputJsonFileName, testEndpoint)
 	actualLogs := nextLog.AllLogs()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
-	// Use this line to generate the expected yaml file:
-	// golden.WriteLogs(t, expectedFile, actualLogs)
+	if *update {
+		err := golden.WriteLogs(t, expectedFile, actualLogs)
+		assert.NoError(t, err)
+	}
 	expectedLogs, err := golden.ReadLogs(expectedFile)
 	require.NoError(t, err)
 	require.NoError(t, plogtest.CompareLogs(expectedLogs, actualLogs))
@@ -636,10 +645,11 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 	sendInput(t, inputJsonFileName, testEndpoint)
 	actualMetrics := nextMetric.AllMetrics()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
-	// Use this line to generate the expected yaml file:
-	// golden.WriteMetrics(t, expectedFile, actualMetrics)
+	if *update {
+		err := golden.WriteMetrics(t, expectedFile, actualMetrics, golden.SkipMetricTimestampNormalization())
+		assert.NoError(t, err)
+	}
 	expectedMetrics, err := golden.ReadMetrics(expectedFile)
 	require.NoError(t, err)
 	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics, pmetrictest.IgnoreMetricsOrder()))
-
 }

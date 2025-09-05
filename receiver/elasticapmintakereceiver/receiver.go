@@ -31,11 +31,6 @@ import (
 	"go.opentelemetry.io/collector/client"
 
 	"github.com/cespare/xxhash"
-	"github.com/elastic/apm-data/input/elasticapm"
-	"github.com/elastic/apm-data/model/modelpb"
-	"github.com/elastic/apm-data/model/modelprocessor"
-	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
-	"github.com/elastic/opentelemetry-lib/agentcfg"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -48,6 +43,12 @@ import (
 	"go.opentelemetry.io/collector/receiver/receiverhelper"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
+
+	"github.com/elastic/apm-data/input/elasticapm"
+	"github.com/elastic/apm-data/model/modelpb"
+	"github.com/elastic/apm-data/model/modelprocessor"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
 
 // TODO report different formats for intakev2 and rumv3?
@@ -251,7 +252,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		switch event.Type() {
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()
-			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestamp, ctx); err != nil {
+			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestamp); err != nil {
 				return err
 			}
 		case modelpb.ErrorEventType:
@@ -295,7 +296,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	return errors.Join(errs...)
 }
 
-func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) error {
+func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) error {
 
 	metricset := event.GetMetricset()
 
@@ -313,6 +314,7 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 	for _, sample := range samples {
 		m := sm.Metrics().AppendEmpty()
 		m.SetName(sample.GetName())
+		m.SetUnit(sample.GetUnit())
 
 		switch sample.GetType() {
 		case modelpb.MetricType_METRIC_TYPE_COUNTER:
@@ -325,7 +327,9 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 			dp.SetDoubleValue(sample.GetValue())
 			r.populateDataPointCommon(&dp, event, timestamp)
 		case modelpb.MetricType_METRIC_TYPE_HISTOGRAM:
-			// TODO histograms
+			dp := m.SetEmptyHistogram().DataPoints().AppendEmpty()
+			r.populateDataPointCommon(&dp, event, timestamp)
+			populateOTelHistogramDataPoint(sample, &dp)
 		case modelpb.MetricType_METRIC_TYPE_SUMMARY:
 			// TODO summaries
 		default:
@@ -346,6 +350,85 @@ func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, eve
 	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
+}
+
+// populateOTelHistogramDataPoint updates the OpenTelemetry HistogramDataPoint with data from the provided Elastic APM histogram sample.
+// Assumptions:
+// - the histogram values and counts are all non-negative
+//
+// Sets fields: sum, count, bucket_counts, explicit_bounds. All other optional fields are not set per OTEL metric model:
+//   - https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto
+func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric.HistogramDataPoint) {
+	histogram := sample.GetHistogram()
+	if histogram == nil {
+		return
+	}
+
+	// histogram values and count should be non-empty and the same size
+	apmHistogramCounts := histogram.GetCounts()
+	apmHistogramValues := histogram.GetValues()
+	if len(apmHistogramValues) == 0 || len(apmHistogramCounts) == 0 {
+		return
+	}
+	if len(apmHistogramValues) != len(apmHistogramCounts) {
+		return
+	}
+
+	// sum of the values in the population. If count is zero then this field
+	// must be zero.
+	//
+	// Note: Sum should only be filled out when measuring non-negative discrete
+	// events, and is assumed to be monotonic over the values of these events.
+	// Negative events *can* be recorded, but sum should not be filled out when
+	// doing so.  This is specifically to enforce compatibility w/ OpenMetrics,
+	// see: https://github.com/prometheus/OpenMetrics/blob/v1.0.0/specification/OpenMetrics.md#histogram
+	sum := 0.0
+	for i := 0; i < len(apmHistogramValues); i++ {
+		sum += apmHistogramValues[i] * float64(apmHistogramCounts[i])
+	}
+	dp.SetSum(sum)
+
+	// count is the number of values in the population. Must be non-negative. This
+	// value must be equal to the sum of the "count" fields in buckets if a
+	// histogram is provided.
+	count := uint64(0)
+	for _, c := range apmHistogramCounts {
+		count += c
+	}
+	dp.SetCount(count)
+
+	// bucket_counts is an optional field contains the count values of histogram
+	// for each bucket.
+	//
+	// The sum of the bucket_counts must equal the value in the count field.
+	//
+	// The number of elements in bucket_counts array must be by one greater than
+	// the number of elements in explicit_bounds array. The exception to this rule
+	// is when the length
+	bucketCounts := dp.BucketCounts()
+	bucketCounts.FromRaw(apmHistogramCounts)
+
+	// explicit_bounds specifies buckets with explicitly defined bounds for values.
+	//
+	// The boundaries for bucket at index i are:
+	//
+	// (-infinity, explicit_bounds[i]] for i == 0
+	// (explicit_bounds[i-1], explicit_bounds[i]] for 0 < i < size(explicit_bounds)
+	// (explicit_bounds[i-1], +infinity) for i == size(explicit_bounds)
+	//
+	// The values in the explicit_bounds array must be strictly increasing.
+	//
+	// Histogram buckets are inclusive of their upper boundary, except the last
+	// bucket where the boundary is at infinity. This format is intentionally
+	// compatible with the OpenMetrics histogram definition.
+	//
+	// If bucket_counts length is 0 then explicit_bounds length must also be 0,
+	// otherwise the data point is invalid.
+	explicitBounds := dp.ExplicitBounds()
+
+	// explicit bounds are derived from the sample.Histogram.Values, where each value is the upper bound for a bucket.
+	// Except the last bound value which is implied to be +Inf bucket, so it is not set.
+	explicitBounds.FromRaw(apmHistogramValues[:len(apmHistogramValues)-1])
 }
 
 func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) {
