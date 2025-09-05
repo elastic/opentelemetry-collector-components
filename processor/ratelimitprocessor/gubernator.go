@@ -256,6 +256,10 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	}
 	// Only record the incoming hits when the current rate is within the allowed
 	// range, otherwise, do not record the hits and return the calculated rate.
+	// The idea is to continuously increase the rate limit. MaxAllowed sets a
+	// ceiling on it with the window duration.
+	// NOTE(marclop) We may want to add a follow-up static ceiling to avoid
+	// unbounded growth.
 	maxAllowed := math.Max(staticRate, previous*drc.WindowMultiplier)
 	if current <= maxAllowed {
 		if err := r.recordHits(ctx, drc, hits); err != nil {
@@ -279,7 +283,6 @@ func (r *gubernatorRateLimiter) newDynamicRequest(
 		// bucket is undesirable since it would leak tokens over time.
 		Algorithm: gubernator.Algorithm_TOKEN_BUCKET,
 		Limit:     maxLimit,
-		Burst:     maxLimit,
 		// Since Gubernator expires the unique key after the duration, double
 		// it to ensure the key survives until the end of the next window.
 		Duration:  drc.WindowDuration.Milliseconds()*2 + 1,

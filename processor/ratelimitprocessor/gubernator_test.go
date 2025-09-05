@@ -165,6 +165,9 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	})
 }
 
+// Ideally, we'd use a mock clock to control time precisely, but since `synctest`
+// is available only in Go 1.25+, we use a best-effort approach with sleeps until
+// the go.mod is updated. https://go.dev/blog/testing-time.
 func waitUntilNextPeriod(interval time.Duration) {
 	// To ensure we are in the next interval, we wait for the current interval to
 	// pass, and then we wait for the next interval to start.
