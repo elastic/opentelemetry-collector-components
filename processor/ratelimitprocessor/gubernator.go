@@ -150,9 +150,10 @@ func (r *gubernatorRateLimiter) calculateRateAndBurst(ctx context.Context,
 	}
 	// The limit is in <unit> per second, multiply it by throttle interval.
 	// Burst is measured per second, so we divide it by the throttle interval.
-	limit = math.Round(limit * r.cfg.ThrottleInterval.Seconds())
+	throttleInterval := r.cfg.ThrottleInterval.Seconds()
+	limit = math.Round(limit * throttleInterval)
 	// NOTE(marclop) we could potentially set the burst based on a multiplier.
-	burst := math.Round(limit / cfg.ThrottleInterval.Seconds())
+	burst := math.Round(limit / throttleInterval)
 	return int(limit), int(burst)
 }
 
