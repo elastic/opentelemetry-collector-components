@@ -38,6 +38,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -488,6 +489,7 @@ var inputFiles = []struct {
 	{"transactions_spans.ndjson", "transactions_spans_expected.yaml"},
 	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml"},
 	{"span-links.ndjson", "span-links_expected.yaml"},
+	{"hostdata.ndjson", "hostdata_expected.yaml"},
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -519,7 +521,65 @@ func TestTransactionsAndSpans(t *testing.T) {
 	}
 }
 
-func sendInput(t *testing.T, inputJsonFileName string, expectedYamlFileName string, testEndpoint string) {
+func TestMetadataPropagation(t *testing.T) {
+	table := map[string]struct {
+		includeMetadata  bool
+		expectedMetadata client.Metadata
+	}{
+		"when include_metadata is disabled only mappinmapping-mode is propagated": {
+			expectedMetadata: client.NewMetadata(map[string][]string{
+				"x-elastic-mapping-mode": {"ecs"},
+			}),
+		},
+		"when include_metadata is enabled all request metadata is propagated": {
+			includeMetadata: true,
+			expectedMetadata: client.NewMetadata(map[string][]string{
+				"content-type":           {"application/x-ndjson"},
+				"x-elastic-mapping-mode": {"ecs"},
+			}),
+		},
+	}
+	for tname, tcase := range table {
+		t.Run(tname, func(t *testing.T) {
+			factory := NewFactory()
+			testEndpoint := testutil.GetAvailableLocalAddress(t)
+			cfg := &Config{
+				ServerConfig: confighttp.ServerConfig{
+					Endpoint:        testEndpoint,
+					IncludeMetadata: tcase.includeMetadata,
+				},
+			}
+
+			set := receivertest.NewNopSettings(metadata.Type)
+			nextTrace := new(consumertest.TracesSink)
+			receiver, _ := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
+
+			if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+				t.Errorf("Starting receiver failed: %v", err)
+			}
+			defer func() {
+				if err := receiver.Shutdown(context.Background()); err != nil {
+					t.Errorf("Shutdown failed: %v", err)
+				}
+			}()
+
+			sendInput(t, "transactions_spans.ndjson", testEndpoint)
+
+			ctxs := nextTrace.Contexts()
+			require.GreaterOrEqual(t, len(ctxs), 1)
+			md := client.FromContext(ctxs[0]).Metadata
+			if tcase.includeMetadata {
+				for k := range tcase.expectedMetadata.Keys() {
+					require.Equal(t, tcase.expectedMetadata.Get(k), md.Get(k))
+				}
+			} else {
+				require.Equal(t, tcase.expectedMetadata, md)
+			}
+		})
+	}
+}
+
+func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
@@ -542,7 +602,7 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 ) {
 	nextTrace.Reset()
 
-	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
+	sendInput(t, inputJsonFileName, testEndpoint)
 	actualTraces := nextTrace.AllTraces()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	// Use this line to generate the expected yaml file:
@@ -558,7 +618,7 @@ func runComparisonForErrors(t *testing.T, inputJsonFileName string, expectedYaml
 ) {
 	nextLog.Reset()
 
-	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
+	sendInput(t, inputJsonFileName, testEndpoint)
 	actualLogs := nextLog.AllLogs()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	// Use this line to generate the expected yaml file:
@@ -573,7 +633,7 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 ) {
 
 	nextMetric.Reset()
-	sendInput(t, inputJsonFileName, expectedYamlFileName, testEndpoint)
+	sendInput(t, inputJsonFileName, testEndpoint)
 	actualMetrics := nextMetric.AllMetrics()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	// Use this line to generate the expected yaml file:
