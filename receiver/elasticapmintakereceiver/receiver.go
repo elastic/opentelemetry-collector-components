@@ -314,6 +314,11 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 	for _, sample := range samples {
 		m := sm.Metrics().AppendEmpty()
 		m.SetName(sample.GetName())
+
+		// Set provided unit without any validation or enumeration.
+		// - The apm-data lib does not validate units: https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/decoder.go
+		// - The ElasticSearch https://github.com/elastic/package-spec/blob/main/spec/integration/data_stream/fields/fields.spec.yml supported units
+		//   also meet the OTEL requirements based on https://ucum.org/ucum.
 		m.SetUnit(sample.GetUnit())
 
 		switch sample.GetType() {
