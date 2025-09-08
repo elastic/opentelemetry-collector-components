@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"net/http"
 	"strings"
 
 	"go.opentelemetry.io/collector/client"
@@ -204,6 +205,11 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	req.Request(&hasprivileges.Request{Application: applications})
 	resp, err := req.Do(ctx)
 	if err != nil {
+		if elasticsearchErr, ok := err.(types.ElasticsearchError); ok {
+			if elasticsearchErr.Status == http.StatusUnauthorized {
+				return false, "", nil
+			}
+		}
 		return false, "", err
 	}
 	return resp.HasAllRequested, resp.Username, nil
