@@ -77,17 +77,16 @@ func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper,
 }
 
 // getHTTPOptions returns a list of http transport options
-// these options are derived from beats codebase
-// Ref: https://github.com/elastic/beats/blob/4dfef8b/libbeat/esleg/eslegclient/connection.go#L163-L171
+// these options are derived from beats codebase Ref: https://github.com/elastic/beats/blob/4dfef8b/libbeat/esleg/eslegclient/connection.go#L163-L171
+// httpcommon.WithIOStats(s.Observer) is omitted as we do not have access to observer here
+// httpcommon.WithHeaderRoundTripper with user-agent is also omitted as we continue to use ES exporter's user-agent
 func (a *authenticator) getHTTPOptions() []httpcommon.TransportOption {
 	return []httpcommon.TransportOption{
 		httpcommon.WithLogger(a.logger),
-		// httpcommon.WithIOStats(s.Observer), 		// we don't have access to observer
 		httpcommon.WithKeepaliveSettings{IdleConnTimeout: a.httpSettings.IdleConnTimeout},
 		httpcommon.WithModRoundtripper(func(rt http.RoundTripper) http.RoundTripper {
 			return apmelasticsearch.WrapRoundTripper(rt)
 		}),
-		// httpcommon.WithHeaderRoundTripper(map[string]string{"User-Agent": s.UserAgent}), // we don't have access to useragent
 	}
 
 }
