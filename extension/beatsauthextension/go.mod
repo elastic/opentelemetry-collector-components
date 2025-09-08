@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension
 
-go 1.23.8
+go 1.23.10
 
 require (
 	github.com/elastic/elastic-agent-libs v0.21.6
