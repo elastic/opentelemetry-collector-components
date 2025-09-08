@@ -204,6 +204,7 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	req.Header(authorizationHeader, authHeaderValue)
 	req.Request(&hasprivileges.Request{Application: applications})
 	resp, err := req.Do(ctx)
+	fmt.Printf("DDD %#v %#v", resp, err)
 	if err != nil {
 		fmt.Printf("AAA %#v", err)
 		if elasticsearchErr, ok := err.(types.ElasticsearchError); ok {
