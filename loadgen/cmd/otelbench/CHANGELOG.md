@@ -4,6 +4,13 @@
 
 <!-- next version -->
 
+## v0.5.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Updating the relevant github_action workflow to build in both amd64/arm64 platforms (#725)
+- `otelbench`: Fix loadgenreceiver panic on record count when struct is mutated (#721)
+
 ## v0.4.0
 
 ### 💡 Enhancements 💡

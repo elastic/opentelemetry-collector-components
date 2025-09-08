@@ -132,16 +132,17 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 				}
 				// For graceful shutdown, use ctx instead of startCtx to shield Consume* from context canceled
 				// In other words, Consume* will finish at its own pace, which may take indefinitely long.
+				recordCount := next.DataPointCount()
 				if err := ar.consumer.ConsumeMetrics(ctx, next); err != nil {
 					ar.logger.Error(err.Error())
 					ar.statsMu.Lock()
 					ar.stats.FailedRequests++
-					ar.stats.FailedMetricDataPoints += next.DataPointCount()
+					ar.stats.FailedMetricDataPoints += recordCount
 					ar.statsMu.Unlock()
 				} else {
 					ar.statsMu.Lock()
 					ar.stats.Requests++
-					ar.stats.MetricDataPoints += next.DataPointCount()
+					ar.stats.MetricDataPoints += recordCount
 					ar.statsMu.Unlock()
 				}
 			}

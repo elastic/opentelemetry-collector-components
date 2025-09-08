@@ -125,16 +125,17 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 				}
 				// For graceful shutdown, use ctx instead of startCtx to shield Consume* from context canceled
 				// In other words, Consume* will finish at its own pace, which may take indefinitely long.
+				recordCount := next.LogRecordCount()
 				if err := ar.consumer.ConsumeLogs(ctx, next); err != nil {
 					ar.logger.Error(err.Error())
 					ar.statsMu.Lock()
 					ar.stats.FailedRequests++
-					ar.stats.FailedLogRecords += next.LogRecordCount()
+					ar.stats.FailedLogRecords += recordCount
 					ar.statsMu.Unlock()
 				} else {
 					ar.statsMu.Lock()
 					ar.stats.Requests++
-					ar.stats.LogRecords += next.LogRecordCount()
+					ar.stats.LogRecords += recordCount
 					ar.statsMu.Unlock()
 				}
 			}

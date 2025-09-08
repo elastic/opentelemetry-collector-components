@@ -20,6 +20,9 @@ jobs:
       contents: write
     env:
       ELASTIC_REGISTRY: "docker.elastic.co/observability-ci/otelbench"
+    strategy:
+      matrix:
+        platform: ["linux/amd64", "linux/arm64"] 
     steps:
       - uses: actions/checkout@v4
 
@@ -42,5 +45,4 @@ jobs:
         working-directory: ./loadgen/cmd/otelbench
         run: |
           export KO_DOCKER_REPO=${{ env.ELASTIC_REGISTRY }}
-          local_platform="linux/$(go env GOARCH)"
-          ko build --bare --platform=$local_platform --tags ${{ env.OTELBENCH_VERSION }}
+          ko build --bare --platform=${{ matrix.platform }} --tags ${{ env.OTELBENCH_VERSION }}
