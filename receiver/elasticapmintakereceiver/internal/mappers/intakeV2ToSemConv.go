@@ -22,14 +22,16 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 import (
 	"strings"
 
-	"github.com/elastic/apm-data/model/modelpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv22 "go.opentelemetry.io/collector/semconv/v1.22.0"
 	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
+
+	"github.com/elastic/apm-data/model/modelpb"
 )
 
 // Translates resource attributes from the Elastic APM model to SemConv resource attributes
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	// TODO: handle case when event.Service is nil
 	attributes.PutStr(semconv.AttributeServiceName, event.Service.Name)
 	attributes.PutStr(semconv.AttributeServiceVersion, event.Service.Version)
 	if event.Service.Language != nil && event.Service.Language.Name != "" {

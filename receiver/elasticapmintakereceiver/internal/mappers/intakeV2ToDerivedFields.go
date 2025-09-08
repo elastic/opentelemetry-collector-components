@@ -24,9 +24,10 @@ import (
 	"fmt"
 	"strings"
 
+	"go.opentelemetry.io/collector/pdata/pcommon"
+
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-lib/elasticattr"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 // Sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
@@ -86,6 +87,7 @@ func SetDerivedFieldsForMetrics(attributes pcommon.Map) {
 func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
 
+	// TODO: handle case when event.Event is nil
 	if strings.EqualFold(event.Event.Outcome, "success") {
 		attributes.PutStr(elasticattr.EventOutcome, "success")
 	} else if strings.EqualFold(event.Event.Outcome, "failure") {

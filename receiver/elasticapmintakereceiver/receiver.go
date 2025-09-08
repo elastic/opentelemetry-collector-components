@@ -331,7 +331,9 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 			r.populateDataPointCommon(&dp, event, timestamp)
 			populateOTelHistogramDataPoint(sample, &dp)
 		case modelpb.MetricType_METRIC_TYPE_SUMMARY:
-			// TODO summaries
+			dp := m.SetEmptySummary().DataPoints().AppendEmpty()
+			r.populateDataPointCommon(&dp, event, timestamp)
+			populateOTelSummaryDataPoint(sample, &dp)
 		default:
 			return fmt.Errorf("unhandled metric type %q", sample.GetType())
 		}
@@ -429,6 +431,32 @@ func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric
 	// explicit bounds are derived from the sample.Histogram.Values, where each value is the upper bound for a bucket.
 	// Except the last bound value which is implied to be +Inf bucket, so it is not set.
 	explicitBounds.FromRaw(apmHistogramValues[:len(apmHistogramValues)-1])
+}
+
+// populateOTelSummaryDataPoint updates the OpenTelemetry SummaryDataPoint with data from the provided Elastic APM summary sample.
+// Assumptions:
+// - the summary count and sum are valid
+//
+// Sets fields: sum, count. All other fields are not set since the Elastic APM summary
+// does not include quantile information.
+func populateOTelSummaryDataPoint(sample *modelpb.MetricsetSample, dp *pmetric.SummaryDataPoint) {
+	summary := sample.GetSummary()
+	if summary == nil {
+		return
+	}
+
+	// count is the number of values in the population. Must be non-negative.
+	dp.SetCount(summary.GetCount())
+
+	// sum of the values in the population. If count is zero then this field
+	// must be zero.
+	//
+	// Note: Sum should only be filled out when measuring non-negative discrete
+	// events, and is assumed to be monotonic over the values of these events.
+	// Negative events *can* be recorded, but sum should not be filled out when
+	// doing so.  This is specifically to enforce compatibility w/ OpenMetrics,
+	// see: https://github.com/prometheus/OpenMetrics/blob/v1.0.0/specification/OpenMetrics.md#summary
+	dp.SetSum(summary.GetSum())
 }
 
 func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) {
