@@ -83,7 +83,17 @@ func Test_Receiver_elasticMetricsToOtelMetrics(t *testing.T) {
 				},
 			},
 		}
-
+		emptyMetricEvent = &modelpb.APMEvent{
+			Metricset: &modelpb.Metricset{
+				Samples: []*modelpb.MetricsetSample{
+					{
+						Name: "",
+						Type: modelpb.MetricType_METRIC_TYPE_HISTOGRAM,
+						Unit: "",
+					},
+				},
+			},
+		}
 		apmMetricSummaryEvent = &modelpb.APMEvent{
 			Event: &modelpb.Event{
 				Outcome: "success",
@@ -200,6 +210,12 @@ func Test_Receiver_elasticMetricsToOtelMetrics(t *testing.T) {
 	emptySummaryDP = summaryMetric3.SetEmptySummary().DataPoints().AppendEmpty()
 	emptySummaryDP.SetTimestamp(pcommon.NewTimestampFromTime(currTime))
 
+	expectedEmptyMetric := pmetric.NewMetrics().ResourceMetrics().AppendEmpty()
+	sm = expectedEmptyMetric.ScopeMetrics().AppendEmpty()
+	emptyMetric := sm.Metrics().AppendEmpty()
+	emptyHistrogramDP := emptyMetric.SetEmptyHistogram().DataPoints().AppendEmpty()
+	emptyHistrogramDP.SetTimestamp(pcommon.NewTimestampFromTime(currTime))
+
 	testCases := []struct {
 		name             string
 		receiver         *elasticAPMIntakeReceiver
@@ -225,6 +241,15 @@ func Test_Receiver_elasticMetricsToOtelMetrics(t *testing.T) {
 			timestamp:        currTime,
 			resourceMetric:   pmetric.NewMetrics().ResourceMetrics().AppendEmpty(),
 			expectedResource: expectedSummaryMetric,
+			expectError:      nil,
+		},
+		{
+			name:             "event with empty metric samples",
+			receiver:         intakeReceiver,
+			apmMetricEvent:   emptyMetricEvent,
+			timestamp:        currTime,
+			resourceMetric:   pmetric.NewMetrics().ResourceMetrics().AppendEmpty(),
+			expectedResource: expectedEmptyMetric,
 			expectError:      nil,
 		},
 	}
