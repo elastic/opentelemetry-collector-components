@@ -310,7 +310,10 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 
 	samples := metricset.GetSamples()
 
-	// TODO interval, doc_count
+	// Ignored metricset fields: interval and doc_count.
+	// Fields are not decoded from input data to modelpb.Metricset, so they will not ever be set:
+	// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go
+	// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/decoder.go
 	for _, sample := range samples {
 		m := sm.Metrics().AppendEmpty()
 		m.SetName(sample.GetName())
