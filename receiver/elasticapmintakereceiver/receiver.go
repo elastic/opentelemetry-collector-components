@@ -339,6 +339,11 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 			r.populateDataPointCommon(&dp, event, timestamp)
 			populateOTelHistogramDataPoint(sample, &dp)
 		case modelpb.MetricType_METRIC_TYPE_SUMMARY:
+			// Note: The apm-data lib will reject a valid summary (contains only a count and sum), so
+			// this apm summaries will not be converted to OTEL.
+			// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go
+			// Validation error:
+			// - `validation error: metricset: samples: requires at least one of the fields 'value;values'`
 			dp := m.SetEmptySummary().DataPoints().AppendEmpty()
 			r.populateDataPointCommon(&dp, event, timestamp)
 			populateOTelSummaryDataPoint(sample, &dp)
