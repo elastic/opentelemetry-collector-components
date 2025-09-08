@@ -76,6 +76,19 @@ func TestAuthenticator(t *testing.T) {
 			}),
 			expectedErr: `error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
 		},
+		"auth_error": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "auth_reason",
+					Reason: func() *string {
+						reason := "auth_reason"
+						return &reason
+					}(),
+				},
+				Status: 401,
+			}),
+			expectedErr: `rpc error: code = Unauthenticated desc = status: 401, failed: [auth_reason], reason: auth_reason`,
+		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
 			expectedErr: `rpc error: code = PermissionDenied desc = API Key "id" unauthorized`,
