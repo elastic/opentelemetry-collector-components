@@ -206,7 +206,7 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	resp, err := req.Do(ctx)
 	if err != nil {
 		if elasticsearchErr, ok := err.(*types.ElasticsearchError); ok {
-			if elasticsearchErr.Status == http.StatusUnauthorized {
+			if elasticsearchErr.Status == http.StatusUnauthorized || elasticsearchErr.Status == http.StatusForbidden {
 				return false, "", nil
 			}
 		}
