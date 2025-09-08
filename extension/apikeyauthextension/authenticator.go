@@ -266,7 +266,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 	if err != nil {
 		if elasticsearchErr, ok := err.(*types.ElasticsearchError); ok {
 			if elasticsearchErr.Status == http.StatusUnauthorized || elasticsearchErr.Status == http.StatusForbidden {
-				return ctx, status.Error(codes.PermissionDenied, err.Error())
+				return ctx, status.Error(codes.Unauthenticated, err.Error())
 			}
 		}
 		return ctx, fmt.Errorf(
