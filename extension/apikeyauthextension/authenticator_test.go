@@ -87,7 +87,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 401,
 			}),
-			expectedErr: `rpc error: code = PermissionDenied desc = API Key "id" unauthorized`,
+			expectedErr: `rpc error: code = PermissionDenied desc = status: 401, failed: [auth_reason], reason: auth_reason`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),

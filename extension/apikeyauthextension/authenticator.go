@@ -205,11 +205,6 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	req.Request(&hasprivileges.Request{Application: applications})
 	resp, err := req.Do(ctx)
 	if err != nil {
-		if elasticsearchErr, ok := err.(*types.ElasticsearchError); ok {
-			if elasticsearchErr.Status == http.StatusUnauthorized || elasticsearchErr.Status == http.StatusForbidden {
-				return false, "", nil
-			}
-		}
 		return false, "", err
 	}
 	return resp.HasAllRequested, resp.Username, nil
@@ -269,6 +264,11 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
+		if elasticsearchErr, ok := err.(*types.ElasticsearchError); ok {
+			if elasticsearchErr.Status == http.StatusUnauthorized || elasticsearchErr.Status == http.StatusForbidden {
+				return ctx, status.Error(codes.PermissionDenied, err.Error())
+			}
+		}
 		return ctx, fmt.Errorf(
 			"error checking privileges for API Key %q: %v", id, err,
 		)
