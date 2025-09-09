@@ -39,10 +39,41 @@ type Config struct {
 	// Embed the rate limit settings
 	RateLimitSettings `mapstructure:",squash"`
 
+	// DynamicRateLimiting holds the dynamic rate limiting configuration.
+	// This is only applicable when the rate limiter type is "gubernator".
+	DynamicRateLimiting `mapstructure:"dynamic_limits"`
+
 	// Overrides holds a list of overrides for the rate limiter.
 	//
 	// Defaults to empty
 	Overrides map[string]RateLimitOverrides `mapstructure:"overrides"`
+}
+
+// DynamicRateLimiting defines settings for dynamic rate limiting.
+type DynamicRateLimiting struct {
+	// Enabled tells the processor to use dynamic rate limiting.
+	Enabled bool `mapstructure:"enabled"`
+	// WindowMultiplier is the factor by which the previous window rate is
+	// multiplied to get the dynamic part of the limit. Defaults to 1.3.
+	WindowMultiplier float64 `mapstructure:"window_multiplier"`
+	// WindowDuration defines the time window for which the dynamic rate limit
+	// is calculated on.
+	WindowDuration time.Duration `mapstructure:"window_duration"`
+}
+
+// Validate checks the DynamicRateLimiting configuration.
+func (d *DynamicRateLimiting) Validate() error {
+	if !d.Enabled {
+		return nil
+	}
+	var errs []error
+	if d.WindowMultiplier < 1 {
+		errs = append(errs, errors.New("window_multiplier must be greater than or equal to 1"))
+	}
+	if d.WindowDuration <= 0 {
+		errs = append(errs, errors.New("window_duration must be greater than zero"))
+	}
+	return errors.Join(errs...)
 }
 
 // RateLimitSettings holds the core rate limiting configuration.
@@ -67,9 +98,14 @@ type RateLimitSettings struct {
 	//
 	// Defaults to 1s
 	ThrottleInterval time.Duration `mapstructure:"throttle_interval"`
+
+	disableDynamic bool `mapstructure:"-"`
 }
 
 type RateLimitOverrides struct {
+	// Rate holds the override rate limit.
+	StaticOnly bool `mapstructure:"static_only"`
+
 	// Rate holds bucket refill rate, in tokens per second.
 	Rate *int `mapstructure:"rate"`
 
@@ -86,6 +122,19 @@ type RateLimitOverrides struct {
 
 // Strategy identifies the rate-limiting strategy: requests, records, or bytes.
 type Strategy string
+
+func (s Strategy) String() string {
+	switch s {
+	case StrategyRateLimitRequests:
+		return "requests_per_sec"
+	case StrategyRateLimitRecords:
+		return "records_per_sec"
+	case StrategyRateLimitBytes:
+		return "bytes_per_sec"
+	default:
+		return string(s) // NOTE(marclop) shouldn't happen due to validation.
+	}
+}
 
 const (
 	// StrategyRateLimitRequests identifies the strategy for
@@ -144,6 +193,10 @@ func createDefaultConfig() component.Config {
 			ThrottleBehavior: ThrottleBehaviorError,
 			ThrottleInterval: DefaultThrottleInterval,
 		},
+		DynamicRateLimiting: DynamicRateLimiting{
+			WindowMultiplier: 1.3,
+			WindowDuration:   2 * time.Minute,
+		},
 	}
 }
 
@@ -162,6 +215,9 @@ func resolveRateLimitSettings(cfg *Config, uniqueKey string) RateLimitSettings {
 		}
 		if override.ThrottleInterval != nil {
 			result.ThrottleInterval = *override.ThrottleInterval
+		}
+		if override.StaticOnly {
+			result.disableDynamic = true
 		}
 	}
 	return result
@@ -209,6 +265,11 @@ func (config *Config) Validate() error {
 	var errs []error
 	if err := config.RateLimitSettings.Validate(); err != nil {
 		errs = append(errs, err)
+	}
+	if config.Type == GubernatorRateLimiter {
+		if err := config.DynamicRateLimiting.Validate(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	for key, override := range config.Overrides {
 		if err := override.Validate(); err != nil {
