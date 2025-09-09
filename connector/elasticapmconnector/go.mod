@@ -12,6 +12,7 @@ require (
 	go.opentelemetry.io/collector/client v1.41.0
 	go.opentelemetry.io/collector/component v1.41.0
 	go.opentelemetry.io/collector/component/componenttest v0.135.0
+	go.opentelemetry.io/collector/config/configoptional v0.135.0
 	go.opentelemetry.io/collector/confmap v1.41.0
 	go.opentelemetry.io/collector/confmap/xconfmap v0.135.0
 	go.opentelemetry.io/collector/connector v0.135.0
@@ -85,7 +86,6 @@ require (
 	github.com/ua-parser/uap-go v0.0.0-20240611065828-3a4781585db6 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector/component/componentstatus v0.135.0 // indirect
-	go.opentelemetry.io/collector/config/configoptional v0.135.0 // indirect
 	go.opentelemetry.io/collector/connector/xconnector v0.135.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.135.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.41.0 // indirect
