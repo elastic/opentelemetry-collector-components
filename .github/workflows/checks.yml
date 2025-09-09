@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
@@ -51,7 +51,7 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
@@ -105,7 +105,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
@@ -128,7 +128,7 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
@@ -177,7 +177,7 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
           cache: false
@@ -240,7 +240,7 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false

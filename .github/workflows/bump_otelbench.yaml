@@ -64,7 +64,7 @@ jobs:
         with:
           github-token: ${{ steps.get_token.outputs.token }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: internal/tools/go.mod
           cache: 'false'
