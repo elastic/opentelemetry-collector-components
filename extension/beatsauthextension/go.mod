@@ -1,16 +1,15 @@
 module github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension
 
-go 1.23.8
+go 1.23.10
 
 require (
 	github.com/elastic/elastic-agent-libs v0.21.6
 	github.com/stretchr/testify v1.10.0
-	github.com/tj/assert v0.0.3
+	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.1
 	go.opentelemetry.io/collector/component v1.36.0
 	go.opentelemetry.io/collector/component/componenttest v0.130.0
 	go.opentelemetry.io/collector/config/configauth v0.130.0
 	go.opentelemetry.io/collector/config/confighttp v0.130.0
-	go.opentelemetry.io/collector/config/configopaque v1.36.0
 	go.opentelemetry.io/collector/config/configoptional v0.130.0
 	go.opentelemetry.io/collector/confmap v1.36.0
 	go.opentelemetry.io/collector/extension v1.36.0
@@ -21,15 +20,19 @@ require (
 )
 
 require (
+	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/elastic/go-sysinfo v1.14.0 // indirect
 	github.com/elastic/go-ucfg v0.8.5 // indirect
+	github.com/elastic/go-windows v1.0.1 // indirect
 	github.com/elastic/pkcs8 v1.0.0 // indirect
+	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/foxboron/go-tpm-keyfiles v0.0.0-20250323135004-b31fac66206e // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-viper/mapstructure/v2 v2.3.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
@@ -40,17 +43,24 @@ require (
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
 	github.com/knadh/koanf/v2 v2.2.1 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/prometheus/procfs v0.13.0 // indirect
 	github.com/rs/cors v1.11.1 // indirect
+	go.elastic.co/apm/module/apmhttp/v2 v2.7.1 // indirect
+	go.elastic.co/apm/v2 v2.7.1 // indirect
 	go.elastic.co/ecszap v1.0.2 // indirect
+	go.elastic.co/fastjson v1.5.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector/client v1.36.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.36.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v0.130.0 // indirect
+	go.opentelemetry.io/collector/config/configopaque v1.36.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v1.36.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.130.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.36.0 // indirect
@@ -75,4 +85,5 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	howett.net/plist v1.0.1 // indirect
 )
