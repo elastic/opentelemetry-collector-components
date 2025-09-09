@@ -18,10 +18,10 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -50,10 +50,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -103,11 +103,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -127,10 +127,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -169,15 +169,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.23.x", "1.24.x"] # 1.20 is interpreted as 1.2 without quotes
+        go-version: [oldstable, stable]
         runner: [ubuntu-latest]
         group:
           - all
     runs-on: ${{ matrix.runner }}
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
           cache: false
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build testing component's collector and validate example configuration
         run: make elasticcol-validate
       - name: Validate otelsoak example config
@@ -239,10 +239,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache

@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"net/http"
 	"strings"
 
 	"go.opentelemetry.io/collector/client"
@@ -263,6 +264,11 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
+		if elasticsearchErr, ok := err.(*types.ElasticsearchError); ok {
+			if elasticsearchErr.Status == http.StatusUnauthorized || elasticsearchErr.Status == http.StatusForbidden {
+				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			}
+		}
 		return ctx, fmt.Errorf(
 			"error checking privileges for API Key %q: %v", id, err,
 		)
