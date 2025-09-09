@@ -51,7 +51,7 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 
 	parsedCfg, err := config.NewConfigFrom(cfg.BeatAuthconfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed creating config: %w", err)
 	}
 
 	beatAuthConfig := httpcommon.HTTPTransportSettings{}
