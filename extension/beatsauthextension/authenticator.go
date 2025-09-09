@@ -22,8 +22,10 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/elastic/elastic-agent-libs/config"
 	"github.com/elastic/elastic-agent-libs/logp"
-	"github.com/elastic/elastic-agent-libs/transport/tlscommon"
+	"github.com/elastic/elastic-agent-libs/transport/httpcommon"
+	"go.elastic.co/apm/module/apmelasticsearch/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/extensionauth"
@@ -35,10 +37,10 @@ var _ extensionauth.GRPCClient = (*authenticator)(nil)
 var _ extension.Extension = (*authenticator)(nil)
 
 type authenticator struct {
-	cfg       *Config
-	telemetry component.TelemetrySettings
-	tlsConfig *tlscommon.TLSConfig // set by Start
-	logger    *logp.Logger
+	telemetry    component.TelemetrySettings
+	httpSettings httpcommon.HTTPTransportSettings
+	logger       *logp.Logger
+	client       *http.Client
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
@@ -46,21 +48,26 @@ func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*auth
 	if err != nil {
 		return nil, err
 	}
-	return &authenticator{cfg: cfg, telemetry: telemetry, logger: logger}, nil
+
+	parsedCfg, err := config.NewConfigFrom(cfg.BeatAuthconfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating config: %w", err)
+	}
+
+	beatAuthConfig := httpcommon.HTTPTransportSettings{}
+	err = parsedCfg.Unpack(&beatAuthConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed unpacking config: %w", err)
+	}
+
+	return &authenticator{httpSettings: beatAuthConfig, telemetry: telemetry, logger: logger}, nil
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-	if a.cfg.TLS != nil {
-
-		tlsConfig, err := tlscommon.LoadTLSConfig(&tlscommon.Config{
-			VerificationMode:     tlsVerificationModes[a.cfg.TLS.VerificationMode],
-			CATrustedFingerprint: a.cfg.TLS.CATrustedFingerprint,
-			CASha256:             a.cfg.TLS.CASha256,
-		}, a.logger)
-		if err != nil {
-			return err
-		}
-		a.tlsConfig = tlsConfig
+	var err error
+	a.client, err = a.httpSettings.Client(a.getHTTPOptions()...)
+	if err != nil {
+		return fmt.Errorf("could not create http client: %w", err)
 	}
 	return nil
 }
@@ -70,36 +77,22 @@ func (a *authenticator) Shutdown(ctx context.Context) error {
 }
 
 func (a *authenticator) RoundTripper(base http.RoundTripper) (http.RoundTripper, error) {
-	// At the time of writing, client.Transport is guaranteed to always have type *http.Transport.
-	// If this assumption is ever broken, we would need to create and use our own transport, and
-	// ignore the one passed in.
-	httpTransport, ok := base.(*http.Transport)
-	if !ok {
-		return nil, fmt.Errorf("http.Roundripper is not of type *http.Transport")
-	}
-	if err := a.configureTransport(httpTransport); err != nil {
-		return nil, err
-	}
-	return httpTransport, nil
+	return a.client.Transport, nil
 }
 
-func (a *authenticator) configureTransport(transport *http.Transport) error {
-
-	if a.tlsConfig != nil {
-
-		// copy incoming CertPool into our tls config
-		// because ca_trusted_fingerprint will be appended to CertPool
-		tlsConfig := *a.tlsConfig // copy before updating, configureTransport may be called concurrently
-		tlsConfig.RootCAs = transport.TLSClientConfig.RootCAs
-
-		beatTLSConfig := tlsConfig.BuildModuleClientConfig(transport.TLSClientConfig.ServerName)
-
-		transport.TLSClientConfig.VerifyConnection = beatTLSConfig.VerifyConnection
-		transport.TLSClientConfig.InsecureSkipVerify = beatTLSConfig.InsecureSkipVerify
-
+// getHTTPOptions returns a list of http transport options
+// these options are derived from beats codebase Ref: https://github.com/elastic/beats/blob/4dfef8b/libbeat/esleg/eslegclient/connection.go#L163-L171
+// httpcommon.WithIOStats(s.Observer) is omitted as we do not have access to observer here
+// httpcommon.WithHeaderRoundTripper with user-agent is also omitted as we continue to use ES exporter's user-agent
+func (a *authenticator) getHTTPOptions() []httpcommon.TransportOption {
+	return []httpcommon.TransportOption{
+		httpcommon.WithLogger(a.logger),
+		httpcommon.WithKeepaliveSettings{IdleConnTimeout: a.httpSettings.IdleConnTimeout},
+		httpcommon.WithModRoundtripper(func(rt http.RoundTripper) http.RoundTripper {
+			return apmelasticsearch.WrapRoundTripper(rt)
+		}),
 	}
 
-	return nil
 }
 
 func (a *authenticator) PerRPCCredentials() (credentials.PerRPCCredentials, error) {
