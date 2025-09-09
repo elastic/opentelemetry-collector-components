@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -107,7 +107,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -130,7 +130,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -169,7 +169,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: ["1.23.x", "1.24.x"] # 1.20 is interpreted as 1.2 without quotes
+        go-version: [oldstable, stable]
         runner: [ubuntu-latest]
         group:
           - all
@@ -242,7 +242,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23.10"
+          go-version: oldstable
           cache: false
       - name: Cache Go
         id: go-cache
