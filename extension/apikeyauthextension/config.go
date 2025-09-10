@@ -57,6 +57,12 @@ type CacheConfig struct {
 	// are missing from the request, an error will be returned.
 	KeyHeaders []string `mapstructure:"key_headers,omitempty"`
 
+	// KeyMetadata holds an optional set of client metadata keys to
+	// include in the cache key, for partitioning the API Key space.
+	// If any keys are missing from the client metadata, an error
+	// will be returned.
+	KeyMetadata []string `mapstructure:"key_metadata,omitempty"`
+
 	// PBKDF2Iterations defines the iteration count for PBKDF2
 	// for key derivation in cached API Keys.
 	PBKDF2Iterations int `mapstructure:"pbkdf2_iterations,omitempty"`
