@@ -17,11 +17,11 @@ jobs:
     # dismiss PRs from dependabot and elastic-renovate-prod
     if: ${{ github.actor != 'dependabot[bot]' && github.actor != 'elastic-renovate-prod[bot]'}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # we need the commit history
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: internal/tools/go.mod
           cache: 'false'
