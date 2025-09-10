@@ -18,8 +18,8 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
@@ -50,8 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
@@ -103,9 +103,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
@@ -127,8 +127,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
@@ -176,8 +176,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
           cache: false
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build testing component's collector and validate example configuration
         run: make elasticcol-validate
       - name: Validate otelsoak example config
@@ -239,8 +239,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup-environment]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: oldstable
           cache: false
