@@ -1,0 +1,15 @@
+type: dynamicrouting
+scope_name: github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: connector
+  stability:
+    development:
+      - logs_to_logs
+      - metrics_to_metrics
+      - traces_to_traces
+  distributions: []
+
+tests:
+  config:
