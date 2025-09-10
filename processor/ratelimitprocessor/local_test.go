@@ -84,8 +84,8 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 			case ThrottleBehaviorError:
 				assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 				// retry every 20ms to ensure that RateLimit will recover from error when bucket refills after 1 second
-				assert.Eventually(t, func() bool {
-					return rateLimiter.RateLimit(context.Background(), 1) == nil
+				assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+					assert.NoError(collect, rateLimiter.RateLimit(context.Background(), 1))
 				}, 2*time.Second, 20*time.Millisecond)
 			case ThrottleBehaviorDelay:
 				assert.NoError(t, err)
