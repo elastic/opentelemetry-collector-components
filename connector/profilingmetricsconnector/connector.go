@@ -109,7 +109,7 @@ type origin struct {
 func (c *profilesToMetricsConnector) extractMetricsFromProfiles(profiles pprofile.Profiles) pmetric.Metrics {
 	metrics := pmetric.NewMetrics()
 
-	dictionary := profiles.ProfilesDictionary()
+	dictionary := profiles.Dictionary()
 	resourceProfiles := profiles.ResourceProfiles().All()
 	for _, resourceProfile := range resourceProfiles {
 		resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
