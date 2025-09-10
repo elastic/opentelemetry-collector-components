@@ -427,8 +427,8 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 		require.NoError(t, err)
 
 		// ES writes might are not immediately available
-		assert.Eventually(t, func() bool {
-			return assert.NoError(t, createApmConfigIndex(esClient, esEndpoint))
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			assert.NoError(collect, createApmConfigIndex(esClient, esEndpoint))
 		}, 2*time.Minute, 20*time.Second)
 
 		extFactory := NewFactory()
@@ -467,25 +467,29 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 					require.NoError(t, err)
 
 					// Internal cache takes some time to be modified
-					assert.Eventually(t, func() bool {
+					assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 						r, err := http.NewRequest("POST", "http://"+opAMPTestEndpoint+"/v1/opamp", bytes.NewBuffer(data))
 						require.NoError(t, err)
 
 						r.Header.Add("Content-Type", "application/x-protobuf")
 						res, err := http.DefaultClient.Do(r)
-						require.NoError(t, err)
+						require.NoError(collect, err)
 
 						bodyBytes, err := io.ReadAll(res.Body)
-						require.NoError(t, err)
+						require.NoError(collect, err)
 
-						require.NoError(t, res.Body.Close())
+						require.NoError(collect, res.Body.Close())
 
 						var actualMessage protobufs.ServerToAgent
 						err = proto.Unmarshal(bodyBytes, &actualMessage)
-						require.NoError(t, err)
+						require.NoError(collect, err)
 
 						expectedMessage := tt.opampMessages[i].expectedServerToAgent
-						return assert.Equal(t, expectedMessage.GetInstanceUid(), actualMessage.GetInstanceUid()) && assert.Equal(t, expectedMessage.GetFlags(), actualMessage.GetFlags()) && assert.Equal(t, expectedMessage.GetErrorResponse(), actualMessage.GetErrorResponse()) && assert.Equal(t, expectedMessage.GetCapabilities(), actualMessage.GetCapabilities()) && assert.Equal(t, expectedMessage.GetRemoteConfig(), actualMessage.GetRemoteConfig())
+						assert.Equal(collect, expectedMessage.GetInstanceUid(), actualMessage.GetInstanceUid())
+						assert.Equal(collect, expectedMessage.GetFlags(), actualMessage.GetFlags())
+						assert.Equal(collect, expectedMessage.GetErrorResponse(), actualMessage.GetErrorResponse())
+						assert.Equal(collect, expectedMessage.GetCapabilities(), actualMessage.GetCapabilities())
+						assert.Equal(collect, expectedMessage.GetRemoteConfig(), actualMessage.GetRemoteConfig())
 					}, 30*time.Second, 1*time.Second)
 				}
 			})
