@@ -26,8 +26,10 @@ package datatest // import "github.com/elastic/opentelemetry-collector-component
 import (
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data/datatest/compare"
@@ -140,7 +142,7 @@ func equal(tb testing.TB, want, got any, name string) bool {
 	}
 
 	// fallback to a full deep-equal for rare cases (unexported fields, etc)
-	if diff := compare.Diff(want, got); diff != "" {
+	if diff := compare.Diff(want, got, cmpopts.IgnoreUnexported(atomic.Int32{})); diff != "" {
 		tb.Error(diff)
 		return false
 	}
