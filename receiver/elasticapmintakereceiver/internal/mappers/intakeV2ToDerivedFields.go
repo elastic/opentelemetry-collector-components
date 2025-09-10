@@ -24,10 +24,9 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/collector/pdata/pcommon"
-
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-lib/elasticattr"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 // Sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input

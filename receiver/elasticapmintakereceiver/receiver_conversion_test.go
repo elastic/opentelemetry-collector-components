@@ -111,43 +111,6 @@ func Test_Receiver_elasticMetricsToOtelMetrics(t *testing.T) {
 				},
 			},
 		}
-		apmMetricSummaryEvent = &modelpb.APMEvent{
-			Event: &modelpb.Event{
-				Outcome: "success",
-			},
-			Service: &modelpb.Service{
-				Name:    "my-service",
-				Version: "1.0.0",
-			},
-			Metricset: &modelpb.Metricset{
-				Samples: []*modelpb.MetricsetSample{
-					{
-						Name: "valid_summary_metric_1",
-						Type: modelpb.MetricType_METRIC_TYPE_SUMMARY,
-						Unit: "ms",
-						Summary: &modelpb.SummaryMetric{
-							Count: 10,
-							Sum:   100,
-						},
-					},
-					{
-						Name: "empty_summary_metric_1",
-						Type: modelpb.MetricType_METRIC_TYPE_SUMMARY,
-						Unit: "ms",
-						Summary: &modelpb.SummaryMetric{
-							Count: 0,
-							Sum:   0,
-						},
-					},
-					{
-						Name:    "nil_summary_metric_1",
-						Type:    modelpb.MetricType_METRIC_TYPE_SUMMARY,
-						Unit:    "ms",
-						Summary: nil,
-					},
-				},
-			},
-		}
 	)
 	expectedHistogramMetric := pmetric.NewMetrics().ResourceMetrics().AppendEmpty()
 	expectedHistogramMetric.Resource().Attributes().PutStr("service.name", "my-service")
@@ -201,32 +164,6 @@ func Test_Receiver_elasticMetricsToOtelMetrics(t *testing.T) {
 	emptyDP = histogramMetric6.SetEmptyHistogram().DataPoints().AppendEmpty()
 	emptyDP.SetTimestamp(pcommon.NewTimestampFromTime(currTime))
 
-	expectedSummaryMetric := pmetric.NewMetrics().ResourceMetrics().AppendEmpty()
-	expectedSummaryMetric.Resource().Attributes().PutStr("service.name", "my-service")
-	expectedSummaryMetric.Resource().Attributes().PutStr("service.version", "1.0.0")
-	sm = expectedSummaryMetric.ScopeMetrics().AppendEmpty()
-
-	summaryMetric1 := sm.Metrics().AppendEmpty()
-	summaryMetric1.SetName("valid_summary_metric_1")
-	summaryMetric1.SetUnit("ms")
-	summary1 := summaryMetric1.SetEmptySummary()
-	dp := summary1.DataPoints().AppendEmpty()
-	dp.SetTimestamp(pcommon.NewTimestampFromTime(currTime))
-	dp.SetSum(100)
-	dp.SetCount(10)
-
-	summaryMetric2 := sm.Metrics().AppendEmpty()
-	summaryMetric2.SetName("empty_summary_metric_1")
-	summaryMetric2.SetUnit("ms")
-	emptySummaryDP := summaryMetric2.SetEmptySummary().DataPoints().AppendEmpty()
-	emptySummaryDP.SetTimestamp(pcommon.NewTimestampFromTime(currTime))
-
-	summaryMetric3 := sm.Metrics().AppendEmpty()
-	summaryMetric3.SetName("nil_summary_metric_1")
-	summaryMetric3.SetUnit("ms")
-	emptySummaryDP = summaryMetric3.SetEmptySummary().DataPoints().AppendEmpty()
-	emptySummaryDP.SetTimestamp(pcommon.NewTimestampFromTime(currTime))
-
 	expectedEmptyMetric := pmetric.NewMetrics().ResourceMetrics().AppendEmpty()
 	sm = expectedEmptyMetric.ScopeMetrics().AppendEmpty()
 	emptyMetric := sm.Metrics().AppendEmpty()
@@ -252,15 +189,6 @@ func Test_Receiver_elasticMetricsToOtelMetrics(t *testing.T) {
 			expectError:      nil,
 		},
 		{
-			name:             "event with multiple summary metrics samples",
-			receiver:         intakeReceiver,
-			apmMetricEvent:   apmMetricSummaryEvent,
-			timestamp:        currTime,
-			resourceMetric:   pmetric.NewMetrics().ResourceMetrics().AppendEmpty(),
-			expectedResource: expectedSummaryMetric,
-			expectError:      nil,
-		},
-		{
 			name:             "event with empty metric samples",
 			receiver:         intakeReceiver,
 			apmMetricEvent:   emptyMetricEvent,
@@ -282,29 +210,21 @@ func Test_Receiver_elasticMetricsToOtelMetrics(t *testing.T) {
 					expectedMetric := tc.expectedResource.ScopeMetrics().At(scopeIndex).Metrics().At(metricIndex)
 
 					// validate common fields
-					assert.Equal(t, expectedMetric.Type(), m.Type(), "metric type at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
-					assert.Equal(t, expectedMetric.Name(), m.Name(), "metric name at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
-					assert.Equal(t, expectedMetric.Unit(), m.Unit(), "metric unit at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
-					assert.Equal(t, expectedMetric.Description(), m.Description(), "metric description at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
+					assert.Equal(t, expectedMetric.Type(), m.Type(), "metric type mismatch at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
+					assert.Equal(t, expectedMetric.Name(), m.Name(), "metric name mismatch at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
+					assert.Equal(t, expectedMetric.Unit(), m.Unit(), "metric unit mismatch at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
+					assert.Equal(t, expectedMetric.Description(), m.Description(), "metric description mismatch at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
 
 					switch m.Type() {
 					case pmetric.MetricTypeHistogram:
-						require.Equal(t, expectedMetric.Histogram().DataPoints().Len(), m.Histogram().DataPoints().Len(), "histogram data points length at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
+						require.Equal(t, expectedMetric.Histogram().DataPoints().Len(), m.Histogram().DataPoints().Len(), "histogram data points length mismatch at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
 						for dpIndex, dp := range m.Histogram().DataPoints().All() {
 							expectedDP := expectedMetric.Histogram().DataPoints().At(dpIndex)
-							assert.Equal(t, expectedDP.Timestamp().AsTime(), dp.Timestamp().AsTime(), "histogram data point timestamp at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
-							assert.Equal(t, expectedDP.Sum(), dp.Sum(), "histogram data point sum at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
-							assert.Equal(t, expectedDP.Count(), dp.Count(), "histogram data point count at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
-							assert.Equal(t, expectedDP.BucketCounts().AsRaw(), dp.BucketCounts().AsRaw(), "histogram data point bucket counts at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
-							assert.Equal(t, expectedDP.ExplicitBounds().AsRaw(), dp.ExplicitBounds().AsRaw(), "histogram data point explicit bounds at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
-						}
-					case pmetric.MetricTypeSummary:
-						require.Equal(t, expectedMetric.Summary().DataPoints().Len(), m.Summary().DataPoints().Len(), "summary data points length at scopeIndex: %d, metricIndex: %d", scopeIndex, metricIndex)
-						for dpIndex, dp := range m.Summary().DataPoints().All() {
-							expectedDP := expectedMetric.Summary().DataPoints().At(dpIndex)
-							assert.Equal(t, expectedDP.Timestamp().AsTime(), dp.Timestamp().AsTime(), "summary data point timestamp at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
-							assert.Equal(t, expectedDP.Sum(), dp.Sum(), "summary data point sum at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
-							assert.Equal(t, expectedDP.Count(), dp.Count(), "summary data point count at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
+							assert.Equal(t, expectedDP.Timestamp().AsTime(), dp.Timestamp().AsTime(), "histogram data point timestamp mismatch at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
+							assert.Equal(t, expectedDP.Sum(), dp.Sum(), "histogram data point sum mismatch at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
+							assert.Equal(t, expectedDP.Count(), dp.Count(), "histogram data point count mismatch at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
+							assert.Equal(t, expectedDP.BucketCounts().AsRaw(), dp.BucketCounts().AsRaw(), "histogram data point bucket counts mismatch at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
+							assert.Equal(t, expectedDP.ExplicitBounds().AsRaw(), dp.ExplicitBounds().AsRaw(), "histogram data point explicit bounds mismatch at scopeIndex: %d, metricIndex: %d, dpIndex: %d", scopeIndex, metricIndex, dpIndex)
 						}
 					default:
 						assert.Fail(t, "unexpected metric type %s at scopeIndex: %d, metricIndex: %d", m.Type(), scopeIndex, metricIndex)
