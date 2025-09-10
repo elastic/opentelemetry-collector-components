@@ -58,8 +58,8 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 
 	// Create a profiles object that will result in at least one metric.
 	profiles := pprofile.NewProfiles()
-	profiles.ProfilesDictionary().StringTable().Append("sample")
-	profiles.ProfilesDictionary().StringTable().Append("count")
+	profiles.Dictionary().StringTable().Append("sample")
+	profiles.Dictionary().StringTable().Append("count")
 
 	// Add a ResourceProfile with one ScopeProfile and one Profile with one sample.
 	resProf := profiles.ResourceProfiles().AppendEmpty()
@@ -93,8 +93,8 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 
 	// Create a profiles object with a sample that has a location with a frame type attribute.
 	profiles := pprofile.NewProfiles()
-	profiles.ProfilesDictionary().StringTable().Append("sample")
-	profiles.ProfilesDictionary().StringTable().Append("count")
+	profiles.Dictionary().StringTable().Append("sample")
+	profiles.Dictionary().StringTable().Append("count")
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
@@ -104,7 +104,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	sample := prof.Sample().AppendEmpty()
 
 	// Setup dictionary tables
-	dict := profiles.ProfilesDictionary()
+	dict := profiles.Dictionary()
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
 
@@ -172,8 +172,8 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	}
 
 	profiles := pprofile.NewProfiles()
-	profiles.ProfilesDictionary().StringTable().Append("sample")
-	profiles.ProfilesDictionary().StringTable().Append("count")
+	profiles.Dictionary().StringTable().Append("sample")
+	profiles.Dictionary().StringTable().Append("count")
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
@@ -181,7 +181,7 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
 
-	dict := profiles.ProfilesDictionary()
+	dict := profiles.Dictionary()
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
 
@@ -280,8 +280,8 @@ func TestConsumeProfiles_ConsumeMetricsError(t *testing.T) {
 
 	// Create a profiles object that will result in at least one metric.
 	profiles := pprofile.NewProfiles()
-	profiles.ProfilesDictionary().StringTable().Append("sample")
-	profiles.ProfilesDictionary().StringTable().Append("count")
+	profiles.Dictionary().StringTable().Append("sample")
+	profiles.Dictionary().StringTable().Append("count")
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
@@ -309,7 +309,7 @@ func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 
 	// Setup dictionary tables
 	profiles := pprofile.NewProfiles()
-	dict := profiles.ProfilesDictionary()
+	dict := profiles.Dictionary()
 	strTable := dict.StringTable()
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
