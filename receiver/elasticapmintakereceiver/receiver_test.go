@@ -453,6 +453,7 @@ func TestMetrics(t *testing.T) {
 		outputExpectedYamlFileName string
 	}{
 		{"metricsets.ndjson", "metricsets_expected.yaml"},
+		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
