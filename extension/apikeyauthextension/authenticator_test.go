@@ -187,7 +187,12 @@ func TestAuthenticator_Caching(t *testing.T) {
 }
 
 func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
-	srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse))
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		h := newCannedHasPrivilegesHandler(successfulResponse)
+		h.ServeHTTP(w, r)
+		calls++
+	})
 	config := createDefaultConfig().(*Config)
 	config.Cache.KeyHeaders = []string{"X-Tenant-Id"}
 	authenticator := newTestAuthenticator(t, srv, config)
@@ -206,6 +211,7 @@ func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
 	clientInfo := client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 1, calls)
 
 	// Different x-tenant-id header value should result in a cache miss,
 	// despite the API Key ID being the same.
@@ -217,10 +223,16 @@ func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
 	clientInfo = client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 2, calls)
 }
 
 func TestAuthenticator_CacheKeyMetadata(t *testing.T) {
-	srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse))
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		h := newCannedHasPrivilegesHandler(successfulResponse)
+		h.ServeHTTP(w, r)
+		calls++
+	})
 	config := createDefaultConfig().(*Config)
 	config.Cache.KeyMetadata = []string{"X-Tenant-Id"}
 	authenticator := newTestAuthenticator(t, srv, config)
@@ -243,6 +255,7 @@ func TestAuthenticator_CacheKeyMetadata(t *testing.T) {
 	clientInfo := client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 1, calls)
 
 	// Different x-tenant-id header value should result in a cache miss,
 	// despite the API Key ID being the same.
@@ -258,6 +271,7 @@ func TestAuthenticator_CacheKeyMetadata(t *testing.T) {
 	clientInfo = client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 2, calls)
 }
 
 func TestAuthenticator_CacheTTL(t *testing.T) {
