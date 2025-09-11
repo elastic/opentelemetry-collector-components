@@ -211,7 +211,11 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 }
 
 // getCacheKey computes a cache key for the given API Key ID and headers.
-func (a *authenticator) getCacheKey(id string, headers map[string][]string) (string, error) {
+func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[string][]string) (string, error) {
+	var clientMetadata client.Metadata
+	if len(a.config.Cache.KeyMetadata) != 0 {
+		clientMetadata = client.FromContext(ctx).Metadata
+	}
 	key := id
 	for _, header := range a.config.Cache.KeyHeaders {
 		value, ok := getHeader(headers, header, strings.ToLower(header))
@@ -219,6 +223,13 @@ func (a *authenticator) getCacheKey(id string, headers map[string][]string) (str
 			return "", fmt.Errorf("error computing cache key: missing header %q", header)
 		}
 		key += " " + value
+	}
+	for _, metadataKey := range a.config.Cache.KeyMetadata {
+		values := clientMetadata.Get(metadataKey)
+		if len(values) == 0 {
+			return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
+		}
+		key += " " + values[0]
 	}
 	return key, nil
 }
@@ -235,7 +246,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 		return ctx, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	cacheKey, err := a.getCacheKey(id, headers)
+	cacheKey, err := a.getCacheKey(ctx, id, headers)
 	if err != nil {
 		return ctx, err
 	}
