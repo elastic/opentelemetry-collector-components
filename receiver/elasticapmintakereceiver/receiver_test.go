@@ -644,8 +644,10 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 	sendInput(t, inputJsonFileName, testEndpoint)
 	actualTraces := nextTrace.AllTraces()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
-	// Use this line to generate the expected yaml file:
-	// golden.WriteTraces(t, expectedFile, actualTraces)
+	if *update {
+		err := golden.WriteTraces(t, expectedFile, actualTraces)
+		require.NoError(t, err)
+	}
 	expectedTraces, err := golden.ReadTraces(expectedFile)
 	require.NoError(t, err)
 	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
@@ -677,8 +679,10 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 	sendInput(t, inputJsonFileName, testEndpoint)
 	actualMetrics := nextMetric.AllMetrics()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
-	// Use this line to generate the expected yaml file:
-	// golden.WriteMetrics(t, expectedFile, actualMetrics)
+	if *update {
+		err := golden.WriteMetrics(t, expectedFile, actualMetrics, golden.SkipMetricTimestampNormalization())
+		require.NoError(t, err)
+	}
 	expectedMetrics, err := golden.ReadMetrics(expectedFile)
 	require.NoError(t, err)
 	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics, pmetrictest.IgnoreMetricsOrder()))
