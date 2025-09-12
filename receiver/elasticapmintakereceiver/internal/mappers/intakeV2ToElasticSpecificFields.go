@@ -21,9 +21,10 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
+	"go.opentelemetry.io/collector/pdata/pcommon"
+
 	"github.com/elastic/apm-data/model/modelpb"
 	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 // Sets fields on spans that are not defined by OTel.
@@ -64,7 +65,12 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 			attributesMap.PutStr(attr.CloudProjectName, event.Cloud.ProjectName)
 		}
 	}
-	if event.Faas.TriggerRequestId != "" {
-		attributesMap.PutStr(attr.TriggerRequestId, event.Faas.TriggerRequestId)
+	if event.Faas != nil {
+		if event.Faas.TriggerRequestId != "" {
+			attributesMap.PutStr(attr.TriggerRequestId, event.Faas.TriggerRequestId)
+		}
+		if event.Faas.Execution != "" {
+			attributesMap.PutStr(attr.FaaSExecution, event.Faas.Execution)
+		}
 	}
 }

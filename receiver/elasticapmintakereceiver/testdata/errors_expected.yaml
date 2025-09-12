@@ -7,12 +7,33 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: agent.ephemeral_id
+          value:
+            stringValue: abcdef123
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ecmascript
         - key: service.language.version
           value:
             stringValue: "1.2"
+        - key: service.framework.name
+          value:
+            stringValue: Node
+        - key: service.framework.version
+          value:
+            stringValue: "1"
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
         - key: service.name
           value:
             stringValue: service1
@@ -88,6 +109,12 @@ resourceLogs:
         - key: client.address
           value:
             stringValue: v4:204803073
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
     scopeLogs:
       - logRecords:
           - attributes:
@@ -124,11 +151,12 @@ resourceLogs:
               - key: error.exception.code
                 value:
                   stringValue: "42"
+              - key: process.title
+                value:
+                  stringValue: node
             body:
               stringValue: My service could not talk to the database named foobar
-            spanId: ""
             timeUnixNano: "1494342245999999000"
-            traceId: ""
         scope: {}
   - resource:
       attributes:
@@ -138,12 +166,33 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: agent.ephemeral_id
+          value:
+            stringValue: abcdef123
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ecmascript
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -219,6 +268,12 @@ resourceLogs:
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
     scopeLogs:
       - logRecords:
           - attributes:
@@ -234,11 +289,12 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1533826745999000"
+              - key: process.title
+                value:
+                  stringValue: node
             body:
               stringValue: no user found
-            spanId: ""
             timeUnixNano: "1533826745999000000"
-            traceId: ""
         scope: {}
   - resource:
       attributes:
@@ -248,12 +304,33 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: agent.ephemeral_id
+          value:
+            stringValue: abcdef123
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ecmascript
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -329,6 +406,12 @@ resourceLogs:
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
     scopeLogs:
       - logRecords:
           - attributes:
@@ -347,10 +430,11 @@ resourceLogs:
               - key: exception.message
                 value:
                   stringValue: Cannot read property 'baz' no defined
+              - key: process.title
+                value:
+                  stringValue: node
             body: {}
-            spanId: ""
             timeUnixNano: "1533826745999000000"
-            traceId: ""
         scope: {}
   - resource:
       attributes:
@@ -360,12 +444,33 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 2.1.3
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ruby
         - key: service.language.version
           value:
             stringValue: "2.5"
+        - key: service.framework.name
+          value:
+            stringValue: Rails
+        - key: service.framework.version
+          value:
+            stringValue: "5.0"
+        - key: service.runtime.name
+          value:
+            stringValue: cruby
+        - key: service.runtime.version
+          value:
+            stringValue: "2.5"
+        - key: host.os.platform
+          value:
+            stringValue: darwin
         - key: service.name
           value:
             stringValue: service1
@@ -441,6 +546,12 @@ resourceLogs:
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
     scopeLogs:
       - logRecords:
           - attributes:
@@ -462,8 +573,10 @@ resourceLogs:
               - key: exception.type
                 value:
                   stringValue: DbError
+              - key: process.title
+                value:
+                  stringValue: node
             body: {}
-            spanId: ""
             timeUnixNano: "1547070053000000000"
             traceId: 0123456789abcdeffedcba0123456789
         scope: {}
@@ -475,12 +588,33 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: agent.ephemeral_id
+          value:
+            stringValue: abcdef123
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ecmascript
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -556,6 +690,12 @@ resourceLogs:
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
     scopeLogs:
       - logRecords:
           - attributes:
@@ -577,6 +717,9 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1533827045999000"
+              - key: process.title
+                value:
+                  stringValue: node
             body:
               stringValue: Cannot read property 'baz' of undefined
             spanId: "1234567890987654"

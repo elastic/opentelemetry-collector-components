@@ -33,4 +33,5 @@ const (
 	CloudProjectID              = "cloud.project.id"
 	CloudProjectName            = "cloud.project.name"
 	TriggerRequestId            = "faas.trigger.request.id"
+	FaaSExecution               = "faas.execution"
 )
