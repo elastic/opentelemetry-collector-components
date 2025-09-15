@@ -20,18 +20,50 @@ package attr // import "github.com/elastic/opentelemetry-collector-components/re
 // These constants hold attribute names that are defined by the Elastic APM data model and do not match
 // any SemConv attribute. These fields are not used by the UI, and store information related to a specific span type
 const (
-	SpanDBLink                  = "span.db.link"
-	SpanDBRowsAffected          = "span.db.rows_affected"
-	SpanDBUserName              = "span.db.user_name"
+	SpanDBLink         = "span.db.link"
+	SpanDBRowsAffected = "span.db.rows_affected"
+	SpanDBUserName     = "span.db.user_name"
+
 	HTTPRequestBody             = "http.request.body"
 	HTTPRequestID               = "http.request.id"
 	HTTPRequestReferrer         = "http.request.referrer"
 	HTTPResponseDecodedBodySize = "http.response.decoded_body_size"
 	HTTPResponseEncodedBodySize = "http.response.encoded_body_size"
 	HTTPResponseTransferSize    = "http.response.transfer_size"
-	SpanMessageBody             = "span.message.body"
-	CloudProjectID              = "cloud.project.id"
-	CloudProjectName            = "cloud.project.name"
-	TriggerRequestId            = "faas.trigger.request.id"
-	FaaSExecution               = "faas.execution"
+
+	SpanMessageBody = "span.message.body"
+
+	CloudProjectID   = "cloud.project.id"
+	CloudProjectName = "cloud.project.name"
+
+	TriggerRequestId = "faas.trigger.request.id"
+	FaaSExecution    = "faas.execution"
+
+	AgentEphemeralId      = "agent.ephemeral_id"
+	AgentActivationMethod = "agent.activation_method"
+
+	ServiceLanguageName     = "service.language.name"
+	ServiceLanguageVersion  = "service.language.version"
+	ServiceFrameworkName    = "service.framework.name"
+	ServiceFrameworkVersion = "service.framework.version"
+	ServiceRuntimeName      = "service.runtime.name"
+	ServiceRuntimeVersion   = "service.runtime.version"
+
+	HostOSPlatform = "host.os.platform"
+
+	LogLogger         = "log.logger"
+	LogOriginFunction = "log.origin.function"
+	LogOriginFileLine = "log.origin.file.line"
+	LogOriginFileName = "log.origin.file.name"
+
+	EventAction   = "event.action"
+	EventDataset  = "event.dataset"
+	EventCategory = "event.category"
+	EventType     = "event.type"
+	EventKind     = "event.kind"
+
+	ProcessThreadName = "process.thread.name"
+	ProcessTitle      = "process.title"
+
+	SessionID = "session.id"
 )

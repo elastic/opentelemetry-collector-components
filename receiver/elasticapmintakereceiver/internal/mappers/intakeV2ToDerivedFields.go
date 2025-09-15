@@ -70,42 +70,14 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 	if event.Agent != nil {
 		attributes.PutStr(elasticattr.AgentName, event.Agent.Name)
 		attributes.PutStr(elasticattr.AgentVersion, event.Agent.Version)
-		attributes.PutStr("agent.ephemeral_id", event.Agent.EphemeralId)
-		attributes.PutStr("agent.activation_method", event.Agent.ActivationMethod)
 	}
 
-	if event.Service != nil {
-		if event.Service.Language != nil {
-			if event.Service.Language.Name != "" {
-				attributes.PutStr("service.language.name", event.Service.Language.Name)
-			}
-			if event.Service.Language.Version != "" {
-				attributes.PutStr("service.language.version", event.Service.Language.Version)
-			}
+	if event.Service != nil && event.Service.Language != nil {
+		if event.Service.Language.Name != "" {
+			attributes.PutStr("service.language.name", event.Service.Language.Name)
 		}
-		if event.Service.Framework != nil {
-			if event.Service.Framework.Name != "" {
-				attributes.PutStr("service.framework.name", event.Service.Framework.Name)
-			}
-			if event.Service.Framework.Version != "" {
-				attributes.PutStr("service.framework.version", event.Service.Framework.Version)
-			}
-		}
-		if event.Service.Runtime != nil {
-			if event.Service.Runtime.Name != "" {
-				attributes.PutStr("service.runtime.name", event.Service.Runtime.Name)
-			}
-			if event.Service.Runtime.Version != "" {
-				attributes.PutStr("service.runtime.version", event.Service.Runtime.Version)
-			}
-		}
-	}
-
-	if event.Host != nil {
-		if event.Host.Os != nil {
-			if event.Host.Os.Platform != "" {
-				attributes.PutStr("host.os.platform", event.Host.Os.Platform)
-			}
+		if event.Service.Language.Version != "" {
+			attributes.PutStr("service.language.version", event.Service.Language.Version)
 		}
 	}
 }
@@ -193,65 +165,5 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 		if event.Error.Exception.Code != "" {
 			attributes.PutStr("error.exception.code", event.Error.Exception.Code)
 		}
-	}
-}
-
-// SetDerivedFieldsForLog sets fields that are NOT part of OTel for logs. These fields are derived by the Enrichment lib in case of OTLP input
-func SetDerivedFieldsForLog(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	// processor.event is not set for logs
-	if event.Log != nil {
-		if event.Log.Logger != "" {
-			attributesMap.PutStr("log.logger", event.Log.Logger)
-		}
-
-		if event.Log.Origin != nil {
-			if event.Log.Origin.FunctionName != "" {
-				attributesMap.PutStr("log.origin.function", event.Log.Origin.FunctionName)
-			}
-			if event.Log.Origin.File != nil {
-				if event.Log.Origin.File.Line != 0 {
-					attributesMap.PutInt("log.origin.file.line", int64(event.Log.Origin.File.Line))
-				}
-				if event.Log.Origin.File.Name != "" {
-					attributesMap.PutStr("log.origin.file.name", event.Log.Origin.File.Name)
-				}
-			}
-		}
-	}
-
-	if event.Event != nil {
-		if event.Event.Action != "" {
-			attributesMap.PutStr("event.action", event.Event.Action)
-		}
-		if event.Event.Dataset != "" {
-			attributesMap.PutStr("event.dataset", event.Event.Dataset)
-		}
-		if event.Event.Category != "" {
-			attributesMap.PutStr("event.category", event.Event.Category)
-		}
-		if event.Event.Type != "" {
-			attributesMap.PutStr("event.type", event.Event.Type)
-		}
-	}
-
-	if event.Process != nil {
-		if event.Process.Thread != nil {
-			if event.Process.Thread.Name != "" {
-				attributesMap.PutStr("process.thread.name", event.Process.Thread.Name)
-			}
-		}
-		if event.Process.Title != "" {
-			attributesMap.PutStr("process.title", event.Process.Title)
-		}
-	}
-
-	if event.Session != nil {
-		if event.Session.Id != "" {
-			attributesMap.PutStr("session.id", event.Session.Id)
-		}
-	}
-
-	if event.Error == nil {
-		attributesMap.PutStr("event.kind", "event")
 	}
 }

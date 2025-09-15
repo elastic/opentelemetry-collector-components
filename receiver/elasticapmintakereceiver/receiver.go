@@ -396,7 +396,7 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 	mappers.SetDerivedFieldsForError(event, l.Attributes())
 	// apm log events can contain error information. In this case the log is considered an apm error.
 	// All fields associated with the log should also be set.
-	mappers.SetDerivedFieldsForLog(event, l.Attributes())
+	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
 	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
 	mappers.SetElasticSpecificMetadataFields(event, rl.Resource().Attributes())
@@ -411,11 +411,10 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 	l := sl.LogRecords().AppendEmpty()
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
-	mappers.SetDerivedFieldsForLog(event, l.Attributes())
 	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
 	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
 	mappers.SetElasticSpecificMetadataFields(event, rl.Resource().Attributes())
-	mappers.SetDerivedFieldsForLog(event, l.Attributes())
+	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 	// TODO(isaacaflores2): add labels (user defined key-value pairs)?
 
 	l.Body().SetStr(event.Message)

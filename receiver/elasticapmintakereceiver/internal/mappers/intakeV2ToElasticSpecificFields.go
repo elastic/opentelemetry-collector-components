@@ -27,7 +27,7 @@ import (
 	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
 )
 
-// Sets fields on spans that are not defined by OTel.
+// SetElasticSpecificFieldsForSpan sets fields on spans that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
 // and store information about a specific span type
 func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcommon.Map) {
@@ -56,6 +56,8 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 	}
 }
 
+// SetElasticSpecificMetadataFields sets fields that are not defined by OTel.
+// Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
 		if event.Cloud.ProjectId != "" {
@@ -65,12 +67,114 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 			attributesMap.PutStr(attr.CloudProjectName, event.Cloud.ProjectName)
 		}
 	}
+
 	if event.Faas != nil {
 		if event.Faas.TriggerRequestId != "" {
 			attributesMap.PutStr(attr.TriggerRequestId, event.Faas.TriggerRequestId)
 		}
 		if event.Faas.Execution != "" {
 			attributesMap.PutStr(attr.FaaSExecution, event.Faas.Execution)
+		}
+	}
+
+	if event.Agent != nil {
+		attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
+		attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
+	}
+
+	if event.Service != nil {
+		if event.Service.Language != nil {
+			if event.Service.Language.Name != "" {
+				attributesMap.PutStr(attr.ServiceLanguageName, event.Service.Language.Name)
+			}
+			if event.Service.Language.Version != "" {
+				attributesMap.PutStr(attr.ServiceLanguageVersion, event.Service.Language.Version)
+			}
+		}
+		if event.Service.Framework != nil {
+			if event.Service.Framework.Name != "" {
+				attributesMap.PutStr(attr.ServiceFrameworkName, event.Service.Framework.Name)
+			}
+			if event.Service.Framework.Version != "" {
+				attributesMap.PutStr(attr.ServiceFrameworkVersion, event.Service.Framework.Version)
+			}
+		}
+		if event.Service.Runtime != nil {
+			if event.Service.Runtime.Name != "" {
+				attributesMap.PutStr(attr.ServiceRuntimeName, event.Service.Runtime.Name)
+			}
+			if event.Service.Runtime.Version != "" {
+				attributesMap.PutStr(attr.ServiceRuntimeVersion, event.Service.Runtime.Version)
+			}
+		}
+	}
+
+	if event.Host != nil {
+		if event.Host.Os != nil {
+			if event.Host.Os.Platform != "" {
+				attributesMap.PutStr(attr.HostOSPlatform, event.Host.Os.Platform)
+			}
+		}
+	}
+}
+
+// SetElasticSpecificFieldsForLog sets fields that are not defined by OTel.
+// Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
+func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	// processor.event is not set for logs
+	if event.Log != nil {
+		if event.Log.Logger != "" {
+			attributesMap.PutStr(attr.LogLogger, event.Log.Logger)
+		}
+
+		if event.Log.Origin != nil {
+			if event.Log.Origin.FunctionName != "" {
+				attributesMap.PutStr(attr.LogOriginFunction, event.Log.Origin.FunctionName)
+			}
+			if event.Log.Origin.File != nil {
+				if event.Log.Origin.File.Line != 0 {
+					attributesMap.PutInt(attr.LogOriginFileLine, int64(event.Log.Origin.File.Line))
+				}
+				if event.Log.Origin.File.Name != "" {
+					attributesMap.PutStr(attr.LogOriginFileName, event.Log.Origin.File.Name)
+				}
+			}
+		}
+	}
+
+	if event.Event != nil {
+		if event.Event.Action != "" {
+			attributesMap.PutStr(attr.EventAction, event.Event.Action)
+		}
+		if event.Event.Dataset != "" {
+			attributesMap.PutStr(attr.EventDataset, event.Event.Dataset)
+		}
+		if event.Event.Category != "" {
+			attributesMap.PutStr(attr.EventCategory, event.Event.Category)
+		}
+		if event.Event.Type != "" {
+			attributesMap.PutStr(attr.EventType, event.Event.Type)
+		}
+	}
+
+	if event.Error == nil {
+		attributesMap.PutStr(attr.EventKind, "event")
+	}
+
+	if event.Process != nil {
+		if event.Process.Thread != nil {
+			if event.Process.Thread.Name != "" {
+				attributesMap.PutStr(attr.ProcessThreadName, event.Process.Thread.Name)
+			}
+		}
+		if event.Process.Title != "" {
+			attributesMap.PutStr(attr.ProcessTitle, event.Process.Title)
+		}
+	}
+
+	if event.Session != nil {
+		if event.Session.Id != "" {
+			attributesMap.PutStr(attr.SessionID, event.Session.Id)
 		}
 	}
 }

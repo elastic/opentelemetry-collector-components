@@ -7,33 +7,12 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: Java
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -88,15 +67,36 @@ resourceLogs:
         - key: process.command_line
           value:
             stringValue: -v
+        - key: agent.ephemeral_id
+          value:
+            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: Java
+        - key: service.runtime.version
+          value:
+            stringValue: 10.0.2
+        - key: host.os.platform
+          value:
+            stringValue: Linux
     scopeLogs:
       - logRecords:
           - attributes:
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
               - key: event.kind
                 value:
                   stringValue: event
+              - key: process.title
+                value:
+                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message without timestamp
         scope: {}
@@ -108,33 +108,12 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: Java
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -189,15 +168,36 @@ resourceLogs:
         - key: process.command_line
           value:
             stringValue: -v
+        - key: agent.ephemeral_id
+          value:
+            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: Java
+        - key: service.runtime.version
+          value:
+            stringValue: 10.0.2
+        - key: host.os.platform
+          value:
+            stringValue: Linux
     scopeLogs:
       - logRecords:
           - attributes:
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
               - key: event.kind
                 value:
                   stringValue: event
+              - key: process.title
+                value:
+                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message with string timestamp
             timeUnixNano: "1662673649111000000"
@@ -210,33 +210,12 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: Java
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -291,39 +270,12 @@ resourceLogs:
         - key: process.command_line
           value:
             stringValue: -v
-    scopeLogs:
-      - logRecords:
-          - attributes:
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-              - key: event.kind
-                value:
-                  stringValue: event
-            body:
-              stringValue: test log message with timestamp
-            timeUnixNano: "1662616049000000000"
-        scope: {}
-  - resource:
-      attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.framework.name
           value:
             stringValue: spring
@@ -339,6 +291,33 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: event.kind
+                value:
+                  stringValue: event
+              - key: process.title
+                value:
+                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
+            body:
+              stringValue: test log message with timestamp
+            timeUnixNano: "1662616049000000000"
+        scope: {}
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -402,39 +381,12 @@ resourceLogs:
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
-    scopeLogs:
-      - logRecords:
-          - attributes:
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-              - key: event.kind
-                value:
-                  stringValue: event
-            body:
-              stringValue: test log message with faas
-            timeUnixNano: "1662616049000000000"
-        scope: {}
-  - resource:
-      attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.framework.name
           value:
             stringValue: spring
@@ -450,6 +402,33 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: event.kind
+                value:
+                  stringValue: event
+              - key: process.title
+                value:
+                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
+            body:
+              stringValue: test log message with faas
+            timeUnixNano: "1662616049000000000"
+        scope: {}
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: testSvc
@@ -513,6 +492,27 @@ resourceLogs:
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
+        - key: agent.ephemeral_id
+          value:
+            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: Java
+        - key: service.runtime.version
+          value:
+            stringValue: 10.0.2
+        - key: host.os.platform
+          value:
+            stringValue: Linux
     scopeLogs:
       - logRecords:
           - attributes:
@@ -531,15 +531,15 @@ resourceLogs:
               - key: event.dataset
                 value:
                   stringValue: accesslog
+              - key: event.kind
+                value:
+                  stringValue: event
               - key: process.thread.name
                 value:
                   stringValue: testThread
               - key: process.title
                 value:
                   stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-              - key: event.kind
-                value:
-                  stringValue: event
             body:
               stringValue: test log message with ecs fields
             severityText: warn
@@ -553,33 +553,12 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: Java
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: service.name
           value:
             stringValue: testSvc
@@ -643,6 +622,27 @@ resourceLogs:
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
+        - key: agent.ephemeral_id
+          value:
+            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: Java
+        - key: service.runtime.version
+          value:
+            stringValue: 10.0.2
+        - key: host.os.platform
+          value:
+            stringValue: Linux
     scopeLogs:
       - logRecords:
           - attributes:
@@ -661,15 +661,15 @@ resourceLogs:
               - key: event.dataset
                 value:
                   stringValue: accesslog
+              - key: event.kind
+                value:
+                  stringValue: event
               - key: process.thread.name
                 value:
                   stringValue: testThread
               - key: process.title
                 value:
                   stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-              - key: event.kind
-                value:
-                  stringValue: event
             body:
               stringValue: test log message with nested ecs fields
             severityText: warn
@@ -683,33 +683,12 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: Java
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: service.name
           value:
             stringValue: testSvc
@@ -773,6 +752,27 @@ resourceLogs:
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
+        - key: agent.ephemeral_id
+          value:
+            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: Java
+        - key: service.runtime.version
+          value:
+            stringValue: 10.0.2
+        - key: host.os.platform
+          value:
+            stringValue: Linux
     scopeLogs:
       - logRecords:
           - attributes:
@@ -791,15 +791,15 @@ resourceLogs:
               - key: event.dataset
                 value:
                   stringValue: accesslog
+              - key: event.kind
+                value:
+                  stringValue: event
               - key: process.thread.name
                 value:
                   stringValue: testThread
               - key: process.title
                 value:
                   stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-              - key: event.kind
-                value:
-                  stringValue: event
             body:
               stringValue: test log message with override of flat ecs fields by nested ecs fields
             severityText: warn
@@ -813,33 +813,12 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: Java
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: service.name
           value:
             stringValue: testSvc
@@ -909,6 +888,27 @@ resourceLogs:
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
+        - key: agent.ephemeral_id
+          value:
+            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: Java
+        - key: service.runtime.version
+          value:
+            stringValue: 10.0.2
+        - key: host.os.platform
+          value:
+            stringValue: Linux
     scopeLogs:
       - logRecords:
           - attributes:
@@ -927,15 +927,15 @@ resourceLogs:
               - key: event.dataset
                 value:
                   stringValue: accesslog
+              - key: event.kind
+                value:
+                  stringValue: event
               - key: process.thread.name
                 value:
                   stringValue: testThread
               - key: process.title
                 value:
                   stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-              - key: event.kind
-                value:
-                  stringValue: event
             body:
               stringValue: Log with all available fields set
             severityText: info
@@ -949,33 +949,12 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: Java
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: service.name
           value:
             stringValue: testSvc
@@ -1045,6 +1024,27 @@ resourceLogs:
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
+        - key: agent.ephemeral_id
+          value:
+            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: Java
+        - key: service.runtime.version
+          value:
+            stringValue: 10.0.2
+        - key: host.os.platform
+          value:
+            stringValue: Linux
     scopeLogs:
       - logRecords:
           - attributes:
