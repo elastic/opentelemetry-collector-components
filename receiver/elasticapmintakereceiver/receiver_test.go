@@ -353,6 +353,8 @@ func TestInvalidInput(t *testing.T) {
 		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.txt"},
 		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.txt"},
 		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
+		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.txt"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
