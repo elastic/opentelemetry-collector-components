@@ -79,33 +79,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ecmascript
         - key: service.language.version
           value:
             stringValue: "8"
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -227,33 +206,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ecmascript
         - key: service.language.version
           value:
             stringValue: "8"
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: "7.0"
-        - key: host.os.platform
-          value:
-            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -385,33 +343,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "2.2"
-        - key: agent.ephemeral_id
-          value:
-            stringValue: justanid
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ruby
         - key: service.language.version
           value:
             stringValue: "2.5"
-        - key: service.framework.name
-          value:
-            stringValue: Rails
-        - key: service.framework.version
-          value:
-            stringValue: "5.0"
-        - key: service.runtime.name
-          value:
-            stringValue: cruby
-        - key: service.runtime.version
-          value:
-            stringValue: "2.5"
-        - key: host.os.platform
-          value:
-            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -538,33 +475,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ecmascript
         - key: service.language.version
           value:
             stringValue: "8"
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -697,33 +613,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
         - key: service.language.name
           value:
             stringValue: ecmascript
         - key: service.language.version
           value:
             stringValue: "8"
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
