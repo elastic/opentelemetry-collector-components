@@ -24,6 +24,7 @@ import (
 
 	signaltometricsconfig "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector/config"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/configoptional"
 
 	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
@@ -259,12 +260,12 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		{Key: "metricset.name", DefaultValue: "service_destination"},
 	}, toSignalToMetricsAttributes(cfg.CustomSpanAttributes)...)
 
-	transactionDurationHistogram := &signaltometricsconfig.ExponentialHistogram{
+	transactionDurationHistogram := signaltometricsconfig.ExponentialHistogram{
 		Count: "Int(AdjustedCount())",
 		Value: "Microseconds(end_time - start_time)",
 	}
 
-	transactionDurationSummaryHistogram := &signaltometricsconfig.Histogram{
+	transactionDurationSummaryHistogram := signaltometricsconfig.Histogram{
 		Buckets: []float64{1},
 		Count:   "Int(AdjustedCount())",
 		Value:   "Microseconds(end_time - start_time)",
@@ -275,23 +276,23 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Name:                      "service_summary",
 			IncludeResourceAttributes: serviceSummaryResourceAttributes,
 			Attributes:                serviceSummaryAttributes,
-			Sum:                       &signaltometricsconfig.Sum{Value: "1"},
+			Sum:                       configoptional.Some(signaltometricsconfig.Sum{Value: "1"}),
 		}},
 
 		Datapoints: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
 			IncludeResourceAttributes: serviceSummaryResourceAttributes,
 			Attributes:                serviceSummaryAttributes,
-			Sum:                       &signaltometricsconfig.Sum{Value: "1"},
+			Sum:                       configoptional.Some(signaltometricsconfig.Sum{Value: "1"}),
 		}},
 
 		Spans: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
 			IncludeResourceAttributes: serviceSummaryResourceAttributes,
 			Attributes:                serviceSummaryAttributes,
-			Sum: &signaltometricsconfig.Sum{
+			Sum: configoptional.Some(signaltometricsconfig.Sum{
 				Value: "Int(AdjustedCount())",
-			},
+			}),
 		}, {
 			Name:                      "transaction.duration.histogram",
 			Description:               "APM service transaction aggregated metrics as histogram",
@@ -301,7 +302,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				DefaultValue: []any{"_doc_count"},
 			}),
 			Unit:                 "us",
-			ExponentialHistogram: transactionDurationHistogram,
+			ExponentialHistogram: configoptional.Some(transactionDurationHistogram),
 		}, {
 			Name:                      "transaction.duration.summary",
 			Description:               "APM service transaction aggregated metrics as summary",
@@ -311,7 +312,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				DefaultValue: []any{"aggregate_metric_double"},
 			}),
 			Unit:      "us",
-			Histogram: transactionDurationSummaryHistogram,
+			Histogram: configoptional.Some(transactionDurationSummaryHistogram),
 		}, {
 			Name:                      "transaction.duration.histogram",
 			Description:               "APM transaction aggregated metrics as histogram",
@@ -321,7 +322,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				DefaultValue: []any{"_doc_count"},
 			}),
 			Unit:                 "us",
-			ExponentialHistogram: transactionDurationHistogram,
+			ExponentialHistogram: configoptional.Some(transactionDurationHistogram),
 		}, {
 			Name:                      "transaction.duration.summary",
 			Description:               "APM transaction aggregated metrics as summary",
@@ -331,24 +332,24 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				DefaultValue: []any{"aggregate_metric_double"},
 			}),
 			Unit:      "us",
-			Histogram: transactionDurationSummaryHistogram,
+			Histogram: configoptional.Some(transactionDurationSummaryHistogram),
 		}, {
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
 			Attributes:                spanDestinationAttributes,
 			Unit:                      "us",
-			Sum: &signaltometricsconfig.Sum{
+			Sum: configoptional.Some(signaltometricsconfig.Sum{
 				Value: "Double(Microseconds(end_time - start_time))",
-			},
+			}),
 		}, {
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
 			Attributes:                spanDestinationAttributes,
-			Sum: &signaltometricsconfig.Sum{
+			Sum: configoptional.Some(signaltometricsconfig.Sum{
 				Value: "Int(AdjustedCount())",
-			},
+			}),
 		}, {
 			// event.success_count is populated using 2 metric definition with different conditions
 			// and value for the histogram bucket based on event outcome. Both metric definition
@@ -366,11 +367,11 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				`attributes["event.outcome"] != nil and attributes["event.outcome"] == "success"`,
 			},
 			Unit: "us",
-			Histogram: &signaltometricsconfig.Histogram{
+			Histogram: configoptional.Some(signaltometricsconfig.Histogram{
 				Buckets: []float64{1},
 				Count:   "Int(AdjustedCount())",
 				Value:   "Int(AdjustedCount())",
-			},
+			}),
 		}, {
 			Name:                      "event.success_count",
 			Description:               "Success count as a metric for service transaction",
@@ -383,11 +384,11 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				`attributes["event.outcome"] != nil and attributes["event.outcome"] != "success"`,
 			},
 			Unit: "us",
-			Histogram: &signaltometricsconfig.Histogram{
+			Histogram: configoptional.Some(signaltometricsconfig.Histogram{
 				Buckets: []float64{0},
 				Count:   "Int(AdjustedCount())",
 				Value:   "Double(0)",
-			},
+			}),
 		}},
 	}
 }

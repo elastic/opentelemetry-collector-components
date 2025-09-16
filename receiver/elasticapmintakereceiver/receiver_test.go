@@ -353,6 +353,8 @@ func TestInvalidInput(t *testing.T) {
 		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.txt"},
 		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.txt"},
 		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
+		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.txt"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -442,7 +444,7 @@ func TestErrors(t *testing.T) {
 
 	for _, tt := range inputFiles_error {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
-			runComparisonForErrors(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextLog, testEndpoint)
+			runComparisonForLogs(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextLog, testEndpoint)
 		})
 	}
 }
@@ -479,6 +481,41 @@ func TestMetrics(t *testing.T) {
 	for _, tt := range inputFiles_error {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForMetrics(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextMetrics, testEndpoint)
+		})
+	}
+}
+
+func TestLogs(t *testing.T) {
+	var inputFiles = []struct {
+		inputNdJsonFileName        string
+		outputExpectedYamlFileName string
+	}{
+		{"logs.ndjson", "logs_expected.yaml"},
+	}
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			Endpoint: testEndpoint,
+		},
+	}
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	nextLogs := new(consumertest.LogsSink)
+	receiver, _ := factory.CreateLogs(context.Background(), set, cfg, nextLogs)
+
+	if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+		t.Errorf("Starting receiver failed: %v", err)
+	}
+	defer func() {
+		if err := receiver.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
+
+	for _, tt := range inputFiles {
+		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
+			runComparisonForLogs(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextLogs, testEndpoint)
 		})
 	}
 }
@@ -621,21 +658,21 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 		ptracetest.IgnoreEndTimestamp()))
 }
 
-func runComparisonForErrors(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
+func runComparisonForLogs(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
 	nextLog *consumertest.LogsSink, testEndpoint string,
 ) {
 	nextLog.Reset()
 
 	sendInput(t, inputJsonFileName, testEndpoint)
-	actualLogs := nextLog.AllLogs()[0]
+	actualMetrics := nextLog.AllLogs()[0]
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	if *update {
-		err := golden.WriteLogs(t, expectedFile, actualLogs)
+		err := golden.WriteLogs(t, expectedFile, actualMetrics)
 		assert.NoError(t, err)
 	}
-	expectedLogs, err := golden.ReadLogs(expectedFile)
+	expectedMetrics, err := golden.ReadLogs(expectedFile)
 	require.NoError(t, err)
-	require.NoError(t, plogtest.CompareLogs(expectedLogs, actualLogs))
+	require.NoError(t, plogtest.CompareLogs(expectedMetrics, actualMetrics, plogtest.IgnoreLogRecordsOrder()))
 }
 
 func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYamlFileName string,

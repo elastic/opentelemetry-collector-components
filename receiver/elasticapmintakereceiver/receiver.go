@@ -28,9 +28,8 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/collector/client"
-
 	"github.com/cespare/xxhash"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -259,7 +258,8 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 			rl := ld.ResourceLogs().AppendEmpty()
 			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
 		case modelpb.LogEventType:
-			// TODO
+			rl := ld.ResourceLogs().AppendEmpty()
+			r.elasticLogToOtelLogRecord(&rl, event, timestamp)
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
 			s := r.elasticEventToOtelSpan(&rs, event, timestamp)
@@ -488,11 +488,36 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForError(event, l.Attributes())
+	// apm log events can contain error information. In this case the log is considered an apm error.
+	// All fields associated with the log should also be set.
+	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
 	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
+	mappers.SetElasticSpecificMetadataFields(event, rl.Resource().Attributes())
 
 	if event.Error != nil && event.Error.Log != nil {
 		l.Body().SetStr(event.Error.Log.Message)
+	}
+}
+
+func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time) {
+	sl := rl.ScopeLogs().AppendEmpty()
+	l := sl.LogRecords().AppendEmpty()
+
+	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
+	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
+	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
+	mappers.SetElasticSpecificMetadataFields(event, rl.Resource().Attributes())
+	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
+	// TODO(isaacaflores2): add labels (user defined key-value pairs)?
+
+	l.Body().SetStr(event.Message)
+
+	if event.Log != nil {
+		l.SetSeverityText(event.Log.Level)
+	}
+	if event.Event != nil {
+		l.SetSeverityNumber(plog.SeverityNumber(event.Event.Severity))
 	}
 }
 

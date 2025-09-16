@@ -116,7 +116,6 @@ resourceSpans:
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
-            parentSpanId: ""
             spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
             status:
@@ -655,7 +654,6 @@ resourceSpans:
                   intValue: "13980"
             endTimeUnixNano: "1496170422294980558"
             name: GET /api/types
-            parentSpanId: ""
             spanId: 85925e55b43f4340
             startTimeUnixNano: "1496170422281000000"
             status: {}
@@ -761,7 +759,6 @@ resourceSpans:
                   intValue: "13980"
             endTimeUnixNano: "1496170422013980558"
             name: GET /api/types
-            parentSpanId: ""
             spanId: 85925e55b43f4341
             startTimeUnixNano: "1496170422000000000"
             status: {}
@@ -867,7 +864,6 @@ resourceSpans:
                   intValue: "13980"
             endTimeUnixNano: "1496170422295979558"
             name: GET /api/types
-            parentSpanId: ""
             spanId: 85925e55b43f4342
             startTimeUnixNano: "1496170422281999000"
             status: {}

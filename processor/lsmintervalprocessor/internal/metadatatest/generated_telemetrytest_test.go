@@ -23,12 +23,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 	"go.opentelemetry.io/collector/component/componenttest"
 )
 

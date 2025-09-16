@@ -786,7 +786,6 @@ resourceSpans:
             startTimeUnixNano: "1532976822281000000"
             status:
               code: 1
-            traceId: ""
   - resource:
       attributes:
         - key: service.name
@@ -932,11 +931,9 @@ resourceSpans:
             kind: 3
             name: SELECT FROM product_types
             parentSpanId: abcdef0123456789
-            spanId: ""
             startTimeUnixNano: "1532976822281000000"
             status:
               code: 1
-            traceId: ""
   - resource:
       attributes:
         - key: service.name
@@ -1067,7 +1064,6 @@ resourceSpans:
             startTimeUnixNano: "1532975583584217000"
             status:
               code: 1
-            traceId: ""
   - resource:
       attributes:
         - key: service.name

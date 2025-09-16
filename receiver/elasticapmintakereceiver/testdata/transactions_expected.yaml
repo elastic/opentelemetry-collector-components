@@ -258,7 +258,6 @@ resourceSpans:
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
-            parentSpanId: ""
             spanId: 4340a8e0df1906ec
             startTimeUnixNano: "1496170407154000000"
             status:
@@ -392,7 +391,6 @@ resourceSpans:
                   intValue: "0"
             endTimeUnixNano: "1532976822294980558"
             kind: 2
-            parentSpanId: ""
             spanId: cdef4340a8e0df19
             startTimeUnixNano: "1532976822281000000"
             status: {}
@@ -520,7 +518,6 @@ resourceSpans:
             endTimeUnixNano: "1496170407157000000"
             name: amqp receive
             parentSpanId: abcdefabcdef0123
-            spanId: ""
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 0123456789abcdef0123456789abcdef
@@ -658,7 +655,6 @@ resourceSpans:
                   intValue: "38853"
             endTimeUnixNano: "1631736666403901000"
             name: july-2021-delete-after-july-31
-            parentSpanId: ""
             spanId: 142e61450efb8574
             startTimeUnixNano: "1631736666365048000"
             status: {}

@@ -114,7 +114,6 @@ resourceSpans:
                 traceId: 45234567890123456789abcdefabcdef
               - spanId: 1123456a89012346
                 traceId: 45234567890123456789abcdefabcdef
-            parentSpanId: ""
             spanId: abcdef1478523690
             status: {}
             traceId: 01234567890123456789abcdefabcdef

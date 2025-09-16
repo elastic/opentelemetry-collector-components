@@ -187,7 +187,12 @@ func TestAuthenticator_Caching(t *testing.T) {
 }
 
 func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
-	srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse))
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		h := newCannedHasPrivilegesHandler(successfulResponse)
+		h.ServeHTTP(w, r)
+		calls++
+	})
 	config := createDefaultConfig().(*Config)
 	config.Cache.KeyHeaders = []string{"X-Tenant-Id"}
 	authenticator := newTestAuthenticator(t, srv, config)
@@ -206,6 +211,7 @@ func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
 	clientInfo := client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 1, calls)
 
 	// Different x-tenant-id header value should result in a cache miss,
 	// despite the API Key ID being the same.
@@ -217,6 +223,55 @@ func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
 	clientInfo = client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 2, calls)
+}
+
+func TestAuthenticator_CacheKeyMetadata(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		h := newCannedHasPrivilegesHandler(successfulResponse)
+		h.ServeHTTP(w, r)
+		calls++
+	})
+	config := createDefaultConfig().(*Config)
+	config.Cache.KeyMetadata = []string{"X-Tenant-Id"}
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	// Missing X-Tenant-Id header should result in an error.
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret1"))},
+	})
+	require.EqualError(t, err, `error computing cache key: missing client metadata "X-Tenant-Id"`)
+
+	withMetadata := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"X-Tenant-Id": {"tenant1"},
+		}),
+	})
+	ctx, err := authenticator.Authenticate(withMetadata, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret1"))},
+	})
+	require.NoError(t, err)
+	clientInfo := client.FromContext(ctx)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 1, calls)
+
+	// Different x-tenant-id header value should result in a cache miss,
+	// despite the API Key ID being the same.
+	withMetadata2 := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"X-Tenant-Id": {"tenant2"},
+		}),
+	})
+	ctx, err = authenticator.Authenticate(withMetadata2, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret2"))},
+	})
+	require.NoError(t, err)
+	clientInfo = client.FromContext(ctx)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 2, calls)
 }
 
 func TestAuthenticator_CacheTTL(t *testing.T) {

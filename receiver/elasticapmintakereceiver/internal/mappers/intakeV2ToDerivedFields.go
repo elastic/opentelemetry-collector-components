@@ -24,9 +24,10 @@ import (
 	"fmt"
 	"strings"
 
+	"go.opentelemetry.io/collector/pdata/pcommon"
+
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-lib/elasticattr"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 // Sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
@@ -66,8 +67,11 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 // Sets resource fields that are NOT part of OTel. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	attributes.PutStr(elasticattr.AgentName, event.Agent.Name)
-	attributes.PutStr(elasticattr.AgentVersion, event.Agent.Version)
+	if event.Agent != nil {
+		attributes.PutStr(elasticattr.AgentName, event.Agent.Name)
+		attributes.PutStr(elasticattr.AgentVersion, event.Agent.Version)
+	}
+
 	if event.Service != nil && event.Service.Language != nil {
 		if event.Service.Language.Name != "" {
 			attributes.PutStr("service.language.name", event.Service.Language.Name)
