@@ -113,7 +113,6 @@ resourceSpans:
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
-            parentSpanId: ""
             spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
             status:
