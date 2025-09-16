@@ -319,11 +319,9 @@ func newCtxWithAuthData(ctx context.Context, authData *authData) context.Context
 
 // errorWithDetails provides a user friendly error with additional error details that
 // can be later used to provide more detailed error information to the user.
-// Fixed typo and optimized version
 func errorWithDetails(code codes.Code, msg string, metadata map[string]string) error {
 	st := status.New(code, msg)
 	if detailedSt, err := st.WithDetails(&errdetails.ErrorInfo{
-		Reason:   msg,
 		Domain:   "ingest.elastic.co",
 		Metadata: metadata,
 	}); err == nil {
