@@ -74,9 +74,14 @@ func createLogsReceiver(
 		}
 	}
 
+	maxSize := genConfig.Logs.MaxSize
+	if maxSize == 0 {
+		maxSize = len(sampleLogs) + 10 // add some margin
+	}
+
 	var items []plog.Logs
 	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
-	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
+	scanner.Buffer(make([]byte, 0, maxSize), maxSize)
 	for scanner.Scan() {
 		logBytes := scanner.Bytes()
 		lineLogs, err := parser.UnmarshalLogs(logBytes)

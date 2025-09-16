@@ -1,0 +1,25 @@
+loadgen:
+
+loadgen/logs_invalid_max_replay:
+  logs:
+    max_replay: -1
+
+loadgen/metrics_invalid_max_replay:
+  metrics:
+    max_replay: -1
+
+loadgen/traces_invalid_max_replay:
+  traces:
+    max_replay: -1
+
+loadgen/logs_invalid_max_size:
+  logs:
+    max_size: -1
+
+loadgen/metrics_invalid_max_size:
+  metrics:
+    max_size: -1
+
+loadgen/traces_invalid_max_size:
+  traces:
+    max_size: -1

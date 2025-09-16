@@ -31,14 +31,23 @@ func NewFactory() receiver.Factory {
 func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) component.Config {
 	return &Config{
 		Logs: LogsConfig{
-			doneCh: logsDone,
+			SignalConfig: SignalConfig{
+				doneCh:  logsDone,
+				MaxSize: maxScannerBufSize,
+			},
 		},
 		Metrics: MetricsConfig{
-			doneCh:         metricsDone,
+			SignalConfig: SignalConfig{
+				doneCh:  metricsDone,
+				MaxSize: maxScannerBufSize,
+			},
 			AddCounterAttr: true,
 		},
 		Traces: TracesConfig{
-			doneCh: tracesDone,
+			SignalConfig: SignalConfig{
+				doneCh:  tracesDone,
+				MaxSize: maxScannerBufSize,
+			},
 		},
 		Concurrency: 1,
 	}
