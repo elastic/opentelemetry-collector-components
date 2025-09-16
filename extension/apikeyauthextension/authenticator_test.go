@@ -269,6 +269,7 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			errorInfo, ok := details[0].(*errdetails.ErrorInfo)
 			require.True(t, ok, "expected errorinfo detail")
 			assert.Equal(t, testcase.expectedMsg, errorInfo.Reason)
+			assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
 			assert.Equal(t, testcase.expectedMetadata, errorInfo.Metadata)
 		})
 	}

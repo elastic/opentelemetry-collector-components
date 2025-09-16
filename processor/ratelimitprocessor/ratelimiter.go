@@ -102,6 +102,7 @@ func errorWithDetails(err error, cfg RateLimitSettings) error {
 	st := status.New(codes.ResourceExhausted, err.Error())
 	if detailedSt, stErr := st.WithDetails(&errdetails.ErrorInfo{
 		Reason: err.Error(),
+		Domain: "ingest.elastic.co",
 		Metadata: map[string]string{
 			"component":         "ratelimitprocessor",
 			"limit":             fmt.Sprintf("%d", cfg.Rate),

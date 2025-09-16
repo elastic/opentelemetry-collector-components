@@ -494,6 +494,7 @@ func testError(t *testing.T, err error) {
 	errorInfo, ok := details[0].(*errdetails.ErrorInfo)
 	require.True(t, ok, "expected errorinfo detail")
 	assert.Equal(t, "too many requests", errorInfo.Reason)
+	assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
 	assert.Equal(t, map[string]string{
 		"component":         "ratelimitprocessor",
 		"limit":             "1",

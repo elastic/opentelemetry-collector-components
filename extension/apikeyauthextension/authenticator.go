@@ -324,6 +324,7 @@ func errorWithDetails(code codes.Code, msg string, metadata map[string]string) e
 	st := status.New(code, msg)
 	if detailedSt, err := st.WithDetails(&errdetails.ErrorInfo{
 		Reason:   msg,
+		Domain:   "ingest.elastic.co",
 		Metadata: metadata,
 	}); err == nil {
 		return detailedSt.Err()
