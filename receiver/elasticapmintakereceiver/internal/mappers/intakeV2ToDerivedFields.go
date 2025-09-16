@@ -90,9 +90,10 @@ func SetDerivedFieldsForMetrics(attributes pcommon.Map) {
 func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
 
-	if strings.EqualFold(event.Event.Outcome, "success") {
+	outcome := event.GetEvent().GetOutcome()
+	if strings.EqualFold(outcome, "success") {
 		attributes.PutStr(elasticattr.EventOutcome, "success")
-	} else if strings.EqualFold(event.Event.Outcome, "failure") {
+	} else if strings.EqualFold(outcome, "failure") {
 		attributes.PutStr(elasticattr.EventOutcome, "failure")
 	} else {
 		attributes.PutStr(elasticattr.EventOutcome, "unknown")

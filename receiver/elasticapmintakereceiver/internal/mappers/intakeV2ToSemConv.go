@@ -30,19 +30,21 @@ import (
 
 // Translates resource attributes from the Elastic APM model to SemConv resource attributes
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	attributes.PutStr(semconv.AttributeServiceName, event.Service.Name)
-	attributes.PutStr(semconv.AttributeServiceVersion, event.Service.Version)
-	if event.Service.Language != nil && event.Service.Language.Name != "" {
-		attributes.PutStr(semconv.AttributeTelemetrySDKLanguage, translateElasticServiceLanguageToOtelSdkLanguage(event.Service.Language.Name))
-	}
-	attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
-	if event.Service.Environment != "" {
-		// elasticsearchexporter currently uses v1.22.0 of the OTel SemConv, so we need to include the v1.22.0 attribute
-		attributes.PutStr(semconv22.AttributeDeploymentEnvironment, event.Service.Environment)
-		attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
-	}
-	if event.Service.Node != nil && event.Service.Node.Name != "" {
-		attributes.PutStr(semconv.AttributeServiceInstanceID, event.Service.Node.Name)
+	if event.Service != nil {
+		attributes.PutStr(semconv.AttributeServiceName, event.Service.Name)
+		attributes.PutStr(semconv.AttributeServiceVersion, event.Service.Version)
+		if event.Service.Language != nil && event.Service.Language.Name != "" {
+			attributes.PutStr(semconv.AttributeTelemetrySDKLanguage, translateElasticServiceLanguageToOtelSdkLanguage(event.Service.Language.Name))
+		}
+		attributes.PutStr(semconv.AttributeTelemetrySDKName, "ElasticAPM")
+		if event.Service.Environment != "" {
+			// elasticsearchexporter currently uses v1.22.0 of the OTel SemConv, so we need to include the v1.22.0 attribute
+			attributes.PutStr(semconv22.AttributeDeploymentEnvironment, event.Service.Environment)
+			attributes.PutStr(semconv.AttributeDeploymentEnvironmentName, event.Service.Environment)
+		}
+		if event.Service.Node != nil && event.Service.Node.Name != "" {
+			attributes.PutStr(semconv.AttributeServiceInstanceID, event.Service.Node.Name)
+		}
 	}
 	if event.Host != nil {
 		if event.Host.Name != "" {

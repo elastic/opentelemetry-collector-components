@@ -455,6 +455,7 @@ func TestMetrics(t *testing.T) {
 		outputExpectedYamlFileName string
 	}{
 		{"metricsets.ndjson", "metricsets_expected.yaml"},
+		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -634,7 +635,8 @@ func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusAccepted {
-		t.Fatalf("unexpected status code: %v", resp.StatusCode)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("unexpected status code: %v, resp body: %s", resp.StatusCode, bodyBytes)
 	}
 }
 
@@ -648,7 +650,7 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	if *update {
 		err := golden.WriteTraces(t, expectedFile, actualTraces)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}
 	expectedTraces, err := golden.ReadTraces(expectedFile)
 	require.NoError(t, err)
@@ -683,10 +685,9 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	if *update {
 		err := golden.WriteMetrics(t, expectedFile, actualMetrics, golden.SkipMetricTimestampNormalization())
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}
 	expectedMetrics, err := golden.ReadMetrics(expectedFile)
 	require.NoError(t, err)
 	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics, pmetrictest.IgnoreMetricsOrder()))
-
 }
