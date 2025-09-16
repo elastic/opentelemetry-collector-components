@@ -246,7 +246,6 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 	if err != nil {
 		detailedErr := errorWithDetails(codes.Unauthenticated, err.Error(), map[string]string{
 			"component": "apikeyauthextension",
-			"api_key":   id,
 		})
 		return ctx, detailedErr
 	}

@@ -209,7 +209,6 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			expectedMsg:  "ApiKey prefix not found, expected ApiKey <value>",
 			expectedMetadata: map[string]string{
 				"component": "apikeyauthextension",
-				"api_key":   "",
 			},
 		},
 		"api_key_collision": {
