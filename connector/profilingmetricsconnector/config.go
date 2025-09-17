@@ -29,6 +29,10 @@ type Config struct {
 	// MetricsPrefix is the prefix to add to all generated metric names
 	MetricsPrefix string `mapstructure:"metrics_prefix"`
 
+	// Generate metrics based on frame information (including frame type,
+	// supersedes ByFrameType).
+	ByFrame bool `mapstructure:"by_frame"`
+
 	// Generate metrics based on frame type.
 	ByFrameType bool `mapstructure:"by_frametype"`
 
