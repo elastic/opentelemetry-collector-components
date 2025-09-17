@@ -52,9 +52,9 @@ type SignalConfig struct {
 	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
 	MaxReplay int `mapstructure:"max_replay"`
 
-	// MaxSize defines the maximum acceptable size for the file content. Set to 0 if you don't want
+	// MaxBufferSize defines the maximum acceptable size for the file content. Set to 0 if you don't want
 	// to set a limit.
-	MaxSize int `mapstructure:"max_size"`
+	MaxBufferSize int `mapstructure:"max_buffer_size"`
 
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
@@ -105,14 +105,14 @@ func (cfg *Config) Validate() error {
 	if cfg.Traces.MaxReplay < 0 {
 		return fmt.Errorf("traces::max_replay must be >= 0")
 	}
-	if cfg.Logs.MaxSize < 0 {
-		return fmt.Errorf("logs::max_size must be >= 0")
+	if cfg.Logs.MaxBufferSize < 0 {
+		return fmt.Errorf("logs::max_buffer_size must be >= 0")
 	}
-	if cfg.Metrics.MaxSize < 0 {
-		return fmt.Errorf("metrics::max_size must be >= 0")
+	if cfg.Metrics.MaxBufferSize < 0 {
+		return fmt.Errorf("metrics::max_buffer_size must be >= 0")
 	}
-	if cfg.Traces.MaxSize < 0 {
-		return fmt.Errorf("traces::max_size must be >= 0")
+	if cfg.Traces.MaxBufferSize < 0 {
+		return fmt.Errorf("traces::max_buffer_size must be >= 0")
 	}
 	return nil
 }

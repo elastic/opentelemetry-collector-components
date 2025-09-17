@@ -32,21 +32,21 @@ func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) c
 	return &Config{
 		Logs: LogsConfig{
 			SignalConfig: SignalConfig{
-				doneCh:  logsDone,
-				MaxSize: maxScannerBufSize,
+				doneCh:        logsDone,
+				MaxBufferSize: maxScannerBufSize,
 			},
 		},
 		Metrics: MetricsConfig{
 			SignalConfig: SignalConfig{
-				doneCh:  metricsDone,
-				MaxSize: maxScannerBufSize,
+				doneCh:        metricsDone,
+				MaxBufferSize: maxScannerBufSize,
 			},
 			AddCounterAttr: true,
 		},
 		Traces: TracesConfig{
 			SignalConfig: SignalConfig{
-				doneCh:  tracesDone,
-				MaxSize: maxScannerBufSize,
+				doneCh:        tracesDone,
+				MaxBufferSize: maxScannerBufSize,
 			},
 		},
 		Concurrency: 1,

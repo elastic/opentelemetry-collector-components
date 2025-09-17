@@ -66,10 +66,10 @@ func TestTracesGenerator_doneCh(t *testing.T) {
 	}
 }
 
-func TestTracesGenerator_MaxSizeAttr(t *testing.T) {
+func TestTracesGenerator_MaxBufferSizeAttr(t *testing.T) {
 	dummyData := `{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"my.service"}}]},"scopeSpans":[{"spans":[{"traceId":"5B8EFFF798038103D269B633813FC60C","spanId":"EEE19B7EC3C1B174","parentSpanId":"EEE19B7EC3C1B173","name":"I'm a server span","startTimeUnixNano":"1727411470107912000","endTimeUnixNano":"1727411470107912000","kind":2,"attributes":[{"key":"my.span.attr","value":{"stringValue":"some value"}}]}]}]}]}`
-	for _, maxSize := range []int{0, 10} {
-		t.Run(fmt.Sprintf("max_size=%d", maxSize), func(t *testing.T) {
+	for _, maxBufferSize := range []int{0, 10} {
+		t.Run(fmt.Sprintf("max_buffer_size=%d", maxBufferSize), func(t *testing.T) {
 			dir := t.TempDir()
 			filePath := filepath.Join(dir, strings.ReplaceAll(t.Name(), "/", "_")+".jsonl")
 			content := []byte(dummyData)
@@ -77,7 +77,7 @@ func TestTracesGenerator_MaxSizeAttr(t *testing.T) {
 
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
-			cfg.(*Config).Traces.MaxSize = maxSize
+			cfg.(*Config).Traces.MaxBufferSize = maxBufferSize
 			cfg.(*Config).Traces.JsonlFile = JsonlFile(filePath)
 
 			_, err := createTracesReceiver(context.Background(), receiver.Settings{
@@ -87,7 +87,7 @@ func TestTracesGenerator_MaxSizeAttr(t *testing.T) {
 				},
 				BuildInfo: component.BuildInfo{},
 			}, cfg, consumertest.NewNop())
-			if maxSize == 0 {
+			if maxBufferSize == 0 {
 				require.NoError(t, err)
 			} else {
 				require.EqualError(t, err, bufio.ErrTooLong.Error())

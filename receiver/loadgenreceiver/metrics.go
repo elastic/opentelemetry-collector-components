@@ -81,14 +81,14 @@ func createMetricsReceiver(
 		}
 	}
 
-	maxSize := genConfig.Metrics.MaxSize
-	if maxSize == 0 {
-		maxSize = len(sampleMetrics) + 10 // add some margin
+	maxBufferSize := genConfig.Metrics.MaxBufferSize
+	if maxBufferSize == 0 {
+		maxBufferSize = len(sampleMetrics) + 10 // add some margin
 	}
 
 	var items []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
-	scanner.Buffer(make([]byte, 0, maxSize), maxSize)
+	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		metricBytes := scanner.Bytes()
 		lineMetrics, err := parser.UnmarshalMetrics(metricBytes)

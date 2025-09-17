@@ -113,10 +113,10 @@ func TestMetricsGenerator_addCounterAttr(t *testing.T) {
 	}
 }
 
-func TestMetricsGenerator_MaxSizeAttr(t *testing.T) {
+func TestMetricsGenerator_MaxBufferSizeAttr(t *testing.T) {
 	dummyData := `{"resourceMetrics":[{"resource":{"attributes":[]},"scopeMetrics":[{"scope":{"name":"app.currency","version":"1.11.1"},"metrics":[{"name":"app.currency_counter","sum":{"dataPoints":[{"attributes":[{"key":"currency_code","value":{"stringValue":"USD"}}],"startTimeUnixNano":"1732918744262776863","timeUnixNano":"1732919164268598041","asInt":"30"},{"attributes":[{"key":"currency_code","value":{"stringValue":"CAD"}}],"startTimeUnixNano":"1732918744262776863","timeUnixNano":"1732919164268598041","asInt":"4"},{"attributes":[{"key":"currency_code","value":{"stringValue":"CHF"}}],"startTimeUnixNano":"1732918744262776863","timeUnixNano":"1732919164268598041","asInt":"380"}],"aggregationTemporality":2,"isMonotonic":true}}]}]}]}`
-	for _, maxSize := range []int{0, 10} {
-		t.Run(fmt.Sprintf("max_size=%d", maxSize), func(t *testing.T) {
+	for _, maxBufferSize := range []int{0, 10} {
+		t.Run(fmt.Sprintf("max_buffer_size=%d", maxBufferSize), func(t *testing.T) {
 			dir := t.TempDir()
 			filePath := filepath.Join(dir, strings.ReplaceAll(t.Name(), "/", "_")+".jsonl")
 			content := []byte(dummyData)
@@ -124,7 +124,7 @@ func TestMetricsGenerator_MaxSizeAttr(t *testing.T) {
 
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
-			cfg.(*Config).Metrics.MaxSize = maxSize
+			cfg.(*Config).Metrics.MaxBufferSize = maxBufferSize
 			cfg.(*Config).Metrics.JsonlFile = JsonlFile(filePath)
 
 			_, err := createMetricsReceiver(context.Background(), receiver.Settings{
@@ -134,7 +134,7 @@ func TestMetricsGenerator_MaxSizeAttr(t *testing.T) {
 				},
 				BuildInfo: component.BuildInfo{},
 			}, cfg, consumertest.NewNop())
-			if maxSize == 0 {
+			if maxBufferSize == 0 {
 				require.NoError(t, err)
 			} else {
 				require.EqualError(t, err, bufio.ErrTooLong.Error())

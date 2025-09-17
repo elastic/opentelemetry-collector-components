@@ -66,10 +66,10 @@ func TestLogsGenerator_doneCh(t *testing.T) {
 	}
 }
 
-func TestLogsGenerator_MaxSizeAttr(t *testing.T) {
+func TestLogsGenerator_MaxBufferSizeAttr(t *testing.T) {
 	dummyData := `{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"my.service"}}]},"scopeLogs":[{"logRecords":[{"timeUnixNano":"1727411470107912000","body":{"stringValue":"Example log record"}}]}]}]}`
-	for _, maxSize := range []int{0, 10} {
-		t.Run(fmt.Sprintf("max_size=%d", maxSize), func(t *testing.T) {
+	for _, maxBufferSize := range []int{0, 10} {
+		t.Run(fmt.Sprintf("max_buffer_size=%d", maxBufferSize), func(t *testing.T) {
 			dir := t.TempDir()
 			filePath := filepath.Join(dir, strings.ReplaceAll(t.Name(), "/", "_")+".jsonl")
 			content := []byte(dummyData)
@@ -77,7 +77,7 @@ func TestLogsGenerator_MaxSizeAttr(t *testing.T) {
 
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
-			cfg.(*Config).Logs.MaxSize = maxSize
+			cfg.(*Config).Logs.MaxBufferSize = maxBufferSize
 			cfg.(*Config).Logs.JsonlFile = JsonlFile(filePath)
 
 			_, err := createLogsReceiver(context.Background(), receiver.Settings{
@@ -87,7 +87,7 @@ func TestLogsGenerator_MaxSizeAttr(t *testing.T) {
 				},
 				BuildInfo: component.BuildInfo{},
 			}, cfg, consumertest.NewNop())
-			if maxSize == 0 {
+			if maxBufferSize == 0 {
 				require.NoError(t, err)
 			} else {
 				require.EqualError(t, err, bufio.ErrTooLong.Error())

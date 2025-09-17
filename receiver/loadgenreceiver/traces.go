@@ -74,14 +74,14 @@ func createTracesReceiver(
 		}
 	}
 
-	maxSize := genConfig.Traces.MaxSize
-	if maxSize == 0 {
-		maxSize = len(sampleTraces) + 10 // add some margin
+	maxBufferSize := genConfig.Traces.MaxBufferSize
+	if maxBufferSize == 0 {
+		maxBufferSize = len(sampleTraces) + 10 // add some margin
 	}
 
 	var items []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
-	scanner.Buffer(make([]byte, 0, maxSize), maxSize)
+	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		traceBytes := scanner.Bytes()
 		lineTraces, err := parser.UnmarshalTraces(traceBytes)

@@ -39,18 +39,18 @@ func TestLoadConfig(t *testing.T) {
 			expected: &Config{
 				Metrics: MetricsConfig{
 					SignalConfig: SignalConfig{
-						MaxSize: maxScannerBufSize,
+						MaxBufferSize: maxScannerBufSize,
 					},
 					AddCounterAttr: true,
 				},
 				Logs: LogsConfig{
 					SignalConfig: SignalConfig{
-						MaxSize: maxScannerBufSize,
+						MaxBufferSize: maxScannerBufSize,
 					},
 				},
 				Traces: TracesConfig{
 					SignalConfig: SignalConfig{
-						MaxSize: maxScannerBufSize,
+						MaxBufferSize: maxScannerBufSize,
 					},
 				},
 				Concurrency: 1,
@@ -69,16 +69,16 @@ func TestLoadConfig(t *testing.T) {
 			expectedErrMessage: "traces::max_replay must be >= 0",
 		},
 		{
-			id:                 component.NewIDWithName(metadata.Type, "logs_invalid_max_size"),
-			expectedErrMessage: "logs::max_size must be >= 0",
+			id:                 component.NewIDWithName(metadata.Type, "logs_invalid_max_buffer_size"),
+			expectedErrMessage: "logs::max_buffer_size must be >= 0",
 		},
 		{
-			id:                 component.NewIDWithName(metadata.Type, "metrics_invalid_max_size"),
-			expectedErrMessage: "metrics::max_size must be >= 0",
+			id:                 component.NewIDWithName(metadata.Type, "metrics_invalid_max_buffer_size"),
+			expectedErrMessage: "metrics::max_buffer_size must be >= 0",
 		},
 		{
-			id:                 component.NewIDWithName(metadata.Type, "traces_invalid_max_size"),
-			expectedErrMessage: "traces::max_size must be >= 0",
+			id:                 component.NewIDWithName(metadata.Type, "traces_invalid_max_buffer_size"),
+			expectedErrMessage: "traces::max_buffer_size must be >= 0",
 		},
 	}
 	for _, tt := range tests {
