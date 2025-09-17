@@ -30,9 +30,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 
 	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/component"
@@ -209,7 +207,7 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 		// Same logic as local
 		switch r.cfg.ThrottleBehavior {
 		case ThrottleBehaviorError:
-			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
+			return errorWithDetails(errTooManyRequests, cfg)
 		case ThrottleBehaviorDelay:
 			select {
 			case <-ctx.Done():

@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension/extensionauth"
 	"golang.org/x/crypto/pbkdf2"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -51,7 +52,7 @@ const (
 )
 
 var (
-	errAuthorizationHeaderWrongScheme = errors.New("ApiKey prefix not found")
+	errAuthorizationHeaderWrongScheme = errors.New("ApiKey prefix not found, expected ApiKey <value>")
 	errAuthorizationHeaderInvalid     = errors.New("invalid API Key")
 
 	_ client.AuthData      = (*authData)(nil)
@@ -147,7 +148,7 @@ func (a *authenticator) Shutdown(ctx context.Context) error {
 func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (string, string, error) {
 	orig, ok := getHeader(headers, authorizationHeader, lowerAuthorizationHeader)
 	if !ok {
-		return "", "", fmt.Errorf("missing header %q", authorizationHeader)
+		return "", "", fmt.Errorf("missing header %q, expected %q", authorizationHeader, "ApiKey <value>")
 	}
 
 	// The expected format of the Authorization header is:
@@ -243,7 +244,10 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]string) (context.Context, error) {
 	authHeaderValue, id, err := a.parseAuthorizationHeader(headers)
 	if err != nil {
-		return ctx, status.Error(codes.Unauthenticated, err.Error())
+		detailedErr := errorWithDetails(codes.Unauthenticated, err.Error(), map[string]string{
+			"component": "apikeyauthextension",
+		})
+		return ctx, detailedErr
 	}
 
 	cacheKey, err := a.getCacheKey(ctx, id, headers)
@@ -263,9 +267,11 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			// Client has specified an API Key with a colliding ID,
 			// but whose secret component does not match the one in
 			// the cache.
-			return ctx, status.Errorf(codes.Unauthenticated,
-				"API Key %q unauthorized", id,
-			)
+			detailedErr := errorWithDetails(codes.Unauthenticated, fmt.Sprintf("API Key %q unauthorized", id), map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   id,
+			})
+			return ctx, detailedErr
 		}
 		if cacheEntry.err != nil {
 			return ctx, status.Error(codes.Unauthenticated, cacheEntry.err.Error())
@@ -280,17 +286,18 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
 			}
 		}
-		return ctx, fmt.Errorf(
-			"error checking privileges for API Key %q: %v", id, err,
-		)
+		return ctx, status.Errorf(codes.Unauthenticated, "error checking privileges for API Key %q: %v", id, err)
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{
 			key: derivedKey,
-			err: fmt.Errorf("API Key %q unauthorized", id),
+			err: errorWithDetails(codes.PermissionDenied, fmt.Sprintf("API Key %q unauthorized", id), map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   id,
+			}),
 		}
 		a.cache.Add(cacheKey, cacheEntry)
-		return ctx, status.Error(codes.PermissionDenied, cacheEntry.err.Error())
+		return ctx, cacheEntry.err
 	}
 	cacheEntry := &cacheEntry{
 		key: derivedKey,
@@ -307,4 +314,17 @@ func newCtxWithAuthData(ctx context.Context, authData *authData) context.Context
 	clientInfo := client.FromContext(ctx)
 	clientInfo.Auth = authData
 	return client.NewContext(ctx, clientInfo)
+}
+
+// errorWithDetails provides a user friendly error with additional error details that
+// can be later used to provide more detailed error information to the user.
+func errorWithDetails(code codes.Code, msg string, metadata map[string]string) error {
+	st := status.New(code, msg)
+	if detailedSt, err := st.WithDetails(&errdetails.ErrorInfo{
+		Domain:   "ingest.elastic.co",
+		Metadata: metadata,
+	}); err == nil {
+		return detailedSt.Err()
+	}
+	return st.Err()
 }
