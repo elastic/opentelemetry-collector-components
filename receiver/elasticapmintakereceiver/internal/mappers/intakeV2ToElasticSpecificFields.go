@@ -61,7 +61,7 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 // to all event types (OTel  signals).
 // Some APM events may contain fields that are APM metadata e.g error.context.service.framework will override
 // the framework provided in the metadata. The apm-data library handles the override, so this function simply
-// sets the resource attribute. 
+// sets the resource attribute.
 // These fields that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
