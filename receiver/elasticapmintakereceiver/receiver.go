@@ -251,14 +251,32 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		switch event.Type() {
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()
+
+			// translate resource level attributes
+			mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
+			mappers.SetDerivedResourceAttributes(event, rm.Resource().Attributes())
+			mappers.SetElasticSpecificResourceAttributes(event, rm.Resource().Attributes())
+
 			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestamp); err != nil {
 				return err
 			}
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
+
+			// translate resource level attributes
+			mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
+			mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
+			mappers.SetElasticSpecificResourceAttributes(event, rl.Resource().Attributes())
+
 			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
 		case modelpb.LogEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
+
+			// translate resource level attributes
+			mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
+			mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
+			mappers.SetElasticSpecificResourceAttributes(event, rl.Resource().Attributes())
+
 			r.elasticLogToOtelLogRecord(&rl, event, timestamp)
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
@@ -297,9 +315,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 }
 
 func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) error {
-
 	metricset := event.GetMetricset()
-
 	// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
 	if metricset.Name == "span_breakdown" {
 		r.translateBreakdownMetricsToOtel(rm, event, timestamp)
@@ -347,7 +363,6 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 		default:
 			return fmt.Errorf("unhandled metric type %q", sample.GetType())
 		}
-		mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
 	}
 
 	return nil
@@ -461,8 +476,6 @@ func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.R
 	count_metric.SetUnit("{span}")
 	count_metric_dp := createBreakdownMetricsCommon(count_metric, event, timestamp)
 	count_metric_dp.SetDoubleValue(float64(event.Span.SelfTime.Count))
-
-	mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
 }
 
 func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent, timestamp time.Time) pmetric.NumberDataPoint {
@@ -491,9 +504,6 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 	// apm log events can contain error information. In this case the log is considered an apm error.
 	// All fields associated with the log should also be set.
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
-	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
-	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
-	mappers.SetElasticSpecificMetadataFields(event, rl.Resource().Attributes())
 
 	if event.Error != nil && event.Error.Log != nil {
 		l.Body().SetStr(event.Error.Log.Message)
@@ -505,9 +515,6 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 	l := sl.LogRecords().AppendEmpty()
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
-	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
-	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
-	mappers.SetElasticSpecificMetadataFields(event, rl.Resource().Attributes())
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 	// TODO(isaacaflores2): add labels (user defined key-value pairs)?
 

@@ -56,9 +56,12 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 	}
 }
 
-// SetElasticSpecificMetadataFields sets fields that are not defined by OTel.
+// SetElasticSpecificResourceAttributes maps APM event fields to OTel attributes at the resource level.
+// The majority of the APM event fields are from the AM metadata model, so this mapping is applicable
+// to all event types (OTel  signals).
+// These fields that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
-func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
 		if event.Cloud.ProjectId != "" {
 			attributesMap.PutStr(attr.CloudProjectID, event.Cloud.ProjectId)
