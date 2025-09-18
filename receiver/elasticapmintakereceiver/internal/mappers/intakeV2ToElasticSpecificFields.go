@@ -57,8 +57,11 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 }
 
 // SetElasticSpecificResourceAttributes maps APM event fields to OTel attributes at the resource level.
-// The majority of the APM event fields are from the AM metadata model, so this mapping is applicable
+// The majority of the APM event fields are from the APM metadata model, so this mapping is applicable
 // to all event types (OTel  signals).
+// Some APM events may contain fields that are APM metadata e.g error.context.service.framework will override
+// the framework provided in the metadata. The apm-data library handles the override, so this function simply
+// sets the resource attribute. 
 // These fields that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
@@ -108,6 +111,25 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 			}
 			if event.Service.Runtime.Version != "" {
 				attributesMap.PutStr(attr.ServiceRuntimeVersion, event.Service.Runtime.Version)
+			}
+		}
+		if event.Service.Origin != nil {
+			if event.Service.Origin.Id != "" {
+				attributesMap.PutStr(attr.ServiceOriginId, event.Service.Origin.Id)
+			}
+			if event.Service.Origin.Name != "" {
+				attributesMap.PutStr(attr.ServiceOriginName, event.Service.Origin.Name)
+			}
+			if event.Service.Origin.Version != "" {
+				attributesMap.PutStr(attr.ServiceOriginVersion, event.Service.Origin.Version)
+			}
+		}
+		if event.Service.Target != nil {
+			if event.Service.Target.Name != "" {
+				attributesMap.PutStr(attr.ServiceTargetName, event.Service.Target.Name)
+			}
+			if event.Service.Target.Type != "" {
+				attributesMap.PutStr(attr.ServiceTargetType, event.Service.Target.Type)
 			}
 		}
 	}
