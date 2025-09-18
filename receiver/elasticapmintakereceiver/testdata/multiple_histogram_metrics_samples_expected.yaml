@@ -1,12 +1,6 @@
 resourceMetrics:
   - resource:
       attributes:
-        - key: agent.activation_method
-          value:
-            stringValue: ""
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -51,12 +45,6 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
-        - key: agent.activation_method
-          value:
-            stringValue: ""
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -105,12 +93,6 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
-        - key: agent.activation_method
-          value:
-            stringValue: ""
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
         - key: agent.name
           value:
             stringValue: elastic-node

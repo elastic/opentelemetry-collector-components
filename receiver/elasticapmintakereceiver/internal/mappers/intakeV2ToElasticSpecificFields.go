@@ -84,8 +84,12 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 	}
 
 	if event.Agent != nil {
-		attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
-		attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
+		if event.Agent.EphemeralId != "" {
+			attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
+		}
+		if event.Agent.ActivationMethod != "" {
+			attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
+		}
 	}
 
 	if event.Service != nil {

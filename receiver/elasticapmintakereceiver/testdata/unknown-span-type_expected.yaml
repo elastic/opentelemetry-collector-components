@@ -67,6 +67,21 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: javascript
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -183,6 +198,21 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:

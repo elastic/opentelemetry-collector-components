@@ -280,6 +280,12 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 			r.elasticLogToOtelLogRecord(&rl, event, timestamp)
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
+
+			// translate resource level attributes
+			mappers.TranslateToOtelResourceAttributes(event, rs.Resource().Attributes())
+			mappers.SetDerivedResourceAttributes(event, rs.Resource().Attributes())
+			mappers.SetElasticSpecificResourceAttributes(event, rs.Resource().Attributes())
+
 			s := r.elasticEventToOtelSpan(&rs, event, timestamp)
 
 			isTransaction := event.Type() == modelpb.TransactionEventType
@@ -533,9 +539,7 @@ func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	s := ss.Spans().AppendEmpty()
 
 	mappers.SetTopLevelFieldsSpan(event, timestamp, s, r.settings.Logger)
-	mappers.TranslateToOtelResourceAttributes(event, rs.Resource().Attributes())
 	mappers.SetDerivedFieldsCommon(event, s.Attributes())
-	mappers.SetDerivedResourceAttributes(event, rs.Resource().Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
 	return s
 }

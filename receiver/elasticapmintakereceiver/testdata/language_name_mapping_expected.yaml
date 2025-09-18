@@ -40,6 +40,12 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "5"
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:

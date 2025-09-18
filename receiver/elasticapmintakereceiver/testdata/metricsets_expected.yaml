@@ -4,9 +4,6 @@ resourceMetrics:
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -92,9 +89,6 @@ resourceMetrics:
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -151,9 +145,6 @@ resourceMetrics:
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -225,9 +216,6 @@ resourceMetrics:
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -263,51 +251,6 @@ resourceMetrics:
             stringValue: axb123hg
     scopeMetrics:
       - metrics:
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpuacct.total.ns
-          - gauge:
-              dataPoints:
-                - asDouble: 1024
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpu.cfs.period.us
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpu.id
           - gauge:
               dataPoints:
                 - asDouble: 2048
@@ -383,15 +326,57 @@ resourceMetrics:
                         intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpuacct.id
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpuacct.total.ns
+          - gauge:
+              dataPoints:
+                - asDouble: 1024
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpu.cfs.period.us
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpu.id
         scope: {}
   - resource:
       attributes:
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: agent.ephemeral_id
-          value:
-            stringValue: ""
         - key: agent.name
           value:
             stringValue: elastic-node
