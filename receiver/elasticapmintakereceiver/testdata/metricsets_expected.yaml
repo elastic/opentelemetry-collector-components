@@ -217,51 +217,6 @@ resourceMetrics:
                       value:
                         intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpu.cfs.quota.us
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpu.stats.periods
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpu.stats.throttled.periods
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.throttled.ns
           - gauge:
               dataPoints:
@@ -323,6 +278,51 @@ resourceMetrics:
                         intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.id
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpu.cfs.quota.us
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpu.stats.periods
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpu.stats.throttled.periods
         scope: {}
   - resource:
       attributes:

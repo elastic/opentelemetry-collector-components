@@ -57,7 +57,12 @@ func SetTopLevelFieldsCommon(event *modelpb.APMEvent, t TopLevelFieldSetter, log
 	if event.Transaction != nil && event.Transaction.Id != "" {
 		transactionId, err := SpanIdFromHex(event.Transaction.Id)
 		if err == nil {
-			t.SetSpanID(transactionId)
+			// Spans in the elasticapm data model have a transaction.id (which is the id of the root transaction in the given trace)
+			// At the same time, spans have their own span.id and the transaction.id is not needed anymore on spans
+			// Therefore: we only call `t.SetSpanID` when the event is not a span
+			if event.Span == nil {
+				t.SetSpanID(transactionId)
+			}
 		} else {
 			logger.Error("failed to parse transaction ID", zap.String("transaction_id", (event.Transaction.Id)))
 		}
