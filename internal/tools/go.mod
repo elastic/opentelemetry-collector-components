@@ -7,8 +7,8 @@ require (
 	github.com/elastic/go-licenser v0.4.2
 	github.com/golangci/golangci-lint v1.64.8
 	github.com/jcchavezs/porto v0.7.0
-	go.opentelemetry.io/build-tools/chloggen v0.23.1
-	go.opentelemetry.io/build-tools/multimod v0.23.1
+	go.opentelemetry.io/build-tools/chloggen v0.26.2
+	go.opentelemetry.io/build-tools/multimod v0.26.2
 	go.opentelemetry.io/collector/cmd/builder v0.135.0
 	go.opentelemetry.io/collector/cmd/mdatagen v0.135.0
 	golang.org/x/tools v0.35.0
@@ -18,7 +18,7 @@ require (
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
 	4d63.com/gochecknoglobals v0.2.2 // indirect
-	dario.cat/mergo v1.0.1 // indirect
+	dario.cat/mergo v1.0.2 // indirect
 	github.com/4meepo/tagalign v1.4.2 // indirect
 	github.com/Abirdcfly/dupword v0.1.3 // indirect
 	github.com/Antonboom/errname v1.0.0 // indirect
@@ -31,7 +31,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.3.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/OpenPeeDeeP/depguard/v2 v2.2.1 // indirect
-	github.com/ProtonMail/go-crypto v1.2.0 // indirect
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/alecthomas/go-check-sumtype v0.3.1 // indirect
 	github.com/alexkohler/nakedret/v2 v2.0.5 // indirect
 	github.com/alexkohler/prealloc v1.0.0 // indirect
@@ -70,7 +70,7 @@ require (
 	github.com/go-critic/go-critic v0.12.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
-	github.com/go-git/go-git/v5 v5.16.0 // indirect
+	github.com/go-git/go-git/v5 v5.16.2 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-toolsmith/astcast v1.1.0 // indirect
@@ -100,7 +100,9 @@ require (
 	github.com/gostaticanalysis/comment v1.5.0 // indirect
 	github.com/gostaticanalysis/forcetypeassert v0.2.0 // indirect
 	github.com/gostaticanalysis/nilerr v0.1.1 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-immutable-radix/v2 v2.1.0 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/hashicorp/go-version v1.7.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
@@ -152,7 +154,7 @@ require (
 	github.com/nunnatsa/ginkgolinter v0.19.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/pjbgf/sha1cd v0.3.2 // indirect
+	github.com/pjbgf/sha1cd v0.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polyfloyd/go-errorlint v1.7.1 // indirect
 	github.com/prometheus/client_golang v1.20.2 // indirect
@@ -169,22 +171,22 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/ryancurrah/gomodguard v1.3.5 // indirect
 	github.com/ryanrolds/sqlclosecheck v0.5.1 // indirect
-	github.com/sagikazarmark/locafero v0.9.0 // indirect
+	github.com/sagikazarmark/locafero v0.10.0 // indirect
 	github.com/sanposhiho/wastedassign/v2 v2.1.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1 // indirect
 	github.com/sashamelentyev/interfacebloat v1.1.0 // indirect
 	github.com/sashamelentyev/usestdlibvars v1.28.0 // indirect
 	github.com/securego/gosec/v2 v2.22.2 // indirect
-	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
+	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sivchari/containedctx v1.0.3 // indirect
 	github.com/sivchari/tenv v1.12.1 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/sonatard/noctx v0.1.0 // indirect
-	github.com/sourcegraph/conc v0.3.0 // indirect
+	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/sourcegraph/go-diff v0.7.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
-	github.com/spf13/cast v1.7.1 // indirect
+	github.com/spf13/cast v1.9.2 // indirect
 	github.com/spf13/cobra v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.20.1 // indirect
@@ -212,7 +214,7 @@ require (
 	go-simpler.org/musttag v0.13.0 // indirect
 	go-simpler.org/sloglint v0.9.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/build-tools v0.23.1 // indirect
+	go.opentelemetry.io/build-tools v0.26.2 // indirect
 	go.opentelemetry.io/collector/component v1.41.0 // indirect
 	go.opentelemetry.io/collector/confmap v1.41.0 // indirect
 	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.41.0 // indirect
