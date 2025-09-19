@@ -116,6 +116,39 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 			}
 		}
 	}
+
+	setLabels(event, attributesMap)
+}
+
+// setLabels sets single value label fields from the APMEvent Labels and NumericLabels fields.
+// Labels are added as attributes with appropriate key prefixes: "labels." and "numeric_labels.".
+// Allows key names with spaces to match existing behavior.
+// Ignored empty keys and values.
+//
+// Note: modelpb.Events supports single and slice label values,
+// but the apm data model only support single value labels, so the slice values are ignored.
+// See schema:
+// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L75
+// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L433
+// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L969
+func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	for key, labelValue := range event.Labels {
+		if key != "" && labelValue != nil {
+			if labelValue.Value != "" {
+				attrKey := "labels." + key
+				attributesMap.PutStr(attrKey, labelValue.Value)
+			}
+		}
+	}
+
+	for key, numericLabelValue := range event.NumericLabels {
+		if key != "" && numericLabelValue != nil {
+			if numericLabelValue.Value != 0 {
+				attrKey := "numeric_labels." + key
+				attributesMap.PutDouble(attrKey, numericLabelValue.Value)
+			}
+		}
+	}
 }
 
 // SetElasticSpecificFieldsForLog sets fields that are not defined by OTel.
@@ -177,4 +210,5 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 			attributesMap.PutStr(attr.SessionID, event.Session.Id)
 		}
 	}
+
 }
