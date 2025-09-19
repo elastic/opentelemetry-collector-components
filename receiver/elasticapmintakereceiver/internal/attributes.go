@@ -48,6 +48,11 @@ const (
 	ServiceFrameworkVersion = "service.framework.version"
 	ServiceRuntimeName      = "service.runtime.name"
 	ServiceRuntimeVersion   = "service.runtime.version"
+	ServiceOriginId         = "service.origin.id"
+	ServiceOriginName       = "service.origin.name"
+	ServiceOriginVersion    = "service.origin.version"
+	ServiceTargetName       = "service.target.name"
+	ServiceTargetType       = "service.target.type"
 
 	HostOSPlatform = "host.os.platform"
 
