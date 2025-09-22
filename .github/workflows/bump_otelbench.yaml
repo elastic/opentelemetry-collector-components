@@ -44,7 +44,7 @@ jobs:
       - check-release
     if: needs.check-release.result == 'success'
     steps:
-      - name: Get token from GitHub App
+      - name: Get token to checkout on the repository and to create a PR
         id: get_token
         uses: actions/create-github-app-token@v2
         with:
