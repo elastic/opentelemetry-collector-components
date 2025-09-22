@@ -131,22 +131,21 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 // - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L75
 // - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L433
 // - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L969
+//
+// The apm data library logic will take care of overwriting metadata labels with event labels when decoding
+// the input to modelpb.APMEvent, so we simply copy all labels from the event here.
 func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	for key, labelValue := range event.Labels {
-		if key != "" && labelValue != nil {
-			if labelValue.Value != "" {
-				attrKey := "labels." + key
-				attributesMap.PutStr(attrKey, labelValue.Value)
-			}
+		if key != "" && labelValue != nil && labelValue.Value != "" {
+			attrKey := "labels." + key
+			attributesMap.PutStr(attrKey, labelValue.Value)
 		}
 	}
 
 	for key, numericLabelValue := range event.NumericLabels {
-		if key != "" && numericLabelValue != nil {
-			if numericLabelValue.Value != 0 {
-				attrKey := "numeric_labels." + key
-				attributesMap.PutDouble(attrKey, numericLabelValue.Value)
-			}
+		if key != "" && numericLabelValue != nil && numericLabelValue.Value != 0 {
+			attrKey := "numeric_labels." + key
+			attributesMap.PutDouble(attrKey, numericLabelValue.Value)
 		}
 	}
 }
