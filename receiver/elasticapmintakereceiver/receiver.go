@@ -252,10 +252,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()
 
-			// translate resource level attributes
-			mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
-			mappers.SetDerivedResourceAttributes(event, rm.Resource().Attributes())
-			mappers.SetElasticSpecificResourceAttributes(event, rm.Resource().Attributes())
+			r.setResourceAttributes(rm.Resource().Attributes(), event)
 
 			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestamp); err != nil {
 				return err
@@ -263,28 +260,19 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 
-			// translate resource level attributes
-			mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
-			mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
-			mappers.SetElasticSpecificResourceAttributes(event, rl.Resource().Attributes())
+			r.setResourceAttributes(rl.Resource().Attributes(), event)
 
 			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
 		case modelpb.LogEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 
-			// translate resource level attributes
-			mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
-			mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
-			mappers.SetElasticSpecificResourceAttributes(event, rl.Resource().Attributes())
+			r.setResourceAttributes(rl.Resource().Attributes(), event)
 
 			r.elasticLogToOtelLogRecord(&rl, event, timestamp)
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
 
-			// translate resource level attributes
-			mappers.TranslateToOtelResourceAttributes(event, rs.Resource().Attributes())
-			mappers.SetDerivedResourceAttributes(event, rs.Resource().Attributes())
-			mappers.SetElasticSpecificResourceAttributes(event, rs.Resource().Attributes())
+			r.setResourceAttributes(rs.Resource().Attributes(), event)
 
 			s := r.elasticEventToOtelSpan(&rs, event, timestamp)
 
@@ -318,6 +306,14 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
+}
+
+// setResourceAttributes maps event fields to attributes.
+// Expects the attribute map to be at the resource level e.g. pmetric.ResourceMetrics.Resource().Attributes().
+func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, event *modelpb.APMEvent) {
+	mappers.TranslateToOtelResourceAttributes(event, attrs)
+	mappers.SetDerivedResourceAttributes(event, attrs)
+	mappers.SetElasticSpecificResourceAttributes(event, attrs)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) error {
