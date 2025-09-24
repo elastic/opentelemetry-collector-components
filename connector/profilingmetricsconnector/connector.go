@@ -38,8 +38,18 @@ var (
 
 var (
 	// Helper strings to keep code readable.
-	frameTypeGo  = semconv.ProfileFrameTypeGo.Value.AsString()
-	frameTypeJVM = semconv.ProfileFrameTypeJVM.Value.AsString()
+	frameTypeNative = semconv.ProfileFrameTypeNative.Value.AsString()
+	frameTypeKernel = semconv.ProfileFrameTypeKernel.Value.AsString()
+	frameTypeGo     = semconv.ProfileFrameTypeGo.Value.AsString()
+	frameTypeJVM    = semconv.ProfileFrameTypeJVM.Value.AsString()
+	frameTypeBeam   = semconv.ProfileFrameTypeBeam.Value.AsString()
+	frameTypePython = semconv.ProfileFrameTypeCpython.Value.AsString()
+	frameTypeRuby   = semconv.ProfileFrameTypeRuby.Value.AsString()
+	frameTypePHP    = semconv.ProfileFrameTypePHP.Value.AsString()
+	frameTypeDotnet = semconv.ProfileFrameTypeDotnet.Value.AsString()
+	frameTypePerl   = semconv.ProfileFrameTypePerl.Value.AsString()
+	frameTypeV8JS   = semconv.ProfileFrameTypeV8JS.Value.AsString()
+	frameTypeRust   = semconv.ProfileFrameTypeRust.Value.AsString()
 )
 
 // profilesToMetricsConnector implements xconnector.Profiles
@@ -141,7 +151,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 	for _, profile := range profiles {
 		st := profile.SampleType()
 		if st.Len() != 1 {
-			// Opinionated check to make sure we have only a single SampleTyp, which is what OTel eBPF profiler generates.
+			// Opinionated check to make sure we have only a single SampleType, which is what OTel eBPF profiler generates.
 			continue
 		}
 		typStrIdx := int(st.At(0).TypeStrindex())
@@ -155,6 +165,18 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 		// Add basic sample count metric.
 		c.addSampleCountMetric(profile, scopeMetrics)
 		locIndices := profile.LocationIndices()
+
+		if c.config.ByFrame {
+			// TODO: For better efficiency, don't generate separate metrics per-profile
+			// under the same scope, instead merge the values across profiles into
+			// metrics (assuming scope and sample type is the same for these profiles).
+			// The following is fine for now, as the current eBPF profiler will not
+			// generate multiple profiles with the same sample type in the same scope.
+			if origin.typ == "samples" && origin.unit == "count" {
+				// TODO: For now, only extract frame-based metrics from OnCPU stacktraces.
+				c.addFrameMetrics(dictionary, profile, scopeMetrics)
+			}
+		}
 
 		if c.config.ByFrameType {
 			// Collect frame type information.

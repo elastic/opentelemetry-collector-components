@@ -56,9 +56,15 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 	}
 }
 
-// SetElasticSpecificMetadataFields sets fields that are not defined by OTel.
+// SetElasticSpecificResourceAttributes maps APM event fields to OTel attributes at the resource level.
+// The majority of the APM event fields are from the APM metadata model, so this mapping is applicable
+// to all event types (OTel  signals).
+// Some APM events may contain fields that are APM metadata e.g error.context.service.framework will override
+// the framework provided in the metadata. The apm-data library handles the override, so this function simply
+// sets the resource attribute.
+// These fields are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
-func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
 		if event.Cloud.ProjectId != "" {
 			attributesMap.PutStr(attr.CloudProjectID, event.Cloud.ProjectId)
@@ -78,8 +84,12 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 	}
 
 	if event.Agent != nil {
-		attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
-		attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
+		if event.Agent.EphemeralId != "" {
+			attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
+		}
+		if event.Agent.ActivationMethod != "" {
+			attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
+		}
 	}
 
 	if event.Service != nil {
@@ -105,6 +115,25 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 			}
 			if event.Service.Runtime.Version != "" {
 				attributesMap.PutStr(attr.ServiceRuntimeVersion, event.Service.Runtime.Version)
+			}
+		}
+		if event.Service.Origin != nil {
+			if event.Service.Origin.Id != "" {
+				attributesMap.PutStr(attr.ServiceOriginId, event.Service.Origin.Id)
+			}
+			if event.Service.Origin.Name != "" {
+				attributesMap.PutStr(attr.ServiceOriginName, event.Service.Origin.Name)
+			}
+			if event.Service.Origin.Version != "" {
+				attributesMap.PutStr(attr.ServiceOriginVersion, event.Service.Origin.Version)
+			}
+		}
+		if event.Service.Target != nil {
+			if event.Service.Target.Name != "" {
+				attributesMap.PutStr(attr.ServiceTargetName, event.Service.Target.Name)
+			}
+			if event.Service.Target.Type != "" {
+				attributesMap.PutStr(attr.ServiceTargetType, event.Service.Target.Type)
 			}
 		}
 	}
