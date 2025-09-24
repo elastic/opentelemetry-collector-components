@@ -2,17 +2,17 @@
 * @elastic/otel-devs
 
 # Per-component owners
-loadgen                                @elastic/obs-ds-intake-services
-receiver/loadgenreceiver               @elastic/obs-ds-intake-services
-receiver/elasticapmintakereceiver      @elastic/obs-ds-intake-services @elastic/ingest-otel-data
+loadgen                                @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+receiver/loadgenreceiver               @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+receiver/elasticapmintakereceiver      @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations
-processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/ingest-otel-data
-processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/ingest-otel-data
-processor/lsmintervalprocessor         @elastic/obs-ds-intake-services
-processor/ratelimitprocessor           @elastic/obs-ds-intake-services
+processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
+processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
+processor/lsmintervalprocessor         @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+processor/ratelimitprocessor           @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 processor/integrationprocessor         @elastic/ecosystem @elastic/ingest-otel-data
-connector/elasticapmconnector          @elastic/obs-ds-intake-services
-extension/apikeyauthextension          @elastic/obs-ds-intake-services
+connector/elasticapmconnector          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+extension/apikeyauthextension          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 extension/apmconfigextension           @elastic/ingest-otel-data
 extension/beatsauthextension           @elastic/elastic-agent-data-plane
 extension/fileintegrationextension     @elastic/ecosystem @elastic/ingest-otel-data
