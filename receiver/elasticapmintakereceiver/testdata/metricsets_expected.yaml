@@ -1,12 +1,24 @@
 resourceMetrics:
   - resource:
       attributes:
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: process.pid
           value:
             intValue: "1234"
         - key: service.instance.id
           value:
             stringValue: node-1
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -74,12 +86,24 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: process.pid
           value:
             intValue: "1234"
         - key: service.instance.id
           value:
             stringValue: node-1
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -118,12 +142,24 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: process.pid
           value:
             intValue: "1234"
         - key: service.instance.id
           value:
             stringValue: node-1
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -177,12 +213,24 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: process.pid
           value:
             intValue: "1234"
         - key: service.instance.id
           value:
             stringValue: node-1
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -326,12 +374,24 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: process.pid
           value:
             intValue: "1234"
         - key: service.instance.id
           value:
             stringValue: node-1
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
