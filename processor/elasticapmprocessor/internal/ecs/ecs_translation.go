@@ -47,75 +47,75 @@ func replaceDots(key string) string {
 func isSupportedAttribute(attr string) bool {
 	switch attr {
 	// service.*
-	case semconv.AttributeServiceName,
-		semconv.AttributeServiceVersion,
-		semconv.AttributeServiceInstanceID,
-		semconv.AttributeServiceNamespace,
+	case string(semconv.ServiceNameKey),
+		string(semconv.ServiceVersionKey),
+		string(semconv.ServiceInstanceIDKey),
+		string(semconv.ServiceNamespaceKey),
 		"service.language.name",
 		"service.language.version":
 		return true
 
 	// deployment.*
-	case semconv26.AttributeDeploymentEnvironment, semconv.AttributeDeploymentEnvironmentName:
+	case string(semconv26.DeploymentEnvironmentKey), string(semconv.DeploymentEnvironmentNameKey):
 		return true
 
 	// telemetry.sdk.*
-	case semconv.AttributeTelemetrySDKName,
-		semconv.AttributeTelemetrySDKVersion,
-		semconv.AttributeTelemetrySDKLanguage:
+	case string(semconv.TelemetrySDKNameKey),
+		string(semconv.TelemetrySDKVersionKey),
+		string(semconv.TelemetrySDKLanguageKey):
 		return true
 
 	// cloud.*
-	case semconv.AttributeCloudProvider,
-		semconv.AttributeCloudAccountID,
-		semconv.AttributeCloudRegion,
-		semconv.AttributeCloudAvailabilityZone,
-		semconv.AttributeCloudPlatform:
+	case string(semconv.CloudProviderKey),
+		string(semconv.CloudAccountIDKey),
+		string(semconv.CloudRegionKey),
+		string(semconv.CloudAvailabilityZoneKey),
+		string(semconv.CloudPlatformKey):
 		return true
 
 	// container.*
-	case semconv.AttributeContainerName,
-		semconv.AttributeContainerID,
-		semconv.AttributeContainerImageName,
+	case string(semconv.ContainerNameKey),
+		string(semconv.ContainerIDKey),
+		string(semconv.ContainerImageNameKey),
 		"container.image.tag",
 		"container.runtime":
 		return true
 
 	// k8s.*
-	case semconv.AttributeK8SNamespaceName,
-		semconv.AttributeK8SNodeName,
-		semconv.AttributeK8SPodName,
-		semconv.AttributeK8SPodUID:
+	case string(semconv.K8SNamespaceNameKey),
+		string(semconv.K8SNodeNameKey),
+		string(semconv.K8SPodNameKey),
+		string(semconv.K8SPodUIDKey):
 		return true
 
 	// host.*
-	case semconv.AttributeHostName,
-		semconv.AttributeHostID,
-		semconv.AttributeHostType,
+	case string(semconv.HostNameKey),
+		string(semconv.HostIDKey),
+		string(semconv.HostTypeKey),
 		"host.arch",
-		semconv.AttributeHostIP:
+		string(semconv.HostIPKey):
 		return true
 
 	// process.*
-	case semconv.AttributeProcessPID,
-		semconv.AttributeProcessCommandLine,
-		semconv.AttributeProcessExecutablePath,
+	case string(semconv.ProcessPIDKey),
+		string(semconv.ProcessCommandLineKey),
+		string(semconv.ProcessExecutablePathKey),
 		"process.runtime.name",
 		"process.runtime.version",
-		semconv.AttributeProcessOwner:
+		string(semconv.ProcessOwnerKey):
 		return true
 
 	// os.*
-	case semconv.AttributeOSType,
-		semconv.AttributeOSDescription,
-		semconv.AttributeOSName,
-		semconv.AttributeOSVersion:
+	case string(semconv.OSTypeKey),
+		string(semconv.OSDescriptionKey),
+		string(semconv.OSNameKey),
+		string(semconv.OSVersionKey):
 		return true
 
 	// device.*
-	case semconv.AttributeDeviceID,
-		semconv.AttributeDeviceModelIdentifier,
-		semconv.AttributeDeviceModelName,
+	case string(semconv.DeviceIDKey),
+		string(semconv.DeviceModelIdentifierKey),
+		string(semconv.DeviceModelNameKey),
 		"device.manufacturer":
 		return true
 
