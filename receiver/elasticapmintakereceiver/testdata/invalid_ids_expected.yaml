@@ -109,6 +109,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -256,6 +262,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:

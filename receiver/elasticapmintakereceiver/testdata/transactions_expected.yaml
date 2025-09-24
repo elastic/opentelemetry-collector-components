@@ -109,6 +109,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -260,6 +266,21 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: labels.organization_uuid
+          value:
+            stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
+        - key: labels.tag4
+          value:
+            stringValue: "false"
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 12
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.45
     scopeSpans:
       - scope: {}
         spans:
@@ -424,6 +445,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -580,6 +607,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -757,6 +790,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
