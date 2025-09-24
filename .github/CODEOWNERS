@@ -4,7 +4,6 @@
 # Per-component owners
 processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations
 processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/ingest-otel-data
-processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/ingest-otel-data
 processor/lsmintervalprocessor         @elastic/obs-ds-intake-services
 connector/elasticapmconnector          @elastic/obs-ds-intake-services
 extension/beatsauthextension           @elastic/elastic-agent-data-plane
