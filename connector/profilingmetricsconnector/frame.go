@@ -48,27 +48,29 @@ var (
 	metricBeam   = metric{name: "samples.beam.count", desc: "Number of samples executing Beam code (self)"}
 )
 
-var (
-	allowedFrameTypes = map[string]metric{
-		frameTypeNative: metricNative,
-		frameTypeKernel: metricKernel,
-		frameTypeJVM:    metricJVM,
-		frameTypePython: metricPython,
-		frameTypeGo:     metricGo,
-		frameTypeV8JS:   metricV8JS,
-		frameTypePHP:    metricPHP,
-		frameTypePerl:   metricPerl,
-		frameTypeRuby:   metricRuby,
-		frameTypeDotnet: metricDotnet,
-		frameTypeRust:   metricRust,
-		frameTypeBeam:   metricBeam,
-	}
-)
+var allowedFrameTypes = map[string]metric{
+	frameTypeNative: metricNative,
+	frameTypeKernel: metricKernel,
+	frameTypeJVM:    metricJVM,
+	frameTypePython: metricPython,
+	frameTypeGo:     metricGo,
+	frameTypeV8JS:   metricV8JS,
+	frameTypePHP:    metricPHP,
+	frameTypePerl:   metricPerl,
+	frameTypeRuby:   metricRuby,
+	frameTypeDotnet: metricDotnet,
+	frameTypeRust:   metricRust,
+	frameTypeBeam:   metricBeam,
+}
 
-func fetchFrameType(attrTable pprofile.AttributeTableSlice,
-	locationTable pprofile.LocationSlice,
+func fetchFrameType(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
-	sampleLocationIndex int) (string, error) {
+	sampleLocationIndex int,
+) (string, error) {
+	attrTable := dictionary.AttributeTable()
+	locationTable := dictionary.LocationTable()
+	strTable := dictionary.StringTable()
+
 	lilen := locationIndices.Len()
 	if sampleLocationIndex >= lilen {
 		return "", fmt.Errorf("fetchFrameType: sli %d >= %d",
@@ -91,7 +93,7 @@ func fetchFrameType(attrTable pprofile.AttributeTableSlice,
 				idx, alen)
 		}
 		attr := attrTable.At(int(idx))
-		if attr.Key() == string(semconv.ProfileFrameTypeKey) {
+		if strTable.At(int(attr.KeyStrindex())) == string(semconv.ProfileFrameTypeKey) {
 			frameType = attr.Value().Str()
 			if _, ok := allowedFrameTypes[frameType]; !ok {
 				return "", fmt.Errorf("fetchFrameType: unknown frame type %v",
@@ -110,13 +112,15 @@ func fetchFrameType(attrTable pprofile.AttributeTableSlice,
 
 // classify classifies sample into one or more categories.
 // This takes place by increasing the associated metric count.
-func classify(attrTable pprofile.AttributeTableSlice,
-	locationTable pprofile.LocationSlice,
+func classify(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
-	sample pprofile.Sample, counts map[metric]int64) error {
+	sample pprofile.Sample, counts map[metric]int64,
+) error {
+	stackTable := dictionary.StackTable()
+
 	// Work through index indirections to fetch leaf frame which is always stored first
-	sli := sample.LocationsStartIndex()
-	leafFrameType, err := fetchFrameType(attrTable, locationTable, locationIndices, int(sli))
+	sli := stackTable.At(int(sample.StackIndex())).LocationIndices().At(0)
+	leafFrameType, err := fetchFrameType(dictionary, locationIndices, int(sli))
 	if err != nil {
 		return err
 	}
@@ -134,15 +138,15 @@ func classify(attrTable pprofile.AttributeTableSlice,
 }
 
 func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.ProfilesDictionary,
-	profile pprofile.Profile, scopeMetrics pmetric.ScopeMetrics) {
-	attrTable := dictionary.AttributeTable()
-	locationTable := dictionary.LocationTable()
-	locationIndices := profile.LocationIndices()
+	profile pprofile.Profile, scopeMetrics pmetric.ScopeMetrics,
+) {
+	stackTable := dictionary.StackTable()
 
 	// Process all samples and extract metric counts
 	counts := make(map[metric]int64)
 	for _, sample := range profile.Sample().All() {
-		if err := classify(attrTable, locationTable, locationIndices, sample, counts); err != nil {
+		stack := stackTable.At(int(sample.StackIndex()))
+		if err := classify(dictionary, stack.LocationIndices(), sample, counts); err != nil {
 			// Should not happen with well-formed profile data
 			// TODO: Add error metric or log error
 			continue
