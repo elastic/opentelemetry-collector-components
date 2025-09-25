@@ -118,7 +118,7 @@ func classify(dictionary pprofile.ProfilesDictionary,
 ) error {
 	stackTable := dictionary.StackTable()
 
-	// Work through index indirections to fetch leaf frame which is always stored first
+	// Fetch leaf frame which is always stored first
 	sli := stackTable.At(int(sample.StackIndex())).LocationIndices().At(0)
 	leafFrameType, err := fetchFrameType(dictionary, locationIndices, int(sli))
 	if err != nil {
