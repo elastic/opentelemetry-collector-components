@@ -7,7 +7,6 @@ receiver/loadgenreceiver               @elastic/obs-ds-intake-services @elastic/
 receiver/elasticapmintakereceiver      @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations
 processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 processor/lsmintervalprocessor         @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 processor/ratelimitprocessor           @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 processor/integrationprocessor         @elastic/ecosystem @elastic/ingest-otel-data

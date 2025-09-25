@@ -34,6 +34,21 @@ resourceSpans:
         - key: service.language.name
           value:
             stringValue: C#
+        - key: agent.activation_method
+          value:
+            stringValue: nuget
+        - key: service.framework.name
+          value:
+            stringValue: ASP.NET Core
+        - key: service.framework.version
+          value:
+            stringValue: 8.0.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: .NET 8
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.5
     scopeSpans:
       - scope: {}
         spans:

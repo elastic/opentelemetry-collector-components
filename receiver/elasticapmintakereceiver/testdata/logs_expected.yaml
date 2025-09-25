@@ -1,18 +1,6 @@
 resourceLogs:
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -67,6 +55,18 @@ resourceLogs:
         - key: process.command_line
           value:
             stringValue: -v
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
@@ -102,18 +102,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -168,6 +156,18 @@ resourceLogs:
         - key: process.command_line
           value:
             stringValue: -v
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
@@ -204,18 +204,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -270,6 +258,18 @@ resourceLogs:
         - key: process.command_line
           value:
             stringValue: -v
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
@@ -306,18 +306,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -378,6 +366,18 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
@@ -417,18 +417,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: testSvc
@@ -489,6 +477,18 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
@@ -547,18 +547,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: testSvc
@@ -619,6 +607,18 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
@@ -677,18 +677,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: testSvc
@@ -749,6 +737,18 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
@@ -807,18 +807,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: testSvc
@@ -882,6 +870,18 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: faas.trigger.request.id
           value:
             stringValue: request-id-xyz789
@@ -943,18 +943,6 @@ resourceLogs:
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: service.name
           value:
             stringValue: testSvc
@@ -1018,6 +1006,18 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
+        - key: service.language.name
+          value:
+            stringValue: Java
+        - key: service.language.version
+          value:
+            stringValue: 10.0.2
         - key: faas.trigger.request.id
           value:
             stringValue: request-id-xyz789
