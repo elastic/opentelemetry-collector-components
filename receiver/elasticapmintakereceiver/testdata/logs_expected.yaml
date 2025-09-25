@@ -88,6 +88,15 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -189,6 +198,15 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -291,6 +309,15 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -402,6 +429,15 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -513,6 +549,30 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.key with spaces
+          value:
+            stringValue: value with spaces
+        - key: labels.str
+          value:
+            stringValue: str
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: labels.bool
+          value:
+            stringValue: "true"
+        - key: numeric_labels.int
+          value:
+            doubleValue: 1
+        - key: numeric_labels.float
+          value:
+            doubleValue: 1.1
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -643,6 +703,27 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: labels.str
+          value:
+            stringValue: str
+        - key: labels.bool
+          value:
+            stringValue: "true"
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
+        - key: numeric_labels.int
+          value:
+            doubleValue: 1
+        - key: numeric_labels.float
+          value:
+            doubleValue: 1.1
     scopeLogs:
       - logRecords:
           - attributes:
@@ -773,6 +854,27 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.str
+          value:
+            stringValue: str
+        - key: labels.bool
+          value:
+            stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: numeric_labels.int
+          value:
+            doubleValue: 1
+        - key: numeric_labels.float
+          value:
+            doubleValue: 1.1
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -909,6 +1011,15 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -1045,6 +1156,15 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:

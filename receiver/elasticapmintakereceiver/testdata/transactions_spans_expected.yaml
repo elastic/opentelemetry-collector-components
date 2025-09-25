@@ -85,6 +85,15 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.organization_uuid
+          value:
+            stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
+        - key: labels.bool_error
+          value:
+            stringValue: "false"
+        - key: numeric_labels.number_code
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -216,6 +225,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: labels.span_tag
+          value:
+            stringValue: something
     scopeSpans:
       - scope: {}
         spans:
