@@ -116,11 +116,7 @@ func classify(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
 	sample pprofile.Sample, counts map[metric]int64,
 ) error {
-	stackTable := dictionary.StackTable()
-
-	// Fetch leaf frame which is always stored first
-	sli := stackTable.At(int(sample.StackIndex())).LocationIndices().At(0)
-	leafFrameType, err := fetchFrameType(dictionary, locationIndices, int(sli))
+	leafFrameType, err := fetchFrameType(dictionary, locationIndices, 0)
 	if err != nil {
 		return err
 	}
