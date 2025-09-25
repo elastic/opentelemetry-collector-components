@@ -106,6 +106,11 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 			attributes.PutStr(string(semconv.URLFullKey), event.Url.Full)
 		}
 	}
+
+	if event.Span == nil {
+		return
+	}
+
 	if event.Span.Db != nil {
 		attributes.PutStr(string(semconv.DBSystemKey), event.Span.Db.Type)
 		attributes.PutStr(string(semconv.DBNamespaceKey), event.Span.Db.Instance)
