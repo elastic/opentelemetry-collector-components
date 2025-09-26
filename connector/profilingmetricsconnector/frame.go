@@ -163,6 +163,10 @@ func classifyFrame(dictionary pprofile.ProfilesDictionary,
 	// derived from summing the metricKernel and metricUser counts.
 	metric := allowedFrameTypes[leafFrameType]
 
+	// TODO: Scale all counts by number of events in each Sample. Currently,
+	// this logic assumes 1 event per Sample (thus the increments by 1 below),
+	// which isn't necessarily the case.
+
 	if leafFrameType != frameTypeKernel {
 		counts[metricUser]++
 	}
@@ -187,10 +191,10 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 ) {
 	stackTable := dictionary.StackTable()
 
-	// Process all samples and extract metric counts
 	counts := make(map[metric]int64)
 	nativeCounts := make(map[string]int64)
 
+	// Process all samples and extract metric counts
 	for _, sample := range profile.Sample().All() {
 		stack := stackTable.At(int(sample.StackIndex()))
 		if err := classifyFrame(dictionary, stack.LocationIndices(),
@@ -201,6 +205,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 		}
 	}
 
+	// Generate metrics
 	for metric, count := range counts {
 		m := scopeMetrics.Metrics().AppendEmpty()
 		m.SetName(c.config.MetricsPrefix + metric.name)
