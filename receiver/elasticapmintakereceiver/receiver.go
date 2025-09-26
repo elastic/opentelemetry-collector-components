@@ -471,13 +471,13 @@ func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.R
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367
 	sum_metric.SetUnit("us")
 	sum_dp := createBreakdownMetricsCommon(sum_metric, event, timestamp)
-	sum_dp.SetIntValue(int64(event.Span.SelfTime.Sum))
+	sum_dp.SetIntValue(int64(event.GetSpan().GetSelfTime().Sum))
 
 	count_metric := sm.Metrics().AppendEmpty()
 	count_metric.SetName("span.self_time.count")
 	count_metric.SetUnit("{span}")
 	count_metric_dp := createBreakdownMetricsCommon(count_metric, event, timestamp)
-	count_metric_dp.SetDoubleValue(float64(event.Span.SelfTime.Count))
+	count_metric_dp.SetDoubleValue(float64(event.GetSpan().GetSelfTime().Count))
 }
 
 func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent, timestamp time.Time) pmetric.NumberDataPoint {
@@ -486,10 +486,15 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 
 	attr := dp.Attributes()
-	attr.PutStr("transaction.name", event.Transaction.Name)
-	attr.PutStr("transaction.type", event.Transaction.Type)
-	attr.PutStr("span.type", event.Span.Type)
-	attr.PutStr("span.subtype", event.Span.Subtype)
+	if event.Transaction != nil {
+		attr.PutStr("transaction.name", event.Transaction.Name)
+		attr.PutStr("transaction.type", event.Transaction.Type)
+	}
+	if event.Span != nil {
+		attr.PutStr("span.type", event.Span.Type)
+		attr.PutStr("span.subtype", event.Span.Subtype)
+	}
+
 	attr.PutStr("processor.event", "metric")
 
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
@@ -582,6 +587,7 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 
 	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
+	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
 
 	if event.Http != nil || event.Message != "" {
 		s.SetKind(ptrace.SpanKindClient)

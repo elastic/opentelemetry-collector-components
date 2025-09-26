@@ -21,11 +21,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/apm-data/model/modelpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/zap"
+
+	"github.com/elastic/apm-data/model/modelpb"
 )
 
 type TopLevelFieldSetter interface {
@@ -82,9 +83,10 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestamp time.Time, s ptrac
 		}
 	}
 
-	if strings.EqualFold(event.Event.Outcome, "success") {
+	outcome := event.GetEvent().GetOutcome()
+	if strings.EqualFold(outcome, "success") {
 		s.Status().SetCode(ptrace.StatusCodeOk)
-	} else if strings.EqualFold(event.Event.Outcome, "failure") {
+	} else if strings.EqualFold(outcome, "failure") {
 		s.Status().SetCode(ptrace.StatusCodeError)
 	}
 

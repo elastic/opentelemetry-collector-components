@@ -48,6 +48,11 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr(elasticattr.ProcessorEvent, "span")
 	attributes.PutInt(elasticattr.SpanDurationUs, int64(event.Event.Duration/1_000))
+
+	if event.Span == nil {
+		return
+	}
+
 	attributes.PutStr("span.id", event.Span.Id)
 	attributes.PutStr(elasticattr.SpanName, event.Span.Name)
 	attributes.PutStr(elasticattr.SpanType, event.Span.Type)
