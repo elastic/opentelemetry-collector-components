@@ -13,6 +13,37 @@ tests:
 
 telemetry:
   metrics:
+    ratelimit.resolver_failures:
+      enabled: true
+      description: Total number of class resolver failures
+      unit: "{count}"
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: ["unique_key"] # high cardinality
+    ratelimit.gubernator_degraded:
+      enabled: true
+      description: Total number of operations in degraded mode due to Gubernator unavailability
+      unit: "{count}"
+      sum:
+        value_type: int
+        monotonic: true
+    ratelimit.dynamic_escalations:
+      enabled: true
+      description: Total number of dynamic rate escalations (dynamic > static)
+      unit: "{count}"
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: ["class", "source_kind"]
+    ratelimit.dynamic_escalations_skipped:
+      enabled: true
+      description: Total number of times dynamic escalation was skipped (dynamic <= static)
+      unit: "{count}"
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: ["class", "source_kind"]
     ratelimit.requests:
       enabled: true
       description: Number of rate-limiting requests
@@ -81,4 +112,13 @@ attributes:
     type: string
   reason:
     description: rate limit reason
+    type: string
+  class:
+    description: rate limit class used
+    type: string
+  source_kind:
+    description: precedence source used to resolve rate
+    type: string
+  unique_key:
+    description: unique key for the request used in class resolution
     type: string

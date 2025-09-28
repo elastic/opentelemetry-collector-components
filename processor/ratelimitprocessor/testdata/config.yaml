@@ -98,3 +98,40 @@ ratelimit/dynamic_rate_limit:
     enabled: true
     window_multiplier: 1.5
     window_duration: 1m
+
+ratelimit/invalid_default_class:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: 200
+      burst: 400
+  default_class: nonexistent
+
+ratelimit/invalid_class_rate_zero:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: 0
+      burst: 400
+
+ratelimit/invalid_class_rate_negative:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: -100
+      burst: 400
+
+ratelimit/invalid_class_burst_negative:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: 200
+      burst: -1

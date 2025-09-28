@@ -14,6 +14,44 @@ Number of in-flight requests at any given time
 | ---- | ----------- | ---------- |
 | {requests} | Gauge | Int |
 
+### otelcol_ratelimit.dynamic_escalations
+
+Total number of dynamic rate escalations (dynamic > static)
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| {count} | Sum | Int | true |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| class | rate limit class used | Any Str |
+| source_kind | precedence source used to resolve rate | Any Str |
+
+### otelcol_ratelimit.dynamic_escalations_skipped
+
+Total number of times dynamic escalation was skipped (dynamic <= static)
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| {count} | Sum | Int | true |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| class | rate limit class used | Any Str |
+| source_kind | precedence source used to resolve rate | Any Str |
+
+### otelcol_ratelimit.gubernator_degraded
+
+Total number of operations in degraded mode due to Gubernator unavailability
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| {count} | Sum | Int | true |
+
 ### otelcol_ratelimit.request_duration
 
 Time(in seconds) taken to process a rate limit request
@@ -44,3 +82,17 @@ Number of rate-limiting requests
 | ---- | ----------- | ------ |
 | decision | rate limit decision | Any Str |
 | reason | rate limit reason | Any Str |
+
+### otelcol_ratelimit.resolver_failures
+
+Total number of class resolver failures
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| {count} | Sum | Int | true |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| unique_key | unique key for the request used in class resolution | Any Str |

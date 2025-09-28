@@ -27,6 +27,8 @@ import (
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -34,21 +36,39 @@ import (
 
 	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 )
 
 var _ RateLimiter = (*gubernatorRateLimiter)(nil)
 
+// ClassResolver resolves the class for a given key. Since the resolution
+// takes place in the hot path, it MUST be fast and concurrently safe.
+// Implementations may implement caching to speed up resolution.
+type ClassResolver interface {
+	// ResolveClass resolves the class for a given key.
+	ResolveClass(ctx context.Context, key string) (string, error)
+}
+
+type noopResolver struct{}
+
+func (noopResolver) ResolveClass(context.Context, string) (string, error) {
+	return "", nil
+}
+
 type gubernatorRateLimiter struct {
 	cfg      *Config
-	set      processor.Settings
+	logger   *zap.Logger
 	behavior gubernator.Behavior
 
 	daemonCfg  gubernator.DaemonConfig
 	daemon     *gubernator.Daemon
 	client     gubernator.V1Client
 	clientConn *grpc.ClientConn
+	// Class resolver for class-based rate limiting
+	classResolver    ClassResolver
+	telemetryBuilder *metadata.TelemetryBuilder
 }
 
 func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, error) {
@@ -75,21 +95,34 @@ func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, err
 	return conf, nil
 }
 
-func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
-	daemonCfg, err := newGubernatorDaemonConfig(set.Logger)
+func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder *metadata.TelemetryBuilder) (*gubernatorRateLimiter, error) {
+	daemonCfg, err := newGubernatorDaemonConfig(logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gubernator daemon config: %w", err)
 	}
 
 	return &gubernatorRateLimiter{
-		cfg:       cfg,
-		set:       set,
-		behavior:  gubernator.Behavior_BATCHING,
-		daemonCfg: daemonCfg,
+		cfg:              cfg,
+		logger:           logger,
+		behavior:         gubernator.Behavior_BATCHING,
+		daemonCfg:        daemonCfg,
+		telemetryBuilder: telemetryBuilder,
+		classResolver:    noopResolver{},
 	}, nil
 }
 
-func (r *gubernatorRateLimiter) Start(ctx context.Context, _ component.Host) (err error) {
+func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) (err error) {
+	if res := r.cfg.ClassResolver; res.String() != "" {
+		cr, ok := host.GetExtensions()[res]
+		if !ok {
+			return fmt.Errorf("class resolver %s not found", res)
+		}
+		if err := cr.Start(ctx, host); err != nil {
+			return fmt.Errorf("failed to start class resolver %s: %w", res, err)
+		}
+		r.classResolver = cr.(ClassResolver)
+	}
+
 	r.daemon, err = gubernator.SpawnDaemon(ctx, r.daemonCfg)
 	if err != nil {
 		return fmt.Errorf("failed to spawn gubernator daemon: %w", err)
@@ -106,7 +139,7 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, _ component.Host) (er
 	return nil
 }
 
-func (r *gubernatorRateLimiter) Shutdown(context.Context) error {
+func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 	if r.daemon != nil {
 		r.daemon.Close()
 		r.daemon = nil
@@ -116,19 +149,50 @@ func (r *gubernatorRateLimiter) Shutdown(context.Context) error {
 		r.clientConn = nil
 	}
 	r.client = nil
+	if c, ok := r.classResolver.(component.Component); ok {
+		if err := c.Shutdown(ctx); err != nil {
+			return fmt.Errorf("failed to shutdown class resolver: %w", err)
+		}
+	}
 	return nil
 }
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
-	cfg := resolveRateLimitSettings(r.cfg, uniqueKey)
-	now := time.Now()
-
+	// First resolve the class if classes are set.
+	class, err := r.classResolver.ResolveClass(ctx, uniqueKey)
+	if err != nil {
+		r.telemetryBuilder.RatelimitResolverFailures.Add(ctx, 1,
+			metric.WithAttributeSet(
+				attribute.NewSet(attribute.String("unique_key", uniqueKey)),
+			),
+		)
+		r.logger.Warn("class resolver failed, falling back",
+			zap.Error(err),
+			zap.String("unique_key", uniqueKey),
+			zap.String("default_class", r.cfg.DefaultClass),
+		)
+	}
+	// Resolve rate limit precedence:
+	// override -> class -> default_class -> fallback.
+	cfg, sourceKind, className := resolveRateLimit(r.cfg, uniqueKey, class)
 	rate, burst := cfg.Rate, cfg.Burst
+	now := time.Now()
+	// If dynamic rate limiting is enabled and not disabled for this request,
+	// calculate the dynamic rate and burst.
 	if r.cfg.DynamicRateLimiting.Enabled && !cfg.disableDynamic {
+		attrs := metric.WithAttributeSet(attribute.NewSet(
+			attribute.String("source_kind", string(sourceKind)),
+			attribute.String("class", className),
+		))
 		rate, burst = r.calculateRateAndBurst(ctx, cfg, uniqueKey, hits, now)
-		if rate < 0 {
-			return fmt.Errorf("error calculating dynamic rate limit for unique key %s", uniqueKey)
+		if rate < 0 { // Degraded mode - Gubernator unreachable. Fallback to static rate.
+			r.telemetryBuilder.RatelimitGubernatorDegraded.Add(ctx, 1, attrs)
+			rate, burst = cfg.Rate, cfg.Burst
+		} else if rate > cfg.Rate { // Dynamic escalation occurred
+			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1, attrs)
+		} else { // Dynamic escalation was skipped (dynamic <= static)
+			r.telemetryBuilder.RatelimitDynamicEscalationsSkipped.Add(ctx, 1, attrs)
 		}
 	}
 	// Execute rate actual limit check / recording.
@@ -138,9 +202,10 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 func (r *gubernatorRateLimiter) calculateRateAndBurst(ctx context.Context,
 	cfg RateLimitSettings, uniqueKey string, hits int, now time.Time,
 ) (int, int) {
+	// limit is computed in requests-per-second units.
 	limit, err := r.getDynamicLimit(ctx, cfg, uniqueKey, hits, now)
 	if err != nil {
-		r.set.Logger.Error("failed to get dynamic limit from gubernator",
+		r.logger.Error("failed to get dynamic limit from gubernator",
 			zap.Error(err),
 			zap.String("unique_key", uniqueKey),
 		)
@@ -196,7 +261,7 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 	}
 	resp, err := makeRateLimitRequest(now.UnixMilli())
 	if err != nil {
-		r.set.Logger.Error("error executing gubernator rate limit request",
+		r.logger.Error("error executing gubernator rate limit request",
 			zap.Error(err),
 			zap.String("name", cfg.Strategy.String()),
 			zap.String("unique_key", uniqueKey),

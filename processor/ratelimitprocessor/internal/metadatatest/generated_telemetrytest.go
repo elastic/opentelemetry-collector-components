@@ -52,6 +52,54 @@ func AssertEqualRatelimitConcurrentRequests(t *testing.T, tt *componenttest.Tele
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
 
+func AssertEqualRatelimitDynamicEscalations(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.dynamic_escalations",
+		Description: "Total number of dynamic rate escalations (dynamic > static)",
+		Unit:        "{count}",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.dynamic_escalations")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualRatelimitDynamicEscalationsSkipped(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.dynamic_escalations_skipped",
+		Description: "Total number of times dynamic escalation was skipped (dynamic <= static)",
+		Unit:        "{count}",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.dynamic_escalations_skipped")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualRatelimitGubernatorDegraded(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.gubernator_degraded",
+		Description: "Total number of operations in degraded mode due to Gubernator unavailability",
+		Unit:        "{count}",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.gubernator_degraded")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
 func AssertEqualRatelimitRequestDuration(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[float64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.request_duration",
@@ -94,6 +142,22 @@ func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps
 		},
 	}
 	got, err := tt.GetMetric("otelcol_ratelimit.requests")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualRatelimitResolverFailures(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.resolver_failures",
+		Description: "Total number of class resolver failures",
+		Unit:        "{count}",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.resolver_failures")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
