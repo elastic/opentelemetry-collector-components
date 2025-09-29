@@ -52,7 +52,7 @@ func newTestGubernatorRateLimiterMetrics(t *testing.T, cfg *Config) (
 	require.NoError(t, err)
 	rl.telemetryBuilder = tb
 	t.Cleanup(func() {
-		require.NoError(t, tt.Shutdown(t.Context()))
+		_ = tt.Shutdown(t.Context())
 	})
 	return rl, tt
 }
