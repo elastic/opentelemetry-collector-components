@@ -52,7 +52,7 @@ func newTestGubernatorRateLimiterMetrics(t *testing.T, cfg *Config) (
 	require.NoError(t, err)
 	rl.telemetryBuilder = tb
 	t.Cleanup(func() {
-		tt.Shutdown(t.Context())
+		require.NoError(t, tt.Shutdown(t.Context()))
 	})
 	return rl, tt
 }
@@ -87,6 +87,7 @@ func newGubernatorRateLimiterFrom(t *testing.T, cfg *Config, daemon *gubernator.
 		grpc.WithResolvers(gubernator.NewStaticBuilder()),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
+	require.NoError(t, err)
 	client := gubernator.NewV1Client(conn)
 	t.Cleanup(func() { // Close the gRPC connection and daemon on test cleanup.
 		conn.Close()
@@ -701,10 +702,11 @@ func TestGubernatorRateLimiter_LoadClassResolverExtension(t *testing.T) {
 	}
 
 	rateLimiter := newTestGubernatorRateLimiter(t, cfg, nil)
-	rateLimiter.Start(t.Context(), &fakeHost{
+	err := rateLimiter.Start(t.Context(), &fakeHost{
 		component.MustNewID(extName): &fakeResolver{},
 	})
-	rateLimiter.Shutdown(t.Context())
+	require.NoError(t, err)
+	require.NoError(t, rateLimiter.Shutdown(t.Context()))
 
 	// Set the resolver and validate it's used
 	r, ok := rateLimiter.classResolver.(*fakeResolver)
