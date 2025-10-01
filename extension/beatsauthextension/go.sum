@@ -137,6 +137,8 @@ go.opentelemetry.io/collector/client v1.41.0 h1:guBmo07Dyb3wV5ApB2aIFY/Myl394T1X
 go.opentelemetry.io/collector/client v1.41.0/go.mod h1:bY1Tbx/UBWWoMS/LDPwq7ftDE7ExvSy/Yknu0bU9dJc=
 go.opentelemetry.io/collector/component v1.41.0 h1:NMvPlvfOSzhXPHWB6pTgrGaH6jg25ym1Oog8sTI813s=
 go.opentelemetry.io/collector/component v1.41.0/go.mod h1:PA7vA3IxU5PRAbm96++sweaVzeoirBFZpRBs7XbbPEU=
+go.opentelemetry.io/collector/component/componentstatus v0.135.0 h1:wy5twH3+Kn6rYY+D5qlu2tLJ2nfNxAdmaxWwj1xGe1w=
+go.opentelemetry.io/collector/component/componentstatus v0.135.0/go.mod h1:maPdz0w/GZGslJAOGX0ZvuLfB2k6TBt+6RfLPnTeh1A=
 go.opentelemetry.io/collector/component/componenttest v0.135.0 h1:OB6OmCWE1EwHwvV17RgvUeeDimSjHV7wrRGHcUVh06g=
 go.opentelemetry.io/collector/component/componenttest v0.135.0/go.mod h1:9epxwkJW7ZXB1mTmCVF3JzfIoM0uhtnBTC2YWxrXczk=
 go.opentelemetry.io/collector/config/configauth v0.135.0 h1:VAU4iTZIFu9y/WTMKtnqArKgzxrtRd9sLcBV+rCunhE=
