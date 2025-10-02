@@ -17,6 +17,8 @@ telemetry:
       enabled: true
       description: Number of rate-limiting requests
       unit: "{requests}"
+      stability:
+        level: development
       sum:
         value_type: int
         monotonic: true
@@ -25,6 +27,8 @@ telemetry:
       enabled: true
       description: Time(in seconds) taken to process a rate limit request
       unit: "{seconds}"
+      stability:
+        level: development
       histogram:
         value_type: double
         monotonic: true
@@ -33,6 +37,8 @@ telemetry:
       enabled: true
       description: Number of bytes in received request. Only available if strategy is rate per bytes.
       unit: "{bytes}"
+      stability:
+        level: development
       histogram:
         value_type: int
         bucket_boundaries: [
@@ -72,6 +78,8 @@ telemetry:
       enabled: true
       description: Number of in-flight requests at any given time
       unit: "{requests}"
+      stability:
+        level: development
       gauge:
         value_type: int
         monotonic: true

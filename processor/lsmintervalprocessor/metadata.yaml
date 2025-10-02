@@ -23,6 +23,8 @@ telemetry:
       enabled: true
       description: The count of metric data points processed by the processor.
       unit: "{count}"
+      stability:
+        level: development
       sum:
         value_type: int
         monotonic: true
@@ -30,6 +32,8 @@ telemetry:
       enabled: true
       description: The size in bytes of metric data points processed by the processor.
       unit: By
+      stability:
+        level: development
       sum:
         value_type: int
         monotonic: true
@@ -37,6 +41,8 @@ telemetry:
       enabled: true
       description: The count of metric data points exported by the processor.
       unit: "{count}"
+      stability:
+        level: development
       sum:
         value_type: int
         monotonic: true
@@ -45,6 +51,8 @@ telemetry:
       enabled: true
       description: The size in bytes of metric data points exported by the processor.
       unit: By
+      stability:
+        level: development
       sum:
         value_type: int
         monotonic: true
@@ -53,6 +61,8 @@ telemetry:
       enabled: true
       description: The number of pebble memtable flushes to disk.
       unit: "1"
+      stability:
+        level: development
       sum:
         async: true
         value_type: int
@@ -61,6 +71,8 @@ telemetry:
       enabled: true
       description: The size in bytes written by pebble during flush.
       unit: By
+      stability:
+        level: development
       sum:
         async: true
         value_type: int
@@ -69,6 +81,8 @@ telemetry:
       enabled: true
       description: The number of pebble table compactions.
       unit: "1"
+      stability:
+        level: development
       sum:
         async: true
         value_type: int
@@ -77,6 +91,8 @@ telemetry:
       enabled: true
       description: The size in bytes ingested to pebble.
       unit: By
+      stability:
+        level: development
       sum:
         async: true
         value_type: int
@@ -85,6 +101,8 @@ telemetry:
       enabled: true
       description: The size in bytes read by pebble during compaction.
       unit: By
+      stability:
+        level: development
       sum:
         async: true
         value_type: int
@@ -93,6 +111,8 @@ telemetry:
       enabled: true
       description: The size in bytes written by pebble during compaction.
       unit: By
+      stability:
+        level: development
       sum:
         async: true
         value_type: int
@@ -101,6 +121,8 @@ telemetry:
       enabled: true
       description: The current size in bytes of pebble memtable.
       unit: By
+      stability:
+        level: development
       gauge:
         async: true
         value_type: int
@@ -109,6 +131,8 @@ telemetry:
       enabled: true
       description: The current size in bytes of disk used by pebble, including live and obsolete files.
       unit: By
+      stability:
+        level: development
       gauge:
         async: true
         value_type: int
@@ -117,6 +141,8 @@ telemetry:
       enabled: true
       description: The current pebble db read amplification.
       unit: "1"
+      stability:
+        level: development
       gauge:
         async: true
         value_type: int
@@ -125,6 +151,8 @@ telemetry:
       enabled: true
       description: The current number of pebble storage engine SSTables.
       unit: "1"
+      stability:
+        level: development
       gauge:
         async: true
         value_type: int
@@ -133,6 +161,8 @@ telemetry:
       enabled: true
       description: The estimated size in bytes of memory used by pebble index and filter blocks.
       unit: By
+      stability:
+        level: development
       gauge:
         async: true
         value_type: int
@@ -141,6 +171,8 @@ telemetry:
       enabled: true
       description: The estimated size in bytes of pending compaction in pebble.
       unit: By
+      stability:
+        level: development
       gauge:
         async: true
         value_type: int
@@ -149,6 +181,8 @@ telemetry:
       enabled: true
       description: The current number of pebble SSTables marked for compaction.
       unit: "1"
+      stability:
+        level: development
       gauge:
         async: true
         value_type: int
@@ -157,6 +191,8 @@ telemetry:
       enabled: true
       description: The approximate number of delete keys across the pebble storage engine.
       unit: "1"
+      stability:
+        level: development
       gauge:
         async: true
         value_type: int
