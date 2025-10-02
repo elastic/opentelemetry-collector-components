@@ -181,19 +181,33 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	// If dynamic rate limiting is enabled and not disabled for this request,
 	// calculate the dynamic rate and burst.
 	if r.cfg.DynamicRateLimiting.Enabled && !cfg.disableDynamic {
-		attrs := metric.WithAttributeSet(attribute.NewSet(
+		attrs := make([]attribute.KeyValue, 0, 3)
+		attrs = append(attrs,
 			attribute.String("source_kind", string(sourceKind)),
 			attribute.String("class", className),
-		))
+		)
 		rate, burst = r.calculateRateAndBurst(ctx, cfg, uniqueKey, hits, now)
 		if rate < 0 { // Degraded mode - Gubernator unreachable. Fallback to static rate.
-			r.telemetryBuilder.RatelimitGubernatorDegraded.Add(ctx, 1, attrs)
+			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
+				metric.WithAttributeSet(attribute.NewSet(append(attrs,
+					attribute.String("reason", "gubernator_error"),
+				)...)),
+			)
 			rate, burst = cfg.Rate, cfg.Burst
 		} else if rate > cfg.Rate { // Dynamic escalation occurred
-			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1, attrs)
+			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
+				metric.WithAttributeSet(attribute.NewSet(append(attrs,
+					attribute.String("reason", "success"),
+				)...)),
+			)
 		} else { // Dynamic escalation was skipped (dynamic <= static)
-			r.telemetryBuilder.RatelimitDynamicEscalationsSkipped.Add(ctx, 1, attrs)
+			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
+				metric.WithAttributeSet(attribute.NewSet(append(attrs,
+					attribute.String("reason", "skipped"),
+				)...)),
+			)
 		}
+
 	}
 	// Execute rate actual limit check / recording.
 	return r.executeRateLimit(ctx, cfg, uniqueKey, hits, rate, burst, now)

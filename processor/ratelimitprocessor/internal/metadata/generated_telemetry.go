@@ -40,17 +40,15 @@ func Tracer(settings component.TelemetrySettings) trace.Tracer {
 // TelemetryBuilder provides an interface for components to report telemetry
 // as defined in metadata and user config.
 type TelemetryBuilder struct {
-	meter                              metric.Meter
-	mu                                 sync.Mutex
-	registrations                      []metric.Registration
-	RatelimitConcurrentRequests        metric.Int64Gauge
-	RatelimitDynamicEscalations        metric.Int64Counter
-	RatelimitDynamicEscalationsSkipped metric.Int64Counter
-	RatelimitGubernatorDegraded        metric.Int64Counter
-	RatelimitRequestDuration           metric.Float64Histogram
-	RatelimitRequestSize               metric.Int64Histogram
-	RatelimitRequests                  metric.Int64Counter
-	RatelimitResolverFailures          metric.Int64Counter
+	meter                       metric.Meter
+	mu                          sync.Mutex
+	registrations               []metric.Registration
+	RatelimitConcurrentRequests metric.Int64Gauge
+	RatelimitDynamicEscalations metric.Int64Counter
+	RatelimitRequestDuration    metric.Float64Histogram
+	RatelimitRequestSize        metric.Int64Histogram
+	RatelimitRequests           metric.Int64Counter
+	RatelimitResolverFailures   metric.Int64Counter
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -91,18 +89,6 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	builder.RatelimitDynamicEscalations, err = builder.meter.Int64Counter(
 		"otelcol_ratelimit.dynamic_escalations",
 		metric.WithDescription("Total number of dynamic rate escalations (dynamic > static)"),
-		metric.WithUnit("{count}"),
-	)
-	errs = errors.Join(errs, err)
-	builder.RatelimitDynamicEscalationsSkipped, err = builder.meter.Int64Counter(
-		"otelcol_ratelimit.dynamic_escalations_skipped",
-		metric.WithDescription("Total number of times dynamic escalation was skipped (dynamic <= static)"),
-		metric.WithUnit("{count}"),
-	)
-	errs = errors.Join(errs, err)
-	builder.RatelimitGubernatorDegraded, err = builder.meter.Int64Counter(
-		"otelcol_ratelimit.gubernator_degraded",
-		metric.WithDescription("Total number of operations in degraded mode due to Gubernator unavailability"),
 		metric.WithUnit("{count}"),
 	)
 	errs = errors.Join(errs, err)

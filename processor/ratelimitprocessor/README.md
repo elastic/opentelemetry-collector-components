@@ -265,6 +265,7 @@ The `class_resolver` option tells the processor which OpenTelemetry Collector ex
 ```yaml
 processors:
   ratelimiter:
+    # This is an example class_resolver. It doesn't exist.
     class_resolver: configmapclassresolverextension
 ```
 
@@ -287,19 +288,11 @@ Telemetry and metrics:
 * The processor emits attributes on relevant metrics to aid debugging and monitoring:
 
   * `rate_source`: one of `static`, `dynamic`, `fallback`, or `degraded` (indicates whether dynamic calculation was used or not)
-
   * `class`: resolved class name when applicable
-
   * `source_kind`: which precedence path was used (`override`, `class`, or `fallback`)
+  * `result`: one of `gubernator_error`, `success` or `skipped`.
 
 * Counters introduced to observe resolver and dynamic behavior include:
 
   * `ratelimit.resolver_failures` — total number of resolver failures
-
-  * `ratelimit.gubernator_degraded` — total number of operations in degraded mode due to Gubernator unavailability
-
-  * `ratelimit.dynamic_escalations` — number of times dynamic rate > static rate (attributes: `class`, `source_kind`)
-
-  * `ratelimit.dynamic_escalations_skipped` — number of times dynamic escalation was skipped because dynamic <= static (attributes: `class`, `source_kind`)
-
-These telemetry signals help operators understand when resolution or dynamic logic is active and diagnose fallback behavior.
+  * `ratelimit.dynamic_escalations` — number of times dynamic rate was peeked (attributes: `class`, `source_kind`, `success`)

@@ -789,6 +789,7 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 				Attributes: attribute.NewSet(
 					attribute.String("class", "alpha"),
 					attribute.String("source_kind", "class"),
+					attribute.String("reason", "success"),
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())
@@ -801,12 +802,13 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 		waitUntilNextPeriod(WindowPeriod)
 		assert.NoError(t, rl.RateLimit(ctx, 1))
 
-		metadatatest.AssertEqualRatelimitDynamicEscalationsSkipped(t, tt, []metricdata.DataPoint[int64]{
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
 			{
 				Value: 1,
 				Attributes: attribute.NewSet(
 					attribute.String("class", "alpha"),
 					attribute.String("source_kind", "class"),
+					attribute.String("reason", "skipped"),
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())
@@ -817,12 +819,13 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 		rl.daemon.Close() // Close the daemon to force errors in dynamic calls
 		assert.Error(t, rl.RateLimit(ctx, 1))
 
-		metadatatest.AssertEqualRatelimitGubernatorDegraded(t, tt, []metricdata.DataPoint[int64]{
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
 			{
 				Value: 1,
 				Attributes: attribute.NewSet(
 					attribute.String("class", "alpha"),
 					attribute.String("source_kind", "class"),
+					attribute.String("reason", "gubernator_error"),
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())
@@ -882,12 +885,13 @@ func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
 		}, metricdatatest.IgnoreTimestamp())
 
 		// 2) dynamic escalation skipped for baseline (no seeding) with class/default
-		metadatatest.AssertEqualRatelimitDynamicEscalationsSkipped(t, tt, []metricdata.DataPoint[int64]{
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
 			{
 				Value: 1,
 				Attributes: attribute.NewSet(
 					attribute.String("class", "alpha"),
 					attribute.String("source_kind", "class"),
+					attribute.String("reason", "skipped"),
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())
@@ -936,12 +940,13 @@ func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
 		}, metricdatatest.IgnoreTimestamp())
 
 		// dynamic skipped with source_kind=fallback and empty class
-		metadatatest.AssertEqualRatelimitDynamicEscalationsSkipped(t, tt, []metricdata.DataPoint[int64]{
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
 			{
 				Value: 1,
 				Attributes: attribute.NewSet(
 					attribute.String("class", ""),
 					attribute.String("source_kind", "fallback"),
+					attribute.String("reason", "skipped"),
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())

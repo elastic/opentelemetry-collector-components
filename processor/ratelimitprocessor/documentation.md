@@ -27,30 +27,8 @@ Total number of dynamic rate escalations (dynamic > static)
 | Name | Description | Values |
 | ---- | ----------- | ------ |
 | class | rate limit class used | Any Str |
-| source_kind | precedence source used to resolve rate | Any Str |
-
-### otelcol_ratelimit.dynamic_escalations_skipped
-
-Total number of times dynamic escalation was skipped (dynamic <= static)
-
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| {count} | Sum | Int | true |
-
-#### Attributes
-
-| Name | Description | Values |
-| ---- | ----------- | ------ |
-| class | rate limit class used | Any Str |
-| source_kind | precedence source used to resolve rate | Any Str |
-
-### otelcol_ratelimit.gubernator_degraded
-
-Total number of operations in degraded mode due to Gubernator unavailability
-
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| {count} | Sum | Int | true |
+| source_kind | precedence source used to resolve the rate limit settings | Any Str |
+| result | result of the rate limit request | Any Str |
 
 ### otelcol_ratelimit.request_duration
 
