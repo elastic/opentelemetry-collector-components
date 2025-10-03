@@ -216,7 +216,7 @@ processors:
     strategy: requests
 
     # define the class resolver ID.
-    class_resolver: configmapclassresolverextension
+    class_resolver: configmapclassresolver
     # Define named classes
     classes:
       trial:
