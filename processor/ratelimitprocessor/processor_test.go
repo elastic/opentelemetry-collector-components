@@ -388,7 +388,7 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 	}
 
 	metrics := pmetric.NewMetrics()
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -469,7 +469,7 @@ func testRatelimitLogMetadata(t *testing.T, logEntries []observer.LoggedEntry) {
 	logEntry := logEntries[0]
 	assert.Equal(t, zapcore.ErrorLevel, logEntry.Level)
 
-	fields := make(map[string]interface{})
+	fields := make(map[string]any)
 	for _, field := range logEntry.Context {
 		switch field.Type {
 		case zapcore.StringType:
