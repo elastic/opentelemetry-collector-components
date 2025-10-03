@@ -13,7 +13,7 @@ tests:
 
 telemetry:
   metrics:
-    ratelimit.resolver_failures:
+    ratelimit.resolver.failures:
       enabled: true
       description: Total number of class resolver failures
       unit: "{count}"
@@ -21,7 +21,7 @@ telemetry:
         value_type: int
         monotonic: true
       attributes: ["unique_key"] # high cardinality
-    ratelimit.dynamic_escalations:
+    ratelimit.dynamic.escalations:
       enabled: true
       description: Total number of dynamic rate escalations (dynamic > static)
       unit: "{count}"

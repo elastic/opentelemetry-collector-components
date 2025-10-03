@@ -874,7 +874,7 @@ func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
 		// One call triggers resolver failure and should fall back to default class
 		assert.NoError(t, rl.RateLimit(ctx, 1))
 
-		// 1) resolver_failures counter increments
+		// 1) resolver.failures counter increments
 		metadatatest.AssertEqualRatelimitResolverFailures(t, tt, []metricdata.DataPoint[int64]{
 			{
 				Value: 1,
@@ -929,7 +929,7 @@ func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
 
 		assert.NoError(t, rl.RateLimit(ctx, 1))
 
-		// resolver_failures increments
+		// resolver.failures increments
 		metadatatest.AssertEqualRatelimitResolverFailures(t, tt, []metricdata.DataPoint[int64]{
 			{
 				Value: 1,

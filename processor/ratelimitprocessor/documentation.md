@@ -14,7 +14,7 @@ Number of in-flight requests at any given time
 | ---- | ----------- | ---------- |
 | {requests} | Gauge | Int |
 
-### otelcol_ratelimit.dynamic_escalations
+### otelcol_ratelimit.dynamic.escalations
 
 Total number of dynamic rate escalations (dynamic > static)
 
@@ -61,7 +61,7 @@ Number of rate-limiting requests
 | decision | rate limit decision | Any Str |
 | reason | rate limit reason | Any Str |
 
-### otelcol_ratelimit.resolver_failures
+### otelcol_ratelimit.resolver.failures
 
 Total number of class resolver failures
 

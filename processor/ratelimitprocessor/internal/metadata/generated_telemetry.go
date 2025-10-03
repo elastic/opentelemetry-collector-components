@@ -87,7 +87,7 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	)
 	errs = errors.Join(errs, err)
 	builder.RatelimitDynamicEscalations, err = builder.meter.Int64Counter(
-		"otelcol_ratelimit.dynamic_escalations",
+		"otelcol_ratelimit.dynamic.escalations",
 		metric.WithDescription("Total number of dynamic rate escalations (dynamic > static)"),
 		metric.WithUnit("{count}"),
 	)
@@ -113,7 +113,7 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	)
 	errs = errors.Join(errs, err)
 	builder.RatelimitResolverFailures, err = builder.meter.Int64Counter(
-		"otelcol_ratelimit.resolver_failures",
+		"otelcol_ratelimit.resolver.failures",
 		metric.WithDescription("Total number of class resolver failures"),
 		metric.WithUnit("{count}"),
 	)

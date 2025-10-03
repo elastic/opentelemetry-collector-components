@@ -54,7 +54,7 @@ func AssertEqualRatelimitConcurrentRequests(t *testing.T, tt *componenttest.Tele
 
 func AssertEqualRatelimitDynamicEscalations(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
-		Name:        "otelcol_ratelimit.dynamic_escalations",
+		Name:        "otelcol_ratelimit.dynamic.escalations",
 		Description: "Total number of dynamic rate escalations (dynamic > static)",
 		Unit:        "{count}",
 		Data: metricdata.Sum[int64]{
@@ -63,7 +63,7 @@ func AssertEqualRatelimitDynamicEscalations(t *testing.T, tt *componenttest.Tele
 			DataPoints:  dps,
 		},
 	}
-	got, err := tt.GetMetric("otelcol_ratelimit.dynamic_escalations")
+	got, err := tt.GetMetric("otelcol_ratelimit.dynamic.escalations")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
@@ -116,7 +116,7 @@ func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps
 
 func AssertEqualRatelimitResolverFailures(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
-		Name:        "otelcol_ratelimit.resolver_failures",
+		Name:        "otelcol_ratelimit.resolver.failures",
 		Description: "Total number of class resolver failures",
 		Unit:        "{count}",
 		Data: metricdata.Sum[int64]{
@@ -125,7 +125,7 @@ func AssertEqualRatelimitResolverFailures(t *testing.T, tt *componenttest.Teleme
 			DataPoints:  dps,
 		},
 	}
-	got, err := tt.GetMetric("otelcol_ratelimit.resolver_failures")
+	got, err := tt.GetMetric("otelcol_ratelimit.resolver.failures")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }

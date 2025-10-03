@@ -294,5 +294,5 @@ Telemetry and metrics:
 
 * Counters introduced to observe resolver and dynamic behavior include:
 
-  * `ratelimit.resolver_failures` — total number of resolver failures
-  * `ratelimit.dynamic_escalations` — number of times dynamic rate was peeked (attributes: `class`, `source_kind`, `success`)
+  * `ratelimit.resolver.failures` — total number of resolver failures
+  * `ratelimit.dynamic.escalations` — number of times dynamic rate was peeked (attributes: `class`, `source_kind`, `success`)
