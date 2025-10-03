@@ -455,7 +455,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 		}
 	}
 
-	t.Run("override_with_static_only_disables_dynamic", func(t *testing.T) {
+	t.Run("override_with_disable_dynamic_disables_dynamic", func(t *testing.T) {
 		eventChannel := make(chan gubernator.HitEvent, EventBufferSize)
 		// OVERRIDES
 		rate := 500 // Static override rate for the test
@@ -477,7 +477,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 			MetadataKeys: []string{"x-tenant-id"},
 			Overrides: map[string]RateLimitOverrides{
 				"x-tenant-id:static-tenant": {
-					StaticOnly:       true,
+					DisableDynamic:   true,
 					Rate:             ptr(rate), // Lower than global rate to make test clearer
 					ThrottleInterval: ptr(throttleInterval),
 				},
@@ -521,7 +521,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 		)
 	})
 
-	t.Run("override_without_static_only_uses_override_rate_as_baseline", func(t *testing.T) {
+	t.Run("override_without_disable_dynamic_uses_override_rate_as_baseline", func(t *testing.T) {
 		eventChannel := make(chan gubernator.HitEvent, EventBufferSize)
 
 		rate := 100 // Override rate for the test
@@ -543,7 +543,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 			MetadataKeys: []string{"x-tenant-id"},
 			Overrides: map[string]RateLimitOverrides{
 				"x-tenant-id:dynamic-tenant": {
-					// StaticOnly is false (default), so dynamic scaling should work
+					// DisableDynamic is false (default), so dynamic scaling should work
 					Rate:             ptr(rate), // Override rate but still allow dynamic scaling
 					ThrottleInterval: ptr(throttleInterval),
 				},

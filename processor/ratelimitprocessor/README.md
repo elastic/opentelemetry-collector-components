@@ -30,7 +30,7 @@ You can override one or more of the following fields:
 | `rate`              | Bucket refill rate, in tokens per second.                                                                                                                                                                         | No       |            |
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | No       |            |
 | `throttle_interval` | Time interval for throttling. It has effect only when `type` is `gubernator`.                                                                                                                                     | No       |            |
-| `static_only`       | Disables dynamic rate limiting for the override.                                                                                                                                                                  | No       | `false`    |
+| `disable_dynamic`       | Disables dynamic rate limiting for the override.                                                                                                                                                                  | No       | `false`    |
 
 ### Dynamic Rate Limiting
 
@@ -222,17 +222,17 @@ processors:
       trial:
         rate: 50        # 50 requests/second for trial users
         burst: 100      # burst capacity of 100
-        static_only: true  # no dynamic escalation
+        disable_dynamic: true  # no dynamic escalation
 
       paying:
         rate: 500       # 500 requests/second for paying customers
         burst: 1000     # burst capacity of 1000
-        static_only: false
+        disable_dynamic: false
 
       enterprise:
         rate: 2000      # 2000 requests/second for enterprise
         burst: 4000     # burst capacity of 4000
-        static_only: false   # allow gradual increase.
+        disable_dynamic: false   # allow gradual increase.
 
     # Default class when resolver returns unknown class
     default_class: "trial"
@@ -248,7 +248,7 @@ processors:
       "customer-123":
         rate: 5000      # special override
         burst: 10000
-        static_only: true
+        disable_dynamic: true
 ```
 
 Class Resolution Precedence:

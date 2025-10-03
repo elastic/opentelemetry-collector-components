@@ -87,9 +87,9 @@ type Class struct {
 	// Burst holds the maximum capacity of rate limit buckets.
 	Burst int `mapstructure:"burst"`
 
-	// StaticOnly disables dynamic rate escalation for this class.
+	// DisableDynamic disables dynamic rate escalation for this class.
 	// When true, effective rate will always be the static Rate.
-	StaticOnly bool `mapstructure:"static_only"`
+	DisableDynamic bool `mapstructure:"disable_dynamic"`
 }
 
 // Validate checks the DynamicRateLimiting configuration.
@@ -151,10 +151,10 @@ type RateLimitSettings struct {
 // RateLimitOverrides defines per-unique-key override settings.
 // It replaces the top-level RateLimitSettings fields when the unique key matches.
 // Nil pointer fields leave the corresponding top-level field unchanged.
-// StaticOnly disables dynamic escalation for that specific key when true.
+// DisableDynamic disables dynamic escalation for that specific key when true.
 type RateLimitOverrides struct {
 	// Rate holds the override rate limit.
-	StaticOnly bool `mapstructure:"static_only"`
+	DisableDynamic bool `mapstructure:"disable_dynamic"`
 
 	// Rate holds bucket refill rate, in tokens per second.
 	Rate *int `mapstructure:"rate"`
@@ -276,7 +276,7 @@ func resolveRateLimit(cfg *Config,
 		if override.ThrottleInterval != nil {
 			result.ThrottleInterval = *override.ThrottleInterval
 		}
-		if override.StaticOnly {
+		if override.DisableDynamic {
 			result.disableDynamic = true
 		}
 		return result, SourceKindOverride, ""
@@ -288,7 +288,7 @@ func resolveRateLimit(cfg *Config,
 			if class.Burst > 0 {
 				result.Burst = class.Burst
 			}
-			if class.StaticOnly {
+			if class.DisableDynamic {
 				result.disableDynamic = true
 			}
 			return result, SourceKindClass, className
@@ -301,7 +301,7 @@ func resolveRateLimit(cfg *Config,
 			if class.Burst > 0 {
 				result.Burst = class.Burst
 			}
-			if class.StaticOnly {
+			if class.DisableDynamic {
 				result.disableDynamic = true
 			}
 			return result, SourceKindClass, cfg.DefaultClass

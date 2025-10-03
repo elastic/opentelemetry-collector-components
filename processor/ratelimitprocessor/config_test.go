@@ -181,7 +181,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "overrides_static_only",
+			name: "overrides_disable_dynamic",
 			expected: &Config{
 				Type: LocalRateLimiter,
 				RateLimitSettings: RateLimitSettings{
@@ -194,7 +194,7 @@ func TestLoadConfig(t *testing.T) {
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
 					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
-						StaticOnly: true,
+						DisableDynamic: true,
 					},
 				},
 			},
@@ -296,7 +296,7 @@ func TestResolveEffectiveRateLimit(t *testing.T) {
 		},
 		Classes: map[string]Class{
 			"trial":   {Rate: 50, Burst: 50},
-			"premium": {Rate: 1000, Burst: 2000, StaticOnly: true},
+			"premium": {Rate: 1000, Burst: 2000, DisableDynamic: true},
 		},
 		DefaultClass: "trial",
 	}
