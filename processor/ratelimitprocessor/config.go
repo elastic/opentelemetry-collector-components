@@ -374,7 +374,7 @@ func (config *Config) Validate() error {
 		}
 		// Validate class-based configuration
 		if config.DefaultClass != "" {
-			if config.Classes == nil {
+			if len(config.Classes) == 0 {
 				errs = append(errs, errors.New("default_class specified but no classes defined"))
 			} else if _, exists := config.Classes[config.DefaultClass]; !exists {
 				errs = append(errs, fmt.Errorf("default_class %q does not exist in classes", config.DefaultClass))
@@ -384,6 +384,11 @@ func (config *Config) Validate() error {
 			if err := class.Validate(); err != nil {
 				errs = append(errs, fmt.Errorf("class %q: %w", className, err))
 			}
+		}
+		if config.ClassResolver.String() == "" && len(config.Classes) > 0 {
+			errs = append(errs, errors.New(
+				"classes defined but class_resolver not specified",
+			))
 		}
 	}
 	for key, override := range config.Overrides {

@@ -135,3 +135,12 @@ ratelimit/invalid_class_burst_negative:
     trial:
       rate: 200
       burst: -1
+
+ratelimit/classes_set_but_no_class_resolver:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: 200
+      burst: 400

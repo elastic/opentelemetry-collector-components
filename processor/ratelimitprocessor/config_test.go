@@ -249,6 +249,10 @@ func TestLoadConfig(t *testing.T) {
 			name:        "invalid_class_rate_negative",
 			expectedErr: `class "trial": rate must be greater than zero`,
 		},
+		{
+			name:        "classes_set_but_no_class_resolver",
+			expectedErr: `classes defined but class_resolver not specified`,
+		},
 	}
 
 	factory := NewFactory()
