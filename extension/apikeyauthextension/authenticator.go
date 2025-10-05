@@ -283,8 +283,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 		// If no ES error type is found, it implies an error on the TCP connection level.
 		// In this case, we want to return an unavailable code so we have to option of
 		// handling this as a user-defined error later on.
-		err := fmt.Errorf("error checking privileges for API Key %q: %v", id, err)
-		return ctx, status.Error(codes.Unavailable, err.Error())
+		return ctx, status.Errorf(codes.Unavailable, "error checking privileges for API Key %q: %v", id, err)
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{
