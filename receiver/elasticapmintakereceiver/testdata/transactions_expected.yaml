@@ -85,6 +85,36 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -212,6 +242,45 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: "7.0"
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: labels.organization_uuid
+          value:
+            stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
+        - key: labels.tag4
+          value:
+            stringValue: "false"
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 12
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.45
     scopeSpans:
       - scope: {}
         spans:
@@ -258,7 +327,6 @@ resourceSpans:
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
-            parentSpanId: ""
             spanId: 4340a8e0df1906ec
             startTimeUnixNano: "1496170407154000000"
             status:
@@ -350,6 +418,39 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "2.5"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Rails
+        - key: service.framework.version
+          value:
+            stringValue: "5.0"
+        - key: service.runtime.name
+          value:
+            stringValue: cruby
+        - key: service.runtime.version
+          value:
+            stringValue: "2.5"
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -392,7 +493,6 @@ resourceSpans:
                   intValue: "0"
             endTimeUnixNano: "1532976822294980558"
             kind: 2
-            parentSpanId: ""
             spanId: cdef4340a8e0df19
             startTimeUnixNano: "1532976822281000000"
             status: {}
@@ -483,6 +583,36 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -520,7 +650,6 @@ resourceSpans:
             endTimeUnixNano: "1496170407157000000"
             name: amqp receive
             parentSpanId: abcdefabcdef0123
-            spanId: ""
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 0123456789abcdef0123456789abcdef
@@ -622,6 +751,51 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: faas.trigger.request.id
+          value:
+            stringValue: FuH2Cir_vHcEMUA=
+        - key: faas.execution
+          value:
+            stringValue: 2e13b309-23e1-417f-8bf7-074fc96bc683
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: service.origin.id
+          value:
+            stringValue: abc123
+        - key: service.origin.name
+          value:
+            stringValue: service-name
+        - key: service.origin.version
+          value:
+            stringValue: "1.0"
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -658,7 +832,6 @@ resourceSpans:
                   intValue: "38853"
             endTimeUnixNano: "1631736666403901000"
             name: july-2021-delete-after-july-31
-            parentSpanId: ""
             spanId: 142e61450efb8574
             startTimeUnixNano: "1631736666365048000"
             status: {}

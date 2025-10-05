@@ -5,7 +5,7 @@ module-sets:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
       - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor
-      - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
+      - github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor
       - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector

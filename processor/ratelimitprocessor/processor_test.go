@@ -26,6 +26,9 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -171,7 +174,7 @@ func TestConsume_Logs(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeLogs(clientContext, logs)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	testError(t, err)
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
@@ -224,7 +227,7 @@ func TestConsume_Metrics(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	testError(t, err)
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
@@ -277,7 +280,7 @@ func TestConsume_Traces(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeTraces(clientContext, traces)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	testError(t, err)
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
@@ -331,7 +334,7 @@ func TestConsume_Profiles(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	testError(t, err)
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
@@ -478,4 +481,22 @@ func testRatelimitLogMetadata(t *testing.T, logEntries []observer.LoggedEntry) {
 
 	assert.Equal(t, "TestProjectID", fields["x-tenant-id"])
 	assert.Equal(t, int64(1), fields["hits"])
+}
+
+func testError(t *testing.T, err error) {
+	require.Error(t, err)
+	st, ok := status.FromError(err)
+	require.True(t, ok, "expected gRPC status error")
+	assert.Equal(t, codes.ResourceExhausted, st.Code())
+	assert.Equal(t, "rpc error: code = ResourceExhausted desc = too many requests", st.Err().Error())
+	details := st.Details()
+	require.Len(t, details, 1, "expected 1 errorinfo detail")
+	errorInfo, ok := details[0].(*errdetails.ErrorInfo)
+	require.True(t, ok, "expected errorinfo detail")
+	assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
+	assert.Equal(t, map[string]string{
+		"component":         "ratelimitprocessor",
+		"limit":             "1",
+		"throttle_interval": "0s",
+	}, errorInfo.Metadata)
 }

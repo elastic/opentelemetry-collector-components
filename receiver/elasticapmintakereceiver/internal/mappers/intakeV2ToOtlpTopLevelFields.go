@@ -21,11 +21,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/apm-data/model/modelpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/zap"
+
+	"github.com/elastic/apm-data/model/modelpb"
 )
 
 type TopLevelFieldSetter interface {
@@ -57,7 +58,12 @@ func SetTopLevelFieldsCommon(event *modelpb.APMEvent, t TopLevelFieldSetter, log
 	if event.Transaction != nil && event.Transaction.Id != "" {
 		transactionId, err := SpanIdFromHex(event.Transaction.Id)
 		if err == nil {
-			t.SetSpanID(transactionId)
+			// Spans in the elasticapm data model have a transaction.id (which is the id of the root transaction in the given trace)
+			// At the same time, spans have their own span.id and the transaction.id is not needed anymore on spans
+			// Therefore: we only call `t.SetSpanID` when the event is not a span
+			if event.Span == nil {
+				t.SetSpanID(transactionId)
+			}
 		} else {
 			logger.Error("failed to parse transaction ID", zap.String("transaction_id", (event.Transaction.Id)))
 		}
@@ -77,9 +83,10 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestamp time.Time, s ptrac
 		}
 	}
 
-	if strings.EqualFold(event.Event.Outcome, "success") {
+	outcome := event.GetEvent().GetOutcome()
+	if strings.EqualFold(outcome, "success") {
 		s.Status().SetCode(ptrace.StatusCodeOk)
-	} else if strings.EqualFold(event.Event.Outcome, "failure") {
+	} else if strings.EqualFold(outcome, "failure") {
 		s.Status().SetCode(ptrace.StatusCodeError)
 	}
 

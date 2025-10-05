@@ -20,9 +20,13 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/collector/client"
 )
@@ -90,4 +94,21 @@ func getAttrsFromContext(ctx context.Context, metadataKeys []string) []attribute
 		}
 	}
 	return attrs
+}
+
+// errorWithDetails provides a user friendly error with additional error details that
+// can be later used to provide more detailed error information to the user.
+func errorWithDetails(err error, cfg RateLimitSettings) error {
+	st := status.New(codes.ResourceExhausted, err.Error())
+	if detailedSt, stErr := st.WithDetails(&errdetails.ErrorInfo{
+		Domain: "ingest.elastic.co",
+		Metadata: map[string]string{
+			"component":         "ratelimitprocessor",
+			"limit":             fmt.Sprintf("%d", cfg.Rate),
+			"throttle_interval": cfg.ThrottleInterval.String(),
+		},
+	}); stErr == nil {
+		return detailedSt.Err()
+	}
+	return st.Err()
 }

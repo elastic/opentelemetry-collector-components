@@ -25,8 +25,6 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
 	"golang.org/x/time/rate"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var _ RateLimiter = (*localRateLimiter)(nil)
@@ -63,12 +61,12 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	switch cfg.ThrottleBehavior {
 	case ThrottleBehaviorError:
 		if ok := limiter.AllowN(time.Now(), hits); !ok {
-			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
+			return errorWithDetails(errTooManyRequests, cfg)
 		}
 	case ThrottleBehaviorDelay:
 		lr := limiter.ReserveN(time.Now(), hits)
 		if !lr.OK() {
-			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
+			return errorWithDetails(errTooManyRequests, cfg)
 		}
 		timer := time.NewTimer(lr.Delay())
 		defer timer.Stop()

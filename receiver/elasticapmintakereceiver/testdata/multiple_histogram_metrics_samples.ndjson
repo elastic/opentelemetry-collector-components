@@ -1,0 +1,4 @@
+{"metadata": {"service": {"name": "my-service", "version": "1.0.0", "agent": {"version": "3.14.0", "name": "elastic-node"}}}}
+{"metricset": {"samples": {"valid_histogram_metric_1": {"type": "histogram", "unit": "ms", "counts": [1, 3, 5], "values": [10, 20, 30]}}, "timestamp": 1757462026684385}}
+{"metricset": {"samples": {"valid_histogram_metric_2": {"type": "histogram", "unit": "ms", "counts": [2, 4, 6, 8, 10], "values": [5, 10, 15, 25, 50]}}, "timestamp": 1757462026684385}}
+{"metricset": {"samples": {"value_count_mismatch_histogram_metric": {"type": "histogram", "unit": "ms", "counts": [1, 2, 3], "values": [10, 20]}}, "timestamp": 1757462026684385}}

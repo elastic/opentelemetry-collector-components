@@ -24,9 +24,10 @@ import (
 	"fmt"
 	"strings"
 
+	"go.opentelemetry.io/collector/pdata/pcommon"
+
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-lib/elasticattr"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 // Sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
@@ -47,6 +48,11 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr(elasticattr.ProcessorEvent, "span")
 	attributes.PutInt(elasticattr.SpanDurationUs, int64(event.Event.Duration/1_000))
+
+	if event.Span == nil {
+		return
+	}
+
 	attributes.PutStr("span.id", event.Span.Id)
 	attributes.PutStr(elasticattr.SpanName, event.Span.Name)
 	attributes.PutStr(elasticattr.SpanType, event.Span.Type)
@@ -66,8 +72,11 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 // Sets resource fields that are NOT part of OTel. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	attributes.PutStr(elasticattr.AgentName, event.Agent.Name)
-	attributes.PutStr(elasticattr.AgentVersion, event.Agent.Version)
+	if event.Agent != nil {
+		attributes.PutStr(elasticattr.AgentName, event.Agent.Name)
+		attributes.PutStr(elasticattr.AgentVersion, event.Agent.Version)
+	}
+
 	if event.Service != nil && event.Service.Language != nil {
 		if event.Service.Language.Name != "" {
 			attributes.PutStr("service.language.name", event.Service.Language.Name)
@@ -86,9 +95,10 @@ func SetDerivedFieldsForMetrics(attributes pcommon.Map) {
 func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
 
-	if strings.EqualFold(event.Event.Outcome, "success") {
+	outcome := event.GetEvent().GetOutcome()
+	if strings.EqualFold(outcome, "success") {
 		attributes.PutStr(elasticattr.EventOutcome, "success")
-	} else if strings.EqualFold(event.Event.Outcome, "failure") {
+	} else if strings.EqualFold(outcome, "failure") {
 		attributes.PutStr(elasticattr.EventOutcome, "failure")
 	} else {
 		attributes.PutStr(elasticattr.EventOutcome, "unknown")
