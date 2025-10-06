@@ -137,6 +137,27 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: /p/a/t/h?query=string#hash
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: url.domain
+                value:
+                  stringValue: www.example.com
+              - key: url.path
+                value:
+                  stringValue: /p/a/t/h
+              - key: url.query
+                value:
+                  stringValue: ?query=string
+              - key: url.fragment
+                value:
+                  stringValue: '#hash'
+              - key: url.port
+                value:
+                  intValue: "8080"
               - key: transaction.span_count.started
                 value:
                   intValue: "4"
@@ -321,6 +342,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql

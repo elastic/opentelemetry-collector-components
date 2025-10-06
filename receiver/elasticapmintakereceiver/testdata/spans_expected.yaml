@@ -799,6 +799,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -1089,6 +1092,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -1375,6 +1381,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
