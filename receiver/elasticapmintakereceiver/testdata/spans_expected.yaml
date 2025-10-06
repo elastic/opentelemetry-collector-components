@@ -82,6 +82,33 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -113,6 +140,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query.custom
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822422581000"
             name: GET /api/types
             parentSpanId: abcdef0123456789
@@ -204,6 +234,48 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Node
+        - key: service.framework.version
+          value:
+            stringValue: 1.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: node.js
+        - key: service.runtime.version
+          value:
+            stringValue: 1.2.3
+        - key: service.origin.id
+          value:
+            stringValue: 1234567890abcdef
+        - key: service.origin.name
+          value:
+            stringValue: origin-name
+        - key: service.origin.version
+          value:
+            stringValue: 1.0.0
+        - key: service.target.name
+          value:
+            stringValue: target-name
+        - key: service.target.type
+          value:
+            stringValue: target-type
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -235,6 +307,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: ""
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822313592981"
             name: GET /api/types
             parentSpanId: "0000000011111111"
@@ -325,6 +400,42 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag4
+          value:
+            stringValue: "true"
+        - key: labels.tag1
+          value:
+            stringValue: value1
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.34
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 123
     scopeSpans:
       - scope: {}
         spans:
@@ -356,6 +467,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: ""
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822284564298"
             name: GET /api/types
             parentSpanId: abcdefabcdef7890
@@ -446,6 +560,33 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -480,6 +621,9 @@ resourceSpans:
               - key: span.sync
                 value:
                   boolValue: false
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822294980298"
             name: get /api/types
             parentSpanId: ababcdcdefefabde
@@ -570,6 +714,42 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: service.target.name
+          value:
+            stringValue: testdb
+        - key: service.target.type
+          value:
+            stringValue: postgres
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -628,6 +808,110 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "401"
+              - key: http.response.encoded_body_size
+                value:
+                  intValue: "356"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "30012"
+              - key: span.db.link
+                value:
+                  stringValue: other.db.com
+              - key: span.db.rows_affected
+                value:
+                  intValue: "2"
+              - key: span.db.user_name
+                value:
+                  stringValue: readonly_user
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: classname
+                              value:
+                                stringValue: Core.js
+                            - key: library_frame
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "12"
+                            - key: filename
+                              value:
+                                stringValue: file2.js
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '}'
+                            - key: library_frame
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                                    - key: key2
+                                      value:
+                                        stringValue: value2
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: some module
+                            - key: function
+                              value:
+                                stringValue: onread
+                            - key: abs_path
+                              value:
+                                stringValue: net.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                            - key: library_frame
+                              value:
+                                boolValue: true
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -720,6 +1004,42 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: service.target.name
+          value:
+            stringValue: testdb
+        - key: service.target.type
+          value:
+            stringValue: postgres
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -778,6 +1098,110 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "401"
+              - key: http.response.encoded_body_size
+                value:
+                  intValue: "356"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "30012"
+              - key: span.db.link
+                value:
+                  stringValue: other.db.com
+              - key: span.db.rows_affected
+                value:
+                  intValue: "2"
+              - key: span.db.user_name
+                value:
+                  stringValue: readonly_user
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: classname
+                              value:
+                                stringValue: Core.js
+                            - key: library_frame
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "12"
+                            - key: filename
+                              value:
+                                stringValue: file2.js
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '}'
+                            - key: library_frame
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                                    - key: key2
+                                      value:
+                                        stringValue: value2
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: some module
+                            - key: function
+                              value:
+                                stringValue: onread
+                            - key: abs_path
+                              value:
+                                stringValue: net.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                            - key: library_frame
+                              value:
+                                boolValue: true
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -869,6 +1293,39 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: service.target.type
+          value:
+            stringValue: postgresql
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -927,6 +1384,113 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: http.request.id
+                value:
+                  stringValue: some-request-id
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "401"
+              - key: http.response.encoded_body_size
+                value:
+                  intValue: "356"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "30012"
+              - key: span.db.link
+                value:
+                  stringValue: other.db.com
+              - key: span.db.rows_affected
+                value:
+                  intValue: "2"
+              - key: span.db.user_name
+                value:
+                  stringValue: readonly_user
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: classname
+                              value:
+                                stringValue: Core.js
+                            - key: library_frame
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "12"
+                            - key: filename
+                              value:
+                                stringValue: file2.js
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '}'
+                            - key: library_frame
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                                    - key: key2
+                                      value:
+                                        stringValue: value2
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: some module
+                            - key: function
+                              value:
+                                stringValue: onread
+                            - key: abs_path
+                              value:
+                                stringValue: net.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                            - key: library_frame
+                              value:
+                                boolValue: true
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -1017,6 +1581,36 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: service.target.name
+          value:
+            stringValue: localhost:8080
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -1057,6 +1651,9 @@ resourceSpans:
               - key: span.destination.service.resource
                 value:
                   stringValue: localhost:8080
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532975583585205000"
             name: Request
             parentSpanId: abcdef0123456789
@@ -1146,6 +1743,33 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -1189,6 +1813,26 @@ resourceSpans:
               - key: messaging.rabbitmq.destination.routing_key
                 value:
                   stringValue: user-created-span
+              - key: span.message.body
+                value:
+                  stringValue: message body
+              - key: span.message.age.ms
+                value:
+                  intValue: "1577958057123"
+              - key: span.message.headers.Content-Type
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: application/json
+              - key: span.message.headers.Header1
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: value1
+                      - stringValue: value2
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822422581000"
             name: Rabbitmq receive
             parentSpanId: abcdef0123456789
@@ -1278,6 +1922,33 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -1309,6 +1980,18 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query
+              - key: span.composite.compression_strategy
+                value:
+                  stringValue: exact_match
+              - key: span.composite.count
+                value:
+                  intValue: "10"
+              - key: span.composite.sum
+                value:
+                  intValue: "359"
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1625572686060463200"
             name: SELECT FROM p_details
             parentSpanId: abcdef0123456789

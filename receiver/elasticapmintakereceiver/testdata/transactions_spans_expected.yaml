@@ -70,6 +70,30 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: javascript
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.organization_uuid
+          value:
+            stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
+        - key: labels.bool_error
+          value:
+            stringValue: "false"
+        - key: numeric_labels.number_code
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -186,6 +210,24 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.span_tag
+          value:
+            stringValue: something
     scopeSpans:
       - scope: {}
         spans:
@@ -235,6 +277,73 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: span.db.user_name
+                value:
+                  stringValue: readonly_user
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: some module
+                            - key: function
+                              value:
+                                stringValue: onread
+                            - key: abs_path
+                              value:
+                                stringValue: net.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                                    - stringValue: '}'
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "10"
+                            - key: filename
+                              value:
+                                stringValue: my2file.js
+                            - key: library_frame
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1496170407157781912"
             kind: 3
             name: SELECT FROM product_types
@@ -309,6 +418,21 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -340,6 +464,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: ""
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1496170407186592981"
             name: GET /api/types
             parentSpanId: 945254c567a5417e
@@ -412,6 +539,21 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -443,6 +585,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: post
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1496170407157564298"
             name: GET /api/types
             parentSpanId: 945254c567a5417e
@@ -515,6 +660,21 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -546,6 +706,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: ""
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1496170407167980298"
             name: GET /api/types
             parentSpanId: 945254c567a5417e
@@ -618,6 +781,21 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -723,6 +901,21 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -828,6 +1021,21 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -933,6 +1141,24 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: javascript
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: service.target.type
+          value:
+            stringValue: postgresql
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -982,6 +1208,12 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: span.db.user_name
+                value:
+                  stringValue: readonly_user
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1496170422284781912"
             name: SELECT FROM product_types
             parentSpanId: 85925e55b43f4342

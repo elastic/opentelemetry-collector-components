@@ -1,6 +1,12 @@
 resourceMetrics:
   - resource:
       attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: service.name
           value:
             stringValue: my-service
@@ -39,6 +45,12 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: service.name
           value:
             stringValue: my-service
@@ -81,6 +93,12 @@ resourceMetrics:
         scope: {}
   - resource:
       attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: service.name
           value:
             stringValue: my-service

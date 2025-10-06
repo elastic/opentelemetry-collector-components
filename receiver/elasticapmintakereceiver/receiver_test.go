@@ -689,5 +689,9 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 	}
 	expectedMetrics, err := golden.ReadMetrics(expectedFile)
 	require.NoError(t, err)
-	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics, pmetrictest.IgnoreMetricsOrder()))
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics, pmetrictest.IgnoreMetricsOrder(),
+		// golden.WriteMetrics will sort metrics and resource metrics before writing the golden file
+		// so we need to ignore order when comparing.
+		pmetrictest.IgnoreResourceMetricsOrder(),
+	))
 }
