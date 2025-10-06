@@ -172,6 +172,26 @@ resourceLogs:
               - key: process.title
                 value:
                   stringValue: node
+              - key: error.custom
+                value:
+                  kvlistValue:
+                    values:
+                      - key: and_objects
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: foo
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: bar
+                                      - stringValue: baz
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
             body:
               stringValue: My service could not talk to the database named foobar
             timeUnixNano: "1494342245999999000"

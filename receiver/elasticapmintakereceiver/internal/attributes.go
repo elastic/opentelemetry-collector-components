@@ -108,4 +108,6 @@ const (
 	TransactionDroppedSpansStatsOutcome                    = "outcome"
 	TransactionDroppedSpansStatsDurationCount              = "duration.count"
 	TransactionDroppedSpansStatsDurationSumUs              = "duration.sum.us"
+
+	ErrorCustom = "error.custom"
 )
