@@ -515,5 +515,7 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 		}
 	}
 
-	setKeyValueMap(attr.ErrorCustom, attributesMap, event.Error.Custom)
+	if event.Error != nil {
+		setKeyValueMap(attr.ErrorCustom, attributesMap, event.Error.Custom)
+	}
 }
