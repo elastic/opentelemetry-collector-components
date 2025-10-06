@@ -5,9 +5,9 @@ go 1.24.0
 require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/elastic/apm-data v1.18.0
-	github.com/elastic/go-elasticsearch/v8 v8.18.1
+	github.com/elastic/go-elasticsearch/v8 v8.19.0
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9
-	github.com/elastic/opentelemetry-lib v0.18.0
+	github.com/elastic/opentelemetry-lib v0.22.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.135.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.135.0
 	github.com/stretchr/testify v1.11.1
@@ -131,7 +131,7 @@ require (
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/grpc v1.75.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
