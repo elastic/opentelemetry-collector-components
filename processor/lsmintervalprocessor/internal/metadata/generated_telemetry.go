@@ -316,109 +316,109 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	var err, errs error
 	builder.LsmintervalExportedBytes, err = builder.meter.Int64Counter(
 		"otelcol_lsminterval.exported_bytes",
-		metric.WithDescription("The size in bytes of metric data points exported by the processor."),
+		metric.WithDescription("The size in bytes of metric data points exported by the processor. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalExportedDataPoints, err = builder.meter.Int64Counter(
 		"otelcol_lsminterval.exported_data_points",
-		metric.WithDescription("The count of metric data points exported by the processor."),
+		metric.WithDescription("The count of metric data points exported by the processor. [development]"),
 		metric.WithUnit("{count}"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleCompactedBytesRead, err = builder.meter.Int64ObservableCounter(
 		"otelcol_lsminterval.pebble_compacted_bytes_read",
-		metric.WithDescription("The size in bytes read by pebble during compaction."),
+		metric.WithDescription("The size in bytes read by pebble during compaction. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleCompactedBytesWritten, err = builder.meter.Int64ObservableCounter(
 		"otelcol_lsminterval.pebble_compacted_bytes_written",
-		metric.WithDescription("The size in bytes written by pebble during compaction."),
+		metric.WithDescription("The size in bytes written by pebble during compaction. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleCompactions, err = builder.meter.Int64ObservableCounter(
 		"otelcol_lsminterval.pebble_compactions",
-		metric.WithDescription("The number of pebble table compactions."),
+		metric.WithDescription("The number of pebble table compactions. [development]"),
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleFlushedBytes, err = builder.meter.Int64ObservableCounter(
 		"otelcol_lsminterval.pebble_flushed_bytes",
-		metric.WithDescription("The size in bytes written by pebble during flush."),
+		metric.WithDescription("The size in bytes written by pebble during flush. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleFlushes, err = builder.meter.Int64ObservableCounter(
 		"otelcol_lsminterval.pebble_flushes",
-		metric.WithDescription("The number of pebble memtable flushes to disk."),
+		metric.WithDescription("The number of pebble memtable flushes to disk. [development]"),
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleIngestedBytes, err = builder.meter.Int64ObservableCounter(
 		"otelcol_lsminterval.pebble_ingested_bytes",
-		metric.WithDescription("The size in bytes ingested to pebble."),
+		metric.WithDescription("The size in bytes ingested to pebble. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleKeysTombstones, err = builder.meter.Int64ObservableGauge(
 		"otelcol_lsminterval.pebble_keys_tombstones",
-		metric.WithDescription("The approximate number of delete keys across the pebble storage engine."),
+		metric.WithDescription("The approximate number of delete keys across the pebble storage engine. [development]"),
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleMarkedForCompactionFiles, err = builder.meter.Int64ObservableGauge(
 		"otelcol_lsminterval.pebble_marked_for_compaction_files",
-		metric.WithDescription("The current number of pebble SSTables marked for compaction."),
+		metric.WithDescription("The current number of pebble SSTables marked for compaction. [development]"),
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebblePendingCompaction, err = builder.meter.Int64ObservableGauge(
 		"otelcol_lsminterval.pebble_pending_compaction",
-		metric.WithDescription("The estimated size in bytes of pending compaction in pebble."),
+		metric.WithDescription("The estimated size in bytes of pending compaction in pebble. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleReadAmplification, err = builder.meter.Int64ObservableGauge(
 		"otelcol_lsminterval.pebble_read_amplification",
-		metric.WithDescription("The current pebble db read amplification."),
+		metric.WithDescription("The current pebble db read amplification. [development]"),
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleReadersMemory, err = builder.meter.Int64ObservableGauge(
 		"otelcol_lsminterval.pebble_readers_memory",
-		metric.WithDescription("The estimated size in bytes of memory used by pebble index and filter blocks."),
+		metric.WithDescription("The estimated size in bytes of memory used by pebble index and filter blocks. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleSstables, err = builder.meter.Int64ObservableGauge(
 		"otelcol_lsminterval.pebble_sstables",
-		metric.WithDescription("The current number of pebble storage engine SSTables."),
+		metric.WithDescription("The current number of pebble storage engine SSTables. [development]"),
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleTotalDiskUsage, err = builder.meter.Int64ObservableGauge(
 		"otelcol_lsminterval.pebble_total_disk_usage",
-		metric.WithDescription("The current size in bytes of disk used by pebble, including live and obsolete files."),
+		metric.WithDescription("The current size in bytes of disk used by pebble, including live and obsolete files. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleTotalMemtableSize, err = builder.meter.Int64ObservableGauge(
 		"otelcol_lsminterval.pebble_total_memtable_size",
-		metric.WithDescription("The current size in bytes of pebble memtable."),
+		metric.WithDescription("The current size in bytes of pebble memtable. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalProcessedBytes, err = builder.meter.Int64Counter(
 		"otelcol_lsminterval.processed_bytes",
-		metric.WithDescription("The size in bytes of metric data points processed by the processor."),
+		metric.WithDescription("The size in bytes of metric data points processed by the processor. [development]"),
 		metric.WithUnit("By"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalProcessedDataPoints, err = builder.meter.Int64Counter(
 		"otelcol_lsminterval.processed_data_points",
-		metric.WithDescription("The count of metric data points processed by the processor."),
+		metric.WithDescription("The count of metric data points processed by the processor. [development]"),
 		metric.WithUnit("{count}"),
 	)
 	errs = errors.Join(errs, err)
