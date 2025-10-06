@@ -73,6 +73,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -229,6 +232,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node

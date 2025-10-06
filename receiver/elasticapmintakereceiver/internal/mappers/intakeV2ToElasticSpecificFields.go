@@ -231,7 +231,7 @@ func insertValue(dest pcommon.Value, src *structpb.Value) {
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
 // and store information about a specific span type.
 func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	// TODO: map other fields: http.*, source.*, network.*, user_agent.*, client.*
+	// TODO: map other fields: http.*, source.*, user_agent.*, client.*
 
 	if event.Transaction == nil {
 		return

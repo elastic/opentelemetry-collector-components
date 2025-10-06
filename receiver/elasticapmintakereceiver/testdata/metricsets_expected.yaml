@@ -43,6 +43,9 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
           - gauge:
@@ -105,6 +108,9 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
           - gauge:
@@ -182,6 +188,9 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
           - gauge:
@@ -349,6 +358,9 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
           - histogram:
@@ -429,6 +441,9 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
           - gauge:

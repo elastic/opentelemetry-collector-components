@@ -205,7 +205,7 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 		}
 	}
 
-	// User fields
+	// translate user fields defined here: https://opentelemetry.io/docs/specs/semconv/registry/attributes/user
 	if event.User != nil {
 		if event.User.Id != "" {
 			attributes.PutStr(string(semconv.UserIDKey), event.User.Id)
@@ -213,10 +213,35 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 		if event.User.Email != "" {
 			attributes.PutStr(string(semconv.UserEmailKey), event.User.Email)
 		}
+		if event.User.Name != "" {
+			attributes.PutStr(string(semconv.UserNameKey), event.User.Name)
+		}
 	}
 
-	if event.Network != nil && event.Network.Connection != nil && event.Network.Connection.Type != "" {
-		attributes.PutStr(string(semconv.NetworkConnectionTypeKey), event.Network.Connection.Type)
+	// translate network fields defined here: https://opentelemetry.io/docs/specs/semconv/registry/attributes/network
+	if event.Network != nil {
+		if event.Network.Connection != nil {
+			if event.Network.Connection.Type != "" {
+				attributes.PutStr(string(semconv.NetworkConnectionTypeKey), event.Network.Connection.Type)
+			}
+			if event.Network.Connection.Subtype != "" {
+				attributes.PutStr(string(semconv.NetworkConnectionSubtypeKey), event.Network.Connection.Subtype)
+			}
+		}
+		if event.Network.Carrier != nil {
+			if event.Network.Carrier.Name != "" {
+				attributes.PutStr(string(semconv.NetworkCarrierNameKey), event.Network.Carrier.Name)
+			}
+			if event.Network.Carrier.Mcc != "" {
+				attributes.PutStr(string(semconv.NetworkCarrierMccKey), event.Network.Carrier.Mcc)
+			}
+			if event.Network.Carrier.Mnc != "" {
+				attributes.PutStr(string(semconv.NetworkCarrierMccKey), event.Network.Carrier.Mnc)
+			}
+			if event.Network.Carrier.Icc != "" {
+				attributes.PutStr(string(semconv.NetworkCarrierIccKey), event.Network.Carrier.Icc)
+			}
+		}
 	}
 
 	if event.Client != nil && event.Client.Ip != nil && event.Client.Ip.String() != "" {

@@ -269,6 +269,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
