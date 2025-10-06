@@ -251,17 +251,29 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		switch event.Type() {
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()
+
+			r.setResourceAttributes(rm.Resource().Attributes(), event)
+
 			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestamp); err != nil {
 				return err
 			}
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
+
+			r.setResourceAttributes(rl.Resource().Attributes(), event)
+
 			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
 		case modelpb.LogEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
+
+			r.setResourceAttributes(rl.Resource().Attributes(), event)
+
 			r.elasticLogToOtelLogRecord(&rl, event, timestamp)
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
+
+			r.setResourceAttributes(rs.Resource().Attributes(), event)
+
 			s := r.elasticEventToOtelSpan(&rs, event, timestamp)
 
 			isTransaction := event.Type() == modelpb.TransactionEventType
@@ -296,10 +308,16 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	return errors.Join(errs...)
 }
 
+// setResourceAttributes maps event fields to attributes.
+// Expects the attribute map to be at the resource level e.g. pmetric.ResourceMetrics.Resource().Attributes().
+func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, event *modelpb.APMEvent) {
+	mappers.TranslateToOtelResourceAttributes(event, attrs)
+	mappers.SetDerivedResourceAttributes(event, attrs)
+	mappers.SetElasticSpecificResourceAttributes(event, attrs)
+}
+
 func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) error {
-
 	metricset := event.GetMetricset()
-
 	// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
 	if metricset.Name == "span_breakdown" {
 		r.translateBreakdownMetricsToOtel(rm, event, timestamp)
@@ -347,7 +365,6 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 		default:
 			return fmt.Errorf("unhandled metric type %q", sample.GetType())
 		}
-		mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
 	}
 
 	return nil
@@ -454,15 +471,13 @@ func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.R
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367
 	sum_metric.SetUnit("us")
 	sum_dp := createBreakdownMetricsCommon(sum_metric, event, timestamp)
-	sum_dp.SetIntValue(int64(event.Span.SelfTime.Sum))
+	sum_dp.SetIntValue(int64(event.GetSpan().GetSelfTime().Sum))
 
 	count_metric := sm.Metrics().AppendEmpty()
 	count_metric.SetName("span.self_time.count")
 	count_metric.SetUnit("{span}")
 	count_metric_dp := createBreakdownMetricsCommon(count_metric, event, timestamp)
-	count_metric_dp.SetDoubleValue(float64(event.Span.SelfTime.Count))
-
-	mappers.TranslateToOtelResourceAttributes(event, rm.Resource().Attributes())
+	count_metric_dp.SetDoubleValue(float64(event.GetSpan().GetSelfTime().Count))
 }
 
 func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent, timestamp time.Time) pmetric.NumberDataPoint {
@@ -471,10 +486,15 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
 
 	attr := dp.Attributes()
-	attr.PutStr("transaction.name", event.Transaction.Name)
-	attr.PutStr("transaction.type", event.Transaction.Type)
-	attr.PutStr("span.type", event.Span.Type)
-	attr.PutStr("span.subtype", event.Span.Subtype)
+	if event.Transaction != nil {
+		attr.PutStr("transaction.name", event.Transaction.Name)
+		attr.PutStr("transaction.type", event.Transaction.Type)
+	}
+	if event.Span != nil {
+		attr.PutStr("span.type", event.Span.Type)
+		attr.PutStr("span.subtype", event.Span.Subtype)
+	}
+
 	attr.PutStr("processor.event", "metric")
 
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
@@ -491,9 +511,6 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 	// apm log events can contain error information. In this case the log is considered an apm error.
 	// All fields associated with the log should also be set.
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
-	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
-	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
-	mappers.SetElasticSpecificMetadataFields(event, rl.Resource().Attributes())
 
 	if event.Error != nil && event.Error.Log != nil {
 		l.Body().SetStr(event.Error.Log.Message)
@@ -505,9 +522,6 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 	l := sl.LogRecords().AppendEmpty()
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
-	mappers.SetDerivedResourceAttributes(event, rl.Resource().Attributes())
-	mappers.TranslateToOtelResourceAttributes(event, rl.Resource().Attributes())
-	mappers.SetElasticSpecificMetadataFields(event, rl.Resource().Attributes())
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 	// TODO(isaacaflores2): add labels (user defined key-value pairs)?
 
@@ -526,9 +540,7 @@ func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	s := ss.Spans().AppendEmpty()
 
 	mappers.SetTopLevelFieldsSpan(event, timestamp, s, r.settings.Logger)
-	mappers.TranslateToOtelResourceAttributes(event, rs.Resource().Attributes())
 	mappers.SetDerivedFieldsCommon(event, s.Attributes())
-	mappers.SetDerivedResourceAttributes(event, rs.Resource().Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
 	return s
 }
@@ -575,6 +587,7 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 
 	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
+	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
 
 	if event.Http != nil || event.Message != "" {
 		s.SetKind(ptrace.SpanKindClient)

@@ -85,6 +85,36 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -212,6 +242,45 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: "7.0"
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: labels.organization_uuid
+          value:
+            stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
+        - key: labels.tag4
+          value:
+            stringValue: "false"
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 12
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.45
     scopeSpans:
       - scope: {}
         spans:
@@ -349,6 +418,39 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "2.5"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Rails
+        - key: service.framework.version
+          value:
+            stringValue: "5.0"
+        - key: service.runtime.name
+          value:
+            stringValue: cruby
+        - key: service.runtime.version
+          value:
+            stringValue: "2.5"
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -481,6 +583,36 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -619,6 +751,51 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: faas.trigger.request.id
+          value:
+            stringValue: FuH2Cir_vHcEMUA=
+        - key: faas.execution
+          value:
+            stringValue: 2e13b309-23e1-417f-8bf7-074fc96bc683
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: service.origin.id
+          value:
+            stringValue: abc123
+        - key: service.origin.name
+          value:
+            stringValue: service-name
+        - key: service.origin.version
+          value:
+            stringValue: "1.0"
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
