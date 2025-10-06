@@ -65,7 +65,7 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType().AppendEmpty()
+	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
 	prof.Sample().AppendEmpty() // Add a sample to ensure metric count > 0
@@ -98,7 +98,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType().AppendEmpty()
+	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
 	sample := prof.Sample().AppendEmpty()
@@ -107,22 +107,29 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	dict := profiles.Dictionary()
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
+	strTable := dict.StringTable()
+	stackTable := dict.StackTable()
+
+	strTable.Append("")
 
 	// Add an attribute for frame type
 	attr := attrTable.AppendEmpty()
-	attr.SetKey(string(semconv.ProfileFrameTypeKey))
+	attr.SetKeyStrindex(int32(strTable.Len()))
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
 	attr.Value().SetStr("go")
 
 	// Add a location referencing the attribute
 	loc := locTable.AppendEmpty()
 	loc.AttributeIndices().Append(0)
 
-	// Add location index to the profile's location indices
-	prof.LocationIndices().Append(0)
+	stackTable.AppendEmpty()
 
-	// Set sample to reference the location
-	sample.SetLocationsStartIndex(0)
-	sample.SetLocationsLength(1)
+	// Set sample to reference the stack
+	sample.SetStackIndex(int32(stackTable.Len()))
+
+	stack := stackTable.AppendEmpty()
+	// Add location index to the stack's location indices
+	stack.LocationIndices().Append(0)
 
 	// Expect ConsumeMetrics to be called with metrics containing frame type metric
 	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.MatchedBy(func(md pmetric.Metrics) bool {
@@ -177,20 +184,26 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType().AppendEmpty()
+	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
 
 	dict := profiles.Dictionary()
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
+	strTable := dict.StringTable()
+	stackTable := dict.StackTable()
+
+	strTable.Append("")
 
 	// Add two attributes for frame types
 	attrGo := attrTable.AppendEmpty()
-	attrGo.SetKey(string(semconv.ProfileFrameTypeKey))
+	attrGo.SetKeyStrindex(int32(strTable.Len()))
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
 	attrGo.Value().SetStr("go")
 	attrPy := attrTable.AppendEmpty()
-	attrPy.SetKey(string(semconv.ProfileFrameTypeKey))
+	attrPy.SetKeyStrindex(int32(strTable.Len()))
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
 	attrPy.Value().SetStr("python")
 
 	// Add two locations, each referencing a different attribute
@@ -199,17 +212,19 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	locPy := locTable.AppendEmpty()
 	locPy.AttributeIndices().Append(1)
 
-	// Add location indices to the profile's location indices
-	prof.LocationIndices().Append(0)
-	prof.LocationIndices().Append(1)
+	stackTable.AppendEmpty()
+	stackGo := stackTable.AppendEmpty()
+	stackPy := stackTable.AppendEmpty()
+
+	// Add location indices to the stack's location indices
+	stackGo.LocationIndices().Append(0)
+	stackPy.LocationIndices().Append(1)
 
 	// Add two samples, each referencing a different location
 	sampleGo := prof.Sample().AppendEmpty()
-	sampleGo.SetLocationsStartIndex(0)
-	sampleGo.SetLocationsLength(1)
+	sampleGo.SetStackIndex(1)
 	samplePy := prof.Sample().AppendEmpty()
-	samplePy.SetLocationsStartIndex(1)
-	samplePy.SetLocationsLength(1)
+	samplePy.SetStackIndex(2)
 
 	// Expect ConsumeMetrics to be called with both frame type metrics
 	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.MatchedBy(func(md pmetric.Metrics) bool {
@@ -285,7 +300,7 @@ func TestConsumeProfiles_ConsumeMetricsError(t *testing.T) {
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType().AppendEmpty()
+	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
 	prof.Sample().AppendEmpty()
@@ -314,6 +329,7 @@ func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
 	funcTable := dict.FunctionTable()
+	stackTable := dict.StackTable()
 
 	// Add strings for function name and package
 	fnNameIdx := strTable.Len()
@@ -326,7 +342,8 @@ func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	// Add attribute for frame type "go"
 	attrIdx := attrTable.Len()
 	attr := attrTable.AppendEmpty()
-	attr.SetKey(string(semconv.ProfileFrameTypeKey))
+	attr.SetKeyStrindex(int32(strTable.Len()))
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
 	attr.Value().SetStr("go")
 
 	// Add location referencing the attribute and function
@@ -336,10 +353,12 @@ func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	line := loc.Line().AppendEmpty()
 	line.SetFunctionIndex(int32(fnNameIdx))
 
+	stackTable.AppendEmpty()
+
 	// Prepare sample referencing the location
 	sample := pprofile.NewSample()
-	sample.SetLocationsStartIndex(0)
-	sample.SetLocationsLength(1)
+	sample.SetStackIndex(int32(stackTable.Len()))
+	stackTable.AppendEmpty()
 
 	// Prepare location indices
 	locationIndices := pcommon.NewInt32Slice()

@@ -27,38 +27,161 @@ import (
 	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
 )
 
+var compressionStrategyText = map[modelpb.CompressionStrategy]string{
+	modelpb.CompressionStrategy_COMPRESSION_STRATEGY_EXACT_MATCH: "exact_match",
+	modelpb.CompressionStrategy_COMPRESSION_STRATEGY_SAME_KIND:   "same_kind",
+}
+
 // SetElasticSpecificFieldsForSpan sets fields on spans that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
 // and store information about a specific span type
 func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	if event.Http != nil {
+		if event.Http.Request != nil {
+			if event.Http.Request.Body != nil {
+				attributesMap.PutStr(attr.HTTPRequestBody, event.Http.Request.Body.GetStringValue())
+			}
+			if event.Http.Request.Id != "" {
+				attributesMap.PutStr(attr.HTTPRequestID, event.Http.Request.Id)
+			}
+			if event.Http.Request.Referrer != "" {
+				attributesMap.PutStr(attr.HTTPRequestReferrer, event.Http.Request.Referrer)
+			}
+		}
+
+		if event.Http.Response != nil {
+			if event.Http.Response.DecodedBodySize != nil {
+				attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*event.Http.Response.DecodedBodySize))
+			}
+			if event.Http.Response.EncodedBodySize != nil {
+				attributesMap.PutInt(attr.HTTPResponseEncodedBodySize, int64(*event.Http.Response.EncodedBodySize))
+			}
+			if event.Http.Response.TransferSize != nil {
+				attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*event.Http.Response.TransferSize))
+			}
+		}
+	}
+
+	if event.Span == nil {
+		return
+	}
+
 	if event.Span.Db != nil {
-		attributesMap.PutStr(attr.SpanDBLink, event.Span.Db.Link)
-		// SemConv db.response.returned_rows is similar, but not the same
-		attributesMap.PutInt(attr.SpanDBRowsAffected, int64(*event.Span.Db.RowsAffected))
-		attributesMap.PutStr(attr.SpanDBUserName, event.Span.Db.UserName)
-	}
-
-	if event.Http.Request != nil {
-		attributesMap.PutStr(attr.HTTPRequestBody, event.Http.Request.Body.GetStringValue())
-		attributesMap.PutStr(attr.HTTPRequestID, event.Http.Request.Id)
-		attributesMap.PutStr(attr.HTTPRequestReferrer, event.Http.Request.Referrer)
-	}
-
-	if event.Http.Response != nil {
-		// SemConv http.response.body.size may match one of these.
-		attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*event.Http.Response.DecodedBodySize))
-		attributesMap.PutInt(attr.HTTPResponseEncodedBodySize, int64(*event.Http.Response.EncodedBodySize))
-		attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*event.Http.Response.TransferSize))
+		if event.Span.Db.Link != "" {
+			attributesMap.PutStr(attr.SpanDBLink, event.Span.Db.Link)
+		}
+		if event.Span.Db.RowsAffected != nil {
+			// SemConv db.response.returned_rows is similar, but not the same
+			attributesMap.PutInt(attr.SpanDBRowsAffected, int64(*event.Span.Db.RowsAffected))
+		}
+		if event.Span.Db.UserName != "" {
+			attributesMap.PutStr(attr.SpanDBUserName, event.Span.Db.UserName)
+		}
 	}
 
 	if event.Span.Message != nil {
-		attributesMap.PutStr(attr.SpanMessageBody, event.Span.Message.Body)
+		if event.Span.Message.Body != "" {
+			attributesMap.PutStr(attr.SpanMessageBody, event.Span.Message.Body)
+		}
+		if event.Span.Message.AgeMillis != nil {
+			attributesMap.PutInt(attr.SpanMessageAgeMs, int64(*event.Span.Message.AgeMillis))
+		}
+		for _, header := range event.Span.Message.Headers {
+			headerKey := attr.SpanMessageHeadersPrefix + header.Key
+			headerValues := attributesMap.PutEmptySlice(headerKey)
+			headerValues.EnsureCapacity(len(header.Value))
+			for _, v := range header.Value {
+				headerValues.AppendEmpty().SetStr(v)
+			}
+		}
+	}
+
+	if event.Span.Composite != nil {
+		compressionStrategy, ok := compressionStrategyText[event.Span.Composite.CompressionStrategy]
+		if ok {
+			attributesMap.PutStr(attr.SpanCompositeCompressionStrategy, compressionStrategy)
+		}
+		attributesMap.PutInt(attr.SpanCompositeCount, int64(event.Span.Composite.Count))
+		attributesMap.PutInt(attr.SpanCompositeSum, int64(event.Span.Composite.Sum))
+	}
+
+	attributesMap.PutDouble(attr.SpanRepresentativeCount, event.Span.RepresentativeCount)
+
+	setStackTraceList(attributesMap, event.Span.Stacktrace)
+}
+
+// setStackTraceList maps stacktrace frames to attributes map.
+// The stacktrace will be a list of objects (maps), each map representing a frame.
+func setStackTraceList(attributesMap pcommon.Map, stacktrace []*modelpb.StacktraceFrame) {
+	if len(stacktrace) == 0 {
+		return
+	}
+
+	stacktraceSlice := attributesMap.PutEmptySlice(attr.SpanStacktrace)
+	stacktraceSlice.EnsureCapacity(len(stacktrace))
+	for _, frame := range stacktrace {
+		frameMap := stacktraceSlice.AppendEmpty().SetEmptyMap()
+
+		if len(frame.Vars) > 0 {
+			varsMap := frameMap.PutEmptyMap(attr.SpanStacktraceFrameVars)
+			for _, varKV := range frame.Vars {
+				varsMap.PutStr(varKV.Key, varKV.Value.GetStringValue())
+			}
+		}
+
+		if frame.Lineno != nil {
+			frameMap.PutInt(attr.SpanStacktraceFrameLineNumber, int64(*frame.Lineno))
+		}
+		if frame.Colno != nil {
+			frameMap.PutInt(attr.SpanStacktraceFrameLineColumn, int64(*frame.Colno))
+		}
+		if frame.Filename != "" {
+			frameMap.PutStr(attr.SpanStacktraceFrameFilename, frame.Filename)
+		}
+		if frame.Classname != "" {
+			frameMap.PutStr(attr.SpanStacktraceFrameClassname, frame.Classname)
+		}
+		if frame.ContextLine != "" {
+			frameMap.PutStr(attr.SpanStacktraceFrameLineContext, frame.ContextLine)
+		}
+		if frame.Module != "" {
+			frameMap.PutStr(attr.SpanStacktraceFrameModule, frame.Module)
+		}
+		if frame.Function != "" {
+			frameMap.PutStr(attr.SpanStacktraceFrameFunction, frame.Function)
+		}
+		if frame.AbsPath != "" {
+			frameMap.PutStr(attr.SpanStacktraceFrameAbsPath, frame.AbsPath)
+		}
+
+		if len(frame.PreContext) > 0 {
+			preSlice := frameMap.PutEmptySlice(attr.SpanStacktraceFrameContextPre)
+			preSlice.EnsureCapacity(len(frame.PreContext))
+			for _, pre := range frame.PreContext {
+				preSlice.AppendEmpty().SetStr(pre)
+			}
+		}
+		if len(frame.PostContext) > 0 {
+			postSlice := frameMap.PutEmptySlice(attr.SpanStacktraceFrameContextPost)
+			postSlice.EnsureCapacity(len(frame.PostContext))
+			for _, post := range frame.PostContext {
+				postSlice.AppendEmpty().SetStr(post)
+			}
+		}
+
+		frameMap.PutBool(attr.SpanStacktraceFrameLibraryFrame, frame.LibraryFrame)
 	}
 }
 
-// SetElasticSpecificMetadataFields sets fields that are not defined by OTel.
+// SetElasticSpecificResourceAttributes maps APM event fields to OTel attributes at the resource level.
+// The majority of the APM event fields are from the APM metadata model, so this mapping is applicable
+// to all event types (OTel  signals).
+// Some APM events may contain fields that are APM metadata e.g error.context.service.framework will override
+// the framework provided in the metadata. The apm-data library handles the override, so this function simply
+// sets the resource attribute.
+// These fields are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
-func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
 		if event.Cloud.ProjectId != "" {
 			attributesMap.PutStr(attr.CloudProjectID, event.Cloud.ProjectId)
@@ -78,8 +201,12 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 	}
 
 	if event.Agent != nil {
-		attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
-		attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
+		if event.Agent.EphemeralId != "" {
+			attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
+		}
+		if event.Agent.ActivationMethod != "" {
+			attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
+		}
 	}
 
 	if event.Service != nil {
@@ -107,6 +234,25 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 				attributesMap.PutStr(attr.ServiceRuntimeVersion, event.Service.Runtime.Version)
 			}
 		}
+		if event.Service.Origin != nil {
+			if event.Service.Origin.Id != "" {
+				attributesMap.PutStr(attr.ServiceOriginId, event.Service.Origin.Id)
+			}
+			if event.Service.Origin.Name != "" {
+				attributesMap.PutStr(attr.ServiceOriginName, event.Service.Origin.Name)
+			}
+			if event.Service.Origin.Version != "" {
+				attributesMap.PutStr(attr.ServiceOriginVersion, event.Service.Origin.Version)
+			}
+		}
+		if event.Service.Target != nil {
+			if event.Service.Target.Name != "" {
+				attributesMap.PutStr(attr.ServiceTargetName, event.Service.Target.Name)
+			}
+			if event.Service.Target.Type != "" {
+				attributesMap.PutStr(attr.ServiceTargetType, event.Service.Target.Type)
+			}
+		}
 	}
 
 	if event.Host != nil {
@@ -114,6 +260,38 @@ func SetElasticSpecificMetadataFields(event *modelpb.APMEvent, attributesMap pco
 			if event.Host.Os.Platform != "" {
 				attributesMap.PutStr(attr.HostOSPlatform, event.Host.Os.Platform)
 			}
+		}
+	}
+
+	setLabels(event, attributesMap)
+}
+
+// setLabels sets single value label fields from the APMEvent Labels and NumericLabels fields.
+// Labels are added as attributes with appropriate key prefixes: "labels." and "numeric_labels.".
+// Allows key names with spaces to match existing behavior.
+// Ignored empty keys and values.
+//
+// Note: modelpb.Events supports single and slice label values,
+// but the apm data model only support single value labels, so the slice values are ignored.
+// See schema:
+// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L75
+// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L433
+// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L969
+//
+// The apm data library logic will take care of overwriting metadata labels with event labels when decoding
+// the input to modelpb.APMEvent, so we simply copy all labels from the event here.
+func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	for key, labelValue := range event.Labels {
+		if key != "" && labelValue != nil && labelValue.Value != "" {
+			attrKey := "labels." + key
+			attributesMap.PutStr(attrKey, labelValue.Value)
+		}
+	}
+
+	for key, numericLabelValue := range event.NumericLabels {
+		if key != "" && numericLabelValue != nil && numericLabelValue.Value != 0 {
+			attrKey := "numeric_labels." + key
+			attributesMap.PutDouble(attrKey, numericLabelValue.Value)
 		}
 	}
 }
@@ -177,4 +355,5 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 			attributesMap.PutStr(attr.SessionID, event.Session.Id)
 		}
 	}
+
 }
