@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"github.com/elastic/elastic-agent-libs/config"
@@ -48,7 +47,7 @@ type authenticator struct {
 	telemetry  component.TelemetrySettings
 	logger     *logp.Logger
 	cfg        *Config
-	rtProvider atomic.Pointer[roundTripperProvider]
+	rtProvider roundTripperProvider
 }
 
 func newAuthenticator(cfg *Config, telemetry component.TelemetrySettings) (*authenticator, error) {
@@ -89,7 +88,7 @@ func (a *authenticator) Start(_ context.Context, host component.Host) error {
 		provider = &httpClientProvider{client: client}
 	}
 
-	a.rtProvider.Store(&provider)
+	a.rtProvider = provider
 	return nil
 }
 
@@ -98,11 +97,10 @@ func (a *authenticator) Shutdown(_ context.Context) error {
 }
 
 func (a *authenticator) RoundTripper(_ http.RoundTripper) (http.RoundTripper, error) {
-	provider := a.rtProvider.Load()
-	if provider == nil {
+	if a.rtProvider == nil {
 		return nil, fmt.Errorf("authenticator not started")
 	}
-	return (*provider).RoundTripper(), nil
+	return a.rtProvider.RoundTripper(), nil
 }
 
 // getHTTPOptions returns a list of http transport options

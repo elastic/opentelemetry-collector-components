@@ -187,15 +187,14 @@ func TestAuthenticator(t *testing.T) {
 
 			// Validate provider type if specified
 			if tc.expectHTTPClientType != "" {
-				provider := auth.rtProvider.Load()
-				require.NotNil(t, provider)
+				require.NotNil(t, auth.rtProvider)
 
 				switch tc.expectHTTPClientType {
 				case "httpClientProvider":
-					_, ok := (*provider).(*httpClientProvider)
+					_, ok := (auth.rtProvider).(*httpClientProvider)
 					require.True(t, ok, "Provider should be an httpClientProvider")
 				case "errorRoundTripperProvider":
-					_, ok := (*provider).(*errorRoundTripperProvider)
+					_, ok := (auth.rtProvider).(*errorRoundTripperProvider)
 					require.True(t, ok, "Provider should be an errorRoundTripperProvider")
 				}
 
