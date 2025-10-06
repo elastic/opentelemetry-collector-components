@@ -18,7 +18,7 @@ require (
 	go.uber.org/goleak v1.3.0
 	golang.org/x/crypto v0.41.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7
-	google.golang.org/grpc v1.75.0
+	google.golang.org/grpc v1.75.1
 )
 
 require (
