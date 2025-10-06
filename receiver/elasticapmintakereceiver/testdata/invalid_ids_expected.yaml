@@ -149,6 +149,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "43"
             endTimeUnixNano: "1496170407186592981"
             startTimeUnixNano: "1496170407154000000"
             status: {}

@@ -424,18 +424,18 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
-        - key: labels.tag4
-          value:
-            stringValue: "true"
         - key: labels.tag1
           value:
             stringValue: value1
-        - key: numeric_labels.tag3
+        - key: labels.tag4
           value:
-            doubleValue: 12.34
+            stringValue: "true"
         - key: numeric_labels.tag2
           value:
             doubleValue: 123
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.34
     scopeSpans:
       - scope: {}
         spans:
