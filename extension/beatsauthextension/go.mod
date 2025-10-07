@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/beatsauth
 go 1.24.0
 
 require (
-	github.com/elastic/elastic-agent-libs v0.21.6
+	github.com/elastic/elastic-agent-libs v0.24.1
 	github.com/stretchr/testify v1.11.1
 	go.elastic.co/apm/module/apmelasticsearch/v2 v2.7.1
 	go.opentelemetry.io/collector/component v1.43.0
@@ -16,7 +16,7 @@ require (
 	go.opentelemetry.io/collector/extension/extensionauth v1.43.0
 	go.opentelemetry.io/collector/extension/extensiontest v0.137.0
 	go.uber.org/goleak v1.3.0
-	google.golang.org/grpc v1.75.1
+	google.golang.org/grpc v1.76.0
 )
 
 require (
@@ -85,7 +85,7 @@ require (
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250707201910-8d1bb00bc6a7 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
