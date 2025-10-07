@@ -73,6 +73,9 @@ resourceLogs:
         - key: user.id
           value:
             stringValue: "99"
+        - key: user.name
+          value:
+            stringValue: foo
         - key: client.address
           value:
             stringValue: v4:204803073
@@ -172,6 +175,26 @@ resourceLogs:
               - key: process.title
                 value:
                   stringValue: node
+              - key: error.custom
+                value:
+                  kvlistValue:
+                    values:
+                      - key: and_objects
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: foo
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: bar
+                                      - stringValue: baz
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
             body:
               stringValue: My service could not talk to the database named foobar
             timeUnixNano: "1494342245999999000"
@@ -253,6 +276,9 @@ resourceLogs:
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -391,6 +417,9 @@ resourceLogs:
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -531,6 +560,9 @@ resourceLogs:
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -675,6 +707,9 @@ resourceLogs:
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node

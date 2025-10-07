@@ -134,6 +134,80 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: /p/a/t/h?query=string#hash
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: url.domain
+                value:
+                  stringValue: www.example.com
+              - key: url.path
+                value:
+                  stringValue: /p/a/t/h
+              - key: url.query
+                value:
+                  stringValue: ?query=string
+              - key: url.fragment
+                value:
+                  stringValue: '#hash'
+              - key: url.port
+                value:
+                  intValue: "8080"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "4"
+              - key: transaction.span_count.dropped
+                value:
+                  intValue: "2"
+              - key: transaction.custom
+                value:
+                  kvlistValue:
+                    values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
+                      - key: and_objects
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: foo
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: bar
+                                      - stringValue: baz
+                      - key: (
+                        value:
+                          stringValue: not a valid regex and that is fine
+              - key: transaction.marks
+                value:
+                  kvlistValue:
+                    values:
+                      - key: navigationTiming
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: appBeforeBootstrap
+                                value:
+                                  doubleValue: 608.9300000000001
+                              - key: navigationStart
+                                value:
+                                  doubleValue: -21
+                      - key: another_mark
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: some_long
+                                value:
+                                  doubleValue: 10
+                              - key: some_float
+                                value:
+                                  doubleValue: 10
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
@@ -195,6 +269,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -265,6 +342,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql

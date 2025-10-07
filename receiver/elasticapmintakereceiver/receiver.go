@@ -567,12 +567,12 @@ func (r *elasticAPMIntakeReceiver) elasticSpanLinksToOTelSpanLinks(event *modelp
 }
 
 func (r *elasticAPMIntakeReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
-	s.SetName(event.Transaction.Name)
-
-	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
 	transaction := event.GetTransaction()
 	s.SetName(transaction.GetName())
+
+	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
 	mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
+	mappers.SetElasticSpecificFieldsForTransaction(event, s.Attributes())
 
 	if event.Http != nil && event.Http.Request != nil {
 		s.SetKind(ptrace.SpanKindServer)
