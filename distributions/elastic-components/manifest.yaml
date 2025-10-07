@@ -14,12 +14,12 @@ extensions:
   - gomod: go.opentelemetry.io/collector/extension/memorylimiterextension v0.137.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension v0.8.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension v0.8.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension v0.4.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension v0.5.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension v0.0.0
 
 connectors:
-  - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.7.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.8.0
 
 converters:
 
