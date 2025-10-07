@@ -173,7 +173,7 @@ For the full list of reported metrics see https://opentelemetry.io/docs/collecto
 ### Basic usage
 
 ```shell
-docker run -it docker.elastic.co/observability-ci/otelbench:v0.2.2 -endpoint-otlp=http://172.17.0.1:4317 -api-key some_api_key -insecure
+docker run -it docker.elastic.co/observability-ci/otelbench:v0.5.0 -endpoint-otlp=http://172.17.0.1:4317 -api-key some_api_key -insecure
 ```
 
 Remember that `localhost` does not work because otelbench runs in a container. Use `172.17.0.1` for Linux and `host.docker.internal` for macOS.
@@ -181,7 +181,7 @@ Remember that `localhost` does not work because otelbench runs in a container. U
 ### Advanced usage with custom config file
 
 ```shell
-docker run -it --volume /path/to/config.yaml:/config.yaml docker.elastic.co/observability-ci/otelbench:v0.2.2 -endpoint-otlp=http://172.17.0.1:4317 -api-key some_api_key -insecure -config=/config.yaml
+docker run -it --volume /path/to/config.yaml:/config.yaml docker.elastic.co/observability-ci/otelbench:v0.5.0 -endpoint-otlp=http://172.17.0.1:4317 -api-key some_api_key -insecure -config=/config.yaml
 ```
 
 ## Contribute
