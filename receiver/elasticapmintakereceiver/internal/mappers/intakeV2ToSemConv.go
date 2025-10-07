@@ -236,7 +236,7 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 				attributes.PutStr(string(semconv.NetworkCarrierMccKey), event.Network.Carrier.Mcc)
 			}
 			if event.Network.Carrier.Mnc != "" {
-				attributes.PutStr(string(semconv.NetworkCarrierMccKey), event.Network.Carrier.Mnc)
+				attributes.PutStr(string(semconv.NetworkCarrierMncKey), event.Network.Carrier.Mnc)
 			}
 			if event.Network.Carrier.Icc != "" {
 				attributes.PutStr(string(semconv.NetworkCarrierIccKey), event.Network.Carrier.Icc)
