@@ -11,13 +11,13 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.37.0
 	go.opentelemetry.io/collector/component v1.43.0
-	go.opentelemetry.io/collector/component/componentstatus v0.136.0
+	go.opentelemetry.io/collector/component/componentstatus v0.137.0
 	go.opentelemetry.io/collector/component/componenttest v0.137.0
 	go.opentelemetry.io/collector/config/confighttp v0.137.0
 	go.opentelemetry.io/collector/confmap v1.43.0
 	go.opentelemetry.io/collector/confmap/xconfmap v0.137.0
 	go.opentelemetry.io/collector/extension v1.43.0
-	go.opentelemetry.io/collector/extension/extensiontest v0.136.0
+	go.opentelemetry.io/collector/extension/extensiontest v0.137.0
 	go.uber.org/goleak v1.3.0
 )
 
