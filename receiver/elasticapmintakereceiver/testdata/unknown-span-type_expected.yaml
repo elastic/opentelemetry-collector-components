@@ -274,6 +274,73 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: span.db.user_name
+                value:
+                  stringValue: readonly_user
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: some module
+                            - key: function
+                              value:
+                                stringValue: onread
+                            - key: abs_path
+                              value:
+                                stringValue: net.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                                    - stringValue: '}'
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "10"
+                            - key: filename
+                              value:
+                                stringValue: my2file.js
+                            - key: library_frame
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1496170407157781912"
             kind: 3
             name: SELECT FROM product_types

@@ -299,6 +299,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query.custom
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822422581000"
             name: GET /api/types
             startTimeUnixNano: "1532976822281000000"

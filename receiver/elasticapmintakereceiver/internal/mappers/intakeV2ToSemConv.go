@@ -22,10 +22,11 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 import (
 	"strings"
 
-	"github.com/elastic/apm-data/model/modelpb"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv22 "go.opentelemetry.io/otel/semconv/v1.22.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+
+	"github.com/elastic/apm-data/model/modelpb"
 )
 
 // Translates resource attributes from the Elastic APM model to SemConv resource attributes
@@ -105,6 +106,11 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 			attributes.PutStr(string(semconv.URLFullKey), event.Url.Full)
 		}
 	}
+
+	if event.Span == nil {
+		return
+	}
+
 	if event.Span.Db != nil {
 		attributes.PutStr(string(semconv.DBSystemKey), event.Span.Db.Type)
 		attributes.PutStr(string(semconv.DBNamespaceKey), event.Span.Db.Instance)
