@@ -70,6 +70,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -222,6 +225,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -388,6 +394,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -424,18 +433,18 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
-        - key: labels.tag4
-          value:
-            stringValue: "true"
         - key: labels.tag1
           value:
             stringValue: value1
-        - key: numeric_labels.tag3
+        - key: labels.tag4
           value:
-            doubleValue: 12.34
+            stringValue: "true"
         - key: numeric_labels.tag2
           value:
             doubleValue: 123
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.34
     scopeSpans:
       - scope: {}
         spans:
@@ -548,6 +557,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -702,6 +714,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -799,6 +814,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -992,6 +1010,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -1089,6 +1110,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -1281,6 +1305,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -1375,6 +1402,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -1569,6 +1599,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -1731,6 +1764,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -1910,6 +1946,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node

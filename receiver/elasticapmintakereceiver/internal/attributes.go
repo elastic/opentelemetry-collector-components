@@ -23,12 +23,9 @@ const (
 	SpanDBLink                       = "span.db.link"
 	SpanDBRowsAffected               = "span.db.rows_affected"
 	SpanDBUserName                   = "span.db.user_name"
-	SpanMessageBody                  = "span.message.body"
+	SpanCompositeSum                 = "span.composite.sum"
 	SpanCompositeCompressionStrategy = "span.composite.compression_strategy"
 	SpanCompositeCount               = "span.composite.count"
-	SpanCompositeSum                 = "span.composite.sum"
-	SpanMessageAgeMs                 = "span.message.age.ms"
-	SpanMessageHeadersPrefix         = "span.message.headers."
 	SpanRepresentativeCount          = "span.representative_count"
 
 	SpanStacktrace                  = "span.stacktrace"
@@ -44,6 +41,10 @@ const (
 	SpanStacktraceFrameContextPost  = "context.post"
 	SpanStacktraceFrameLibraryFrame = "library_frame"
 	SpanStacktraceFrameVars         = "vars"
+
+	MessageBody          = "message.body"
+	MessageAgeMs         = "message.age.ms"
+	MessageHeadersPrefix = "message.headers"
 
 	HTTPRequestBody             = "http.request.body"
 	HTTPRequestID               = "http.request.id"
@@ -90,4 +91,23 @@ const (
 	ProcessTitle      = "process.title"
 
 	SessionID = "session.id"
+
+	TransactionCustom                                      = "transaction.custom"
+	TransactionUserExperienceCumulativeLayoutShift         = "transaction.experience.cls"
+	TransactionUserExperienceFirstInputDelay               = "transaction.experience.fid"
+	TransactionUserExperienceLongTaskCount                 = "transaction.experience.longtask.count"
+	TransactionUserExperienceLongTaskMax                   = "transaction.experience.longtask.max"
+	TransactionUserExperienceLongTaskSum                   = "transaction.experience.longtask.sum"
+	TransactionUserExperienceTotalBlockingTime             = "transaction.experience.tbt"
+	TransactionSpanCountStarted                            = "transaction.span_count.started"
+	TransactionSpanCountDropped                            = "transaction.span_count.dropped"
+	TransactionMarks                                       = "transaction.marks"
+	TransactionProfilerStackTraceIDs                       = "transaction.profiler_stack_trace_ids"
+	TransactionDroppedSpansStats                           = "transaction.dropped_spans_stats"
+	TransactionDroppedSpansStatsDestinationServiceResource = "destination_service_resource"
+	TransactionDroppedSpansStatsOutcome                    = "outcome"
+	TransactionDroppedSpansStatsDurationCount              = "duration.count"
+	TransactionDroppedSpansStatsDurationSumUs              = "duration.sum.us"
+
+	ErrorCustom = "error.custom"
 )

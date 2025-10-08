@@ -80,6 +80,16 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "43"
+              - key: transaction.profiler_stack_trace_ids
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: foo
+                      - stringValue: bar
+                      - stringValue: foo
             endTimeUnixNano: "1496170407186592981"
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e

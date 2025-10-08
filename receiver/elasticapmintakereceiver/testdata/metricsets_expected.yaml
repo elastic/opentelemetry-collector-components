@@ -43,6 +43,9 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
           - gauge:
@@ -105,23 +108,11 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421366000"
-                  timeUnixNano: "1496170421366000000"
-            name: system.process.cgroup.memory.mem.limit.bytes
           - gauge:
               dataPoints:
                 - asDouble: 1024
@@ -137,6 +128,21 @@ resourceMetrics:
                         intValue: "1496170421366000"
                   timeUnixNano: "1496170421366000000"
             name: system.process.cgroup.memory.mem.usage.bytes
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421366000"
+                  timeUnixNano: "1496170421366000000"
+            name: system.process.cgroup.memory.mem.limit.bytes
         scope: {}
   - resource:
       attributes:
@@ -182,38 +188,11 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpuacct.id
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpuacct.total.ns
           - gauge:
               dataPoints:
                 - asDouble: 1024
@@ -304,6 +283,36 @@ resourceMetrics:
                         intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.throttled.ns
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpuacct.id
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpuacct.total.ns
         scope: {}
   - resource:
       attributes:
@@ -349,6 +358,9 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
           - histogram:
@@ -429,6 +441,9 @@ resourceMetrics:
         - key: user.id
           value:
             stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
     scopeMetrics:
       - metrics:
           - gauge:

@@ -73,6 +73,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -149,6 +152,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "43"
             endTimeUnixNano: "1496170407186592981"
             startTimeUnixNano: "1496170407154000000"
             status: {}
@@ -226,6 +232,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node

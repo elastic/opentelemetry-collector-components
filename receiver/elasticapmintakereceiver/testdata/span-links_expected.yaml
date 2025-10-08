@@ -111,6 +111,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "0"
             endTimeUnixNano: "32592981"
             links:
               - spanId: 1123456a89012345
