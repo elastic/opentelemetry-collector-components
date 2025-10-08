@@ -60,8 +60,16 @@ const (
 	HTTPResponseDecodedBodySize = "http.response.decoded_body_size"
 	HTTPResponseTransferSize    = "http.response.transfer_size"
 
-	CloudProjectID   = "cloud.project.id"
-	CloudProjectName = "cloud.project.name"
+	CloudOriginAccountId   = "cloud.origin.account.id"
+	CloudOriginProvider    = "cloud.origin.provider"
+	CloudOriginRegion      = "cloud.origin.region"
+	CloudOriginServiceName = "cloud.origin.service.name"
+	CloudAccountName       = "cloud.account.name"
+	CloudInstanceId        = "cloud.instance.id"
+	CloudInstanceName      = "cloud.instance.name"
+	CloudMachineType       = "cloud.machine_type"
+	CloudProjectID         = "cloud.project.id"
+	CloudProjectName       = "cloud.project.name"
 
 	TriggerRequestId = "faas.trigger.request.id"
 	FaaSExecution    = "faas.execution"

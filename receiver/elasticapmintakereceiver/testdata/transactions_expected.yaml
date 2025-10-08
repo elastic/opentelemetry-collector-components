@@ -88,6 +88,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -264,6 +276,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -570,6 +594,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "2.5"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -783,6 +819,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -980,6 +1028,30 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.origin.account.id
+          value:
+            stringValue: abc123
+        - key: cloud.origin.provider
+          value:
+            stringValue: aws
+        - key: cloud.origin.region
+          value:
+            stringValue: us-east-1
+        - key: cloud.origin.service.name
+          value:
+            stringValue: serviceName
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id

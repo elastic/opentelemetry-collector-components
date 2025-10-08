@@ -401,6 +401,32 @@ func setTransactionMarks(marks map[string]*modelpb.TransactionMark, attributesMa
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
+		if event.Cloud.Origin != nil {
+			if event.Cloud.Origin.AccountId != "" {
+				attributesMap.PutStr(attr.CloudOriginAccountId, event.Cloud.Origin.AccountId)
+			}
+			if event.Cloud.Origin.Provider != "" {
+				attributesMap.PutStr(attr.CloudOriginProvider, event.Cloud.Origin.Provider)
+			}
+			if event.Cloud.Origin.Region != "" {
+				attributesMap.PutStr(attr.CloudOriginRegion, event.Cloud.Origin.Region)
+			}
+			if event.Cloud.Origin.ServiceName != "" {
+				attributesMap.PutStr(attr.CloudOriginServiceName, event.Cloud.Origin.ServiceName)
+			}
+		}
+		if event.Cloud.AccountName != "" {
+			attributesMap.PutStr(attr.CloudAccountName, event.Cloud.AccountName)
+		}
+		if event.Cloud.InstanceId != "" {
+			attributesMap.PutStr(attr.CloudInstanceId, event.Cloud.InstanceId)
+		}
+		if event.Cloud.InstanceName != "" {
+			attributesMap.PutStr(attr.CloudInstanceName, event.Cloud.InstanceName)
+		}
+		if event.Cloud.MachineType != "" {
+			attributesMap.PutStr(attr.CloudMachineType, event.Cloud.MachineType)
+		}
 		if event.Cloud.ProjectId != "" {
 			attributesMap.PutStr(attr.CloudProjectID, event.Cloud.ProjectId)
 		}
