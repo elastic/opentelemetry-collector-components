@@ -142,6 +142,9 @@ resourceLogs:
         - key: source.nat.ip
           value:
             stringValue: 12.53.12.1
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.organization_uuid
           value:
             stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
@@ -372,6 +375,130 @@ resourceLogs:
                                     values:
                                       - stringValue: bar
                                       - stringValue: baz
+              - key: error.log.message
+                value:
+                  stringValue: My service could not talk to the database named foobar
+              - key: error.log.level
+                value:
+                  stringValue: warning
+              - key: error.log.param_message
+                value:
+                  stringValue: My service could not talk to the database named %s
+              - key: error.log.logger_name
+                value:
+                  stringValue: my.logger.name
+              - key: error.log.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: classname
+                              value:
+                                stringValue: User::Common
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                            - key: line.number
+                              value:
+                                intValue: "3"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: /webpack/file/name.py
+                            - key: classname
+                              value:
+                                stringValue: Webpack::File::Name
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: App::MyModule
+                            - key: function
+                              value:
+                                stringValue: foo
+                            - key: abs_path
+                              value:
+                                stringValue: /real/file/name.py
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: line1
+                                    - stringValue: line2
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: line4
+                                    - stringValue: line5
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                            - key: line.number
+                              value:
+                                intValue: "102"
+                            - key: filename
+                              value:
+                                stringValue: lib/instrumentation/index.js
+                            - key: line.context
+                              value:
+                                stringValue: '    var result = original.apply(this, arguments)'
+                            - key: function
+                              value:
+                                stringValue: instrumented
+                            - key: abs_path
+                              value:
+                                stringValue: /Users/watson/code/node_modules/elastic/lib/instrumentation/index.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                                    - stringValue: '  return instrumented'
+                                    - stringValue: ""
+                                    - stringValue: '  function instrumented () {'
+                                    - stringValue: '    var prev = ins.currentTransaction'
+                                    - stringValue: '    ins.currentTransaction = trans'
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                                    - stringValue: '}'
+                                    - stringValue: '}'
+                                    - stringValue: ""
+                                    - stringValue: Instrumentation.prototype._recoverTransaction = function (trans) {
+                                    - stringValue: '  if (this.currentTransaction === trans) return'
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             body:
               stringValue: My service could not talk to the database named foobar
             timeUnixNano: "1494342245999999000"
@@ -495,6 +622,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -513,6 +643,24 @@ resourceLogs:
               - key: process.title
                 value:
                   stringValue: node
+              - key: error.log.message
+                value:
+                  stringValue: no user found
+              - key: error.log.level
+                value:
+                  stringValue: error
+              - key: error.log.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: classname
+                              value:
+                                stringValue: User::Special
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             body:
               stringValue: no user found
             timeUnixNano: "1533826745999000000"
@@ -636,6 +784,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -779,6 +930,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -926,6 +1080,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -950,6 +1107,12 @@ resourceLogs:
               - key: process.title
                 value:
                   stringValue: node
+              - key: error.log.message
+                value:
+                  stringValue: Cannot read property 'baz' of undefined
+              - key: error.log.level
+                value:
+                  stringValue: custom log level
             body:
               stringValue: Cannot read property 'baz' of undefined
             spanId: "1234567890987654"

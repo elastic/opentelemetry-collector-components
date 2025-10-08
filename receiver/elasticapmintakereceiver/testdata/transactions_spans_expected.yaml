@@ -486,6 +486,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
                       - kvlistValue:
                           values:
                             - key: line.number
@@ -494,7 +497,7 @@ resourceSpans:
                             - key: filename
                               value:
                                 stringValue: my2file.js
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
             endTimeUnixNano: "1496170407157781912"

@@ -288,6 +288,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: one

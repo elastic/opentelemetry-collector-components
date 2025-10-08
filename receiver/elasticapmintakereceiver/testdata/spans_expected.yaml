@@ -109,6 +109,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -279,6 +282,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -433,6 +439,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: value1
@@ -596,6 +605,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -762,6 +774,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -864,6 +879,9 @@ resourceSpans:
                                 stringValue: Core.js
                             - key: library_frame
                               value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
                                 boolValue: false
                       - kvlistValue:
                           values:
@@ -879,7 +897,7 @@ resourceSpans:
                                   values:
                                     - stringValue: '    ins.currentTransaction = prev'
                                     - stringValue: '}'
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -930,6 +948,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -1058,6 +1079,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1158,7 +1182,7 @@ resourceSpans:
                             - key: classname
                               value:
                                 stringValue: Core.js
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -1175,7 +1199,7 @@ resourceSpans:
                                   values:
                                     - stringValue: '    ins.currentTransaction = prev'
                                     - stringValue: '}'
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -1226,6 +1250,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -1350,6 +1377,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1453,7 +1483,7 @@ resourceSpans:
                             - key: classname
                               value:
                                 stringValue: Core.js
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -1470,7 +1500,7 @@ resourceSpans:
                                   values:
                                     - stringValue: '    ins.currentTransaction = prev'
                                     - stringValue: '}'
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -1521,6 +1551,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -1641,6 +1674,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1803,6 +1839,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1985,6 +2024,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1

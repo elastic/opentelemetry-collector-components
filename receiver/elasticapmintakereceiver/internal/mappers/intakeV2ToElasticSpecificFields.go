@@ -71,7 +71,7 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 
 	attributesMap.PutDouble(attr.SpanRepresentativeCount, event.Span.RepresentativeCount)
 
-	setStackTraceList(attributesMap, event.Span.Stacktrace)
+	setStackTraceList(attr.SpanStacktrace, attributesMap, event.Span.Stacktrace)
 }
 
 // setHTTP sets HTTP fields. Applicable only for error, span, or transaction events
@@ -174,12 +174,12 @@ func setMessage(prefix string, m *modelpb.Message, attributesMap pcommon.Map) {
 
 // setStackTraceList maps stacktrace frames to attributes map.
 // The stacktrace will be a list of objects (maps), each map representing a frame.
-func setStackTraceList(attributesMap pcommon.Map, stacktrace []*modelpb.StacktraceFrame) {
+func setStackTraceList(key string, attributesMap pcommon.Map, stacktrace []*modelpb.StacktraceFrame) {
 	if len(stacktrace) == 0 {
 		return
 	}
 
-	stacktraceSlice := attributesMap.PutEmptySlice(attr.SpanStacktrace)
+	stacktraceSlice := attributesMap.PutEmptySlice(key)
 	stacktraceSlice.EnsureCapacity(len(stacktrace))
 	for _, frame := range stacktrace {
 		frameMap := stacktraceSlice.AppendEmpty().SetEmptyMap()
@@ -226,7 +226,13 @@ func setStackTraceList(attributesMap pcommon.Map, stacktrace []*modelpb.Stacktra
 			}
 		}
 
-		frameMap.PutBool(attr.SpanStacktraceFrameLibraryFrame, frame.LibraryFrame)
+		if frame.LibraryFrame {
+			frameMap.PutBool(attr.SpanStacktraceFrameLibraryFrame, frame.LibraryFrame)
+		}
+		// Note: ExcludeFromGrouping does not have an 'omitempty' json tag in the apm-data model
+		// so we always set it to match the existing behavior.
+		// The flag is also not available in input data, so it will always be false.
+		frameMap.PutBool(attr.SpanStacktraceExcludeFromGrouping, frame.ExcludeFromGrouping)
 	}
 }
 
@@ -484,6 +490,12 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 		}
 	}
 
+	if event.User != nil {
+		if event.User.Domain != "" {
+			attributesMap.PutStr(attr.UserDomain, event.User.Domain)
+		}
+	}
+
 	setLabels(event, attributesMap)
 }
 
@@ -581,5 +593,21 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 
 	if event.Error != nil {
 		setKeyValueMap(attr.ErrorCustom, attributesMap, event.Error.Custom)
+
+		if event.Error.Log != nil {
+			if event.Error.Log.Message != "" {
+				attributesMap.PutStr(attr.ErrorLogMessage, event.Error.Log.Message)
+			}
+			if event.Error.Log.Level != "" {
+				attributesMap.PutStr(attr.ErrorLogLevel, event.Error.Log.Level)
+			}
+			if event.Error.Log.ParamMessage != "" {
+				attributesMap.PutStr(attr.ErrorLogParamMessage, event.Error.Log.ParamMessage)
+			}
+			if event.Error.Log.LoggerName != "" {
+				attributesMap.PutStr(attr.ErrorLogLoggerName, event.Error.Log.LoggerName)
+			}
+			setStackTraceList(attr.ErrorLogStackTrace, attributesMap, event.Error.Log.Stacktrace)
+		}
 	}
 }

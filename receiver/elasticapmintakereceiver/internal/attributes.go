@@ -28,19 +28,20 @@ const (
 	SpanCompositeCount               = "span.composite.count"
 	SpanRepresentativeCount          = "span.representative_count"
 
-	SpanStacktrace                  = "span.stacktrace"
-	SpanStacktraceFrameAbsPath      = "abs_path"
-	SpanStacktraceFrameClassname    = "classname"
-	SpanStacktraceFrameFilename     = "filename"
-	SpanStacktraceFrameFunction     = "function"
-	SpanStacktraceFrameLineNumber   = "line.number"
-	SpanStacktraceFrameLineColumn   = "line.column"
-	SpanStacktraceFrameLineContext  = "line.context"
-	SpanStacktraceFrameModule       = "module"
-	SpanStacktraceFrameContextPre   = "context.pre"
-	SpanStacktraceFrameContextPost  = "context.post"
-	SpanStacktraceFrameLibraryFrame = "library_frame"
-	SpanStacktraceFrameVars         = "vars"
+	SpanStacktrace                    = "span.stacktrace"
+	SpanStacktraceFrameAbsPath        = "abs_path"
+	SpanStacktraceFrameClassname      = "classname"
+	SpanStacktraceFrameFilename       = "filename"
+	SpanStacktraceFrameFunction       = "function"
+	SpanStacktraceFrameLineNumber     = "line.number"
+	SpanStacktraceFrameLineColumn     = "line.column"
+	SpanStacktraceFrameLineContext    = "line.context"
+	SpanStacktraceFrameModule         = "module"
+	SpanStacktraceFrameContextPre     = "context.pre"
+	SpanStacktraceFrameContextPost    = "context.post"
+	SpanStacktraceFrameLibraryFrame   = "library_frame"
+	SpanStacktraceExcludeFromGrouping = "exclude_from_grouping"
+	SpanStacktraceFrameVars           = "vars"
 
 	MessageBody          = "message.body"
 	MessageAgeMs         = "message.age.ms"
@@ -57,7 +58,6 @@ const (
 	HTTPResponseHeaders         = "http.response.headers"
 	HTTPResponseHeadersSent     = "http.response.headers_sent"
 	HTTPResponseDecodedBodySize = "http.response.decoded_body_size"
-	HTTPResponseEncodedBodySize = "http.response.encoded_body_size"
 	HTTPResponseTransferSize    = "http.response.transfer_size"
 
 	CloudProjectID   = "cloud.project.id"
@@ -84,6 +84,8 @@ const (
 	HostOSPlatform = "host.os.platform"
 
 	SourceNatIP = "source.nat.ip"
+
+	UserDomain = "user.domain"
 
 	LogLogger         = "log.logger"
 	LogOriginFunction = "log.origin.function"
@@ -118,5 +120,10 @@ const (
 	TransactionDroppedSpansStatsDurationCount              = "duration.count"
 	TransactionDroppedSpansStatsDurationSumUs              = "duration.sum.us"
 
-	ErrorCustom = "error.custom"
+	ErrorCustom          = "error.custom"
+	ErrorLogMessage      = "error.log.message"
+	ErrorLogLevel        = "error.log.level"
+	ErrorLogParamMessage = "error.log.param_message"
+	ErrorLogLoggerName   = "error.log.logger_name"
+	ErrorLogStackTrace   = "error.log.stacktrace"
 )
