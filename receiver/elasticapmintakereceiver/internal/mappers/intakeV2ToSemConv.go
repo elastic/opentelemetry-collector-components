@@ -312,7 +312,9 @@ func setHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 			attributes.PutStr(string(semconv.HTTPRequestMethodKey), event.Http.Request.Method)
 		}
 		if event.Http.Response != nil {
-			attributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), int64(event.Http.Response.StatusCode))
+			if event.Http.Response.StatusCode != 0 {
+				attributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), int64(event.Http.Response.StatusCode))
+			}
 			if event.Http.Response.EncodedBodySize != nil {
 				attributes.PutInt(string(semconv.HTTPResponseSizeKey), int64(*event.Http.Response.EncodedBodySize))
 			}

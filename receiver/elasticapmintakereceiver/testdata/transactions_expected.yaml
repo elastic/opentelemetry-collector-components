@@ -640,9 +640,6 @@ resourceSpans:
               - key: http.request.method
                 value:
                   stringValue: POST
-              - key: http.response.status_code
-                value:
-                  intValue: "0"
               - key: transaction.span_count.started
                 value:
                   intValue: "436"
