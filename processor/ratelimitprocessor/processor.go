@@ -19,7 +19,6 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -76,23 +75,19 @@ type ProfilesRateLimiterProcessor struct {
 
 func NewLogsRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
-	telemetrySettings component.TelemetrySettings,
+	logger *zap.Logger,
+	telemetryBuilder *metadata.TelemetryBuilder,
 	strategy Strategy,
 	next func(ctx context.Context, logs plog.Logs) error,
 	inflight *int64,
 	metadataKeys []string,
 ) (*LogsRateLimiterProcessor, error) {
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
-	}
-
 	return &LogsRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
-			logger:           telemetrySettings.Logger,
+			logger:           logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
@@ -104,23 +99,19 @@ func NewLogsRateLimiterProcessor(
 
 func NewMetricsRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
-	telemetrySettings component.TelemetrySettings,
+	logger *zap.Logger,
+	telemetryBuilder *metadata.TelemetryBuilder,
 	strategy Strategy,
 	next func(ctx context.Context, metrics pmetric.Metrics) error,
 	inflight *int64, // used to calculate concurrent requests
 	metadataKeys []string,
 ) (*MetricsRateLimiterProcessor, error) {
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
-	}
-
 	return &MetricsRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
-			logger:           telemetrySettings.Logger,
+			logger:           logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
@@ -132,23 +123,19 @@ func NewMetricsRateLimiterProcessor(
 
 func NewTracesRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
-	telemetrySettings component.TelemetrySettings,
+	logger *zap.Logger,
+	telemetryBuilder *metadata.TelemetryBuilder,
 	strategy Strategy,
 	next func(ctx context.Context, traces ptrace.Traces) error,
 	inflight *int64,
 	metadataKeys []string,
 ) (*TracesRateLimiterProcessor, error) {
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
-	}
-
 	return &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
-			logger:           telemetrySettings.Logger,
+			logger:           logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
@@ -160,22 +147,19 @@ func NewTracesRateLimiterProcessor(
 
 func NewProfilesRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
-	telemetrySettings component.TelemetrySettings,
+	logger *zap.Logger,
+	telemetryBuilder *metadata.TelemetryBuilder,
 	strategy Strategy,
 	next func(ctx context.Context, profiles pprofile.Profiles) error,
 	inflight *int64,
 	metadataKeys []string,
 ) (*ProfilesRateLimiterProcessor, error) {
-	telemetryBuilder, err := metadata.NewTelemetryBuilder(telemetrySettings)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
-	}
-
 	return &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rateLimiterProcessor{
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			logger:           logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,

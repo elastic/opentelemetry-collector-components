@@ -13,6 +13,22 @@ tests:
 
 telemetry:
   metrics:
+    ratelimit.resolver.failures:
+      enabled: true
+      description: Total number of class resolver failures
+      unit: "{count}"
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: ["unique_key"] # high cardinality
+    ratelimit.dynamic.escalations:
+      enabled: true
+      description: Total number of dynamic rate escalations (dynamic > static)
+      unit: "{count}"
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: ["class", "source_kind", "result"]
     ratelimit.requests:
       enabled: true
       description: Number of rate-limiting requests
@@ -89,4 +105,16 @@ attributes:
     type: string
   reason:
     description: rate limit reason
+    type: string
+  class:
+    description: rate limit class used
+    type: string
+  source_kind:
+    description: precedence source used to resolve the rate limit settings
+    type: string
+  unique_key:
+    description: unique key for the request used in class resolution
+    type: string
+  result:
+    description: result of the rate limit request
     type: string

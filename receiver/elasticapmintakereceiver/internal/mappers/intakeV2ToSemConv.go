@@ -83,9 +83,10 @@ func translateElasticServiceLanguageToOtelSdkLanguage(language string) string {
 	}
 }
 
-// Translates transaction attributes from the Elastic APM model to SemConv attributes
+// TranslateIntakeV2TransactionToOTelAttributes translates transaction attributes from the Elastic APM model to SemConv attributes
 func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	setHttpAttributes(event, attributes)
+	setUrlAttributes(event, attributes)
 
 	if event.Span.Message != nil {
 		attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Transaction.Message.QueueName)
@@ -96,16 +97,10 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 	}
 }
 
-// Translates span attributes from the Elastic APM model to SemConv attributes
+// TranslateIntakeV2SpanToOTelAttributes translates span attributes from the Elastic APM model to SemConv attributes
 func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	if event.Http != nil {
-
-		setHttpAttributes(event, attributes)
-
-		if event.Url != nil && event.Url.Full != "" {
-			attributes.PutStr(string(semconv.URLFullKey), event.Url.Full)
-		}
-	}
+	setHttpAttributes(event, attributes)
+	setUrlAttributes(event, attributes)
 
 	if event.Span == nil {
 		return
@@ -210,7 +205,7 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 		}
 	}
 
-	// User fields
+	// translate user fields defined here: https://opentelemetry.io/docs/specs/semconv/registry/attributes/user
 	if event.User != nil {
 		if event.User.Id != "" {
 			attributes.PutStr(string(semconv.UserIDKey), event.User.Id)
@@ -218,10 +213,35 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 		if event.User.Email != "" {
 			attributes.PutStr(string(semconv.UserEmailKey), event.User.Email)
 		}
+		if event.User.Name != "" {
+			attributes.PutStr(string(semconv.UserNameKey), event.User.Name)
+		}
 	}
 
-	if event.Network != nil && event.Network.Connection != nil && event.Network.Connection.Type != "" {
-		attributes.PutStr(string(semconv.NetworkConnectionTypeKey), event.Network.Connection.Type)
+	// translate network fields defined here: https://opentelemetry.io/docs/specs/semconv/registry/attributes/network
+	if event.Network != nil {
+		if event.Network.Connection != nil {
+			if event.Network.Connection.Type != "" {
+				attributes.PutStr(string(semconv.NetworkConnectionTypeKey), event.Network.Connection.Type)
+			}
+			if event.Network.Connection.Subtype != "" {
+				attributes.PutStr(string(semconv.NetworkConnectionSubtypeKey), event.Network.Connection.Subtype)
+			}
+		}
+		if event.Network.Carrier != nil {
+			if event.Network.Carrier.Name != "" {
+				attributes.PutStr(string(semconv.NetworkCarrierNameKey), event.Network.Carrier.Name)
+			}
+			if event.Network.Carrier.Mcc != "" {
+				attributes.PutStr(string(semconv.NetworkCarrierMccKey), event.Network.Carrier.Mcc)
+			}
+			if event.Network.Carrier.Mnc != "" {
+				attributes.PutStr(string(semconv.NetworkCarrierMncKey), event.Network.Carrier.Mnc)
+			}
+			if event.Network.Carrier.Icc != "" {
+				attributes.PutStr(string(semconv.NetworkCarrierIccKey), event.Network.Carrier.Icc)
+			}
+		}
 	}
 
 	if event.Client != nil && event.Client.Ip != nil && event.Client.Ip.String() != "" {
@@ -260,5 +280,37 @@ func setHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 		if event.Http.Response != nil {
 			attributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), int64(event.Http.Response.StatusCode))
 		}
+	}
+}
+
+// setUrlAttributes sets URL semconv attributes that are defined below:
+// https://opentelemetry.io/docs/specs/semconv/registry/attributes/url/
+func setUrlAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Url == nil {
+		return
+	}
+	if event.Url.Original != "" {
+		attributes.PutStr(string(semconv.URLOriginalKey), event.Url.Original)
+	}
+	if event.Url.Scheme != "" {
+		attributes.PutStr(string(semconv.URLSchemeKey), event.Url.Scheme)
+	}
+	if event.Url.Full != "" {
+		attributes.PutStr(string(semconv.URLFullKey), event.Url.Full)
+	}
+	if event.Url.Domain != "" {
+		attributes.PutStr(string(semconv.URLDomainKey), event.Url.Domain)
+	}
+	if event.Url.Path != "" {
+		attributes.PutStr(string(semconv.URLPathKey), event.Url.Path)
+	}
+	if event.Url.Query != "" {
+		attributes.PutStr(string(semconv.URLQueryKey), event.Url.Query)
+	}
+	if event.Url.Fragment != "" {
+		attributes.PutStr(string(semconv.URLFragmentKey), event.Url.Fragment)
+	}
+	if event.Url.Port != 0 {
+		attributes.PutInt(string(semconv.URLPortKey), int64(event.Url.Port))
 	}
 }

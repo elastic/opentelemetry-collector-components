@@ -73,6 +73,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -149,6 +152,16 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "43"
+              - key: transaction.profiler_stack_trace_ids
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: foo
+                      - stringValue: bar
+                      - stringValue: foo
             endTimeUnixNano: "1496170407186592981"
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e
@@ -227,6 +240,9 @@ resourceSpans:
         - key: user.id
           value:
             stringValue: "99"
+        - key: user.name
+          value:
+            stringValue: foo
         - key: client.address
           value:
             stringValue: v4:204803073
@@ -324,6 +340,53 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: /p/a/t/h?query=string#hash
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: url.domain
+                value:
+                  stringValue: www.example.com
+              - key: url.path
+                value:
+                  stringValue: /p/a/t/h
+              - key: url.query
+                value:
+                  stringValue: ?query=string
+              - key: url.fragment
+                value:
+                  stringValue: '#hash'
+              - key: url.port
+                value:
+                  intValue: "8080"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "17"
+              - key: transaction.custom
+                value:
+                  kvlistValue:
+                    values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
+                      - key: and_objects
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: foo
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: bar
+                                      - stringValue: baz
+                      - key: (
+                        value:
+                          stringValue: not a valid regex and that is fine
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
@@ -406,6 +469,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -491,6 +557,54 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "0"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "436"
+              - key: transaction.span_count.dropped
+                value:
+                  intValue: "55"
+              - key: transaction.experience.cls
+                value:
+                  doubleValue: 1
+              - key: transaction.experience.fid
+                value:
+                  doubleValue: 2
+              - key: transaction.experience.tbt
+                value:
+                  doubleValue: 3.4
+              - key: transaction.experience.longtask.count
+                value:
+                  intValue: "3"
+              - key: transaction.experience.longtask.max
+                value:
+                  doubleValue: 1
+              - key: transaction.experience.longtask.sum
+                value:
+                  doubleValue: 2.5
+              - key: transaction.marks
+                value:
+                  kvlistValue:
+                    values:
+                      - key: navigationTiming
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: appBeforeBootstrap
+                                value:
+                                  doubleValue: 608.9300000000001
+                              - key: navigationStart
+                                value:
+                                  doubleValue: -21
+                      - key: another_mark
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: some_long
+                                value:
+                                  doubleValue: 10
+                              - key: some_float
+                                value:
+                                  doubleValue: 10
             endTimeUnixNano: "1532976822294980558"
             kind: 2
             spanId: cdef4340a8e0df19
@@ -571,6 +685,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -647,6 +764,26 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "3000"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "1"
+              - key: transaction.message.body
+                value:
+                  stringValue: user created
+              - key: transaction.message.age.ms
+                value:
+                  intValue: "1577958057123"
+              - key: transaction.message.headers.User_id
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: 1ax3
+              - key: transaction.message.headers.Involved_services
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: user
+                      - stringValue: auth
             endTimeUnixNano: "1496170407157000000"
             name: amqp receive
             parentSpanId: abcdefabcdef0123
@@ -727,6 +864,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: faas.name
           value:
             stringValue: faasName
@@ -830,6 +970,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "38853"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "0"
             endTimeUnixNano: "1631736666403901000"
             name: july-2021-delete-after-july-31
             spanId: 142e61450efb8574
