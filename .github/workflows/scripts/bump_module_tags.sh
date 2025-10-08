@@ -200,13 +200,16 @@ create_tag_and_release() {
   GIT_COMMITTER_DATE="$(date -R)" GIT_AUTHOR_DATE="$(date -R)" \
     git -C "$repo_path" tag -a "$new_tag" -m "Release $new_tag" "$sha"
 
-#  git -C "$repo_path" push origin "$new_tag"
+  read -r -n 1 -p "Going to push tag and create a new release. Continue? [y/N] " ans; echo
+  [[ $ans =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
+
+  git -C "$repo_path" push origin "$new_tag"
 
   # Create GitHub release
-#  gh release create "$new_tag" \
-#    --title "$title" \
-#    --notes "Automated release for $module_subpath" \
-#    -R "$owner_repo"
+  gh release create "$new_tag" \
+    --title "$title" \
+    --notes "Automated release for $module_subpath" \
+    -R "$owner_repo"
 }
 
 # Iterate modules
