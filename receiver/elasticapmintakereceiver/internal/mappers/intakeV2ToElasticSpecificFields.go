@@ -22,6 +22,7 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"fmt"
+	"net/netip"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -519,6 +520,14 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 	if event.User != nil {
 		if event.User.Domain != "" {
 			attributesMap.PutStr(attr.UserDomain, event.User.Domain)
+		}
+	}
+
+	if event.Destination != nil {
+		if event.Destination.Address != "" {
+			if ip, err := netip.ParseAddr(event.Destination.Address); err == nil {
+				attributesMap.PutStr(attr.DestinationIP, ip.String())
+			}
 		}
 	}
 

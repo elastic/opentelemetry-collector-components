@@ -43,6 +43,8 @@ const (
 	SpanStacktraceExcludeFromGrouping = "exclude_from_grouping"
 	SpanStacktraceFrameVars           = "vars"
 
+	DestinationIP = "destination.ip"
+
 	MessageBody          = "message.body"
 	MessageAgeMs         = "message.age.ms"
 	MessageHeadersPrefix = "message.headers"

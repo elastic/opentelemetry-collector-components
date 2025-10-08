@@ -837,6 +837,9 @@ resourceSpans:
         - key: user.domain
           value:
             stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -904,6 +907,12 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
@@ -1154,6 +1163,9 @@ resourceSpans:
         - key: user.domain
           value:
             stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1221,6 +1233,12 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
@@ -1464,6 +1482,9 @@ resourceSpans:
         - key: user.domain
           value:
             stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1531,6 +1552,12 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
               - key: http.request.id
                 value:
                   stringValue: some-request-id
@@ -1773,6 +1800,9 @@ resourceSpans:
         - key: user.domain
           value:
             stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1816,6 +1846,12 @@ resourceSpans:
               - key: span.destination.service.resource
                 value:
                   stringValue: localhost:8080
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "8080"
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -1950,6 +1986,9 @@ resourceSpans:
         - key: user.domain
           value:
             stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1996,6 +2035,9 @@ resourceSpans:
               - key: messaging.rabbitmq.destination.routing_key
                 value:
                   stringValue: user-created-span
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
               - key: span.message.body
                 value:
                   stringValue: message body

@@ -132,6 +132,15 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 			attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Span.Message.RoutingKey)
 		}
 	}
+
+	if event.Destination != nil {
+		if event.Destination.Address != "" {
+			attributes.PutStr(string(semconv.DestinationAddressKey), event.Destination.Address)
+		}
+		if event.Destination.Port != 0 {
+			attributes.PutInt(string(semconv.DestinationPortKey), int64(event.Destination.Port))
+		}
+	}
 }
 
 // TranslateIntakeV2LogToOTelAttributes translates log/error attributes from the Elastic APM model to SemConv attributes

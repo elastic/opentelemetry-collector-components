@@ -1348,6 +1348,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: destination.ip
+          value:
+            stringValue: ::1
     scopeSpans:
       - scope: {}
         spans:
@@ -1397,6 +1400,12 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
               - key: span.db.user_name
                 value:
                   stringValue: readonly_user
