@@ -101,9 +101,6 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 	if event.Transaction.Message != nil {
 		attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Transaction.Message.QueueName)
 		attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Transaction.Message.RoutingKey)
-
-		// This may need to be unified, see AttributeMessagingSystem for spans
-		attributes.PutStr(string(semconv.MessagingSystemKey), event.Service.Framework.Name)
 	}
 }
 
