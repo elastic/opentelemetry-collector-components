@@ -12,14 +12,14 @@ extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.137.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.137.0
   - gomod: go.opentelemetry.io/collector/extension/memorylimiterextension v0.137.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension v0.7.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension v0.7.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension v0.3.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension v0.8.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension v0.8.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension v0.5.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension v0.0.0
 
 connectors:
-  - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.7.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.8.0
 
 converters:
 
@@ -37,7 +37,7 @@ receivers:
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.137.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver v0.3.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver v0.4.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.137.0
@@ -49,7 +49,7 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.137.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.137.0
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.137.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.17.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.18.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.6.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.9.0

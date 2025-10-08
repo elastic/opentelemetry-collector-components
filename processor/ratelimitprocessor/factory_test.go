@@ -18,7 +18,6 @@
 package ratelimitprocessor
 
 import (
-	"context"
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
@@ -44,8 +43,7 @@ func TestCreateDefaultConfig(t *testing.T) {
 }
 
 func TestCreateProcessor(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig().(*Config)
