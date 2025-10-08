@@ -247,7 +247,6 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		)
 
 		// TODO record metrics about events processed by type?
-		// TODO translate events to pdata types
 		switch event.Type() {
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()

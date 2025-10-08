@@ -28,6 +28,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: x64
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla Chrome Edge
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -78,7 +81,10 @@ resourceLogs:
             stringValue: foo
         - key: client.address
           value:
-            stringValue: v4:204803073
+            stringValue: 123.0.0.1
+        - key: source.address
+          value:
+            stringValue: 123.0.0.1
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -133,6 +139,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: source.nat.ip
+          value:
+            stringValue: 12.53.12.1
         - key: labels.organization_uuid
           value:
             stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
@@ -143,6 +152,23 @@ resourceLogs:
           value:
             kvlistValue:
               values:
+                - key: Array
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: foo
+                        - stringValue: bar
+                        - stringValue: baz
+                - key: User-Agent
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: Mozilla Chrome Edge
+                - key: X-Forwarded-For
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: 123.0.0.1
                 - key: Content-Type
                   value:
                     arrayValue:
@@ -158,18 +184,6 @@ resourceLogs:
                     arrayValue:
                       values:
                         - stringValue: foo
-                - key: Array
-                  value:
-                    arrayValue:
-                      values:
-                        - stringValue: foo
-                        - stringValue: bar
-                        - stringValue: baz
-                - key: User-Agent
-                  value:
-                    arrayValue:
-                      values:
-                        - stringValue: Mozilla Chrome Edge
         - key: http.request.env.SERVER_SOFTWARE
           value:
             stringValue: string_value:"nginx"
@@ -270,16 +284,6 @@ resourceLogs:
                 value:
                   kvlistValue:
                     values:
-                      - key: Cookie
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: c1=v1,c2=v2
-                      - key: Some-Other-Header
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: foo
                       - key: Array
                         value:
                           arrayValue:
@@ -292,23 +296,38 @@ resourceLogs:
                           arrayValue:
                             values:
                               - stringValue: Mozilla Chrome Edge
+                      - key: X-Forwarded-For
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: 123.0.0.1
                       - key: Content-Type
                         value:
                           arrayValue:
                             values:
                               - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
               - key: http.request.env.SERVER_SOFTWARE
                 value:
                   stringValue: string_value:"nginx"
               - key: http.request.env.GATEWAY_INTERFACE
                 value:
                   stringValue: string_value:"CGI/1.1"
-              - key: http.request.cookies.c2
-                value:
-                  stringValue: string_value:"v2"
               - key: http.request.cookies.c1
                 value:
                   stringValue: string_value:"v1"
+              - key: http.request.cookies.c2
+                value:
+                  stringValue: string_value:"v2"
               - key: http.request.body
                 value:
                   stringValue: Hello World

@@ -83,6 +83,8 @@ const (
 
 	HostOSPlatform = "host.os.platform"
 
+	SourceNatIP = "source.nat.ip"
+
 	LogLogger         = "log.logger"
 	LogOriginFunction = "log.origin.function"
 	LogOriginFileLine = "log.origin.file.line"

@@ -195,6 +195,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36, Mozilla Chrome Edge
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -245,7 +248,10 @@ resourceSpans:
             stringValue: foo
         - key: client.address
           value:
-            stringValue: v4:204803073
+            stringValue: 12.53.12.1
+        - key: source.address
+          value:
+            stringValue: 12.53.12.1
         - key: agent.name
           value:
             stringValue: elastic-node

@@ -29,7 +29,7 @@ import (
 	"github.com/elastic/apm-data/model/modelpb"
 )
 
-// Translates resource attributes from the Elastic APM model to SemConv resource attributes
+// TranslateToOtelResourceAttributes translates resource attributes from the Elastic APM model to SemConv resource attributes
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Service != nil {
 		attributes.PutStr(string(semconv.ServiceNameKey), event.Service.Name)
@@ -64,6 +64,16 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 			}
 		}
 	}
+
+	// UserAgent fields are only expected to be available for error and transaction events.
+	// Translating here since fields should be present at the resource level.
+	// https://opentelemetry.io/docs/specs/semconv/registry/attributes/user-agent
+	if event.UserAgent != nil {
+		if event.UserAgent.Original != "" {
+			attributes.PutStr(string(semconv.UserAgentOriginalKey), event.UserAgent.Original)
+		}
+	}
+
 	translateCloudAttributes(event, attributes)
 	translateContainerAndKubernetesAttributes(event, attributes)
 	translateProcessUserNetworkAttributes(event, attributes)
@@ -252,8 +262,27 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 		}
 	}
 
-	if event.Client != nil && event.Client.Ip != nil && event.Client.Ip.String() != "" {
-		attributes.PutStr(string(semconv.ClientAddressKey), event.Client.Ip.String())
+	if event.Client != nil {
+		translateIPAddress(string(semconv.ClientAddressKey), event.Client.Ip, attributes)
+		if event.Client.Port != 0 {
+			attributes.PutInt(string(semconv.ClientPortKey), int64(event.Client.Port))
+		}
+	}
+
+	if event.Source != nil {
+		translateIPAddress(string(semconv.SourceAddressKey), event.Source.Ip, attributes)
+		if event.Source.Port != 0 {
+			attributes.PutInt(string(semconv.SourcePortKey), int64(event.Source.Port))
+		}
+	}
+}
+
+func translateIPAddress(key string, ip *modelpb.IP, attributes pcommon.Map) {
+	if ip != nil {
+		ipAddr := modelpb.IP2Addr(ip)
+		if ipAddr.String() != "" {
+			attributes.PutStr(key, ipAddr.String())
+		}
 	}
 }
 

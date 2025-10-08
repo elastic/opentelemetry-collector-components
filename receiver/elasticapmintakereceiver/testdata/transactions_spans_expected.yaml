@@ -25,6 +25,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla Chrome Edge
         - key: container.id
           value:
             stringValue: container-id
@@ -57,7 +60,10 @@ resourceSpans:
             stringValue: foo@example.com
         - key: client.address
           value:
-            stringValue: v4:134744072
+            stringValue: 8.8.8.8
+        - key: source.address
+          value:
+            stringValue: 8.8.8.8
         - key: agent.name
           value:
             stringValue: js-base
