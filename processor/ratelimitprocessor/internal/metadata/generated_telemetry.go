@@ -44,9 +44,11 @@ type TelemetryBuilder struct {
 	mu                          sync.Mutex
 	registrations               []metric.Registration
 	RatelimitConcurrentRequests metric.Int64Gauge
+	RatelimitDynamicEscalations metric.Int64Counter
 	RatelimitRequestDuration    metric.Float64Histogram
 	RatelimitRequestSize        metric.Int64Histogram
 	RatelimitRequests           metric.Int64Counter
+	RatelimitResolverFailures   metric.Int64Counter
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -84,6 +86,12 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		metric.WithUnit("{requests}"),
 	)
 	errs = errors.Join(errs, err)
+	builder.RatelimitDynamicEscalations, err = builder.meter.Int64Counter(
+		"otelcol_ratelimit.dynamic.escalations",
+		metric.WithDescription("Total number of dynamic rate escalations (dynamic > static)"),
+		metric.WithUnit("{count}"),
+	)
+	errs = errors.Join(errs, err)
 	builder.RatelimitRequestDuration, err = builder.meter.Float64Histogram(
 		"otelcol_ratelimit.request_duration",
 		metric.WithDescription("Time(in seconds) taken to process a rate limit request [development]"),
@@ -102,6 +110,12 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		"otelcol_ratelimit.requests",
 		metric.WithDescription("Number of rate-limiting requests [development]"),
 		metric.WithUnit("{requests}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitResolverFailures, err = builder.meter.Int64Counter(
+		"otelcol_ratelimit.resolver.failures",
+		metric.WithDescription("Total number of class resolver failures"),
+		metric.WithUnit("{count}"),
 	)
 	errs = errors.Join(errs, err)
 	return &builder, errs
