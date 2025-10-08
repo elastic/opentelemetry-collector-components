@@ -136,6 +136,97 @@ resourceLogs:
         - key: labels.organization_uuid
           value:
             stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
+        - key: http.version
+          value:
+            stringValue: "1.1"
+        - key: http.request.headers
+          value:
+            kvlistValue:
+              values:
+                - key: Content-Type
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: text/html
+                - key: Cookie
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: c1=v1,c2=v2
+                - key: Some-Other-Header
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: foo
+                - key: Array
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: foo
+                        - stringValue: bar
+                        - stringValue: baz
+                - key: User-Agent
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: Mozilla Chrome Edge
+        - key: http.request.env.SERVER_SOFTWARE
+          value:
+            stringValue: string_value:"nginx"
+        - key: http.request.env.GATEWAY_INTERFACE
+          value:
+            stringValue: string_value:"CGI/1.1"
+        - key: http.request.cookies.c1
+          value:
+            stringValue: string_value:"v1"
+        - key: http.request.cookies.c2
+          value:
+            stringValue: string_value:"v2"
+        - key: http.request.body
+          value:
+            stringValue: Hello World
+        - key: http.request.referrer
+          value:
+            stringValue: http://localhost:8000/test/e2e/
+        - key: http.response.headers
+          value:
+            kvlistValue:
+              values:
+                - key: Content-Type
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: application/json
+        - key: http.response.finished
+          value:
+            boolValue: true
+        - key: http.response.headers_sent
+          value:
+            boolValue: true
+        - key: url.original
+          value:
+            stringValue: /p/a/t/h?query=string#hash
+        - key: url.scheme
+          value:
+            stringValue: https
+        - key: url.full
+          value:
+            stringValue: https://www.example.com/p/a/t/h?query=string#hash
+        - key: url.domain
+          value:
+            stringValue: www.example.com
+        - key: url.path
+          value:
+            stringValue: /p/a/t/h
+        - key: url.query
+          value:
+            stringValue: ?query=string
+        - key: url.fragment
+          value:
+            stringValue: '#hash'
+        - key: url.port
+          value:
+            intValue: "8080"
     scopeLogs:
       - logRecords:
           - attributes:
@@ -172,6 +263,73 @@ resourceLogs:
               - key: error.exception.code
                 value:
                   stringValue: "42"
+              - key: http.version
+                value:
+                  stringValue: "1.1"
+              - key: http.request.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+              - key: http.request.env.SERVER_SOFTWARE
+                value:
+                  stringValue: string_value:"nginx"
+              - key: http.request.env.GATEWAY_INTERFACE
+                value:
+                  stringValue: string_value:"CGI/1.1"
+              - key: http.request.cookies.c2
+                value:
+                  stringValue: string_value:"v2"
+              - key: http.request.cookies.c1
+                value:
+                  stringValue: string_value:"v1"
+              - key: http.request.body
+                value:
+                  stringValue: Hello World
+              - key: http.request.referrer
+                value:
+                  stringValue: http://localhost:8000/test/e2e/
+              - key: http.response.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: application/json
+              - key: http.response.finished
+                value:
+                  boolValue: true
+              - key: http.response.headers_sent
+                value:
+                  boolValue: true
               - key: process.title
                 value:
                   stringValue: node
@@ -179,6 +337,12 @@ resourceLogs:
                 value:
                   kvlistValue:
                     values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
                       - key: and_objects
                         value:
                           kvlistValue:
@@ -189,12 +353,6 @@ resourceLogs:
                                     values:
                                       - stringValue: bar
                                       - stringValue: baz
-                      - key: my_key
-                        value:
-                          doubleValue: 1
-                      - key: some_other_value
-                        value:
-                          stringValue: foo bar
             body:
               stringValue: My service could not talk to the database named foobar
             timeUnixNano: "1494342245999999000"

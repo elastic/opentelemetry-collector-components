@@ -39,31 +39,7 @@ var compressionStrategyText = map[modelpb.CompressionStrategy]string{
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
 // and store information about a specific span type.
 func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	if event.Http != nil {
-		if event.Http.Request != nil {
-			if event.Http.Request.Body != nil {
-				attributesMap.PutStr(attr.HTTPRequestBody, event.Http.Request.Body.GetStringValue())
-			}
-			if event.Http.Request.Id != "" {
-				attributesMap.PutStr(attr.HTTPRequestID, event.Http.Request.Id)
-			}
-			if event.Http.Request.Referrer != "" {
-				attributesMap.PutStr(attr.HTTPRequestReferrer, event.Http.Request.Referrer)
-			}
-		}
-
-		if event.Http.Response != nil {
-			if event.Http.Response.DecodedBodySize != nil {
-				attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*event.Http.Response.DecodedBodySize))
-			}
-			if event.Http.Response.EncodedBodySize != nil {
-				attributesMap.PutInt(attr.HTTPResponseEncodedBodySize, int64(*event.Http.Response.EncodedBodySize))
-			}
-			if event.Http.Response.TransferSize != nil {
-				attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*event.Http.Response.TransferSize))
-			}
-		}
-	}
+	setHTTP(event.Http, attributesMap)
 
 	if event.Span == nil {
 		return
@@ -96,6 +72,83 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 	attributesMap.PutDouble(attr.SpanRepresentativeCount, event.Span.RepresentativeCount)
 
 	setStackTraceList(attributesMap, event.Span.Stacktrace)
+}
+
+// setHTTP sets HTTP fields. Applicable only for error, span, or transaction events
+func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
+	if http == nil {
+		return
+	}
+
+	if http.Version != "" {
+		attributesMap.PutStr(attr.HTTPVersion, http.Version)
+	}
+
+	if http.Request != nil {
+		setHTTPHeadersMap(attr.HTTPRequestHeaders, attributesMap, http.Request.Headers)
+
+		// set env and cookies as a flat map
+		for _, env := range http.Request.Env {
+			if env != nil && env.Key != "" && env.Value != nil && env.Value.String() != "" {
+				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestEnv, env.Key), env.Value.String())
+			}
+		}
+		for _, cookie := range http.Request.Cookies {
+			if cookie != nil && cookie.Key != "" && cookie.Value != nil && cookie.Value.String() != "" {
+				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestCookies, cookie.Key), cookie.Value.String())
+			}
+		}
+
+		if http.Request.Body != nil {
+			attributesMap.PutStr(attr.HTTPRequestBody, http.Request.Body.GetStringValue())
+		}
+		if http.Request.Id != "" {
+			attributesMap.PutStr(attr.HTTPRequestID, http.Request.Id)
+		}
+		if http.Request.Referrer != "" {
+			attributesMap.PutStr(attr.HTTPRequestReferrer, http.Request.Referrer)
+		}
+	}
+
+	if http.Response != nil {
+		setHTTPHeadersMap(attr.HTTPResponseHeaders, attributesMap, http.Response.Headers)
+
+		if http.Response.Finished != nil {
+			attributesMap.PutBool(attr.HTTPResponseFinished, *http.Response.Finished)
+		}
+
+		if http.Response.HeadersSent != nil {
+			attributesMap.PutBool(attr.HTTPResponseHeadersSent, *http.Response.HeadersSent)
+		}
+
+		if http.Response.DecodedBodySize != nil {
+			attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*http.Response.DecodedBodySize))
+		}
+
+		if http.Response.TransferSize != nil {
+			attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*http.Response.TransferSize))
+		}
+	}
+}
+
+// setHTTPHeadersMap sets HTTP headers to attributes map.
+// The headers will be a map of string to array of strings.
+func setHTTPHeadersMap(prefix string, attributesMap pcommon.Map, headers []*modelpb.HTTPHeader) {
+	if len(headers) == 0 {
+		return
+	}
+
+	headerMap := attributesMap.PutEmptyMap(prefix)
+	headerMap.EnsureCapacity(len(headers))
+	for _, header := range headers {
+		if header != nil && header.Key != "" && len(header.Value) > 0 {
+			headerValues := headerMap.PutEmptySlice(header.Key)
+			headerValues.EnsureCapacity(len(header.Value))
+			for _, v := range header.Value {
+				headerValues.AppendEmpty().SetStr(v)
+			}
+		}
+	}
 }
 
 // setMessage sets message fields from either a span or transaction message.
@@ -231,7 +284,8 @@ func insertValue(dest pcommon.Value, src *structpb.Value) {
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
 // and store information about a specific span type.
 func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	// TODO: map other fields: http.*, source.*, user_agent.*, client.*
+	// TODO: map other fields: http.*, user_agent.*, client.*
+	setHTTP(event.Http, attributesMap)
 
 	if event.Transaction == nil {
 		return
@@ -458,6 +512,8 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 // SetElasticSpecificFieldsForLog sets fields that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	setHTTP(event.Http, attributesMap)
+
 	// processor.event is not set for logs
 	if event.Log != nil {
 		if event.Log.Logger != "" {

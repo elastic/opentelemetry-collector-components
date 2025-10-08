@@ -814,6 +814,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.size
+                value:
+                  intValue: "356"
               - key: url.original
                 value:
                   stringValue: http://localhost:8000
@@ -829,9 +832,6 @@ resourceSpans:
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
-              - key: http.response.encoded_body_size
-                value:
-                  intValue: "356"
               - key: http.response.transfer_size
                 value:
                   intValue: "30012"
@@ -1110,6 +1110,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.size
+                value:
+                  intValue: "356"
               - key: url.original
                 value:
                   stringValue: http://localhost:8000
@@ -1125,9 +1128,6 @@ resourceSpans:
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
-              - key: http.response.encoded_body_size
-                value:
-                  intValue: "356"
               - key: http.response.transfer_size
                 value:
                   intValue: "30012"
@@ -1402,6 +1402,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.size
+                value:
+                  intValue: "356"
               - key: url.original
                 value:
                   stringValue: http://localhost:8000
@@ -1420,9 +1423,6 @@ resourceSpans:
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
-              - key: http.response.encoded_body_size
-                value:
-                  intValue: "356"
               - key: http.response.transfer_size
                 value:
                   intValue: "30012"

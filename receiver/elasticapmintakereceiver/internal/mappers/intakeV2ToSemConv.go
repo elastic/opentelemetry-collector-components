@@ -88,7 +88,7 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 	setHttpAttributes(event, attributes)
 	setUrlAttributes(event, attributes)
 
-	if event.Span.Message != nil {
+	if event.Transaction.Message != nil {
 		attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Transaction.Message.QueueName)
 		attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Transaction.Message.RoutingKey)
 
@@ -125,6 +125,14 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 			attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Span.Message.RoutingKey)
 		}
 	}
+}
+
+// TranslateIntakeV2LogToOTelAttributes translates log/error attributes from the Elastic APM model to SemConv attributes
+// Note: error events contain additional context that requires otel semconv attributes, logs are not expected to have
+// this additional context. Both events are treated the same here for consistency.
+func TranslateIntakeV2LogToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	setHTTP(event.Http, attributes)
+	setUrlAttributes(event, attributes)
 }
 
 func translateCloudAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
@@ -273,12 +281,12 @@ func setHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Http != nil {
 		if event.Http.Request != nil {
 			attributes.PutStr(string(semconv.HTTPRequestMethodKey), event.Http.Request.Method)
-			if event.Url != nil && event.Url.Full != "" {
-				attributes.PutStr(string(semconv.URLFullKey), event.Url.Full)
-			}
 		}
 		if event.Http.Response != nil {
 			attributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), int64(event.Http.Response.StatusCode))
+			if event.Http.Response.EncodedBodySize != nil {
+				attributes.PutInt(string(semconv.HTTPResponseSizeKey), int64(*event.Http.Response.EncodedBodySize))
+			}
 		}
 	}
 }

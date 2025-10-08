@@ -334,18 +334,21 @@ resourceSpans:
               - key: http.request.method
                 value:
                   stringValue: POST
-              - key: url.full
-                value:
-                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.size
+                value:
+                  intValue: "2690"
               - key: url.original
                 value:
                   stringValue: /p/a/t/h?query=string#hash
               - key: url.scheme
                 value:
                   stringValue: https
+              - key: url.full
+                value:
+                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
               - key: url.domain
                 value:
                   stringValue: www.example.com
@@ -361,6 +364,80 @@ resourceSpans:
               - key: url.port
                 value:
                   intValue: "8080"
+              - key: http.version
+                value:
+                  stringValue: "1.1"
+              - key: http.request.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
+                              - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1, c2=v2
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
+              - key: http.request.env.SERVER_SOFTWARE
+                value:
+                  stringValue: string_value:"nginx"
+              - key: http.request.env.GATEWAY_INTERFACE
+                value:
+                  stringValue: string_value:"CGI/1.1"
+              - key: http.request.cookies.c1
+                value:
+                  stringValue: string_value:"v1"
+              - key: http.request.cookies.c2
+                value:
+                  stringValue: string_value:"v2"
+              - key: http.request.body
+                value:
+                  stringValue: ""
+              - key: http.request.referrer
+                value:
+                  stringValue: http://localhost:8000/test/e2e/
+              - key: http.response.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: application/json
+              - key: http.response.finished
+                value:
+                  boolValue: true
+              - key: http.response.headers_sent
+                value:
+                  boolValue: true
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "2990"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "258"
               - key: transaction.span_count.started
                 value:
                   intValue: "17"
@@ -764,6 +841,15 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "3000"
+              - key: messaging.destination.name
+                value:
+                  stringValue: new_users
+              - key: messaging.rabbitmq.destination.routing_key
+                value:
+                  stringValue: user-created-transaction
+              - key: messaging.system
+                value:
+                  stringValue: Express
               - key: transaction.span_count.started
                 value:
                   intValue: "1"
