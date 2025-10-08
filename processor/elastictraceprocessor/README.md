@@ -1,0 +1,1 @@
+The `elastictraceprocessor` processor is deprecated in favor of the `elasticapm` processor.
