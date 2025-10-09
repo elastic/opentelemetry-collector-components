@@ -569,13 +569,12 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 		// Send smaller traffic within the override rate
 		reqsSec := 50 // Send well under the 100 limit to avoid bucket complications
 		proRatedCurrent := float64(rate) / float64(WindowPeriod.Seconds())
-		// Note: Dynamic limit calculation disabled until implementation is fully working
 		t.Log("requests/sec:", reqsSec, "proRatedCurrent:", proRatedCurrent)
 		require.NoError(t, rateLimiter.RateLimit(dynamicTenantCtx, int(reqsSec)))
 
-		// Note: Currently using static rate until dynamic implementation is fully working
-		verify(eventChannel, int64(rate), "x-tenant-id:dynamic-tenant",
-			gubernator.Status_UNDER_LIMIT, int64(rate)-int64(reqsSec), true, // Use delta for remaining
+		dynamicRate := max(100, 100*2)
+		verify(eventChannel, int64(dynamicRate), "x-tenant-id:dynamic-tenant",
+			gubernator.Status_UNDER_LIMIT, int64(dynamicRate)-int64(reqsSec), false,
 		)
 	})
 }
