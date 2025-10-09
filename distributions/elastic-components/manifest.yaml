@@ -54,7 +54,7 @@ processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.9.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.9.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.10.0
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.137.0
