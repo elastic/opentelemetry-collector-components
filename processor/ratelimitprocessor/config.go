@@ -71,12 +71,21 @@ type Config struct {
 type DynamicRateLimiting struct {
 	// Enabled tells the processor to use dynamic rate limiting.
 	Enabled bool `mapstructure:"enabled"`
-	// WindowMultiplier is the factor by which the previous window rate is
-	// multiplied to get the dynamic part of the limit. Defaults to 1.3.
-	WindowMultiplier float64 `mapstructure:"window_multiplier"`
+
 	// WindowDuration defines the time window for which the dynamic rate limit
-	// is calculated on.
+	// is calculated on. Defaults to 2 minutes.
 	WindowDuration time.Duration `mapstructure:"window_duration"`
+
+	// DefaultWindowMultiplier is the factor by which the previous window rate is
+	// multiplied to get the dynamic part of the limit. Defaults to 1.3.
+	DefaultWindowMultiplier float64 `mapstructure:"window_multiplier"`
+
+	// WindowConfigurator is the component ID of the extension to dynamically
+	// determine the window multiplier. The window configurator is used in the
+	// hot path so it should respond fast. The effective rate cannot go below
+	// the configured static rate limit settings. If the configurator returns
+	// a negative multiplier then the default multiplier will be used.
+	WindowConfigurator component.ID `mapstructure:"window_configurator"`
 }
 
 // Class defines a named rate limit class for class-based dynamic rate limiting.
@@ -98,7 +107,7 @@ func (d *DynamicRateLimiting) Validate() error {
 		return nil
 	}
 	var errs []error
-	if d.WindowMultiplier < 1 {
+	if d.DefaultWindowMultiplier < 1 {
 		errs = append(errs, errors.New("window_multiplier must be greater than or equal to 1"))
 	}
 	if d.WindowDuration <= 0 {
@@ -244,8 +253,8 @@ func createDefaultConfig() component.Config {
 			ThrottleInterval: DefaultThrottleInterval,
 		},
 		DynamicRateLimiting: DynamicRateLimiting{
-			WindowMultiplier: 1.3,
-			WindowDuration:   2 * time.Minute,
+			DefaultWindowMultiplier: 1.3,
+			WindowDuration:          2 * time.Minute,
 		},
 		Classes:      nil,
 		DefaultClass: "",
