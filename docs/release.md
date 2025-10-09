@@ -1,9 +1,14 @@
 # Releasing opentelemetry-collector-components
 
-1. Determine the version number that will be assigned to the release. It should
+## Optional steps
+
+Normally the following steps are not required for releasing the components. The update of otel based on upstream
+is automated and should not be performed manually unless there are specific reasons for this.
+
+1. (optional) Determine the version number that will be assigned to the release. It should
    match the latest upstream release version (`OTEL_VERSION`).
 
-2. Open a PR to the repository to use the newly released OpenTelemetry Collector Core version by doing the following:
+2. (optional) Open a PR to the repository to use the newly released OpenTelemetry Collector Core version by doing the following:
    - Ensure your local repository is up-to-date with upstream and create a new Git branch named `release/<release-series>` (e.g. `release/v0.85.x`)
    - Manually update core and contrib collector module versions in
      `../distributions/elastic-components/manifest.yaml`
@@ -17,9 +22,16 @@
    - Open the PR
      🛑 **Do not move forward until this PR is merged.** 🛑
 
-3. Make sure you are on the `release/<release-series>` branch. Tag the module groups with the new release version by running:
+## Create the new tags
 
-   ⚠️ If you set your remote using `https`, you need to include `REMOTE=https://github.com/elastic/opentelemetry-collector-components.git` in each command. ⚠️
+3. Bump up the `module-sets.edit-base.version` in `versions.yaml` i.e. from `v0.20.0` to `v0.21.0`
+   (cross check latest version used by [EDOT](https://github.com/elastic/elastic-agent/blob/main/internal/pkg/otel/README.md?plain=1#L30),
+    and https://github.com/elastic/opentelemetry-collector-components/tags)
+4. Set the tag for the following steps with `export $TAG=v0.21.0`
+5. Tag the module groups with the new release version by running:
+
+   ⚠️ If you set your remote using `https`, you need to
+      include `REMOTE=https://github.com/elastic/opentelemetry-collector-components.git` in each command. ⚠️
 
    - Run `make push-tags`.
 
@@ -38,3 +50,22 @@
    ssh-add <YOUR_SSH/GPG_KEY_PATH>
    make push-tags
    ```
+6. Create a repo level tag and push it:
+
+```bash
+  git tag "elastic/opentelemetry-collector-components/"$TAG
+  REMOTE=git@github.com:elastic/opentelemetry-collector-components.git git push $REMOTE "elastic/opentelemetry-collector-components/"$TAG
+```
+
+7. Publish a new repo scope release:
+
+(you can also do it from GitHub)
+
+```bash
+  gh release create "elastic/opentelemetry-collector-components/"$TAG \
+    --title "elastic/opentelemetry-collector-components/"$TAG \
+    --generate-notes
+```
+
+8. Last step is to commit the change of `module-sets.edit-base.version` in `versions.yaml` and push it so as to store
+   the new latest version.
