@@ -281,15 +281,18 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
-		if elasticsearchErr, ok := err.(*types.ElasticsearchError); ok {
-			if elasticsearchErr.Status == http.StatusUnauthorized || elasticsearchErr.Status == http.StatusForbidden {
+		switch elasticsearchErr := err.(type) {
+		case *types.ElasticsearchError:
+			switch elasticsearchErr.Status {
+			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			default:
+				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
 			}
+		default:
+			// If no ES error type is found, it implies an error on the TCP connection level.
+			return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error %q: %v", id, err), nil)
 		}
-		// If no ES error type is found, it implies an error on the TCP connection level.
-		// In this case, we want to return an unavailable code so we have to option of
-		// handling this as a user-defined error later on.
-		return ctx, status.Errorf(codes.Unavailable, "error checking privileges for API Key %q: %v", id, err)
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{

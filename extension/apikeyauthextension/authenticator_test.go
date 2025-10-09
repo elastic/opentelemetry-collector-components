@@ -77,7 +77,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 400,
 			}),
-			expectedErr: `rpc error: code = Unavailable desc = error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
+			expectedErr: `rpc error: code = Internal desc = error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
 		},
 		"auth_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
