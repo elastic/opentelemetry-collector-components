@@ -734,8 +734,8 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 	// Set the windowConfigurator manually
 	rateLimiter.windowConfigurator = &fakeWindowConfigurator{
 		mapping: map[string][]float64{
-			"x-tenant-id:12345": []float64{1.5},           // more ingest data
-			"x-tenant-id:67890": []float64{-1, 2, 2, 0.5}, // throttle ingest data
+			"x-tenant-id:12345": {1.5},           // more ingest data
+			"x-tenant-id:67890": {-1, 2, 2, 0.5}, // throttle ingest data
 		},
 		count: make(map[string]int),
 	}
