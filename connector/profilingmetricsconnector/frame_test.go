@@ -73,17 +73,24 @@ func (m *metricsConsumerStub) ConsumeMetrics(ctx context.Context, md pmetric.Met
 					assert.Equal(m.t, pmetric.AggregationTemporalityDelta,
 						sum.AggregationTemporality())
 					assert.Equal(m.t, 1, sum.DataPoints().Len())
-					dp := sum.DataPoints().At(0)
-					// For native metrics, this is convenient way to test library name extraction
-					if strings.HasSuffix(name, metricNative.name) {
-						if shlibName, exists := dp.Attributes().Get(nativeLibraryAttrName); exists {
-							name = fmt.Sprintf("%v/%v", name, shlibName.AsString())
+					for _, dp := range sum.DataPoints().All() {
+						switch {
+						case strings.HasSuffix(name, metricNative.name):
+							// For native metrics, this is convenient way to test library name extraction
+							if shlibName, exists := dp.Attributes().Get(nativeLibraryAttrName); exists {
+								name = fmt.Sprintf("%v/%v", name, shlibName.AsString())
+							}
+						case strings.HasSuffix(name, metricSyscall.name):
+							// For syscall metrics, this is convenient way to test syscall name extraction
+							if syscallName, exists := dp.Attributes().Get(syscallAttrName); exists {
+								name = fmt.Sprintf("%v/%v", name, syscallName.AsString())
+							}
+						default:
+							// Non-native metrics should not have attributes attached
+							assert.Equal(m.t, 0, dp.Attributes().Len())
 						}
-					} else {
-						// Non-native metrics should not have attributes attached
-						assert.Equal(m.t, 0, dp.Attributes().Len())
+						m.counts[name] += dp.IntValue()
 					}
-					m.counts[name] += dp.IntValue()
 				}
 			}
 		}
@@ -98,6 +105,7 @@ func newProfiles() (pprofile.Profiles,
 	pprofile.KeyValueAndUnitSlice,
 	pprofile.LocationSlice,
 	pprofile.StackSlice,
+	pprofile.FunctionSlice,
 ) {
 	profiles := pprofile.NewProfiles()
 	dict := profiles.Dictionary()
@@ -107,6 +115,7 @@ func newProfiles() (pprofile.Profiles,
 	locTable := dict.LocationTable()
 	mappingTable := dict.MappingTable()
 	stackTable := dict.StackTable()
+	funcTable := dict.FunctionTable()
 
 	strTable.Append("")
 	strTable.Append("samples")
@@ -116,8 +125,9 @@ func newProfiles() (pprofile.Profiles,
 	mappingTable.AppendEmpty()
 	attrTable.AppendEmpty()
 	stackTable.AppendEmpty()
+	funcTable.AppendEmpty()
 
-	return profiles, dict, strTable, attrTable, locTable, stackTable
+	return profiles, dict, strTable, attrTable, locTable, stackTable, funcTable
 }
 
 // newProfile initializes and appends a Profile to a Profiles instance.
@@ -146,11 +156,12 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	}
 
 	// Create a Profile and higher-level envelopes
-	profiles, _, strTable, attrTable, locTable, stackTable := newProfiles()
+	profiles, _, strTable, attrTable, locTable, stackTable, _ := newProfiles()
 	prof := newProfile(profiles)
 
 	// Create a profiles object with a sample that has a location with a frame type attribute.
 	sample := prof.Sample().AppendEmpty()
+	sample.TimestampsUnixNano().Append(1, 2, 3, 4)
 
 	// Add an attribute for frame type
 	attr := attrTable.AppendEmpty()
@@ -191,7 +202,7 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	}
 
 	// Create a Profile and higher-level envelopes
-	profiles, dict, strTable, attrTable, locTable, stackTable := newProfiles()
+	profiles, dict, strTable, attrTable, locTable, stackTable, funcTable := newProfiles()
 	prof := newProfile(profiles)
 
 	mappingTable := dict.MappingTable()
@@ -218,6 +229,7 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	locPy.AttributeIndices().Append(2)
 	locKernel := locTable.AppendEmpty()
 	locKernel.AttributeIndices().Append(3)
+	locKernel.Line().AppendEmpty().SetFunctionIndex(1)
 
 	locNative := locTable.AppendEmpty()
 	locNative.AttributeIndices().Append(4)
@@ -249,20 +261,29 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	// Eight samples
 	sampleKernel := prof.Sample().AppendEmpty()
 	sampleKernel.SetStackIndex(3)
+	sampleKernel.TimestampsUnixNano().Append(1, 2, 3)
 	sampleNative := prof.Sample().AppendEmpty()
 	sampleNative.SetStackIndex(4)
 	sampleNative = prof.Sample().AppendEmpty()
 	sampleNative.SetStackIndex(5)
+	sampleNative.TimestampsUnixNano().Append(2)
 	sampleGo := prof.Sample().AppendEmpty()
 	sampleGo.SetStackIndex(1)
+	sampleGo.TimestampsUnixNano().Append(3)
 	samplePy := prof.Sample().AppendEmpty()
 	samplePy.SetStackIndex(2)
 	samplePy = prof.Sample().AppendEmpty()
 	samplePy.SetStackIndex(2)
 	samplePy = prof.Sample().AppendEmpty()
 	samplePy.SetStackIndex(2)
+	samplePy.TimestampsUnixNano().Append(4)
 	sampleGo = prof.Sample().AppendEmpty()
 	sampleGo.SetStackIndex(1)
+	sampleGo.TimestampsUnixNano().Append(5)
+
+	syscallFunc := funcTable.AppendEmpty()
+	syscallFunc.SetNameStrindex(int32(strTable.Len()))
+	strTable.Append("__x64_sys_bpf")
 
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
@@ -274,6 +295,7 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 		"frametest.samples.kernel.count":      1,
 		"frametest.samples.native.count":      1,
 		"frametest.samples.native.count/libc": 1,
+		"frametest.samples.syscall.count/bpf": 3,
 	},
 		m.counts)
 }

@@ -19,6 +19,7 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"fmt"
+	"log/slog"
 	"regexp"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -44,19 +45,20 @@ const (
 )
 
 var (
-	metricUser   = metric{name: "samples.user.count", desc: "Number of samples executing userspace code (self)"}
-	metricKernel = metric{name: "samples.kernel.count", desc: "Number of samples executing kernel code (self)"}
-	metricNative = metric{name: "samples.native.count", desc: "Number of samples executing native code (self)"}
-	metricJVM    = metric{name: "samples.jvm.count", desc: "Number of samples executing HotSpot code (self)"}
-	metricPython = metric{name: "samples.cpython.count", desc: "Number of samples executing Python code (self)"}
-	metricGo     = metric{name: "samples.go.count", desc: "Number of samples executing Go code (self)"}
-	metricV8JS   = metric{name: "samples.v8js.count", desc: "Number of samples executing V8 JS code (self)"}
-	metricPHP    = metric{name: "samples.php.count", desc: "Number of samples executing PHP code (self)"}
-	metricPerl   = metric{name: "samples.perl.count", desc: "Number of samples executing Perl code (self)"}
-	metricRuby   = metric{name: "samples.ruby.count", desc: "Number of samples executing Ruby code (self)"}
-	metricDotnet = metric{name: "samples.dotnet.count", desc: "Number of samples executing Dotnet code (self)"}
-	metricRust   = metric{name: "samples.rust.count", desc: "Number of samples executing Rust code (self)"}
-	metricBeam   = metric{name: "samples.beam.count", desc: "Number of samples executing Beam code (self)"}
+	metricUser    = metric{name: "samples.user.count", desc: "Number of samples executing userspace code (self)"}
+	metricKernel  = metric{name: "samples.kernel.count", desc: "Number of samples executing kernel code (self)"}
+	metricSyscall = metric{name: "samples.syscall.count", desc: "Number of samples executing syscall code (self)"}
+	metricNative  = metric{name: "samples.native.count", desc: "Number of samples executing native code (self)"}
+	metricJVM     = metric{name: "samples.jvm.count", desc: "Number of samples executing HotSpot code (self)"}
+	metricPython  = metric{name: "samples.cpython.count", desc: "Number of samples executing Python code (self)"}
+	metricGo      = metric{name: "samples.go.count", desc: "Number of samples executing Go code (self)"}
+	metricV8JS    = metric{name: "samples.v8js.count", desc: "Number of samples executing V8 JS code (self)"}
+	metricPHP     = metric{name: "samples.php.count", desc: "Number of samples executing PHP code (self)"}
+	metricPerl    = metric{name: "samples.perl.count", desc: "Number of samples executing Perl code (self)"}
+	metricRuby    = metric{name: "samples.ruby.count", desc: "Number of samples executing Ruby code (self)"}
+	metricDotnet  = metric{name: "samples.dotnet.count", desc: "Number of samples executing Dotnet code (self)"}
+	metricRust    = metric{name: "samples.rust.count", desc: "Number of samples executing Rust code (self)"}
+	metricBeam    = metric{name: "samples.beam.count", desc: "Number of samples executing Beam code (self)"}
 
 	allowedFrameTypes = map[string]metric{
 		frameTypeNative: metricNative,
@@ -77,7 +79,7 @@ var (
 	rx = regexp.MustCompile(`(?:.*/)?(.+)\.so`)
 
 	// match syscalls
-	syscallRx = regexp.MustCompile(`^__(?:x64|arm64)_sys_(\w+)`)
+	syscallRx = regexp.MustCompile(`^(?:__x64_sys|__arm64_sys|ksys)_(\w+)`)
 )
 
 func fetchLeafFrameInfo(dictionary pprofile.ProfilesDictionary,
@@ -155,10 +157,8 @@ func fetchLeafFrameInfo(dictionary pprofile.ProfilesDictionary,
 // classifyFrame classifies sample into one or more categories based on frame type.
 // This takes place by incrementing the associated metric count.
 func classifyFrame(dictionary pprofile.ProfilesDictionary,
-	locationIndices pcommon.Int32Slice,
-	sample pprofile.Sample,
-	counts map[metric]int64,
-	nativeCounts map[string]int64,
+	locationIndices pcommon.Int32Slice, sample pprofile.Sample,
+	counts map[metric]int64, nativeCounts map[string]int64,
 ) error {
 	leaf, err := fetchLeafFrameInfo(dictionary, locationIndices, 0)
 	if err != nil {
@@ -196,11 +196,8 @@ func classifyFrame(dictionary pprofile.ProfilesDictionary,
 // identifySyscall walks the frames and extracts the syscall information.
 func identifySyscall(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
-	syscallCounts map[string]int64,
+	syscallCounts map[string]int64, multiplier int64,
 ) error {
-	// TODO: Scale syscallCounts by number of events in each Sample. Currently,
-	// this logic assumes 1 event per Sample (thus the increments by 1 below),
-	// which isn't necessarily the case.
 	attrTable := dictionary.AttributeTable()
 	locationTable := dictionary.LocationTable()
 	strTable := dictionary.StringTable()
@@ -213,18 +210,21 @@ func identifySyscall(dictionary pprofile.ProfilesDictionary,
 
 	for _, li := range locationIndices.All() {
 		if li >= int32(locTblLen) {
-			// log error
+			slog.Error("identifySyscall", slog.Any("li", li),
+				slog.Any("locTblLen", locTblLen))
 			continue
 		}
 		loc := locationTable.At(int(li))
 		for _, attrIdx := range loc.AttributeIndices().All() {
 			if attrIdx >= int32(attrTblLen) {
-				// log error
+				slog.Error("identifySyscall", slog.Any("attrIdx", attrIdx),
+					slog.Any("attrTblLen", attrTblLen))
 				continue
 			}
 			attr := attrTable.At(int(attrIdx))
 			if int(attr.KeyStrindex()) >= strTblLen {
-				// log error
+				slog.Error("identifySyscall", slog.Any("attr.KeyStrindex()", attr.KeyStrindex()),
+					slog.Any("strTblLen", strTblLen))
 				continue
 			}
 
@@ -233,12 +233,14 @@ func identifySyscall(dictionary pprofile.ProfilesDictionary,
 				if frameType == frameTypeKernel {
 					for _, ln := range loc.Line().All() {
 						if ln.FunctionIndex() >= int32(funcTblLen) {
-							// log error
+							slog.Error("identifySyscall", slog.Any("ln.FunctionIndex()", ln.FunctionIndex()),
+								slog.Any("funcTblLen", funcTblLen))
 							continue
 						}
 						fn := funcTable.At(int(ln.FunctionIndex()))
 						if fn.NameStrindex() >= int32(strTblLen) {
-							// log error
+							slog.Error("identifySyscall", slog.Any("fn.NameStrindex()", fn.NameStrindex()),
+								slog.Any("strTblLen", strTblLen))
 							continue
 						}
 						fnName := strTable.At(int(fn.NameStrindex()))
@@ -247,16 +249,14 @@ func identifySyscall(dictionary pprofile.ProfilesDictionary,
 						indices := syscallRx.FindStringSubmatchIndex(fnName)
 						if len(indices) == 4 {
 							syscall := fnName[indices[2]:indices[3]]
-							syscallCounts[syscall]++
+							syscallCounts[syscall] += multiplier
 							return nil
 						}
 					}
 
 				}
 			}
-
 		}
-
 	}
 	return nil
 }
@@ -272,17 +272,18 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 
 	// Process all samples and extract metric counts
 	for _, sample := range profile.Sample().All() {
+		multiplier := int64(sample.TimestampsUnixNano().Len())
 		stack := stackTable.At(int(sample.StackIndex()))
 		if err := classifyFrame(dictionary, stack.LocationIndices(),
 			sample, counts, nativeCounts); err != nil {
 			// Should not happen with well-formed profile data
-			// TODO: Add error metric or log error
+			slog.Error("classifyFrame", slog.Any("error", err))
 		}
 
 		if err := identifySyscall(dictionary, stack.LocationIndices(),
-			syscallCounts); err != nil {
+			syscallCounts, multiplier); err != nil {
 			// Should not happen with well-formed profile data
-			// TODO: Add error metric or log error
+			slog.Error("identifySyscall", slog.Any("error", err))
 		}
 	}
 
@@ -320,8 +321,8 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 
 	for sysCall, count := range syscallCounts {
 		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(c.config.MetricsPrefix + metricNative.name)
-		m.SetDescription(metricNative.desc)
+		m.SetName(c.config.MetricsPrefix + metricSyscall.name)
+		m.SetDescription(metricSyscall.desc)
 		m.SetUnit("1")
 
 		sum := m.SetEmptySum()
