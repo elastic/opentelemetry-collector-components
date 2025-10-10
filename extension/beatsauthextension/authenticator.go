@@ -23,9 +23,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/elastic/beats/v7/libbeat/common/transport/kerberos"
 	"github.com/elastic/elastic-agent-libs/config"
 	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/transport/httpcommon"
+	"github.com/jcmturner/gokrb5/v8/spnego"
 	"go.elastic.co/apm/module/apmelasticsearch/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
@@ -74,7 +76,7 @@ func (a *authenticator) Start(_ context.Context, host component.Host) error {
 	}
 
 	var provider roundTripperProvider
-	client, err := getHttpClient(a)
+	prov, err := getHttpClient(a)
 	if err != nil {
 		componentstatus.ReportStatus(host, componentstatus.NewPermanentErrorEvent(err))
 		err = fmt.Errorf("failed creating http client: %w", err)
@@ -85,7 +87,7 @@ func (a *authenticator) Start(_ context.Context, host component.Host) error {
 		provider = &errorRoundTripperProvider{err: err}
 	} else {
 		componentstatus.ReportStatus(host, componentstatus.NewEvent(componentstatus.StatusOK))
-		provider = &httpClientProvider{client: client}
+		provider = prov
 	}
 
 	a.rtProvider = provider
@@ -122,24 +124,32 @@ func (a *authenticator) PerRPCCredentials() (credentials.PerRPCCredentials, erro
 	return nil, nil
 }
 
-func getHttpClient(a *authenticator) (*http.Client, error) {
+func getHttpClient(a *authenticator) (roundTripperProvider, error) {
 	parsedCfg, err := config.NewConfigFrom(a.cfg.BeatAuthConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating config: %w", err)
 	}
 
-	beatAuthConfig := httpcommon.HTTPTransportSettings{}
+	beatAuthConfig := esAuthConfig{}
 	err = parsedCfg.Unpack(&beatAuthConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed unpacking config: %w", err)
 	}
 
-	client, err := beatAuthConfig.Client(a.getHTTPOptions(beatAuthConfig.IdleConnTimeout)...)
+	client, err := beatAuthConfig.Transport.Client(a.getHTTPOptions(beatAuthConfig.Transport.IdleConnTimeout)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating http client: %w", err)
 	}
 
-	return client, nil
+	if beatAuthConfig.Kerberos.IsEnabled() {
+		kerberosClient, err := kerberos.NewClient(beatAuthConfig.Kerberos, client)
+		if err != nil {
+			return nil, fmt.Errorf("failed creating kerberos client: %w", err)
+		}
+		return &kerberosClientProvider{client: kerberosClient}, nil
+	}
+
+	return &httpClientProvider{client: client}, nil
 }
 
 // httpClientProvider provides a RoundTripper from an http.Client
@@ -149,6 +159,15 @@ type httpClientProvider struct {
 
 func (h *httpClientProvider) RoundTripper() http.RoundTripper {
 	return h.client.Transport
+}
+
+// kerberosClientProvider provides a RoundTripper from  spnego.Client
+type kerberosClientProvider struct {
+	client *spnego.Client
+}
+
+func (k *kerberosClientProvider) RoundTripper() http.RoundTripper {
+	return k.client.Transport
 }
 
 // errorRoundTripperProvider provides a RoundTripper that always returns an error
