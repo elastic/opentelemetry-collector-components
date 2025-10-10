@@ -22,6 +22,7 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"fmt"
+	"net/netip"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -39,31 +40,7 @@ var compressionStrategyText = map[modelpb.CompressionStrategy]string{
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
 // and store information about a specific span type.
 func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	if event.Http != nil {
-		if event.Http.Request != nil {
-			if event.Http.Request.Body != nil {
-				attributesMap.PutStr(attr.HTTPRequestBody, event.Http.Request.Body.GetStringValue())
-			}
-			if event.Http.Request.Id != "" {
-				attributesMap.PutStr(attr.HTTPRequestID, event.Http.Request.Id)
-			}
-			if event.Http.Request.Referrer != "" {
-				attributesMap.PutStr(attr.HTTPRequestReferrer, event.Http.Request.Referrer)
-			}
-		}
-
-		if event.Http.Response != nil {
-			if event.Http.Response.DecodedBodySize != nil {
-				attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*event.Http.Response.DecodedBodySize))
-			}
-			if event.Http.Response.EncodedBodySize != nil {
-				attributesMap.PutInt(attr.HTTPResponseEncodedBodySize, int64(*event.Http.Response.EncodedBodySize))
-			}
-			if event.Http.Response.TransferSize != nil {
-				attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*event.Http.Response.TransferSize))
-			}
-		}
-	}
+	setHTTP(event.Http, attributesMap)
 
 	if event.Span == nil {
 		return
@@ -95,7 +72,84 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 
 	attributesMap.PutDouble(attr.SpanRepresentativeCount, event.Span.RepresentativeCount)
 
-	setStackTraceList(attributesMap, event.Span.Stacktrace)
+	setStackTraceList(attr.SpanStacktrace, attributesMap, event.Span.Stacktrace)
+}
+
+// setHTTP sets HTTP fields. Applicable only for error, span, or transaction events
+func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
+	if http == nil {
+		return
+	}
+
+	if http.Version != "" {
+		attributesMap.PutStr(attr.HTTPVersion, http.Version)
+	}
+
+	if http.Request != nil {
+		setHTTPHeadersMap(attr.HTTPRequestHeaders, attributesMap, http.Request.Headers)
+
+		// set env and cookies as a flat map
+		for _, env := range http.Request.Env {
+			if env != nil && env.Key != "" && env.Value != nil && env.Value.String() != "" {
+				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestEnv, env.Key), env.Value.String())
+			}
+		}
+		for _, cookie := range http.Request.Cookies {
+			if cookie != nil && cookie.Key != "" && cookie.Value != nil && cookie.Value.String() != "" {
+				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestCookies, cookie.Key), cookie.Value.String())
+			}
+		}
+
+		if http.Request.Body != nil {
+			attributesMap.PutStr(attr.HTTPRequestBody, http.Request.Body.GetStringValue())
+		}
+		if http.Request.Id != "" {
+			attributesMap.PutStr(attr.HTTPRequestID, http.Request.Id)
+		}
+		if http.Request.Referrer != "" {
+			attributesMap.PutStr(attr.HTTPRequestReferrer, http.Request.Referrer)
+		}
+	}
+
+	if http.Response != nil {
+		setHTTPHeadersMap(attr.HTTPResponseHeaders, attributesMap, http.Response.Headers)
+
+		if http.Response.Finished != nil {
+			attributesMap.PutBool(attr.HTTPResponseFinished, *http.Response.Finished)
+		}
+
+		if http.Response.HeadersSent != nil {
+			attributesMap.PutBool(attr.HTTPResponseHeadersSent, *http.Response.HeadersSent)
+		}
+
+		if http.Response.DecodedBodySize != nil {
+			attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*http.Response.DecodedBodySize))
+		}
+
+		if http.Response.TransferSize != nil {
+			attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*http.Response.TransferSize))
+		}
+	}
+}
+
+// setHTTPHeadersMap sets HTTP headers to attributes map.
+// The headers will be a map of string to array of strings.
+func setHTTPHeadersMap(prefix string, attributesMap pcommon.Map, headers []*modelpb.HTTPHeader) {
+	if len(headers) == 0 {
+		return
+	}
+
+	headerMap := attributesMap.PutEmptyMap(prefix)
+	headerMap.EnsureCapacity(len(headers))
+	for _, header := range headers {
+		if header != nil && header.Key != "" && len(header.Value) > 0 {
+			headerValues := headerMap.PutEmptySlice(header.Key)
+			headerValues.EnsureCapacity(len(header.Value))
+			for _, v := range header.Value {
+				headerValues.AppendEmpty().SetStr(v)
+			}
+		}
+	}
 }
 
 // setMessage sets message fields from either a span or transaction message.
@@ -121,12 +175,12 @@ func setMessage(prefix string, m *modelpb.Message, attributesMap pcommon.Map) {
 
 // setStackTraceList maps stacktrace frames to attributes map.
 // The stacktrace will be a list of objects (maps), each map representing a frame.
-func setStackTraceList(attributesMap pcommon.Map, stacktrace []*modelpb.StacktraceFrame) {
+func setStackTraceList(key string, attributesMap pcommon.Map, stacktrace []*modelpb.StacktraceFrame) {
 	if len(stacktrace) == 0 {
 		return
 	}
 
-	stacktraceSlice := attributesMap.PutEmptySlice(attr.SpanStacktrace)
+	stacktraceSlice := attributesMap.PutEmptySlice(key)
 	stacktraceSlice.EnsureCapacity(len(stacktrace))
 	for _, frame := range stacktrace {
 		frameMap := stacktraceSlice.AppendEmpty().SetEmptyMap()
@@ -173,7 +227,13 @@ func setStackTraceList(attributesMap pcommon.Map, stacktrace []*modelpb.Stacktra
 			}
 		}
 
-		frameMap.PutBool(attr.SpanStacktraceFrameLibraryFrame, frame.LibraryFrame)
+		if frame.LibraryFrame {
+			frameMap.PutBool(attr.SpanStacktraceFrameLibraryFrame, frame.LibraryFrame)
+		}
+		// Note: ExcludeFromGrouping does not have an 'omitempty' json tag in the apm-data model
+		// so we always set it to match the existing behavior.
+		// The flag is also not available in input data, so it will always be false.
+		frameMap.PutBool(attr.SpanStacktraceExcludeFromGrouping, frame.ExcludeFromGrouping)
 	}
 }
 
@@ -231,7 +291,7 @@ func insertValue(dest pcommon.Value, src *structpb.Value) {
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
 // and store information about a specific span type.
 func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	// TODO: map other fields: http.*, source.*, user_agent.*, client.*
+	setHTTP(event.Http, attributesMap)
 
 	if event.Transaction == nil {
 		return
@@ -342,6 +402,32 @@ func setTransactionMarks(marks map[string]*modelpb.TransactionMark, attributesMa
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
+		if event.Cloud.Origin != nil {
+			if event.Cloud.Origin.AccountId != "" {
+				attributesMap.PutStr(attr.CloudOriginAccountID, event.Cloud.Origin.AccountId)
+			}
+			if event.Cloud.Origin.Provider != "" {
+				attributesMap.PutStr(attr.CloudOriginProvider, event.Cloud.Origin.Provider)
+			}
+			if event.Cloud.Origin.Region != "" {
+				attributesMap.PutStr(attr.CloudOriginRegion, event.Cloud.Origin.Region)
+			}
+			if event.Cloud.Origin.ServiceName != "" {
+				attributesMap.PutStr(attr.CloudOriginServiceName, event.Cloud.Origin.ServiceName)
+			}
+		}
+		if event.Cloud.AccountName != "" {
+			attributesMap.PutStr(attr.CloudAccountName, event.Cloud.AccountName)
+		}
+		if event.Cloud.InstanceId != "" {
+			attributesMap.PutStr(attr.CloudInstanceID, event.Cloud.InstanceId)
+		}
+		if event.Cloud.InstanceName != "" {
+			attributesMap.PutStr(attr.CloudInstanceName, event.Cloud.InstanceName)
+		}
+		if event.Cloud.MachineType != "" {
+			attributesMap.PutStr(attr.CloudMachineType, event.Cloud.MachineType)
+		}
 		if event.Cloud.ProjectId != "" {
 			attributesMap.PutStr(attr.CloudProjectID, event.Cloud.ProjectId)
 		}
@@ -352,7 +438,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 
 	if event.Faas != nil {
 		if event.Faas.TriggerRequestId != "" {
-			attributesMap.PutStr(attr.TriggerRequestId, event.Faas.TriggerRequestId)
+			attributesMap.PutStr(attr.TriggerRequestID, event.Faas.TriggerRequestId)
 		}
 		if event.Faas.Execution != "" {
 			attributesMap.PutStr(attr.FaaSExecution, event.Faas.Execution)
@@ -361,7 +447,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 
 	if event.Agent != nil {
 		if event.Agent.EphemeralId != "" {
-			attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
+			attributesMap.PutStr(attr.AgentEphemeralID, event.Agent.EphemeralId)
 		}
 		if event.Agent.ActivationMethod != "" {
 			attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
@@ -395,7 +481,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 		}
 		if event.Service.Origin != nil {
 			if event.Service.Origin.Id != "" {
-				attributesMap.PutStr(attr.ServiceOriginId, event.Service.Origin.Id)
+				attributesMap.PutStr(attr.ServiceOriginID, event.Service.Origin.Id)
 			}
 			if event.Service.Origin.Name != "" {
 				attributesMap.PutStr(attr.ServiceOriginName, event.Service.Origin.Name)
@@ -418,6 +504,29 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 		if event.Host.Os != nil {
 			if event.Host.Os.Platform != "" {
 				attributesMap.PutStr(attr.HostOSPlatform, event.Host.Os.Platform)
+			}
+		}
+	}
+
+	if event.Source != nil {
+		if event.Source.Nat != nil && event.Source.Nat.Ip != nil {
+			ip := modelpb.IP2Addr(event.Source.Nat.Ip)
+			if ip.String() != "" {
+				attributesMap.PutStr(attr.SourceNatIP, ip.String())
+			}
+		}
+	}
+
+	if event.User != nil {
+		if event.User.Domain != "" {
+			attributesMap.PutStr(attr.UserDomain, event.User.Domain)
+		}
+	}
+
+	if event.Destination != nil {
+		if event.Destination.Address != "" {
+			if ip, err := netip.ParseAddr(event.Destination.Address); err == nil {
+				attributesMap.PutStr(attr.DestinationIP, ip.String())
 			}
 		}
 	}
@@ -458,6 +567,8 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 // SetElasticSpecificFieldsForLog sets fields that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	setHTTP(event.Http, attributesMap)
+
 	// processor.event is not set for logs
 	if event.Log != nil {
 		if event.Log.Logger != "" {
@@ -517,5 +628,21 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 
 	if event.Error != nil {
 		setKeyValueMap(attr.ErrorCustom, attributesMap, event.Error.Custom)
+
+		if event.Error.Log != nil {
+			if event.Error.Log.Message != "" {
+				attributesMap.PutStr(attr.ErrorLogMessage, event.Error.Log.Message)
+			}
+			if event.Error.Log.Level != "" {
+				attributesMap.PutStr(attr.ErrorLogLevel, event.Error.Log.Level)
+			}
+			if event.Error.Log.ParamMessage != "" {
+				attributesMap.PutStr(attr.ErrorLogParamMessage, event.Error.Log.ParamMessage)
+			}
+			if event.Error.Log.LoggerName != "" {
+				attributesMap.PutStr(attr.ErrorLogLoggerName, event.Error.Log.LoggerName)
+			}
+			setStackTraceList(attr.ErrorLogStackTrace, attributesMap, event.Error.Log.Stacktrace)
+		}
 	}
 }

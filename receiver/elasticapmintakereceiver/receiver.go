@@ -247,7 +247,6 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		)
 
 		// TODO record metrics about events processed by type?
-		// TODO translate events to pdata types
 		switch event.Type() {
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()
@@ -508,6 +507,8 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForError(event, l.Attributes())
+	mappers.TranslateIntakeV2LogToOTelAttributes(event, rl.Resource().Attributes())
+
 	// apm log events can contain error information. In this case the log is considered an apm error.
 	// All fields associated with the log should also be set.
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
@@ -522,8 +523,8 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 	l := sl.LogRecords().AppendEmpty()
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
+	mappers.TranslateIntakeV2LogToOTelAttributes(event, rl.Resource().Attributes())
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
-	// TODO(isaacaflores2): add labels (user defined key-value pairs)?
 
 	l.Body().SetStr(event.Message)
 

@@ -28,6 +28,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: x64
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla Chrome Edge
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -78,7 +81,10 @@ resourceLogs:
             stringValue: foo
         - key: client.address
           value:
-            stringValue: v4:204803073
+            stringValue: 123.0.0.1
+        - key: source.address
+          value:
+            stringValue: 123.0.0.1
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -91,6 +97,18 @@ resourceLogs:
         - key: service.language.version
           value:
             stringValue: "1.2"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -133,9 +151,111 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: source.nat.ip
+          value:
+            stringValue: 12.53.12.1
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.organization_uuid
           value:
             stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
+        - key: http.version
+          value:
+            stringValue: "1.1"
+        - key: http.request.headers
+          value:
+            kvlistValue:
+              values:
+                - key: Array
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: foo
+                        - stringValue: bar
+                        - stringValue: baz
+                - key: User-Agent
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: Mozilla Chrome Edge
+                - key: X-Forwarded-For
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: 123.0.0.1
+                - key: Content-Type
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: text/html
+                - key: Cookie
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: c1=v1,c2=v2
+                - key: Some-Other-Header
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: foo
+        - key: http.request.env.SERVER_SOFTWARE
+          value:
+            stringValue: string_value:"nginx"
+        - key: http.request.env.GATEWAY_INTERFACE
+          value:
+            stringValue: string_value:"CGI/1.1"
+        - key: http.request.cookies.c1
+          value:
+            stringValue: string_value:"v1"
+        - key: http.request.cookies.c2
+          value:
+            stringValue: string_value:"v2"
+        - key: http.request.body
+          value:
+            stringValue: Hello World
+        - key: http.request.referrer
+          value:
+            stringValue: http://localhost:8000/test/e2e/
+        - key: http.response.headers
+          value:
+            kvlistValue:
+              values:
+                - key: Content-Type
+                  value:
+                    arrayValue:
+                      values:
+                        - stringValue: application/json
+        - key: http.response.finished
+          value:
+            boolValue: true
+        - key: http.response.headers_sent
+          value:
+            boolValue: true
+        - key: url.original
+          value:
+            stringValue: /p/a/t/h?query=string#hash
+        - key: url.scheme
+          value:
+            stringValue: https
+        - key: url.full
+          value:
+            stringValue: https://www.example.com/p/a/t/h?query=string#hash
+        - key: url.domain
+          value:
+            stringValue: www.example.com
+        - key: url.path
+          value:
+            stringValue: /p/a/t/h
+        - key: url.query
+          value:
+            stringValue: ?query=string
+        - key: url.fragment
+          value:
+            stringValue: '#hash'
+        - key: url.port
+          value:
+            intValue: "8080"
     scopeLogs:
       - logRecords:
           - attributes:
@@ -172,6 +292,78 @@ resourceLogs:
               - key: error.exception.code
                 value:
                   stringValue: "42"
+              - key: http.version
+                value:
+                  stringValue: "1.1"
+              - key: http.request.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla Chrome Edge
+                      - key: X-Forwarded-For
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: 123.0.0.1
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+              - key: http.request.env.SERVER_SOFTWARE
+                value:
+                  stringValue: string_value:"nginx"
+              - key: http.request.env.GATEWAY_INTERFACE
+                value:
+                  stringValue: string_value:"CGI/1.1"
+              - key: http.request.cookies.c1
+                value:
+                  stringValue: string_value:"v1"
+              - key: http.request.cookies.c2
+                value:
+                  stringValue: string_value:"v2"
+              - key: http.request.body
+                value:
+                  stringValue: Hello World
+              - key: http.request.referrer
+                value:
+                  stringValue: http://localhost:8000/test/e2e/
+              - key: http.response.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: application/json
+              - key: http.response.finished
+                value:
+                  boolValue: true
+              - key: http.response.headers_sent
+                value:
+                  boolValue: true
               - key: process.title
                 value:
                   stringValue: node
@@ -179,6 +371,12 @@ resourceLogs:
                 value:
                   kvlistValue:
                     values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
                       - key: and_objects
                         value:
                           kvlistValue:
@@ -189,12 +387,130 @@ resourceLogs:
                                     values:
                                       - stringValue: bar
                                       - stringValue: baz
-                      - key: my_key
-                        value:
-                          doubleValue: 1
-                      - key: some_other_value
-                        value:
-                          stringValue: foo bar
+              - key: error.log.message
+                value:
+                  stringValue: My service could not talk to the database named foobar
+              - key: error.log.level
+                value:
+                  stringValue: warning
+              - key: error.log.param_message
+                value:
+                  stringValue: My service could not talk to the database named %s
+              - key: error.log.logger_name
+                value:
+                  stringValue: my.logger.name
+              - key: error.log.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: classname
+                              value:
+                                stringValue: User::Common
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                            - key: line.number
+                              value:
+                                intValue: "3"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: /webpack/file/name.py
+                            - key: classname
+                              value:
+                                stringValue: Webpack::File::Name
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: App::MyModule
+                            - key: function
+                              value:
+                                stringValue: foo
+                            - key: abs_path
+                              value:
+                                stringValue: /real/file/name.py
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: line1
+                                    - stringValue: line2
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: line4
+                                    - stringValue: line5
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                            - key: line.number
+                              value:
+                                intValue: "102"
+                            - key: filename
+                              value:
+                                stringValue: lib/instrumentation/index.js
+                            - key: line.context
+                              value:
+                                stringValue: '    var result = original.apply(this, arguments)'
+                            - key: function
+                              value:
+                                stringValue: instrumented
+                            - key: abs_path
+                              value:
+                                stringValue: /Users/watson/code/node_modules/elastic/lib/instrumentation/index.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                                    - stringValue: '  return instrumented'
+                                    - stringValue: ""
+                                    - stringValue: '  function instrumented () {'
+                                    - stringValue: '    var prev = ins.currentTransaction'
+                                    - stringValue: '    ins.currentTransaction = trans'
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                                    - stringValue: '}'
+                                    - stringValue: '}'
+                                    - stringValue: ""
+                                    - stringValue: Instrumentation.prototype._recoverTransaction = function (trans) {
+                                    - stringValue: '  if (this.currentTransaction === trans) return'
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             body:
               stringValue: My service could not talk to the database named foobar
             timeUnixNano: "1494342245999999000"
@@ -291,6 +607,18 @@ resourceLogs:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -318,6 +646,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -336,6 +667,24 @@ resourceLogs:
               - key: process.title
                 value:
                   stringValue: node
+              - key: error.log.message
+                value:
+                  stringValue: no user found
+              - key: error.log.level
+                value:
+                  stringValue: error
+              - key: error.log.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: classname
+                              value:
+                                stringValue: User::Special
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             body:
               stringValue: no user found
             timeUnixNano: "1533826745999000000"
@@ -432,6 +781,18 @@ resourceLogs:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -459,6 +820,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -575,6 +939,18 @@ resourceLogs:
         - key: service.language.version
           value:
             stringValue: "2.5"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -602,6 +978,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -722,6 +1101,18 @@ resourceLogs:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -749,6 +1140,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -773,6 +1167,12 @@ resourceLogs:
               - key: process.title
                 value:
                   stringValue: node
+              - key: error.log.message
+                value:
+                  stringValue: Cannot read property 'baz' of undefined
+              - key: error.log.level
+                value:
+                  stringValue: custom log level
             body:
               stringValue: Cannot read property 'baz' of undefined
             spanId: "1234567890987654"

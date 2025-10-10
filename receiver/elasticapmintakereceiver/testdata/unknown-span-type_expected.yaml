@@ -25,6 +25,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla Chrome Edge
         - key: container.id
           value:
             stringValue: container-id
@@ -128,9 +131,6 @@ resourceSpans:
               - key: http.request.method
                 value:
                   stringValue: POST
-              - key: url.full
-                value:
-                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
               - key: http.response.status_code
                 value:
                   intValue: "200"
@@ -140,6 +140,9 @@ resourceSpans:
               - key: url.scheme
                 value:
                   stringValue: https
+              - key: url.full
+                value:
+                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
               - key: url.domain
                 value:
                   stringValue: www.example.com
@@ -155,6 +158,73 @@ resourceSpans:
               - key: url.port
                 value:
                   intValue: "8080"
+              - key: http.version
+                value:
+                  stringValue: "1.1"
+              - key: http.request.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2
+              - key: http.request.env.SERVER_SOFTWARE
+                value:
+                  stringValue: string_value:"nginx"
+              - key: http.request.env.GATEWAY_INTERFACE
+                value:
+                  stringValue: string_value:"CGI/1.1"
+              - key: http.request.cookies.c1
+                value:
+                  stringValue: string_value:"v1"
+              - key: http.request.cookies.c2
+                value:
+                  stringValue: string_value:"v2"
+              - key: http.request.body
+                value:
+                  stringValue: ""
+              - key: http.request.referrer
+                value:
+                  stringValue: http://localhost:8000/test/e2e/
+              - key: http.response.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: application/json
+              - key: http.response.finished
+                value:
+                  boolValue: true
+              - key: http.response.headers_sent
+                value:
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "4"
@@ -410,6 +480,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
                       - kvlistValue:
                           values:
                             - key: line.number
@@ -418,7 +491,7 @@ resourceSpans:
                             - key: filename
                               value:
                                 stringValue: my2file.js
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
             endTimeUnixNano: "1496170407157781912"
