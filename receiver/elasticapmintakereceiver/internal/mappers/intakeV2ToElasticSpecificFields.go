@@ -404,7 +404,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 	if event.Cloud != nil {
 		if event.Cloud.Origin != nil {
 			if event.Cloud.Origin.AccountId != "" {
-				attributesMap.PutStr(attr.CloudOriginAccountId, event.Cloud.Origin.AccountId)
+				attributesMap.PutStr(attr.CloudOriginAccountID, event.Cloud.Origin.AccountId)
 			}
 			if event.Cloud.Origin.Provider != "" {
 				attributesMap.PutStr(attr.CloudOriginProvider, event.Cloud.Origin.Provider)
@@ -420,7 +420,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 			attributesMap.PutStr(attr.CloudAccountName, event.Cloud.AccountName)
 		}
 		if event.Cloud.InstanceId != "" {
-			attributesMap.PutStr(attr.CloudInstanceId, event.Cloud.InstanceId)
+			attributesMap.PutStr(attr.CloudInstanceID, event.Cloud.InstanceId)
 		}
 		if event.Cloud.InstanceName != "" {
 			attributesMap.PutStr(attr.CloudInstanceName, event.Cloud.InstanceName)
@@ -438,7 +438,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 
 	if event.Faas != nil {
 		if event.Faas.TriggerRequestId != "" {
-			attributesMap.PutStr(attr.TriggerRequestId, event.Faas.TriggerRequestId)
+			attributesMap.PutStr(attr.TriggerRequestID, event.Faas.TriggerRequestId)
 		}
 		if event.Faas.Execution != "" {
 			attributesMap.PutStr(attr.FaaSExecution, event.Faas.Execution)
@@ -447,7 +447,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 
 	if event.Agent != nil {
 		if event.Agent.EphemeralId != "" {
-			attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
+			attributesMap.PutStr(attr.AgentEphemeralID, event.Agent.EphemeralId)
 		}
 		if event.Agent.ActivationMethod != "" {
 			attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
@@ -481,7 +481,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 		}
 		if event.Service.Origin != nil {
 			if event.Service.Origin.Id != "" {
-				attributesMap.PutStr(attr.ServiceOriginId, event.Service.Origin.Id)
+				attributesMap.PutStr(attr.ServiceOriginID, event.Service.Origin.Id)
 			}
 			if event.Service.Origin.Name != "" {
 				attributesMap.PutStr(attr.ServiceOriginName, event.Service.Origin.Name)
