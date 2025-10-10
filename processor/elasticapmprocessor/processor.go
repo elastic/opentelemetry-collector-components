@@ -46,7 +46,7 @@ type TraceProcessor struct {
 	logger   *zap.Logger
 }
 
-func newTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
+func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
 	return &TraceProcessor{
 		next:     next,
 		logger:   logger,

@@ -15,18 +15,19 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
+package elastictraceprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor"
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/elastic/opentelemetry-lib/enrichments/config"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-lib/enrichments/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
+	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/metadata"
 )
 
 // NewFactory returns a processor.Factory that constructs elastic
@@ -36,43 +37,22 @@ func NewFactory() processor.Factory {
 		metadata.Type,
 		createDefaultConfig,
 		processor.WithTraces(createTraces, metadata.TracesStability),
-		processor.WithLogs(createLogs, metadata.TracesStability),
-		processor.WithMetrics(createMetrics, metadata.TracesStability),
 	)
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{
+	return &elasticapmprocessor.Config{
 		Config: config.Enabled(),
 	}
-}
-
-func createLogs(
-	_ context.Context, set processor.Settings, cfg component.Config, next consumer.Logs,
-) (processor.Logs, error) {
-	processorCfg, ok := cfg.(*Config)
-	if !ok {
-		return nil, fmt.Errorf("configuration parsing error")
-	}
-	return newLogProcessor(processorCfg, next, set.Logger), nil
 }
 
 func createTraces(
 	_ context.Context, set processor.Settings, cfg component.Config, next consumer.Traces,
 ) (processor.Traces, error) {
-	processorCfg, ok := cfg.(*Config)
-	if !ok {
-		return nil, fmt.Errorf("configuration parsing error")
-	}
-	return NewTraceProcessor(processorCfg, next, set.Logger), nil
-}
 
-func createMetrics(
-	_ context.Context, set processor.Settings, cfg component.Config, next consumer.Metrics,
-) (processor.Metrics, error) {
-	processorCfg, ok := cfg.(*Config)
+	processorCfg, ok := cfg.(*elasticapmprocessor.Config)
 	if !ok {
 		return nil, fmt.Errorf("configuration parsing error")
 	}
-	return newMetricProcessor(processorCfg, next, set.Logger), nil
+	return elasticapmprocessor.NewTraceProcessor(processorCfg, next, set.Logger), nil
 }
