@@ -1278,8 +1278,7 @@ func (f *fakeWindowConfigurator) Multiplier(
 		if f.count[key] < len(multipliers) {
 			f.count[key]++
 		}
-		m := multipliers[f.count[key]-1]
-		return m
+		return multipliers[f.count[key]-1]
 	}
 	return -1 // force default multiplier
 }
