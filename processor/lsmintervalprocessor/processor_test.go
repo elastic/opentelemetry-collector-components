@@ -376,7 +376,7 @@ func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 
 	next := &consumertest.MetricsSink{}
 	p := newTestProcessor(t, cfg, telSettings, next)
-	
+
 	// Start the processor
 	err := p.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -393,7 +393,7 @@ func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 
 	var wg sync.WaitGroup
 	shutdownStarted := make(chan struct{})
-	
+
 	// Start multiple ConsumeMetrics in goroutines
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
@@ -404,7 +404,7 @@ func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 			_ = p.(*Processor).ConsumeMetrics(context.Background(), md)
 		}()
 	}
-	
+
 	// Start Shutdown in another goroutine
 	wg.Add(1)
 	go func() {
@@ -412,7 +412,7 @@ func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 		close(shutdownStarted)
 		_ = p.(*Processor).Shutdown(context.Background())
 	}()
-	
+
 	wg.Wait()
 }
 
