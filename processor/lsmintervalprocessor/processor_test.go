@@ -394,14 +394,16 @@ func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 	var wg sync.WaitGroup
 	shutdownStarted := make(chan struct{})
 	
-	// Start ConsumeMetrics in a goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		<-shutdownStarted
-		// This should not panic even if Shutdown is running concurrently
-		_ = p.(*Processor).ConsumeMetrics(context.Background(), md)
-	}()
+	// Start multiple ConsumeMetrics in goroutines
+	for i := 0; i < 5; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-shutdownStarted
+			// This should not panic even if Shutdown is running concurrently
+			_ = p.(*Processor).ConsumeMetrics(context.Background(), md)
+		}()
+	}
 	
 	// Start Shutdown in another goroutine
 	wg.Add(1)
