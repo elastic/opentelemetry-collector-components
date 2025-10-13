@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/rand"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -358,6 +359,59 @@ func TestClientMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, expected, received)
+}
+
+func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config.Config{
+		Intervals: []config.IntervalConfig{{
+			Duration: time.Hour,
+		}},
+	}
+
+	testTel := componenttest.NewTelemetry()
+	telSettings := testTel.NewTelemetrySettings()
+	telSettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+
+	next := &consumertest.MetricsSink{}
+	p := newTestProcessor(t, cfg, telSettings, next)
+	
+	// Start the processor
+	err := p.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	// Create test metrics
+	md := pmetric.NewMetrics()
+	rm := md.ResourceMetrics().AppendEmpty()
+	sm := rm.ScopeMetrics().AppendEmpty()
+	m := sm.Metrics().AppendEmpty()
+	m.SetName("test_metric")
+	sum := m.SetEmptySum()
+	sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	sum.DataPoints().AppendEmpty().SetIntValue(1)
+
+	var wg sync.WaitGroup
+	shutdownStarted := make(chan struct{})
+	
+	// Start ConsumeMetrics in a goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-shutdownStarted
+		// This should not panic even if Shutdown is running concurrently
+		_ = p.(*Processor).ConsumeMetrics(context.Background(), md)
+	}()
+	
+	// Start Shutdown in another goroutine
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		close(shutdownStarted)
+		_ = p.(*Processor).Shutdown(context.Background())
+	}()
+	
+	wg.Wait()
 }
 
 func BenchmarkAggregation(b *testing.B) {
