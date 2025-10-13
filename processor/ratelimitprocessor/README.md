@@ -37,8 +37,9 @@ You can override one or more of the following fields:
 | Field                  | Description                                                                                                                                                                                                       | Required | Default    |
 |------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|
 | `enabled`              | Enables the dynamic rate limiting feature.                                                                                                                                                                        | No       | `false`    |
-| `window_multiplier`    | The factor by which the previous window rate is multiplied to get the dynamic limit.                                                                                                                             | No       | `1.3`      |
 | `window_duration`      | The time window duration for calculating traffic rates.                                                                                                                                                           | No       | `2m`       |
+| `default_window_multiplier` | The default factor by which the previous window rate is multiplied to get the dynamic limit. Can be overridden by providing a `window_configurator` extension.                                               | No       | `1.3`      |
+| `window_configurator`  | An optional extension to calculate window multiplier dynamically based on unique keys.                                                                                                                            | No       |            |
 
 ### Dynamic Rate Limiting Deep Dive
 
@@ -59,7 +60,14 @@ Where:
 
 * `previous_rate`: The rate of traffic in the previous window (normalized per second).
 * `static_rate`: The configured `rate` in the main configuration.
-* `window_multiplier`: A factor applied to the previous window rate to determine the dynamic limit.
+* `window_multiplier`: A factor applied to the previous window rate to determine the dynamic limit. It is derived based on the following formula:
+
+  ```text
+  window_multiplier = default_window_multiplier
+  if window_configurator is defined {
+    window_multiplier = window_configurator::Multiplier(...)
+  }
+  ```
 
 **Important Notes:**
 
@@ -72,7 +80,7 @@ Let's walk through a few examples to illustrate the behavior of the dynamic rate
 Assume the following configuration:
 
 * `window_duration`: 2m
-* `window_multiplier`: 1.5
+* `window_multiplier`: 1.5 (with no `window_configurator` provided)
 * `rate`: 1000 requests/second (this is our `static_rate`)
 
 #### Scenario 1: Initial Traffic
@@ -296,3 +304,18 @@ Telemetry and metrics:
 
   * `ratelimit.resolver.failures` — total number of resolver failures
   * `ratelimit.dynamic.escalations` — number of times dynamic rate was peeked (attributes: `class`, `source_kind`, `success`)
+
+### Throttling rate based on custom logic using `window_configurator`
+
+The `window_configurator` option configures a custom OpenTelemetry Collector extension to dynamically choose a window multiplier for the current period. The value is the extension ID (the extension's configured name). The extension MUST implement the `WindowConfigurator` interface. The multiplier can be used to scale up the rate limit from previous window (by returning a multiplier greater than `1`) or scale down the rate limit from previous window (by returning a multiplier less than `1`, greater than `0`). If the extension returns a negative value then the `default_window_multiplier` will be used. Note that the dynamic limit MUST be at least the configured `static_rate`, ensuring a minimum level of throughput. An example configuration including the window configurator:
+
+```yaml
+processors:
+  ratelimiter:
+    dynamic_limits:
+      enabled: true
+      window_duration: 2m
+      default_window_multiplier: 1.5
+      # This is an example window configurator. It doesn't exist.
+      window_configurator: kafkalagwindowconfiguratorextension
+```

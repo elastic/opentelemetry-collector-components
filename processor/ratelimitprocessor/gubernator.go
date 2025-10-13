@@ -56,7 +56,7 @@ type ClassResolver interface {
 //
 // NOTE(lahsivjar): We may want to make the duration configurable too.
 type WindowConfigurator interface {
-	// Multiplier returns a new window multiplier for determining the next rate
+	// Multiplier returns the calculated multiplier for the next window.
 	Multiplier(ctx context.Context, window time.Duration, key string) float64
 }
 

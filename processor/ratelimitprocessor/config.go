@@ -78,7 +78,7 @@ type DynamicRateLimiting struct {
 
 	// DefaultWindowMultiplier is the factor by which the previous window rate is
 	// multiplied to get the dynamic part of the limit. Defaults to 1.3.
-	DefaultWindowMultiplier float64 `mapstructure:"window_multiplier"`
+	DefaultWindowMultiplier float64 `mapstructure:"default_window_multiplier"`
 
 	// WindowConfigurator is the component ID of the extension to dynamically
 	// determine the window multiplier. The extension is expected to implement
@@ -109,7 +109,7 @@ func (d *DynamicRateLimiting) Validate() error {
 	}
 	var errs []error
 	if d.DefaultWindowMultiplier < 1 {
-		errs = append(errs, errors.New("window_multiplier must be greater than or equal to 1"))
+		errs = append(errs, errors.New("default_window_multiplier must be greater than or equal to 1"))
 	}
 	if d.WindowDuration <= 0 {
 		errs = append(errs, errors.New("window_duration must be greater than zero"))
