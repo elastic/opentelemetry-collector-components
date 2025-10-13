@@ -446,7 +446,21 @@ resourceSpans:
                   stringValue: string_value:"v2"
               - key: http.request.body
                 value:
-                  stringValue: ""
+                  kvlistValue:
+                    values:
+                      - key: str
+                        value:
+                          stringValue: hello world
+                      - key: additional
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: bar
+                                value:
+                                  doubleValue: 123
+                              - key: req
+                                value:
+                                  stringValue: additional information
               - key: http.request.referrer
                 value:
                   stringValue: http://localhost:8000/test/e2e/
