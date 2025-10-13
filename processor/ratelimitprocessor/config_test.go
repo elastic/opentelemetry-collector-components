@@ -32,8 +32,8 @@ import (
 )
 
 var defaultDynamicRateLimiting = DynamicRateLimiting{
-	WindowMultiplier: 1.3,
-	WindowDuration:   2 * time.Minute,
+	DefaultWindowMultiplier: 1.3,
+	WindowDuration:          2 * time.Minute,
 }
 
 func TestLoadConfig(t *testing.T) {
@@ -211,9 +211,9 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 				},
 				DynamicRateLimiting: DynamicRateLimiting{
-					Enabled:          true,
-					WindowMultiplier: 1.5,
-					WindowDuration:   time.Minute,
+					Enabled:                 true,
+					DefaultWindowMultiplier: 1.5,
+					WindowDuration:          time.Minute,
 				},
 			},
 		},
