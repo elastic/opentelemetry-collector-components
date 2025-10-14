@@ -66,18 +66,18 @@ unique remote configuration.
 
 ## Getting started
 
-All that is required to enable the apmconfig extension is to include it in the extensions definitions:
+All that is required to enable the apmconfig extension is to include it in the extensions definitions of the collector configuration:
 
-```
+```yaml
 extensions:
   bearertokenauth:
     scheme: "APIKey"
-    token: "<ENCODED_ELASTICSEACH_APIKEY>"
+    token: "<YOUR_ENCODED_ELASTICSEACH_APIKEY>"
 
   apmconfig:
     source:
      elasticsearch:
-       endpoint: "<ELASTICSEACH_ENDPOINT>"
+       endpoint: "<YOUR_ELASTICSEACH_ENDPOINT>"
        auth:
          authenticator: bearertokenauth
     opamp:
@@ -86,22 +86,25 @@ extensions:
           endpoint: ":4320"
 ```
 
+The snippet above configures the `bearertokenauth` authenticator as client authenticator to be used with the Elasticsearch endpoint. An Elasticsearch API key is used as secret token. The `apmconfig` section defines the Elasticsearch `endpoint` for reading the EDOT SDK configuration and the `authenticator` that should be used with the endpoint. The `opamp` section configures the OpAMP endpoint to provide an HTTP endpoint on port 4320. The EDOT SDKs are connecting to this endpoint to fetch configuration messages. Authentication between the the OpAMP endpoint and the EDOT SDKs is not configured in the snippet. More information on securing the communication between the apmconfig extension and the EDOT SDKs are given in the section [Secure the OpAMP endpoint](#secure-the-opamp-endpoint).
 
 ## Advanced configuration
 
-### Remote configurations source
+There are more configuration settings available to configure the Elasticsearch client and the OpAMP server of the apmconfig extension. The following sections go into more details.
 
-The apmconfig extension retrieves remote configuration data from an Elasticsearch cluster. This is configured under the `source::elasticsearch` section.
+### Configure the Elasticsearch client
+
+The apmconfig extension retrieves remote configuration data from an Elasticsearch cluster. The Elasticsearch client for accessing the Elasticsearch cluster is configured under the `source::elasticsearch` section in the snippet above. The snippet shows a basic configuration.
 
 All available Elasticsearch client configuration options can be found [here](https://github.com/elastic/opentelemetry-lib/blob/v0.18.0/config/configelasticsearch/configclient.go#L69). The configuration embeds the [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md), allowing the use of standard authentication extensions such as [bearertokenauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/bearertokenauthextension) and [basicauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/basicauthextension).
 
-### OpAMP server
+### Secure the OpAMP endpoint
 
 The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
 
-#### TLS and mTLS settings
+#### Enable TLS and mTLS for the OpAMP endpoint
 
-You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the extension.
+You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the OpAMP server provided by the apmconfig extension. The snippet below configures TLS for the OpAMP endpoint. It uses `cert_file` and the `key_file` setting to specify the path to the server certificate file `your/path/to/server.crt` and key pass file `your/path/to/server.key`. 
 
 Example configuration:
 
@@ -113,19 +116,18 @@ extensions:
         http:
           endpoint: ":4320"
           tls:
-            cert_file: server.crt
-            key_file: server.key
+            cert_file: your/path/to/server.crt
+            key_file: your/path/to/server.key
    ...
 ```
 
-📚 OpenTelemetry TLS server configuration:
-https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configtls/README.md#server-configuration
+More information is available in the 📚 [OpenTelemetry TLS server configuration documentation](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configtls/README.md#server-configuration).
 
-#### Authentication settings
+#### Enable authentication for the OpAMP endpoint
 
-In addition to TLS, you can configure authentication to ensure that only authorized agents can communicate with the extension and retrieve their corresponding remote configurations.
+In addition to TLS, you can configure authentication for the OpAMP endpoint to ensure that only authorized EDOT SDKs can communicate with the `apmconfig` extension and retrieve their corresponding remote configurations.
 
-The apmconfig extension supports any [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md). We recommend using the [apikeyauth extension](https://github.com/elastic/opentelemetry-collector-components/tree/main/extension/apikeyauthextension) to authenticate with Elasticsearch API keys:
+The `apmconfig` extension supports any [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md). We recommend using the [apikeyauth extension](https://github.com/elastic/opentelemetry-collector-components/tree/main/extension/apikeyauthextension) to authenticate with Elasticsearch API keys:
 
 ```yaml
 extensions:
@@ -147,13 +149,14 @@ extensions:
 ```
 
 The server will expect incoming HTTP requests to include an API key with sufficient privileges, using the following header format:
+
 ```
 Authorization: ApiKey <base64(id:api_key)>
 ```
 
 An API key with the minimum required application permissions (as verified with the configuration above) can be created via Kibana by navigating to: `Observability → Applications → Settings → Agent Keys`, or by using the Elasticsearch Security API:
 
-```
+```json
 POST /_security/api_key
 {
   "name": "apmconfig-opamp-test-sdk",
@@ -181,3 +184,71 @@ POST /_security/api_key
   }
 }
 ```
+
+The following `curl` command sends the request to the `_security/api_key` API. Replace `<your-elasticsearch-endpoint>` with the Elasticsearch endpoint and `<base64-encoded-api-key>` with an existing API key.
+
+```json
+curl -X POST "https://<your-elasticsearch-endpoint>:9200/_security/api_key" \
+-H "Content-Type: application/json" \
+-H "Authorization: ApiKey <base64-encoded-api-key>" \
+-d '{
+  "name": "apmconfig-opamp-test-sdk",
+  "metadata": {
+    "application": "apm"
+  },
+  "role_descriptors": {
+    "apm": {
+      "cluster": [],
+      "indices": [],
+      "applications": [
+        {
+          "application": "apm",
+          "privileges": [
+            "config_agent:read"
+          ],
+          "resources": [
+            "*"
+          ]
+        }
+      ],
+      "run_as": [],
+      "metadata": {}
+    }
+  }}'
+```
+
+### Advanced configuration example
+
+Combining the configuration examples in the advanced configuration section results in the following:
+
+```yaml
+extensions:
+  bearertokenauth:
+    scheme: "APIKey"
+    token: "<YOUR_ENCODED_ELASTICSEACH_APIKEY>"
+  apikeyauth:
+    endpoint: "<YOUR_ELASTICSEARCH_ENDPOINT>"
+    application_privileges:
+      - application: "apm"
+        privileges:
+          - "config_agent:read"
+        resources:
+          - "-"
+  source:
+     elasticsearch:
+       endpoint: "<YOUR_ELASTICSEACH_ENDPOINT>"
+       auth:
+         authenticator: bearertokenauth
+  apmconfig:
+    opamp:
+      protocols:
+        http:
+          endpoint: ":4320"
+          auth:
+            authenticator: apikeyauth
+          tls:
+            cert_file: your/path/to/server.crt
+            key_file: your/path/to/server.key
+```
+
+The configuration snippet configures the `bearertokenauth` authenticator for the authentication of the Elasticsearch client, the `apikeyauth` authenticator for the OpAMP server, the Elasticsearch endpoint, and TLS for securing the connection between the OpAMP server and EDOT SDKs being the OpAMP client.
