@@ -61,7 +61,9 @@ The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/
 
 #### Enable TLS and mTLS for the OpAMP endpoint
 
-You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the OpAMP server provided by the apmconfig extension. The snippet below configures TLS for the OpAMP endpoint. It uses `cert_file` and the `key_file` setting to specify the path to the server certificate file `your/path/to/server.crt` and key file `your/path/to/server.key`. 
+You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the OpAMP server provided by the apmconfig extension.
+
+The following snippet configures TLS for the OpAMP endpoint using `cert_file` and the `key_file` setting to specify the path to the server certificate file `your/path/to/server.crt` and key file `your/path/to/server.key`. 
 
 Example configuration:
 
