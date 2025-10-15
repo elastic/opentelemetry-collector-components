@@ -1,8 +1,7 @@
 # Elastic APM Central configuration extension
 
-Central configuration was originally built for Elastic's APM agents. The Elastic APM central configuration extension brings the central configuration capability to Elastic's Distribution of OpenTelemetry (EDOT) SDKs.
-
 The `apmconfig` extension provides a mechanism based on OpenTelemetry's [Open Agent Management Protocol](https://opentelemetry.io/docs/specs/opamp/) (OpAMP) to retrieve the remote configuration set via the [APM Central
+
 Configuration](https://www.elastic.co/guide/en/observability/current/apm-agent-configuration.html) UI in Kibana. The extension starts an OpAMP server providing an OpAMP endpoint. OpAMP clients (EDOT SDKs) connect to the OpAMP endpoint to retrieve the configuration. 
 
 The Elastic APM agents are identified by the [service.name](https://www.elastic.co/guide/en/ecs/1.12/ecs-service.html#field-service-name) and [service.environment](https://www.elastic.co/guide/en/ecs/1.12/ecs-service.html#field-service-environment) (optional) attributes. The equivalent OpenTelemetry Semantic Conventions resource attributes for the EDOT SDKs are:
