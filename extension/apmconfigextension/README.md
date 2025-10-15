@@ -80,7 +80,7 @@ extensions:
    ...
 ```
 
-More information is available in the 📚 [OpenTelemetry TLS server configuration documentation](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configtls/README.md#server-configuration).
+More information is available in the [OpenTelemetry TLS server configuration documentation](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configtls/README.md#server-configuration).
 
 #### Enable authentication for the OpAMP endpoint
 
