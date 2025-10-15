@@ -17,7 +17,7 @@ export OTEL_RESOURCE_ATTRIBUTES="deployment.environment.name=production,service.
 
 ## Getting started
 
-All that is required to enable the apmconfig extension is to include it in the extensions definitions of the collector configuration:
+All that is required to enable the apmconfig extension is to include it in the extensions definitions of the Collector configuration:
 
 ```yaml
 extensions:
