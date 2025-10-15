@@ -126,9 +126,6 @@ func (c *Class) Validate() error {
 	if c.Burst < 0 {
 		errs = append(errs, errors.New("burst must be non-negative"))
 	}
-	if c.Burst > 0 && c.Burst < c.Rate {
-		errs = append(errs, errors.New("burst must be greater than or equal to rate when specified"))
-	}
 	return errors.Join(errs...)
 }
 
