@@ -15,11 +15,13 @@ a in-memory rate limiter, or makes use of a [gubernator](https://github.com/gube
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | Yes      |            |
 | `throttle_behavior` | Processor behavior for when the rate limit is exceeded. Options are `error`, return an error immediately on throttle and does not send the event, and `delay`, delay the sending until it is no longer throttled. | Yes      | `error`    |
 | `throttle_interval` | Time interval for throttling. It has effects only when `type` is `gubernator`.                                                                                                                                    | No       | `1s`       |
+| `retry_delay`       | Suggested client retry delay included via gRPC `RetryInfo` when throttled.                                                                                                                                       | No       | `1s`       |
 | `type`              | Type of rate limiter. Options are `local` or `gubernator`.                                                                                                                                                        | No       | `local`    |
 | `overrides`         | Allows customizing rate limiting parameters for specific metadata key-value pairs. Use this to apply different rate limits to different tenants, projects, or other entities identified by metadata. Each override is keyed by a metadata value and can specify custom `rate`, `burst`, and `throttle_interval` settings that take precedence over the global configuration for matching requests. | No       |            |
 | `dynamic_limits`    | Holds the dynamic rate limiting configuration. This is only applicable when the rate limiter type is `gubernator`.                                                                                                   | No       |            |
 | `classes`           | Named rate limit class definitions for class-based dynamic rate limiting. Only applicable when the rate limiter type is `gubernator`.                                                                              | No       |            |
 | `default_class`     | Default class name to use when resolver returns unknown/empty class. Must exist in classes when set. Only applicable when the rate limiter type is `gubernator`.                                                 | No       |            |
+| `class_resolver`    | Extension ID used to resolve a class name for a given unique key. Only applicable when the rate limiter type is `gubernator`.                                                                                    | No       |            |
 
 ### Overrides
 
@@ -281,13 +283,13 @@ Behavior and notes:
 
 * The resolver is optional. If no `class_resolver` is configured the processor skips class resolution and falls back to the top-level `rate`/`burst` values.
 
-* The processor initializes the resolver during Start. If the extension is not found the processor logs a warning and proceeds without resolution.
+* The processor initializes the resolver during Start. If a `class_resolver` is configured but the extension is not found or fails to start, the processor fails to start with an error.
 
 * When the resolver returns an unknown or empty class name, the processor treats it as "unknown" and uses the configured `default_class` (if set) or falls back to the top-level rate/burst.
 
 Caching and performance:
 
-* Implementations of resolver extensions should be mindful of latency; the processor assumes the resolver is reasonably fast. The processor will fall back when resolver errors occur or if the extension is absent.
+* Implementations of resolver extensions should be mindful of latency; the processor assumes the resolver is reasonably fast. If the resolver returns an error at runtime the processor logs a warning and falls back to default/class precedence for that request.
 
 * Ideally, implementations of the `class_resolver` implement their own caching to guarantee performance if they require on an external source.
 
@@ -298,12 +300,16 @@ Telemetry and metrics:
   * `rate_source`: one of `static`, `dynamic`, `fallback`, or `degraded` (indicates whether dynamic calculation was used or not)
   * `class`: resolved class name when applicable
   * `source_kind`: which precedence path was used (`override`, `class`, or `fallback`)
-  * `result`: one of `gubernator_error`, `success` or `skipped`.
+  * `reason`: for dynamic escalations, one of `gubernator_error`, `success`, or `skipped`
 
-* Counters introduced to observe resolver and dynamic behavior include:
+* Metrics exposed by the processor include:
 
-  * `ratelimit.resolver.failures` — total number of resolver failures
-  * `ratelimit.dynamic.escalations` — number of times dynamic rate was peeked (attributes: `class`, `source_kind`, `success`)
+  * `otelcol_ratelimit.requests` — total number of rate limiting requests
+  * `otelcol_ratelimit.request_duration` — histogram of request processing duration (seconds)
+  * `otelcol_ratelimit.request_size` — histogram of bytes per request (only when strategy is `bytes`)
+  * `otelcol_ratelimit.concurrent_requests` — current number of in-flight requests
+  * `otelcol_ratelimit.resolver.failures` — total number of class resolver failures
+  * `otelcol_ratelimit.dynamic.escalations` — count of dynamic rate decisions (attributes: `class`, `source_kind`, `reason`)
 
 ### Throttling rate based on custom logic using `window_configurator`
 

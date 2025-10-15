@@ -152,6 +152,13 @@ type RateLimitSettings struct {
 	// Defaults to 1s
 	ThrottleInterval time.Duration `mapstructure:"throttle_interval"`
 
+	// RetryDelay holds the time delay to return to the client through RPC
+	// errdetails.RetryInfo. See more details of this in the documentation.
+	// https://opentelemetry.io/docs/specs/otlp/#otlpgrpc-throttling.
+	//
+	// Defaults to 1s
+	RetryDelay time.Duration `mapstructure:"retry_delay"`
+
 	disableDynamic bool `mapstructure:"-"`
 }
 
@@ -215,6 +222,9 @@ const (
 	// DefaultThrottleInterval is the default value for the
 	// throttle interval.
 	DefaultThrottleInterval time.Duration = 1 * time.Second
+
+	// DefaultRetryDelay is the default value for the retry delay.
+	DefaultRetryDelay time.Duration = 1 * time.Second
 )
 
 // ThrottleBehavior identifies the behavior when rate limit is exceeded.
@@ -249,6 +259,7 @@ func createDefaultConfig() component.Config {
 			Strategy:         StrategyRateLimitRequests,
 			ThrottleBehavior: ThrottleBehaviorError,
 			ThrottleInterval: DefaultThrottleInterval,
+			RetryDelay:       DefaultRetryDelay,
 		},
 		DynamicRateLimiting: DynamicRateLimiting{
 			DefaultWindowMultiplier: 1.3,
