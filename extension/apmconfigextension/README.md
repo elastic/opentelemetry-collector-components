@@ -51,7 +51,7 @@ There are more configuration settings available to configure the Elasticsearch c
 
 ### Configure the Elasticsearch client
 
-The apmconfig extension retrieves remote configuration data from an Elasticsearch cluster. The Elasticsearch client for accessing the Elasticsearch cluster is configured under the `source::elasticsearch` section in the snippet above. The snippet shows a basic configuration.
+The `apmconfig` extension retrieves remote configuration data from an Elasticsearch cluster. The Elasticsearch client for accessing the Elasticsearch cluster is configured under the `source::elasticsearch` section in the previous snippet. The snippet shows a basic configuration.
 
 All available Elasticsearch client configuration options can be found [here](https://github.com/elastic/opentelemetry-lib/blob/v0.18.0/config/configelasticsearch/configclient.go#L69). The configuration embeds the [configauth authenticator](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/configauth/README.md), allowing the use of standard authentication extensions such as [bearertokenauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/bearertokenauthextension) and [basicauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.125.0/extension/basicauthextension).
 
