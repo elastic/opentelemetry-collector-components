@@ -37,7 +37,13 @@ extensions:
           endpoint: ":4320"
 ```
 
-The snippet above configures the `bearertokenauth` authenticator as client authenticator to be used with the Elasticsearch endpoint. An Elasticsearch API key is used as secret token. The `apmconfig` section defines the Elasticsearch `endpoint` for reading the EDOT SDK configuration and the `authenticator` that should be used with the endpoint. The `opamp` section configures the OpAMP endpoint to provide an HTTP endpoint on port 4320. The EDOT SDKs are connecting to this endpoint to fetch configuration messages. Authentication between the OpAMP endpoint and the EDOT SDKs is not configured in the snippet. More information on securing the communication between the apmconfig extension and the EDOT SDKs are given in the section [Secure the OpAMP endpoint](#secure-the-opamp-endpoint).
+The previous snippet configures the `bearertokenauth` authenticator as client authenticator to be used with the Elasticsearch endpoint. 
+
+- An Elasticsearch API key is used as secret token. 
+- The `apmconfig` section defines the Elasticsearch `endpoint` for reading the EDOT SDK configuration and the `authenticator` that should be used with the endpoint.
+- The `opamp` section configures the OpAMP endpoint to provide an HTTP endpoint on port 4320. The EDOT SDKs are connecting to this endpoint to fetch configuration messages. 
+
+Authentication between the OpAMP endpoint and the EDOT SDKs is not configured in the snippet. More information on securing the communication between the apmconfig extension and the EDOT SDKs are given in [Secure the OpAMP endpoint](#secure-the-opamp-endpoint).
 
 ## Advanced configuration
 
