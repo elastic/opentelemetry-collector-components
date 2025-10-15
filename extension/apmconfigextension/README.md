@@ -1,9 +1,9 @@
 # Elastic APM Central configuration extension
 
-Central configuration was originally built for Elastic's APM agents. The Elastic APM central configuration extension brings the central configuration capability to Elastic's Distribution of OpenTelemtry (EDOT) SDKs.
+Central configuration was originally built for Elastic's APM agents. The Elastic APM central configuration extension brings the central configuration capability to Elastic's Distribution of OpenTelemetry (EDOT) SDKs.
 
 This extension provides a mechanism based on OpenTelemetry's [Open Agent Management Protocol](https://opentelemetry.io/docs/specs/opamp/) (OpAMP) to retrieve the remote configuration set via the [APM Central
-Configuration](https://www.elastic.co/guide/en/observability/current/apm-agent-configuration.html) UI in Kibana. The extension starts an OpAMP server provividing an OpAMP endpoint. OpAMP clients (EDOT SDKs) connect to the OpAMP endpoint to retrieve the configuration. 
+Configuration](https://www.elastic.co/guide/en/observability/current/apm-agent-configuration.html) UI in Kibana. The extension starts an OpAMP server providing an OpAMP endpoint. OpAMP clients (EDOT SDKs) connect to the OpAMP endpoint to retrieve the configuration. 
 
 The Elastic APM agents are identified by the [service.name](https://www.elastic.co/guide/en/ecs/1.12/ecs-service.html#field-service-name) and [service.environment](https://www.elastic.co/guide/en/ecs/1.12/ecs-service.html#field-service-environment) (optional) attributes. The equivalent OpenTelemetry Semantic Conventions resource attributes for the EDOT SDKs are:
   - [service.name](https://github.com/open-telemetry/semantic-conventions/blob/v1.32.0/docs/attributes-registry/service.md)
@@ -23,12 +23,12 @@ All that is required to enable the apmconfig extension is to include it in the e
 extensions:
   bearertokenauth:
     scheme: "APIKey"
-    token: "<YOUR_ENCODED_ELASTICSEACH_APIKEY>"
+    token: "<YOUR_ENCODED_ELASTICSEARCH_APIKEY>"
 
   apmconfig:
     source:
      elasticsearch:
-       endpoint: "<YOUR_ELASTICSEACH_ENDPOINT>"
+       endpoint: "<YOUR_ELASTICSEARCH_ENDPOINT>"
        auth:
          authenticator: bearertokenauth
     opamp:
@@ -37,7 +37,7 @@ extensions:
           endpoint: ":4320"
 ```
 
-The snippet above configures the `bearertokenauth` authenticator as client authenticator to be used with the Elasticsearch endpoint. An Elasticsearch API key is used as secret token. The `apmconfig` section defines the Elasticsearch `endpoint` for reading the EDOT SDK configuration and the `authenticator` that should be used with the endpoint. The `opamp` section configures the OpAMP endpoint to provide an HTTP endpoint on port 4320. The EDOT SDKs are connecting to this endpoint to fetch configuration messages. Authentication between the the OpAMP endpoint and the EDOT SDKs is not configured in the snippet. More information on securing the communication between the apmconfig extension and the EDOT SDKs are given in the section [Secure the OpAMP endpoint](#secure-the-opamp-endpoint).
+The snippet above configures the `bearertokenauth` authenticator as client authenticator to be used with the Elasticsearch endpoint. An Elasticsearch API key is used as secret token. The `apmconfig` section defines the Elasticsearch `endpoint` for reading the EDOT SDK configuration and the `authenticator` that should be used with the endpoint. The `opamp` section configures the OpAMP endpoint to provide an HTTP endpoint on port 4320. The EDOT SDKs are connecting to this endpoint to fetch configuration messages. Authentication between the OpAMP endpoint and the EDOT SDKs is not configured in the snippet. More information on securing the communication between the apmconfig extension and the EDOT SDKs are given in the section [Secure the OpAMP endpoint](#secure-the-opamp-endpoint).
 
 ## Advanced configuration
 
@@ -55,7 +55,7 @@ The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/
 
 #### Enable TLS and mTLS for the OpAMP endpoint
 
-You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the OpAMP server provided by the apmconfig extension. The snippet below configures TLS for the OpAMP endpoint. It uses `cert_file` and the `key_file` setting to specify the path to the server certificate file `your/path/to/server.crt` and key pass file `your/path/to/server.key`. 
+You can enable TLS or mutual TLS to encrypt data in transit between OpAMP clients and the OpAMP server provided by the apmconfig extension. The snippet below configures TLS for the OpAMP endpoint. It uses `cert_file` and the `key_file` setting to specify the path to the server certificate file `your/path/to/server.crt` and key file `your/path/to/server.key`. 
 
 Example configuration:
 
@@ -176,7 +176,7 @@ Combining the configuration examples in the advanced configuration section resul
 extensions:
   bearertokenauth:
     scheme: "APIKey"
-    token: "<YOUR_ENCODED_ELASTICSEACH_APIKEY>"
+    token: "<YOUR_ENCODED_ELASTICSEARCH_APIKEY>"
   apikeyauth:
     endpoint: "<YOUR_ELASTICSEARCH_ENDPOINT>"
     application_privileges:
@@ -187,7 +187,7 @@ extensions:
           - "-"
   source:
      elasticsearch:
-       endpoint: "<YOUR_ELASTICSEACH_ENDPOINT>"
+       endpoint: "<YOUR_ELASTICSEARCH_ENDPOINT>"
        auth:
          authenticator: bearertokenauth
   apmconfig:
@@ -206,7 +206,7 @@ The configuration snippet configures the `bearertokenauth` authenticator for the
 
 ## Technical details
 
-The following sections highlight technical details for developers of EDOT SDKs or custom OpenTelemetry SDKs. It includes key aspects of the data structure send from the OpAMP server to the OpAMP client in the `ServerToAgent` message and fields to be set in the `AgentToServer` message send from the OpAMP client to the OpAMP server.
+The following sections highlight technical details for developers of EDOT SDKs or custom OpenTelemetry SDKs. It includes key aspects of the data structure sent from the OpAMP server to the OpAMP client in the `ServerToAgent` message and fields to be set in the `AgentToServer` message sent from the OpAMP client to the OpAMP server.
 
 ### OpAMP remote configuration data structure
 
@@ -244,13 +244,13 @@ field during the first send
 [AgentToServer](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#agenttoserver-message)
 message. As the `AgentDescription` should not be sent if not changed, the
 extension will maintain an internal mapping between the `Agent.instance_uid` and
-its service identifing attributes.
+its service identifying attributes.
 
 The [ServerToAgent.ReportFullState
 flag](https://github.com/open-telemetry/opamp-spec/blob/main/specification.md#servertoagentflags)
 will be set in the following cases:
 
-- The agent did not include the `service.name` identifing attributes during the
+- The agent did not include the `service.name` identifying attributes during the
 first message.
 - The OpAMP server was not able to identify the agent (undefined
 `Agent.instance_uid`).
