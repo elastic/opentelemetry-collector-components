@@ -107,7 +107,7 @@ Authorization: ApiKey <base64(id:api_key)>
 
 An API key with the minimum required application permissions (as verified with the configuration above) can be created via Kibana by navigating to: `Observability → Applications → Settings → Agent Keys`, or by using the Elasticsearch Security API:
 
-```json
+```bash
 POST /_security/api_key
 {
   "name": "apmconfig-opamp-test-sdk",
@@ -138,7 +138,7 @@ POST /_security/api_key
 
 The following `curl` command sends the request to the `_security/api_key` API. Replace `<your-elasticsearch-endpoint>` with the Elasticsearch endpoint and `<base64-encoded-api-key>` with an existing API key.
 
-```json
+```bash
 curl -X POST "https://<your-elasticsearch-endpoint>:9200/_security/api_key" \
 -H "Content-Type: application/json" \
 -H "Authorization: ApiKey <base64-encoded-api-key>" \
