@@ -22,6 +22,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
@@ -135,6 +136,8 @@ func TestConsume_Logs(t *testing.T) {
 			Rate:             1,
 			Burst:            1,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -188,6 +191,8 @@ func TestConsume_Metrics(t *testing.T) {
 			Rate:             1,
 			Burst:            1,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -241,6 +246,8 @@ func TestConsume_Traces(t *testing.T) {
 			Rate:             1,
 			Burst:            1,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -294,6 +301,8 @@ func TestConsume_Profiles(t *testing.T) {
 			Rate:             1,
 			Burst:            1,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -348,6 +357,8 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 			Rate:             10,
 			Burst:            10,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -490,13 +501,16 @@ func testError(t *testing.T, err error) {
 	assert.Equal(t, codes.ResourceExhausted, st.Code())
 	assert.Equal(t, "rpc error: code = ResourceExhausted desc = too many requests", st.Err().Error())
 	details := st.Details()
-	require.Len(t, details, 1, "expected 1 errorinfo detail")
+	require.Len(t, details, 2, "expected 2 details")
 	errorInfo, ok := details[0].(*errdetails.ErrorInfo)
 	require.True(t, ok, "expected errorinfo detail")
 	assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
 	assert.Equal(t, map[string]string{
 		"component":         "ratelimitprocessor",
 		"limit":             "1",
-		"throttle_interval": "0s",
+		"throttle_interval": "1s",
 	}, errorInfo.Metadata)
+	retryInfo, ok := details[1].(*errdetails.RetryInfo)
+	require.True(t, ok, "expected retryinfo detail")
+	assert.Equal(t, "seconds:1", retryInfo.RetryDelay.String())
 }

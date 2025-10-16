@@ -55,6 +55,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitRequests,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
@@ -69,6 +70,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
@@ -83,6 +85,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitRequests,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
@@ -97,6 +100,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitRequests,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				MetadataKeys:        []string{"project_id"},
@@ -112,6 +116,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
@@ -132,6 +137,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
@@ -151,6 +157,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
@@ -170,6 +177,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
@@ -190,6 +198,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				Overrides: map[string]RateLimitOverrides{
@@ -209,6 +218,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: DynamicRateLimiting{
 					Enabled:                 true,

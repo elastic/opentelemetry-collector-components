@@ -27,6 +27,7 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"go.opentelemetry.io/collector/client"
 )
@@ -107,6 +108,8 @@ func errorWithDetails(err error, cfg RateLimitSettings) error {
 			"limit":             fmt.Sprintf("%d", cfg.Rate),
 			"throttle_interval": cfg.ThrottleInterval.String(),
 		},
+	}, &errdetails.RetryInfo{
+		RetryDelay: durationpb.New(cfg.RetryDelay),
 	}); stErr == nil {
 		return detailedSt.Err()
 	}
