@@ -37,7 +37,7 @@ receivers:
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.137.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver v0.4.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver v0.5.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.137.0
@@ -53,8 +53,8 @@ processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.6.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.9.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.9.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.10.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.10.2
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.13.0
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.137.0
