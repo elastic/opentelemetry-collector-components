@@ -22,7 +22,8 @@ import (
 )
 
 type Config struct {
-	BeatAuthconfig map[string]interface{} `mapstructure:",remain"`
+	BeatAuthConfig  map[string]interface{} `mapstructure:",remain"`
+	ContinueOnError bool                   `mapstructure:"continue_on_error"`
 }
 
 func createDefaultConfig() component.Config {

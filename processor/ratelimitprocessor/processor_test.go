@@ -22,10 +22,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/telemetry"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -132,6 +136,8 @@ func TestConsume_Logs(t *testing.T) {
 			Rate:             1,
 			Burst:            1,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -171,7 +177,7 @@ func TestConsume_Logs(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeLogs(clientContext, logs)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	testError(t, err)
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
@@ -185,6 +191,8 @@ func TestConsume_Metrics(t *testing.T) {
 			Rate:             1,
 			Burst:            1,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -224,7 +232,7 @@ func TestConsume_Metrics(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	testError(t, err)
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
@@ -238,6 +246,8 @@ func TestConsume_Traces(t *testing.T) {
 			Rate:             1,
 			Burst:            1,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -277,7 +287,7 @@ func TestConsume_Traces(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeTraces(clientContext, traces)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	testError(t, err)
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
@@ -291,6 +301,8 @@ func TestConsume_Profiles(t *testing.T) {
 			Rate:             1,
 			Burst:            1,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -331,7 +343,7 @@ func TestConsume_Profiles(t *testing.T) {
 	consumed = false
 	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.False(t, consumed)
-	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	testError(t, err)
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
@@ -345,6 +357,8 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 			Rate:             10,
 			Burst:            10,
 			ThrottleBehavior: ThrottleBehaviorError,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
 		},
 	})
 	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
@@ -385,7 +399,7 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 	}
 
 	metrics := pmetric.NewMetrics()
-	for i := 0; i < numWorkers; i++ {
+	for range numWorkers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -466,7 +480,7 @@ func testRatelimitLogMetadata(t *testing.T, logEntries []observer.LoggedEntry) {
 	logEntry := logEntries[0]
 	assert.Equal(t, zapcore.ErrorLevel, logEntry.Level)
 
-	fields := make(map[string]interface{})
+	fields := make(map[string]any)
 	for _, field := range logEntry.Context {
 		switch field.Type {
 		case zapcore.StringType:
@@ -478,4 +492,25 @@ func testRatelimitLogMetadata(t *testing.T, logEntries []observer.LoggedEntry) {
 
 	assert.Equal(t, "TestProjectID", fields["x-tenant-id"])
 	assert.Equal(t, int64(1), fields["hits"])
+}
+
+func testError(t *testing.T, err error) {
+	require.Error(t, err)
+	st, ok := status.FromError(err)
+	require.True(t, ok, "expected gRPC status error")
+	assert.Equal(t, codes.ResourceExhausted, st.Code())
+	assert.Equal(t, "rpc error: code = ResourceExhausted desc = too many requests", st.Err().Error())
+	details := st.Details()
+	require.Len(t, details, 2, "expected 2 details")
+	errorInfo, ok := details[0].(*errdetails.ErrorInfo)
+	require.True(t, ok, "expected errorinfo detail")
+	assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
+	assert.Equal(t, map[string]string{
+		"component":         "ratelimitprocessor",
+		"limit":             "1",
+		"throttle_interval": "1s",
+	}, errorInfo.Metadata)
+	retryInfo, ok := details[1].(*errdetails.RetryInfo)
+	require.True(t, ok, "expected retryinfo detail")
+	assert.Equal(t, "seconds:1", retryInfo.RetryDelay.String())
 }

@@ -25,8 +25,6 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
 	"golang.org/x/time/rate"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 var _ RateLimiter = (*localRateLimiter)(nil)
@@ -56,19 +54,20 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	// Each (shared) processor gets its own rate limiter,
 	// so it's enough to use client metadata-based unique key.
 	key := getUniqueKey(ctx, r.cfg.MetadataKeys)
-	cfg := resolveRateLimitSettings(r.cfg, key)
+	// local rate limiter ignores classes (no resolver), so pass empty class.
+	cfg, _, _ := resolveRateLimit(r.cfg, key, "")
 
 	v, _ := r.limiters.LoadOrStore(key, rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst))
 	limiter := v.(*rate.Limiter)
 	switch cfg.ThrottleBehavior {
 	case ThrottleBehaviorError:
 		if ok := limiter.AllowN(time.Now(), hits); !ok {
-			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
+			return errorWithDetails(errTooManyRequests, cfg)
 		}
 	case ThrottleBehaviorDelay:
 		lr := limiter.ReserveN(time.Now(), hits)
 		if !lr.OK() {
-			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
+			return errorWithDetails(errTooManyRequests, cfg)
 		}
 		timer := time.NewTimer(lr.Delay())
 		defer timer.Stop()

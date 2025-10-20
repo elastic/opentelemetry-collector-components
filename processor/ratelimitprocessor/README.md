@@ -15,9 +15,13 @@ a in-memory rate limiter, or makes use of a [gubernator](https://github.com/gube
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | Yes      |            |
 | `throttle_behavior` | Processor behavior for when the rate limit is exceeded. Options are `error`, return an error immediately on throttle and does not send the event, and `delay`, delay the sending until it is no longer throttled. | Yes      | `error`    |
 | `throttle_interval` | Time interval for throttling. It has effects only when `type` is `gubernator`.                                                                                                                                    | No       | `1s`       |
+| `retry_delay`       | Suggested client retry delay included via gRPC `RetryInfo` when throttled.                                                                                                                                       | No       | `1s`       |
 | `type`              | Type of rate limiter. Options are `local` or `gubernator`.                                                                                                                                                        | No       | `local`    |
 | `overrides`         | Allows customizing rate limiting parameters for specific metadata key-value pairs. Use this to apply different rate limits to different tenants, projects, or other entities identified by metadata. Each override is keyed by a metadata value and can specify custom `rate`, `burst`, and `throttle_interval` settings that take precedence over the global configuration for matching requests. | No       |            |
 | `dynamic_limits`    | Holds the dynamic rate limiting configuration. This is only applicable when the rate limiter type is `gubernator`.                                                                                                   | No       |            |
+| `classes`           | Named rate limit class definitions for class-based dynamic rate limiting. Only applicable when the rate limiter type is `gubernator`.                                                                              | No       |            |
+| `default_class`     | Default class name to use when resolver returns unknown/empty class. Must exist in classes when set. Only applicable when the rate limiter type is `gubernator`.                                                 | No       |            |
+| `class_resolver`    | Extension ID used to resolve a class name for a given unique key. Only applicable when the rate limiter type is `gubernator`.                                                                                    | No       |            |
 
 ### Overrides
 
@@ -28,15 +32,16 @@ You can override one or more of the following fields:
 | `rate`              | Bucket refill rate, in tokens per second.                                                                                                                                                                         | No       |            |
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | No       |            |
 | `throttle_interval` | Time interval for throttling. It has effect only when `type` is `gubernator`.                                                                                                                                     | No       |            |
-| `static_only`       | Disables dynamic rate limiting for the override.                                                                                                                                                                  | No       | `false`    |
+| `disable_dynamic`       | Disables dynamic rate limiting for the override.                                                                                                                                                                  | No       | `false`    |
 
 ### Dynamic Rate Limiting
 
 | Field                  | Description                                                                                                                                                                                                       | Required | Default    |
 |------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|
 | `enabled`              | Enables the dynamic rate limiting feature.                                                                                                                                                                        | No       | `false`    |
-| `window_multiplier`    | The factor by which the previous window rate is multiplied to get the dynamic limit.                                                                                                                             | No       | `1.3`      |
 | `window_duration`      | The time window duration for calculating traffic rates.                                                                                                                                                           | No       | `2m`       |
+| `default_window_multiplier` | The default factor by which the previous window rate is multiplied to get the dynamic limit. Can be overridden by providing a `window_configurator` extension.                                               | No       | `1.3`      |
+| `window_configurator`  | An optional extension to calculate window multiplier dynamically based on unique keys.                                                                                                                            | No       |            |
 
 ### Dynamic Rate Limiting Deep Dive
 
@@ -57,7 +62,14 @@ Where:
 
 * `previous_rate`: The rate of traffic in the previous window (normalized per second).
 * `static_rate`: The configured `rate` in the main configuration.
-* `window_multiplier`: A factor applied to the previous window rate to determine the dynamic limit.
+* `window_multiplier`: A factor applied to the previous window rate to determine the dynamic limit. It is derived based on the following formula:
+
+  ```text
+  window_multiplier = default_window_multiplier
+  if window_configurator is defined {
+    window_multiplier = window_configurator::Multiplier(...)
+  }
+  ```
 
 **Important Notes:**
 
@@ -70,7 +82,7 @@ Let's walk through a few examples to illustrate the behavior of the dynamic rate
 Assume the following configuration:
 
 * `window_duration`: 2m
-* `window_multiplier`: 1.5
+* `window_multiplier`: 1.5 (with no `window_configurator` provided)
 * `rate`: 1000 requests/second (this is our `static_rate`)
 
 #### Scenario 1: Initial Traffic
@@ -190,4 +202,126 @@ processors:
       enabled: true
       window_multiplier: 1.5
       window_duration: 1m
+```
+
+### Class-Based Dynamic Rate Limiting
+
+When using the Gubernator rate limiter type, you can define named rate limit classes with different base rates and escalation policies. A class resolver extension maps unique keys to class names, enabling different rate limits per customer tier, API version, or other business logic.
+
+Example with class-based configuration:
+
+```yaml
+extension:
+  configmapclassresolverextension:
+    name: resolutions
+    namespace: default
+
+processors:
+  ratelimiter:
+    metadata_keys:
+    - x-customer-id
+    rate: 100           # fallback rate
+    burst: 200          # fallback burst
+    type: gubernator
+    strategy: requests
+
+    # define the class resolver ID.
+    class_resolver: configmapclassresolver
+    # Define named classes
+    classes:
+      trial:
+        rate: 50        # 50 requests/second for trial users
+        burst: 100      # burst capacity of 100
+        disable_dynamic: true  # no dynamic escalation
+
+      paying:
+        rate: 500       # 500 requests/second for paying customers
+        burst: 1000     # burst capacity of 1000
+        disable_dynamic: false
+
+      enterprise:
+        rate: 2000      # 2000 requests/second for enterprise
+        burst: 4000     # burst capacity of 4000
+        disable_dynamic: false   # allow gradual increase.
+
+    # Default class when resolver returns unknown class
+    default_class: "trial"
+
+    # Enable dynamic rate limiting
+    dynamic_limits:
+      enabled: true
+      window_multiplier: 1.3
+      window_duration: 60s
+
+    # Per-key overrides (highest precedence)
+    overrides:
+      "customer-123":
+        rate: 5000      # special override
+        burst: 10000
+        disable_dynamic: true
+```
+
+Class Resolution Precedence:
+
+1. **Per-key override** (highest) - From `overrides` section
+2. **Resolved class** - From class resolver extension
+3. **Default class** - From `default_class` setting
+4. **Top-level fallback** (lowest) - From top-level `rate`/`burst`
+
+### Class resolver
+
+The `class_resolver` option tells the processor which OpenTelemetry Collector extension should be used to map a unique key (derived from the configured `metadata_keys`) to a class name. The value is the extension ID (the extension's configured name), for example:
+
+```yaml
+processors:
+  ratelimiter:
+    # This is an example class_resolver. It doesn't exist.
+    class_resolver: configmapclassresolverextension
+```
+
+Behavior and notes:
+
+* The resolver is optional. If no `class_resolver` is configured the processor skips class resolution and falls back to the top-level `rate`/`burst` values.
+
+* The processor initializes the resolver during Start. If a `class_resolver` is configured but the extension is not found or fails to start, the processor fails to start with an error.
+
+* When the resolver returns an unknown or empty class name, the processor treats it as "unknown" and uses the configured `default_class` (if set) or falls back to the top-level rate/burst.
+
+Caching and performance:
+
+* Implementations of resolver extensions should be mindful of latency; the processor assumes the resolver is reasonably fast. If the resolver returns an error at runtime the processor logs a warning and falls back to default/class precedence for that request.
+
+* Ideally, implementations of the `class_resolver` implement their own caching to guarantee performance if they require on an external source.
+
+Telemetry and metrics:
+
+* The processor emits attributes on relevant metrics to aid debugging and monitoring:
+
+  * `rate_source`: one of `static`, `dynamic`, `fallback`, or `degraded` (indicates whether dynamic calculation was used or not)
+  * `class`: resolved class name when applicable
+  * `source_kind`: which precedence path was used (`override`, `class`, or `fallback`)
+  * `reason`: for dynamic escalations, one of `gubernator_error`, `success`, or `skipped`
+
+* Metrics exposed by the processor include:
+
+  * `otelcol_ratelimit.requests` — total number of rate limiting requests
+  * `otelcol_ratelimit.request_duration` — histogram of request processing duration (seconds)
+  * `otelcol_ratelimit.request_size` — histogram of bytes per request (only when strategy is `bytes`)
+  * `otelcol_ratelimit.concurrent_requests` — current number of in-flight requests
+  * `otelcol_ratelimit.resolver.failures` — total number of class resolver failures
+  * `otelcol_ratelimit.dynamic.escalations` — count of dynamic rate decisions (attributes: `class`, `source_kind`, `reason`)
+
+### Throttling rate based on custom logic using `window_configurator`
+
+The `window_configurator` option configures a custom OpenTelemetry Collector extension to dynamically choose a window multiplier for the current period. The value is the extension ID (the extension's configured name). The extension MUST implement the `WindowConfigurator` interface. The multiplier can be used to scale up the rate limit from previous window (by returning a multiplier greater than `1`) or scale down the rate limit from previous window (by returning a multiplier less than `1`, greater than `0`). If the extension returns a negative value then the `default_window_multiplier` will be used. Note that the dynamic limit MUST be at least the configured `static_rate`, ensuring a minimum level of throughput. An example configuration including the window configurator:
+
+```yaml
+processors:
+  ratelimiter:
+    dynamic_limits:
+      enabled: true
+      window_duration: 2m
+      default_window_multiplier: 1.5
+      # This is an example window configurator. It doesn't exist.
+      window_configurator: kafkalagwindowconfiguratorextension
 ```

@@ -47,6 +47,9 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: ""
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "5409298"
             links:
               - spanId: 1123456a89012345
@@ -108,13 +111,15 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "0"
             endTimeUnixNano: "32592981"
             links:
               - spanId: 1123456a89012345
                 traceId: 45234567890123456789abcdefabcdef
               - spanId: 1123456a89012346
                 traceId: 45234567890123456789abcdefabcdef
-            parentSpanId: ""
             spanId: abcdef1478523690
             status: {}
             traceId: 01234567890123456789abcdefabcdef

@@ -73,6 +73,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -85,6 +88,48 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -119,12 +164,12 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "43"
             endTimeUnixNano: "1496170407186592981"
-            parentSpanId: ""
-            spanId: ""
             startTimeUnixNano: "1496170407154000000"
             status: {}
-            traceId: ""
   - resource:
       attributes:
         - key: service.name
@@ -199,6 +244,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -211,6 +259,48 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
     scopeSpans:
       - scope: {}
         spans:
@@ -242,11 +332,11 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query.custom
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822422581000"
             name: GET /api/types
-            parentSpanId: ""
-            spanId: 01af25874dec69dd
             startTimeUnixNano: "1532976822281000000"
             status:
               code: 1
-            traceId: ""

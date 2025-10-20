@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	semconv26 "go.opentelemetry.io/collector/semconv/v1.26.0"
-	semconv "go.opentelemetry.io/collector/semconv/v1.27.0"
+	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
 func TranslateResourceMetadata(resource pcommon.Resource) {
@@ -30,8 +30,18 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if !isSupportedAttribute(k) {
-			attributes.PutStr("labels."+replaceDots(k), v.AsString())
-			attributes.Remove(k)
+			// The elasticapmintake receiver moves labels and numeric_labels into attributes and
+			// already prefixes those with "labels." and "numeric_labels." respectively and also does de-dotting.
+			// So for those, we don't want to double prefix - we just leave them as is.
+			if strings.HasPrefix(k, "labels.") {
+				attributes.PutStr(k, v.AsString())
+			} else if strings.HasPrefix(k, "numeric_labels.") {
+				attributes.PutDouble(k, v.Double())
+			} else {
+				// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
+				attributes.PutStr("labels."+replaceDots(k), v.AsString())
+				attributes.Remove(k)
+			}
 		}
 		return true
 	})
@@ -47,75 +57,75 @@ func replaceDots(key string) string {
 func isSupportedAttribute(attr string) bool {
 	switch attr {
 	// service.*
-	case semconv.AttributeServiceName,
-		semconv.AttributeServiceVersion,
-		semconv.AttributeServiceInstanceID,
-		semconv.AttributeServiceNamespace,
+	case string(semconv.ServiceNameKey),
+		string(semconv.ServiceVersionKey),
+		string(semconv.ServiceInstanceIDKey),
+		string(semconv.ServiceNamespaceKey),
 		"service.language.name",
 		"service.language.version":
 		return true
 
 	// deployment.*
-	case semconv26.AttributeDeploymentEnvironment, semconv.AttributeDeploymentEnvironmentName:
+	case string(semconv26.DeploymentEnvironmentKey), string(semconv.DeploymentEnvironmentNameKey):
 		return true
 
 	// telemetry.sdk.*
-	case semconv.AttributeTelemetrySDKName,
-		semconv.AttributeTelemetrySDKVersion,
-		semconv.AttributeTelemetrySDKLanguage:
+	case string(semconv.TelemetrySDKNameKey),
+		string(semconv.TelemetrySDKVersionKey),
+		string(semconv.TelemetrySDKLanguageKey):
 		return true
 
 	// cloud.*
-	case semconv.AttributeCloudProvider,
-		semconv.AttributeCloudAccountID,
-		semconv.AttributeCloudRegion,
-		semconv.AttributeCloudAvailabilityZone,
-		semconv.AttributeCloudPlatform:
+	case string(semconv.CloudProviderKey),
+		string(semconv.CloudAccountIDKey),
+		string(semconv.CloudRegionKey),
+		string(semconv.CloudAvailabilityZoneKey),
+		string(semconv.CloudPlatformKey):
 		return true
 
 	// container.*
-	case semconv.AttributeContainerName,
-		semconv.AttributeContainerID,
-		semconv.AttributeContainerImageName,
+	case string(semconv.ContainerNameKey),
+		string(semconv.ContainerIDKey),
+		string(semconv.ContainerImageNameKey),
 		"container.image.tag",
 		"container.runtime":
 		return true
 
 	// k8s.*
-	case semconv.AttributeK8SNamespaceName,
-		semconv.AttributeK8SNodeName,
-		semconv.AttributeK8SPodName,
-		semconv.AttributeK8SPodUID:
+	case string(semconv.K8SNamespaceNameKey),
+		string(semconv.K8SNodeNameKey),
+		string(semconv.K8SPodNameKey),
+		string(semconv.K8SPodUIDKey):
 		return true
 
 	// host.*
-	case semconv.AttributeHostName,
-		semconv.AttributeHostID,
-		semconv.AttributeHostType,
+	case string(semconv.HostNameKey),
+		string(semconv.HostIDKey),
+		string(semconv.HostTypeKey),
 		"host.arch",
-		semconv.AttributeHostIP:
+		string(semconv.HostIPKey):
 		return true
 
 	// process.*
-	case semconv.AttributeProcessPID,
-		semconv.AttributeProcessCommandLine,
-		semconv.AttributeProcessExecutablePath,
+	case string(semconv.ProcessPIDKey),
+		string(semconv.ProcessCommandLineKey),
+		string(semconv.ProcessExecutablePathKey),
 		"process.runtime.name",
 		"process.runtime.version",
-		semconv.AttributeProcessOwner:
+		string(semconv.ProcessOwnerKey):
 		return true
 
 	// os.*
-	case semconv.AttributeOSType,
-		semconv.AttributeOSDescription,
-		semconv.AttributeOSName,
-		semconv.AttributeOSVersion:
+	case string(semconv.OSTypeKey),
+		string(semconv.OSDescriptionKey),
+		string(semconv.OSNameKey),
+		string(semconv.OSVersionKey):
 		return true
 
 	// device.*
-	case semconv.AttributeDeviceID,
-		semconv.AttributeDeviceModelIdentifier,
-		semconv.AttributeDeviceModelName,
+	case string(semconv.DeviceIDKey),
+		string(semconv.DeviceModelIdentifierKey),
+		string(semconv.DeviceModelNameKey),
 		"device.manufacturer":
 		return true
 

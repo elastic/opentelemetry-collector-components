@@ -40,6 +40,12 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "5"
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -74,6 +80,16 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "43"
+              - key: transaction.profiler_stack_trace_ids
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: foo
+                      - stringValue: bar
+                      - stringValue: foo
             endTimeUnixNano: "1496170407186592981"
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e

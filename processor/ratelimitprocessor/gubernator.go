@@ -27,30 +27,66 @@ import (
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 
 	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 )
 
 var _ RateLimiter = (*gubernatorRateLimiter)(nil)
 
+// ClassResolver resolves the class for a given key. Since the resolution
+// takes place in the hot path, it MUST be fast and concurrently safe.
+// Implementations may implement caching to speed up resolution.
+type ClassResolver interface {
+	// ResolveClass resolves the class for a given key.
+	ResolveClass(ctx context.Context, key string) (string, error)
+}
+
+// WindowConfigurator allows adjusting the rates dynamically by configuring
+// the multiplier for the next calculation window.
+//
+// NOTE(lahsivjar): We may want to make the duration configurable too.
+type WindowConfigurator interface {
+	// Multiplier returns the calculated multiplier for the next window.
+	Multiplier(ctx context.Context, window time.Duration, key string) float64
+}
+
+type noopResolver struct{}
+
+func (noopResolver) ResolveClass(context.Context, string) (string, error) {
+	return "", nil
+}
+
+type defaultWindowConfigurator struct {
+	multiplier float64
+}
+
+func (d defaultWindowConfigurator) Multiplier(context.Context, time.Duration, string) float64 {
+	return d.multiplier
+}
+
 type gubernatorRateLimiter struct {
 	cfg      *Config
-	set      processor.Settings
+	logger   *zap.Logger
 	behavior gubernator.Behavior
 
 	daemonCfg  gubernator.DaemonConfig
 	daemon     *gubernator.Daemon
 	client     gubernator.V1Client
 	clientConn *grpc.ClientConn
+	// Class resolver for class-based rate limiting
+	classResolver      ClassResolver
+	windowConfigurator WindowConfigurator
+	telemetryBuilder   *metadata.TelemetryBuilder
 }
 
 func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, error) {
@@ -77,21 +113,46 @@ func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, err
 	return conf, nil
 }
 
-func newGubernatorRateLimiter(cfg *Config, set processor.Settings) (*gubernatorRateLimiter, error) {
-	daemonCfg, err := newGubernatorDaemonConfig(set.Logger)
+func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder *metadata.TelemetryBuilder) (*gubernatorRateLimiter, error) {
+	daemonCfg, err := newGubernatorDaemonConfig(logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gubernator daemon config: %w", err)
 	}
 
 	return &gubernatorRateLimiter{
-		cfg:       cfg,
-		set:       set,
-		behavior:  gubernator.Behavior_BATCHING,
-		daemonCfg: daemonCfg,
+		cfg:                cfg,
+		logger:             logger,
+		behavior:           gubernator.Behavior_BATCHING,
+		daemonCfg:          daemonCfg,
+		telemetryBuilder:   telemetryBuilder,
+		classResolver:      noopResolver{},
+		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DynamicRateLimiting.DefaultWindowMultiplier},
 	}, nil
 }
 
-func (r *gubernatorRateLimiter) Start(ctx context.Context, _ component.Host) (err error) {
+func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) (err error) {
+	if res := r.cfg.ClassResolver; res.String() != "" {
+		cr, ok := host.GetExtensions()[res]
+		if !ok {
+			return fmt.Errorf("class resolver %s not found", res)
+		}
+		if err := cr.Start(ctx, host); err != nil {
+			return fmt.Errorf("failed to start class resolver %s: %w", res, err)
+		}
+		r.classResolver = cr.(ClassResolver)
+	}
+
+	if wCon := r.cfg.DynamicRateLimiting.WindowConfigurator; wCon.String() != "" {
+		wc, ok := host.GetExtensions()[wCon]
+		if !ok {
+			return fmt.Errorf("window configurator %s not found", wCon)
+		}
+		if err := wc.Start(ctx, host); err != nil {
+			return fmt.Errorf("failed to start window configurator %s: %w", wCon, err)
+		}
+		r.windowConfigurator = wc.(WindowConfigurator)
+	}
+
 	r.daemon, err = gubernator.SpawnDaemon(ctx, r.daemonCfg)
 	if err != nil {
 		return fmt.Errorf("failed to spawn gubernator daemon: %w", err)
@@ -108,7 +169,7 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, _ component.Host) (er
 	return nil
 }
 
-func (r *gubernatorRateLimiter) Shutdown(context.Context) error {
+func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 	if r.daemon != nil {
 		r.daemon.Close()
 		r.daemon = nil
@@ -118,20 +179,70 @@ func (r *gubernatorRateLimiter) Shutdown(context.Context) error {
 		r.clientConn = nil
 	}
 	r.client = nil
+	if c, ok := r.classResolver.(component.Component); ok {
+		if err := c.Shutdown(ctx); err != nil {
+			return fmt.Errorf("failed to shutdown class resolver: %w", err)
+		}
+	}
+	if w, ok := r.windowConfigurator.(component.Component); ok {
+		if err := w.Shutdown(ctx); err != nil {
+			return fmt.Errorf("failed to shutdown window configurator: %w", err)
+		}
+	}
 	return nil
 }
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
-	cfg := resolveRateLimitSettings(r.cfg, uniqueKey)
-	now := time.Now()
-
+	// First resolve the class if classes are set.
+	class, err := r.classResolver.ResolveClass(ctx, uniqueKey)
+	if err != nil {
+		r.telemetryBuilder.RatelimitResolverFailures.Add(ctx, 1,
+			metric.WithAttributeSet(
+				attribute.NewSet(attribute.String("unique_key", uniqueKey)),
+			),
+		)
+		r.logger.Warn("class resolver failed, falling back",
+			zap.Error(err),
+			zap.String("unique_key", uniqueKey),
+			zap.String("default_class", r.cfg.DefaultClass),
+		)
+	}
+	// Resolve rate limit precedence:
+	// override -> class -> default_class -> fallback.
+	cfg, sourceKind, className := resolveRateLimit(r.cfg, uniqueKey, class)
 	rate, burst := cfg.Rate, cfg.Burst
+	now := time.Now()
+	// If dynamic rate limiting is enabled and not disabled for this request,
+	// calculate the dynamic rate and burst.
 	if r.cfg.DynamicRateLimiting.Enabled && !cfg.disableDynamic {
+		attrs := make([]attribute.KeyValue, 0, 3)
+		attrs = append(attrs,
+			attribute.String("source_kind", string(sourceKind)),
+			attribute.String("class", className),
+		)
 		rate, burst = r.calculateRateAndBurst(ctx, cfg, uniqueKey, hits, now)
-		if rate < 0 {
-			return fmt.Errorf("error calculating dynamic rate limit for unique key %s", uniqueKey)
+		if rate < 0 { // Degraded mode - Gubernator unreachable. Fallback to static rate.
+			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
+				metric.WithAttributeSet(attribute.NewSet(append(attrs,
+					attribute.String("reason", "gubernator_error"),
+				)...)),
+			)
+			rate, burst = cfg.Rate, cfg.Burst
+		} else if rate > cfg.Rate { // Dynamic escalation occurred
+			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
+				metric.WithAttributeSet(attribute.NewSet(append(attrs,
+					attribute.String("reason", "success"),
+				)...)),
+			)
+		} else { // Dynamic escalation was skipped (dynamic <= static)
+			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
+				metric.WithAttributeSet(attribute.NewSet(append(attrs,
+					attribute.String("reason", "skipped"),
+				)...)),
+			)
 		}
+
 	}
 	// Execute rate actual limit check / recording.
 	return r.executeRateLimit(ctx, cfg, uniqueKey, hits, rate, burst, now)
@@ -140,9 +251,10 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 func (r *gubernatorRateLimiter) calculateRateAndBurst(ctx context.Context,
 	cfg RateLimitSettings, uniqueKey string, hits int, now time.Time,
 ) (int, int) {
+	// limit is computed in requests-per-second units.
 	limit, err := r.getDynamicLimit(ctx, cfg, uniqueKey, hits, now)
 	if err != nil {
-		r.set.Logger.Error("failed to get dynamic limit from gubernator",
+		r.logger.Error("failed to get dynamic limit from gubernator",
 			zap.Error(err),
 			zap.String("unique_key", uniqueKey),
 		)
@@ -198,7 +310,7 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 	}
 	resp, err := makeRateLimitRequest(now.UnixMilli())
 	if err != nil {
-		r.set.Logger.Error("error executing gubernator rate limit request",
+		r.logger.Error("error executing gubernator rate limit request",
 			zap.Error(err),
 			zap.String("name", cfg.Strategy.String()),
 			zap.String("unique_key", uniqueKey),
@@ -209,7 +321,7 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 		// Same logic as local
 		switch r.cfg.ThrottleBehavior {
 		case ThrottleBehaviorError:
-			return status.Error(codes.ResourceExhausted, errTooManyRequests.Error())
+			return errorWithDetails(errTooManyRequests, cfg)
 		case ThrottleBehaviorDelay:
 			select {
 			case <-ctx.Done():
@@ -279,20 +391,35 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	// reqs/events/bytes per Throttle interval may not be 1s.
 	staticRate := float64(cfg.Rate) / r.cfg.ThrottleInterval.Seconds()
 	drc := newDynamicRateContext(uniqueKey, now, r.cfg.DynamicRateLimiting)
-	// Get current and previous window rates
-	current, previous, err := r.peekRates(ctx, int64(hits), drc)
+	// Get current and previous window rates, the current rates are without
+	// accounting for the new hits.
+	current, previous, err := r.peekRates(ctx, drc)
 	if err != nil {
 		return -1, err
 	}
+	windowMultiplier := r.windowConfigurator.Multiplier(
+		ctx,
+		drc.WindowDuration,
+		uniqueKey,
+	)
+	if windowMultiplier < 0 {
+		windowMultiplier = drc.DefaultWindowMultiplier
+	}
 	// Only record the incoming hits when the current rate is within the allowed
 	// range, otherwise, do not record the hits and return the calculated rate.
-	// The idea is to continuously increase the rate limit. MaxAllowed sets a
-	// ceiling on it with the window duration.
+	// MaxAllowed sets a ceiling on the rate with the window duration.
+	//
 	// NOTE(marclop) We may want to add a follow-up static ceiling to avoid
 	// unbounded growth.
-	maxAllowed := math.Max(staticRate, previous*drc.WindowMultiplier)
+	maxAllowed := math.Max(staticRate, previous*windowMultiplier)
+	// Normalise the current rate assuming no more events will occur during the
+	// rest of the window. This will ensure that we record hits based on the
+	// currently observed hits and NOT based on extrapolated data.
+	current = current * drc.elapsed.Seconds() / drc.WindowDuration.Seconds()
 	if current <= maxAllowed {
-		if err := r.recordHits(ctx, drc, hits); err != nil {
+		// Deduce how many hits to record to reach to the max allowed number
+		remainingHits := int((maxAllowed - current) * drc.WindowDuration.Seconds())
+		if err := r.recordHits(ctx, drc, min(hits, remainingHits)); err != nil {
 			return -1, err
 		}
 	}
@@ -320,9 +447,10 @@ func (r *gubernatorRateLimiter) newDynamicRequest(
 	}
 }
 
-// peekRates retrieves the current (including incoming hits) and previous rates
-// from Gubernator. All Rates are normalized per second.
-func (r *gubernatorRateLimiter) peekRates(ctx context.Context, hits int64,
+// peekRates retrieves the current and previous rates from Gubernator. All
+// Rates are normalized per second.
+func (r *gubernatorRateLimiter) peekRates(
+	ctx context.Context,
 	drc dynamicRateContext,
 ) (float64, float64, error) {
 	// ----------------------- PEEK PHASE -----------------------
@@ -340,9 +468,8 @@ func (r *gubernatorRateLimiter) peekRates(ctx context.Context, hits int64,
 		return -1, -1, err
 	}
 	// Normalize the current rate based on the elapsed time (since the window
-	// hasn't fully elapsed). Then add the current hits to it.
+	// hasn't fully elapsed).
 	currentRate := rateFromResponse(peekResponses[0], drc.elapsed)
-	currentRate += float64(hits) / drc.elapsed.Seconds()
 	// Normalize the PREVIOUS rate based on the window duration.
 	previousRate := rateFromResponse(peekResponses[1], drc.WindowDuration)
 	return currentRate, previousRate, nil
