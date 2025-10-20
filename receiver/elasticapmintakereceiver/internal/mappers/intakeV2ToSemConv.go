@@ -29,7 +29,7 @@ import (
 	"github.com/elastic/apm-data/model/modelpb"
 )
 
-// Translates resource attributes from the Elastic APM model to SemConv resource attributes
+// TranslateToOtelResourceAttributes translates resource attributes from the Elastic APM model to SemConv resource attributes
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Service != nil {
 		attributes.PutStr(string(semconv.ServiceNameKey), event.Service.Name)
@@ -64,6 +64,16 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 			}
 		}
 	}
+
+	// UserAgent fields are only expected to be available for error and transaction events.
+	// Translating here since fields should be present at the resource level.
+	// https://opentelemetry.io/docs/specs/semconv/registry/attributes/user-agent
+	if event.UserAgent != nil {
+		if event.UserAgent.Original != "" {
+			attributes.PutStr(string(semconv.UserAgentOriginalKey), event.UserAgent.Original)
+		}
+	}
+
 	translateCloudAttributes(event, attributes)
 	translateContainerAndKubernetesAttributes(event, attributes)
 	translateProcessUserNetworkAttributes(event, attributes)
@@ -88,12 +98,9 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 	setHttpAttributes(event, attributes)
 	setUrlAttributes(event, attributes)
 
-	if event.Span.Message != nil {
+	if event.Transaction.Message != nil {
 		attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Transaction.Message.QueueName)
 		attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Transaction.Message.RoutingKey)
-
-		// This may need to be unified, see AttributeMessagingSystem for spans
-		attributes.PutStr(string(semconv.MessagingSystemKey), event.Service.Framework.Name)
 	}
 }
 
@@ -125,6 +132,23 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 			attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Span.Message.RoutingKey)
 		}
 	}
+
+	if event.Destination != nil {
+		if event.Destination.Address != "" {
+			attributes.PutStr(string(semconv.DestinationAddressKey), event.Destination.Address)
+		}
+		if event.Destination.Port != 0 {
+			attributes.PutInt(string(semconv.DestinationPortKey), int64(event.Destination.Port))
+		}
+	}
+}
+
+// TranslateIntakeV2LogToOTelAttributes translates log/error attributes from the Elastic APM model to SemConv attributes
+// Note: error events contain additional context that requires otel semconv attributes, logs are not expected to have
+// this additional context. Both events are treated the same here for consistency.
+func TranslateIntakeV2LogToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	setHTTP(event.Http, attributes)
+	setUrlAttributes(event, attributes)
 }
 
 func translateCloudAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
@@ -244,8 +268,27 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 		}
 	}
 
-	if event.Client != nil && event.Client.Ip != nil && event.Client.Ip.String() != "" {
-		attributes.PutStr(string(semconv.ClientAddressKey), event.Client.Ip.String())
+	if event.Client != nil {
+		translateIPAddress(string(semconv.ClientAddressKey), event.Client.Ip, attributes)
+		if event.Client.Port != 0 {
+			attributes.PutInt(string(semconv.ClientPortKey), int64(event.Client.Port))
+		}
+	}
+
+	if event.Source != nil {
+		translateIPAddress(string(semconv.SourceAddressKey), event.Source.Ip, attributes)
+		if event.Source.Port != 0 {
+			attributes.PutInt(string(semconv.SourcePortKey), int64(event.Source.Port))
+		}
+	}
+}
+
+func translateIPAddress(key string, ip *modelpb.IP, attributes pcommon.Map) {
+	if ip != nil {
+		ipAddr := modelpb.IP2Addr(ip)
+		if ipAddr.String() != "" {
+			attributes.PutStr(key, ipAddr.String())
+		}
 	}
 }
 
@@ -273,12 +316,14 @@ func setHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Http != nil {
 		if event.Http.Request != nil {
 			attributes.PutStr(string(semconv.HTTPRequestMethodKey), event.Http.Request.Method)
-			if event.Url != nil && event.Url.Full != "" {
-				attributes.PutStr(string(semconv.URLFullKey), event.Url.Full)
-			}
 		}
 		if event.Http.Response != nil {
-			attributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), int64(event.Http.Response.StatusCode))
+			if event.Http.Response.StatusCode != 0 {
+				attributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), int64(event.Http.Response.StatusCode))
+			}
+			if event.Http.Response.EncodedBodySize != nil {
+				attributes.PutInt(string(semconv.HTTPResponseSizeKey), int64(*event.Http.Response.EncodedBodySize))
+			}
 		}
 	}
 }

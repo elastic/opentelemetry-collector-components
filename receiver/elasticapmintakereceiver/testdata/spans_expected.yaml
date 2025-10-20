@@ -85,6 +85,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -109,6 +121,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -240,6 +255,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -279,6 +306,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -409,6 +439,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -433,6 +475,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: value1
@@ -572,6 +617,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -596,6 +653,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -729,6 +789,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -762,6 +834,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -814,6 +892,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.size
+                value:
+                  intValue: "356"
               - key: url.original
                 value:
                   stringValue: http://localhost:8000
@@ -826,12 +907,15 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
-              - key: http.response.encoded_body_size
-                value:
-                  intValue: "356"
               - key: http.response.transfer_size
                 value:
                   intValue: "30012"
@@ -864,6 +948,9 @@ resourceSpans:
                                 stringValue: Core.js
                             - key: library_frame
                               value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
                                 boolValue: false
                       - kvlistValue:
                           values:
@@ -879,7 +966,7 @@ resourceSpans:
                                   values:
                                     - stringValue: '    ins.currentTransaction = prev'
                                     - stringValue: '}'
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -930,6 +1017,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -1025,6 +1115,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -1058,6 +1160,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1110,6 +1218,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.size
+                value:
+                  intValue: "356"
               - key: url.original
                 value:
                   stringValue: http://localhost:8000
@@ -1122,12 +1233,15 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
-              - key: http.response.encoded_body_size
-                value:
-                  intValue: "356"
               - key: http.response.transfer_size
                 value:
                   intValue: "30012"
@@ -1158,7 +1272,7 @@ resourceSpans:
                             - key: classname
                               value:
                                 stringValue: Core.js
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -1175,7 +1289,7 @@ resourceSpans:
                                   values:
                                     - stringValue: '    ins.currentTransaction = prev'
                                     - stringValue: '}'
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -1226,6 +1340,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -1320,6 +1437,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -1350,6 +1479,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1402,6 +1537,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.size
+                value:
+                  intValue: "356"
               - key: url.original
                 value:
                   stringValue: http://localhost:8000
@@ -1414,15 +1552,18 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
               - key: http.request.id
                 value:
                   stringValue: some-request-id
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
-              - key: http.response.encoded_body_size
-                value:
-                  intValue: "356"
               - key: http.response.transfer_size
                 value:
                   intValue: "30012"
@@ -1453,7 +1594,7 @@ resourceSpans:
                             - key: classname
                               value:
                                 stringValue: Core.js
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -1470,7 +1611,7 @@ resourceSpans:
                                   values:
                                     - stringValue: '    ins.currentTransaction = prev'
                                     - stringValue: '}'
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
                       - kvlistValue:
@@ -1521,6 +1662,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -1614,6 +1758,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -1641,6 +1797,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1684,6 +1846,12 @@ resourceSpans:
               - key: span.destination.service.resource
                 value:
                   stringValue: localhost:8080
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "8080"
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -1779,6 +1947,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -1803,6 +1983,12 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1849,6 +2035,9 @@ resourceSpans:
               - key: messaging.rabbitmq.destination.routing_key
                 value:
                   stringValue: user-created-span
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
               - key: span.message.body
                 value:
                   stringValue: message body
@@ -1961,6 +2150,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -1985,6 +2186,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
