@@ -24,8 +24,7 @@ is automated and should not be performed manually unless there are specific reas
 2. Bump up the `module-sets.edit-base.version` in `versions.yaml` i.e. from `v0.20.0` to `v0.21.0`
    (cross check latest version used by [EDOT](https://github.com/elastic/elastic-agent/blob/main/internal/pkg/otel/README.md?plain=1#L30),
     and https://github.com/elastic/opentelemetry-collector-components/tags)
-3. Set the tag for the following steps with `export $TAG=v0.21.0`
-4. Tag the module groups with the new release version by running:
+3. Tag the module groups with the new release version by running:
 
    ⚠️ If you set your remote using `https`, you need to
       include `REMOTE=https://github.com/elastic/opentelemetry-collector-components.git` in each command. ⚠️
@@ -47,22 +46,6 @@ is automated and should not be performed manually unless there are specific reas
    ssh-add <YOUR_SSH/GPG_KEY_PATH>
    make push-tags
    ```
-5. Create a repo level tag and push it:
 
-```bash
-  git tag "elastic/opentelemetry-collector-components/"$TAG
-  REMOTE=git@github.com:elastic/opentelemetry-collector-components.git git push $REMOTE "elastic/opentelemetry-collector-components/"$TAG
-```
-
-6. Publish a new repo scope release:
-
-(you can also do it from GitHub)
-
-```bash
-  gh release create "elastic/opentelemetry-collector-components/"$TAG \
-    --title "elastic/opentelemetry-collector-components/"$TAG \
-    --generate-notes
-```
-
-7. Last step is to commit the change of `module-sets.edit-base.version` in `versions.yaml` and push it so as to store
+4. Last step is to commit the change of `module-sets.edit-base.version` in `versions.yaml` and push it so as to store
    the new latest version.
