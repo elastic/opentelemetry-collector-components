@@ -10,6 +10,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 1.0.0
+        - key: labels.my_value
+          value:
+            stringValue: foo
+        - key: numeric_labels.foo
+          value:
+            doubleValue: 42.0
     scopeSpans:
       - scope: {}
         spans:

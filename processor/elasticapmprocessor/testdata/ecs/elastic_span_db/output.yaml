@@ -10,6 +10,12 @@ resourceSpans:
         - key: labels.unsupported_key
           value:
             stringValue: foo
+        - key: labels.my_value
+          value:
+            stringValue: foo
+        - key: numeric_labels.foo
+          value:
+            doubleValue: 42.0
         - key: data_stream.type
           value:
             stringValue: traces
