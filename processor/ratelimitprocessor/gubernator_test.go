@@ -27,8 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
 	"github.com/gubernator-io/gubernator/v2"
 	"github.com/gubernator-io/gubernator/v2/cluster"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +40,9 @@ import (
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
 )
 
 func newTestGubernatorRateLimiterMetrics(t *testing.T, cfg *Config) (
@@ -49,9 +50,11 @@ func newTestGubernatorRateLimiterMetrics(t *testing.T, cfg *Config) (
 ) {
 	rl := newTestGubernatorRateLimiter(t, cfg, nil)
 	tt := componenttest.NewTelemetry()
-	tb, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
+	telSettings := tt.NewTelemetrySettings()
+	tb, err := metadata.NewTelemetryBuilder(telSettings)
 	require.NoError(t, err)
 	rl.telemetryBuilder = tb
+	rl.tracerProvider = telSettings.TracerProvider
 	t.Cleanup(func() {
 		_ = tt.Shutdown(t.Context())
 	})
@@ -918,6 +921,9 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())
+
+		spans := tt.SpanRecorder.Ended()
+		assert.Greater(t, len(spans), 0)
 	})
 
 	t.Run("dynamic_escalation_skipped_increments", func(t *testing.T) {

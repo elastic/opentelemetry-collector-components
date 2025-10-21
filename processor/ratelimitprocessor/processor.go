@@ -30,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -44,6 +45,7 @@ type rateLimiterProcessor struct {
 	rl               RateLimiter
 	metadataKeys     []string
 	telemetryBuilder *metadata.TelemetryBuilder
+	tracerProvider   trace.TracerProvider
 	logger           *zap.Logger
 	inflight         *int64
 	strategy         Strategy
@@ -77,6 +79,7 @@ func NewLogsRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
 	logger *zap.Logger,
 	telemetryBuilder *metadata.TelemetryBuilder,
+	tracerProvider trace.TracerProvider,
 	strategy Strategy,
 	next func(ctx context.Context, logs plog.Logs) error,
 	inflight *int64,
@@ -87,6 +90,7 @@ func NewLogsRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			tracerProvider:   tracerProvider,
 			logger:           logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
@@ -101,6 +105,7 @@ func NewMetricsRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
 	logger *zap.Logger,
 	telemetryBuilder *metadata.TelemetryBuilder,
+	tracerProvider trace.TracerProvider,
 	strategy Strategy,
 	next func(ctx context.Context, metrics pmetric.Metrics) error,
 	inflight *int64, // used to calculate concurrent requests
@@ -111,6 +116,7 @@ func NewMetricsRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			tracerProvider:   tracerProvider,
 			logger:           logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
@@ -125,6 +131,7 @@ func NewTracesRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
 	logger *zap.Logger,
 	telemetryBuilder *metadata.TelemetryBuilder,
+	tracerProvider trace.TracerProvider,
 	strategy Strategy,
 	next func(ctx context.Context, traces ptrace.Traces) error,
 	inflight *int64,
@@ -135,6 +142,7 @@ func NewTracesRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			tracerProvider:   tracerProvider,
 			logger:           logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,
@@ -149,6 +157,7 @@ func NewProfilesRateLimiterProcessor(
 	rateLimiter *sharedcomponent.Component[rateLimiterComponent],
 	logger *zap.Logger,
 	telemetryBuilder *metadata.TelemetryBuilder,
+	tracerProvider trace.TracerProvider,
 	strategy Strategy,
 	next func(ctx context.Context, profiles pprofile.Profiles) error,
 	inflight *int64,
@@ -159,6 +168,7 @@ func NewProfilesRateLimiterProcessor(
 			Component:        rateLimiter,
 			rl:               rateLimiter.Unwrap(),
 			telemetryBuilder: telemetryBuilder,
+			tracerProvider:   tracerProvider,
 			logger:           logger,
 			inflight:         inflight,
 			metadataKeys:     metadataKeys,

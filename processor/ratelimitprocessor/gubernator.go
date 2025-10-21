@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
+	"go.opentelemetry.io/otel/trace"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/attribute"
@@ -87,6 +88,7 @@ type gubernatorRateLimiter struct {
 	classResolver      ClassResolver
 	windowConfigurator WindowConfigurator
 	telemetryBuilder   *metadata.TelemetryBuilder
+	tracerProvider     trace.TracerProvider
 }
 
 func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, error) {
@@ -113,7 +115,7 @@ func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, err
 	return conf, nil
 }
 
-func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder *metadata.TelemetryBuilder) (*gubernatorRateLimiter, error) {
+func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder *metadata.TelemetryBuilder, tracerProvider trace.TracerProvider) (*gubernatorRateLimiter, error) {
 	daemonCfg, err := newGubernatorDaemonConfig(logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gubernator daemon config: %w", err)
@@ -125,6 +127,7 @@ func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder 
 		behavior:           gubernator.Behavior_BATCHING,
 		daemonCfg:          daemonCfg,
 		telemetryBuilder:   telemetryBuilder,
+		tracerProvider:     tracerProvider,
 		classResolver:      noopResolver{},
 		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DynamicRateLimiting.DefaultWindowMultiplier},
 	}, nil
@@ -160,7 +163,7 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) 
 
 	r.clientConn, err = grpc.NewClient(r.daemonCfg.GRPCListenAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler(otelgrpc.WithTracerProvider(r.tracerProvider))),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC client connection: %w", err)
