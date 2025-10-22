@@ -433,17 +433,19 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 			return -1, err
 		}
 	}
-	r.logger.Debug(
-		"Dynamic rate limiting applied",
-		zap.Dict(
-			"ratelimit",
-			zap.String("unique_key", uniqueKey),
-			zap.Float64("multiplier", windowMultiplier),
-			zap.Float64("static_rate", staticRate),
-			zap.Float64("previous_rate", previous),
-			zap.Float64("limit", maxAllowed),
-		),
-	)
+	if r.logger.Level() == zap.DebugLevel {
+		r.logger.Debug(
+			"Dynamic rate limiting applied",
+			zap.Dict(
+				"ratelimit",
+				zap.String("unique_key", uniqueKey),
+				zap.Float64("multiplier", windowMultiplier),
+				zap.Float64("static_rate", staticRate),
+				zap.Float64("previous_rate", previous),
+				zap.Float64("limit", maxAllowed),
+			),
+		)
+	}
 	return maxAllowed, nil
 }
 
