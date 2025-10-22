@@ -147,7 +147,7 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 // Note: error events contain additional context that requires otel semconv attributes, logs are not expected to have
 // this additional context. Both events are treated the same here for consistency.
 func TranslateIntakeV2LogToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	setHTTP(event.Http, attributes)
+	setHttpAttributes(event, attributes)
 	setUrlAttributes(event, attributes)
 }
 
