@@ -95,8 +95,8 @@ func translateElasticServiceLanguageToOtelSdkLanguage(language string) string {
 
 // TranslateIntakeV2TransactionToOTelAttributes translates transaction attributes from the Elastic APM model to SemConv attributes
 func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	setHttpAttributes(event, attributes)
-	setUrlAttributes(event, attributes)
+	translateHttpAttributes(event, attributes)
+	translateUrlAttributes(event, attributes)
 
 	if event.Transaction.Message != nil {
 		attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Transaction.Message.QueueName)
@@ -106,8 +106,8 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 
 // TranslateIntakeV2SpanToOTelAttributes translates span attributes from the Elastic APM model to SemConv attributes
 func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	setHttpAttributes(event, attributes)
-	setUrlAttributes(event, attributes)
+	translateHttpAttributes(event, attributes)
+	translateUrlAttributes(event, attributes)
 
 	if event.Span == nil {
 		return
@@ -147,8 +147,8 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 // Note: error events contain additional context that requires otel semconv attributes, logs are not expected to have
 // this additional context. Both events are treated the same here for consistency.
 func TranslateIntakeV2LogToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	setHTTP(event.Http, attributes)
-	setUrlAttributes(event, attributes)
+	translateHttpAttributes(event, attributes)
+	translateUrlAttributes(event, attributes)
 }
 
 func translateCloudAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
@@ -312,7 +312,7 @@ func translateFaasAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 }
 
-func setHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+func translateHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Http != nil {
 		if event.Http.Request != nil {
 			attributes.PutStr(string(semconv.HTTPRequestMethodKey), event.Http.Request.Method)
@@ -328,9 +328,9 @@ func setHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 }
 
-// setUrlAttributes sets URL semconv attributes that are defined below:
+// translateUrlAttributes sets URL semconv attributes that are defined below:
 // https://opentelemetry.io/docs/specs/semconv/registry/attributes/url/
-func setUrlAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+func translateUrlAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Url == nil {
 		return
 	}
