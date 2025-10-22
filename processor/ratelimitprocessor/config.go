@@ -83,9 +83,10 @@ type DynamicRateLimiting struct {
 	// WindowConfigurator is the component ID of the extension to dynamically
 	// determine the window multiplier. The extension is expected to implement
 	// the `WindowConfigurator` interface. The window configurator is used in
-	// the hot path so it should respond fast. The effective rate cannot go
-	// below the configured static rate limit settings. If the configurator
-	// returns a negative multiplier then the default multiplier will be used.
+	// the hot path so it should respond fast. If the previous window had no
+	// data then the static limit will be used irrespective of the output of
+	// the window configurator. If the configurator returns a negative
+	// multiplier then the default multiplier will be used.
 	WindowConfigurator component.ID `mapstructure:"window_configurator"`
 }
 
