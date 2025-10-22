@@ -313,7 +313,7 @@ Telemetry and metrics:
 
 ### Throttling rate based on custom logic using `window_configurator`
 
-The `window_configurator` option configures a custom OpenTelemetry Collector extension to dynamically choose a window multiplier for the current period. The value is the extension ID (the extension's configured name). The extension MUST implement the `WindowConfigurator` interface. The multiplier can be used to scale up the rate limit from the previous window (by returning a multiplier greater than `1`) or scale down the rate limit from the previous window (by returning a multiplier less than `1`, greater than `0`). If the extension returns a negative value, then the `default_window_multiplier` will be used. If the previous period has no data, then the configured static rate will be used as the limit irrespective of the multiplier. An example configuration including the window configurator:
+The `window_configurator` option configures a custom OpenTelemetry Collector extension to dynamically choose a window multiplier for the current period. The value is the extension ID (the extension's configured name). The extension MUST implement the `WindowConfigurator` interface. The multiplier can be used to scale up the rate limit from the previous window (by returning a multiplier greater than `1`) or scale down the rate limit from the previous window (by returning a multiplier less than `1`, greater than `0`). The lowest possible value of the rate is `1/s`. If the extension returns a negative value, then the `default_window_multiplier` will be used. An example configuration including the window configurator:
 
 ```yaml
 processors:
