@@ -835,7 +835,8 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 		// wait for a few periods to assert rate that the rate goes to be equal to the
 		// static rate as data is NOT sent in the first waiting window causing the
 		// previous rate to go to zero in the next window which we will assert.
-		waitUntilNextPeriod(3 * windowDuration)
+		waitUntilNextPeriod(windowDuration)
+		waitUntilNextPeriod(windowDuration)
 		expectedLimit = int64(staticRatePerSec)
 		actual = int64(100) * int64(windowDuration) / int64(time.Second) // send 100 hits
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))

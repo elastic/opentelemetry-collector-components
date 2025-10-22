@@ -437,6 +437,7 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 		"Dynamic rate limiting applied",
 		zap.Dict(
 			"ratelimit",
+			zap.String("unique_key", uniqueKey),
 			zap.Float64("multiplier", windowMultiplier),
 			zap.Float64("static_rate", staticRate),
 			zap.Float64("previous_rate", previous),
