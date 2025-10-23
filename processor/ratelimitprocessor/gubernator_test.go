@@ -34,6 +34,7 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
@@ -55,7 +56,21 @@ func newTestGubernatorRateLimiterMetrics(t *testing.T, cfg *Config) (
 	require.NoError(t, err)
 	rl.telemetryBuilder = tb
 	rl.tracerProvider = telSettings.TracerProvider
+	// NOTE(carsonip): It does not test whether rate limiter is instrumenting grpc client correctly in Start
+	// because we overwrite client and clientConn directly here, instead of calling Start.
+	// To test Start properly it will require refactoring the tests.
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("static:///%s", rl.daemon.PeerInfo.GRPCAddress),
+		grpc.WithResolvers(gubernator.NewStaticBuilder()),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler(otelgrpc.WithTracerProvider(telSettings.TracerProvider))),
+	)
+	require.NoError(t, err)
+	client := gubernator.NewV1Client(conn)
+	rl.clientConn = conn
+	rl.client = client
 	t.Cleanup(func() {
+		_ = conn.Close()
 		_ = tt.Shutdown(t.Context())
 	})
 	return rl, tt
@@ -943,6 +958,9 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())
+
+		spans := tt.SpanRecorder.Ended()
+		assert.Greater(t, len(spans), 0)
 	})
 
 	t.Run("gubernator_degraded_increments", func(t *testing.T) {
@@ -960,6 +978,9 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())
+
+		spans := tt.SpanRecorder.Ended()
+		assert.Greater(t, len(spans), 0)
 	})
 }
 
