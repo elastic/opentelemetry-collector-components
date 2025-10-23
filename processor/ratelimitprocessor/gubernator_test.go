@@ -734,8 +734,8 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 	// Set the windowConfigurator manually
 	rateLimiter.windowConfigurator = &fakeWindowConfigurator{
 		mapping: map[string][]float64{
-			"x-tenant-id:12345": {1.5},           // more ingest data
-			"x-tenant-id:67890": {-1, 2, 2, 0.5}, // throttle ingest data
+			"x-tenant-id:12345": {1.5},                 // more ingest data
+			"x-tenant-id:67890": {-1, 2, 2, 0.5, 0.01}, // throttle ingest data
 		},
 		count: make(map[string]int),
 	}
@@ -747,7 +747,8 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 		})
 
 		waitUntilNextPeriod(windowDuration)
-		// 1st non-zero window: establish baseline with static limit
+		// 1st non-zero window: establish baseline with static limit. Since the previous
+		// hits at this point were `0` the limit will always be equal to static limit.
 		actual := int64(staticRatePerSec) * int64(windowDuration) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
 		drainEvents(eventChannel)
@@ -756,11 +757,12 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 		// 2nd window: ramp up by 1.5 factor as configured for the tenant
 		actual = int64(100) * int64(windowDuration) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		expectedLimit := int64(float64(staticRatePerSec) * 1.5) // 150% of previous hits/s
 		verify := func(evc <-chan gubernator.HitEvent) {
 			t.Helper()
 			event := lastReqLimitEvent(drainEvents(evc), t)
 			assertRequestRateLimitEvent(t, "x-tenant-id:12345", event,
-				actual, 750, 750-actual, gubernator.Status_UNDER_LIMIT,
+				actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
 			)
 		}
 		verify(eventChannel)
@@ -775,49 +777,73 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 		uniqueKey := "x-tenant-id:67890"
 
 		waitUntilNextPeriod(windowDuration)
-		// 1st non-zero window: establish baseline with static limit
+		// 1st non-zero window: establish baseline with static limit. Since the previous
+		// hits at this point were `0` the limit will always be equal to static limit.
 		actual := int64(staticRatePerSec) * int64(windowDuration) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
 		drainEvents(eventChannel)
 
 		waitUntilNextPeriod(windowDuration)
 		// 2nd window: scale up by 2 factor as configured for the tenant
-		actual = int64(1000) * int64(windowDuration) / int64(time.Second)
+		expectedLimit := int64(float64(staticRatePerSec) * 2) // 200% of previous hits/s
+		// maximize the hits so that the rate is fully utilized
+		actual = expectedLimit * int64(windowDuration) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
 		assertRequestRateLimitEvent(
 			t, uniqueKey,
 			lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, 1000, 1000-actual, gubernator.Status_UNDER_LIMIT,
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 
 		waitUntilNextPeriod(windowDuration)
 		// 3nd window: scale up by 2 factor as configured for the tenant
-		actual = int64(2000) * int64(windowDuration) / int64(time.Second)
+		expectedLimit = expectedLimit * 2 // 200% of previous hits/s
+		// maximize the hits so that the rate is fully utilized
+		actual = expectedLimit * int64(windowDuration) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
 		assertRequestRateLimitEvent(
 			t, uniqueKey,
 			lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, 2000, 2000-actual, gubernator.Status_UNDER_LIMIT,
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 
 		waitUntilNextPeriod(windowDuration)
 		// 4th window: scale down by 50% as configured for the tenant
-		actual = int64(100) * int64(windowDuration) / int64(time.Second)
+		expectedLimit = int64(float64(expectedLimit) * 0.5) // 50% of previous hits/s
+		// maximize the hits so that the rate is fully utilized
+		actual = expectedLimit * int64(windowDuration) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
 		assertRequestRateLimitEvent(
 			t, uniqueKey,
 			lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, 1000, 1000-actual, gubernator.Status_UNDER_LIMIT,
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 
-		// wait for a couple of periods to assert static rate as the lower bound
-		waitUntilNextPeriod(2 * windowDuration)
-		actual = int64(100) * int64(windowDuration) / int64(time.Second)
+		waitUntilNextPeriod(windowDuration)
+		// 5th window: scale down by 1% as configured for the tenant and assert
+		// that the rate goes below static limit
+		expectedLimit = int64(float64(expectedLimit) * 0.01) // 1% of previous hits/s
+		// maximize the hits so that the rate is fully utilized
+		actual = expectedLimit * int64(windowDuration) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
 		assertRequestRateLimitEvent(
 			t, uniqueKey,
 			lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, 500, 500-actual, gubernator.Status_UNDER_LIMIT,
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
+		)
+
+		// wait for a few periods to assert rate that the rate goes to be equal to the
+		// static rate as data is NOT sent in the first waiting window causing the
+		// previous rate to go to zero in the next window which we will assert.
+		waitUntilNextPeriod(windowDuration)
+		waitUntilNextPeriod(windowDuration)
+		expectedLimit = int64(staticRatePerSec)
+		actual = int64(100) * int64(windowDuration) / int64(time.Second) // send 100 hits
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		assertRequestRateLimitEvent(
+			t, uniqueKey,
+			lastReqLimitEvent(drainEvents(eventChannel), t),
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 	})
 	t.Run("unknown tenant, use default multiplier", func(t *testing.T) {
@@ -828,12 +854,13 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 		})
 
 		actual := int64(400)
+		expectedLimit := int64(staticRatePerSec)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
 		verify := func(evc <-chan gubernator.HitEvent) {
 			t.Helper()
 			event := lastReqLimitEvent(drainEvents(evc), t)
 			assertRequestRateLimitEvent(t, "x-tenant-id:unknown", event,
-				actual, 500, 500-actual, gubernator.Status_UNDER_LIMIT,
+				actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
 			)
 		}
 		verify(eventChannel)
