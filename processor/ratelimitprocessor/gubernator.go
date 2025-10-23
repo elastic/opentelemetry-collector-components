@@ -417,8 +417,16 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	// NOTE(marclop) We may want to add a follow-up static ceiling to avoid
 	// unbounded growth.
 	var maxAllowed float64
-	if previous > 0 && windowMultiplier <= 1 {
-		maxAllowed = max(1, previous*windowMultiplier)
+	if windowMultiplier <= 1 {
+		// multiplier indicates scale down. If we have hits in the previous
+		// multiplier then scale that down, otherwise scale the static rate
+		// as per the multiplier instead of returning the default static rate.
+		// This should protect against deployments with spiky load patterns.
+		if previous > 0 {
+			maxAllowed = max(1, previous*windowMultiplier)
+		} else {
+			maxAllowed = max(1, staticRate*windowMultiplier)
+		}
 	} else {
 		maxAllowed = max(staticRate, previous*windowMultiplier)
 	}
