@@ -46,8 +46,8 @@ github.com/elastic/go-freelru v0.16.0 h1:gG2HJ1WXN2tNl5/p40JS/l59HjvjRhjyAa+oFTR
 github.com/elastic/go-freelru v0.16.0/go.mod h1:bSdWT4M0lW79K8QbX6XY2heQYSCqD7THoYf82pT/H3I=
 github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250613082151-282de5af1c9b h1:NWuTKdMCJlU9ehRH8V0w1Kk1QI5Vn+9OcJWIO9wI+pE=
 github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250613082151-282de5af1c9b/go.mod h1:R1WWATZlmmkryuE5hLQNHj89rdPPi4ErobBZYx2LmGs=
-github.com/elastic/opentelemetry-lib v0.24.0 h1:yydHiL0P4+7cbmSOuRyNgsQdUZDJiUcGvqEn261nhBk=
-github.com/elastic/opentelemetry-lib v0.24.0/go.mod h1:yPivg02r9Ae6PSCT73OW/qK1VaRiOR8e3ufj9CvGZY4=
+github.com/elastic/opentelemetry-lib v0.25.0 h1:xEfAdJ/CqfFB25jN47kBp2OuN3jTdnNlMNvAHVBkWoY=
+github.com/elastic/opentelemetry-lib v0.25.0/go.mod h1:vpL8Tz372e0QfUlFSpv9to+HGKgW3SL913zVz0gReck=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/foxboron/go-tpm-keyfiles v0.0.0-20250903184740-5d135037bd4d h1:EdO/NMMuCZfxhdzTZLuKAciQSnI2DV+Ppg8+vAYrnqA=
