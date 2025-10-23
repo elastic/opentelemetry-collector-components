@@ -229,20 +229,25 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 				)...)),
 			)
 			rate, burst = cfg.Rate, cfg.Burst
-		} else if rate > cfg.Rate { // Dynamic escalation occurred
+		} else if rate > cfg.Rate {
 			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
 				metric.WithAttributeSet(attribute.NewSet(append(attrs,
-					attribute.String("reason", "success"),
+					attribute.String("reason", "escalation"),
 				)...)),
 			)
-		} else { // Dynamic escalation was skipped (dynamic <= static)
+		} else if rate < cfg.Rate {
+			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
+				metric.WithAttributeSet(attribute.NewSet(append(attrs,
+					attribute.String("reason", "deescalation"),
+				)...)),
+			)
+		} else {
 			r.telemetryBuilder.RatelimitDynamicEscalations.Add(ctx, 1,
 				metric.WithAttributeSet(attribute.NewSet(append(attrs,
 					attribute.String("reason", "skipped"),
 				)...)),
 			)
 		}
-
 	}
 	// Execute rate actual limit check / recording.
 	return r.executeRateLimit(ctx, cfg, uniqueKey, hits, rate, burst, now)

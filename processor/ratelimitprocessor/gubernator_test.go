@@ -914,7 +914,7 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 				Attributes: attribute.NewSet(
 					attribute.String("class", "alpha"),
 					attribute.String("source_kind", "class"),
-					attribute.String("reason", "success"),
+					attribute.String("reason", "escalation"),
 				),
 			},
 		}, metricdatatest.IgnoreTimestamp())
