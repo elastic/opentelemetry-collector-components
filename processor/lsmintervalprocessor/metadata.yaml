@@ -19,34 +19,6 @@ attributes:
 
 telemetry:
   metrics:
-    lsminterval.processed_data_points:
-      enabled: true
-      description: The count of metric data points processed by the processor.
-      unit: "{count}"
-      stability:
-        level: development
-      sum:
-        value_type: int
-        monotonic: true
-    lsminterval.processed_bytes:
-      enabled: true
-      description: The size in bytes of metric data points processed by the processor.
-      unit: By
-      stability:
-        level: development
-      sum:
-        value_type: int
-        monotonic: true
-    lsminterval.exported_data_points:
-      enabled: true
-      description: The count of metric data points exported by the processor.
-      unit: "{count}"
-      stability:
-        level: development
-      sum:
-        value_type: int
-        monotonic: true
-      attributes: [interval]
     lsminterval.exported_bytes:
       enabled: true
       description: The size in bytes of metric data points exported by the processor.
@@ -57,46 +29,16 @@ telemetry:
         value_type: int
         monotonic: true
       attributes: [interval]
-    lsminterval.pebble_flushes:
+    lsminterval.exported_data_points:
       enabled: true
-      description: The number of pebble memtable flushes to disk.
-      unit: "1"
+      description: The count of metric data points exported by the processor.
+      unit: "{count}"
       stability:
         level: development
       sum:
-        async: true
         value_type: int
         monotonic: true
-    lsminterval.pebble_flushed_bytes:
-      enabled: true
-      description: The size in bytes written by pebble during flush.
-      unit: By
-      stability:
-        level: development
-      sum:
-        async: true
-        value_type: int
-        monotonic: true
-    lsminterval.pebble_compactions:
-      enabled: true
-      description: The number of pebble table compactions.
-      unit: "1"
-      stability:
-        level: development
-      sum:
-        async: true
-        value_type: int
-        monotonic: true
-    lsminterval.pebble_ingested_bytes:
-      enabled: true
-      description: The size in bytes ingested to pebble.
-      unit: By
-      stability:
-        level: development
-      sum:
-        async: true
-        value_type: int
-        monotonic: true
+      attributes: [interval]
     lsminterval.pebble_compacted_bytes_read:
       enabled: true
       description: The size in bytes read by pebble during compaction.
@@ -117,19 +59,69 @@ telemetry:
         async: true
         value_type: int
         monotonic: true
-    lsminterval.pebble_total_memtable_size:
+    lsminterval.pebble_compactions:
       enabled: true
-      description: The current size in bytes of pebble memtable.
+      description: The number of pebble table compactions.
+      unit: "1"
+      stability:
+        level: development
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_flushed_bytes:
+      enabled: true
+      description: The size in bytes written by pebble during flush.
       unit: By
+      stability:
+        level: development
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_flushes:
+      enabled: true
+      description: The number of pebble memtable flushes to disk.
+      unit: "1"
+      stability:
+        level: development
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_ingested_bytes:
+      enabled: true
+      description: The size in bytes ingested to pebble.
+      unit: By
+      stability:
+        level: development
+      sum:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_keys_tombstones:
+      enabled: true
+      description: The approximate number of delete keys across the pebble storage engine.
+      unit: "1"
       stability:
         level: development
       gauge:
         async: true
         value_type: int
         monotonic: true
-    lsminterval.pebble_total_disk_usage:
+    lsminterval.pebble_marked_for_compaction_files:
       enabled: true
-      description: The current size in bytes of disk used by pebble, including live and obsolete files.
+      description: The current number of pebble SSTables marked for compaction.
+      unit: "1"
+      stability:
+        level: development
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_pending_compaction:
+      enabled: true
+      description: The estimated size in bytes of pending compaction in pebble.
       unit: By
       stability:
         level: development
@@ -147,16 +139,6 @@ telemetry:
         async: true
         value_type: int
         monotonic: true
-    lsminterval.pebble_sstables:
-      enabled: true
-      description: The current number of pebble storage engine SSTables.
-      unit: "1"
-      stability:
-        level: development
-      gauge:
-        async: true
-        value_type: int
-        monotonic: true
     lsminterval.pebble_readers_memory:
       enabled: true
       description: The estimated size in bytes of memory used by pebble index and filter blocks.
@@ -167,9 +149,19 @@ telemetry:
         async: true
         value_type: int
         monotonic: true
-    lsminterval.pebble_pending_compaction:
+    lsminterval.pebble_sstables:
       enabled: true
-      description: The estimated size in bytes of pending compaction in pebble.
+      description: The current number of pebble storage engine SSTables.
+      unit: "1"
+      stability:
+        level: development
+      gauge:
+        async: true
+        value_type: int
+        monotonic: true
+    lsminterval.pebble_total_disk_usage:
+      enabled: true
+      description: The current size in bytes of disk used by pebble, including live and obsolete files.
       unit: By
       stability:
         level: development
@@ -177,23 +169,31 @@ telemetry:
         async: true
         value_type: int
         monotonic: true
-    lsminterval.pebble_marked_for_compaction_files:
+    lsminterval.pebble_total_memtable_size:
       enabled: true
-      description: The current number of pebble SSTables marked for compaction.
-      unit: "1"
+      description: The current size in bytes of pebble memtable.
+      unit: By
       stability:
         level: development
       gauge:
         async: true
         value_type: int
         monotonic: true
-    lsminterval.pebble_keys_tombstones:
+    lsminterval.processed_bytes:
       enabled: true
-      description: The approximate number of delete keys across the pebble storage engine.
-      unit: "1"
+      description: The size in bytes of metric data points processed by the processor.
+      unit: By
       stability:
         level: development
-      gauge:
-        async: true
+      sum:
+        value_type: int
+        monotonic: true
+    lsminterval.processed_data_points:
+      enabled: true
+      description: The count of metric data points processed by the processor.
+      unit: "{count}"
+      stability:
+        level: development
+      sum:
         value_type: int
         monotonic: true

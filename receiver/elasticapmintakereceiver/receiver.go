@@ -507,7 +507,7 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForError(event, l.Attributes())
-	mappers.TranslateIntakeV2LogToOTelAttributes(event, rl.Resource().Attributes())
+	mappers.TranslateIntakeV2LogToOTelAttributes(event, l.Attributes())
 
 	// apm log events can contain error information. In this case the log is considered an apm error.
 	// All fields associated with the log should also be set.
@@ -523,7 +523,7 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 	l := sl.LogRecords().AppendEmpty()
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
-	mappers.TranslateIntakeV2LogToOTelAttributes(event, rl.Resource().Attributes())
+	mappers.TranslateIntakeV2LogToOTelAttributes(event, l.Attributes())
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 
 	l.Body().SetStr(event.Message)

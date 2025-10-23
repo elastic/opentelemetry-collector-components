@@ -83,9 +83,8 @@ type DynamicRateLimiting struct {
 	// WindowConfigurator is the component ID of the extension to dynamically
 	// determine the window multiplier. The extension is expected to implement
 	// the `WindowConfigurator` interface. The window configurator is used in
-	// the hot path so it should respond fast. The effective rate cannot go
-	// below the configured static rate limit settings. If the configurator
-	// returns a negative multiplier then the default multiplier will be used.
+	// the hot path so it should respond fast.If the configurator returns a
+	// negative multiplier then the default multiplier will be used.
 	WindowConfigurator component.ID `mapstructure:"window_configurator"`
 }
 
@@ -126,9 +125,6 @@ func (c *Class) Validate() error {
 	if c.Burst < 0 {
 		errs = append(errs, errors.New("burst must be non-negative"))
 	}
-	if c.Burst > 0 && c.Burst < c.Rate {
-		errs = append(errs, errors.New("burst must be greater than or equal to rate when specified"))
-	}
 	return errors.Join(errs...)
 }
 
@@ -154,6 +150,13 @@ type RateLimitSettings struct {
 	//
 	// Defaults to 1s
 	ThrottleInterval time.Duration `mapstructure:"throttle_interval"`
+
+	// RetryDelay holds the time delay to return to the client through RPC
+	// errdetails.RetryInfo. See more details of this in the documentation.
+	// https://opentelemetry.io/docs/specs/otlp/#otlpgrpc-throttling.
+	//
+	// Defaults to 1s
+	RetryDelay time.Duration `mapstructure:"retry_delay"`
 
 	disableDynamic bool `mapstructure:"-"`
 }
@@ -218,6 +221,9 @@ const (
 	// DefaultThrottleInterval is the default value for the
 	// throttle interval.
 	DefaultThrottleInterval time.Duration = 1 * time.Second
+
+	// DefaultRetryDelay is the default value for the retry delay.
+	DefaultRetryDelay time.Duration = 1 * time.Second
 )
 
 // ThrottleBehavior identifies the behavior when rate limit is exceeded.
@@ -252,6 +258,7 @@ func createDefaultConfig() component.Config {
 			Strategy:         StrategyRateLimitRequests,
 			ThrottleBehavior: ThrottleBehaviorError,
 			ThrottleInterval: DefaultThrottleInterval,
+			RetryDelay:       DefaultRetryDelay,
 		},
 		DynamicRateLimiting: DynamicRateLimiting{
 			DefaultWindowMultiplier: 1.3,

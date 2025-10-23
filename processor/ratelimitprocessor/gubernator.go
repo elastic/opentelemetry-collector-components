@@ -410,11 +410,21 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	}
 	// Only record the incoming hits when the current rate is within the allowed
 	// range, otherwise, do not record the hits and return the calculated rate.
-	// MaxAllowed sets a ceiling on the rate with the window duration.
+	// MaxAllowed sets a ceiling on the rate with the window duration. If the
+	// previous period had hits and the window multiplier is suggesting lowering
+	// the ingestion rate then the MaxAllowed will be allowed to go below the
+	// static rate (to as low as `1`). As soon as the window multiplier suggests
+	// increasing the ingestion rate, the MaxAllowed will jump to a minimum of
+	// static rate.
 	//
 	// NOTE(marclop) We may want to add a follow-up static ceiling to avoid
 	// unbounded growth.
-	maxAllowed := math.Max(staticRate, previous*windowMultiplier)
+	var maxAllowed float64
+	if previous > 0 && windowMultiplier <= 1 {
+		maxAllowed = max(1, previous*windowMultiplier)
+	} else {
+		maxAllowed = max(staticRate, previous*windowMultiplier)
+	}
 	// Normalise the current rate assuming no more events will occur during the
 	// rest of the window. This will ensure that we record hits based on the
 	// currently observed hits and NOT based on extrapolated data.
@@ -425,6 +435,19 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 		if err := r.recordHits(ctx, drc, min(hits, remainingHits)); err != nil {
 			return -1, err
 		}
+	}
+	if r.logger.Level() == zap.DebugLevel {
+		r.logger.Debug(
+			"Dynamic rate limiting applied",
+			zap.Dict(
+				"ratelimit",
+				zap.String("unique_key", uniqueKey),
+				zap.Float64("multiplier", windowMultiplier),
+				zap.Float64("static_rate", staticRate),
+				zap.Float64("previous_rate", previous),
+				zap.Float64("limit", maxAllowed),
+			),
+		)
 	}
 	return maxAllowed, nil
 }
