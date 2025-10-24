@@ -34,15 +34,19 @@ extensions:
       protocols:
         http:
           endpoint: ":4320"
+
+service:
+  extensions: [bearertokenauth, apmconfig] 
 ```
 
 The previous snippet configures the `bearertokenauth` authenticator as client authenticator to be used with the Elasticsearch endpoint. 
 
 - An Elasticsearch API key is used as secret token. 
 - The `apmconfig` section defines the Elasticsearch `endpoint` for reading the EDOT SDK configuration and the `authenticator` that should be used with the endpoint.
-- The `opamp` section configures the OpAMP endpoint to provide an HTTP endpoint on port 4320. The EDOT SDKs are connecting to this endpoint to fetch configuration messages. 
+- The `opamp` section configures the OpAMP endpoint to provide an HTTP endpoint on port 4320. The EDOT SDKs are connecting to this endpoint to fetch configuration messages.
+- The `service` section enables the `bearertokenauth` and `apmconfig` extension.
 
-Authentication between the OpAMP endpoint and the EDOT SDKs is not configured in the snippet. More information on securing the communication between the apmconfig extension and the EDOT SDKs are given in [Secure the OpAMP endpoint](#secure-the-opamp-endpoint).
+Authentication between the OpAMP endpoint and the EDOT SDKs is not configured in the snippet. More information on securing the communication between the `apmconfig` extension and the EDOT SDKs are given in [Secure the OpAMP endpoint](#secure-the-opamp-endpoint).
 
 ## Advanced configuration
 
@@ -56,7 +60,7 @@ All available Elasticsearch client configuration options can be found [here](htt
 
 ### Secure the OpAMP endpoint
 
-The apmconfig extension embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
+The `apmconfig` extension embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/v0.125.0/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
 
 #### Enable TLS and mTLS for the OpAMP endpoint
 
@@ -76,7 +80,6 @@ extensions:
           tls:
             cert_file: your/path/to/server.crt
             key_file: your/path/to/server.key
-   ...
 ```
 
 More information is available in the [OpenTelemetry TLS server configuration documentation](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/configtls/README.md#server-configuration).
@@ -103,14 +106,24 @@ extensions:
         http:
           auth:
             authenticator: apikeyauth
-   ...
+service:
+  extensions: [bearertokenauth, apmconfig, apikeyauth] 
 ```
 
-The server will expect incoming HTTP requests to include an API key with sufficient privileges, using the following header format:
+The OpAMP server will expect incoming HTTP requests to include an API key with sufficient privileges, using the following header format:
 
 ```
-Authorization: ApiKey <base64(id:api_key)>
+Authorization=ApiKey <base64(id:api_key)>
 ```
+
+Set the `ELASTIC_OTEL_OPAMP_HEADERS` environment variable to provide the API key to the EDOT SDK to be used by the OpAMP client.
+
+
+``` bash
+export ELASTIC_OTEL_OPAMP_HEADERS="Authorization=ApiKey <base64(id:api_key)>"
+```
+
+#### Create an API key
 
 An API key with the minimum required application permissions (as verified with the configuration above) can be created via Kibana by navigating to: `Observability → Applications → Settings → Agent Keys`, or by using the Elasticsearch Security API:
 
@@ -207,6 +220,8 @@ extensions:
           tls:
             cert_file: your/path/to/server.crt
             key_file: your/path/to/server.key
+service:
+  extensions: [bearertokenauth, apmconfig, apikeyauth] 
 ```
 
 The configuration snippet configures the `bearertokenauth` authenticator for the authentication of the Elasticsearch client, the `apikeyauth` authenticator for the OpAMP server, the Elasticsearch endpoint, and TLS for securing the connection between the OpAMP server and EDOT SDKs being the OpAMP client.
@@ -232,7 +247,7 @@ contain only one entry—and in this case, the key may be an empty string.
 field in the `AgentRemoteConfig` is set to `application/json`.
 - Each `AgentRemoteConfig` message should contain a [hash
 identifier](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L929)
-that the Agent SHOULD include value in subsequent
+that the Agent SHOULD include in subsequent
 [RemoteConfigStatus](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L751)
 messages in the `last_remote_config_hash` field. The server decides on which
 hash function to use, this extension will use the `etag` associated to each
