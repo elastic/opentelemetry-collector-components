@@ -3,6 +3,7 @@ module-sets:
     version: v0.20.0
     modules:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
+      - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
       - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
@@ -22,9 +23,5 @@ excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver
   - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension
-  - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension
-  - github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension
-  - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
   - github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor
   - github.com/elastic/opentelemetry-collector-components/loadgen
-  - github.com/elastic/opentelemetry-collector-components/_build

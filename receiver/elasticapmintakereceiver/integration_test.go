@@ -253,13 +253,13 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 				jsonQuery, err := json.Marshal(tt.query)
 				require.NoError(t, err)
-				r, err := http.NewRequest("POST", "http://"+testEndpoint+agentConfigPath, bytes.NewBuffer(jsonQuery))
-				require.NoError(t, err)
-
-				r.Header.Add("Content-Type", "application/json")
 
 				// Internal cache takes some time to be modified
 				assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+					r, err := http.NewRequest("POST", "http://"+testEndpoint+agentConfigPath, bytes.NewBuffer(jsonQuery))
+					require.NoError(t, err)
+
+					r.Header.Add("Content-Type", "application/json")
 					res, err := http.DefaultClient.Do(r)
 					require.NoError(collect, err)
 
