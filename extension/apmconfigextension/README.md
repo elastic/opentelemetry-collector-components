@@ -247,7 +247,7 @@ contain only one entry—and in this case, the key may be an empty string.
 field in the `AgentRemoteConfig` is set to `application/json`.
 - Each `AgentRemoteConfig` message should contain a [hash
 identifier](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L929)
-that the Agent SHOULD include value in subsequent
+that the Agent SHOULD include in subsequent
 [RemoteConfigStatus](https://github.com/open-telemetry/opamp-spec/blob/v0.11.0/proto/opamp.proto#L751)
 messages in the `last_remote_config_hash` field. The server decides on which
 hash function to use, this extension will use the `etag` associated to each
