@@ -850,13 +850,15 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 
-		// wait for a few periods to assert rate that the rate goes to be equal to the
-		// static rate as data is NOT sent in the first waiting window causing the
-		// previous rate to go to zero in the next window which we will assert.
+		// wait for a few periods to assert that the rate goes to be calculated
+		// based on static rate and the multiplier as data is NOT sent in the previous
+		// waiting window causing the previous rate to go to zero. As the window
+		// multiplier is still suggesting lowering the rate, we apply the multiplier
+		// to the static limit.
 		waitUntilNextPeriod(windowDuration)
 		waitUntilNextPeriod(windowDuration)
-		expectedLimit = int64(staticRatePerSec)
-		actual = int64(100) * int64(windowDuration) / int64(time.Second) // send 100 hits
+		expectedLimit = int64(float64(staticRatePerSec) * 0.01)
+		actual = int64(5) * int64(windowDuration) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
 		assertRequestRateLimitEvent(
 			t, uniqueKey,

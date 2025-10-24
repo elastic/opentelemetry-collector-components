@@ -411,17 +411,24 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	// Only record the incoming hits when the current rate is within the allowed
 	// range, otherwise, do not record the hits and return the calculated rate.
 	// MaxAllowed sets a ceiling on the rate with the window duration. If the
-	// previous period had hits and the window multiplier is suggesting lowering
-	// the ingestion rate then the MaxAllowed will be allowed to go below the
-	// static rate (to as low as `1`). As soon as the window multiplier suggests
-	// increasing the ingestion rate, the MaxAllowed will jump to a minimum of
-	// static rate.
+	// the window multiplier is suggesting lowering the ingestion rate then the
+	// MaxAllowed will be allowed to go below the static rate (to as low as `1`).
+	// As soon as the window multiplier suggests increasing the ingestion rate,
+	// the MaxAllowed will jump to a minimum of static rate.
 	//
 	// NOTE(marclop) We may want to add a follow-up static ceiling to avoid
 	// unbounded growth.
 	var maxAllowed float64
-	if previous > 0 && windowMultiplier <= 1 {
-		maxAllowed = max(1, previous*windowMultiplier)
+	if windowMultiplier <= 1 {
+		// multiplier indicates scale down. If we have hits in the previous
+		// multiplier then scale that down, otherwise scale the static rate
+		// as per the multiplier instead of returning the default static rate.
+		// This should protect against deployments with spiky load patterns.
+		if previous > 0 {
+			maxAllowed = max(1, previous*windowMultiplier)
+		} else {
+			maxAllowed = max(1, staticRate*windowMultiplier)
+		}
 	} else {
 		maxAllowed = max(staticRate, previous*windowMultiplier)
 	}
