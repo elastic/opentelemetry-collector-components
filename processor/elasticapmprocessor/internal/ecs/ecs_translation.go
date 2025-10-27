@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
@@ -51,9 +50,12 @@ func replaceDots(key string) string {
 	return strings.ReplaceAll(key, ".", "_")
 }
 
-// This is based to what found in the apm-data repo
-// (e.g https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go)
-// plus other extra fields
+// isSupportedAttribute returns true if the resource attribute is
+// supported by ECS and can be mapped directly.
+// Supported fields can include OTEL SemConv attributes or ECS specific attributes.
+// Fields are based on those found in the below areas:
+// 1. apm-data: https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go
+// 2. elasticapmintake receiver: https://github.com/elastic/opentelemetry-collector-components/tree/main/receiver/elasticapmintakereceiver/internal/mappers
 func isSupportedAttribute(attr string) bool {
 	switch attr {
 	// service.*
@@ -62,11 +64,20 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ServiceInstanceIDKey),
 		string(semconv.ServiceNamespaceKey),
 		"service.language.name",
-		"service.language.version":
+		"service.language.version",
+		"service.framework.name",
+		"service.framework.version",
+		"service.runtime.name",
+		"service.runtime.version",
+		"service.origin.id",
+		"service.origin.name",
+		"service.origin.version",
+		"service.target.name",
+		"service.target.type":
 		return true
 
 	// deployment.*
-	case string(semconv26.DeploymentEnvironmentKey), string(semconv.DeploymentEnvironmentNameKey):
+	case string(semconv.DeploymentEnvironmentNameKey):
 		return true
 
 	// telemetry.sdk.*
@@ -80,7 +91,17 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.CloudAccountIDKey),
 		string(semconv.CloudRegionKey),
 		string(semconv.CloudAvailabilityZoneKey),
-		string(semconv.CloudPlatformKey):
+		string(semconv.CloudPlatformKey),
+		"cloud.origin.account.id",
+		"cloud.origin.provider",
+		"cloud.origin.region",
+		"cloud.origin.service.name",
+		"cloud.account.name",
+		"cloud.instance.id",
+		"cloud.instance.name",
+		"cloud.machine.type",
+		"cloud.project.id",
+		"cloud.project.name":
 		return true
 
 	// container.*
@@ -103,7 +124,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.HostIDKey),
 		string(semconv.HostTypeKey),
 		string(semconv.HostArchKey),
-		string(semconv.HostIPKey):
+		string(semconv.HostIPKey),
+		"host.os.platform":
 		return true
 
 	// process.*
@@ -139,7 +161,8 @@ func isSupportedAttribute(attr string) bool {
 	// user.*
 	case string(semconv.UserIDKey),
 		string(semconv.UserEmailKey),
-		string(semconv.UserNameKey):
+		string(semconv.UserNameKey),
+		"user.domain":
 		return true
 
 	// user_agent.*
@@ -162,7 +185,12 @@ func isSupportedAttribute(attr string) bool {
 
 	// source.*
 	case string(semconv.SourceAddressKey),
-		string(semconv.SourcePortKey):
+		string(semconv.SourcePortKey),
+		"source.nat.ip":
+		return true
+
+	// destination.*
+	case "destination.ip":
 		return true
 
 	// faas.*
@@ -170,7 +198,9 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.FaaSNameKey),
 		string(semconv.FaaSVersionKey),
 		string(semconv.FaaSTriggerKey),
-		string(semconv.FaaSColdstartKey):
+		string(semconv.FaaSColdstartKey),
+		"faas.trigger.request.id",
+		"faas.execution":
 		return true
 
 	// Legacy OpenCensus attributes
@@ -179,7 +209,9 @@ func isSupportedAttribute(attr string) bool {
 
 	// APM Agent enrichment
 	case "agent.name",
-		"agent.version":
+		"agent.version",
+		"agent.ephemeral_id",
+		"agent.activation_method":
 		return true
 	}
 
