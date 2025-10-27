@@ -150,7 +150,7 @@ func getHttpClient(a *authenticator) (roundTripperProvider, error) {
 	}
 
 	if beatAuthConfig.Kerberos.IsEnabled() {
-
+		return NewKerberosClientProvider(beatAuthConfig.Kerberos, client)
 	}
 
 	return &httpClientProvider{client: client}, nil
