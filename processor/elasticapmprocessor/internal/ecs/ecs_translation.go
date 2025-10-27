@@ -87,8 +87,8 @@ func isSupportedAttribute(attr string) bool {
 	case string(semconv.ContainerNameKey),
 		string(semconv.ContainerIDKey),
 		string(semconv.ContainerImageNameKey),
-		"container.image.tag",
-		"container.runtime":
+		string(semconv.ContainerImageTagsKey),
+		string(semconv.ContainerRuntimeKey):
 		return true
 
 	// k8s.*
@@ -102,12 +102,14 @@ func isSupportedAttribute(attr string) bool {
 	case string(semconv.HostNameKey),
 		string(semconv.HostIDKey),
 		string(semconv.HostTypeKey),
-		"host.arch",
+		string(semconv.HostArchKey),
 		string(semconv.HostIPKey):
 		return true
 
 	// process.*
 	case string(semconv.ProcessPIDKey),
+		string(semconv.ProcessParentPIDKey),
+		string(semconv.ProcessExecutableNameKey),
 		string(semconv.ProcessCommandLineKey),
 		string(semconv.ProcessExecutablePathKey),
 		"process.runtime.name",
@@ -132,6 +134,43 @@ func isSupportedAttribute(attr string) bool {
 	// data_stream.*
 	case "data_stream.dataset",
 		"data_stream.namespace":
+		return true
+
+	// user.*
+	case string(semconv.UserIDKey),
+		string(semconv.UserEmailKey),
+		string(semconv.UserNameKey):
+		return true
+
+	// user_agent.*
+	case string(semconv.UserAgentOriginalKey):
+		return true
+
+	// network.*
+	case string(semconv.NetworkConnectionTypeKey),
+		string(semconv.NetworkConnectionSubtypeKey),
+		string(semconv.NetworkCarrierNameKey),
+		string(semconv.NetworkCarrierMccKey),
+		string(semconv.NetworkCarrierMncKey),
+		string(semconv.NetworkCarrierIccKey):
+		return true
+
+	// client.*
+	case string(semconv.ClientAddressKey),
+		string(semconv.ClientPortKey):
+		return true
+
+	// source.*
+	case string(semconv.SourceAddressKey),
+		string(semconv.SourcePortKey):
+		return true
+
+	// faas.*
+	case string(semconv.FaaSInstanceKey),
+		string(semconv.FaaSNameKey),
+		string(semconv.FaaSVersionKey),
+		string(semconv.FaaSTriggerKey),
+		string(semconv.FaaSColdstartKey):
 		return true
 
 	// Legacy OpenCensus attributes
