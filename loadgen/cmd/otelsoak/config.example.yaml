@@ -39,9 +39,6 @@ processors:
     burst: 5000
     throttle_behavior: delay
 
-# TODO(carsonip): simulate > 1 agents for higher load
-# https://github.com/elastic/opentelemetry-collector-components/issues/305
-
 service:
   pipelines:
     logs:
