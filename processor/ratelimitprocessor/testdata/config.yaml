@@ -96,7 +96,7 @@ ratelimit/dynamic_rate_limit:
   throttle_behavior: error
   dynamic_limits:
     enabled: true
-    window_multiplier: 1.5
+    default_window_multiplier: 1.5
     window_duration: 1m
 
 ratelimit/invalid_default_class:

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/uptrace/opentelemetry-go-extra/otellogrus"
+	"go.opentelemetry.io/otel/trace"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/attribute"
@@ -51,10 +52,27 @@ type ClassResolver interface {
 	ResolveClass(ctx context.Context, key string) (string, error)
 }
 
+// WindowConfigurator allows adjusting the rates dynamically by configuring
+// the multiplier for the next calculation window.
+//
+// NOTE(lahsivjar): We may want to make the duration configurable too.
+type WindowConfigurator interface {
+	// Multiplier returns the calculated multiplier for the next window.
+	Multiplier(ctx context.Context, window time.Duration, key string) float64
+}
+
 type noopResolver struct{}
 
 func (noopResolver) ResolveClass(context.Context, string) (string, error) {
 	return "", nil
+}
+
+type defaultWindowConfigurator struct {
+	multiplier float64
+}
+
+func (d defaultWindowConfigurator) Multiplier(context.Context, time.Duration, string) float64 {
+	return d.multiplier
 }
 
 type gubernatorRateLimiter struct {
@@ -67,8 +85,10 @@ type gubernatorRateLimiter struct {
 	client     gubernator.V1Client
 	clientConn *grpc.ClientConn
 	// Class resolver for class-based rate limiting
-	classResolver    ClassResolver
-	telemetryBuilder *metadata.TelemetryBuilder
+	classResolver      ClassResolver
+	windowConfigurator WindowConfigurator
+	telemetryBuilder   *metadata.TelemetryBuilder
+	tracerProvider     trace.TracerProvider
 }
 
 func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, error) {
@@ -95,19 +115,21 @@ func newGubernatorDaemonConfig(logger *zap.Logger) (gubernator.DaemonConfig, err
 	return conf, nil
 }
 
-func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder *metadata.TelemetryBuilder) (*gubernatorRateLimiter, error) {
+func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder *metadata.TelemetryBuilder, tracerProvider trace.TracerProvider) (*gubernatorRateLimiter, error) {
 	daemonCfg, err := newGubernatorDaemonConfig(logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gubernator daemon config: %w", err)
 	}
 
 	return &gubernatorRateLimiter{
-		cfg:              cfg,
-		logger:           logger,
-		behavior:         gubernator.Behavior_BATCHING,
-		daemonCfg:        daemonCfg,
-		telemetryBuilder: telemetryBuilder,
-		classResolver:    noopResolver{},
+		cfg:                cfg,
+		logger:             logger,
+		behavior:           gubernator.Behavior_BATCHING,
+		daemonCfg:          daemonCfg,
+		telemetryBuilder:   telemetryBuilder,
+		tracerProvider:     tracerProvider,
+		classResolver:      noopResolver{},
+		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DynamicRateLimiting.DefaultWindowMultiplier},
 	}, nil
 }
 
@@ -123,6 +145,17 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) 
 		r.classResolver = cr.(ClassResolver)
 	}
 
+	if wCon := r.cfg.DynamicRateLimiting.WindowConfigurator; wCon.String() != "" {
+		wc, ok := host.GetExtensions()[wCon]
+		if !ok {
+			return fmt.Errorf("window configurator %s not found", wCon)
+		}
+		if err := wc.Start(ctx, host); err != nil {
+			return fmt.Errorf("failed to start window configurator %s: %w", wCon, err)
+		}
+		r.windowConfigurator = wc.(WindowConfigurator)
+	}
+
 	r.daemon, err = gubernator.SpawnDaemon(ctx, r.daemonCfg)
 	if err != nil {
 		return fmt.Errorf("failed to spawn gubernator daemon: %w", err)
@@ -130,7 +163,7 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) 
 
 	r.clientConn, err = grpc.NewClient(r.daemonCfg.GRPCListenAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler(otelgrpc.WithTracerProvider(r.tracerProvider))),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC client connection: %w", err)
@@ -152,6 +185,11 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 	if c, ok := r.classResolver.(component.Component); ok {
 		if err := c.Shutdown(ctx); err != nil {
 			return fmt.Errorf("failed to shutdown class resolver: %w", err)
+		}
+	}
+	if w, ok := r.windowConfigurator.(component.Component); ok {
+		if err := w.Shutdown(ctx); err != nil {
+			return fmt.Errorf("failed to shutdown window configurator: %w", err)
 		}
 	}
 	return nil
@@ -356,22 +394,67 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	// reqs/events/bytes per Throttle interval may not be 1s.
 	staticRate := float64(cfg.Rate) / r.cfg.ThrottleInterval.Seconds()
 	drc := newDynamicRateContext(uniqueKey, now, r.cfg.DynamicRateLimiting)
-	// Get current and previous window rates
-	current, previous, err := r.peekRates(ctx, int64(hits), drc)
+	// Get current and previous window rates, the current rates are without
+	// accounting for the new hits.
+	current, previous, err := r.peekRates(ctx, drc)
 	if err != nil {
 		return -1, err
 	}
+	windowMultiplier := r.windowConfigurator.Multiplier(
+		ctx,
+		drc.WindowDuration,
+		uniqueKey,
+	)
+	if windowMultiplier < 0 {
+		windowMultiplier = drc.DefaultWindowMultiplier
+	}
 	// Only record the incoming hits when the current rate is within the allowed
 	// range, otherwise, do not record the hits and return the calculated rate.
-	// The idea is to continuously increase the rate limit. MaxAllowed sets a
-	// ceiling on it with the window duration.
+	// MaxAllowed sets a ceiling on the rate with the window duration. If the
+	// the window multiplier is suggesting lowering the ingestion rate then the
+	// MaxAllowed will be allowed to go below the static rate (to as low as `1`).
+	// As soon as the window multiplier suggests increasing the ingestion rate,
+	// the MaxAllowed will jump to a minimum of static rate.
+	//
 	// NOTE(marclop) We may want to add a follow-up static ceiling to avoid
 	// unbounded growth.
-	maxAllowed := math.Max(staticRate, previous*drc.WindowMultiplier)
+	var maxAllowed float64
+	if windowMultiplier <= 1 {
+		// multiplier indicates scale down. If we have hits in the previous
+		// multiplier then scale that down, otherwise scale the static rate
+		// as per the multiplier instead of returning the default static rate.
+		// This should protect against deployments with spiky load patterns.
+		if previous > 0 {
+			maxAllowed = max(1, previous*windowMultiplier)
+		} else {
+			maxAllowed = max(1, staticRate*windowMultiplier)
+		}
+	} else {
+		maxAllowed = max(staticRate, previous*windowMultiplier)
+	}
+	// Normalise the current rate assuming no more events will occur during the
+	// rest of the window. This will ensure that we record hits based on the
+	// currently observed hits and NOT based on extrapolated data.
+	current = current * drc.elapsed.Seconds() / drc.WindowDuration.Seconds()
 	if current <= maxAllowed {
-		if err := r.recordHits(ctx, drc, hits); err != nil {
+		// Deduce how many hits to record to reach to the max allowed number
+		remainingHits := int((maxAllowed - current) * drc.WindowDuration.Seconds())
+		if err := r.recordHits(ctx, drc, min(hits, remainingHits)); err != nil {
 			return -1, err
 		}
+	}
+	if r.logger.Level() == zap.DebugLevel {
+		r.logger.Debug(
+			"Dynamic rate limiting applied",
+			zap.Dict(
+				"ratelimit",
+				zap.String("unique_key", uniqueKey),
+				zap.Float64("multiplier", windowMultiplier),
+				zap.Float64("static_rate", staticRate),
+				zap.Float64("previous_rate", previous),
+				zap.Float64("limit", maxAllowed),
+			),
+		)
 	}
 	return maxAllowed, nil
 }
@@ -397,9 +480,10 @@ func (r *gubernatorRateLimiter) newDynamicRequest(
 	}
 }
 
-// peekRates retrieves the current (including incoming hits) and previous rates
-// from Gubernator. All Rates are normalized per second.
-func (r *gubernatorRateLimiter) peekRates(ctx context.Context, hits int64,
+// peekRates retrieves the current and previous rates from Gubernator. All
+// Rates are normalized per second.
+func (r *gubernatorRateLimiter) peekRates(
+	ctx context.Context,
 	drc dynamicRateContext,
 ) (float64, float64, error) {
 	// ----------------------- PEEK PHASE -----------------------
@@ -417,9 +501,8 @@ func (r *gubernatorRateLimiter) peekRates(ctx context.Context, hits int64,
 		return -1, -1, err
 	}
 	// Normalize the current rate based on the elapsed time (since the window
-	// hasn't fully elapsed). Then add the current hits to it.
+	// hasn't fully elapsed).
 	currentRate := rateFromResponse(peekResponses[0], drc.elapsed)
-	currentRate += float64(hits) / drc.elapsed.Seconds()
 	// Normalize the PREVIOUS rate based on the window duration.
 	previousRate := rateFromResponse(peekResponses[1], drc.WindowDuration)
 	return currentRate, previousRate, nil

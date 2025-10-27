@@ -46,7 +46,7 @@ type TraceProcessor struct {
 	logger   *zap.Logger
 }
 
-func newTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
+func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
 	return &TraceProcessor{
 		next:     next,
 		logger:   logger,
@@ -66,8 +66,6 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 			resource := resourceSpan.Resource()
 			ecs.TranslateResourceMetadata(resource)
 			routing.EncodeDataStream(resource, "traces")
-			p.enricher.Config.Resource.AgentName.Enabled = false
-			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
@@ -140,8 +138,6 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 			resource := resourceMetric.Resource()
 			ecs.TranslateResourceMetadata(resource)
 			routing.EncodeDataStream(resource, "metrics")
-			p.enricher.Config.Resource.AgentName.Enabled = false
-			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
@@ -157,7 +153,6 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			resource := resourceLog.Resource()
 			ecs.TranslateResourceMetadata(resource)
 			routing.EncodeDataStream(resource, "logs")
-			p.enricher.Config.Resource.AgentName.Enabled = false
 			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}

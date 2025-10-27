@@ -1,6 +1,6 @@
 module-sets:
   edot-base:
-    version: v0.124.0
+    version: v0.20.0
     modules:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
@@ -9,6 +9,11 @@ module-sets:
       - github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor
       - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector
+      - github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector
+      - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension
+      - github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension
+      - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
+      - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
 
 excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/internal/tools
@@ -18,9 +23,5 @@ excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver
   - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension
-  - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension
-  - github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension
-  - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
   - github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor
   - github.com/elastic/opentelemetry-collector-components/loadgen
-  - github.com/elastic/opentelemetry-collector-components/_build
