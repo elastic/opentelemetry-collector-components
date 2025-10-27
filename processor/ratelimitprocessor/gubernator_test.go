@@ -490,8 +490,11 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 				WindowDuration:          WindowPeriod,
 			},
 			MetadataKeys: []string{"x-tenant-id"},
-			Overrides: map[string]RateLimitOverrides{
-				"x-tenant-id:static-tenant": {
+			Overrides: []RateLimitOverrides{
+				{
+					Matches: map[string][]string{
+						"x-tenant-id": []string{"static-tenant"},
+					},
 					DisableDynamic:   true,
 					Rate:             ptr(rate), // Lower than global rate to make test clearer
 					ThrottleInterval: ptr(throttleInterval),
@@ -556,8 +559,11 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 				WindowDuration:          WindowPeriod,
 			},
 			MetadataKeys: []string{"x-tenant-id"},
-			Overrides: map[string]RateLimitOverrides{
-				"x-tenant-id:dynamic-tenant": {
+			Overrides: []RateLimitOverrides{
+				{
+					Matches: map[string][]string{
+						"x-tenant-id": []string{"dynamic-tenant"},
+					},
 					// DisableDynamic is false (default), so dynamic scaling should work
 					Rate:             ptr(rate), // Override rate but still allow dynamic scaling
 					ThrottleInterval: ptr(throttleInterval),

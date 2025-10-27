@@ -46,8 +46,9 @@ ratelimit/overrides_all:
   burst: 200
   strategy: bytes
   throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       rate: 300
       burst: 400
 
@@ -56,8 +57,9 @@ ratelimit/overrides_rate:
   burst: 200
   strategy: bytes
   throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       rate: 300
   
 ratelimit/overrides_burst:
@@ -65,8 +67,9 @@ ratelimit/overrides_burst:
   burst: 200
   strategy: bytes
   throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       burst: 400
   
 ratelimit/overrides_throttle_interval:
@@ -74,8 +77,9 @@ ratelimit/overrides_throttle_interval:
   burst: 200
   strategy: bytes
   throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       rate: 400
       throttle_interval: 10s
 
@@ -85,7 +89,8 @@ ratelimit/overrides_disable_dynamic:
   strategy: bytes
   throttle_behavior: error
   overrides:
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       disable_dynamic: true
 
 ratelimit/dynamic_rate_limit:
@@ -144,3 +149,16 @@ ratelimit/classes_set_but_no_class_resolver:
     trial:
       rate: 200
       burst: 400
+
+ratelimit/deprecated_overrides:
+  rate: 100
+  burst: 200
+  strategy: bytes
+  throttle_behavior: error
+  overrides:  
+    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+      rate: 300
+      burst: 400
+    project-id:e994532b-5n94-48et-a95c-1fa0638g6288;project-type:test:
+      rate: 3000
+      burst: 5000

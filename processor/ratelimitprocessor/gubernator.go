@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/gubernator-io/gubernator/v2"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.uber.org/zap"
 
@@ -196,7 +197,8 @@ func (r *gubernatorRateLimiter) Shutdown(ctx context.Context) error {
 }
 
 func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
-	uniqueKey := getUniqueKey(ctx, r.cfg.MetadataKeys)
+	metadata := client.FromContext(ctx).Metadata
+	uniqueKey := getUniqueKey(metadata, r.cfg.MetadataKeys)
 	// First resolve the class if classes are set.
 	class, err := r.classResolver.ResolveClass(ctx, uniqueKey)
 	if err != nil {
@@ -213,7 +215,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	}
 	// Resolve rate limit precedence:
 	// override -> class -> default_class -> fallback.
-	cfg, sourceKind, className := resolveRateLimit(r.cfg, uniqueKey, class)
+	cfg, sourceKind, className := resolveRateLimit(r.cfg, class, metadata)
 	rate, burst := cfg.Rate, cfg.Burst
 	now := time.Now()
 	// If dynamic rate limiting is enabled and not disabled for this request,
