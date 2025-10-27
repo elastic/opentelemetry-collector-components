@@ -165,7 +165,7 @@ func (h *httpClientProvider) RoundTripper() http.RoundTripper {
 	return h.client.Transport
 }
 
-// kerberosClientProvider provides a RoundTripper from  spnego.Client
+// kerberosClientProvider provides a kerberos enabled roundtripper
 type kerberosClientProvider struct {
 	kerberosClient *krbclient.Client
 	httpClient     *http.Client
