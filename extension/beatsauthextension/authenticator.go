@@ -19,6 +19,7 @@ package beatsauthextension // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -27,6 +28,9 @@ import (
 	"github.com/elastic/elastic-agent-libs/config"
 	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/transport/httpcommon"
+	krbclient "github.com/jcmturner/gokrb5/v8/client"
+	krbconfig "github.com/jcmturner/gokrb5/v8/config"
+	"github.com/jcmturner/gokrb5/v8/keytab"
 	"github.com/jcmturner/gokrb5/v8/spnego"
 	"go.elastic.co/apm/module/apmelasticsearch/v2"
 	"go.opentelemetry.io/collector/component"
@@ -39,6 +43,10 @@ import (
 var _ extensionauth.HTTPClient = (*authenticator)(nil)
 var _ extensionauth.GRPCClient = (*authenticator)(nil)
 var _ extension.Extension = (*authenticator)(nil)
+
+var (
+	ErrInvalidAuthType = errors.New("invalid authentication type")
+)
 
 // roundTripperProvider is an interface that provides a RoundTripper
 type roundTripperProvider interface {
@@ -142,11 +150,7 @@ func getHttpClient(a *authenticator) (roundTripperProvider, error) {
 	}
 
 	if beatAuthConfig.Kerberos.IsEnabled() {
-		kerberosClient, err := kerberos.NewClient(beatAuthConfig.Kerberos, client)
-		if err != nil {
-			return nil, fmt.Errorf("failed creating kerberos client: %w", err)
-		}
-		return &kerberosClientProvider{client: kerberosClient}, nil
+
 	}
 
 	return &httpClientProvider{client: client}, nil
@@ -163,11 +167,46 @@ func (h *httpClientProvider) RoundTripper() http.RoundTripper {
 
 // kerberosClientProvider provides a RoundTripper from  spnego.Client
 type kerberosClientProvider struct {
-	client *spnego.Client
+	kerberosClient *krbclient.Client
+	httpClient     *http.Client
 }
 
+func NewKerberosClientProvider(config *kerberos.Config, httpClient *http.Client) (*kerberosClientProvider, error) {
+	var krbClient *krbclient.Client
+	krbConf, err := krbconfig.Load(config.ConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("error creating Kerberos client: %w", err)
+	}
+
+	switch config.AuthType {
+	// case 1 is password auth
+	case 1:
+		krbClient = krbclient.NewWithPassword(config.Username, config.Realm, config.Password, krbConf)
+	// case 2 is keytab auth
+	case 2:
+		kTab, err := keytab.Load(config.KeyTabPath)
+		if err != nil {
+			return nil, fmt.Errorf("cannot load keytab file %s: %w", config.KeyTabPath, err)
+		}
+		krbClient = krbclient.NewWithKeytab(config.Username, config.Realm, kTab, krbConf)
+	default:
+		return nil, ErrInvalidAuthType
+	}
+
+	return &kerberosClientProvider{kerberosClient: krbClient, httpClient: httpClient}, nil
+}
 func (k *kerberosClientProvider) RoundTripper() http.RoundTripper {
-	return k.client.Transport
+	return k
+}
+
+func (k *kerberosClientProvider) RoundTrip(req *http.Request) (*http.Response, error) {
+	// set appropriate headers on request
+	err := spnego.SetSPNEGOHeader(k.kerberosClient, req, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return k.httpClient.Transport.RoundTrip(req)
 }
 
 // errorRoundTripperProvider provides a RoundTripper that always returns an error
