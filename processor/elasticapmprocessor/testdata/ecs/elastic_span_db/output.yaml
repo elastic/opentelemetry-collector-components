@@ -1,21 +1,27 @@
 resourceSpans:
   - resource:
       attributes:
+        - key: labels.unsupported_key
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: ElasticAPM
         - key: agent.version
           value:
             stringValue: 1.0.0
-        - key: labels.unsupported_key
-          value:
-            stringValue: foo
         - key: labels.my_value
           value:
             stringValue: foo
         - key: numeric_labels.foo
           value:
-            doubleValue: 42.0
+            doubleValue: 42
+        - key: user.id
+          value:
+            stringValue: user-1234
+        - key: service.framework.name
+          value:
+            stringValue: Node
         - key: data_stream.type
           value:
             stringValue: traces
@@ -41,9 +47,6 @@ resourceSpans:
               - key: span.name
                 value:
                   stringValue: span-elastic-db
-              - key: processor.event
-                value:
-                  stringValue: span
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -71,6 +74,9 @@ resourceSpans:
               - key: span.destination.service.resource
                 value:
                   stringValue: mysql
+              - key: processor.event
+                value:
+                  stringValue: span
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
@@ -105,7 +111,5 @@ resourceSpans:
                 timeUnixNano: "1581452773000000123"
             name: span-elastic-db
             parentSpanId: bcff497b5a47310f
-            spanId: ""
             startTimeUnixNano: "1581452772000000321"
             status: {}
-            traceId: ""

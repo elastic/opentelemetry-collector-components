@@ -16,6 +16,12 @@ resourceSpans:
         - key: numeric_labels.foo
           value:
             doubleValue: 42.0
+        - key: user.id
+          value:
+            stringValue: user-1234
+        - key: service.framework.name
+          value:
+            stringValue: Node
     scopeSpans:
       - scope: {}
         spans:
