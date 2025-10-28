@@ -126,7 +126,7 @@ func TestLoadConfig(t *testing.T) {
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
-							"project-id": []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
 						},
 						Rate:  ptr(300),
 						Burst: ptr(400),
@@ -150,7 +150,7 @@ func TestLoadConfig(t *testing.T) {
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
-							"project-id": []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
 						},
 						Rate: ptr(300),
 					},
@@ -173,7 +173,7 @@ func TestLoadConfig(t *testing.T) {
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
-							"project-id": []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
 						},
 						Burst: ptr(400),
 					},
@@ -196,7 +196,7 @@ func TestLoadConfig(t *testing.T) {
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
-							"project-id": []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
 						},
 						Rate:             ptr(400),
 						ThrottleInterval: ptr(10 * time.Second),
@@ -220,7 +220,7 @@ func TestLoadConfig(t *testing.T) {
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
-							"project-id": []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
 						},
 						DisableDynamic: true,
 					},
@@ -299,15 +299,15 @@ func TestLoadConfig(t *testing.T) {
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
-							"project-id": []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
 						},
 						Rate:  ptr(300),
 						Burst: ptr(400),
 					},
 					{
 						Matches: map[string][]string{
-							"project-id":   []string{"e994532b-5n94-48et-a95c-1fa0638g6288"},
-							"project-type": []string{"test"},
+							"project-id":   {"e994532b-5n94-48et-a95c-1fa0638g6288"},
+							"project-type": {"test"},
 						},
 						Rate:  ptr(3000),
 						Burst: ptr(5000),
@@ -368,8 +368,8 @@ func TestResolveEffectiveRateLimit(t *testing.T) {
 		Overrides: []RateLimitOverrides{
 			{
 				Matches: map[string][]string{
-					"project-id":   []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
-					"project-type": []string{"test"},
+					"project-id":   {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+					"project-type": {"test"},
 				},
 				Rate:             ptr(300),
 				Burst:            ptr(400),
@@ -385,8 +385,8 @@ func TestResolveEffectiveRateLimit(t *testing.T) {
 
 	t.Run("override successful", func(t *testing.T) {
 		metadata := client.NewMetadata(map[string][]string{
-			"project-id":   []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
-			"project-type": []string{"test"},
+			"project-id":   {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+			"project-type": {"test"},
 		})
 		res, kind, class := resolveRateLimit(cfg, "trial", metadata)
 		require.Equal(t, SourceKindOverride, kind)
@@ -398,9 +398,9 @@ func TestResolveEffectiveRateLimit(t *testing.T) {
 
 	t.Run("override failed", func(t *testing.T) {
 		metadata := client.NewMetadata(map[string][]string{
-			"project-id": []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+			"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
 			// Project-type not matching the override
-			"project-type": []string{"404"},
+			"project-type": {"404"},
 		})
 		res, kind, class := resolveRateLimit(cfg, "trial", metadata)
 		require.Equal(t, SourceKindClass, kind)
@@ -412,7 +412,7 @@ func TestResolveEffectiveRateLimit(t *testing.T) {
 
 	t.Run("override failed 2", func(t *testing.T) {
 		metadata := client.NewMetadata(map[string][]string{
-			"project-id": []string{"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+			"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
 			// Project-type not present
 		})
 		res, kind, class := resolveRateLimit(cfg, "trial", metadata)
@@ -425,7 +425,7 @@ func TestResolveEffectiveRateLimit(t *testing.T) {
 
 	t.Run("resolved class", func(t *testing.T) {
 		metadata := client.NewMetadata(map[string][]string{
-			"project-id": []string{"some-other-key"},
+			"project-id": {"some-other-key"},
 		})
 		res, kind, class := resolveRateLimit(cfg, "premium", metadata)
 		require.Equal(t, SourceKindClass, kind)
@@ -437,7 +437,7 @@ func TestResolveEffectiveRateLimit(t *testing.T) {
 
 	t.Run("default class fallback", func(t *testing.T) {
 		metadata := client.NewMetadata(map[string][]string{
-			"project-id": []string{"another-key"},
+			"project-id": {"another-key"},
 		})
 		res, kind, class := resolveRateLimit(cfg, "nonexistent", metadata)
 		require.Equal(t, SourceKindClass, kind)

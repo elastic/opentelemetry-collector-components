@@ -493,7 +493,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 			Overrides: []RateLimitOverrides{
 				{
 					Matches: map[string][]string{
-						"x-tenant-id": []string{"static-tenant"},
+						"x-tenant-id": {"static-tenant"},
 					},
 					DisableDynamic:   true,
 					Rate:             ptr(rate), // Lower than global rate to make test clearer
@@ -562,7 +562,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 			Overrides: []RateLimitOverrides{
 				{
 					Matches: map[string][]string{
-						"x-tenant-id": []string{"dynamic-tenant"},
+						"x-tenant-id": {"dynamic-tenant"},
 					},
 					// DisableDynamic is false (default), so dynamic scaling should work
 					Rate:             ptr(rate), // Override rate but still allow dynamic scaling
