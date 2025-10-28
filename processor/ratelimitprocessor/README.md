@@ -15,24 +15,25 @@ a in-memory rate limiter, or makes use of a [gubernator](https://github.com/gube
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | Yes      |            |
 | `throttle_behavior` | Processor behavior for when the rate limit is exceeded. Options are `error`, return an error immediately on throttle and does not send the event, and `delay`, delay the sending until it is no longer throttled. | Yes      | `error`    |
 | `throttle_interval` | Time interval for throttling. It has effects only when `type` is `gubernator`.                                                                                                                                    | No       | `1s`       |
-| `retry_delay`       | Suggested client retry delay included via gRPC `RetryInfo` when throttled.                                                                                                                                       | No       | `1s`       |
+| `retry_delay`       | Suggested client retry delay included via gRPC `RetryInfo` when throttled.                                                                                                                                        | No       | `1s`       |
 | `type`              | Type of rate limiter. Options are `local` or `gubernator`.                                                                                                                                                        | No       | `local`    |
-| `overrides`         | Allows customizing rate limiting parameters for specific metadata key-value pairs. Use this to apply different rate limits to different tenants, projects, or other entities identified by metadata. Each override is keyed by a metadata value and can specify custom `rate`, `burst`, and `throttle_interval` settings that take precedence over the global configuration for matching requests. | No       |            |
-| `dynamic_limits`    | Holds the dynamic rate limiting configuration. This is only applicable when the rate limiter type is `gubernator`.                                                                                                   | No       |            |
-| `classes`           | Named rate limit class definitions for class-based dynamic rate limiting. Only applicable when the rate limiter type is `gubernator`.                                                                              | No       |            |
-| `default_class`     | Default class name to use when resolver returns unknown/empty class. Must exist in classes when set. Only applicable when the rate limiter type is `gubernator`.                                                 | No       |            |
-| `class_resolver`    | Extension ID used to resolve a class name for a given unique key. Only applicable when the rate limiter type is `gubernator`.                                                                                    | No       |            |
+| `overrides`         | Allows customizing rate limiting parameters for specific metadata key-value pairs. Use this to apply different rate limits to different tenants, projects, or other entities identified by metadata. Each override is identified by a set of metadata key values and can specify custom `rate`, `burst`, and `throttle_interval` settings that take precedence over the global configuration for matching requests. | No       |            |
+| `dynamic_limits`    | Holds the dynamic rate limiting configuration. This is only applicable when the rate limiter type is `gubernator`.                                                                                                | No       |            |
+| `classes`           | Named rate limit class definitions for class-based dynamic rate limiting. Only applicable when the rate limiter type is `gubernator`.                                                                             | No       |            |
+| `default_class`     | Default class name to use when resolver returns unknown/empty class. Must exist in classes when set. Only applicable when the rate limiter type is `gubernator`.                                                  | No       |            |
+| `class_resolver`    | Extension ID used to resolve a class name for a given unique key. Only applicable when the rate limiter type is `gubernator`.                                                                                     | No       |            |
 
 ### Overrides
 
-You can override one or more of the following fields:
+Overrides are identified by configuring `matches`. The overrides are prioritised based on order i.e. the first override that matches is prioritised. An override is considered a match if the configured `matches` are a subset of the client metadata. If any of the `matches` does not exist in the client metadata, that override is not considered a match.
 
 | Field               | Description                                                                                                                                                                                                       | Required | Default    |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|
+| `matches`           | Map of key value pairs to identify the target for an override. It must be an subset of the client metadata for a successful override.                                                                             | No       |            |
 | `rate`              | Bucket refill rate, in tokens per second.                                                                                                                                                                         | No       |            |
 | `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | No       |            |
 | `throttle_interval` | Time interval for throttling. It has effect only when `type` is `gubernator`.                                                                                                                                     | No       |            |
-| `disable_dynamic`       | Disables dynamic rate limiting for the override.                                                                                                                                                                  | No       | `false`    |
+| `disable_dynamic`   | Disables dynamic rate limiting for the override.                                                                                                                                                                  | No       | `false`    |
 
 ### Dynamic Rate Limiting
 
@@ -181,7 +182,8 @@ processors:
     strategy: requests
     type: gubernator
     overrides:
-      project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+      - matches:
+          project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
         rate: 2000
         burst: 20000
         throttle_interval: 10s # has effect only when `type` is `gubernator`
@@ -255,7 +257,8 @@ processors:
 
     # Per-key overrides (highest precedence)
     overrides:
-      "customer-123":
+      - matches:
+          tenant: [customer-123]
         rate: 5000      # special override
         burst: 10000
         disable_dynamic: true
