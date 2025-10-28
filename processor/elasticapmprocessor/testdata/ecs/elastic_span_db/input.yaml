@@ -16,12 +16,205 @@ resourceSpans:
         - key: numeric_labels.foo
           value:
             doubleValue: 42.0
-        - key: user.id
+        # service.* attributes
+        - key: service.name
           value:
-            stringValue: user-1234
+            stringValue: test-service
+        - key: service.version
+          value:
+            stringValue: 1.0.0
+        - key: service.instance.id
+          value:
+            stringValue: instance-123
+        - key: service.namespace
+          value:
+            stringValue: production
         - key: service.framework.name
           value:
             stringValue: Node
+        # deployment.* attributes
+        - key: deployment.environment
+          value:
+            stringValue: prod
+        - key: deployment.environment.name
+          value:
+            stringValue: production
+        # telemetry.sdk.* attributes
+        - key: telemetry.sdk.name
+          value:
+            stringValue: opentelemetry
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 1.0.0
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        # cloud.* attributes
+        - key: cloud.provider
+          value:
+            stringValue: aws
+        - key: cloud.account.id
+          value:
+            stringValue: "123456789012"
+        - key: cloud.region
+          value:
+            stringValue: us-east-1
+        - key: cloud.availability_zone
+          value:
+            stringValue: us-east-1a
+        - key: cloud.platform
+          value:
+            stringValue: aws_ec2
+        # container.* attributes
+        - key: container.name
+          value:
+            stringValue: my-container
+        - key: container.id
+          value:
+            stringValue: abc123def456
+        - key: container.image.name
+          value:
+            stringValue: myapp
+        - key: container.image.tags
+          value:
+            stringValue: v1.0.0,latest
+        - key: container.runtime
+          value:
+            stringValue: docker
+        # k8s.* attributes
+        - key: k8s.namespace.name
+          value:
+            stringValue: default
+        - key: k8s.node.name
+          value:
+            stringValue: node-1
+        - key: k8s.pod.name
+          value:
+            stringValue: my-pod
+        - key: k8s.pod.uid
+          value:
+            stringValue: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        # host.* attributes
+        - key: host.name
+          value:
+            stringValue: host-1
+        - key: host.id
+          value:
+            stringValue: host-123
+        - key: host.type
+          value:
+            stringValue: t3.medium
+        - key: host.arch
+          value:
+            stringValue: amd64
+        - key: host.ip
+          value:
+            stringValue: 10.0.0.1
+        # process.* attributes
+        - key: process.pid
+          value:
+            intValue: 12345
+        - key: process.parent_pid
+          value:
+            intValue: 1
+        - key: process.executable.name
+          value:
+            stringValue: myapp
+        - key: process.command_line
+          value:
+            stringValue: /usr/bin/myapp --config=/etc/myapp.conf
+        - key: process.executable.path
+          value:
+            stringValue: /usr/bin/myapp
+        - key: process.owner
+          value:
+            stringValue: appuser
+        # os.* attributes
+        - key: os.type
+          value:
+            stringValue: linux
+        - key: os.description
+          value:
+            stringValue: Linux 5.10
+        - key: os.name
+          value:
+            stringValue: Ubuntu
+        - key: os.version
+          value:
+            stringValue: "22.04"
+        # device.* attributes
+        - key: device.id
+          value:
+            stringValue: device-123
+        - key: device.model.identifier
+          value:
+            stringValue: MacBookPro14,1
+        - key: device.model.name
+          value:
+            stringValue: MacBook Pro
+        # user.* attributes
+        - key: user.id
+          value:
+            stringValue: user-1234
+        - key: user.email
+          value:
+            stringValue: user@example.com
+        - key: user.name
+          value:
+            stringValue: john.doe
+        # user_agent.* attributes
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla/5.0
+        # network.* attributes
+        - key: network.connection.type
+          value:
+            stringValue: wifi
+        - key: network.connection.subtype
+          value:
+            stringValue: wlan
+        - key: network.carrier.name
+          value:
+            stringValue: carrier-name
+        - key: network.carrier.mcc
+          value:
+            intValue: 310
+        - key: network.carrier.mnc
+          value:
+            intValue: 260
+        - key: network.carrier.icc
+          value:
+            stringValue: US
+        # client.* attributes
+        - key: client.address
+          value:
+            stringValue: 192.168.1.100
+        - key: client.port
+          value:
+            intValue: 8080
+        # source.* attributes
+        - key: source.address
+          value:
+            stringValue: 10.0.0.1
+        - key: source.port
+          value:
+            intValue: 9000
+        # faas.* attributes
+        - key: faas.instance
+          value:
+            stringValue: faas-instance-1
+        - key: faas.name
+          value:
+            stringValue: my-function
+        - key: faas.version
+          value:
+            stringValue: 1.0.0
+        - key: faas.trigger
+          value:
+            stringValue: http
+        - key: faas.coldstart
+          value:
+            boolValue: false
     scopeSpans:
       - scope: {}
         spans:
