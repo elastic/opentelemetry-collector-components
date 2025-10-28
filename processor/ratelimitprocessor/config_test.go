@@ -451,7 +451,7 @@ func TestResolveEffectiveRateLimit(t *testing.T) {
 			"project-id": nil,
 		})
 		cfgNoClasses := &Config{RateLimitSettings: cfg.RateLimitSettings}
-		res, kind, class := resolveRateLimit(cfgNoClasses, "key", metadata)
+		res, kind, class := resolveRateLimit(cfgNoClasses, "", metadata)
 		require.Equal(t, SourceKindFallback, kind)
 		require.Empty(t, class)
 		require.Equal(t, cfg.RateLimitSettings, res)
