@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
@@ -77,7 +78,7 @@ func isSupportedAttribute(attr string) bool {
 		return true
 
 	// deployment.*
-	case string(semconv.DeploymentEnvironmentNameKey):
+	case string(semconv26.DeploymentEnvironmentKey), string(semconv.DeploymentEnvironmentNameKey):
 		return true
 
 	// telemetry.sdk.*
