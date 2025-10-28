@@ -109,6 +109,7 @@ func isSupportedAttribute(attr string) bool {
 	case string(semconv.ContainerNameKey),
 		string(semconv.ContainerIDKey),
 		string(semconv.ContainerImageNameKey),
+		"container.image.tag",
 		string(semconv.ContainerImageTagsKey),
 		string(semconv.ContainerRuntimeKey):
 		return true
