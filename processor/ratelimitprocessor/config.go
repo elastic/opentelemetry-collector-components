@@ -99,7 +99,7 @@ func (cfg *Config) Unmarshal(componentParser *confmap.Conf) error {
 		// after parsing the old format override keys later.
 		confM := map[string]any{"overrides": newRawOverrides}
 		if err := componentParser.Merge(confmap.NewFromStringMap(confM)); err != nil {
-			return fmt.Errorf("failed to parse old format overrides: %w", err)
+			return fmt.Errorf("failed to parse deprecated overrides format: %w", err)
 		}
 	}
 
