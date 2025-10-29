@@ -290,8 +290,11 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
 			}
 		default:
-			// If no ES error type is found, it implies an error on the TCP connection level.
-			return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error %q: %v", id, err), nil)
+			// Received unexpected error response, return retryable error.
+			return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error %q: %v", id, err), map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   id,
+			})
 		}
 	}
 	if !hasPrivileges {
