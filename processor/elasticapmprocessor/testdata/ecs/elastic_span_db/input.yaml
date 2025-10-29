@@ -29,9 +29,40 @@ resourceSpans:
         - key: service.namespace
           value:
             stringValue: production
+        # service.* elastic attributes
+        - key: service.language.name
+          value:
+            stringValue: go
+        - key: service.language.version
+          value:
+            stringValue: 1.21.0
         - key: service.framework.name
           value:
-            stringValue: Node
+              stringValue: Node
+        - key: service.framework.version
+          value:
+            stringValue: 1.9.0
+        - key: service.runtime.name
+          value:
+            stringValue: go
+        - key: service.runtime.version
+          value:
+            stringValue: go1.21.0
+        - key: service.origin.id
+          value:
+            stringValue: origin-456
+        - key: service.origin.name
+          value:
+            stringValue: origin-name
+        - key: service.origin.version
+          value:
+            stringValue: 2.0.0
+        - key: service.target.name
+          value:
+            stringValue: target-service
+        - key: service.target.type
+          value:
+            stringValue: container
         # deployment.* attributes
         - key: deployment.environment
           value:
@@ -65,6 +96,37 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: aws_ec2
+        # cloud.* elastic attributes
+        - key: cloud.origin.account.id
+          value:
+            stringValue: "987654321098"
+        - key: cloud.origin.provider
+          value:
+            stringValue: azure
+        - key: cloud.origin.region
+          value:
+            stringValue: westus
+        - key: cloud.origin.service.name
+          value:
+            stringValue: compute
+        - key: cloud.account.name
+          value:
+            stringValue: test-account
+        - key: cloud.instance.id
+          value:
+            stringValue: i-1234567890abcdef0
+        - key: cloud.instance.name
+          value:
+            stringValue: test-instance
+        - key: cloud.machine.type
+          value:
+            stringValue: t3.medium
+        - key: cloud.project.id
+          value:
+            stringValue: project-123
+        - key: cloud.project.name
+          value:
+            stringValue: my-project
         # container.* attributes
         - key: container.name
           value:
@@ -81,6 +143,10 @@ resourceSpans:
         - key: container.runtime
           value:
             stringValue: docker
+        # container.* elastic attributes
+        - key: container.image.tag
+          value:
+            stringValue: latest
         # k8s.* attributes
         - key: k8s.namespace.name
           value:
@@ -110,6 +176,10 @@ resourceSpans:
         - key: host.ip
           value:
             stringValue: 10.0.0.1
+        # host.* elastic attributes
+        - key: host.os.platform
+          value:
+            stringValue: linux
         # process.* attributes
         - key: process.pid
           value:
@@ -129,6 +199,13 @@ resourceSpans:
         - key: process.owner
           value:
             stringValue: appuser
+        # process.* elastic attributes
+        - key: process.runtime.name
+          value:
+            stringValue: java
+        - key: process.runtime.version
+          value:
+            stringValue: "17"
         # os.* attributes
         - key: os.type
           value:
@@ -152,6 +229,10 @@ resourceSpans:
         - key: device.model.name
           value:
             stringValue: MacBook Pro
+        # device.* elastic attributes
+        - key: device.manufacturer
+          value:
+            stringValue: Apple
         # user.* attributes
         - key: user.id
           value:
@@ -162,6 +243,10 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: john.doe
+        # user.* elastic attributes
+        - key: user.domain
+          value:
+            stringValue: example.com
         # user_agent.* attributes
         - key: user_agent.original
           value:
@@ -199,6 +284,14 @@ resourceSpans:
         - key: source.port
           value:
             intValue: 9000
+        # source.* elastic attributes
+        - key: source.nat.ip
+          value:
+            stringValue: 203.0.113.1
+        # destination.* attributes
+        - key: destination.ip
+          value:
+            stringValue: 172.16.0.1
         # faas.* attributes
         - key: faas.instance
           value:
@@ -215,6 +308,31 @@ resourceSpans:
         - key: faas.coldstart
           value:
             boolValue: false
+        # faas.* elastic attributes
+        - key: faas.trigger.request.id
+          value:
+            stringValue: req-123
+        - key: faas.execution
+          value:
+            stringValue: exec-456
+        # data_stream.* attributes
+        - key: data_stream.dataset
+          value:
+            stringValue: default
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        # Legacy OpenCensus attributes
+        - key: opencensus.exporterversion
+          value:
+            stringValue: 1.0.0
+        # APM Agent enrichment (remaining)
+        - key: agent.ephemeral_id
+          value:
+            stringValue: ephem-123
+        - key: agent.activation_method
+          value:
+            stringValue: automatic
     scopeSpans:
       - scope: {}
         spans:

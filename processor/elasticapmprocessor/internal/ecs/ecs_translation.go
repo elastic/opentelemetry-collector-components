@@ -25,6 +25,48 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
+// Supported ECS resource attributes
+const (
+	ecsAttrServiceLanguageName       = "service.language.name"
+	ecsAttrServiceLanguageVersion    = "service.language.version"
+	ecsAttrServiceFrameworkName      = "service.framework.name"
+	ecsAttrServiceFrameworkVersion   = "service.framework.version"
+	ecsAttrServiceRuntimeName        = "service.runtime.name"
+	ecsAttrServiceRuntimeVersion     = "service.runtime.version"
+	ecsAttrServiceOriginID           = "service.origin.id"
+	ecsAttrServiceOriginName         = "service.origin.name"
+	ecsAttrServiceOriginVersion      = "service.origin.version"
+	ecsAttrServiceTargetName         = "service.target.name"
+	ecsAttrServiceTargetType         = "service.target.type"
+	ecsAttrCloudOriginAccountID      = "cloud.origin.account.id"
+	ecsAttrCloudOriginProvider       = "cloud.origin.provider"
+	ecsAttrCloudOriginRegion         = "cloud.origin.region"
+	ecsAttrCloudOriginServiceName    = "cloud.origin.service.name"
+	ecsAttrCloudAccountName          = "cloud.account.name"
+	ecsAttrCloudInstanceID           = "cloud.instance.id"
+	ecsAttrCloudInstanceName         = "cloud.instance.name"
+	ecsAttrCloudMachineType          = "cloud.machine.type"
+	ecsAttrCloudProjectID            = "cloud.project.id"
+	ecsAttrCloudProjectName          = "cloud.project.name"
+	ecsAttrContainerImageTag         = "container.image.tag"
+	ecsAttrHostOSPlatform            = "host.os.platform"
+	ecsAttrProcessRuntimeName        = "process.runtime.name"
+	ecsAttrProcessRuntimeVersion     = "process.runtime.version"
+	ecsAttrDeviceManufacturer        = "device.manufacturer"
+	ecsAttrDataStreamDataset         = "data_stream.dataset"
+	ecsAttrDataStreamNamespace       = "data_stream.namespace"
+	ecsAttrUserDomain                = "user.domain"
+	ecsAttrSourceNATIP               = "source.nat.ip"
+	ecsAttrDestinationIP             = "destination.ip"
+	ecsAttrFaaSTriggerRequestID      = "faas.trigger.request.id"
+	ecsAttrFaaSExecution             = "faas.execution"
+	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
+	ecsAttrAgentName                 = "agent.name"
+	ecsAttrAgentVersion              = "agent.version"
+	ecsAttrAgentEphemeralID          = "agent.ephemeral_id"
+	ecsAttrAgentActivationMethod     = "agent.activation_method"
+)
+
 func TranslateResourceMetadata(resource pcommon.Resource) {
 	attributes := resource.Attributes()
 
@@ -64,17 +106,17 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ServiceVersionKey),
 		string(semconv.ServiceInstanceIDKey),
 		string(semconv.ServiceNamespaceKey),
-		"service.language.name",
-		"service.language.version",
-		"service.framework.name",
-		"service.framework.version",
-		"service.runtime.name",
-		"service.runtime.version",
-		"service.origin.id",
-		"service.origin.name",
-		"service.origin.version",
-		"service.target.name",
-		"service.target.type":
+		ecsAttrServiceLanguageName,
+		ecsAttrServiceLanguageVersion,
+		ecsAttrServiceFrameworkName,
+		ecsAttrServiceFrameworkVersion,
+		ecsAttrServiceRuntimeName,
+		ecsAttrServiceRuntimeVersion,
+		ecsAttrServiceOriginID,
+		ecsAttrServiceOriginName,
+		ecsAttrServiceOriginVersion,
+		ecsAttrServiceTargetName,
+		ecsAttrServiceTargetType:
 		return true
 
 	// deployment.*
@@ -93,23 +135,23 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.CloudRegionKey),
 		string(semconv.CloudAvailabilityZoneKey),
 		string(semconv.CloudPlatformKey),
-		"cloud.origin.account.id",
-		"cloud.origin.provider",
-		"cloud.origin.region",
-		"cloud.origin.service.name",
-		"cloud.account.name",
-		"cloud.instance.id",
-		"cloud.instance.name",
-		"cloud.machine.type",
-		"cloud.project.id",
-		"cloud.project.name":
+		ecsAttrCloudOriginAccountID,
+		ecsAttrCloudOriginProvider,
+		ecsAttrCloudOriginRegion,
+		ecsAttrCloudOriginServiceName,
+		ecsAttrCloudAccountName,
+		ecsAttrCloudInstanceID,
+		ecsAttrCloudInstanceName,
+		ecsAttrCloudMachineType,
+		ecsAttrCloudProjectID,
+		ecsAttrCloudProjectName:
 		return true
 
 	// container.*
 	case string(semconv.ContainerNameKey),
 		string(semconv.ContainerIDKey),
 		string(semconv.ContainerImageNameKey),
-		"container.image.tag",
+		ecsAttrContainerImageTag,
 		string(semconv.ContainerImageTagsKey),
 		string(semconv.ContainerRuntimeKey):
 		return true
@@ -127,7 +169,7 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.HostTypeKey),
 		string(semconv.HostArchKey),
 		string(semconv.HostIPKey),
-		"host.os.platform":
+		ecsAttrHostOSPlatform:
 		return true
 
 	// process.*
@@ -136,8 +178,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ProcessExecutableNameKey),
 		string(semconv.ProcessCommandLineKey),
 		string(semconv.ProcessExecutablePathKey),
-		"process.runtime.name",
-		"process.runtime.version",
+		ecsAttrProcessRuntimeName,
+		ecsAttrProcessRuntimeVersion,
 		string(semconv.ProcessOwnerKey):
 		return true
 
@@ -152,19 +194,19 @@ func isSupportedAttribute(attr string) bool {
 	case string(semconv.DeviceIDKey),
 		string(semconv.DeviceModelIdentifierKey),
 		string(semconv.DeviceModelNameKey),
-		"device.manufacturer":
+		ecsAttrDeviceManufacturer:
 		return true
 
 	// data_stream.*
-	case "data_stream.dataset",
-		"data_stream.namespace":
+	case ecsAttrDataStreamDataset,
+		ecsAttrDataStreamNamespace:
 		return true
 
 	// user.*
 	case string(semconv.UserIDKey),
 		string(semconv.UserEmailKey),
 		string(semconv.UserNameKey),
-		"user.domain":
+		ecsAttrUserDomain:
 		return true
 
 	// user_agent.*
@@ -188,11 +230,11 @@ func isSupportedAttribute(attr string) bool {
 	// source.*
 	case string(semconv.SourceAddressKey),
 		string(semconv.SourcePortKey),
-		"source.nat.ip":
+		ecsAttrSourceNATIP:
 		return true
 
 	// destination.*
-	case "destination.ip":
+	case ecsAttrDestinationIP:
 		return true
 
 	// faas.*
@@ -201,19 +243,19 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.FaaSVersionKey),
 		string(semconv.FaaSTriggerKey),
 		string(semconv.FaaSColdstartKey),
-		"faas.trigger.request.id",
-		"faas.execution":
+		ecsAttrFaaSTriggerRequestID,
+		ecsAttrFaaSExecution:
 		return true
 
 	// Legacy OpenCensus attributes
-	case "opencensus.exporterversion":
+	case ecsAttrOpenCensusExporterVersion:
 		return true
 
 	// APM Agent enrichment
-	case "agent.name",
-		"agent.version",
-		"agent.ephemeral_id",
-		"agent.activation_method":
+	case ecsAttrAgentName,
+		ecsAttrAgentVersion,
+		ecsAttrAgentEphemeralID,
+		ecsAttrAgentActivationMethod:
 		return true
 	}
 
