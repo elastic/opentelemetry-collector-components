@@ -20,9 +20,13 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 )
 
 // Config holds configuration for the ratelimit processor.
@@ -46,7 +50,8 @@ type Config struct {
 	// Overrides holds a list of overrides for the rate limiter.
 	//
 	// Defaults to empty
-	Overrides map[string]RateLimitOverrides `mapstructure:"overrides"`
+	// Overrides map[string]RateLimitOverrides `mapstructure:"overrides"`
+	Overrides []RateLimitOverrides `mapstructure:"overrides"`
 
 	// Classes holds named rate limit class definitions for class-based dynamic rate limiting.
 	// Only applicable when the rate limiter type is "gubernator".
@@ -65,6 +70,63 @@ type Config struct {
 	// If not set, class resolution is disabled.
 	// Only applicable when the rate limiter type is "gubernator".
 	ClassResolver component.ID `mapstructure:"class_resolver"`
+}
+
+// Unmarshal implements temporary logic to parse the older format of the overrides.
+// This is achieved by identifying if overrides are defined using the old config
+// and mapping it to the new config.
+func (cfg *Config) Unmarshal(componentParser *confmap.Conf) error {
+	if componentParser == nil {
+		return nil
+	}
+
+	var oldFmtOverrideKeys []string
+	raw := componentParser.Get("overrides")
+	if oldFmtOverrides, ok := raw.(map[string]any); ok {
+		// Delete the older deprecated overrides config
+		componentParser.Delete("overrides")
+
+		// Convert the older overrides config into the new format and create a
+		// new `Conf` from the newer config. The old format override keys are
+		// cached and converted to the new format later.
+		newRawOverrides := make([]any, 0, len(oldFmtOverrides))
+		oldFmtOverrideKeys = make([]string, 0, len(oldFmtOverrides))
+		for k, v := range oldFmtOverrides {
+			newRawOverrides = append(newRawOverrides, v)
+			oldFmtOverrideKeys = append(oldFmtOverrideKeys, k)
+		}
+		// confM will be missing the `matches` config which will be populated
+		// after parsing the old format override keys later.
+		confM := map[string]any{"overrides": newRawOverrides}
+		if err := componentParser.Merge(confmap.NewFromStringMap(confM)); err != nil {
+			return fmt.Errorf("failed to parse deprecated overrides format: %w", err)
+		}
+	}
+
+	if err := componentParser.Unmarshal(cfg, confmap.WithIgnoreUnused()); err != nil {
+		return err
+	}
+
+	// Parse the old format override keys and populate `matches`.
+	for i, k := range oldFmtOverrideKeys {
+		if len(k) == 0 {
+			continue
+		}
+		matches := make(map[string][]string)
+		cfg.Overrides[i].Matches = matches
+		matchKVs := strings.Split(k, ";")
+		for _, matchKV := range matchKVs {
+			if len(matchKV) == 0 {
+				continue
+			}
+			meta := strings.Split(matchKV, ":")
+			if len(meta) < 2 {
+				return fmt.Errorf("invalid overrides found: %s", matchKV)
+			}
+			matches[meta[0]] = meta[1:]
+		}
+	}
+	return nil
 }
 
 // DynamicRateLimiting defines settings for dynamic rate limiting.
@@ -166,6 +228,10 @@ type RateLimitSettings struct {
 // Nil pointer fields leave the corresponding top-level field unchanged.
 // DisableDynamic disables dynamic escalation for that specific key when true.
 type RateLimitOverrides struct {
+	// Matches are a map of key-value pairs that MUST be a subset of the
+	// incoming client metadata for the override to be applied.
+	Matches map[string][]string `mapstructure:"matches"`
+
 	// Rate holds the override rate limit.
 	DisableDynamic bool `mapstructure:"disable_dynamic"`
 
@@ -278,25 +344,36 @@ func createDefaultConfig() component.Config {
 //  4. Top-level fallback config (SourceKindFallback)
 //
 // When sourceKind is override or fallback, className will be empty.
-func resolveRateLimit(cfg *Config,
-	uniqueKey, className string,
+func resolveRateLimit(
+	cfg *Config,
+	className string,
+	metadata client.Metadata,
 ) (result RateLimitSettings, kind SourceKind, name string) {
 	result = cfg.RateLimitSettings
 	// 1. Per-key override takes absolute precedence regardless of classes.
-	if override, hasOverride := cfg.Overrides[uniqueKey]; hasOverride {
-		if override.Rate != nil {
-			result.Rate = *override.Rate
+	for _, override := range cfg.Overrides {
+		match := true
+		for k, v := range override.Matches {
+			if slices.Compare(metadata.Get(k), v) != 0 {
+				match = false
+				break
+			}
 		}
-		if override.Burst != nil {
-			result.Burst = *override.Burst
+		if match {
+			if override.Rate != nil {
+				result.Rate = *override.Rate
+			}
+			if override.Burst != nil {
+				result.Burst = *override.Burst
+			}
+			if override.ThrottleInterval != nil {
+				result.ThrottleInterval = *override.ThrottleInterval
+			}
+			if override.DisableDynamic {
+				result.disableDynamic = true
+			}
+			return result, SourceKindOverride, ""
 		}
-		if override.ThrottleInterval != nil {
-			result.ThrottleInterval = *override.ThrottleInterval
-		}
-		if override.DisableDynamic {
-			result.disableDynamic = true
-		}
-		return result, SourceKindOverride, ""
 	}
 	// 2. Resolved class (only if provided and exists)
 	if className != "" {

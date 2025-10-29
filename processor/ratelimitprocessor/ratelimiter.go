@@ -57,16 +57,15 @@ type RateLimiter interface {
 // high cardinality: tenant ID would be a good choice. For rate
 // limiting by IP (e.g. to avoid DDoS), consider running OpenTelemetry
 // Collector behind a WAF/API Gateway/proxy.
-func getUniqueKey(ctx context.Context, metadataKeys []string) string {
+func getUniqueKey(metadata client.Metadata, metadataKeys []string) string {
 	if len(metadataKeys) == 0 {
 		return "default"
 	}
 
 	// Generate a unique key from client metadata.
 	var uniqueKey strings.Builder
-	clientInfo := client.FromContext(ctx)
 	for i, metadataKey := range metadataKeys {
-		values := clientInfo.Metadata.Get(metadataKey)
+		values := metadata.Get(metadataKey)
 		if i > 0 {
 			uniqueKey.WriteByte(';')
 		}
