@@ -1,0 +1,188 @@
+# OpenTelemetry Collector Configuration with Elastic Pipeline Extension
+# This configuration demonstrates how to use the elasticpipelineextension
+# to dynamically manage OpenTelemetry collector pipelines
+
+extensions:
+  # Basic extensions for authentication and health monitoring
+  basicauth/elasticsearch:
+    client_auth:
+      username: elastic
+      password: changeme
+
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+  # Elastic Pipeline Extension - This is our custom extension
+  elasticpipeline:
+    # Endpoint where the extension will listen for configuration changes
+    endpoint: "localhost:8080"
+    
+    # Authentication for the extension's HTTP API
+    auth:
+      type: "basic"
+      username: "admin"
+      password: "secure123"
+    
+    # Elasticsearch connection details for storing pipeline configurations
+    elasticsearch:
+      endpoints: ["http://localhost:9200"]
+      username: "elastic"
+      password: "changeme"
+      timeout: 30s
+      retry_on_failure:
+        enabled: true
+        max_retries: 3
+        initial_interval: 1s
+        max_interval: 5s
+      
+    # Polling interval for checking configuration changes
+    poll_interval: 30s
+    
+    # Default pipeline configurations that will be applied initially
+    default_pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [elasticsearch/traces]
+      metrics:
+        receivers: [otlp, prometheus]
+        processors: [batch, resourcedetection]
+        exporters: [elasticsearch/metrics]
+      logs:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [elasticsearch/logs]
+
+receivers:
+  # OTLP receiver for receiving telemetry data
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Prometheus receiver for scraping metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 30s
+          static_configs:
+            - targets: ['localhost:8888']
+
+  # Host metrics receiver
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+      memory:
+      disk:
+      network:
+
+processors:
+  # Batch processor for better performance
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    limit_mib: 256
+    spike_limit_mib: 64
+
+  # Resource detection processor
+  resourcedetection:
+    detectors: [env, system]
+    timeout: 5s
+
+  # Attributes processor for adding custom attributes
+  attributes:
+    actions:
+      - key: environment
+        value: production
+        action: insert
+      - key: service.version
+        from_attribute: version
+        action: insert
+
+exporters:
+  # Elasticsearch exporters for different signal types
+  elasticsearch/traces:
+    endpoints: [http://localhost:9200]
+    username: elastic
+    password: changeme
+    traces_index: traces
+    timeout: 30s
+    retry_on_failure:
+      enabled: true
+      max_retries: 3
+      initial_interval: 1s
+      max_interval: 5s
+    mapping:
+      mode: "ecs"
+      dedupe: true
+
+  elasticsearch/metrics:
+    endpoints: [http://localhost:9200]
+    username: elastic
+    password: changeme
+    metrics_index: metrics
+    timeout: 30s
+    retry_on_failure:
+      enabled: true
+      max_retries: 3
+      initial_interval: 1s
+      max_interval: 5s
+    mapping:
+      mode: "ecs"
+
+  elasticsearch/logs:
+    endpoints: [http://localhost:9200]
+    username: elastic
+    password: changeme
+    logs_index: logs
+    timeout: 30s
+    retry_on_failure:
+      enabled: true
+      max_retries: 3
+      initial_interval: 1s
+      max_interval: 5s
+    mapping:
+      mode: "ecs"
+
+  # Logging exporter for debugging
+  logging:
+    loglevel: debug
+
+  # Prometheus exporter for metrics
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+
+service:
+  extensions: [health_check, basicauth/elasticsearch, elasticpipeline]
+  
+  # Initial pipeline configuration - can be dynamically modified by elasticpipeline extension
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes, batch]
+      exporters: [elasticsearch/traces, logging]
+
+    metrics:
+      receivers: [otlp, prometheus, hostmetrics]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [elasticsearch/metrics, prometheus]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes, batch]
+      exporters: [elasticsearch/logs, logging]
+
+  # Telemetry configuration
+  telemetry:
+    logs:
+      level: "info"
+    metrics:
+      address: 0.0.0.0:8888

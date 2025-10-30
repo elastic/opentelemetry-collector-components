@@ -13,13 +13,21 @@ extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.138.0
   - gomod: go.opentelemetry.io/collector/extension/memorylimiterextension v0.138.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension v0.8.0
+    path: ../../extension/apmconfigextension
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension v0.8.0
+    path: ../../extension/apikeyauthextension
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension v0.5.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension v0.0.0
+    path: ../../extension/beatsauthextension
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.1
+    path: ../../extension/configintegrationextension
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/elasticpipelineextension v0.0.1
+    path: ../../extension/elasticpipelineextension
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension v0.0.1
+    path: ../../extension/fileintegrationextension
 
 connectors:
   - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.8.0
+    path: ../../connector/elasticapmconnector
 
 converters:
 
@@ -35,9 +43,12 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.138.0
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.138.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver v0.0.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver v0.0.1
+    path: ../../receiver/integrationreceiver
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.1
+    path: ../../receiver/loadgenreceiver
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver v0.5.0
+    path: ../../receiver/elasticapmintakereceiver
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.138.0
@@ -50,11 +61,17 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.138.0
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.138.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.18.0
+    path: ../../processor/elasticinframetricsprocessor
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.6.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.0
+    path: ../../processor/elasticapmprocessor
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.1
+    path: ../../processor/integrationprocessor
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.9.0
+    path: ../../processor/lsmintervalprocessor
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.10.2
+    path: ../../processor/ratelimitprocessor
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.13.0
+    path: ../../processor/elastictraceprocessor
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.138.0
@@ -83,6 +100,7 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension => ../extension/apikeyauthextension
   - github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension => ../extension/beatsauthextension
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension => ../extension/configintegrationextension
+  - github.com/elastic/opentelemetry-collector-components/extension/elasticpipelineextension => ../extension/elasticpipelineextension
   - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension => ../extension/fileintegrationextension
   - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector => ../connector/elasticapmconnector
   - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver => ../receiver/elasticapmintakereceiver

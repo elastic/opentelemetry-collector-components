@@ -1,0 +1,23 @@
+type: elasticpipeline
+
+status:
+  class: extension
+  stability:
+    development: [extension]
+  distributions: []
+  codeowners:
+    active: [joereuter]
+
+tests:
+  config:
+    source:
+      elasticsearch:
+        endpoint: http://localhost:9200
+        index: ".otel-pipeline-config"
+    watcher:
+      poll_interval: 30s
+      cache_duration: 5m
+    pipeline_management:
+      namespace: "elastic"
+      enable_health_reporting: true
+      health_report_interval: 60s
