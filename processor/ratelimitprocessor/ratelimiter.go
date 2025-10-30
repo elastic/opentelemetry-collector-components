@@ -19,7 +19,6 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -33,7 +32,7 @@ import (
 )
 
 var (
-	errTooManyRequests = errors.New("too many requests")
+	errTooManyRequests = status.Error(codes.ResourceExhausted, "too many requests")
 )
 
 // RateLimiter provides an interface for rate limiting by some number
@@ -99,7 +98,7 @@ func getAttrsFromContext(ctx context.Context, metadataKeys []string) []attribute
 // errorWithDetails provides a user friendly error with additional error details that
 // can be later used to provide more detailed error information to the user.
 func errorWithDetails(err error, cfg RateLimitSettings) error {
-	st := status.New(codes.ResourceExhausted, err.Error())
+	st := status.Convert(err)
 	if detailedSt, stErr := st.WithDetails(&errdetails.ErrorInfo{
 		Domain: "ingest.elastic.co",
 		Metadata: map[string]string{
