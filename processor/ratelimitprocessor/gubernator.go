@@ -33,7 +33,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/client"
@@ -317,10 +319,11 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 	if err != nil {
 		r.logger.Error("error executing gubernator rate limit request",
 			zap.Error(err),
-			zap.String("name", cfg.Strategy.String()),
-			zap.String("unique_key", uniqueKey),
+			zap.Dict("ratelimit", zap.String("strategy", cfg.Strategy.String()), zap.String("unique_key", uniqueKey)),
 		)
-		return err
+		// Make the error retryable as gubernator being down is treated as a transient error.
+		msg := fmt.Sprintf("service unavailable, try again in %v seconds", cfg.RetryDelay.Seconds())
+		return errorWithDetails(status.Error(codes.Unavailable, msg), cfg)
 	}
 	if resp.GetStatus() == gubernator.Status_OVER_LIMIT {
 		// Same logic as local

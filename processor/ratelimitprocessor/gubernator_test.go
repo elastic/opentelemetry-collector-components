@@ -40,7 +40,9 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
@@ -1343,6 +1345,37 @@ func (f *fakeWindowConfigurator) Multiplier(
 		return multipliers[f.count[key]-1]
 	}
 	return -1 // force default multiplier
+}
+
+func TestGubernatorRateLimiter_UnavailableError(t *testing.T) {
+	retryDelay := 2 * time.Second
+	rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+		Type: GubernatorRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Strategy:         StrategyRateLimitRequests,
+			Rate:             100,
+			Burst:            10,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: time.Second,
+			RetryDelay:       retryDelay,
+		},
+	}, nil)
+
+	// Close the daemon to simulate gubernator being unavailable
+	rateLimiter.daemon.Close()
+
+	err := rateLimiter.RateLimit(context.Background(), 1)
+	require.Error(t, err)
+
+	st, ok := status.FromError(err)
+	require.True(t, ok, "expected gRPC status error")
+	assert.Equal(t, codes.Unavailable, st.Code(), "expected Unavailable status code")
+
+	expectedMsg := fmt.Sprintf("service unavailable, try again in %v seconds", retryDelay.Seconds())
+	assert.Contains(t, st.Message(), expectedMsg, "error message should contain retry delay information")
+
+	details := st.Details()
+	require.Len(t, details, 2, "expected 2 details (ErrorInfo and RetryInfo)")
 }
 
 type fakeHost map[component.ID]component.Component
