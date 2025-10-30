@@ -92,6 +92,14 @@ func TestAuthenticator(t *testing.T) {
 			}),
 			expectedErr: `rpc error: code = Unauthenticated desc = status: 401, failed: [auth_reason], reason: auth_reason`,
 		},
+		"proxy_502_error": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				// Simulate a 502 Bad Gateway from the proxy (not an Elasticsearch error response)
+				w.WriteHeader(http.StatusBadGateway)
+				w.Write([]byte("Bad Gateway"))
+			},
+			expectedErr: `rpc error: code = Unavailable desc = retryable server error "id": invalid character 'B' looking for beginning of value`,
+		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
 			expectedErr: `rpc error: code = PermissionDenied desc = API Key "id" unauthorized`,
