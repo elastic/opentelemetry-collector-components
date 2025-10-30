@@ -281,21 +281,19 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
-		switch elasticsearchErr := err.(type) {
-		case *types.ElasticsearchError:
+		var elasticsearchErr *types.ElasticsearchError
+		if errors.As(err, &elasticsearchErr) {
 			switch elasticsearchErr.Status {
 			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
 			default:
 				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
 			}
-		default:
-			// Received unexpected error response, return retryable error.
-			return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error %q: %v", id, err), map[string]string{
-				"component": "apikeyauthextension",
-				"api_key":   id,
-			})
 		}
+		return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error %q: %v", id, err), map[string]string{
+			"component": "apikeyauthextension",
+			"api_key":   id,
+		})
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{
