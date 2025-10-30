@@ -94,11 +94,10 @@ func TestAuthenticator(t *testing.T) {
 		},
 		"proxy_502_error": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				// Simulate a 502 Bad Gateway from the proxy (not an Elasticsearch error response)
+				// Simulate proxy returning 502 when ES is unreachable - empty response body
 				w.WriteHeader(http.StatusBadGateway)
-				w.Write([]byte("Bad Gateway"))
 			},
-			expectedErr: `rpc error: code = Unavailable desc = retryable server error "id": invalid character 'B' looking for beginning of value`,
+			expectedErr: `rpc error: code = Unavailable desc = retryable server error "id": EOF`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
