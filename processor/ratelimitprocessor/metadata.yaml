@@ -30,6 +30,13 @@ telemetry:
         value_type: int
         monotonic: true
       attributes: ["class", "source_kind", "result"]
+    ratelimit.request.uncompressed.size:
+      enabled: true
+      description: Size of the uncompressed request in bytes. Only available if strategy is set to bytes.
+      unit: "{bytes}"
+      sum:
+        value_type: int
+        monotonic: true
     ratelimit.request_duration:
       enabled: true
       description: Time(in seconds) taken to process a rate limit request
@@ -81,13 +88,6 @@ telemetry:
           18874368,   # 18 MB
           20971520    # 20 MB (OTLP HTTP max)
         ]
-    ratelimit.request.uncompressed.size:
-      enabled: true
-      description: Size of the uncompressed request in bytes. Only available if strategy is set to bytes.
-      unit: "{bytes}"
-      sum:
-        value_type: int
-        monotonic: true
     ratelimit.requests:
       enabled: true
       description: Number of rate-limiting requests
