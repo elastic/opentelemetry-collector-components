@@ -97,7 +97,7 @@ func TestAuthenticator(t *testing.T) {
 				// Simulate proxy returning 502 when ES is unreachable - empty response body
 				w.WriteHeader(http.StatusBadGateway)
 			},
-			expectedErr: `rpc error: code = Unavailable desc = retryable server error "id": EOF`,
+			expectedErr: `rpc error: code = Unavailable desc = retryable server error for API Key "id": EOF`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
