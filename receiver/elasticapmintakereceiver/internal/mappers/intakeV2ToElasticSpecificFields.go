@@ -493,14 +493,6 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 				attributesMap.PutStr(attr.ServiceOriginVersion, event.Service.Origin.Version)
 			}
 		}
-		if event.Service.Target != nil {
-			if event.Service.Target.Name != "" {
-				attributesMap.PutStr(attr.ServiceTargetName, event.Service.Target.Name)
-			}
-			if event.Service.Target.Type != "" {
-				attributesMap.PutStr(attr.ServiceTargetType, event.Service.Target.Type)
-			}
-		}
 	}
 
 	if event.Host != nil {

@@ -27,10 +27,11 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
 	"github.com/elastic/apm-data/model/modelpb"
+	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
 	"github.com/elastic/opentelemetry-lib/elasticattr"
 )
 
-// Sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
+// SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "transaction")
 	attributes.PutStr(elasticattr.TransactionID, event.Transaction.Id)
@@ -41,13 +42,30 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 	attributes.PutStr(elasticattr.TransactionType, event.Transaction.Type)
 	attributes.PutStr(elasticattr.TransactionResult, event.Transaction.Result)
 	attributes.PutInt(elasticattr.TransactionDurationUs, int64(event.Event.Duration/1_000))
+
+	setDerivedServiceTargetAttributes(event, attributes)
 }
 
-// Sets fields that are NOT part of OTel for spans. These fields are derived by the Enrichment lib in case of OTLP input
+// setDerivedServiceTargetAttributes sets service.target.* attributes which are only available at the record
+// level for span, transaction, and error events.
+func setDerivedServiceTargetAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Service != nil && event.Service.Target != nil {
+		attributes.PutStr(elasticattr.ServiceTargetType, event.Service.Target.Type)
+		attributes.PutStr(elasticattr.ServiceTargetName, event.Service.Target.Name)
+	}
+}
+
+// SetDerivedFieldsForSpan sets fields that are NOT part of OTel for spans. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr(elasticattr.ProcessorEvent, "span")
 	attributes.PutInt(elasticattr.SpanDurationUs, int64(event.Event.Duration/1_000))
+
+	if event.Transaction != nil && event.Transaction.Id != "" {
+		attributes.PutStr(elasticattr.TransactionID, event.Transaction.Id)
+	}
+
+	setDerivedServiceTargetAttributes(event, attributes)
 
 	if event.Span == nil {
 		return
@@ -64,34 +82,36 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 
 	if event.Span.DestinationService != nil {
-		attributes.PutStr(elasticattr.ServiceTargetName, event.Span.DestinationService.Name)
-		attributes.PutStr(elasticattr.ServiceTargetType, event.Span.DestinationService.Type)
 		attributes.PutStr(elasticattr.SpanDestinationServiceResource, event.Span.DestinationService.Resource)
 	}
 }
 
-// Sets resource fields that are NOT part of OTel. These fields are derived by the Enrichment lib in case of OTLP input
+// SetDerivedResourceAttributes sets resource fields that are NOT part of OTel. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Agent != nil {
 		attributes.PutStr(elasticattr.AgentName, event.Agent.Name)
 		attributes.PutStr(elasticattr.AgentVersion, event.Agent.Version)
 	}
 
-	if event.Service != nil && event.Service.Language != nil {
-		if event.Service.Language.Name != "" {
-			attributes.PutStr("service.language.name", event.Service.Language.Name)
-		}
-		if event.Service.Language.Version != "" {
-			attributes.PutStr("service.language.version", event.Service.Language.Version)
+	if event.Service != nil {
+
+		if event.Service.Language != nil {
+			if event.Service.Language.Name != "" {
+				attributes.PutStr(attr.ServiceLanguageName, event.Service.Language.Name)
+			}
+			if event.Service.Language.Version != "" {
+				attributes.PutStr(attr.ServiceLanguageVersion, event.Service.Language.Version)
+			}
 		}
 	}
 }
 
+// SetDerivedFieldsForMetrics sets fields that are NOT part of OTel for metrics. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForMetrics(attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "metric")
 }
 
-// Shared across spans and transactions
+// SetDerivedFieldsCommon sets shared fields that are NOT part of OTel for multipe signals. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
 
@@ -105,9 +125,11 @@ func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 }
 
-// Sets fields that are NOT part of OTel for errors. These fields are derived by the Enrichment lib in case of OTLP input
+// SetDerivedFieldsForError sets fields that are NOT part of OTel for errors. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "error")
+
+	setDerivedServiceTargetAttributes(event, attributes)
 
 	if event.Error == nil {
 		return
