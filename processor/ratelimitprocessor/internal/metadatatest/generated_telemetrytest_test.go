@@ -27,7 +27,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"go.opentelemetry.io/collector/component/componenttest"
 )
 
@@ -38,6 +37,7 @@ func TestSetupTelemetry(t *testing.T) {
 	defer tb.Shutdown()
 	tb.RatelimitConcurrentRequests.Record(context.Background(), 1)
 	tb.RatelimitDynamicEscalations.Add(context.Background(), 1)
+	tb.RatelimitRequestUncompressedSize.Add(context.Background(), 1)
 	tb.RatelimitRequestDuration.Record(context.Background(), 1)
 	tb.RatelimitRequestSize.Record(context.Background(), 1)
 	tb.RatelimitRequests.Add(context.Background(), 1)
@@ -46,6 +46,9 @@ func TestSetupTelemetry(t *testing.T) {
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualRatelimitDynamicEscalations(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualRatelimitRequestUncompressedSize(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualRatelimitRequestDuration(t, testTel,

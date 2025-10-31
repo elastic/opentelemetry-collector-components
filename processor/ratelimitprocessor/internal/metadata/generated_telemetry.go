@@ -40,15 +40,16 @@ func Tracer(settings component.TelemetrySettings) trace.Tracer {
 // TelemetryBuilder provides an interface for components to report telemetry
 // as defined in metadata and user config.
 type TelemetryBuilder struct {
-	meter                       metric.Meter
-	mu                          sync.Mutex
-	registrations               []metric.Registration
-	RatelimitConcurrentRequests metric.Int64Gauge
-	RatelimitDynamicEscalations metric.Int64Counter
-	RatelimitRequestDuration    metric.Float64Histogram
-	RatelimitRequestSize        metric.Int64Histogram
-	RatelimitRequests           metric.Int64Counter
-	RatelimitResolverFailures   metric.Int64Counter
+	meter                            metric.Meter
+	mu                               sync.Mutex
+	registrations                    []metric.Registration
+	RatelimitConcurrentRequests      metric.Int64Gauge
+	RatelimitDynamicEscalations      metric.Int64Counter
+	RatelimitRequestUncompressedSize metric.Int64Counter
+	RatelimitRequestDuration         metric.Float64Histogram
+	RatelimitRequestSize             metric.Int64Histogram
+	RatelimitRequests                metric.Int64Counter
+	RatelimitResolverFailures        metric.Int64Counter
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -90,6 +91,12 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		"otelcol_ratelimit.dynamic.escalations",
 		metric.WithDescription("Total number of dynamic rate escalations (dynamic > static)"),
 		metric.WithUnit("{count}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitRequestUncompressedSize, err = builder.meter.Int64Counter(
+		"otelcol_ratelimit.request.uncompressed.size",
+		metric.WithDescription("Size of the uncompressed request in bytes. Only available if strategy is set to bytes."),
+		metric.WithUnit("{bytes}"),
 	)
 	errs = errors.Join(errs, err)
 	builder.RatelimitRequestDuration, err = builder.meter.Float64Histogram(
