@@ -606,12 +606,10 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 
 	if event.Process != nil {
 		if event.Process.Thread != nil {
+			// only the process thread name is available at the log level
 			if event.Process.Thread.Name != "" {
 				attributesMap.PutStr(attr.ProcessThreadName, event.Process.Thread.Name)
 			}
-		}
-		if event.Process.Title != "" {
-			attributesMap.PutStr(attr.ProcessTitle, event.Process.Title)
 		}
 	}
 
