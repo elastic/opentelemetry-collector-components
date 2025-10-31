@@ -326,7 +326,7 @@ func translateHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 				attributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), int64(event.Http.Response.StatusCode))
 			}
 			if event.Http.Response.EncodedBodySize != nil {
-				attributes.PutInt(string(semconv.HTTPResponseSizeKey), int64(*event.Http.Response.EncodedBodySize))
+				attributes.PutInt(string(semconv.HTTPResponseBodySizeKey), int64(*event.Http.Response.EncodedBodySize))
 			}
 		}
 	}
