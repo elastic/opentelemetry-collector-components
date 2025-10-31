@@ -290,7 +290,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
 			}
 		}
-		return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error %q: %v", id, err), map[string]string{
+		return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error for API Key %q: %v", id, err), map[string]string{
 			"component": "apikeyauthextension",
 			"api_key":   id,
 		})
