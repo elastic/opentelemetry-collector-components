@@ -30,6 +30,14 @@ Total number of dynamic rate escalations (dynamic > static)
 | source_kind | precedence source used to resolve the rate limit settings | Any Str |
 | result | result of the rate limit request | Any Str |
 
+### otelcol_ratelimit.request.uncompressed.size
+
+Size of the uncompressed request in bytes. Only available if strategy is set to bytes.
+
+| Unit | Metric Type | Value Type | Monotonic |
+| ---- | ----------- | ---------- | --------- |
+| {bytes} | Sum | Int | true |
+
 ### otelcol_ratelimit.request_duration
 
 Time(in seconds) taken to process a rate limit request [development]

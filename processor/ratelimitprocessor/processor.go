@@ -260,6 +260,7 @@ func recordRequestSize(ctx context.Context, tb *metadata.TelemetryBuilder, strat
 	if tb != nil && strategy == StrategyRateLimitBytes {
 		attrsCommon := getAttrsFromContext(ctx, metadataKeys)
 		tb.RatelimitRequestSize.Record(ctx, int64(hits), metric.WithAttributes(attrsCommon...))
+		tb.RatelimitRequestUncompressedSize.Add(ctx, int64(hits), metric.WithAttributes(attrsCommon...))
 	}
 }
 

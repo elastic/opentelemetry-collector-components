@@ -435,6 +435,16 @@ func testRequestSize(t *testing.T, tt *componenttest.Telemetry, count int, sum i
 				}...),
 		},
 	}, metricdatatest.IgnoreTimestamp(), metricdatatest.IgnoreValue())
+
+	metadatatest.AssertEqualRatelimitRequestUncompressedSize(t, tt, []metricdata.DataPoint[int64]{
+		{
+			Value: int64(sum),
+			Attributes: attribute.NewSet(
+				[]attribute.KeyValue{
+					attribute.String("x-tenant-id", "TestProjectID"),
+				}...),
+		},
+	}, metricdatatest.IgnoreTimestamp())
 }
 
 func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
