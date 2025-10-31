@@ -25,6 +25,48 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
+// Supported ECS resource attributes
+const (
+	ecsAttrServiceLanguageName       = "service.language.name"
+	ecsAttrServiceLanguageVersion    = "service.language.version"
+	ecsAttrServiceFrameworkName      = "service.framework.name"
+	ecsAttrServiceFrameworkVersion   = "service.framework.version"
+	ecsAttrServiceRuntimeName        = "service.runtime.name"
+	ecsAttrServiceRuntimeVersion     = "service.runtime.version"
+	ecsAttrServiceOriginID           = "service.origin.id"
+	ecsAttrServiceOriginName         = "service.origin.name"
+	ecsAttrServiceOriginVersion      = "service.origin.version"
+	ecsAttrServiceTargetName         = "service.target.name"
+	ecsAttrServiceTargetType         = "service.target.type"
+	ecsAttrCloudOriginAccountID      = "cloud.origin.account.id"
+	ecsAttrCloudOriginProvider       = "cloud.origin.provider"
+	ecsAttrCloudOriginRegion         = "cloud.origin.region"
+	ecsAttrCloudOriginServiceName    = "cloud.origin.service.name"
+	ecsAttrCloudAccountName          = "cloud.account.name"
+	ecsAttrCloudInstanceID           = "cloud.instance.id"
+	ecsAttrCloudInstanceName         = "cloud.instance.name"
+	ecsAttrCloudMachineType          = "cloud.machine.type"
+	ecsAttrCloudProjectID            = "cloud.project.id"
+	ecsAttrCloudProjectName          = "cloud.project.name"
+	ecsAttrContainerImageTag         = "container.image.tag"
+	ecsAttrHostOSPlatform            = "host.os.platform"
+	ecsAttrProcessRuntimeName        = "process.runtime.name"
+	ecsAttrProcessRuntimeVersion     = "process.runtime.version"
+	ecsAttrDeviceManufacturer        = "device.manufacturer"
+	ecsAttrDataStreamDataset         = "data_stream.dataset"
+	ecsAttrDataStreamNamespace       = "data_stream.namespace"
+	ecsAttrUserDomain                = "user.domain"
+	ecsAttrSourceNATIP               = "source.nat.ip"
+	ecsAttrDestinationIP             = "destination.ip"
+	ecsAttrFaaSTriggerRequestID      = "faas.trigger.request.id"
+	ecsAttrFaaSExecution             = "faas.execution"
+	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
+	ecsAttrAgentName                 = "agent.name"
+	ecsAttrAgentVersion              = "agent.version"
+	ecsAttrAgentEphemeralID          = "agent.ephemeral_id"
+	ecsAttrAgentActivationMethod     = "agent.activation_method"
+)
+
 func TranslateResourceMetadata(resource pcommon.Resource) {
 	attributes := resource.Attributes()
 
@@ -51,9 +93,12 @@ func replaceDots(key string) string {
 	return strings.ReplaceAll(key, ".", "_")
 }
 
-// This is based to what found in the apm-data repo
-// (e.g https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go)
-// plus other extra fields
+// isSupportedAttribute returns true if the resource attribute is
+// supported by ECS and can be mapped directly.
+// Supported fields can include OTEL SemConv attributes or ECS specific attributes.
+// Fields are based on those found in the below areas:
+// 1. apm-data: https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go
+// 2. elasticapmintake receiver: https://github.com/elastic/opentelemetry-collector-components/tree/main/receiver/elasticapmintakereceiver/internal/mappers
 func isSupportedAttribute(attr string) bool {
 	switch attr {
 	// service.*
@@ -61,8 +106,17 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ServiceVersionKey),
 		string(semconv.ServiceInstanceIDKey),
 		string(semconv.ServiceNamespaceKey),
-		"service.language.name",
-		"service.language.version":
+		ecsAttrServiceLanguageName,
+		ecsAttrServiceLanguageVersion,
+		ecsAttrServiceFrameworkName,
+		ecsAttrServiceFrameworkVersion,
+		ecsAttrServiceRuntimeName,
+		ecsAttrServiceRuntimeVersion,
+		ecsAttrServiceOriginID,
+		ecsAttrServiceOriginName,
+		ecsAttrServiceOriginVersion,
+		ecsAttrServiceTargetName,
+		ecsAttrServiceTargetType:
 		return true
 
 	// deployment.*
@@ -80,15 +134,26 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.CloudAccountIDKey),
 		string(semconv.CloudRegionKey),
 		string(semconv.CloudAvailabilityZoneKey),
-		string(semconv.CloudPlatformKey):
+		string(semconv.CloudPlatformKey),
+		ecsAttrCloudOriginAccountID,
+		ecsAttrCloudOriginProvider,
+		ecsAttrCloudOriginRegion,
+		ecsAttrCloudOriginServiceName,
+		ecsAttrCloudAccountName,
+		ecsAttrCloudInstanceID,
+		ecsAttrCloudInstanceName,
+		ecsAttrCloudMachineType,
+		ecsAttrCloudProjectID,
+		ecsAttrCloudProjectName:
 		return true
 
 	// container.*
 	case string(semconv.ContainerNameKey),
 		string(semconv.ContainerIDKey),
 		string(semconv.ContainerImageNameKey),
-		"container.image.tag",
-		"container.runtime":
+		ecsAttrContainerImageTag,
+		string(semconv.ContainerImageTagsKey),
+		string(semconv.ContainerRuntimeKey):
 		return true
 
 	// k8s.*
@@ -102,16 +167,19 @@ func isSupportedAttribute(attr string) bool {
 	case string(semconv.HostNameKey),
 		string(semconv.HostIDKey),
 		string(semconv.HostTypeKey),
-		"host.arch",
-		string(semconv.HostIPKey):
+		string(semconv.HostArchKey),
+		string(semconv.HostIPKey),
+		ecsAttrHostOSPlatform:
 		return true
 
 	// process.*
 	case string(semconv.ProcessPIDKey),
+		string(semconv.ProcessParentPIDKey),
+		string(semconv.ProcessExecutableNameKey),
 		string(semconv.ProcessCommandLineKey),
 		string(semconv.ProcessExecutablePathKey),
-		"process.runtime.name",
-		"process.runtime.version",
+		ecsAttrProcessRuntimeName,
+		ecsAttrProcessRuntimeVersion,
 		string(semconv.ProcessOwnerKey):
 		return true
 
@@ -126,21 +194,68 @@ func isSupportedAttribute(attr string) bool {
 	case string(semconv.DeviceIDKey),
 		string(semconv.DeviceModelIdentifierKey),
 		string(semconv.DeviceModelNameKey),
-		"device.manufacturer":
+		ecsAttrDeviceManufacturer:
 		return true
 
 	// data_stream.*
-	case "data_stream.dataset",
-		"data_stream.namespace":
+	case ecsAttrDataStreamDataset,
+		ecsAttrDataStreamNamespace:
+		return true
+
+	// user.*
+	case string(semconv.UserIDKey),
+		string(semconv.UserEmailKey),
+		string(semconv.UserNameKey),
+		ecsAttrUserDomain:
+		return true
+
+	// user_agent.*
+	case string(semconv.UserAgentOriginalKey):
+		return true
+
+	// network.*
+	case string(semconv.NetworkConnectionTypeKey),
+		string(semconv.NetworkConnectionSubtypeKey),
+		string(semconv.NetworkCarrierNameKey),
+		string(semconv.NetworkCarrierMccKey),
+		string(semconv.NetworkCarrierMncKey),
+		string(semconv.NetworkCarrierIccKey):
+		return true
+
+	// client.*
+	case string(semconv.ClientAddressKey),
+		string(semconv.ClientPortKey):
+		return true
+
+	// source.*
+	case string(semconv.SourceAddressKey),
+		string(semconv.SourcePortKey),
+		ecsAttrSourceNATIP:
+		return true
+
+	// destination.*
+	case ecsAttrDestinationIP:
+		return true
+
+	// faas.*
+	case string(semconv.FaaSInstanceKey),
+		string(semconv.FaaSNameKey),
+		string(semconv.FaaSVersionKey),
+		string(semconv.FaaSTriggerKey),
+		string(semconv.FaaSColdstartKey),
+		ecsAttrFaaSTriggerRequestID,
+		ecsAttrFaaSExecution:
 		return true
 
 	// Legacy OpenCensus attributes
-	case "opencensus.exporterversion":
+	case ecsAttrOpenCensusExporterVersion:
 		return true
 
 	// APM Agent enrichment
-	case "agent.name",
-		"agent.version":
+	case ecsAttrAgentName,
+		ecsAttrAgentVersion,
+		ecsAttrAgentEphemeralID,
+		ecsAttrAgentActivationMethod:
 		return true
 	}
 
