@@ -73,6 +73,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -85,6 +88,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -149,6 +164,16 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "43"
+              - key: transaction.profiler_stack_trace_ids
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: foo
+                      - stringValue: bar
+                      - stringValue: foo
             endTimeUnixNano: "1496170407186592981"
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e
@@ -182,6 +207,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36, Mozilla Chrome Edge
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -227,9 +255,15 @@ resourceSpans:
         - key: user.id
           value:
             stringValue: "99"
+        - key: user.name
+          value:
+            stringValue: foo
         - key: client.address
           value:
-            stringValue: v4:204803073
+            stringValue: 12.53.12.1
+        - key: source.address
+          value:
+            stringValue: 12.53.12.1
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -242,6 +276,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -266,6 +312,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: one
@@ -318,12 +367,150 @@ resourceSpans:
               - key: http.request.method
                 value:
                   stringValue: POST
-              - key: url.full
-                value:
-                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.size
+                value:
+                  intValue: "2690"
+              - key: url.original
+                value:
+                  stringValue: /p/a/t/h?query=string#hash
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: url.full
+                value:
+                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
+              - key: url.domain
+                value:
+                  stringValue: www.example.com
+              - key: url.path
+                value:
+                  stringValue: /p/a/t/h
+              - key: url.query
+                value:
+                  stringValue: ?query=string
+              - key: url.fragment
+                value:
+                  stringValue: '#hash'
+              - key: url.port
+                value:
+                  intValue: "8080"
+              - key: http.version
+                value:
+                  stringValue: "1.1"
+              - key: http.request.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
+                              - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1, c2=v2
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
+              - key: http.request.env.SERVER_SOFTWARE
+                value:
+                  stringValue: string_value:"nginx"
+              - key: http.request.env.GATEWAY_INTERFACE
+                value:
+                  stringValue: string_value:"CGI/1.1"
+              - key: http.request.cookies.c1
+                value:
+                  stringValue: string_value:"v1"
+              - key: http.request.cookies.c2
+                value:
+                  stringValue: string_value:"v2"
+              - key: http.request.body
+                value:
+                  kvlistValue:
+                    values:
+                      - key: str
+                        value:
+                          stringValue: hello world
+                      - key: additional
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: bar
+                                value:
+                                  doubleValue: 123
+                              - key: req
+                                value:
+                                  stringValue: additional information
+              - key: http.request.referrer
+                value:
+                  stringValue: http://localhost:8000/test/e2e/
+              - key: http.response.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: application/json
+              - key: http.response.finished
+                value:
+                  boolValue: true
+              - key: http.response.headers_sent
+                value:
+                  boolValue: true
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "2990"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "258"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "17"
+              - key: transaction.custom
+                value:
+                  kvlistValue:
+                    values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
+                      - key: and_objects
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: foo
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: bar
+                                      - stringValue: baz
+                      - key: (
+                        value:
+                          stringValue: not a valid regex and that is fine
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
@@ -406,6 +593,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -418,6 +608,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "2.5"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -488,9 +690,54 @@ resourceSpans:
               - key: http.request.method
                 value:
                   stringValue: POST
-              - key: http.response.status_code
+              - key: transaction.span_count.started
                 value:
-                  intValue: "0"
+                  intValue: "436"
+              - key: transaction.span_count.dropped
+                value:
+                  intValue: "55"
+              - key: transaction.experience.cls
+                value:
+                  doubleValue: 1
+              - key: transaction.experience.fid
+                value:
+                  doubleValue: 2
+              - key: transaction.experience.tbt
+                value:
+                  doubleValue: 3.4
+              - key: transaction.experience.longtask.count
+                value:
+                  intValue: "3"
+              - key: transaction.experience.longtask.max
+                value:
+                  doubleValue: 1
+              - key: transaction.experience.longtask.sum
+                value:
+                  doubleValue: 2.5
+              - key: transaction.marks
+                value:
+                  kvlistValue:
+                    values:
+                      - key: navigationTiming
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: appBeforeBootstrap
+                                value:
+                                  doubleValue: 608.9300000000001
+                              - key: navigationStart
+                                value:
+                                  doubleValue: -21
+                      - key: another_mark
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: some_long
+                                value:
+                                  doubleValue: 10
+                              - key: some_float
+                                value:
+                                  doubleValue: 10
             endTimeUnixNano: "1532976822294980558"
             kind: 2
             spanId: cdef4340a8e0df19
@@ -571,6 +818,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -583,6 +833,18 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -647,6 +909,32 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "3000"
+              - key: messaging.destination.name
+                value:
+                  stringValue: new_users
+              - key: messaging.rabbitmq.destination.routing_key
+                value:
+                  stringValue: user-created-transaction
+              - key: transaction.span_count.started
+                value:
+                  intValue: "1"
+              - key: transaction.message.body
+                value:
+                  stringValue: user created
+              - key: transaction.message.age.ms
+                value:
+                  intValue: "1577958057123"
+              - key: transaction.message.headers.User_id
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: 1ax3
+              - key: transaction.message.headers.Involved_services
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: user
+                      - stringValue: auth
             endTimeUnixNano: "1496170407157000000"
             name: amqp receive
             parentSpanId: abcdefabcdef0123
@@ -727,6 +1015,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: bar@user.com
+        - key: user.name
+          value:
+            stringValue: bar
         - key: faas.name
           value:
             stringValue: faasName
@@ -751,6 +1042,30 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.origin.account.id
+          value:
+            stringValue: abc123
+        - key: cloud.origin.provider
+          value:
+            stringValue: aws
+        - key: cloud.origin.region
+          value:
+            stringValue: us-east-1
+        - key: cloud.origin.service.name
+          value:
+            stringValue: serviceName
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine_type
+          value:
+            stringValue: machine_type
         - key: cloud.project.id
           value:
             stringValue: project_id
@@ -830,6 +1145,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "38853"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "0"
             endTimeUnixNano: "1631736666403901000"
             name: july-2021-delete-after-july-31
             spanId: 142e61450efb8574

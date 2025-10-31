@@ -19,12 +19,14 @@ package ratelimitprocessor
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"math"
 	"slices"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
 	"github.com/gubernator-io/gubernator/v2"
 	"github.com/gubernator-io/gubernator/v2/cluster"
 	"github.com/stretchr/testify/assert"
@@ -32,11 +34,49 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadatatest"
 )
+
+func newTestGubernatorRateLimiterMetrics(t *testing.T, cfg *Config) (
+	*gubernatorRateLimiter, *componenttest.Telemetry,
+) {
+	rl := newTestGubernatorRateLimiter(t, cfg, nil)
+	tt := componenttest.NewTelemetry()
+	telSettings := tt.NewTelemetrySettings()
+	tb, err := metadata.NewTelemetryBuilder(telSettings)
+	require.NoError(t, err)
+	rl.telemetryBuilder = tb
+	rl.tracerProvider = telSettings.TracerProvider
+	// NOTE(carsonip): It does not test whether rate limiter is instrumenting grpc client correctly in Start
+	// because we overwrite client and clientConn directly here, instead of calling Start.
+	// To test Start properly it will require refactoring the tests.
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("static:///%s", rl.daemon.PeerInfo.GRPCAddress),
+		grpc.WithResolvers(gubernator.NewStaticBuilder()),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler(otelgrpc.WithTracerProvider(telSettings.TracerProvider))),
+	)
+	require.NoError(t, err)
+	client := gubernator.NewV1Client(conn)
+	rl.clientConn = conn
+	rl.client = client
+	t.Cleanup(func() {
+		_ = conn.Close()
+		_ = tt.Shutdown(t.Context())
+	})
+	return rl, tt
+}
 
 // newTestGubernatorRateLimiter starts a local cluster with a gubernator
 // daemon and returns a new gubernatorRateLimiter instance that relies
@@ -49,6 +89,7 @@ func newTestGubernatorRateLimiter(t *testing.T, cfg *Config, c chan<- gubernator
 		// Wait a bit after the test to shut down the daemon.
 		time.Sleep(50 * time.Millisecond)
 		err := rl.Shutdown(context.Background())
+		rl.telemetryBuilder.Shutdown()
 		require.NoError(t, err)
 		cluster.Stop()
 	})
@@ -56,28 +97,35 @@ func newTestGubernatorRateLimiter(t *testing.T, cfg *Config, c chan<- gubernator
 }
 
 func newGubernatorRateLimiterFrom(t *testing.T, cfg *Config, daemon *gubernator.Daemon) *gubernatorRateLimiter {
-	conn, err := grpc.NewClient(daemon.PeerInfo.GRPCAddress,
+	telSettings := componenttest.NewNopTelemetrySettings()
+	telSettings.Logger = zaptest.NewLogger(t)
+	tb, err := metadata.NewTelemetryBuilder(telSettings)
+	require.NoError(t, err)
+
+	// Copied from daemon.Client()
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("static:///%s", daemon.PeerInfo.GRPCAddress),
+		grpc.WithResolvers(gubernator.NewStaticBuilder()),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	require.NoError(t, err)
-
-	cl := gubernator.NewV1Client(conn)
-	require.NotNil(t, cl)
-	telSettings := componenttest.NewNopTelemetrySettings()
-	telSettings.Logger = zaptest.NewLogger(t)
-
+	client := gubernator.NewV1Client(conn)
+	t.Cleanup(func() { // Close the gRPC connection and daemon on test cleanup.
+		conn.Close()
+		daemon.Close()
+	})
 	return &gubernatorRateLimiter{
-		cfg: cfg,
-		set: processor.Settings{
-			ID:                component.NewIDWithName(metadata.Type, "abc123"),
-			TelemetrySettings: telSettings,
-			BuildInfo:         component.NewDefaultBuildInfo(),
-		},
-		behavior: gubernator.Behavior_BATCHING,
+		cfg:              cfg,
+		logger:           telSettings.Logger,
+		telemetryBuilder: tb,
+		behavior:         gubernator.Behavior_BATCHING,
 
-		daemon:     daemon,
-		client:     cl,
-		clientConn: conn,
+		daemonCfg:          daemon.Config(),
+		daemon:             daemon,
+		clientConn:         conn,
+		client:             client,
+		classResolver:      noopResolver{},
+		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DefaultWindowMultiplier},
 	}
 }
 
@@ -112,9 +160,9 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 			Rate:             staticRate,
 		},
 		DynamicRateLimiting: DynamicRateLimiting{
-			Enabled:          true,
-			WindowMultiplier: 2.0, // Higher multiplier for clearer effect
-			WindowDuration:   windowPeriod,
+			Enabled:                 true,
+			DefaultWindowMultiplier: 2.0, // Higher multiplier for clearer effect
+			WindowDuration:          windowPeriod,
 		},
 	}, nil)
 
@@ -264,9 +312,9 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 			Rate:             StaticRate,
 		},
 		DynamicRateLimiting: DynamicRateLimiting{
-			Enabled:          true,
-			WindowMultiplier: 1.5,
-			WindowDuration:   WindowPeriod,
+			Enabled:                 true,
+			DefaultWindowMultiplier: 1.5,
+			WindowDuration:          WindowPeriod,
 		},
 	}
 
@@ -311,10 +359,9 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		reqsSec = 1200
 		actual = reqsSec * int64(WindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
-		// dynamic_limit = max(1000, 900 * 1.5) = max(1000, 1350) = 1350
-		// Note: Currently using static rate until dynamic implementation is fully working
+		dynamicLimit := int64(math.Max(1000, 900*1.5))
 		assertRequestRateLimitEvent(t, "default", lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, StaticRate, StaticRate-actual, gubernator.Status_UNDER_LIMIT,
+			actual, dynamicLimit, dynamicLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 	})
 
@@ -334,10 +381,9 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		reqsSec = 1600
 		actual = reqsSec * int64(WindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
-		// dynamic_limit = max(1000, 1500 * 1.5) = max(1000, 2250) = 2250
-		// Note: Currently using static rate until dynamic implementation is fully working
+		dynamicLimit := int64(math.Max(1000, 1000*1.5)) // max allowed was 1000 previously
 		assertRequestRateLimitEvent(t, "default", lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, StaticRate, 685, gubernator.Status_UNDER_LIMIT,
+			actual, dynamicLimit, dynamicLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 	})
 
@@ -354,23 +400,21 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 
 		// Current window: spike to 10007 req/sec -> 1501 hits (10007 * 150ms / 1000ms ≈ 1501)
 		waitUntilNextPeriod(WindowPeriod)
-		// dynamic_limit = max(1000, 1000 * 1.5) = max(1000, 1500) = 1500
+		dynamicLimit := int64(math.Max(1000, 1000*1.5)) // max allowed was 1000 previously
 		// A request for 1501 should be throttled.
 		reqsSec = 10007 // This will result in 1501 hits
 		actual = reqsSec * int64(WindowPeriod) / int64(time.Second)
 		require.Error(t, rateLimiter.RateLimit(context.Background(), int(actual)))
-		// Note: Currently using static rate until dynamic implementation is fully working
 		assertRequestRateLimitEvent(t, "default", lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, StaticRate, StaticRate, gubernator.Status_OVER_LIMIT,
+			actual, dynamicLimit, dynamicLimit, gubernator.Status_OVER_LIMIT,
 		)
 
 		// A smaller request should be allowed, the bucket was not drained.
 		reqsSec = 5000 // This will result in 750 hits (5000 * 150ms / 1000ms)
 		actual = reqsSec * int64(WindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
-		// Note: Currently using static rate until dynamic implementation is fully working
 		assertRequestRateLimitEvent(t, "default", lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, StaticRate, StaticRate-actual, gubernator.Status_UNDER_LIMIT,
+			actual, dynamicLimit, dynamicLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 	})
 
@@ -390,10 +434,9 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 		reqsSec = 500
 		actual = reqsSec * int64(WindowPeriod) / int64(time.Second)
 		require.NoError(t, rateLimiter.RateLimit(context.Background(), int(actual)))
-		// dynamic_limit = max(1000, 2000 * 1.5) = max(1000, 3000) = 3000
-		// Note: Currently using static rate until dynamic implementation is fully working
+		dynamicLimit := int64(max(1000, 1000*1.5)) // max allowed was 1000 previously
 		assertRequestRateLimitEvent(t, "default", lastReqLimitEvent(drainEvents(eventChannel), t),
-			actual, StaticRate, 775, gubernator.Status_UNDER_LIMIT,
+			actual, dynamicLimit, dynamicLimit-actual, gubernator.Status_UNDER_LIMIT,
 		)
 	})
 }
@@ -429,7 +472,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 		}
 	}
 
-	t.Run("override_with_static_only_disables_dynamic", func(t *testing.T) {
+	t.Run("override_with_disable_dynamic_disables_dynamic", func(t *testing.T) {
 		eventChannel := make(chan gubernator.HitEvent, EventBufferSize)
 		// OVERRIDES
 		rate := 500 // Static override rate for the test
@@ -444,14 +487,17 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 				Burst:            0,
 			},
 			DynamicRateLimiting: DynamicRateLimiting{
-				Enabled:          true,
-				WindowMultiplier: 2.0,
-				WindowDuration:   WindowPeriod,
+				Enabled:                 true,
+				DefaultWindowMultiplier: 2.0,
+				WindowDuration:          WindowPeriod,
 			},
 			MetadataKeys: []string{"x-tenant-id"},
-			Overrides: map[string]RateLimitOverrides{
-				"x-tenant-id:static-tenant": {
-					StaticOnly:       true,
+			Overrides: []RateLimitOverrides{
+				{
+					Matches: map[string][]string{
+						"x-tenant-id": {"static-tenant"},
+					},
+					DisableDynamic:   true,
 					Rate:             ptr(rate), // Lower than global rate to make test clearer
 					ThrottleInterval: ptr(throttleInterval),
 				},
@@ -495,7 +541,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 		)
 	})
 
-	t.Run("override_without_static_only_uses_override_rate_as_baseline", func(t *testing.T) {
+	t.Run("override_without_disable_dynamic_uses_override_rate_as_baseline", func(t *testing.T) {
 		eventChannel := make(chan gubernator.HitEvent, EventBufferSize)
 
 		rate := 100 // Override rate for the test
@@ -510,14 +556,17 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 				Rate:             StaticRate,
 			},
 			DynamicRateLimiting: DynamicRateLimiting{
-				Enabled:          true,
-				WindowMultiplier: 2.0,
-				WindowDuration:   WindowPeriod,
+				Enabled:                 true,
+				DefaultWindowMultiplier: 2.0,
+				WindowDuration:          WindowPeriod,
 			},
 			MetadataKeys: []string{"x-tenant-id"},
-			Overrides: map[string]RateLimitOverrides{
-				"x-tenant-id:dynamic-tenant": {
-					// StaticOnly is false (default), so dynamic scaling should work
+			Overrides: []RateLimitOverrides{
+				{
+					Matches: map[string][]string{
+						"x-tenant-id": {"dynamic-tenant"},
+					},
+					// DisableDynamic is false (default), so dynamic scaling should work
 					Rate:             ptr(rate), // Override rate but still allow dynamic scaling
 					ThrottleInterval: ptr(throttleInterval),
 				},
@@ -546,14 +595,594 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 		// Send smaller traffic within the override rate
 		reqsSec := 50 // Send well under the 100 limit to avoid bucket complications
 		proRatedCurrent := float64(rate) / float64(WindowPeriod.Seconds())
-		// Note: Dynamic limit calculation disabled until implementation is fully working
 		t.Log("requests/sec:", reqsSec, "proRatedCurrent:", proRatedCurrent)
 		require.NoError(t, rateLimiter.RateLimit(dynamicTenantCtx, int(reqsSec)))
 
-		// Note: Currently using static rate until dynamic implementation is fully working
-		verify(eventChannel, int64(rate), "x-tenant-id:dynamic-tenant",
-			gubernator.Status_UNDER_LIMIT, int64(rate)-int64(reqsSec), true, // Use delta for remaining
+		dynamicRate := max(100, 100*2)
+		verify(eventChannel, int64(dynamicRate), "x-tenant-id:dynamic-tenant",
+			gubernator.Status_UNDER_LIMIT, int64(dynamicRate)-int64(reqsSec), false,
 		)
+	})
+}
+
+func TestGubernatorRateLimiter_ClassResolver(t *testing.T) {
+	eventChannel := make(chan gubernator.HitEvent, 20)
+	rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+		Type: GubernatorRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Strategy:         StrategyRateLimitRequests,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: time.Second,
+			Rate:             500,
+		},
+		DynamicRateLimiting: DynamicRateLimiting{
+			Enabled:                 true,
+			DefaultWindowMultiplier: 2.0,
+			WindowDuration:          150 * time.Millisecond,
+		},
+		MetadataKeys: []string{"x-tenant-id"},
+		Classes: map[string]Class{
+			"alpha": {
+				Rate:  2000,
+				Burst: 0,
+			},
+			"bravo": {
+				Rate:  1000,
+				Burst: 0,
+			},
+			"charlie": {
+				Rate:  500,
+				Burst: 0,
+			},
+		},
+		DefaultClass: "charlie",
+	}, eventChannel)
+
+	// Set the classResolver manually
+	rateLimiter.classResolver = &fakeResolver{
+		mapping: map[string]string{
+			"x-tenant-id:12345": "alpha",
+			"x-tenant-id:67890": "bravo",
+		},
+	}
+	t.Run("Known class 'alpha'", func(t *testing.T) {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"12345"},
+			}),
+		})
+
+		actual := int64(500)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		verify := func(evc <-chan gubernator.HitEvent) {
+			t.Helper()
+			event := lastReqLimitEvent(drainEvents(evc), t)
+			assertRequestRateLimitEvent(t, "x-tenant-id:12345", event,
+				actual, 2000, 2000-actual, gubernator.Status_UNDER_LIMIT,
+			)
+		}
+		verify(eventChannel)
+	})
+	t.Run("Known class 'bravo'", func(t *testing.T) {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"67890"},
+			}),
+		})
+
+		actual := int64(300)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		verify := func(evc <-chan gubernator.HitEvent) {
+			t.Helper()
+			event := lastReqLimitEvent(drainEvents(evc), t)
+			assertRequestRateLimitEvent(t, "x-tenant-id:67890", event,
+				actual, 1000, 1000-actual, gubernator.Status_UNDER_LIMIT,
+			)
+		}
+		verify(eventChannel)
+	})
+	t.Run("Unknown class -> default_class 'charlie'", func(t *testing.T) {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"unknown"},
+			}),
+		})
+
+		actual := int64(400)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		verify := func(evc <-chan gubernator.HitEvent) {
+			t.Helper()
+			event := lastReqLimitEvent(drainEvents(evc), t)
+			assertRequestRateLimitEvent(t, "x-tenant-id:unknown", event,
+				actual, 500, 500-actual, gubernator.Status_UNDER_LIMIT,
+			)
+		}
+		verify(eventChannel)
+	})
+}
+
+func TestGubernatorRateLimiter_LoadClassResolverExtension(t *testing.T) {
+	// This test will validate that a class resolver extension can be loaded
+	// and used by the rate limiter.
+	// Since we cannot depend on an external extension in unit tests, we will
+	// just validate that the extension is loaded without error.
+	const extName = "fake_resolver"
+	cfg := &Config{
+		Type: GubernatorRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Strategy:         StrategyRateLimitRequests,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: time.Second,
+			Rate:             1000,
+		},
+		DynamicRateLimiting: DynamicRateLimiting{
+			Enabled:                 true,
+			DefaultWindowMultiplier: 2.0,
+			WindowDuration:          150 * time.Millisecond,
+		},
+		ClassResolver: component.MustNewID(extName),
+	}
+
+	rateLimiter := newTestGubernatorRateLimiter(t, cfg, nil)
+	err := rateLimiter.Start(t.Context(), &fakeHost{
+		component.MustNewID(extName): &fakeResolver{},
+	})
+	require.NoError(t, err)
+	require.NoError(t, rateLimiter.Shutdown(t.Context()))
+
+	// Set the resolver and validate it's used
+	r, ok := rateLimiter.classResolver.(*fakeResolver)
+	require.True(t, ok, "expected fakeResolver type")
+	require.True(t, r.calledStart, "expected Start to be called")
+	require.True(t, r.calledShutdown, "expected Shutdown to be called")
+}
+
+func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
+	eventChannel := make(chan gubernator.HitEvent, 20)
+	windowDuration := 100 * time.Millisecond
+	staticRatePerSec := 500
+	rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+		Type: GubernatorRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Strategy:         StrategyRateLimitRequests,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: time.Second,
+			Rate:             staticRatePerSec,
+		},
+		DynamicRateLimiting: DynamicRateLimiting{
+			Enabled:                 true,
+			DefaultWindowMultiplier: 2.0,
+			WindowDuration:          windowDuration,
+		},
+		MetadataKeys: []string{"x-tenant-id"},
+	}, eventChannel)
+
+	// Set the windowConfigurator manually
+	rateLimiter.windowConfigurator = &fakeWindowConfigurator{
+		mapping: map[string][]float64{
+			"x-tenant-id:12345": {1.5},                 // more ingest data
+			"x-tenant-id:67890": {-1, 2, 2, 0.5, 0.01}, // throttle ingest data
+		},
+		count: make(map[string]int),
+	}
+	t.Run("scale up ingestion", func(t *testing.T) {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"12345"},
+			}),
+		})
+
+		waitUntilNextPeriod(windowDuration)
+		// 1st non-zero window: establish baseline with static limit. Since the previous
+		// hits at this point were `0` the limit will always be equal to static limit.
+		actual := int64(staticRatePerSec) * int64(windowDuration) / int64(time.Second)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		drainEvents(eventChannel)
+
+		waitUntilNextPeriod(windowDuration)
+		// 2nd window: ramp up by 1.5 factor as configured for the tenant
+		actual = int64(100) * int64(windowDuration) / int64(time.Second)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		expectedLimit := int64(float64(staticRatePerSec) * 1.5) // 150% of previous hits/s
+		verify := func(evc <-chan gubernator.HitEvent) {
+			t.Helper()
+			event := lastReqLimitEvent(drainEvents(evc), t)
+			assertRequestRateLimitEvent(t, "x-tenant-id:12345", event,
+				actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
+			)
+		}
+		verify(eventChannel)
+	})
+
+	t.Run("scale down ingestion", func(t *testing.T) {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"67890"},
+			}),
+		})
+		uniqueKey := "x-tenant-id:67890"
+
+		waitUntilNextPeriod(windowDuration)
+		// 1st non-zero window: establish baseline with static limit. Since the previous
+		// hits at this point were `0` the limit will always be equal to static limit.
+		actual := int64(staticRatePerSec) * int64(windowDuration) / int64(time.Second)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		drainEvents(eventChannel)
+
+		waitUntilNextPeriod(windowDuration)
+		// 2nd window: scale up by 2 factor as configured for the tenant
+		expectedLimit := int64(float64(staticRatePerSec) * 2) // 200% of previous hits/s
+		// maximize the hits so that the rate is fully utilized
+		actual = expectedLimit * int64(windowDuration) / int64(time.Second)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		assertRequestRateLimitEvent(
+			t, uniqueKey,
+			lastReqLimitEvent(drainEvents(eventChannel), t),
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
+		)
+
+		waitUntilNextPeriod(windowDuration)
+		// 3nd window: scale up by 2 factor as configured for the tenant
+		expectedLimit = expectedLimit * 2 // 200% of previous hits/s
+		// maximize the hits so that the rate is fully utilized
+		actual = expectedLimit * int64(windowDuration) / int64(time.Second)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		assertRequestRateLimitEvent(
+			t, uniqueKey,
+			lastReqLimitEvent(drainEvents(eventChannel), t),
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
+		)
+
+		waitUntilNextPeriod(windowDuration)
+		// 4th window: scale down by 50% as configured for the tenant
+		expectedLimit = int64(float64(expectedLimit) * 0.5) // 50% of previous hits/s
+		// maximize the hits so that the rate is fully utilized
+		actual = expectedLimit * int64(windowDuration) / int64(time.Second)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		assertRequestRateLimitEvent(
+			t, uniqueKey,
+			lastReqLimitEvent(drainEvents(eventChannel), t),
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
+		)
+
+		waitUntilNextPeriod(windowDuration)
+		// 5th window: scale down by 1% as configured for the tenant and assert
+		// that the rate goes below static limit
+		expectedLimit = int64(float64(expectedLimit) * 0.01) // 1% of previous hits/s
+		// maximize the hits so that the rate is fully utilized
+		actual = expectedLimit * int64(windowDuration) / int64(time.Second)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		assertRequestRateLimitEvent(
+			t, uniqueKey,
+			lastReqLimitEvent(drainEvents(eventChannel), t),
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
+		)
+
+		// wait for a few periods to assert that the rate goes to be calculated
+		// based on static rate and the multiplier as data is NOT sent in the previous
+		// waiting window causing the previous rate to go to zero. As the window
+		// multiplier is still suggesting lowering the rate, we apply the multiplier
+		// to the static limit.
+		waitUntilNextPeriod(windowDuration)
+		waitUntilNextPeriod(windowDuration)
+		expectedLimit = int64(float64(staticRatePerSec) * 0.01)
+		actual = int64(5) * int64(windowDuration) / int64(time.Second)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		assertRequestRateLimitEvent(
+			t, uniqueKey,
+			lastReqLimitEvent(drainEvents(eventChannel), t),
+			actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
+		)
+	})
+	t.Run("unknown tenant, use default multiplier", func(t *testing.T) {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"unknown"},
+			}),
+		})
+
+		actual := int64(400)
+		expectedLimit := int64(staticRatePerSec)
+		require.NoError(t, rateLimiter.RateLimit(ctx, int(actual)))
+		verify := func(evc <-chan gubernator.HitEvent) {
+			t.Helper()
+			event := lastReqLimitEvent(drainEvents(evc), t)
+			assertRequestRateLimitEvent(t, "x-tenant-id:unknown", event,
+				actual, expectedLimit, expectedLimit-actual, gubernator.Status_UNDER_LIMIT,
+			)
+		}
+		verify(eventChannel)
+	})
+}
+
+func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
+	const (
+		WindowPeriod = 150 * time.Millisecond
+		StaticRate   = 1000
+	)
+	baseCfg := &Config{
+		Type: GubernatorRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Strategy:         StrategyRateLimitRequests,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: time.Second,
+			Rate:             StaticRate,
+			Burst:            0,
+		},
+		DynamicRateLimiting: DynamicRateLimiting{
+			Enabled:                 true,
+			DefaultWindowMultiplier: 1.5,
+			WindowDuration:          WindowPeriod,
+		},
+		MetadataKeys: []string{"x-tenant-id"},
+		Classes: map[string]Class{
+			"alpha": {Rate: StaticRate, Burst: 0},
+		},
+		DefaultClass: "alpha",
+	}
+
+	newRL := func(t *testing.T) (*gubernatorRateLimiter, *componenttest.Telemetry) {
+		rl, tt := newTestGubernatorRateLimiterMetrics(t, baseCfg)
+		rl.classResolver = &fakeResolver{mapping: map[string]string{
+			"x-tenant-id:12345": "alpha",
+		}}
+		return rl, tt
+	}
+	// Helper to seed previous window rate directly in Gubernator dynamic buckets
+	seedPrevWindow := func(t *testing.T, rl *gubernatorRateLimiter, uniqueKey string, reqsPerSec int) {
+		t.Helper()
+		// Align with the start of a window and move near its end to record hits in the current window A
+		waitUntilNextPeriod(WindowPeriod)
+		time.Sleep(WindowPeriod - 10*time.Millisecond)
+		now := time.Now()
+		drc := newDynamicRateContext(uniqueKey, now, rl.cfg.DynamicRateLimiting)
+		// Convert reqs/sec into hits during WindowPeriod
+		hits := int64(float64(reqsPerSec) * WindowPeriod.Seconds())
+		_, err := rl.client.GetRateLimits(context.Background(), &gubernator.GetRateLimitsReq{
+			Requests: []*gubernator.RateLimitReq{
+				rl.newDynamicRequest(drc.currentKey, hits, drc),
+			},
+		})
+		require.NoError(t, err)
+	}
+
+	// Common context containing the tenant id to produce unique key "x-tenant-id:12345"
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-tenant-id": {"12345"},
+		}),
+	})
+	const uniqueKey = "x-tenant-id:12345"
+
+	t.Run("dynamic_escalation_increments", func(t *testing.T) {
+		rl, tt := newRL(t)
+		// Seed previous window with ~900 req/sec so dynamic becomes 1350 (> static 1000)
+		seedPrevWindow(t, rl, uniqueKey, 900)
+		// Move to next window and perform one rate-limited call to trigger dynamic calculation
+		waitUntilNextPeriod(WindowPeriod)
+		assert.NoError(t, rl.RateLimit(ctx, 1))
+
+		// Expect one increment with attributes {class="alpha", source_kind="class"}
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
+			{
+				Value: 1,
+				Attributes: attribute.NewSet(
+					attribute.String("class", "alpha"),
+					attribute.String("source_kind", "class"),
+					attribute.String("reason", "success"),
+				),
+			},
+		}, metricdatatest.IgnoreTimestamp())
+
+		spans := tt.SpanRecorder.Ended()
+		assert.Greater(t, len(spans), 0)
+	})
+
+	t.Run("dynamic_escalation_skipped_increments", func(t *testing.T) {
+		rl, tt := newRL(t)
+		// Seed previous window with ~200 req/sec so dynamic becomes max(1000, 200*1.5)=1000 (skipped)
+		seedPrevWindow(t, rl, uniqueKey, 200)
+		waitUntilNextPeriod(WindowPeriod)
+		assert.NoError(t, rl.RateLimit(ctx, 1))
+
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
+			{
+				Value: 1,
+				Attributes: attribute.NewSet(
+					attribute.String("class", "alpha"),
+					attribute.String("source_kind", "class"),
+					attribute.String("reason", "skipped"),
+				),
+			},
+		}, metricdatatest.IgnoreTimestamp())
+
+		spans := tt.SpanRecorder.Ended()
+		assert.Greater(t, len(spans), 0)
+	})
+
+	t.Run("gubernator_degraded_increments", func(t *testing.T) {
+		rl, tt := newRL(t)
+		rl.daemon.Close() // Close the daemon to force errors in dynamic calls
+		assert.Error(t, rl.RateLimit(ctx, 1))
+
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
+			{
+				Value: 1,
+				Attributes: attribute.NewSet(
+					attribute.String("class", "alpha"),
+					attribute.String("source_kind", "class"),
+					attribute.String("reason", "gubernator_error"),
+				),
+			},
+		}, metricdatatest.IgnoreTimestamp())
+
+		spans := tt.SpanRecorder.Ended()
+		assert.Greater(t, len(spans), 0)
+	})
+}
+
+func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
+	const (
+		WindowPeriod = 150 * time.Millisecond
+		StaticRate   = 1000
+	)
+	t.Run("failure_uses_default_class_and_counts", func(t *testing.T) {
+		cfg := &Config{
+			Type: GubernatorRateLimiter,
+			RateLimitSettings: RateLimitSettings{
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
+				ThrottleInterval: time.Second,
+				Rate:             StaticRate,
+				Burst:            0,
+			},
+			DynamicRateLimiting: DynamicRateLimiting{
+				Enabled:                 true,
+				DefaultWindowMultiplier: 1.5,
+				WindowDuration:          WindowPeriod,
+			},
+			MetadataKeys: []string{"x-tenant-id"},
+			Classes: map[string]Class{
+				"alpha": {Rate: StaticRate, Burst: 0},
+			},
+			DefaultClass: "alpha",
+		}
+
+		rl, tt := newTestGubernatorRateLimiterMetrics(t, cfg)
+		// Simulate resolver error for this key
+		rl.classResolver = &fakeResolver{errorKeys: map[string]error{
+			"x-tenant-id:fail1": errors.New("boom"),
+		}}
+
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"fail1"},
+			}),
+		})
+
+		// One call triggers resolver failure and should fall back to default class
+		assert.NoError(t, rl.RateLimit(ctx, 1))
+
+		// 1) resolver.failures counter increments
+		metadatatest.AssertEqualRatelimitResolverFailures(t, tt, []metricdata.DataPoint[int64]{
+			{
+				Value: 1,
+				Attributes: attribute.NewSet(attribute.String(
+					"unique_key", "x-tenant-id:fail1",
+				)),
+			},
+		}, metricdatatest.IgnoreTimestamp())
+
+		// 2) dynamic escalation skipped for baseline (no seeding) with class/default
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
+			{
+				Value: 1,
+				Attributes: attribute.NewSet(
+					attribute.String("class", "alpha"),
+					attribute.String("source_kind", "class"),
+					attribute.String("reason", "skipped"),
+				),
+			},
+		}, metricdatatest.IgnoreTimestamp())
+	})
+
+	t.Run("failure_falls_back_to_global_when_no_classes", func(t *testing.T) {
+		cfg := &Config{
+			Type: GubernatorRateLimiter,
+			RateLimitSettings: RateLimitSettings{
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
+				ThrottleInterval: time.Second,
+				Rate:             StaticRate,
+				Burst:            0,
+			},
+			DynamicRateLimiting: DynamicRateLimiting{
+				Enabled:                 true,
+				DefaultWindowMultiplier: 1.5,
+				WindowDuration:          WindowPeriod,
+			},
+			MetadataKeys: []string{"x-tenant-id"},
+			// No classes and no default class
+		}
+
+		rl, tt := newTestGubernatorRateLimiterMetrics(t, cfg)
+		rl.classResolver = &fakeResolver{errorKeys: map[string]error{
+			"x-tenant-id:fail2": errors.New("boom"),
+		}}
+
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"fail2"},
+			}),
+		})
+
+		assert.NoError(t, rl.RateLimit(ctx, 1))
+
+		// resolver.failures increments
+		metadatatest.AssertEqualRatelimitResolverFailures(t, tt, []metricdata.DataPoint[int64]{
+			{
+				Value: 1,
+				Attributes: attribute.NewSet(attribute.String(
+					"unique_key", "x-tenant-id:fail2",
+				)),
+			},
+		}, metricdatatest.IgnoreTimestamp())
+
+		// dynamic skipped with source_kind=fallback and empty class
+		metadatatest.AssertEqualRatelimitDynamicEscalations(t, tt, []metricdata.DataPoint[int64]{
+			{
+				Value: 1,
+				Attributes: attribute.NewSet(
+					attribute.String("class", ""),
+					attribute.String("source_kind", "fallback"),
+					attribute.String("reason", "skipped"),
+				),
+			},
+		}, metricdatatest.IgnoreTimestamp())
+	})
+
+	t.Run("multiple_failures_accumulate", func(t *testing.T) {
+		cfg := &Config{
+			Type: GubernatorRateLimiter,
+			RateLimitSettings: RateLimitSettings{
+				Strategy:         StrategyRateLimitRequests,
+				ThrottleBehavior: ThrottleBehaviorError,
+				ThrottleInterval: time.Second,
+				Rate:             StaticRate,
+				Burst:            0,
+			},
+			DynamicRateLimiting: DynamicRateLimiting{
+				Enabled:                 true,
+				DefaultWindowMultiplier: 1.5,
+				WindowDuration:          WindowPeriod,
+			},
+			MetadataKeys: []string{"x-tenant-id"},
+			Classes: map[string]Class{
+				"alpha": {Rate: StaticRate, Burst: 0},
+			},
+			DefaultClass: "alpha",
+		}
+		rl, tt := newTestGubernatorRateLimiterMetrics(t, cfg)
+		rl.classResolver = &fakeResolver{errorKeys: map[string]error{
+			"x-tenant-id:fail3": errors.New("boom"),
+		}}
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id": {"fail3"},
+			}),
+		})
+
+		for range 3 {
+			assert.NoError(t, rl.RateLimit(ctx, 1))
+		}
+		metadatatest.AssertEqualRatelimitResolverFailures(t, tt, []metricdata.DataPoint[int64]{
+			{
+				Value: 3,
+				Attributes: attribute.NewSet(attribute.String(
+					"unique_key", "x-tenant-id:fail3",
+				)),
+			},
+		}, metricdatatest.IgnoreTimestamp())
 	})
 }
 
@@ -628,7 +1257,7 @@ func TestGubernatorRateLimiter_MultipleRequests_Delay(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(requests)
 
-	for i := 0; i < requests; i++ {
+	for i := range requests {
 		go func(i int) {
 			defer wg.Done()
 			err := rl.RateLimit(context.Background(), 1)
@@ -654,4 +1283,103 @@ func TestGubernatorRateLimiter_MultipleRequests_Delay(t *testing.T) {
 			t.Fatalf("difference is %dms, requests were sent before tokens were added", diff)
 		}
 	}
+}
+
+type fakeResolver struct {
+	mapping    map[string]string
+	errorKeys  map[string]error
+	callCount  int
+	calledKeys []string
+
+	calledStart    bool
+	calledShutdown bool
+}
+
+func (f *fakeResolver) ResolveClass(_ context.Context, key string) (string, error) {
+	f.callCount++
+	f.calledKeys = append(f.calledKeys, key)
+	if err, hasError := f.errorKeys[key]; hasError {
+		return "", err
+	}
+	if class, exists := f.mapping[key]; exists {
+		return class, nil
+	}
+	return "", nil // Unknown class
+}
+
+func (f *fakeResolver) Reset() {
+	f.callCount = 0
+	f.calledKeys = nil
+}
+
+func (f *fakeResolver) Start(context.Context, component.Host) error {
+	f.calledStart = true
+	return nil
+}
+
+func (f *fakeResolver) Shutdown(context.Context) error {
+	f.calledShutdown = true
+	return nil
+}
+
+type fakeWindowConfigurator struct {
+	// returns the multiplier based on the count as seen by the configurator
+	// For example, if a key is configured with a slice of 2 multipliers then
+	// the first call will return the first multiplier, the second will return
+	// the next multipler and subsequent call will keep returning the last
+	// multiplier in the slice.
+	mapping map[string][]float64
+	// keep track of number of calls
+	count map[string]int
+}
+
+func (f *fakeWindowConfigurator) Multiplier(
+	ctx context.Context,
+	_ time.Duration,
+	key string,
+) float64 {
+	if multipliers, ok := f.mapping[key]; ok {
+		if f.count[key] < len(multipliers) {
+			f.count[key]++
+		}
+		return multipliers[f.count[key]-1]
+	}
+	return -1 // force default multiplier
+}
+
+func TestGubernatorRateLimiter_UnavailableError(t *testing.T) {
+	retryDelay := 2 * time.Second
+	rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+		Type: GubernatorRateLimiter,
+		RateLimitSettings: RateLimitSettings{
+			Strategy:         StrategyRateLimitRequests,
+			Rate:             100,
+			Burst:            10,
+			ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: time.Second,
+			RetryDelay:       retryDelay,
+		},
+	}, nil)
+
+	// Close the daemon to simulate gubernator being unavailable
+	rateLimiter.daemon.Close()
+
+	err := rateLimiter.RateLimit(context.Background(), 1)
+	require.Error(t, err)
+
+	st, ok := status.FromError(err)
+	require.True(t, ok, "expected gRPC status error")
+	assert.Equal(t, codes.Unavailable, st.Code(), "expected Unavailable status code")
+
+	expectedMsg := fmt.Sprintf("service unavailable, try again in %v seconds", retryDelay.Seconds())
+	assert.Contains(t, st.Message(), expectedMsg, "error message should contain retry delay information")
+
+	details := st.Details()
+	require.Len(t, details, 2, "expected 2 details (ErrorInfo and RetryInfo)")
+}
+
+type fakeHost map[component.ID]component.Component
+
+func (f fakeHost) GetExtensions() map[component.ID]component.Component {
+	return f
 }

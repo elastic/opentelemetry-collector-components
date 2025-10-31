@@ -1,24 +1,312 @@
 resourceSpans:
   - resource:
       attributes:
+        - key: labels.unsupported_key
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: ElasticAPM
         - key: agent.version
           value:
             stringValue: 1.0.0
-        - key: labels.unsupported_key
+        - key: labels.my_value
           value:
             stringValue: foo
-        - key: data_stream.type
+        - key: numeric_labels.foo
           value:
-            stringValue: traces
+            doubleValue: 42
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: service.version
+          value:
+            stringValue: 1.0.0
+        - key: service.instance.id
+          value:
+            stringValue: instance-123
+        - key: service.namespace
+          value:
+            stringValue: production
+        - key: service.framework.name
+          value:
+            stringValue: Node
+        - key: service.language.name
+          value:
+            stringValue: go
+        - key: service.language.version
+          value:
+            stringValue: 1.21.0
+        - key: service.framework.version
+          value:
+            stringValue: 1.9.0
+        - key: service.runtime.name
+          value:
+            stringValue: go
+        - key: service.runtime.version
+          value:
+            stringValue: go1.21.0
+        - key: service.origin.id
+          value:
+            stringValue: origin-456
+        - key: service.origin.name
+          value:
+            stringValue: origin-name
+        - key: service.origin.version
+          value:
+            stringValue: 2.0.0
+        - key: service.target.name
+          value:
+            stringValue: target-service
+        - key: service.target.type
+          value:
+            stringValue: container
+        - key: deployment.environment
+          value:
+            stringValue: prod
+        - key: deployment.environment.name
+          value:
+            stringValue: production
+        - key: telemetry.sdk.name
+          value:
+            stringValue: opentelemetry
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 1.0.0
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        - key: cloud.provider
+          value:
+            stringValue: aws
+        - key: cloud.account.id
+          value:
+            stringValue: "123456789012"
+        - key: cloud.region
+          value:
+            stringValue: us-east-1
+        - key: cloud.availability_zone
+          value:
+            stringValue: us-east-1a
+        - key: cloud.platform
+          value:
+            stringValue: aws_ec2
+        - key: cloud.origin.account.id
+          value:
+            stringValue: "987654321098"
+        - key: cloud.origin.provider
+          value:
+            stringValue: azure
+        - key: cloud.origin.region
+          value:
+            stringValue: westus
+        - key: cloud.origin.service.name
+          value:
+            stringValue: compute
+        - key: cloud.account.name
+          value:
+            stringValue: test-account
+        - key: cloud.instance.id
+          value:
+            stringValue: i-1234567890abcdef0
+        - key: cloud.instance.name
+          value:
+            stringValue: test-instance
+        - key: cloud.machine.type
+          value:
+            stringValue: t3.medium
+        - key: cloud.project.id
+          value:
+            stringValue: project-123
+        - key: cloud.project.name
+          value:
+            stringValue: my-project
+        - key: container.name
+          value:
+            stringValue: my-container
+        - key: container.id
+          value:
+            stringValue: abc123def456
+        - key: container.image.name
+          value:
+            stringValue: myapp
+        - key: container.image.tags
+          value:
+            stringValue: v1.0.0,latest
+        - key: container.runtime
+          value:
+            stringValue: docker
+        - key: container.image.tag
+          value:
+            stringValue: latest
+        - key: k8s.namespace.name
+          value:
+            stringValue: default
+        - key: k8s.node.name
+          value:
+            stringValue: node-1
+        - key: k8s.pod.name
+          value:
+            stringValue: my-pod
+        - key: k8s.pod.uid
+          value:
+            stringValue: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        - key: host.name
+          value:
+            stringValue: node-1
+        - key: host.id
+          value:
+            stringValue: host-123
+        - key: host.type
+          value:
+            stringValue: t3.medium
+        - key: host.arch
+          value:
+            stringValue: amd64
+        - key: host.ip
+          value:
+            stringValue: 10.0.0.1
+        - key: host.os.platform
+          value:
+            stringValue: linux
+        - key: process.pid
+          value:
+            intValue: "12345"
+        - key: process.parent_pid
+          value:
+            intValue: "1"
+        - key: process.executable.name
+          value:
+            stringValue: myapp
+        - key: process.command_line
+          value:
+            stringValue: /usr/bin/myapp --config=/etc/myapp.conf
+        - key: process.executable.path
+          value:
+            stringValue: /usr/bin/myapp
+        - key: process.owner
+          value:
+            stringValue: appuser
+        - key: process.runtime.name
+          value:
+            stringValue: java
+        - key: process.runtime.version
+          value:
+            stringValue: "17"
+        - key: os.type
+          value:
+            stringValue: linux
+        - key: os.description
+          value:
+            stringValue: Linux 5.10
+        - key: os.name
+          value:
+            stringValue: Ubuntu
+        - key: os.version
+          value:
+            stringValue: "22.04"
+        - key: device.id
+          value:
+            stringValue: device-123
+        - key: device.model.identifier
+          value:
+            stringValue: MacBookPro14,1
+        - key: device.model.name
+          value:
+            stringValue: MacBook Pro
+        - key: device.manufacturer
+          value:
+            stringValue: Apple
+        - key: user.id
+          value:
+            stringValue: user-1234
+        - key: user.email
+          value:
+            stringValue: user@example.com
+        - key: user.name
+          value:
+            stringValue: john.doe
+        - key: user.domain
+          value:
+            stringValue: example.com
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla/5.0
+        - key: network.connection.type
+          value:
+            stringValue: wifi
+        - key: network.connection.subtype
+          value:
+            stringValue: wlan
+        - key: network.carrier.name
+          value:
+            stringValue: carrier-name
+        - key: network.carrier.mcc
+          value:
+            intValue: "310"
+        - key: network.carrier.mnc
+          value:
+            intValue: "260"
+        - key: network.carrier.icc
+          value:
+            stringValue: US
+        - key: client.address
+          value:
+            stringValue: 192.168.1.100
+        - key: client.port
+          value:
+            intValue: "8080"
+        - key: source.address
+          value:
+            stringValue: 10.0.0.1
+        - key: source.port
+          value:
+            intValue: "9000"
+        - key: source.nat.ip
+          value:
+            stringValue: 203.0.113.1
+        - key: destination.ip
+          value:
+            stringValue: 172.16.0.1
+        - key: faas.instance
+          value:
+            stringValue: faas-instance-1
+        - key: faas.name
+          value:
+            stringValue: my-function
+        - key: faas.version
+          value:
+            stringValue: 1.0.0
+        - key: faas.trigger
+          value:
+            stringValue: http
+        - key: faas.coldstart
+          value:
+            boolValue: false
+        - key: faas.trigger.request.id
+          value:
+            stringValue: req-123
+        - key: faas.execution
+          value:
+            stringValue: exec-456
         - key: data_stream.dataset
           value:
             stringValue: apm
         - key: data_stream.namespace
           value:
             stringValue: default
+        - key: opencensus.exporterversion
+          value:
+            stringValue: 1.0.0
+        - key: agent.ephemeral_id
+          value:
+            stringValue: ephem-123
+        - key: agent.activation_method
+          value:
+            stringValue: automatic
+        - key: data_stream.type
+          value:
+            stringValue: traces
     scopeSpans:
       - scope: {}
         spans:
@@ -35,9 +323,6 @@ resourceSpans:
               - key: span.name
                 value:
                   stringValue: span-elastic-db
-              - key: processor.event
-                value:
-                  stringValue: span
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -65,6 +350,9 @@ resourceSpans:
               - key: span.destination.service.resource
                 value:
                   stringValue: mysql
+              - key: processor.event
+                value:
+                  stringValue: span
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
@@ -99,7 +387,5 @@ resourceSpans:
                 timeUnixNano: "1581452773000000123"
             name: span-elastic-db
             parentSpanId: bcff497b5a47310f
-            spanId: ""
             startTimeUnixNano: "1581452772000000321"
             status: {}
-            traceId: ""

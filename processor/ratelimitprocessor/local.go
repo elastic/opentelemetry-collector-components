@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/processor"
 	"golang.org/x/time/rate"
@@ -51,10 +52,12 @@ func (r *localRateLimiter) Shutdown(_ context.Context) error {
 }
 
 func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
+	metadata := client.FromContext(ctx).Metadata
 	// Each (shared) processor gets its own rate limiter,
 	// so it's enough to use client metadata-based unique key.
-	key := getUniqueKey(ctx, r.cfg.MetadataKeys)
-	cfg := resolveRateLimitSettings(r.cfg, key)
+	key := getUniqueKey(metadata, r.cfg.MetadataKeys)
+	// local rate limiter ignores classes (no resolver), so pass empty class.
+	cfg, _, _ := resolveRateLimit(r.cfg, "", metadata)
 
 	v, _ := r.limiters.LoadOrStore(key, rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst))
 	limiter := v.(*rate.Limiter)

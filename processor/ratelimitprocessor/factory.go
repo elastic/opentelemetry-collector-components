@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/xprocessor"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
@@ -55,10 +56,12 @@ func NewFactory() xprocessor.Factory {
 func getRateLimiter(
 	config *Config,
 	set processor.Settings,
+	telemetryBuilder *metadata.TelemetryBuilder,
+	tracerProvider trace.TracerProvider,
 ) (*sharedcomponent.Component[rateLimiterComponent], error) {
 	return rateLimiters.LoadOrStore(config, func() (rateLimiterComponent, error) {
 		if config.Type == GubernatorRateLimiter {
-			return newGubernatorRateLimiter(config, set)
+			return newGubernatorRateLimiter(config, set.Logger, telemetryBuilder, tracerProvider)
 		}
 		return newLocalRateLimiter(config, set)
 	})
@@ -71,15 +74,20 @@ func createLogsProcessor(
 	nextConsumer consumer.Logs,
 ) (processor.Logs, error) {
 	config := cfg.(*Config)
-	rateLimiter, err := getRateLimiter(config, set)
+	tb, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
 	if err != nil {
 		return nil, err
 	}
-
+	rateLimiter, err := getRateLimiter(config, set, tb, set.TracerProvider)
+	if err != nil {
+		return nil, err
+	}
 	var inflight int64
 	return NewLogsRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings,
+		set.TelemetrySettings.Logger,
+		tb,
+		set.TracerProvider,
 		config.Strategy,
 		func(ctx context.Context, ld plog.Logs) error {
 			return nextConsumer.ConsumeLogs(ctx, ld)
@@ -96,14 +104,20 @@ func createMetricsProcessor(
 	nextConsumer consumer.Metrics,
 ) (processor.Metrics, error) {
 	config := cfg.(*Config)
-	rateLimiter, err := getRateLimiter(config, set)
+	tb, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
+	if err != nil {
+		return nil, err
+	}
+	rateLimiter, err := getRateLimiter(config, set, tb, set.TracerProvider)
 	if err != nil {
 		return nil, err
 	}
 	var inflight int64
 	return NewMetricsRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings,
+		set.TelemetrySettings.Logger,
+		tb,
+		set.TracerProvider,
 		config.Strategy,
 		func(ctx context.Context, md pmetric.Metrics) error {
 			return nextConsumer.ConsumeMetrics(ctx, md)
@@ -120,14 +134,20 @@ func createTracesProcessor(
 	nextConsumer consumer.Traces,
 ) (processor.Traces, error) {
 	config := cfg.(*Config)
-	rateLimiter, err := getRateLimiter(config, set)
+	tb, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
+	if err != nil {
+		return nil, err
+	}
+	rateLimiter, err := getRateLimiter(config, set, tb, set.TracerProvider)
 	if err != nil {
 		return nil, err
 	}
 	var inflight int64
 	return NewTracesRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings,
+		set.TelemetrySettings.Logger,
+		tb,
+		set.TracerProvider,
 		config.Strategy,
 		func(ctx context.Context, td ptrace.Traces) error {
 			return nextConsumer.ConsumeTraces(ctx, td)
@@ -144,14 +164,20 @@ func createProfilesProcessor(
 	nextConsumer xconsumer.Profiles,
 ) (xprocessor.Profiles, error) {
 	config := cfg.(*Config)
-	rateLimiter, err := getRateLimiter(config, set)
+	tb, err := metadata.NewTelemetryBuilder(set.TelemetrySettings)
+	if err != nil {
+		return nil, err
+	}
+	rateLimiter, err := getRateLimiter(config, set, tb, set.TracerProvider)
 	if err != nil {
 		return nil, err
 	}
 	var inflight int64
 	return NewProfilesRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings,
+		set.TelemetrySettings.Logger,
+		tb,
+		set.TracerProvider,
 		config.Strategy,
 		func(ctx context.Context, td pprofile.Profiles) error {
 			return nextConsumer.ConsumeProfiles(ctx, td)

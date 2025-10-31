@@ -25,6 +25,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla Chrome Edge
         - key: container.id
           value:
             stringValue: container-id
@@ -57,7 +60,10 @@ resourceSpans:
             stringValue: foo@example.com
         - key: client.address
           value:
-            stringValue: v4:134744072
+            stringValue: 8.8.8.8
+        - key: source.address
+          value:
+            stringValue: 8.8.8.8
         - key: agent.name
           value:
             stringValue: js-base
@@ -131,12 +137,167 @@ resourceSpans:
               - key: http.request.method
                 value:
                   stringValue: POST
-              - key: url.full
-                value:
-                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: /p/a/t/h?query=string#hash
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: url.full
+                value:
+                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
+              - key: url.domain
+                value:
+                  stringValue: www.example.com
+              - key: url.path
+                value:
+                  stringValue: /p/a/t/h
+              - key: url.query
+                value:
+                  stringValue: ?query=string
+              - key: url.fragment
+                value:
+                  stringValue: '#hash'
+              - key: url.port
+                value:
+                  intValue: "8080"
+              - key: http.version
+                value:
+                  stringValue: "1.1"
+              - key: http.request.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
+              - key: http.request.env.SERVER_SOFTWARE
+                value:
+                  stringValue: string_value:"nginx"
+              - key: http.request.env.GATEWAY_INTERFACE
+                value:
+                  stringValue: string_value:"CGI/1.1"
+              - key: http.request.cookies.c1
+                value:
+                  stringValue: string_value:"v1"
+              - key: http.request.cookies.c2
+                value:
+                  stringValue: string_value:"v2"
+              - key: http.request.body
+                value:
+                  kvlistValue:
+                    values:
+                      - key: str
+                        value:
+                          stringValue: hello world
+                      - key: additional
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: bar
+                                value:
+                                  doubleValue: 123
+                              - key: req
+                                value:
+                                  stringValue: additional information
+              - key: http.request.referrer
+                value:
+                  stringValue: http://localhost:8000/test/e2e/
+              - key: http.response.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: application/json
+              - key: http.response.finished
+                value:
+                  boolValue: true
+              - key: http.response.headers_sent
+                value:
+                  boolValue: true
+              - key: transaction.span_count.started
+                value:
+                  intValue: "4"
+              - key: transaction.span_count.dropped
+                value:
+                  intValue: "2"
+              - key: transaction.custom
+                value:
+                  kvlistValue:
+                    values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
+                      - key: and_objects
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: foo
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: bar
+                                      - stringValue: baz
+                      - key: (
+                        value:
+                          stringValue: not a valid regex and that is fine
+              - key: transaction.marks
+                value:
+                  kvlistValue:
+                    values:
+                      - key: navigationTiming
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: appBeforeBootstrap
+                                value:
+                                  doubleValue: 608.9300000000001
+                              - key: navigationStart
+                                value:
+                                  doubleValue: -21
+                      - key: another_mark
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: some_float
+                                value:
+                                  doubleValue: 10
+                              - key: some_long
+                                value:
+                                  doubleValue: 10
             endTimeUnixNano: "1496170407186592981"
             kind: 2
             name: GET /api/types
@@ -198,6 +359,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -268,6 +432,9 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -333,6 +500,9 @@ resourceSpans:
                             - key: library_frame
                               value:
                                 boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
                       - kvlistValue:
                           values:
                             - key: line.number
@@ -341,7 +511,7 @@ resourceSpans:
                             - key: filename
                               value:
                                 stringValue: my2file.js
-                            - key: library_frame
+                            - key: exclude_from_grouping
                               value:
                                 boolValue: false
             endTimeUnixNano: "1496170407157781912"
@@ -406,6 +576,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -527,6 +700,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -648,6 +824,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -769,6 +948,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -830,6 +1012,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "13980"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "0"
             endTimeUnixNano: "1496170422294980558"
             name: GET /api/types
             spanId: 85925e55b43f4340
@@ -889,6 +1074,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -950,6 +1138,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "13980"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "0"
             endTimeUnixNano: "1496170422013980558"
             name: GET /api/types
             spanId: 85925e55b43f4341
@@ -1009,6 +1200,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -1070,6 +1264,12 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "13980"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "1"
+              - key: transaction.span_count.dropped
+                value:
+                  intValue: "258"
             endTimeUnixNano: "1496170422295979558"
             name: GET /api/types
             spanId: 85925e55b43f4342
@@ -1129,6 +1329,9 @@ resourceSpans:
         - key: user.email
           value:
             stringValue: foo@bar.com
+        - key: user.name
+          value:
+            stringValue: foo
         - key: agent.name
           value:
             stringValue: js-base
@@ -1159,6 +1362,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: destination.ip
+          value:
+            stringValue: ::1
     scopeSpans:
       - scope: {}
         spans:
@@ -1208,6 +1414,12 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
               - key: span.db.user_name
                 value:
                   stringValue: readonly_user

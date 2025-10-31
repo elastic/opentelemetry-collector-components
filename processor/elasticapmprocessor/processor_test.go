@@ -19,21 +19,24 @@ package elasticapmprocessor // import "github.com/elastic/opentelemetry-collecto
 
 import (
 	"context"
+	"flag"
 	"path/filepath"
 	"testing"
 
-	"go.opentelemetry.io/collector/client"
-
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/processor/processortest"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
 )
+
+var update = flag.Bool("update", false, "Flag to generate/updated the expected yaml files")
 
 // TestProcessor does some basic tests to check if enrichment is happening.
 // More exhaustive test for the logic are left to the library.
@@ -66,11 +69,18 @@ func TestProcessor(t *testing.T) {
 			dir := filepath.Join("testdata", tc)
 			inputTraces, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
-			expectedTraces, err := golden.ReadTraces(filepath.Join(dir, "output.yaml"))
+
+			outputFile := filepath.Join(dir, "output.yaml")
+			expectedTraces, err := golden.ReadTraces(outputFile)
 			require.NoError(t, err)
 
 			require.NoError(t, tp.ConsumeTraces(ctx, inputTraces))
-			assert.NoError(t, ptracetest.CompareTraces(expectedTraces, next.AllTraces()[0]))
+			actual := next.AllTraces()[0]
+			if *update {
+				err := golden.WriteTraces(t, outputFile, actual)
+				assert.NoError(t, err)
+			}
+			assert.NoError(t, ptracetest.CompareTraces(expectedTraces, actual))
 		})
 	}
 }
@@ -95,9 +105,16 @@ func TestProcessorECS(t *testing.T) {
 
 	inputTraces, err := golden.ReadTraces("testdata/ecs/elastic_span_db/input.yaml")
 	require.NoError(t, err)
-	expectedTraces, err := golden.ReadTraces("testdata/ecs/elastic_span_db/output.yaml")
+
+	outputFile := "testdata/ecs/elastic_span_db/output.yaml"
+	expectedTraces, err := golden.ReadTraces(outputFile)
 	require.NoError(t, err)
 
 	require.NoError(t, tp.ConsumeTraces(ctx, inputTraces))
-	assert.NoError(t, ptracetest.CompareTraces(expectedTraces, next.AllTraces()[0]))
+	actual := next.AllTraces()[0]
+	if *update {
+		err := golden.WriteTraces(t, outputFile, actual)
+		assert.NoError(t, err)
+	}
+	assert.NoError(t, ptracetest.CompareTraces(expectedTraces, actual))
 }

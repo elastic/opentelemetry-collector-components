@@ -44,9 +44,11 @@ type TelemetryBuilder struct {
 	mu                          sync.Mutex
 	registrations               []metric.Registration
 	RatelimitConcurrentRequests metric.Int64Gauge
+	RatelimitDynamicEscalations metric.Int64Counter
 	RatelimitRequestDuration    metric.Float64Histogram
 	RatelimitRequestSize        metric.Int64Histogram
 	RatelimitRequests           metric.Int64Counter
+	RatelimitResolverFailures   metric.Int64Counter
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -80,28 +82,40 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	var err, errs error
 	builder.RatelimitConcurrentRequests, err = builder.meter.Int64Gauge(
 		"otelcol_ratelimit.concurrent_requests",
-		metric.WithDescription("Number of in-flight requests at any given time"),
+		metric.WithDescription("Number of in-flight requests at any given time [development]"),
 		metric.WithUnit("{requests}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitDynamicEscalations, err = builder.meter.Int64Counter(
+		"otelcol_ratelimit.dynamic.escalations",
+		metric.WithDescription("Total number of dynamic rate escalations (dynamic > static)"),
+		metric.WithUnit("{count}"),
 	)
 	errs = errors.Join(errs, err)
 	builder.RatelimitRequestDuration, err = builder.meter.Float64Histogram(
 		"otelcol_ratelimit.request_duration",
-		metric.WithDescription("Time(in seconds) taken to process a rate limit request"),
+		metric.WithDescription("Time(in seconds) taken to process a rate limit request [development]"),
 		metric.WithUnit("{seconds}"),
 		metric.WithExplicitBucketBoundaries([]float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1, 5, 10}...),
 	)
 	errs = errors.Join(errs, err)
 	builder.RatelimitRequestSize, err = builder.meter.Int64Histogram(
 		"otelcol_ratelimit.request_size",
-		metric.WithDescription("Number of bytes in received request. Only available if strategy is rate per bytes."),
+		metric.WithDescription("Number of bytes in received request. Only available if strategy is rate per bytes. [development]"),
 		metric.WithUnit("{bytes}"),
 		metric.WithExplicitBucketBoundaries([]float64{512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1.048576e+06, 2.097152e+06, 3.145728e+06, 4.194304e+06, 5.24288e+06, 6.291456e+06, 7.340032e+06, 8.388608e+06, 9.437184e+06, 1.048576e+07, 1.2582912e+07, 1.4680064e+07, 1.6777216e+07, 1.8874368e+07, 2.097152e+07}...),
 	)
 	errs = errors.Join(errs, err)
 	builder.RatelimitRequests, err = builder.meter.Int64Counter(
 		"otelcol_ratelimit.requests",
-		metric.WithDescription("Number of rate-limiting requests"),
+		metric.WithDescription("Number of rate-limiting requests [development]"),
 		metric.WithUnit("{requests}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitResolverFailures, err = builder.meter.Int64Counter(
+		"otelcol_ratelimit.resolver.failures",
+		metric.WithDescription("Total number of class resolver failures"),
+		metric.WithUnit("{count}"),
 	)
 	errs = errors.Join(errs, err)
 	return &builder, errs

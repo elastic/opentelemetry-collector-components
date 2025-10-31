@@ -22,7 +22,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
@@ -32,8 +35,8 @@ import (
 )
 
 var defaultDynamicRateLimiting = DynamicRateLimiting{
-	WindowMultiplier: 1.3,
-	WindowDuration:   2 * time.Minute,
+	DefaultWindowMultiplier: 1.3,
+	WindowDuration:          2 * time.Minute,
 }
 
 func TestLoadConfig(t *testing.T) {
@@ -41,9 +44,10 @@ func TestLoadConfig(t *testing.T) {
 	grpcClientConfig.Endpoint = "localhost:1081"
 
 	tests := []struct {
-		name        string
-		expected    component.Config
-		expectedErr string
+		name                     string
+		expected                 component.Config
+		expectedErr              string
+		ignoreLimitOverrideOrder bool
 	}{
 		{
 			name: "local",
@@ -55,6 +59,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitRequests,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
@@ -69,6 +74,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
@@ -83,6 +89,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitRequests,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 			},
@@ -97,6 +104,7 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitRequests,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				MetadataKeys:        []string{"project_id"},
@@ -112,10 +120,14 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				Overrides: map[string]RateLimitOverrides{
-					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+				Overrides: []RateLimitOverrides{
+					{
+						Matches: map[string][]string{
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+						},
 						Rate:  ptr(300),
 						Burst: ptr(400),
 					},
@@ -132,10 +144,14 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				Overrides: map[string]RateLimitOverrides{
-					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+				Overrides: []RateLimitOverrides{
+					{
+						Matches: map[string][]string{
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+						},
 						Rate: ptr(300),
 					},
 				},
@@ -151,10 +167,14 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				Overrides: map[string]RateLimitOverrides{
-					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+				Overrides: []RateLimitOverrides{
+					{
+						Matches: map[string][]string{
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+						},
 						Burst: ptr(400),
 					},
 				},
@@ -170,10 +190,14 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				Overrides: map[string]RateLimitOverrides{
-					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+				Overrides: []RateLimitOverrides{
+					{
+						Matches: map[string][]string{
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+						},
 						Rate:             ptr(400),
 						ThrottleInterval: ptr(10 * time.Second),
 					},
@@ -181,7 +205,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "overrides_static_only",
+			name: "overrides_disable_dynamic",
 			expected: &Config{
 				Type: LocalRateLimiter,
 				RateLimitSettings: RateLimitSettings{
@@ -190,11 +214,15 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				Overrides: map[string]RateLimitOverrides{
-					"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
-						StaticOnly: true,
+				Overrides: []RateLimitOverrides{
+					{
+						Matches: map[string][]string{
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+						},
+						DisableDynamic: true,
 					},
 				},
 			},
@@ -209,11 +237,12 @@ func TestLoadConfig(t *testing.T) {
 					Strategy:         StrategyRateLimitBytes,
 					ThrottleBehavior: ThrottleBehaviorError,
 					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: DynamicRateLimiting{
-					Enabled:          true,
-					WindowMultiplier: 1.5,
-					WindowDuration:   time.Minute,
+					Enabled:                 true,
+					DefaultWindowMultiplier: 1.5,
+					WindowDuration:          time.Minute,
 				},
 			},
 		},
@@ -237,6 +266,55 @@ func TestLoadConfig(t *testing.T) {
 			name:        "invalid_type",
 			expectedErr: `invalid rate limiter type "invalid", expected one of ["local" "gubernator"]`,
 		},
+		{
+			name:        "invalid_default_class",
+			expectedErr: `default_class "nonexistent" does not exist in classes`,
+		},
+		{
+			name:        "invalid_class_rate_zero",
+			expectedErr: `class "trial": rate must be greater than zero`,
+		},
+		{
+			name:        "invalid_class_rate_negative",
+			expectedErr: `class "trial": rate must be greater than zero`,
+		},
+		{
+			name:        "classes_set_but_no_class_resolver",
+			expectedErr: `classes defined but class_resolver not specified`,
+		},
+		{
+			name:                     "deprecated_overrides",
+			ignoreLimitOverrideOrder: true,
+			expected: &Config{
+				Type: LocalRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitBytes,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
+				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
+				Overrides: []RateLimitOverrides{
+					{
+						Matches: map[string][]string{
+							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+						},
+						Rate:  ptr(300),
+						Burst: ptr(400),
+					},
+					{
+						Matches: map[string][]string{
+							"project-id":   {"e994532b-5n94-48et-a95c-1fa0638g6288"},
+							"project-type": {"test"},
+						},
+						Rate:  ptr(3000),
+						Burst: ptr(5000),
+					},
+				},
+			},
+		},
 	}
 
 	factory := NewFactory()
@@ -257,12 +335,28 @@ func TestLoadConfig(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, cfg)
+			if tt.ignoreLimitOverrideOrder {
+				require.Empty(t, cmp.Diff(
+					tt.expected, cfg,
+					cmpopts.IgnoreFields(Config{}, "ClassResolver"),
+					cmpopts.IgnoreFields(DynamicRateLimiting{}, "WindowConfigurator"),
+					cmpopts.IgnoreFields(RateLimitSettings{}, "disableDynamic"),
+					// Since ignoring limit override is a temporary test while the old
+					// format of overrides is deprecated, we will need to ignore the
+					// order of slices. Our test case for this allows us to just compare
+					// the override slices by length of key-values.
+					cmpopts.SortSlices(func(a, b RateLimitOverrides) bool {
+						return len(a.Matches) < len(b.Matches)
+					}),
+				))
+			} else {
+				require.Equal(t, tt.expected, cfg)
+			}
 		})
 	}
 }
 
-func TestResolveRateLimitSettings(t *testing.T) {
+func TestResolveEffectiveRateLimit(t *testing.T) {
 	cfg := &Config{
 		RateLimitSettings: RateLimitSettings{
 			Rate:             100,
@@ -271,29 +365,96 @@ func TestResolveRateLimitSettings(t *testing.T) {
 			ThrottleBehavior: ThrottleBehaviorError,
 			ThrottleInterval: 1 * time.Second,
 		},
-		Overrides: map[string]RateLimitOverrides{
-			"project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292": {
+		Overrides: []RateLimitOverrides{
+			{
+				Matches: map[string][]string{
+					"project-id":   {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+					"project-type": {"test"},
+				},
 				Rate:             ptr(300),
 				Burst:            ptr(400),
 				ThrottleInterval: ptr(10 * time.Second),
 			},
 		},
+		Classes: map[string]Class{
+			"trial":   {Rate: 50, Burst: 50},
+			"premium": {Rate: 1000, Burst: 2000, DisableDynamic: true},
+		},
+		DefaultClass: "trial",
 	}
 
-	t.Run("no override", func(t *testing.T) {
-		result := resolveRateLimitSettings(cfg, "default")
-		require.Equal(t, cfg.RateLimitSettings, result)
+	t.Run("override successful", func(t *testing.T) {
+		metadata := client.NewMetadata(map[string][]string{
+			"project-id":   {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+			"project-type": {"test"},
+		})
+		res, kind, class := resolveRateLimit(cfg, "trial", metadata)
+		require.Equal(t, SourceKindOverride, kind)
+		require.Empty(t, class)
+		require.Equal(t, 300, res.Rate)
+		require.Equal(t, 400, res.Burst)
+		require.Equal(t, 10*time.Second, res.ThrottleInterval)
 	})
 
-	t.Run("override", func(t *testing.T) {
-		result := resolveRateLimitSettings(cfg, "project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292")
-		require.Equal(t, RateLimitSettings{
-			Rate:             300,
-			Burst:            400,
-			Strategy:         StrategyRateLimitRequests,
-			ThrottleBehavior: ThrottleBehaviorError,
-			ThrottleInterval: 10 * time.Second,
-		}, result)
+	t.Run("override failed", func(t *testing.T) {
+		metadata := client.NewMetadata(map[string][]string{
+			"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+			// Project-type not matching the override
+			"project-type": {"404"},
+		})
+		res, kind, class := resolveRateLimit(cfg, "trial", metadata)
+		require.Equal(t, SourceKindClass, kind)
+		require.Equal(t, "trial", class)
+		require.Equal(t, 50, res.Rate)
+		require.Equal(t, 50, res.Burst)
+		require.Equal(t, time.Second, res.ThrottleInterval)
+	})
+
+	t.Run("override failed 2", func(t *testing.T) {
+		metadata := client.NewMetadata(map[string][]string{
+			"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
+			// Project-type not present
+		})
+		res, kind, class := resolveRateLimit(cfg, "trial", metadata)
+		require.Equal(t, SourceKindClass, kind)
+		require.Equal(t, "trial", class)
+		require.Equal(t, 50, res.Rate)
+		require.Equal(t, 50, res.Burst)
+		require.Equal(t, time.Second, res.ThrottleInterval)
+	})
+
+	t.Run("resolved class", func(t *testing.T) {
+		metadata := client.NewMetadata(map[string][]string{
+			"project-id": {"some-other-key"},
+		})
+		res, kind, class := resolveRateLimit(cfg, "premium", metadata)
+		require.Equal(t, SourceKindClass, kind)
+		require.Equal(t, "premium", class)
+		require.Equal(t, 1000, res.Rate)
+		require.Equal(t, 2000, res.Burst)
+		require.True(t, res.disableDynamic, "premium is static-only")
+	})
+
+	t.Run("default class fallback", func(t *testing.T) {
+		metadata := client.NewMetadata(map[string][]string{
+			"project-id": {"another-key"},
+		})
+		res, kind, class := resolveRateLimit(cfg, "nonexistent", metadata)
+		require.Equal(t, SourceKindClass, kind)
+		require.Equal(t, "trial", class)
+		require.Equal(t, 50, res.Rate)
+		require.Equal(t, 50, res.Burst)
+	})
+
+	t.Run("top-level fallback", func(t *testing.T) {
+		metadata := client.NewMetadata(map[string][]string{
+			"project-id": nil,
+		})
+		cfgNoClasses := &Config{RateLimitSettings: cfg.RateLimitSettings}
+		res, kind, class := resolveRateLimit(cfgNoClasses, "", metadata)
+		require.Equal(t, SourceKindFallback, kind)
+		require.Empty(t, class)
+		require.Equal(t, cfg.RateLimitSettings, res)
 	})
 }
 

@@ -21,7 +21,11 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
+	"fmt"
+	"net/netip"
+
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/elastic/apm-data/model/modelpb"
 	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
@@ -34,33 +38,9 @@ var compressionStrategyText = map[modelpb.CompressionStrategy]string{
 
 // SetElasticSpecificFieldsForSpan sets fields on spans that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
-// and store information about a specific span type
+// and store information about a specific span type.
 func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	if event.Http != nil {
-		if event.Http.Request != nil {
-			if event.Http.Request.Body != nil {
-				attributesMap.PutStr(attr.HTTPRequestBody, event.Http.Request.Body.GetStringValue())
-			}
-			if event.Http.Request.Id != "" {
-				attributesMap.PutStr(attr.HTTPRequestID, event.Http.Request.Id)
-			}
-			if event.Http.Request.Referrer != "" {
-				attributesMap.PutStr(attr.HTTPRequestReferrer, event.Http.Request.Referrer)
-			}
-		}
-
-		if event.Http.Response != nil {
-			if event.Http.Response.DecodedBodySize != nil {
-				attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*event.Http.Response.DecodedBodySize))
-			}
-			if event.Http.Response.EncodedBodySize != nil {
-				attributesMap.PutInt(attr.HTTPResponseEncodedBodySize, int64(*event.Http.Response.EncodedBodySize))
-			}
-			if event.Http.Response.TransferSize != nil {
-				attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*event.Http.Response.TransferSize))
-			}
-		}
-	}
+	setHTTP(event.Http, attributesMap)
 
 	if event.Span == nil {
 		return
@@ -79,22 +59,7 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 		}
 	}
 
-	if event.Span.Message != nil {
-		if event.Span.Message.Body != "" {
-			attributesMap.PutStr(attr.SpanMessageBody, event.Span.Message.Body)
-		}
-		if event.Span.Message.AgeMillis != nil {
-			attributesMap.PutInt(attr.SpanMessageAgeMs, int64(*event.Span.Message.AgeMillis))
-		}
-		for _, header := range event.Span.Message.Headers {
-			headerKey := attr.SpanMessageHeadersPrefix + header.Key
-			headerValues := attributesMap.PutEmptySlice(headerKey)
-			headerValues.EnsureCapacity(len(header.Value))
-			for _, v := range header.Value {
-				headerValues.AppendEmpty().SetStr(v)
-			}
-		}
-	}
+	setMessage("span", event.Span.Message, attributesMap)
 
 	if event.Span.Composite != nil {
 		compressionStrategy, ok := compressionStrategyText[event.Span.Composite.CompressionStrategy]
@@ -107,27 +72,123 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 
 	attributesMap.PutDouble(attr.SpanRepresentativeCount, event.Span.RepresentativeCount)
 
-	setStackTraceList(attributesMap, event.Span.Stacktrace)
+	setStackTraceList(attr.SpanStacktrace, attributesMap, event.Span.Stacktrace)
+}
+
+// setHTTP sets HTTP fields. Applicable only for error, span, or transaction events
+func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
+	if http == nil {
+		return
+	}
+
+	if http.Version != "" {
+		attributesMap.PutStr(attr.HTTPVersion, http.Version)
+	}
+
+	if http.Request != nil {
+		setHTTPHeadersMap(attr.HTTPRequestHeaders, attributesMap, http.Request.Headers)
+
+		// set env and cookies as a flat map
+		for _, env := range http.Request.Env {
+			if env != nil && env.Key != "" && env.Value != nil && env.Value.String() != "" {
+				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestEnv, env.Key), env.Value.String())
+			}
+		}
+		for _, cookie := range http.Request.Cookies {
+			if cookie != nil && cookie.Key != "" && cookie.Value != nil && cookie.Value.String() != "" {
+				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestCookies, cookie.Key), cookie.Value.String())
+			}
+		}
+
+		if http.Request.Body != nil {
+			// add http body as an object since it is required by the APM index template
+			// see: https://github.com/elastic/elasticsearch/blob/714c077b11363f168e261ad43cff0b5b74556b7f/x-pack/plugin/apm-data/src/main/resources/component-templates/traces-apm%40mappings.yaml#L30
+			bodyValue := attributesMap.PutEmpty(attr.HTTPRequestBody)
+			insertValue(bodyValue, http.Request.Body)
+		}
+		if http.Request.Id != "" {
+			attributesMap.PutStr(attr.HTTPRequestID, http.Request.Id)
+		}
+		if http.Request.Referrer != "" {
+			attributesMap.PutStr(attr.HTTPRequestReferrer, http.Request.Referrer)
+		}
+	}
+
+	if http.Response != nil {
+		setHTTPHeadersMap(attr.HTTPResponseHeaders, attributesMap, http.Response.Headers)
+
+		if http.Response.Finished != nil {
+			attributesMap.PutBool(attr.HTTPResponseFinished, *http.Response.Finished)
+		}
+
+		if http.Response.HeadersSent != nil {
+			attributesMap.PutBool(attr.HTTPResponseHeadersSent, *http.Response.HeadersSent)
+		}
+
+		if http.Response.DecodedBodySize != nil {
+			attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*http.Response.DecodedBodySize))
+		}
+
+		if http.Response.TransferSize != nil {
+			attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*http.Response.TransferSize))
+		}
+	}
+}
+
+// setHTTPHeadersMap sets HTTP headers to attributes map.
+// The headers will be a map of string to array of strings.
+func setHTTPHeadersMap(prefix string, attributesMap pcommon.Map, headers []*modelpb.HTTPHeader) {
+	if len(headers) == 0 {
+		return
+	}
+
+	headerMap := attributesMap.PutEmptyMap(prefix)
+	headerMap.EnsureCapacity(len(headers))
+	for _, header := range headers {
+		if header != nil && header.Key != "" && len(header.Value) > 0 {
+			headerValues := headerMap.PutEmptySlice(header.Key)
+			headerValues.EnsureCapacity(len(header.Value))
+			for _, v := range header.Value {
+				headerValues.AppendEmpty().SetStr(v)
+			}
+		}
+	}
+}
+
+// setMessage sets message fields from either a span or transaction message.
+func setMessage(prefix string, m *modelpb.Message, attributesMap pcommon.Map) {
+	if m == nil {
+		return
+	}
+	if m.Body != "" {
+		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageBody), m.Body)
+	}
+	if m.AgeMillis != nil {
+		attributesMap.PutInt(fmt.Sprintf("%s.%s", prefix, attr.MessageAgeMs), int64(*m.AgeMillis))
+	}
+	for _, header := range m.Headers {
+		headerKey := fmt.Sprintf("%s.%s.%s", prefix, attr.MessageHeadersPrefix, header.Key)
+		headerValues := attributesMap.PutEmptySlice(headerKey)
+		headerValues.EnsureCapacity(len(header.Value))
+		for _, v := range header.Value {
+			headerValues.AppendEmpty().SetStr(v)
+		}
+	}
 }
 
 // setStackTraceList maps stacktrace frames to attributes map.
 // The stacktrace will be a list of objects (maps), each map representing a frame.
-func setStackTraceList(attributesMap pcommon.Map, stacktrace []*modelpb.StacktraceFrame) {
+func setStackTraceList(key string, attributesMap pcommon.Map, stacktrace []*modelpb.StacktraceFrame) {
 	if len(stacktrace) == 0 {
 		return
 	}
 
-	stacktraceSlice := attributesMap.PutEmptySlice(attr.SpanStacktrace)
+	stacktraceSlice := attributesMap.PutEmptySlice(key)
 	stacktraceSlice.EnsureCapacity(len(stacktrace))
 	for _, frame := range stacktrace {
 		frameMap := stacktraceSlice.AppendEmpty().SetEmptyMap()
 
-		if len(frame.Vars) > 0 {
-			varsMap := frameMap.PutEmptyMap(attr.SpanStacktraceFrameVars)
-			for _, varKV := range frame.Vars {
-				varsMap.PutStr(varKV.Key, varKV.Value.GetStringValue())
-			}
-		}
+		setKeyValueMap(attr.SpanStacktraceFrameVars, frameMap, frame.Vars)
 
 		if frame.Lineno != nil {
 			frameMap.PutInt(attr.SpanStacktraceFrameLineNumber, int64(*frame.Lineno))
@@ -169,7 +230,168 @@ func setStackTraceList(attributesMap pcommon.Map, stacktrace []*modelpb.Stacktra
 			}
 		}
 
-		frameMap.PutBool(attr.SpanStacktraceFrameLibraryFrame, frame.LibraryFrame)
+		if frame.LibraryFrame {
+			frameMap.PutBool(attr.SpanStacktraceFrameLibraryFrame, frame.LibraryFrame)
+		}
+		// Note: ExcludeFromGrouping does not have an 'omitempty' json tag in the apm-data model
+		// so we always set it to match the existing behavior.
+		// The flag is also not available in input data, so it will always be false.
+		frameMap.PutBool(attr.SpanStacktraceExcludeFromGrouping, frame.ExcludeFromGrouping)
+	}
+}
+
+// setKeyValueMap maps a list of KeyValue pairs to a map attribute with the given key name.
+// Ignores pairs with an empty key.
+func setKeyValueMap(mapKeyName string, attributesMap pcommon.Map, kvList []*modelpb.KeyValue) {
+	if len(kvList) == 0 {
+		return
+	}
+	kvMap := attributesMap.PutEmptyMap(mapKeyName)
+	kvMap.EnsureCapacity(len(kvList))
+	for _, kv := range kvList {
+		if len(kv.Key) > 0 {
+			insertValue(kvMap.PutEmpty(kv.Key), kv.Value)
+		}
+	}
+}
+
+// insertValue inserts a value into the provided destination which can represent
+// any pcommon.Value such as a map, slice, string, number, or bool.
+// Ignores empty src values.
+func insertValue(dest pcommon.Value, src *structpb.Value) {
+	if src == nil {
+		return
+	}
+	switch v := src.Kind.(type) {
+	case *structpb.Value_StringValue:
+		dest.SetStr(v.StringValue)
+	case *structpb.Value_NumberValue:
+		dest.SetDouble(v.NumberValue)
+	case *structpb.Value_BoolValue:
+		dest.SetBool(v.BoolValue)
+	case *structpb.Value_StructValue:
+		if v.StructValue == nil {
+			return
+		}
+		destMap := dest.SetEmptyMap()
+		destMap.EnsureCapacity(len(v.StructValue.Fields))
+		for key, value := range v.StructValue.Fields {
+			insertValue(destMap.PutEmpty(key), value)
+		}
+	case *structpb.Value_ListValue:
+		if v.ListValue == nil {
+			return
+		}
+		destSlice := dest.SetEmptySlice()
+		destSlice.EnsureCapacity(len(v.ListValue.Values))
+		for _, value := range v.ListValue.Values {
+			insertValue(destSlice.AppendEmpty(), value)
+		}
+	}
+}
+
+// SetElasticSpecificFieldsForTransaction sets fields for transactions that are not defined by OTel.
+// Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI
+// and store information about a specific span type.
+func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	setHTTP(event.Http, attributesMap)
+
+	if event.Transaction == nil {
+		return
+	}
+
+	if event.Transaction.SpanCount != nil {
+		if event.Transaction.SpanCount.Started != nil {
+			attributesMap.PutInt(attr.TransactionSpanCountStarted, int64(*event.Transaction.SpanCount.Started))
+		}
+		if event.Transaction.SpanCount.Dropped != nil {
+			attributesMap.PutInt(attr.TransactionSpanCountDropped, int64(*event.Transaction.SpanCount.Dropped))
+		}
+	}
+
+	if event.Transaction.UserExperience != nil {
+		attributesMap.PutDouble(attr.TransactionUserExperienceCumulativeLayoutShift, event.Transaction.UserExperience.CumulativeLayoutShift)
+		attributesMap.PutDouble(attr.TransactionUserExperienceFirstInputDelay, event.Transaction.UserExperience.FirstInputDelay)
+		attributesMap.PutDouble(attr.TransactionUserExperienceTotalBlockingTime, event.Transaction.UserExperience.TotalBlockingTime)
+
+		if event.Transaction.UserExperience.LongTask != nil {
+			attributesMap.PutInt(attr.TransactionUserExperienceLongTaskCount, int64(event.Transaction.UserExperience.LongTask.Count))
+			attributesMap.PutDouble(attr.TransactionUserExperienceLongTaskMax, event.Transaction.UserExperience.LongTask.Max)
+			attributesMap.PutDouble(attr.TransactionUserExperienceLongTaskSum, event.Transaction.UserExperience.LongTask.Sum)
+		}
+	}
+
+	setKeyValueMap(attr.TransactionCustom, attributesMap, event.Transaction.Custom)
+	setProfilerStackTraceIDs(event.Transaction.ProfilerStackTraceIds, attributesMap)
+
+	// DroppedSpansStats is only indexed for metric documents. See apm-data json encoding:
+	// https://github.com/elastic/apm-data/blob/e9e8f6955fdf65ffff444db65fce745f5bbc8d43/model/modeljson/transaction.pb.json.go#L66
+	// TODO: Verify if this field should be mapped since it may not be used by any Elastic OTEL components.
+	if event.Metricset != nil {
+		setDroppedSpansStatsList(event.Transaction.DroppedSpansStats, attributesMap)
+	}
+
+	setTransactionMarks(event.Transaction.Marks, attributesMap)
+	setMessage("transaction", event.Transaction.Message, attributesMap)
+}
+
+func setProfilerStackTraceIDs(ids []string, attributesMap pcommon.Map) {
+	if len(ids) == 0 {
+		return
+	}
+
+	slice := attributesMap.PutEmptySlice(attr.TransactionProfilerStackTraceIDs)
+	slice.EnsureCapacity(len(ids))
+	for _, id := range ids {
+		slice.AppendEmpty().SetStr(id)
+	}
+}
+
+func setDroppedSpansStatsList(stats []*modelpb.DroppedSpanStats, attributesMap pcommon.Map) {
+	if len(stats) == 0 {
+		return
+	}
+
+	statsSlice := attributesMap.PutEmptySlice(attr.TransactionDroppedSpansStats)
+	statsSlice.EnsureCapacity(len(stats))
+	for _, stat := range stats {
+		if stat == nil {
+			continue
+		}
+
+		statMap := statsSlice.AppendEmpty().SetEmptyMap()
+		if stat.DestinationServiceResource != "" {
+			statMap.PutStr(attr.TransactionDroppedSpansStatsDestinationServiceResource, stat.DestinationServiceResource)
+		}
+		if stat.Outcome != "" {
+			statMap.PutStr(attr.TransactionDroppedSpansStatsOutcome, stat.Outcome)
+		}
+		if stat.Duration != nil {
+			statMap.PutInt(attr.TransactionDroppedSpansStatsDurationCount, int64(stat.Duration.Count))
+			statMap.PutInt(attr.TransactionDroppedSpansStatsDurationSumUs, int64(stat.Duration.Sum))
+		}
+	}
+}
+
+// setTransactionMarks maps transaction marks to attributes map.
+// The marks will be a map of objects (maps), each map representing a mark with measurements.
+// Empty marks will be ignored.
+func setTransactionMarks(marks map[string]*modelpb.TransactionMark, attributesMap pcommon.Map) {
+	if len(marks) == 0 {
+		return
+	}
+
+	allMarksMap := attributesMap.PutEmptyMap(attr.TransactionMarks)
+	allMarksMap.EnsureCapacity(len(marks))
+	for markName, mark := range marks {
+		if mark == nil || len(mark.Measurements) == 0 {
+			continue
+		}
+		markMap := allMarksMap.PutEmptyMap(markName)
+		markMap.EnsureCapacity(len(mark.Measurements))
+		for measurementName, measurement := range mark.Measurements {
+			markMap.PutDouble(measurementName, measurement)
+		}
 	}
 }
 
@@ -183,6 +405,32 @@ func setStackTraceList(attributesMap pcommon.Map, stacktrace []*modelpb.Stacktra
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
+		if event.Cloud.Origin != nil {
+			if event.Cloud.Origin.AccountId != "" {
+				attributesMap.PutStr(attr.CloudOriginAccountID, event.Cloud.Origin.AccountId)
+			}
+			if event.Cloud.Origin.Provider != "" {
+				attributesMap.PutStr(attr.CloudOriginProvider, event.Cloud.Origin.Provider)
+			}
+			if event.Cloud.Origin.Region != "" {
+				attributesMap.PutStr(attr.CloudOriginRegion, event.Cloud.Origin.Region)
+			}
+			if event.Cloud.Origin.ServiceName != "" {
+				attributesMap.PutStr(attr.CloudOriginServiceName, event.Cloud.Origin.ServiceName)
+			}
+		}
+		if event.Cloud.AccountName != "" {
+			attributesMap.PutStr(attr.CloudAccountName, event.Cloud.AccountName)
+		}
+		if event.Cloud.InstanceId != "" {
+			attributesMap.PutStr(attr.CloudInstanceID, event.Cloud.InstanceId)
+		}
+		if event.Cloud.InstanceName != "" {
+			attributesMap.PutStr(attr.CloudInstanceName, event.Cloud.InstanceName)
+		}
+		if event.Cloud.MachineType != "" {
+			attributesMap.PutStr(attr.CloudMachineType, event.Cloud.MachineType)
+		}
 		if event.Cloud.ProjectId != "" {
 			attributesMap.PutStr(attr.CloudProjectID, event.Cloud.ProjectId)
 		}
@@ -193,7 +441,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 
 	if event.Faas != nil {
 		if event.Faas.TriggerRequestId != "" {
-			attributesMap.PutStr(attr.TriggerRequestId, event.Faas.TriggerRequestId)
+			attributesMap.PutStr(attr.TriggerRequestID, event.Faas.TriggerRequestId)
 		}
 		if event.Faas.Execution != "" {
 			attributesMap.PutStr(attr.FaaSExecution, event.Faas.Execution)
@@ -202,7 +450,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 
 	if event.Agent != nil {
 		if event.Agent.EphemeralId != "" {
-			attributesMap.PutStr(attr.AgentEphemeralId, event.Agent.EphemeralId)
+			attributesMap.PutStr(attr.AgentEphemeralID, event.Agent.EphemeralId)
 		}
 		if event.Agent.ActivationMethod != "" {
 			attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
@@ -236,7 +484,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 		}
 		if event.Service.Origin != nil {
 			if event.Service.Origin.Id != "" {
-				attributesMap.PutStr(attr.ServiceOriginId, event.Service.Origin.Id)
+				attributesMap.PutStr(attr.ServiceOriginID, event.Service.Origin.Id)
 			}
 			if event.Service.Origin.Name != "" {
 				attributesMap.PutStr(attr.ServiceOriginName, event.Service.Origin.Name)
@@ -259,6 +507,29 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 		if event.Host.Os != nil {
 			if event.Host.Os.Platform != "" {
 				attributesMap.PutStr(attr.HostOSPlatform, event.Host.Os.Platform)
+			}
+		}
+	}
+
+	if event.Source != nil {
+		if event.Source.Nat != nil && event.Source.Nat.Ip != nil {
+			ip := modelpb.IP2Addr(event.Source.Nat.Ip)
+			if ip.String() != "" {
+				attributesMap.PutStr(attr.SourceNatIP, ip.String())
+			}
+		}
+	}
+
+	if event.User != nil {
+		if event.User.Domain != "" {
+			attributesMap.PutStr(attr.UserDomain, event.User.Domain)
+		}
+	}
+
+	if event.Destination != nil {
+		if event.Destination.Address != "" {
+			if ip, err := netip.ParseAddr(event.Destination.Address); err == nil {
+				attributesMap.PutStr(attr.DestinationIP, ip.String())
 			}
 		}
 	}
@@ -299,6 +570,8 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 // SetElasticSpecificFieldsForLog sets fields that are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
 func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+	setHTTP(event.Http, attributesMap)
+
 	// processor.event is not set for logs
 	if event.Log != nil {
 		if event.Log.Logger != "" {
@@ -356,4 +629,23 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 		}
 	}
 
+	if event.Error != nil {
+		setKeyValueMap(attr.ErrorCustom, attributesMap, event.Error.Custom)
+
+		if event.Error.Log != nil {
+			if event.Error.Log.Message != "" {
+				attributesMap.PutStr(attr.ErrorLogMessage, event.Error.Log.Message)
+			}
+			if event.Error.Log.Level != "" {
+				attributesMap.PutStr(attr.ErrorLogLevel, event.Error.Log.Level)
+			}
+			if event.Error.Log.ParamMessage != "" {
+				attributesMap.PutStr(attr.ErrorLogParamMessage, event.Error.Log.ParamMessage)
+			}
+			if event.Error.Log.LoggerName != "" {
+				attributesMap.PutStr(attr.ErrorLogLoggerName, event.Error.Log.LoggerName)
+			}
+			setStackTraceList(attr.ErrorLogStackTrace, attributesMap, event.Error.Log.Stacktrace)
+		}
+	}
 }

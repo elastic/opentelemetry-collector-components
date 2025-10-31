@@ -8,11 +8,11 @@ The following telemetry is emitted by this component.
 
 ### otelcol_lsminterval.exported_bytes
 
-The size in bytes of metric data points exported by the processor.
+The size in bytes of metric data points exported by the processor. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| By | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| By | Sum | Int | true | development |
 
 #### Attributes
 
@@ -22,11 +22,11 @@ The size in bytes of metric data points exported by the processor.
 
 ### otelcol_lsminterval.exported_data_points
 
-The count of metric data points exported by the processor.
+The count of metric data points exported by the processor. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| {count} | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {count} | Sum | Int | true | development |
 
 #### Attributes
 
@@ -36,128 +36,128 @@ The count of metric data points exported by the processor.
 
 ### otelcol_lsminterval.pebble_compacted_bytes_read
 
-The size in bytes read by pebble during compaction.
+The size in bytes read by pebble during compaction. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| By | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| By | Sum | Int | true | development |
 
 ### otelcol_lsminterval.pebble_compacted_bytes_written
 
-The size in bytes written by pebble during compaction.
+The size in bytes written by pebble during compaction. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| By | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| By | Sum | Int | true | development |
 
 ### otelcol_lsminterval.pebble_compactions
 
-The number of pebble table compactions.
+The number of pebble table compactions. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| 1 | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| 1 | Sum | Int | true | development |
 
 ### otelcol_lsminterval.pebble_flushed_bytes
 
-The size in bytes written by pebble during flush.
+The size in bytes written by pebble during flush. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| By | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| By | Sum | Int | true | development |
 
 ### otelcol_lsminterval.pebble_flushes
 
-The number of pebble memtable flushes to disk.
+The number of pebble memtable flushes to disk. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| 1 | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| 1 | Sum | Int | true | development |
 
 ### otelcol_lsminterval.pebble_ingested_bytes
 
-The size in bytes ingested to pebble.
+The size in bytes ingested to pebble. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| By | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| By | Sum | Int | true | development |
 
 ### otelcol_lsminterval.pebble_keys_tombstones
 
-The approximate number of delete keys across the pebble storage engine.
+The approximate number of delete keys across the pebble storage engine. [development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| 1 | Gauge | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| 1 | Gauge | Int | development |
 
 ### otelcol_lsminterval.pebble_marked_for_compaction_files
 
-The current number of pebble SSTables marked for compaction.
+The current number of pebble SSTables marked for compaction. [development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| 1 | Gauge | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| 1 | Gauge | Int | development |
 
 ### otelcol_lsminterval.pebble_pending_compaction
 
-The estimated size in bytes of pending compaction in pebble.
+The estimated size in bytes of pending compaction in pebble. [development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| By | Gauge | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| By | Gauge | Int | development |
 
 ### otelcol_lsminterval.pebble_read_amplification
 
-The current pebble db read amplification.
+The current pebble db read amplification. [development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| 1 | Gauge | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| 1 | Gauge | Int | development |
 
 ### otelcol_lsminterval.pebble_readers_memory
 
-The estimated size in bytes of memory used by pebble index and filter blocks.
+The estimated size in bytes of memory used by pebble index and filter blocks. [development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| By | Gauge | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| By | Gauge | Int | development |
 
 ### otelcol_lsminterval.pebble_sstables
 
-The current number of pebble storage engine SSTables.
+The current number of pebble storage engine SSTables. [development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| 1 | Gauge | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| 1 | Gauge | Int | development |
 
 ### otelcol_lsminterval.pebble_total_disk_usage
 
-The current size in bytes of disk used by pebble, including live and obsolete files.
+The current size in bytes of disk used by pebble, including live and obsolete files. [development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| By | Gauge | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| By | Gauge | Int | development |
 
 ### otelcol_lsminterval.pebble_total_memtable_size
 
-The current size in bytes of pebble memtable.
+The current size in bytes of pebble memtable. [development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| By | Gauge | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| By | Gauge | Int | development |
 
 ### otelcol_lsminterval.processed_bytes
 
-The size in bytes of metric data points processed by the processor.
+The size in bytes of metric data points processed by the processor. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| By | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| By | Sum | Int | true | development |
 
 ### otelcol_lsminterval.processed_data_points
 
-The count of metric data points processed by the processor.
+The count of metric data points processed by the processor. [development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| {count} | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {count} | Sum | Int | true | development |
