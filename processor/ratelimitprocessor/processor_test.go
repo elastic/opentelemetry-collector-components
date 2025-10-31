@@ -172,7 +172,10 @@ func TestConsume_Logs(t *testing.T) {
 	err = processor.ConsumeLogs(clientContext, logs)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
-	testRequestSize(t, tt, 1, 1)
+	testRequestSize(t, tt, 1, 1,
+		telemetry.WithDecision("accepted"),
+		telemetry.WithReason(telemetry.StatusUnderLimit),
+	)
 
 	consumed = false
 	err = processor.ConsumeLogs(clientContext, logs)
@@ -181,7 +184,26 @@ func TestConsume_Logs(t *testing.T) {
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
-	testRequestSize(t, tt, 2, 2)
+	// After two requests, we should have two data points: one accepted and one throttled
+	testRequestSizeMultiple(t, tt, []metricdata.HistogramDataPoint[int64]{
+		{
+			Count: 1,
+			Sum:   1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("accepted"),
+				telemetry.WithReason(telemetry.StatusUnderLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+		{
+			Count: 1,
+			Sum:   1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("throttled"),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	})
 }
 
 func TestConsume_Metrics(t *testing.T) {
@@ -227,7 +249,10 @@ func TestConsume_Metrics(t *testing.T) {
 	err = processor.ConsumeMetrics(clientContext, metrics)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
-	testRequestSize(t, tt, 1, 1)
+	testRequestSize(t, tt, 1, 1,
+		telemetry.WithDecision("accepted"),
+		telemetry.WithReason(telemetry.StatusUnderLimit),
+	)
 
 	consumed = false
 	err = processor.ConsumeMetrics(clientContext, metrics)
@@ -236,7 +261,26 @@ func TestConsume_Metrics(t *testing.T) {
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
-	testRequestSize(t, tt, 2, 2)
+	// After two requests, we should have two data points: one accepted and one throttled
+	testRequestSizeMultiple(t, tt, []metricdata.HistogramDataPoint[int64]{
+		{
+			Count: 1,
+			Sum:   1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("accepted"),
+				telemetry.WithReason(telemetry.StatusUnderLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+		{
+			Count: 1,
+			Sum:   1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("throttled"),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	})
 }
 
 func TestConsume_Traces(t *testing.T) {
@@ -269,7 +313,7 @@ func TestConsume_Traces(t *testing.T) {
 	}
 	processor := &TracesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
-		count: func(traces ptrace.Traces) int {
+		count: func(ptrace.Traces) int {
 			return 1
 		},
 		next: func(context.Context, ptrace.Traces) error {
@@ -282,7 +326,10 @@ func TestConsume_Traces(t *testing.T) {
 	err = processor.ConsumeTraces(clientContext, traces)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
-	testRequestSize(t, tt, 1, 1)
+	testRequestSize(t, tt, 1, 1,
+		telemetry.WithDecision("accepted"),
+		telemetry.WithReason(telemetry.StatusUnderLimit),
+	)
 
 	consumed = false
 	err = processor.ConsumeTraces(clientContext, traces)
@@ -291,7 +338,26 @@ func TestConsume_Traces(t *testing.T) {
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
-	testRequestSize(t, tt, 2, 2)
+	// After two requests, we should have two data points: one accepted and one throttled
+	testRequestSizeMultiple(t, tt, []metricdata.HistogramDataPoint[int64]{
+		{
+			Count: 1,
+			Sum:   1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("accepted"),
+				telemetry.WithReason(telemetry.StatusUnderLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+		{
+			Count: 1,
+			Sum:   1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("throttled"),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	})
 }
 
 func TestConsume_Profiles(t *testing.T) {
@@ -325,7 +391,7 @@ func TestConsume_Profiles(t *testing.T) {
 	}
 	processor := &ProfilesRateLimiterProcessor{
 		rateLimiterProcessor: rl,
-		count: func(profiles pprofile.Profiles) int {
+		count: func(pprofile.Profiles) int {
 			return 1
 		},
 		next: func(context.Context, pprofile.Profiles) error {
@@ -338,7 +404,10 @@ func TestConsume_Profiles(t *testing.T) {
 	err = processor.ConsumeProfiles(clientContext, profiles)
 	assert.True(t, consumed)
 	assert.NoError(t, err)
-	testRequestSize(t, tt, 1, 1)
+	testRequestSize(t, tt, 1, 1,
+		telemetry.WithDecision("accepted"),
+		telemetry.WithReason(telemetry.StatusUnderLimit),
+	)
 
 	consumed = false
 	err = processor.ConsumeProfiles(clientContext, profiles)
@@ -347,7 +416,26 @@ func TestConsume_Profiles(t *testing.T) {
 
 	testRatelimitLogMetadata(t, observedLogs.TakeAll())
 	testRateLimitTelemetry(t, tt)
-	testRequestSize(t, tt, 2, 2)
+	// After two requests, we should have two data points: one accepted and one throttled
+	testRequestSizeMultiple(t, tt, []metricdata.HistogramDataPoint[int64]{
+		{
+			Count: 1,
+			Sum:   1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("accepted"),
+				telemetry.WithReason(telemetry.StatusUnderLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+		{
+			Count: 1,
+			Sum:   1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("throttled"),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	})
 }
 
 func TestConcurrentRequestsTelemetry(t *testing.T) {
@@ -390,7 +478,7 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 		count: func(pmetric.Metrics) int {
 			return 1
 		},
-		next: func(ctx context.Context, md pmetric.Metrics) error {
+		next: func(context.Context, pmetric.Metrics) error {
 			atomic.AddInt32(&consumedCount, 1)
 			readyWg.Done()
 			<-blockCh
@@ -424,17 +512,22 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 	wg.Wait()
 }
 
-func testRequestSize(t *testing.T, tt *componenttest.Telemetry, count int, sum int) {
+func testRequestSize(t *testing.T, tt *componenttest.Telemetry, count, sum int,
+	attrs ...attribute.KeyValue,
+) {
 	metadatatest.AssertEqualRatelimitRequestSize(t, tt, []metricdata.HistogramDataPoint[int64]{
 		{
 			Count: uint64(count),
 			Sum:   int64(sum),
-			Attributes: attribute.NewSet(
-				[]attribute.KeyValue{
-					attribute.String("x-tenant-id", "TestProjectID"),
-				}...),
+			Attributes: attribute.NewSet(append(attrs,
+				attribute.String("x-tenant-id", "TestProjectID"),
+			)...),
 		},
 	}, metricdatatest.IgnoreTimestamp(), metricdatatest.IgnoreValue())
+}
+
+func testRequestSizeMultiple(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[int64]) {
+	metadatatest.AssertEqualRatelimitRequestSize(t, tt, dps, metricdatatest.IgnoreTimestamp(), metricdatatest.IgnoreValue())
 }
 
 func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
