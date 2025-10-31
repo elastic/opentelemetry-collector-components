@@ -222,7 +222,11 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 			attributes.PutStr(string(semconv.ProcessExecutableNameKey), event.Process.Title)
 		}
 		if len(event.Process.Argv) > 0 {
-			attributes.PutStr(string(semconv.ProcessCommandLineKey), strings.Join(event.Process.Argv, " "))
+			commandLineArgs := attributes.PutEmptySlice(string(semconv.ProcessCommandLineKey))
+			commandLineArgs.EnsureCapacity(len(event.Process.Argv))
+			for _, arg := range event.Process.Argv {
+				commandLineArgs.AppendEmpty().SetStr(arg)
+			}
 		}
 		if event.Process.Executable != "" {
 			attributes.PutStr(string(semconv.ProcessExecutablePathKey), event.Process.Executable)
