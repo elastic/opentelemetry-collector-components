@@ -22,11 +22,14 @@ package attr // import "github.com/elastic/opentelemetry-collector-components/re
 const (
 	SpanDBLink                       = "span.db.link"
 	SpanDBRowsAffected               = "span.db.rows_affected"
-	SpanDBUserName                   = "span.db.user_name"
+	SpanDBUserName                   = "span.db.user.name"
 	SpanCompositeSum                 = "span.composite.sum"
 	SpanCompositeCompressionStrategy = "span.composite.compression_strategy"
 	SpanCompositeCount               = "span.composite.count"
+	SpanDestinationServiceName       = "span.destination.service.name"
+	SpanDestinationServiceType       = "span.destination.service.type"
 	SpanRepresentativeCount          = "span.representative_count"
+	SpanChildID                      = "child.id"
 
 	SpanStacktrace                    = "span.stacktrace"
 	SpanStacktraceFrameAbsPath        = "abs_path"
@@ -69,7 +72,7 @@ const (
 	CloudAccountName       = "cloud.account.name"
 	CloudInstanceID        = "cloud.instance.id"
 	CloudInstanceName      = "cloud.instance.name"
-	CloudMachineType       = "cloud.machine_type"
+	CloudMachineType       = "cloud.machine.type"
 	CloudProjectID         = "cloud.project.id"
 	CloudProjectName       = "cloud.project.name"
 
@@ -88,8 +91,6 @@ const (
 	ServiceOriginID         = "service.origin.id"
 	ServiceOriginName       = "service.origin.name"
 	ServiceOriginVersion    = "service.origin.version"
-	ServiceTargetName       = "service.target.name"
-	ServiceTargetType       = "service.target.type"
 
 	HostOSPlatform = "host.os.platform"
 
@@ -109,7 +110,6 @@ const (
 	EventKind     = "event.kind"
 
 	ProcessThreadName = "process.thread.name"
-	ProcessTitle      = "process.title"
 
 	SessionID = "session.id"
 
