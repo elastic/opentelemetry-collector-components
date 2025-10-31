@@ -281,12 +281,19 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
-		if elasticsearchErr, ok := err.(*types.ElasticsearchError); ok {
-			if elasticsearchErr.Status == http.StatusUnauthorized || elasticsearchErr.Status == http.StatusForbidden {
+		var elasticsearchErr *types.ElasticsearchError
+		if errors.As(err, &elasticsearchErr) {
+			switch elasticsearchErr.Status {
+			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			default:
+				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
 			}
 		}
-		return ctx, status.Errorf(codes.Unauthenticated, "error checking privileges for API Key %q: %v", id, err)
+		return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error for API Key %q: %v", id, err), map[string]string{
+			"component": "apikeyauthextension",
+			"api_key":   id,
+		})
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{

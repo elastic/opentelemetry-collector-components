@@ -77,7 +77,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 400,
 			}),
-			expectedErr: `rpc error: code = Unauthenticated desc = error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
+			expectedErr: `rpc error: code = Internal desc = error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
 		},
 		"auth_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -91,6 +91,13 @@ func TestAuthenticator(t *testing.T) {
 				Status: 401,
 			}),
 			expectedErr: `rpc error: code = Unauthenticated desc = status: 401, failed: [auth_reason], reason: auth_reason`,
+		},
+		"proxy_502_error": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				// Simulate proxy returning 502 when ES is unreachable - empty response body
+				w.WriteHeader(http.StatusBadGateway)
+			},
+			expectedErr: `rpc error: code = Unavailable desc = retryable server error "id": EOF`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
