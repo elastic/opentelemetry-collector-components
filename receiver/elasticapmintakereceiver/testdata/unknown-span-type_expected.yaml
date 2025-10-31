@@ -51,7 +51,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "99"
@@ -346,7 +349,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -402,6 +408,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
               - key: span.id
                 value:
                   stringValue: 0aaaaaaaaaaaaaaa
@@ -438,7 +447,7 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
-              - key: span.db.user_name
+              - key: span.db.user.name
                 value:
                   stringValue: readonly_user
               - key: span.representative_count

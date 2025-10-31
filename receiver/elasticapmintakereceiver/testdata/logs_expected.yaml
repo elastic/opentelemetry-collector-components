@@ -54,7 +54,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: agent.name
           value:
             stringValue: java
@@ -103,9 +105,6 @@ resourceLogs:
               - key: event.kind
                 value:
                   stringValue: event
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message without timestamp
         scope: {}
@@ -164,7 +163,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: agent.name
           value:
             stringValue: java
@@ -198,12 +199,12 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: Linux
-        - key: labels.group
-          value:
-            stringValue: experimental
         - key: labels.ab_testing
           value:
             stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
         - key: numeric_labels.segment
           value:
             doubleValue: 5
@@ -213,9 +214,6 @@ resourceLogs:
               - key: event.kind
                 value:
                   stringValue: event
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message with string timestamp
             timeUnixNano: "1662673649111000000"
@@ -275,7 +273,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: agent.name
           value:
             stringValue: java
@@ -324,9 +324,6 @@ resourceLogs:
               - key: event.kind
                 value:
                   stringValue: event
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message with timestamp
             timeUnixNano: "1662616049000000000"
@@ -386,7 +383,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: faas.instance
           value:
             stringValue: arn:aws:lambda:us-east-2:123456789012:function:custom-runtime
@@ -444,9 +443,6 @@ resourceLogs:
               - key: event.kind
                 value:
                   stringValue: event
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message with faas
             timeUnixNano: "1662616049000000000"
@@ -506,7 +502,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: faas.instance
           value:
             stringValue: arn:aws:lambda:us-east-2:123456789012:function:custom-runtime
@@ -597,9 +595,6 @@ resourceLogs:
               - key: process.thread.name
                 value:
                   stringValue: testThread
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message with ecs fields
             severityText: warn
@@ -660,7 +655,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: faas.instance
           value:
             stringValue: arn:aws:lambda:us-east-2:123456789012:function:custom-runtime
@@ -748,9 +745,6 @@ resourceLogs:
               - key: process.thread.name
                 value:
                   stringValue: testThread
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message with nested ecs fields
             severityText: warn
@@ -811,7 +805,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: faas.instance
           value:
             stringValue: arn:aws:lambda:us-east-2:123456789012:function:custom-runtime
@@ -899,9 +895,6 @@ resourceLogs:
               - key: process.thread.name
                 value:
                   stringValue: testThread
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: test log message with override of flat ecs fields by nested ecs fields
             severityText: warn
@@ -962,7 +955,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: faas.instance
           value:
             stringValue: arn:aws:lambda:us-east-2:123456789012:function:custom-runtime
@@ -1044,9 +1039,6 @@ resourceLogs:
               - key: process.thread.name
                 value:
                   stringValue: testThread
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body:
               stringValue: Log with all available fields set
             severityText: info
@@ -1107,7 +1099,9 @@ resourceLogs:
             stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
         - key: process.command_line
           value:
-            stringValue: -v
+            arrayValue:
+              values:
+                - stringValue: -v
         - key: faas.instance
           value:
             stringValue: arn:aws:lambda:us-east-2:123456789012:function:custom-runtime
@@ -1204,9 +1198,6 @@ resourceLogs:
               - key: process.thread.name
                 value:
                   stringValue: testThread
-              - key: process.title
-                value:
-                  stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
             body: {}
             timeUnixNano: "1662616049000000000"
         scope: {}

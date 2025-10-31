@@ -63,7 +63,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -94,7 +97,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -143,6 +146,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "141581"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
               - key: span.id
                 value:
                   stringValue: abcdef01234567
@@ -158,6 +164,11 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query.custom
+              - key: child.id
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: 51234abcdef56789
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -233,7 +244,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -264,7 +278,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -297,12 +311,6 @@ resourceSpans:
         - key: service.origin.version
           value:
             stringValue: 1.0.0
-        - key: service.target.name
-          value:
-            stringValue: target-name
-        - key: service.target.type
-          value:
-            stringValue: target-type
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -328,6 +336,15 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.id
+                value:
+                  stringValue: ab45781d265894fe
+              - key: service.target.type
+                value:
+                  stringValue: target-type
+              - key: service.target.name
+                value:
+                  stringValue: target-name
               - key: span.id
                 value:
                   stringValue: 1234abcdef567895
@@ -417,7 +434,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -448,7 +468,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -506,6 +526,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3564"
+              - key: transaction.id
+                value:
+                  stringValue: ab23456a89012345
               - key: span.id
                 value:
                   stringValue: 0123456a89012345
@@ -595,7 +618,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -626,7 +652,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -767,7 +793,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -798,7 +827,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -825,12 +854,6 @@ resourceSpans:
         - key: service.runtime.version
           value:
             stringValue: 8.0.0
-        - key: service.target.name
-          value:
-            stringValue: testdb
-        - key: service.target.type
-          value:
-            stringValue: postgres
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -859,6 +882,12 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: service.target.type
+                value:
+                  stringValue: postgres
+              - key: service.target.name
+                value:
+                  stringValue: testdb
               - key: span.id
                 value:
                   stringValue: 1234567890aaaade
@@ -877,12 +906,6 @@ resourceSpans:
               - key: span.sync
                 value:
                   boolValue: true
-              - key: service.target.name
-                value:
-                  stringValue: postgresql
-              - key: service.target.type
-                value:
-                  stringValue: db
               - key: span.destination.service.resource
                 value:
                   stringValue: postgres/testdb
@@ -892,7 +915,7 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
-              - key: http.response.size
+              - key: http.response.body.size
                 value:
                   intValue: "356"
               - key: url.original
@@ -925,9 +948,15 @@ resourceSpans:
               - key: span.db.rows_affected
                 value:
                   intValue: "2"
-              - key: span.db.user_name
+              - key: span.db.user.name
                 value:
                   stringValue: readonly_user
+              - key: span.destination.service.name
+                value:
+                  stringValue: postgresql
+              - key: span.destination.service.type
+                value:
+                  stringValue: db
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -1093,7 +1122,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -1124,7 +1156,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -1151,12 +1183,6 @@ resourceSpans:
         - key: service.runtime.version
           value:
             stringValue: 8.0.0
-        - key: service.target.name
-          value:
-            stringValue: testdb
-        - key: service.target.type
-          value:
-            stringValue: postgres
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -1185,6 +1211,12 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: service.target.type
+                value:
+                  stringValue: postgres
+              - key: service.target.name
+                value:
+                  stringValue: testdb
               - key: span.id
                 value:
                   stringValue: fdc4567890aaaade
@@ -1203,12 +1235,6 @@ resourceSpans:
               - key: span.sync
                 value:
                   boolValue: true
-              - key: service.target.name
-                value:
-                  stringValue: postgresql
-              - key: service.target.type
-                value:
-                  stringValue: db
               - key: span.destination.service.resource
                 value:
                   stringValue: postgresql
@@ -1218,7 +1244,7 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
-              - key: http.response.size
+              - key: http.response.body.size
                 value:
                   intValue: "356"
               - key: url.original
@@ -1251,9 +1277,15 @@ resourceSpans:
               - key: span.db.rows_affected
                 value:
                   intValue: "2"
-              - key: span.db.user_name
+              - key: span.db.user.name
                 value:
                   stringValue: readonly_user
+              - key: span.destination.service.name
+                value:
+                  stringValue: postgresql
+              - key: span.destination.service.type
+                value:
+                  stringValue: db
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -1415,7 +1447,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -1446,7 +1481,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -1473,9 +1508,6 @@ resourceSpans:
         - key: service.runtime.version
           value:
             stringValue: 8.0.0
-        - key: service.target.type
-          value:
-            stringValue: postgresql
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -1504,6 +1536,12 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: service.target.type
+                value:
+                  stringValue: postgresql
+              - key: service.target.name
+                value:
+                  stringValue: ""
               - key: span.id
                 value:
                   stringValue: ute4567890aaaade
@@ -1522,12 +1560,6 @@ resourceSpans:
               - key: span.sync
                 value:
                   boolValue: true
-              - key: service.target.name
-                value:
-                  stringValue: postgresql
-              - key: service.target.type
-                value:
-                  stringValue: db
               - key: span.destination.service.resource
                 value:
                   stringValue: postgresql
@@ -1537,7 +1569,7 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
-              - key: http.response.size
+              - key: http.response.body.size
                 value:
                   intValue: "356"
               - key: url.original
@@ -1573,9 +1605,15 @@ resourceSpans:
               - key: span.db.rows_affected
                 value:
                   intValue: "2"
-              - key: span.db.user_name
+              - key: span.db.user.name
                 value:
                   stringValue: readonly_user
+              - key: span.destination.service.name
+                value:
+                  stringValue: postgresql
+              - key: span.destination.service.type
+                value:
+                  stringValue: db
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -1736,7 +1774,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -1767,7 +1808,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -1791,9 +1832,6 @@ resourceSpans:
         - key: service.runtime.version
           value:
             stringValue: 8.0.0
-        - key: service.target.name
-          value:
-            stringValue: localhost:8080
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -1822,6 +1860,15 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "988"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
+              - key: service.target.type
+                value:
+                  stringValue: ""
+              - key: service.target.name
+                value:
+                  stringValue: localhost:8080
               - key: span.id
                 value:
                   stringValue: ljf4567890aaaade
@@ -1837,12 +1884,6 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: request
-              - key: service.target.name
-                value:
-                  stringValue: external
-              - key: service.target.type
-                value:
-                  stringValue: http
               - key: span.destination.service.resource
                 value:
                   stringValue: localhost:8080
@@ -1852,6 +1893,12 @@ resourceSpans:
               - key: destination.port
                 value:
                   intValue: "8080"
+              - key: span.destination.service.name
+                value:
+                  stringValue: external
+              - key: span.destination.service.type
+                value:
+                  stringValue: http
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -1925,7 +1972,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -1956,7 +2006,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -2008,6 +2058,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "141581"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
               - key: span.id
                 value:
                   stringValue: 00xxx12312312312
@@ -2128,7 +2181,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -2159,7 +2215,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -2208,6 +2264,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "378191"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
               - key: span.id
                 value:
                   stringValue: abcdef01234567

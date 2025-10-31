@@ -72,7 +72,10 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "99"
@@ -106,7 +109,7 @@ resourceLogs:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -142,12 +145,6 @@ resourceLogs:
         - key: service.origin.version
           value:
             stringValue: 1.0.0
-        - key: service.target.name
-          value:
-            stringValue: target-name
-        - key: service.target.type
-          value:
-            stringValue: target-type
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -166,6 +163,12 @@ resourceLogs:
               - key: processor.event
                 value:
                   stringValue: error
+              - key: service.target.type
+                value:
+                  stringValue: target-type
+              - key: service.target.name
+                value:
+                  stringValue: target-name
               - key: error.id
                 value:
                   stringValue: "0123456789012345"
@@ -298,9 +301,6 @@ resourceLogs:
               - key: http.response.headers_sent
                 value:
                   boolValue: true
-              - key: process.title
-                value:
-                  stringValue: node
               - key: error.custom
                 value:
                   kvlistValue:
@@ -519,7 +519,10 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -550,7 +553,7 @@ resourceLogs:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -598,9 +601,6 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1533826745999000"
-              - key: process.title
-                value:
-                  stringValue: node
               - key: error.log.message
                 value:
                   stringValue: no user found
@@ -693,7 +693,10 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -724,7 +727,7 @@ resourceLogs:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -775,9 +778,6 @@ resourceLogs:
               - key: exception.message
                 value:
                   stringValue: Cannot read property 'baz' no defined
-              - key: process.title
-                value:
-                  stringValue: node
             body: {}
             timeUnixNano: "1533826745999000000"
         scope: {}
@@ -851,7 +851,10 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -882,7 +885,7 @@ resourceLogs:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -936,9 +939,6 @@ resourceLogs:
               - key: exception.type
                 value:
                   stringValue: DbError
-              - key: process.title
-                value:
-                  stringValue: node
             body: {}
             timeUnixNano: "1547070053000000000"
             traceId: 0123456789abcdeffedcba0123456789
@@ -1013,7 +1013,10 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
@@ -1044,7 +1047,7 @@ resourceLogs:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -1098,9 +1101,6 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1533827045999000"
-              - key: process.title
-                value:
-                  stringValue: node
               - key: error.log.message
                 value:
                   stringValue: Cannot read property 'baz' of undefined
