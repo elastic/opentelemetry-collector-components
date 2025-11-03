@@ -66,7 +66,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -97,7 +100,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -237,7 +240,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -268,7 +274,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -317,6 +323,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "141581"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
               - key: span.id
                 value:
                   stringValue: invalid
@@ -332,6 +341,11 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query.custom
+              - key: child.id
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: 51234abcdef56789
               - key: span.representative_count
                 value:
                   doubleValue: 1

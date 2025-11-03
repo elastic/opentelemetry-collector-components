@@ -42,6 +42,14 @@ var compressionStrategyText = map[modelpb.CompressionStrategy]string{
 func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	setHTTP(event.Http, attributesMap)
 
+	if len(event.ChildIds) > 0 {
+		childIDs := attributesMap.PutEmptySlice(attr.SpanChildID)
+		childIDs.EnsureCapacity(len(event.ChildIds))
+		for _, id := range event.ChildIds {
+			childIDs.AppendEmpty().SetStr(id)
+		}
+	}
+
 	if event.Span == nil {
 		return
 	}
@@ -68,6 +76,11 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 		}
 		attributesMap.PutInt(attr.SpanCompositeCount, int64(event.Span.Composite.Count))
 		attributesMap.PutInt(attr.SpanCompositeSum, int64(event.Span.Composite.Sum))
+	}
+
+	if event.Span.DestinationService != nil {
+		attributesMap.PutStr(attr.SpanDestinationServiceName, event.Span.DestinationService.Name)
+		attributesMap.PutStr(attr.SpanDestinationServiceType, event.Span.DestinationService.Type)
 	}
 
 	attributesMap.PutDouble(attr.SpanRepresentativeCount, event.Span.RepresentativeCount)
@@ -458,14 +471,6 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 	}
 
 	if event.Service != nil {
-		if event.Service.Language != nil {
-			if event.Service.Language.Name != "" {
-				attributesMap.PutStr(attr.ServiceLanguageName, event.Service.Language.Name)
-			}
-			if event.Service.Language.Version != "" {
-				attributesMap.PutStr(attr.ServiceLanguageVersion, event.Service.Language.Version)
-			}
-		}
 		if event.Service.Framework != nil {
 			if event.Service.Framework.Name != "" {
 				attributesMap.PutStr(attr.ServiceFrameworkName, event.Service.Framework.Name)
@@ -491,14 +496,6 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 			}
 			if event.Service.Origin.Version != "" {
 				attributesMap.PutStr(attr.ServiceOriginVersion, event.Service.Origin.Version)
-			}
-		}
-		if event.Service.Target != nil {
-			if event.Service.Target.Name != "" {
-				attributesMap.PutStr(attr.ServiceTargetName, event.Service.Target.Name)
-			}
-			if event.Service.Target.Type != "" {
-				attributesMap.PutStr(attr.ServiceTargetType, event.Service.Target.Type)
 			}
 		}
 	}
@@ -614,12 +611,10 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 
 	if event.Process != nil {
 		if event.Process.Thread != nil {
+			// only the process thread name is available at the log level
 			if event.Process.Thread.Name != "" {
 				attributesMap.PutStr(attr.ProcessThreadName, event.Process.Thread.Name)
 			}
-		}
-		if event.Process.Title != "" {
-			attributesMap.PutStr(attr.ProcessTitle, event.Process.Title)
 		}
 	}
 

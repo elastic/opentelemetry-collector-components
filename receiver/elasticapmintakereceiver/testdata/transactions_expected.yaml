@@ -66,7 +66,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -97,7 +100,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -251,7 +254,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "99"
@@ -285,7 +291,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -324,12 +330,12 @@ resourceSpans:
         - key: labels.tag4
           value:
             stringValue: "false"
-        - key: numeric_labels.tag2
-          value:
-            doubleValue: 12
         - key: numeric_labels.tag3
           value:
             doubleValue: 12.45
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 12
     scopeSpans:
       - scope: {}
         spans:
@@ -370,7 +376,7 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
-              - key: http.response.size
+              - key: http.response.body.size
                 value:
                   intValue: "2690"
               - key: url.original
@@ -586,7 +592,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -617,7 +626,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -811,7 +820,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -842,7 +854,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id
@@ -1008,7 +1020,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -1063,7 +1078,7 @@ resourceSpans:
         - key: cloud.instance.name
           value:
             stringValue: instance_name
-        - key: cloud.machine_type
+        - key: cloud.machine.type
           value:
             stringValue: machine_type
         - key: cloud.project.id

@@ -51,7 +51,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "99"
@@ -352,7 +355,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -408,6 +414,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
               - key: span.id
                 value:
                   stringValue: 0aaaaaaaaaaaaaaa
@@ -444,7 +453,7 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
-              - key: span.db.user_name
+              - key: span.db.user.name
                 value:
                   stringValue: readonly_user
               - key: span.representative_count
@@ -569,7 +578,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -622,6 +634,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
               - key: span.id
                 value:
                   stringValue: 1aaaaaaaaaaaaaaa
@@ -693,7 +708,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -746,6 +764,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3564"
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
               - key: span.id
                 value:
                   stringValue: 2aaaaaaaaaaaaaaa
@@ -817,7 +838,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -870,6 +894,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "13980"
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
               - key: span.id
                 value:
                   stringValue: 3aaaaaaaaaaaaaaa
@@ -885,6 +912,11 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: ""
+              - key: child.id
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: 4aaaaaaaaaaaaaaa
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -941,7 +973,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -1067,7 +1102,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -1193,7 +1231,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -1322,7 +1363,10 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: 123user
@@ -1356,9 +1400,6 @@ resourceSpans:
         - key: service.runtime.version
           value:
             stringValue: 8.0.0
-        - key: service.target.type
-          value:
-            stringValue: postgresql
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -1381,6 +1422,15 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: transaction.id
+                value:
+                  stringValue: 85925e55b43f4342
+              - key: service.target.type
+                value:
+                  stringValue: postgresql
+              - key: service.target.name
+                value:
+                  stringValue: ""
               - key: span.id
                 value:
                   stringValue: 15aaaaaaaaaaaaaa
@@ -1396,12 +1446,6 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query.custom
-              - key: service.target.name
-                value:
-                  stringValue: postgresql
-              - key: service.target.type
-                value:
-                  stringValue: db
               - key: span.destination.service.resource
                 value:
                   stringValue: postgresql
@@ -1420,9 +1464,15 @@ resourceSpans:
               - key: destination.port
                 value:
                   intValue: "5432"
-              - key: span.db.user_name
+              - key: span.db.user.name
                 value:
                   stringValue: readonly_user
+              - key: span.destination.service.name
+                value:
+                  stringValue: postgresql
+              - key: span.destination.service.type
+                value:
+                  stringValue: db
               - key: span.representative_count
                 value:
                   doubleValue: 1
