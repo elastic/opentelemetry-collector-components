@@ -574,6 +574,9 @@ resourceLogs:
     scopeLogs:
       - logRecords:
           - attributes:
+              - key: transaction.id
+                value:
+                  stringValue: txn-id
               - key: log.logger
                 value:
                   stringValue: testLogger
@@ -724,6 +727,9 @@ resourceLogs:
     scopeLogs:
       - logRecords:
           - attributes:
+              - key: transaction.id
+                value:
+                  stringValue: txn-id
               - key: log.logger
                 value:
                   stringValue: testLogger
@@ -874,6 +880,9 @@ resourceLogs:
     scopeLogs:
       - logRecords:
           - attributes:
+              - key: transaction.id
+                value:
+                  stringValue: txn-id
               - key: log.logger
                 value:
                   stringValue: testLogger
@@ -1018,6 +1027,9 @@ resourceLogs:
     scopeLogs:
       - logRecords:
           - attributes:
+              - key: transaction.id
+                value:
+                  stringValue: txn-id
               - key: log.logger
                 value:
                   stringValue: testLogger

@@ -34,7 +34,6 @@ import (
 // SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "transaction")
-	attributes.PutStr(elasticattr.TransactionID, event.Transaction.Id)
 	attributes.PutStr(elasticattr.TransactionName, event.Transaction.Name)
 	attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
 	// from whatever reason Transaction.Root is always false. That seems to be a derived field already - I don't see that fields directly on IntakeV2 - there is only ParentId
@@ -43,12 +42,16 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 	attributes.PutStr(elasticattr.TransactionResult, event.Transaction.Result)
 	attributes.PutInt(elasticattr.TransactionDurationUs, int64(event.Event.Duration/1_000))
 
-	setDerivedServiceTargetAttributes(event, attributes)
+	setCommonDerivedRecordAttributes(event, attributes)
 }
 
-// setDerivedServiceTargetAttributes sets service.target.* attributes which are only available at the record
+// setCommonDerivedRecordAttributes sets common attributes which are shared at the record
 // level for span, transaction, and error events.
-func setDerivedServiceTargetAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+func setCommonDerivedRecordAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Transaction != nil && event.Transaction.Id != "" {
+		attributes.PutStr(elasticattr.TransactionID, event.Transaction.Id)
+	}
+
 	if event.Service != nil && event.Service.Target != nil {
 		attributes.PutStr(elasticattr.ServiceTargetType, event.Service.Target.Type)
 		attributes.PutStr(elasticattr.ServiceTargetName, event.Service.Target.Name)
@@ -57,15 +60,10 @@ func setDerivedServiceTargetAttributes(event *modelpb.APMEvent, attributes pcomm
 
 // SetDerivedFieldsForSpan sets fields that are NOT part of OTel for spans. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
-
 	attributes.PutStr(elasticattr.ProcessorEvent, "span")
 	attributes.PutInt(elasticattr.SpanDurationUs, int64(event.Event.Duration/1_000))
 
-	if event.Transaction != nil && event.Transaction.Id != "" {
-		attributes.PutStr(elasticattr.TransactionID, event.Transaction.Id)
-	}
-
-	setDerivedServiceTargetAttributes(event, attributes)
+	setCommonDerivedRecordAttributes(event, attributes)
 
 	if event.Span == nil {
 		return
@@ -94,7 +92,6 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 	}
 
 	if event.Service != nil {
-
 		if event.Service.Language != nil {
 			if event.Service.Language.Name != "" {
 				attributes.PutStr(attr.ServiceLanguageName, event.Service.Language.Name)
@@ -129,7 +126,7 @@ func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
 func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "error")
 
-	setDerivedServiceTargetAttributes(event, attributes)
+	setCommonDerivedRecordAttributes(event, attributes)
 
 	if event.Error == nil {
 		return
@@ -137,9 +134,6 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	if event.Error.Id != "" {
 		attributes.PutStr(elasticattr.ErrorID, event.Error.Id)
-	}
-	if event.Transaction != nil && event.Transaction.Id != "" {
-		attributes.PutStr(elasticattr.TransactionID, event.Transaction.Id)
 	}
 	if event.ParentId != "" {
 		attributes.PutStr(elasticattr.ParentID, event.ParentId)
@@ -194,4 +188,9 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 			attributes.PutStr("error.exception.code", event.Error.Exception.Code)
 		}
 	}
+}
+
+// SetDerivedFieldsForLog sets fields that are NOT part of OTel for logs. These fields are derived by the Enrichment lib in case of OTLP input
+func SetDerivedFieldsForLog(event *modelpb.APMEvent, attributes pcommon.Map) {
+	setCommonDerivedRecordAttributes(event, attributes)
 }
