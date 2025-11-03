@@ -7,8 +7,8 @@ require (
 	github.com/elastic/go-licenser v0.4.2
 	github.com/golangci/golangci-lint v1.64.8
 	github.com/jcchavezs/porto v0.7.0
-	go.opentelemetry.io/build-tools/chloggen v0.28.1
-	go.opentelemetry.io/build-tools/multimod v0.28.1
+	go.opentelemetry.io/build-tools/chloggen v0.29.0
+	go.opentelemetry.io/build-tools/multimod v0.29.0
 	go.opentelemetry.io/collector/cmd/builder v0.138.0
 	go.opentelemetry.io/collector/cmd/mdatagen v0.138.0
 	golang.org/x/tools v0.38.0
@@ -70,7 +70,7 @@ require (
 	github.com/go-critic/go-critic v0.12.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
-	github.com/go-git/go-git/v5 v5.16.2 // indirect
+	github.com/go-git/go-git/v5 v5.16.3 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-toolsmith/astcast v1.1.0 // indirect
@@ -181,7 +181,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/sivchari/containedctx v1.0.3 // indirect
 	github.com/sivchari/tenv v1.12.1 // indirect
-	github.com/skeema/knownhosts v1.3.1 // indirect
+	github.com/skeema/knownhosts v1.3.2 // indirect
 	github.com/sonatard/noctx v0.1.0 // indirect
 	github.com/sourcegraph/go-diff v0.7.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
@@ -213,7 +213,7 @@ require (
 	go-simpler.org/musttag v0.13.0 // indirect
 	go-simpler.org/sloglint v0.9.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/build-tools v0.28.1 // indirect
+	go.opentelemetry.io/build-tools v0.29.0 // indirect
 	go.opentelemetry.io/collector/component v1.44.0 // indirect
 	go.opentelemetry.io/collector/confmap v1.44.0 // indirect
 	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.44.0 // indirect
