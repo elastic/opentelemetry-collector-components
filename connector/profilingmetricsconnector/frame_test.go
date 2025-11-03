@@ -27,7 +27,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
@@ -74,15 +73,37 @@ func (m *metricsConsumerStub) ConsumeMetrics(ctx context.Context, md pmetric.Met
 						sum.AggregationTemporality())
 					assert.Equal(m.t, 1, sum.DataPoints().Len())
 					dp := sum.DataPoints().At(0)
+
 					// For native metrics, this is convenient way to test library name extraction
 					if strings.HasSuffix(name, metricNative.name) {
 						if shlibName, exists := dp.Attributes().Get(nativeLibraryAttrName); exists {
 							name = fmt.Sprintf("%v/%v", name, shlibName.AsString())
 						}
+					} else if strings.HasSuffix(name, metricKernel.name) {
+						classValues := map[string]string{}
+						for attrName, class := range dp.Attributes().All() {
+							assert.Contains(m.t, kernelClassAttrNames, attrName)
+							classValues[attrName] = class.AsString()
+						}
+						switch len(classValues) {
+						case 3:
+							name = fmt.Sprintf("%v/%v/%v/%v", name,
+								classValues[kernelClassAttrNames[0]],
+								classValues[kernelClassAttrNames[1]],
+								classValues[kernelClassAttrNames[2]])
+						case 2:
+							name = fmt.Sprintf("%v/%v/%v", name,
+								classValues[kernelClassAttrNames[0]],
+								classValues[kernelClassAttrNames[1]])
+						case 1:
+							name = fmt.Sprintf("%v/%v", name,
+								classValues[kernelClassAttrNames[0]])
+						}
 					} else {
-						// Non-native metrics should not have attributes attached
+						// Non-native, non-kernel metrics should not have attributes attached
 						assert.Equal(m.t, 0, dp.Attributes().Len())
 					}
+
 					m.counts[name] += dp.IntValue()
 				}
 			}
@@ -91,14 +112,50 @@ func (m *metricsConsumerStub) ConsumeMetrics(ctx context.Context, md pmetric.Met
 	return nil
 }
 
-// newProfiles creates a new Profiles instance and initializes its Dictionary.
-func newProfiles() (pprofile.Profiles,
-	pprofile.ProfilesDictionary,
-	pcommon.StringSlice,
-	pprofile.KeyValueAndUnitSlice,
-	pprofile.LocationSlice,
-	pprofile.StackSlice,
-) {
+// Wraps envelope creation
+type testProfiles struct {
+	profiles pprofile.Profiles
+	dict     pprofile.ProfilesDictionary
+
+	attrGoIdx     int32
+	attrPyIdx     int32
+	attrKernelIdx int32
+	attrNativeIdx int32
+}
+
+type testFrame struct {
+	frameType string
+	fileName  string
+	funcName  string
+}
+
+func (tf testFrame) withFilename(name string) testFrame {
+	tf.fileName = name
+	return tf
+}
+
+func (tf testFrame) withFunction(name string) testFrame {
+	tf.funcName = name
+	return tf
+}
+
+func goFrame() testFrame {
+	return testFrame{frameType: frameTypeGo}
+}
+
+func pyFrame() testFrame {
+	return testFrame{frameType: frameTypePython}
+}
+
+func nativeFrame() testFrame {
+	return testFrame{frameType: frameTypeNative}
+}
+
+func kernelFrame() testFrame {
+	return testFrame{frameType: frameTypeKernel}
+}
+
+func newTestProfiles() *testProfiles {
 	profiles := pprofile.NewProfiles()
 	dict := profiles.Dictionary()
 
@@ -117,13 +174,45 @@ func newProfiles() (pprofile.Profiles,
 	attrTable.AppendEmpty()
 	stackTable.AppendEmpty()
 
-	return profiles, dict, strTable, attrTable, locTable, stackTable
+	ftIdx := int32(strTable.Len())
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
+
+	// Add all used frame types as attributes
+	attrGoIdx := attrTable.Len()
+	attrGo := attrTable.AppendEmpty()
+	attrGo.SetKeyStrindex(ftIdx)
+	attrGo.Value().SetStr(frameTypeGo)
+
+	attrPyIdx := attrTable.Len()
+	attrPy := attrTable.AppendEmpty()
+	attrPy.SetKeyStrindex(ftIdx)
+	attrPy.Value().SetStr(frameTypePython)
+
+	attrKernelIdx := attrTable.Len()
+	attrKernel := attrTable.AppendEmpty()
+	attrKernel.SetKeyStrindex(ftIdx)
+	attrKernel.Value().SetStr(frameTypeKernel)
+
+	attrNativeIdx := attrTable.Len()
+	attrNative := attrTable.AppendEmpty()
+	attrNative.SetKeyStrindex(ftIdx)
+	attrNative.Value().SetStr(frameTypeNative)
+
+	return &testProfiles{
+		profiles: profiles,
+		dict:     dict,
+
+		attrGoIdx:     int32(attrGoIdx),
+		attrPyIdx:     int32(attrPyIdx),
+		attrKernelIdx: int32(attrKernelIdx),
+		attrNativeIdx: int32(attrNativeIdx),
+	}
 }
 
-// newProfile initializes and appends a Profile to a Profiles instance.
+// newProfile initializes and appends a Profile to the wrapped Profiles instance.
 // All intermediate envelopes are automatically created and initialized.
-func newProfile(profiles pprofile.Profiles) pprofile.Profile {
-	resProf := profiles.ResourceProfiles().AppendEmpty()
+func (tp *testProfiles) newProfile() pprofile.Profile {
+	resProf := tp.profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
 	st := prof.SampleType()
@@ -134,42 +223,74 @@ func newProfile(profiles pprofile.Profiles) pprofile.Profile {
 	return prof
 }
 
-func TestConsumeProfiles_FrameMetrics(t *testing.T) {
-	m := newMetricsConsumer(t)
-	cfg := &Config{
-		MetricsPrefix: "frametest.",
-		ByFrame:       true,
-	}
-	conn := &profilesToMetricsConnector{
-		nextConsumer: m,
-		config:       cfg,
-	}
+func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile, frames ...testFrame) {
+	strTable := tp.dict.StringTable()
+	locTable := tp.dict.LocationTable()
+	mappingTable := tp.dict.MappingTable()
+	funcTable := tp.dict.FunctionTable()
+	stackTable := tp.dict.StackTable()
 
-	// Create a Profile and higher-level envelopes
-	profiles, _, strTable, attrTable, locTable, stackTable := newProfiles()
-	prof := newProfile(profiles)
-
-	// Create a profiles object with a sample that has a location with a frame type attribute.
 	sample := prof.Sample().AppendEmpty()
-
-	// Add an attribute for frame type
-	attr := attrTable.AppendEmpty()
-	attr.SetKeyStrindex(int32(strTable.Len()))
-	strTable.Append(string(semconv.ProfileFrameTypeKey))
-	attr.Value().SetStr(frameTypeGo)
-
-	// Add a location referencing the attribute
-	loc := locTable.AppendEmpty()
-	loc.AttributeIndices().Append(1)
 
 	// Set sample to reference the stack
 	sample.SetStackIndex(int32(stackTable.Len()))
 	stack := stackTable.AppendEmpty()
 
-	// Add location index to the stack's location indices
-	stack.LocationIndices().Append(1)
+	for _, frame := range frames {
+		// Add a location referencing the attribute
+		locIdx := locTable.Len()
+		loc := locTable.AppendEmpty()
 
-	err := conn.ConsumeProfiles(context.Background(), profiles)
+		ftIdx := int32(0)
+		switch frame.frameType {
+		case frameTypeGo:
+			ftIdx = tp.attrGoIdx
+		case frameTypePython:
+			ftIdx = tp.attrPyIdx
+		case frameTypeKernel:
+			ftIdx = tp.attrKernelIdx
+			if frame.funcName != "" {
+				ln := loc.Line().AppendEmpty()
+				ln.SetFunctionIndex(int32(funcTable.Len()))
+				fn := funcTable.AppendEmpty()
+				fn.SetNameStrindex(int32(strTable.Len()))
+				strTable.Append(frame.funcName)
+			}
+		case frameTypeNative:
+			ftIdx = tp.attrNativeIdx
+			if frame.fileName != "" {
+				loc.SetMappingIndex(int32(mappingTable.Len()))
+				mapping := mappingTable.AppendEmpty()
+				mapping.SetFilenameStrindex(int32(strTable.Len()))
+				strTable.Append(frame.fileName)
+			}
+		default:
+			t.Errorf("Unimplemented frame type: %v", frame.frameType)
+		}
+
+		loc.AttributeIndices().Append(ftIdx)
+		// Add location index to the stack's location indices
+		stack.LocationIndices().Append(int32(locIdx))
+	}
+}
+
+func TestConsumeProfiles_FrameMetrics(t *testing.T) {
+	m := newMetricsConsumer(t)
+	conn := &profilesToMetricsConnector{
+		nextConsumer: m,
+		config: &Config{
+			MetricsPrefix: "frametest.",
+			ByFrame:       true,
+		},
+	}
+
+	// Create a Profile and higher-level envelopes
+	tp := newTestProfiles()
+	prof := tp.newProfile()
+
+	tp.addSample(t, prof, goFrame())
+
+	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), m.execCount.Load())
 	assert.Equal(t, map[string]int64{
@@ -181,90 +302,28 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 
 func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	m := newMetricsConsumer(t)
-	cfg := &Config{
-		MetricsPrefix: "frametest.",
-		ByFrame:       true,
-	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: m,
-		config:       cfg,
+		config: &Config{
+			MetricsPrefix: "frametest.",
+			ByFrame:       true,
+		},
 	}
 
 	// Create a Profile and higher-level envelopes
-	profiles, dict, strTable, attrTable, locTable, stackTable := newProfiles()
-	prof := newProfile(profiles)
+	tp := newTestProfiles()
+	prof := tp.newProfile()
 
-	mappingTable := dict.MappingTable()
+	tp.addSample(t, prof, kernelFrame())
+	tp.addSample(t, prof, nativeFrame(), pyFrame())
+	tp.addSample(t, prof, nativeFrame().withFilename("libc.so.6"), goFrame())
+	tp.addSample(t, prof, goFrame())
+	tp.addSample(t, prof, pyFrame())
+	tp.addSample(t, prof, pyFrame())
+	tp.addSample(t, prof, pyFrame())
+	tp.addSample(t, prof, goFrame())
 
-	// Add four attributes for frame types (Go,Python,Kernel,Native)
-	attrGo := attrTable.AppendEmpty()
-	attrGo.SetKeyStrindex(int32(strTable.Len()))
-	strTable.Append(string(semconv.ProfileFrameTypeKey))
-	attrGo.Value().SetStr(frameTypeGo)
-	attrPy := attrTable.AppendEmpty()
-	attrPy.SetKeyStrindex(int32(strTable.Len() - 1))
-	attrPy.Value().SetStr(frameTypePython)
-	attrKernel := attrTable.AppendEmpty()
-	attrKernel.SetKeyStrindex(int32(strTable.Len() - 1))
-	attrKernel.Value().SetStr(frameTypeKernel)
-	attrNative := attrTable.AppendEmpty()
-	attrNative.SetKeyStrindex(int32(strTable.Len() - 1))
-	attrNative.Value().SetStr(frameTypeNative)
-
-	// Add five locations, referencing all added frame type attributes
-	locGo := locTable.AppendEmpty()
-	locGo.AttributeIndices().Append(1)
-	locPy := locTable.AppendEmpty()
-	locPy.AttributeIndices().Append(2)
-	locKernel := locTable.AppendEmpty()
-	locKernel.AttributeIndices().Append(3)
-
-	locNative := locTable.AppendEmpty()
-	locNative.AttributeIndices().Append(4)
-	locNative = locTable.AppendEmpty()
-	locNative.AttributeIndices().Append(4)
-
-	locNative.SetMappingIndex(int32(mappingTable.Len()))
-	mapping := mappingTable.AppendEmpty()
-	mapping.SetFilenameStrindex(int32(strTable.Len()))
-	strTable.Append("libc.so.6")
-
-	/// Five stacks
-	stackGo := stackTable.AppendEmpty()
-	stackPy := stackTable.AppendEmpty()
-	stackKernel := stackTable.AppendEmpty()
-	stackNative := stackTable.AppendEmpty()
-	stackNative2 := stackTable.AppendEmpty()
-
-	// Add location indices to the stack location indices.
-	// Some samples have multiple locations.
-	stackGo.LocationIndices().Append(1)
-	stackPy.LocationIndices().Append(2)
-	stackKernel.LocationIndices().Append(3)
-	stackNative.LocationIndices().Append(4)
-	stackNative.LocationIndices().Append(2)
-	stackNative2.LocationIndices().Append(5)
-	stackNative2.LocationIndices().Append(1)
-
-	// Eight samples
-	sampleKernel := prof.Sample().AppendEmpty()
-	sampleKernel.SetStackIndex(3)
-	sampleNative := prof.Sample().AppendEmpty()
-	sampleNative.SetStackIndex(4)
-	sampleNative = prof.Sample().AppendEmpty()
-	sampleNative.SetStackIndex(5)
-	sampleGo := prof.Sample().AppendEmpty()
-	sampleGo.SetStackIndex(1)
-	samplePy := prof.Sample().AppendEmpty()
-	samplePy.SetStackIndex(2)
-	samplePy = prof.Sample().AppendEmpty()
-	samplePy.SetStackIndex(2)
-	samplePy = prof.Sample().AppendEmpty()
-	samplePy.SetStackIndex(2)
-	sampleGo = prof.Sample().AppendEmpty()
-	sampleGo.SetStackIndex(1)
-
-	err := conn.ConsumeProfiles(context.Background(), profiles)
+	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), m.execCount.Load())
 	assert.Equal(t, map[string]int64{
@@ -274,6 +333,76 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 		"frametest.samples.kernel.count":      1,
 		"frametest.samples.native.count":      1,
 		"frametest.samples.native.count/libc": 1,
+	},
+		m.counts)
+}
+
+func kstackToFrames(functions ...string) []testFrame {
+	frames := []testFrame{}
+	for _, fn := range functions {
+		frames = append(frames, kernelFrame().withFunction(fn))
+	}
+	return frames
+}
+
+func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
+	m := newMetricsConsumer(t)
+	conn := &profilesToMetricsConnector{
+		nextConsumer: m,
+		config: &Config{
+			MetricsPrefix: "frametest.",
+			ByFrame:       true,
+		},
+	}
+
+	// Create a Profile and higher-level envelopes
+	tp := newTestProfiles()
+	prof := tp.newProfile()
+
+	tp.addSample(t, prof, kstackToFrames(
+		"tcp_recvmsg", "handle_mm_fault", "alloc_pages")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"tcp_recvmsg", "sock_recvmsg", "__schedule")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"tcp_sendmsg", "sock_sendmsg", "wake_up")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"udp_sendpage", "pipe_read")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"unix_stream_sendmsg", "sock_write_iter")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"sock_read_iter", "pipe_read")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"foo__schedule", "bar", "baz")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"generic_file_read_iter", "wake_up", "futex_", "sock_recvmsg")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"do_munmap", "free_pages", "sock_read_iter")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"wake_up", "futex_", "sock_sendmsg", "generic_file_write_iter")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"do_munmap", "sock_write_iter", "free_pages")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"do_mmap", "alloc_pages", "filemap_read")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"alloc_pages", "futex_", "ext4_file_write_iter")...)
+	tp.addSample(t, prof, kstackToFrames(
+		"alloc_pages", "futex_", "wake_up_")...)
+
+	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), m.execCount.Load())
+	assert.Equal(t, map[string]int64{
+		"frametest.samples.kernel.count/network/tcp/read":    2,
+		"frametest.samples.kernel.count/network/tcp/write":   1,
+		"frametest.samples.kernel.count/network/udp/write":   1,
+		"frametest.samples.kernel.count/ipc/write":           1,
+		"frametest.samples.kernel.count/ipc/read":            1,
+		"frametest.samples.kernel.count/disk/read":           1,
+		"frametest.samples.kernel.count/disk/write":          1,
+		"frametest.samples.kernel.count/network/other/read":  2,
+		"frametest.samples.kernel.count/network/other/write": 2,
+		"frametest.samples.kernel.count/synchronization":     1,
+		"frametest.samples.kernel.count/memory":              1,
 	},
 		m.counts)
 }
