@@ -523,6 +523,7 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 	l := sl.LogRecords().AppendEmpty()
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
+	mappers.SetDerivedFieldsForLog(event, l.Attributes())
 	mappers.TranslateIntakeV2LogToOTelAttributes(event, l.Attributes())
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 
