@@ -95,35 +95,35 @@ var (
 	// priority: if there are multiple classifications, the element with the lower
 	// slice index always wins.
 	classes = []class{
-		class{name: "network/tcp/read",
-			rx: regexp.MustCompile(`^tcp_recvmsg|^tcp_read|^tcp_rcv|^tcp_v4_rcv|^tcp_v6_rcv`)},
-		class{name: "network/tcp/write",
-			rx: regexp.MustCompile(`^tcp_sendmsg|^tcp_transmit|^tcp_write|^tcp_push|^tcp_sendpage`)},
-		class{name: "network/udp/read",
-			rx: regexp.MustCompile(`^udp_recvmsg|^udp_read|^udp_rcv|^udp_v4_rcv|^udp_v6_rcv`)},
-		class{name: "network/udp/write",
-			rx: regexp.MustCompile(`^udp_sendmsg|^udp_write|^udp_push|^udp_sendpage`)},
-		class{name: "ipc/read",
-			rx: regexp.MustCompile(`^pipe_read|^pipe_read_iter|^eventfd_read` +
-				`|^unix_stream_read_generic|^unix_stream_recvmsg`)},
-		class{name: "ipc/write",
-			rx: regexp.MustCompile(`^pipe_write|^pipe_write_iter|^eventfd_write` +
-				`|^unix_stream_write_generic|^unix_stream_sendmsg`)},
-		class{name: "network/other/read",
-			rx: regexp.MustCompile(`^sock_recvmsg|^__sock_recvmsg|^sock_read_iter`)},
-		class{name: "network/other/write",
-			rx: regexp.MustCompile(`^sock_sendmsg|^__sock_sendmsg|^sock_write_iter`)},
-		class{name: "disk/read",
-			rx: regexp.MustCompile(`^ext4_file_read_iter|^xfs_file_read_iter` +
-				`|^btrfs_file_read_iter|^filemap_read|^generic_file_read_iter`)},
-		class{name: "disk/write",
-			rx: regexp.MustCompile(`^ext4_file_write_iter|^xfs_file_write_iter` +
-				`|^btrfs_file_write_iter|^filemap_write|^generic_file_write_iter` +
-				`|^writeback_sb_inodes`)},
-		class{name: "memory",
+		{name: "network/tcp/read",
+			rx: regexp.MustCompile(`^(?:tcp_recvmsg|tcp_read|tcp_rcv|tcp_v4_rcv|tcp_v6_rcv)`)},
+		{name: "network/tcp/write",
+			rx: regexp.MustCompile(`^(?:tcp_sendmsg|tcp_transmit|tcp_write|tcp_push|tcp_sendpage)`)},
+		{name: "network/udp/read",
+			rx: regexp.MustCompile(`^(?:udp_recvmsg|udp_read|udp_rcv|udp_v4_rcv|udp_v6_rcv)`)},
+		{name: "network/udp/write",
+			rx: regexp.MustCompile(`^(?:udp_sendmsg|udp_write|udp_push|udp_sendpage)`)},
+		{name: "ipc/read",
+			rx: regexp.MustCompile(`^(?:pipe_read|pipe_read_iter|eventfd_read` +
+				`|unix_stream_read_generic|unix_stream_recvmsg)`)},
+		{name: "ipc/write",
+			rx: regexp.MustCompile(`^(?:pipe_write|pipe_write_iter|eventfd_write` +
+				`|unix_stream_write_generic|unix_stream_sendmsg)`)},
+		{name: "network/other/read",
+			rx: regexp.MustCompile(`^(?:sock_recvmsg|__sock_recvmsg|sock_read_iter)`)},
+		{name: "network/other/write",
+			rx: regexp.MustCompile(`^(?:sock_sendmsg|__sock_sendmsg|sock_write_iter)`)},
+		{name: "disk/read",
+			rx: regexp.MustCompile(`^(?:ext4_file_read_iter|xfs_file_read_iter` +
+				`|btrfs_file_read_iter|filemap_read|generic_file_read_iter)`)},
+		{name: "disk/write",
+			rx: regexp.MustCompile(`^(?:ext4_file_write_iter|xfs_file_write_iter` +
+				`|btrfs_file_write_iter|filemap_write|generic_file_write_iter` +
+				`|writeback_sb_inodes)`)},
+		{name: "memory",
 			rx: regexp.MustCompile(`^do_mmap|do_munmap|^do_anonymous_page|mmap_|madvise` +
 				`|^handle_mm_fault|^alloc_pages|^free_pages`)},
-		class{name: "synchronization",
+		{name: "synchronization",
 			rx: regexp.MustCompile(`futex_|^schedule|__schedule|^wake_up_|^wake_q_`)},
 	}
 )
@@ -224,31 +224,75 @@ func fetchFrameInfo(dictionary pprofile.ProfilesDictionary,
 	return frameInfo{
 		typ:          frameType,
 		fileName:     fileName,
-		functionName: funcName}, nil
+		functionName: funcName,
+	}, nil
 }
 
-func classifyKernelFrames(dictionary pprofile.ProfilesDictionary,
+func classifyLeaf(fi frameInfo,
+	counts map[metric]int64,
+	nativeCounts map[string]int64) {
+	ft := fi.typ
+
+	// We don't need a separate metric for total number of samples, as this can always be
+	// derived from summing the metricKernel and metricUser counts.
+	metric := allowedFrameTypes[ft]
+
+	// TODO: Scale all counts by number of events in each Sample. Currently,
+	// this logic assumes 1 event per Sample (thus the increments by 1 below),
+	// which isn't necessarily the case.
+	if ft != frameTypeKernel {
+		counts[metricUser]++
+	}
+
+	if ft == frameTypeNative && fi.fileName != "" {
+		// Extract native library name and increment associated count
+		if sm := shlibRx.FindStringSubmatch(fi.fileName); sm != nil {
+			nativeCounts[sm[1]]++
+			return
+		}
+	}
+	if ft != frameTypeKernel {
+		counts[metric]++
+	}
+}
+
+// classifyFrames classifies a sample into one or more categories based on frame information.
+// This takes place by incrementing the associated metric count.
+func classifyFrames(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
 	counts map[metric]int64,
+	nativeCounts map[string]int64,
 	kernelCounts map[string]int64,
 ) error {
 	var err error
 
 	className := ""
 	lastMatchIdx := len(classes)
+	hasKernel := false
 	for idx := range locationIndices.Len() {
-		// Iterate over all kernel frames
 		fi, err := fetchFrameInfo(dictionary, locationIndices, idx)
-		if err != nil || fi.typ != frameTypeKernel {
+		if err != nil {
 			break
 		}
 
+		if idx == 0 {
+			// Only need to call this once per stacktrace
+			classifyLeaf(fi, counts, nativeCounts)
+		}
+
+		// Kernel frame specific logic follows
+		if fi.typ != frameTypeKernel {
+			break
+		}
+
+		hasKernel = true
 		if fi.functionName == "" {
-			// No classification possible
+			// No classification possible for this frame
 			continue
 		}
 
 		for cIdx, class := range classes {
+			// Priority matching logic
 			if cIdx == lastMatchIdx {
 				// Early exit if there's no higher priority match possible
 				break
@@ -261,6 +305,10 @@ func classifyKernelFrames(dictionary pprofile.ProfilesDictionary,
 		}
 	}
 
+	if !hasKernel {
+		return err
+	}
+
 	if className == "" {
 		// No kernel category match found
 		counts[metricKernel]++
@@ -269,49 +317,6 @@ func classifyKernelFrames(dictionary pprofile.ProfilesDictionary,
 	}
 
 	return err
-}
-
-// classifyFrames classifies a sample into one or more categories based on frame information.
-// This takes place by incrementing the associated metric count.
-func classifyFrames(dictionary pprofile.ProfilesDictionary,
-	locationIndices pcommon.Int32Slice,
-	counts map[metric]int64,
-	nativeCounts map[string]int64,
-	kernelCounts map[string]int64,
-) error {
-	fi, err := fetchFrameInfo(dictionary, locationIndices, 0)
-	if err != nil {
-		return err
-	}
-
-	leafFrameType := fi.typ
-	// We don't need a separate metric for total number of samples, as this can always be
-	// derived from summing the metricKernel and metricUser counts.
-	metric := allowedFrameTypes[leafFrameType]
-
-	// TODO: Scale all counts by number of events in each Sample. Currently,
-	// this logic assumes 1 event per Sample (thus the increments by 1 below),
-	// which isn't necessarily the case.
-	if leafFrameType != frameTypeKernel {
-		counts[metricUser]++
-	}
-
-	if leafFrameType == frameTypeNative && fi.fileName != "" {
-		// Extract native library name and increment associated count
-		if sm := shlibRx.FindStringSubmatch(fi.fileName); sm != nil {
-			nativeCounts[sm[1]]++
-			return nil
-		}
-	}
-
-	if leafFrameType == frameTypeKernel {
-		return classifyKernelFrames(dictionary,
-			locationIndices,
-			counts, kernelCounts)
-	}
-
-	counts[metric]++
-	return nil
 }
 
 func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.ProfilesDictionary,
