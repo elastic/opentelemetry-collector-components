@@ -82,7 +82,7 @@ func (m *metricsConsumerStub) ConsumeMetrics(ctx context.Context, md pmetric.Met
 					} else if strings.HasSuffix(name, metricKernel.name) {
 						// For kernel metrics, we need two levels of annotation:
 						//   1. "class0/class1/class2" for classes
-						//   2. [syscall] as a postfix for syscall name
+						//   2. "[syscall]" as string postfix only for syscall name
 						classValues := map[string]string{}
 						syscall := ""
 						for attrName, attrValue := range dp.Attributes().All() {
