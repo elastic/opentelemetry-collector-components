@@ -228,6 +228,9 @@ func fetchFrameInfo(dictionary pprofile.ProfilesDictionary,
 				continue
 			}
 			funcName = strTable.At(int(fn.NameStrindex()))
+			if funcName != "" {
+				break
+			}
 		}
 	}
 
@@ -244,9 +247,6 @@ func classifyLeaf(fi frameInfo,
 	nativeCounts map[string]int64,
 	multiplier int64) {
 	ft := fi.typ
-
-	// We don't need a separate metric for total number of samples, as this can always be
-	// derived from summing the metricKernel and metricUser counts.
 	metric := allowedFrameTypes[ft]
 
 	if ft != frameTypeKernel {
