@@ -1,85 +1,36 @@
 dist:
   module: github.com/elastic/opentelemetry-collector-components
-  name: elastic-collector-components
-  description: Testing distribution to ensure Elastic's components can be used with the OCB
+  name: elastic-collector-with-pipeline-extension
+  description: Elastic OpenTelemetry Distribution with Dynamic Pipeline Management Extension
   version: 0.0.1
   output_path: ./_build
 
 extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.138.0
   - gomod: go.opentelemetry.io/collector/extension/memorylimiterextension v0.138.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension v0.8.0
-    path: ../../extension/apmconfigextension
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension v0.8.0
-    path: ../../extension/apikeyauthextension
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension v0.5.0
-    path: ../../extension/beatsauthextension
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.1
-    path: ../../extension/configintegrationextension
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/elasticpipelineextension v0.0.1
     path: ../../extension/elasticpipelineextension
-  - gomod: github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension v0.0.1
-    path: ../../extension/fileintegrationextension
-
-connectors:
-  - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.8.0
-    path: ../../connector/elasticapmconnector
-
-converters:
 
 receivers:
-  - gomod: go.opentelemetry.io/collector/receiver/nopreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/httpcheckreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.138.0
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.138.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver v0.0.1
-    path: ../../receiver/integrationreceiver
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.1
-    path: ../../receiver/loadgenreceiver
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver v0.5.0
-    path: ../../receiver/elasticapmintakereceiver
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.138.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.138.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.138.0
 
 processors:
+  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.138.0
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.138.0
-  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.138.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.18.0
-    path: ../../processor/elasticinframetricsprocessor
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.6.0
-    path: ../../processor/elasticapmprocessor
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.1
-    path: ../../processor/integrationprocessor
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.9.0
-    path: ../../processor/lsmintervalprocessor
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.10.2
-    path: ../../processor/ratelimitprocessor
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.13.0
-    path: ../../processor/elastictraceprocessor
 
 exporters:
-  - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.138.0
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.138.0
   - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.138.0
-  - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.138.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.138.0
 
 providers:
   - gomod: go.opentelemetry.io/collector/confmap/provider/envprovider v1.44.0
