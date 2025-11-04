@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/consumer"
@@ -234,7 +235,8 @@ func (tp *testProfiles) newProfile() pprofile.Profile {
 	return prof
 }
 
-func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile, frames ...testFrame) {
+func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
+	multiplier int64, frames ...testFrame) {
 	strTable := tp.dict.StringTable()
 	locTable := tp.dict.LocationTable()
 	mappingTable := tp.dict.MappingTable()
@@ -242,6 +244,9 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile, frames ..
 	stackTable := tp.dict.StackTable()
 
 	sample := prof.Sample().AppendEmpty()
+	for range multiplier {
+		sample.TimestampsUnixNano().Append(uint64(time.Now().UnixNano()))
+	}
 
 	// Set sample to reference the stack
 	sample.SetStackIndex(int32(stackTable.Len()))
@@ -299,14 +304,16 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	tp := newTestProfiles()
 	prof := tp.newProfile()
 
-	tp.addSample(t, prof, goFrame())
+	tp.addSample(t, prof, 0, goFrame())
+	tp.addSample(t, prof, 42, pyFrame())
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), m.execCount.Load())
 	assert.Equal(t, map[string]int64{
-		"frametest.samples.go.count":   1,
-		"frametest.samples.user.count": 1,
+		"frametest.samples.go.count":      1,
+		"frametest.samples.user.count":    43,
+		"frametest.samples.cpython.count": 42,
 	},
 		m.counts)
 }
@@ -325,25 +332,26 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	tp := newTestProfiles()
 	prof := tp.newProfile()
 
-	tp.addSample(t, prof, kernelFrame())
-	tp.addSample(t, prof, nativeFrame(), pyFrame())
-	tp.addSample(t, prof, nativeFrame().withFilename("libc.so.6"), goFrame())
-	tp.addSample(t, prof, goFrame())
-	tp.addSample(t, prof, pyFrame())
-	tp.addSample(t, prof, pyFrame())
-	tp.addSample(t, prof, pyFrame())
-	tp.addSample(t, prof, goFrame())
+	tp.addSample(t, prof, 7, kernelFrame())
+	tp.addSample(t, prof, 0, kernelFrame())
+	tp.addSample(t, prof, 0, nativeFrame(), pyFrame())
+	tp.addSample(t, prof, 12, nativeFrame().withFilename("libc.so.6"), goFrame())
+	tp.addSample(t, prof, 0, goFrame())
+	tp.addSample(t, prof, 0, pyFrame())
+	tp.addSample(t, prof, 0, pyFrame())
+	tp.addSample(t, prof, 3, pyFrame())
+	tp.addSample(t, prof, 0, goFrame())
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), m.execCount.Load())
 	assert.Equal(t, map[string]int64{
 		"frametest.samples.go.count":          2,
-		"frametest.samples.cpython.count":     3,
-		"frametest.samples.user.count":        7,
-		"frametest.samples.kernel.count":      1,
+		"frametest.samples.cpython.count":     5,
+		"frametest.samples.user.count":        20,
+		"frametest.samples.kernel.count":      8,
 		"frametest.samples.native.count":      1,
-		"frametest.samples.native.count/libc": 1,
+		"frametest.samples.native.count/libc": 12,
 	},
 		m.counts)
 }
@@ -370,33 +378,33 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	tp := newTestProfiles()
 	prof := tp.newProfile()
 
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"handle_mm_fault", "alloc_pages", "tcp_recvmsg", "__x64_sys_read")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"sock_recvmsg", "tcp_recvmsg", "__schedule")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"tcp_sendmsg", "sock_sendmsg", "wake_up")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 42, kstackToFrames(
 		"pipe_read", "udp_sendpage", "pipe_read", "ksys_write")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"sock_write_iter", "unix_stream_sendmsg")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"sock_read_iter", "pipe_read")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"foo__schedule", "bar", "baz")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 6, kstackToFrames(
 		"generic_file_read_iter", "wake_up", "futex_", "sock_recvmsg")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"free_pages", "sock_read_iter", "do_munmap")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"wake_up", "futex_", "sock_sendmsg", "generic_file_write_iter")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"do_munmap", "sock_write_iter", "free_pages")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"do_mmap", "alloc_pages", "filemap_read")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"alloc_pages", "futex_", "ext4_file_write_iter")...)
-	tp.addSample(t, prof, kstackToFrames(
+	tp.addSample(t, prof, 0, kstackToFrames(
 		"alloc_pages", "futex_", "wake_up_", "__arm64_sys_mmap")...)
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
@@ -406,12 +414,12 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 		"frametest.samples.kernel.count/network/tcp/read":         1,
 		"frametest.samples.kernel.count/network/tcp/read[read]":   1,
 		"frametest.samples.kernel.count/network/tcp/write":        1,
-		"frametest.samples.kernel.count/network/udp/write[write]": 1,
+		"frametest.samples.kernel.count/network/udp/write[write]": 42,
 		"frametest.samples.kernel.count/ipc/write":                1,
 		"frametest.samples.kernel.count/ipc/read":                 1,
 		"frametest.samples.kernel.count/disk/read":                1,
 		"frametest.samples.kernel.count/disk/write":               1,
-		"frametest.samples.kernel.count/network/other/read":       2,
+		"frametest.samples.kernel.count/network/other/read":       7,
 		"frametest.samples.kernel.count/network/other/write":      2,
 		"frametest.samples.kernel.count/synchronization":          1,
 		"frametest.samples.kernel.count/memory[mmap]":             1,
