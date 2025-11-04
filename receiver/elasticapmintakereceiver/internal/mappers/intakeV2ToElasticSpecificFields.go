@@ -539,13 +539,6 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 // Allows key names with spaces to match existing behavior.
 // Ignored empty keys and values.
 //
-// Note: modelpb.Events supports single and slice label values,
-// but the apm data model only support single value labels, so the slice values are ignored.
-// See schema:
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L75
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L433
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L969
-//
 // The apm data library logic will take care of overwriting metadata labels with event labels when decoding
 // the input to modelpb.APMEvent, so we simply copy all labels from the event here.
 func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
@@ -553,6 +546,15 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 		if key != "" && labelValue != nil && labelValue.Value != "" {
 			attrKey := "labels." + key
 			attributesMap.PutStr(attrKey, labelValue.Value)
+		}
+
+		if key != "" && labelValue != nil && len(labelValue.Values) > 0 {
+			attrKey := "labels." + key
+			labelValues := attributesMap.PutEmptySlice(attrKey)
+			labelValues.EnsureCapacity(len(labelValue.Values))
+			for _, v := range labelValue.Values {
+				labelValues.AppendEmpty().SetStr(v)
+			}
 		}
 	}
 

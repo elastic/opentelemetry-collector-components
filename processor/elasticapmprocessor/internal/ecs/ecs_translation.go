@@ -71,19 +71,10 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 	attributes := resource.Attributes()
 
 	attributes.Range(func(k string, v pcommon.Value) bool {
-		if !isSupportedAttribute(k) {
-			// The elasticapmintake receiver moves labels and numeric_labels into attributes and
-			// already prefixes those with "labels." and "numeric_labels." respectively and also does de-dotting.
-			// So for those, we don't want to double prefix - we just leave them as is.
-			if strings.HasPrefix(k, "labels.") {
-				attributes.PutStr(k, v.AsString())
-			} else if strings.HasPrefix(k, "numeric_labels.") {
-				attributes.PutDouble(k, v.Double())
-			} else {
-				// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
-				attributes.PutStr("labels."+replaceDots(k), v.AsString())
-				attributes.Remove(k)
-			}
+		if !isSupportedAttribute(k) && !isLabelAttribute(k) {
+			// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
+			attributes.PutStr("labels."+replaceDots(k), v.AsString())
+			attributes.Remove(k)
 		}
 		return true
 	})
@@ -91,6 +82,14 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 
 func replaceDots(key string) string {
 	return strings.ReplaceAll(key, ".", "_")
+}
+
+// isLabelAttribute returns true if the resource attribute is already a prefixed label.
+// The elasticapmintake receiver moves labels and numeric_labels into attributes and
+// already prefixes those with "labels." and "numeric_labels." respectively and also does de-dotting.
+// So for those, we don't want to double prefix - we just leave them as is.
+func isLabelAttribute(attr string) bool {
+	return strings.HasPrefix(attr, "labels.") || strings.HasPrefix(attr, "numeric_labels.")
 }
 
 // isSupportedAttribute returns true if the resource attribute is

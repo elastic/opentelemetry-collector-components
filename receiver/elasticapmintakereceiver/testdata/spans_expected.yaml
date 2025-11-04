@@ -130,6 +130,13 @@ resourceSpans:
         - key: labels.tag1
           value:
             stringValue: label1
+        - key: labels.elastic_profiler_stack_trace_ids
+          value:
+            arrayValue:
+              values:
+                - stringValue: foo
+                - stringValue: bar
+                - stringValue: foo
     scopeSpans:
       - scope: {}
         spans:
