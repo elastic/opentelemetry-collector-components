@@ -116,7 +116,7 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 		if http.Request.Body != nil {
 			// add http body as an object since it is required by the APM index template
 			// see: https://github.com/elastic/elasticsearch/blob/714c077b11363f168e261ad43cff0b5b74556b7f/x-pack/plugin/apm-data/src/main/resources/component-templates/traces-apm%40mappings.yaml#L30
-			bodyValue := attributesMap.PutEmpty(attr.HTTPRequestBody)
+			bodyValue := attributesMap.PutEmpty(attr.HTTPRequestBodyOriginal)
 			insertValue(bodyValue, http.Request.Body)
 		}
 		if http.Request.Id != "" {

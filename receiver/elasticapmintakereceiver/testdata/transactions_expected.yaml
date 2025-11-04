@@ -146,9 +146,6 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.id
-                value:
-                  stringValue: 945254c567a5417e
               - key: transaction.name
                 value:
                   stringValue: ""
@@ -167,6 +164,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
               - key: transaction.span_count.started
                 value:
                   intValue: "43"
@@ -349,9 +349,6 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.id
-                value:
-                  stringValue: 4340a8e0df1906ecbfa9
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
@@ -370,6 +367,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.id
+                value:
+                  stringValue: 4340a8e0df1906ecbfa9
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -450,7 +450,7 @@ resourceSpans:
               - key: http.request.cookies.c2
                 value:
                   stringValue: string_value:"v2"
-              - key: http.request.body
+              - key: http.request.body.original
                 value:
                   kvlistValue:
                     values:
@@ -675,9 +675,6 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.id
-                value:
-                  stringValue: cdef4340a8e0df19
               - key: transaction.name
                 value:
                   stringValue: ""
@@ -696,6 +693,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "13980"
+              - key: transaction.id
+                value:
+                  stringValue: cdef4340a8e0df19
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -900,9 +900,6 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.id
-                value:
-                  stringValue: 00xxxxFFaaaa1234
               - key: transaction.name
                 value:
                   stringValue: amqp receive
@@ -921,6 +918,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "3000"
+              - key: transaction.id
+                value:
+                  stringValue: 00xxxxFFaaaa1234
               - key: messaging.destination.name
                 value:
                   stringValue: new_users
@@ -1139,9 +1139,6 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.id
-                value:
-                  stringValue: 142e61450efb8574
               - key: transaction.name
                 value:
                   stringValue: july-2021-delete-after-july-31
@@ -1160,6 +1157,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "38853"
+              - key: transaction.id
+                value:
+                  stringValue: 142e61450efb8574
               - key: transaction.span_count.started
                 value:
                   intValue: "0"

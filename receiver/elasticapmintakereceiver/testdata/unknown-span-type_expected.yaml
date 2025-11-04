@@ -110,9 +110,6 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.id
-                value:
-                  stringValue: 945254c567a5417e
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
@@ -131,6 +128,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -207,7 +207,7 @@ resourceSpans:
               - key: http.request.cookies.c2
                 value:
                   stringValue: string_value:"v2"
-              - key: http.request.body
+              - key: http.request.body.original
                 value:
                   kvlistValue:
                     values:
