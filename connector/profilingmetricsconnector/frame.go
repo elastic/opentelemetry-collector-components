@@ -19,6 +19,7 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 
@@ -45,14 +46,21 @@ type class struct {
 	rx   *regexp.Regexp
 }
 
+type kernelStackAttr struct {
+	class   string
+	syscall string
+}
+
 const (
 	nativeLibraryAttrName = "shlib_name"
+	syscallAttrName       = "syscall_name"
+	kernelClassAttrPrefix = "kernel_"
 )
 
 var kernelClassAttrNames = [...]string{
-	"kernel_0",
-	"kernel_1",
-	"kernel_2",
+	kernelClassAttrPrefix + "0",
+	kernelClassAttrPrefix + "1",
+	kernelClassAttrPrefix + "2",
 }
 
 var (
@@ -85,7 +93,8 @@ var (
 		frameTypeBeam:   metricBeam,
 	}
 
-	shlibRx = regexp.MustCompile(`(?:.*/)?(.+)\.so`)
+	shlibRx   = regexp.MustCompile(`(?:.*/)?(.+)\.so`)
+	syscallRx = regexp.MustCompile(`^(?:__x64_sys|__arm64_sys|ksys)_(\w+)`)
 
 	// The following regular expressions try to match certain kernel functions
 	// and derive a classification for an entire kernel stacktrace based on the match.
@@ -191,29 +200,31 @@ func fetchFrameInfo(dictionary pprofile.ProfilesDictionary,
 		mapTbLen := mapTable.Len()
 		mi := loc.MappingIndex()
 		if int(mi) >= mapTbLen {
-			// TODO: log error
-			// return frameInfo{}, fmt.Errorf("fetchFrameInfo: mi %d >= %d",
-			//	mi, mapTbLen)
+			slog.Error("fetchFrameInfo", slog.Any("mapIdx", mi),
+				slog.Any("mapTbLen", mapTbLen))
 			break
 		}
-		mapFilenameStri := int(mapTable.At(int(mi)).FilenameStrindex())
-		if mapFilenameStri >= strTbLen {
-			// TODO: log error
-			// return frameInfo{}, fmt.Errorf("fetchFrameInfo: mapping.FilenameStridex %d >= %d",
-			//	mapFilenameStri, strTbLen)
+		mapFileStrIdx := int(mapTable.At(int(mi)).FilenameStrindex())
+		if mapFileStrIdx >= strTbLen {
+			slog.Error("fetchFrameInfo", slog.Any("mapFileStrIdx", mapFileStrIdx),
+				slog.Any("strTbLen", strTbLen))
 			break
 		}
-		fileName = strTable.At(mapFilenameStri)
+		fileName = strTable.At(mapFileStrIdx)
 	case frameTypeKernel:
 		// Extract function name
 		for _, ln := range loc.Line().All() {
-			if ln.FunctionIndex() >= int32(funcTbLen) {
-				// TODO: log error
+			funcIdx := int(ln.FunctionIndex())
+			if funcIdx >= funcTbLen {
+				slog.Error("fetchFrameInfo", slog.Any("funcIdx", funcIdx),
+					slog.Any("funcTbLen", funcTbLen))
 				continue
 			}
-			fn := funcTable.At(int(ln.FunctionIndex()))
-			if fn.NameStrindex() >= int32(strTbLen) {
-				// TODO: log error
+			fn := funcTable.At(funcIdx)
+			nameStrIdx := fn.NameStrindex()
+			if nameStrIdx >= int32(strTbLen) {
+				slog.Error("fetchFrameInfo", slog.Any("nameStrIdx", nameStrIdx),
+					slog.Any("strTbLen", strTbLen))
 				continue
 			}
 			funcName = strTable.At(int(fn.NameStrindex()))
@@ -230,29 +241,28 @@ func fetchFrameInfo(dictionary pprofile.ProfilesDictionary,
 
 func classifyLeaf(fi frameInfo,
 	counts map[metric]int64,
-	nativeCounts map[string]int64) {
+	nativeCounts map[string]int64,
+	multiplier int64) {
 	ft := fi.typ
 
 	// We don't need a separate metric for total number of samples, as this can always be
 	// derived from summing the metricKernel and metricUser counts.
 	metric := allowedFrameTypes[ft]
 
-	// TODO: Scale all counts by number of events in each Sample. Currently,
-	// this logic assumes 1 event per Sample (thus the increments by 1 below),
-	// which isn't necessarily the case.
 	if ft != frameTypeKernel {
-		counts[metricUser]++
+		counts[metricUser] += multiplier
 	}
 
 	if ft == frameTypeNative && fi.fileName != "" {
 		// Extract native library name and increment associated count
-		if sm := shlibRx.FindStringSubmatch(fi.fileName); sm != nil {
-			nativeCounts[sm[1]]++
+		sm := shlibRx.FindStringSubmatchIndex(fi.fileName)
+		if len(sm) == 4 {
+			nativeCounts[fi.fileName[sm[2]:sm[3]]] += multiplier
 			return
 		}
 	}
 	if ft != frameTypeKernel {
-		counts[metric]++
+		counts[metric] += multiplier
 	}
 }
 
@@ -262,11 +272,13 @@ func classifyFrames(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
 	counts map[metric]int64,
 	nativeCounts map[string]int64,
-	kernelCounts map[string]int64,
+	kernelCounts map[kernelStackAttr]int64,
+	multiplier int64,
 ) error {
 	var err error
 
 	className := ""
+	syscall := ""
 	lastMatchIdx := len(classes)
 	hasKernel := false
 	for idx := range locationIndices.Len() {
@@ -277,7 +289,7 @@ func classifyFrames(dictionary pprofile.ProfilesDictionary,
 
 		if idx == 0 {
 			// Only need to call this once per stacktrace
-			classifyLeaf(fi, counts, nativeCounts)
+			classifyLeaf(fi, counts, nativeCounts, multiplier)
 		}
 
 		// Kernel frame specific logic follows
@@ -303,17 +315,29 @@ func classifyFrames(dictionary pprofile.ProfilesDictionary,
 				break
 			}
 		}
+
+		// Try to match a syscall and avoid string allocations by using indices
+		// to string location.
+		sysIndices := syscallRx.FindStringSubmatchIndex(fi.functionName)
+		if len(sysIndices) == 4 {
+			syscall = fi.functionName[sysIndices[2]:sysIndices[3]]
+			// If we match a syscall, we don't need to keep iterating frames
+			// as there are no further (syscall or category) matches possible.
+			break
+		}
 	}
 
 	if !hasKernel {
 		return err
 	}
 
-	if className == "" {
-		// No kernel category match found
-		counts[metricKernel]++
+	if className == "" && syscall == "" {
+		// No kernel category / syscall match
+		counts[metricKernel] += multiplier
 	} else {
-		kernelCounts[className]++
+		kernelCounts[kernelStackAttr{
+			class:   className,
+			syscall: syscall}] += multiplier
 	}
 
 	return err
@@ -326,15 +350,15 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 
 	counts := make(map[metric]int64)
 	nativeCounts := make(map[string]int64)
-	kernelCounts := make(map[string]int64)
+	kernelCounts := make(map[kernelStackAttr]int64)
 
 	// Process all samples and extract metric counts
 	for _, sample := range profile.Sample().All() {
+		multiplier := max(int64(sample.TimestampsUnixNano().Len()), 1)
 		stack := stackTable.At(int(sample.StackIndex()))
 		if err := classifyFrames(dictionary, stack.LocationIndices(),
-			counts, nativeCounts, kernelCounts); err != nil {
-			// Should not happen with well-formed profile data
-			// TODO: Add error metric or log error
+			counts, nativeCounts, kernelCounts, multiplier); err != nil {
+			slog.Error("classifyFrames", slog.Any("error", err))
 			continue
 		}
 	}
@@ -371,7 +395,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 		dp.Attributes().PutStr(nativeLibraryAttrName, libraryName)
 	}
 
-	for className, count := range kernelCounts {
+	for kStackAttr, count := range kernelCounts {
 		m := scopeMetrics.Metrics().AppendEmpty()
 		m.SetName(c.config.MetricsPrefix + metricKernel.name)
 		m.SetDescription(metricKernel.desc)
@@ -385,9 +409,25 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 		dp.SetTimestamp(profile.Time())
 		dp.SetIntValue(count)
 
-		for i, name := range strings.Split(className, "/") {
-			if name != "" {
-				dp.Attributes().PutStr(kernelClassAttrNames[i], name)
+		if kStackAttr.syscall != "" {
+			dp.Attributes().PutStr(syscallAttrName, kStackAttr.syscall)
+		}
+
+		if kStackAttr.class != "" {
+			cSplit := strings.Split(kStackAttr.class, "/")
+			cSplitLen := len(cSplit)
+			kClassAttrNamesLen := len(kernelClassAttrNames)
+			if cSplitLen > kClassAttrNamesLen {
+				slog.Error("addFrameMetrics",
+					slog.Any("cSplitLen", cSplitLen),
+					slog.Any("kClassAttrNamesLen", kClassAttrNamesLen))
+				continue
+			}
+
+			for i, v := range cSplit {
+				if v != "" {
+					dp.Attributes().PutStr(kernelClassAttrNames[i], v)
+				}
 			}
 		}
 	}

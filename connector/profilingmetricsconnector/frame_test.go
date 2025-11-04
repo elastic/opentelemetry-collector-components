@@ -80,10 +80,19 @@ func (m *metricsConsumerStub) ConsumeMetrics(ctx context.Context, md pmetric.Met
 							name = fmt.Sprintf("%v/%v", name, shlibName.AsString())
 						}
 					} else if strings.HasSuffix(name, metricKernel.name) {
+						// For kernel metrics, we need two levels of annotation:
+						//   1. "class0/class1/class2" for classes
+						//   2. [syscall] as a postfix for syscall name
 						classValues := map[string]string{}
-						for attrName, class := range dp.Attributes().All() {
-							assert.Contains(m.t, kernelClassAttrNames, attrName)
-							classValues[attrName] = class.AsString()
+						syscall := ""
+						for attrName, attrValue := range dp.Attributes().All() {
+							if strings.HasPrefix(attrName, kernelClassAttrPrefix) {
+								assert.Contains(m.t, kernelClassAttrNames, attrName)
+								classValues[attrName] = attrValue.AsString()
+							} else {
+								assert.Equal(m.t, syscallAttrName, attrName)
+								syscall = attrValue.AsString()
+							}
 						}
 						switch len(classValues) {
 						case 3:
@@ -99,11 +108,13 @@ func (m *metricsConsumerStub) ConsumeMetrics(ctx context.Context, md pmetric.Met
 							name = fmt.Sprintf("%v/%v", name,
 								classValues[kernelClassAttrNames[0]])
 						}
+						if syscall != "" {
+							name = fmt.Sprintf("%v[%v]", name, syscall)
+						}
 					} else {
 						// Non-native, non-kernel metrics should not have attributes attached
 						assert.Equal(m.t, 0, dp.Attributes().Len())
 					}
-
 					m.counts[name] += dp.IntValue()
 				}
 			}
@@ -360,15 +371,15 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	prof := tp.newProfile()
 
 	tp.addSample(t, prof, kstackToFrames(
-		"tcp_recvmsg", "handle_mm_fault", "alloc_pages")...)
+		"handle_mm_fault", "alloc_pages", "tcp_recvmsg", "__x64_sys_read")...)
 	tp.addSample(t, prof, kstackToFrames(
-		"tcp_recvmsg", "sock_recvmsg", "__schedule")...)
+		"sock_recvmsg", "tcp_recvmsg", "__schedule")...)
 	tp.addSample(t, prof, kstackToFrames(
 		"tcp_sendmsg", "sock_sendmsg", "wake_up")...)
 	tp.addSample(t, prof, kstackToFrames(
-		"udp_sendpage", "pipe_read")...)
+		"pipe_read", "udp_sendpage", "pipe_read", "ksys_write")...)
 	tp.addSample(t, prof, kstackToFrames(
-		"unix_stream_sendmsg", "sock_write_iter")...)
+		"sock_write_iter", "unix_stream_sendmsg")...)
 	tp.addSample(t, prof, kstackToFrames(
 		"sock_read_iter", "pipe_read")...)
 	tp.addSample(t, prof, kstackToFrames(
@@ -376,7 +387,7 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	tp.addSample(t, prof, kstackToFrames(
 		"generic_file_read_iter", "wake_up", "futex_", "sock_recvmsg")...)
 	tp.addSample(t, prof, kstackToFrames(
-		"do_munmap", "free_pages", "sock_read_iter")...)
+		"free_pages", "sock_read_iter", "do_munmap")...)
 	tp.addSample(t, prof, kstackToFrames(
 		"wake_up", "futex_", "sock_sendmsg", "generic_file_write_iter")...)
 	tp.addSample(t, prof, kstackToFrames(
@@ -386,23 +397,24 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	tp.addSample(t, prof, kstackToFrames(
 		"alloc_pages", "futex_", "ext4_file_write_iter")...)
 	tp.addSample(t, prof, kstackToFrames(
-		"alloc_pages", "futex_", "wake_up_")...)
+		"alloc_pages", "futex_", "wake_up_", "__arm64_sys_mmap")...)
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), m.execCount.Load())
 	assert.Equal(t, map[string]int64{
-		"frametest.samples.kernel.count/network/tcp/read":    2,
-		"frametest.samples.kernel.count/network/tcp/write":   1,
-		"frametest.samples.kernel.count/network/udp/write":   1,
-		"frametest.samples.kernel.count/ipc/write":           1,
-		"frametest.samples.kernel.count/ipc/read":            1,
-		"frametest.samples.kernel.count/disk/read":           1,
-		"frametest.samples.kernel.count/disk/write":          1,
-		"frametest.samples.kernel.count/network/other/read":  2,
-		"frametest.samples.kernel.count/network/other/write": 2,
-		"frametest.samples.kernel.count/synchronization":     1,
-		"frametest.samples.kernel.count/memory":              1,
+		"frametest.samples.kernel.count/network/tcp/read":         1,
+		"frametest.samples.kernel.count/network/tcp/read[read]":   1,
+		"frametest.samples.kernel.count/network/tcp/write":        1,
+		"frametest.samples.kernel.count/network/udp/write[write]": 1,
+		"frametest.samples.kernel.count/ipc/write":                1,
+		"frametest.samples.kernel.count/ipc/read":                 1,
+		"frametest.samples.kernel.count/disk/read":                1,
+		"frametest.samples.kernel.count/disk/write":               1,
+		"frametest.samples.kernel.count/network/other/read":       2,
+		"frametest.samples.kernel.count/network/other/write":      2,
+		"frametest.samples.kernel.count/synchronization":          1,
+		"frametest.samples.kernel.count/memory[mmap]":             1,
 	},
 		m.counts)
 }
