@@ -48,6 +48,7 @@ const (
 
 	DestinationIP = "destination.ip"
 
+	MessageRoutingKey    = "message.routing_key"
 	MessageBody          = "message.body"
 	MessageAgeMs         = "message.age.ms"
 	MessageHeadersPrefix = "message.headers"

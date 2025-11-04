@@ -173,6 +173,9 @@ func setMessage(prefix string, m *modelpb.Message, attributesMap pcommon.Map) {
 	if m == nil {
 		return
 	}
+	if m.RoutingKey != "" {
+		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageRoutingKey), m.RoutingKey)
+	}
 	if m.Body != "" {
 		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageBody), m.Body)
 	}

@@ -100,7 +100,6 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 
 	if event.Transaction.Message != nil {
 		attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Transaction.Message.QueueName)
-		attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Transaction.Message.RoutingKey)
 	}
 }
 
@@ -127,9 +126,6 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 
 		if event.Span.Message.QueueName != "" {
 			attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Span.Message.QueueName)
-		}
-		if event.Span.Message.RoutingKey != "" {
-			attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Span.Message.RoutingKey)
 		}
 	}
 

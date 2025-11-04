@@ -924,12 +924,12 @@ resourceSpans:
               - key: messaging.destination.name
                 value:
                   stringValue: new_users
-              - key: messaging.rabbitmq.destination.routing_key
-                value:
-                  stringValue: user-created-transaction
               - key: transaction.span_count.started
                 value:
                   intValue: "1"
+              - key: transaction.message.routing_key
+                value:
+                  stringValue: user-created-transaction
               - key: transaction.message.body
                 value:
                   stringValue: user created

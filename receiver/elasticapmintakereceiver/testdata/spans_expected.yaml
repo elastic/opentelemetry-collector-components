@@ -2092,12 +2092,12 @@ resourceSpans:
               - key: messaging.destination.name
                 value:
                   stringValue: new_users
-              - key: messaging.rabbitmq.destination.routing_key
-                value:
-                  stringValue: user-created-span
               - key: destination.address
                 value:
                   stringValue: 0:0::0:1
+              - key: span.message.routing_key
+                value:
+                  stringValue: user-created-span
               - key: span.message.body
                 value:
                   stringValue: message body
