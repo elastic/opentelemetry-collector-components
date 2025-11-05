@@ -274,6 +274,7 @@ func classifyLeaf(fi frameInfo,
 		return
 	}
 
+	// Native frame specific logic follows
 	if fi.fileName != "" {
 		// Extract native library name and increment associated count
 		sm := shlibRx.FindStringSubmatchIndex(fi.fileName)
