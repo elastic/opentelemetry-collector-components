@@ -187,12 +187,17 @@ func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.Profiles
 		}
 	}
 	if frameType == "" {
+		// Return error if we can't extract frame type in order to signal caller
+		// to stop further processing, as the current sample can not be relied upon.
 		return frameInfo{}, fmt.Errorf("fetchFrameInfo: empty frame type")
 	}
 
 	fileName := ""
 	funcName := ""
 
+	// Errors related to extracting filename and function name are logged but not
+	// returned, as classification can still take place and the caller may continue
+	// to iterate frames.
 	switch frameType {
 	case frameTypeNative:
 		// Extract mapping filename
@@ -262,9 +267,12 @@ func classifyLeaf(fi frameInfo,
 		sm := shlibRx.FindStringSubmatchIndex(fi.fileName)
 		if len(sm) == 4 {
 			nativeCounts[fi.fileName[sm[2]:sm[3]]] += multiplier
+			// We don't want to increment counts[metricNative] here
+			// as we're doing this through nativeCounts[].
 			return
 		}
 	}
+
 	if ft != frameTypeKernel {
 		counts[metric] += multiplier
 	}
@@ -292,7 +300,8 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 		}
 
 		if idx == 0 {
-			// Only need to call this once per stacktrace
+			// Only need to call this once per stacktrace, for the
+			// leaf frame, which is the first location indexed.
 			classifyLeaf(fi, counts, nativeCounts, multiplier)
 		}
 
