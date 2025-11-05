@@ -70,12 +70,18 @@ type Config struct {
 	// If not set, class resolution is disabled.
 	// Only applicable when the rate limiter type is "gubernator".
 	ClassResolver component.ID `mapstructure:"class_resolver"`
+
+	// GubernatorBehavior configures the behavior of rate limiter in Gubernator.
+	// Only applicable when the rate limiter type is "gubernator".
+	//
+	// Options are "batching" or "global". Defaults to "batching".
+	GubernatorBehavior GubernatorBehavior `mapstructure:"gubernator_behavior"`
 }
 
 // Unmarshal implements temporary logic to parse the older format of the overrides.
 // This is achieved by identifying if overrides are defined using the old config
 // and mapping it to the new config.
-func (cfg *Config) Unmarshal(componentParser *confmap.Conf) error {
+func (config *Config) Unmarshal(componentParser *confmap.Conf) error {
 	if componentParser == nil {
 		return nil
 	}
@@ -103,7 +109,7 @@ func (cfg *Config) Unmarshal(componentParser *confmap.Conf) error {
 		}
 	}
 
-	if err := componentParser.Unmarshal(cfg, confmap.WithIgnoreUnused()); err != nil {
+	if err := componentParser.Unmarshal(config, confmap.WithIgnoreUnused()); err != nil {
 		return err
 	}
 
@@ -113,7 +119,7 @@ func (cfg *Config) Unmarshal(componentParser *confmap.Conf) error {
 			continue
 		}
 		matches := make(map[string][]string)
-		cfg.Overrides[i].Matches = matches
+		config.Overrides[i].Matches = matches
 		matchKVs := strings.Split(k, ";")
 		for _, matchKV := range matchKVs {
 			if len(matchKV) == 0 {
@@ -316,6 +322,11 @@ const (
 
 // GubernatorBehavior controls Gubernator's behavior.
 type GubernatorBehavior string
+
+const (
+	GubernatorBehaviorBatching GubernatorBehavior = "batching"
+	GubernatorBehaviorGlobal   GubernatorBehavior = "global"
+)
 
 func createDefaultConfig() component.Config {
 	return &Config{
@@ -535,6 +546,22 @@ func (t RateLimiterType) Validate() error {
 		t, []string{
 			string(LocalRateLimiter),
 			string(GubernatorRateLimiter),
+		},
+	)
+}
+
+func (b GubernatorBehavior) Validate() error {
+	switch b {
+	case GubernatorBehaviorBatching, GubernatorBehaviorGlobal:
+		return nil
+	case "":
+		return nil
+	}
+	return fmt.Errorf(
+		"invalid gubernator behavior %q, expected one of %q",
+		b, []string{
+			string(GubernatorBehaviorBatching),
+			string(GubernatorBehaviorGlobal),
 		},
 	)
 }

@@ -124,16 +124,31 @@ func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder 
 		return nil, fmt.Errorf("failed to create gubernator daemon config: %w", err)
 	}
 
+	behavior, err := guberBehavior(cfg.GubernatorBehavior)
+	if err != nil {
+		return nil, err
+	}
+
 	return &gubernatorRateLimiter{
 		cfg:                cfg,
 		logger:             logger,
-		behavior:           gubernator.Behavior_BATCHING,
+		behavior:           behavior,
 		daemonCfg:          daemonCfg,
 		telemetryBuilder:   telemetryBuilder,
 		tracerProvider:     tracerProvider,
 		classResolver:      noopResolver{},
 		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DynamicRateLimiting.DefaultWindowMultiplier},
 	}, nil
+}
+
+func guberBehavior(b GubernatorBehavior) (gubernator.Behavior, error) {
+	switch b {
+	case GubernatorBehaviorBatching, "":
+		return gubernator.Behavior_BATCHING, nil
+	case GubernatorBehaviorGlobal:
+		return gubernator.Behavior_GLOBAL, nil
+	}
+	return 0, fmt.Errorf("invalid gubernator behavior: %s", b)
 }
 
 func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) (err error) {

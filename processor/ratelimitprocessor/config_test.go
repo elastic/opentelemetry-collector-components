@@ -267,6 +267,10 @@ func TestLoadConfig(t *testing.T) {
 			expectedErr: `invalid rate limiter type "invalid", expected one of ["local" "gubernator"]`,
 		},
 		{
+			name:        "invalid_gubernator_behavior",
+			expectedErr: `invalid gubernator behavior "foo", expected one of ["batching" "global"]`,
+		},
+		{
 			name:        "invalid_default_class",
 			expectedErr: `default_class "nonexistent" does not exist in classes`,
 		},

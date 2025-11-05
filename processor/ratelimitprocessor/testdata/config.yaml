@@ -162,3 +162,8 @@ ratelimit/deprecated_overrides:
     project-id:e994532b-5n94-48et-a95c-1fa0638g6288;project-type:test:
       rate: 3000
       burst: 5000
+
+ratelimit/invalid_gubernator_behavior:
+  rate: 1
+  burst: 1
+  gubernator_behavior: foo
