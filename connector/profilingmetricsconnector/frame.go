@@ -19,13 +19,13 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"fmt"
-	"log/slog"
 	"regexp"
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
+	"go.uber.org/zap"
 
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
@@ -137,7 +137,7 @@ var (
 	}
 )
 
-func fetchFrameInfo(dictionary pprofile.ProfilesDictionary,
+func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
 	sampleLocationIndex int,
 ) (frameInfo, error) {
@@ -198,16 +198,18 @@ func fetchFrameInfo(dictionary pprofile.ProfilesDictionary,
 		// Extract mapping filename
 		mapTable := dictionary.MappingTable()
 		mapTbLen := mapTable.Len()
-		mi := loc.MappingIndex()
-		if int(mi) >= mapTbLen {
-			slog.Error("fetchFrameInfo", slog.Any("mapIdx", mi),
-				slog.Any("mapTbLen", mapTbLen))
+		mi := int(loc.MappingIndex())
+		if mi >= mapTbLen {
+			c.logger.Error("fetchFrameInfo",
+				zap.Int("mapIdx", mi),
+				zap.Int("mapTbLen", mapTbLen))
 			break
 		}
 		mapFileStrIdx := int(mapTable.At(int(mi)).FilenameStrindex())
 		if mapFileStrIdx >= strTbLen {
-			slog.Error("fetchFrameInfo", slog.Any("mapFileStrIdx", mapFileStrIdx),
-				slog.Any("strTbLen", strTbLen))
+			c.logger.Error("fetchFrameInfo",
+				zap.Int("mapFileStrIdx", mapFileStrIdx),
+				zap.Int("strTbLen", strTbLen))
 			break
 		}
 		fileName = strTable.At(mapFileStrIdx)
@@ -216,15 +218,17 @@ func fetchFrameInfo(dictionary pprofile.ProfilesDictionary,
 		for _, ln := range loc.Line().All() {
 			funcIdx := int(ln.FunctionIndex())
 			if funcIdx >= funcTbLen {
-				slog.Error("fetchFrameInfo", slog.Any("funcIdx", funcIdx),
-					slog.Any("funcTbLen", funcTbLen))
+				c.logger.Error("fetchFrameInfo",
+					zap.Int("funcIdx", funcIdx),
+					zap.Int("funcTbLen", funcTbLen))
 				continue
 			}
 			fn := funcTable.At(funcIdx)
-			nameStrIdx := fn.NameStrindex()
-			if nameStrIdx >= int32(strTbLen) {
-				slog.Error("fetchFrameInfo", slog.Any("nameStrIdx", nameStrIdx),
-					slog.Any("strTbLen", strTbLen))
+			nameStrIdx := int(fn.NameStrindex())
+			if nameStrIdx >= strTbLen {
+				c.logger.Error("fetchFrameInfo",
+					zap.Int("nameStrIdx", nameStrIdx),
+					zap.Int("strTbLen", strTbLen))
 				continue
 			}
 			funcName = strTable.At(int(fn.NameStrindex()))
@@ -268,7 +272,7 @@ func classifyLeaf(fi frameInfo,
 
 // classifyFrames classifies a sample into one or more categories based on frame information.
 // This takes place by incrementing the associated metric count.
-func classifyFrames(dictionary pprofile.ProfilesDictionary,
+func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
 	counts map[metric]int64,
 	nativeCounts map[string]int64,
@@ -282,7 +286,7 @@ func classifyFrames(dictionary pprofile.ProfilesDictionary,
 	lastMatchIdx := len(classes)
 	hasKernel := false
 	for idx := range locationIndices.Len() {
-		fi, err := fetchFrameInfo(dictionary, locationIndices, idx)
+		fi, err := c.fetchFrameInfo(dictionary, locationIndices, idx)
 		if err != nil {
 			break
 		}
@@ -356,9 +360,9 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 	for _, sample := range profile.Sample().All() {
 		multiplier := max(int64(sample.TimestampsUnixNano().Len()), 1)
 		stack := stackTable.At(int(sample.StackIndex()))
-		if err := classifyFrames(dictionary, stack.LocationIndices(),
+		if err := c.classifyFrames(dictionary, stack.LocationIndices(),
 			counts, nativeCounts, kernelCounts, multiplier); err != nil {
-			slog.Error("classifyFrames", slog.Any("error", err))
+			c.logger.Error("classifyFrames", zap.Error(err))
 			continue
 		}
 	}
@@ -418,9 +422,9 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 			cSplitLen := len(cSplit)
 			kClassAttrNamesLen := len(kernelClassAttrNames)
 			if cSplitLen > kClassAttrNamesLen {
-				slog.Error("addFrameMetrics",
-					slog.Any("cSplitLen", cSplitLen),
-					slog.Any("kClassAttrNamesLen", kClassAttrNamesLen))
+				c.logger.Error("addFrameMetrics",
+					zap.Int("cSplitLen", cSplitLen),
+					zap.Int("kClassAttrNamesLen", kClassAttrNamesLen))
 				continue
 			}
 
