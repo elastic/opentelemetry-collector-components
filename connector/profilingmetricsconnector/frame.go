@@ -254,15 +254,13 @@ func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.Profiles
 	}, nil
 }
 
-func classifyLeaf(fi frameInfo,
+// classifyUser classifies a non-kernel frame by increasing relevant metric counts.
+// Should NOT be called for kernel frames.
+func classifyUser(fi frameInfo,
 	counts map[metric]int64,
 	nativeCounts map[attrInfo]int64,
 	multiplier int64) {
 	ft := fi.typ
-	if ft == frameTypeKernel {
-		// Kernel frame classification takes place elsewhere
-		return
-	}
 
 	// We have a distinct metricUser (even if there's no specific frame type for it)
 	// so that we can calculate the total number of stacktraces for any given time
@@ -310,10 +308,10 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 			break
 		}
 
-		if idx == 0 {
-			// Only need to call this once per stacktrace, for the
-			// leaf frame, which is the first location indexed.
-			classifyLeaf(fi, counts, nativeCounts, multiplier)
+		if idx == 0 && fi.typ != frameTypeKernel {
+			// Only need to call this once per stacktrace, for the leaf frame,
+			// which is the first location indexed.
+			classifyUser(fi, counts, nativeCounts, multiplier)
 		}
 
 		// Kernel frame specific logic follows
