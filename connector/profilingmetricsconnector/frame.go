@@ -46,9 +46,12 @@ type class struct {
 	rx   *regexp.Regexp
 }
 
-type kernelStackAttr struct {
+type attrInfo struct {
+	// Only attached to kernel metric
 	class   string
 	syscall string
+	// Only attached to native metric
+	shlib string
 }
 
 const (
@@ -253,29 +256,36 @@ func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.Profiles
 
 func classifyLeaf(fi frameInfo,
 	counts map[metric]int64,
-	nativeCounts map[string]int64,
+	nativeCounts map[attrInfo]int64,
 	multiplier int64) {
 	ft := fi.typ
-	metric := allowedFrameTypes[ft]
-
-	if ft != frameTypeKernel {
-		counts[metricUser] += multiplier
+	if ft == frameTypeKernel {
+		// Kernel frame classification takes place elsewhere
+		return
 	}
 
-	if ft == frameTypeNative && fi.fileName != "" {
+	// We have a distinct metricUser (even if there's no specific frame type for it)
+	// so that we can calculate the total number of stacktraces for any given time
+	// interval: metricUser.count + metricKernel.count
+	counts[metricUser] += multiplier
+	metric := allowedFrameTypes[ft]
+	if ft != frameTypeNative {
+		counts[metric] += multiplier
+		return
+	}
+
+	if fi.fileName != "" {
 		// Extract native library name and increment associated count
 		sm := shlibRx.FindStringSubmatchIndex(fi.fileName)
 		if len(sm) == 4 {
-			nativeCounts[fi.fileName[sm[2]:sm[3]]] += multiplier
-			// We don't want to increment counts[metricNative] here
-			// as we're doing this through nativeCounts[].
+			nativeCounts[attrInfo{
+				shlib: fi.fileName[sm[2]:sm[3]],
+			}] += multiplier
 			return
 		}
 	}
 
-	if ft != frameTypeKernel {
-		counts[metric] += multiplier
-	}
+	nativeCounts[attrInfo{}] += multiplier
 }
 
 // classifyFrames classifies a sample into one or more categories based on frame information.
@@ -283,8 +293,8 @@ func classifyLeaf(fi frameInfo,
 func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
 	counts map[metric]int64,
-	nativeCounts map[string]int64,
-	kernelCounts map[kernelStackAttr]int64,
+	nativeCounts map[attrInfo]int64,
+	kernelCounts map[attrInfo]int64,
 	multiplier int64,
 ) error {
 	var err error
@@ -340,19 +350,9 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 		}
 	}
 
-	if !hasKernel {
-		return err
+	if hasKernel {
+		kernelCounts[attrInfo{class: className, syscall: syscall}] += multiplier
 	}
-
-	if className == "" && syscall == "" {
-		// No kernel category / syscall match
-		counts[metricKernel] += multiplier
-	} else {
-		kernelCounts[kernelStackAttr{
-			class:   className,
-			syscall: syscall}] += multiplier
-	}
-
 	return err
 }
 
@@ -362,8 +362,8 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 	stackTable := dictionary.StackTable()
 
 	counts := make(map[metric]int64)
-	nativeCounts := make(map[string]int64)
-	kernelCounts := make(map[kernelStackAttr]int64)
+	nativeCounts := make(map[attrInfo]int64)
+	kernelCounts := make(map[attrInfo]int64)
 
 	// Process all samples and extract metric counts
 	for _, sample := range profile.Sample().All() {
@@ -392,7 +392,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 		dp.SetIntValue(count)
 	}
 
-	for libraryName, count := range nativeCounts {
+	for aInfo, count := range nativeCounts {
 		m := scopeMetrics.Metrics().AppendEmpty()
 		m.SetName(c.config.MetricsPrefix + metricNative.name)
 		m.SetDescription(metricNative.desc)
@@ -405,10 +405,12 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 		dp := sum.DataPoints().AppendEmpty()
 		dp.SetTimestamp(profile.Time())
 		dp.SetIntValue(count)
-		dp.Attributes().PutStr(nativeLibraryAttrName, libraryName)
+		if aInfo.shlib != "" {
+			dp.Attributes().PutStr(nativeLibraryAttrName, aInfo.shlib)
+		}
 	}
 
-	for kStackAttr, count := range kernelCounts {
+	for aInfo, count := range kernelCounts {
 		m := scopeMetrics.Metrics().AppendEmpty()
 		m.SetName(c.config.MetricsPrefix + metricKernel.name)
 		m.SetDescription(metricKernel.desc)
@@ -422,12 +424,12 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 		dp.SetTimestamp(profile.Time())
 		dp.SetIntValue(count)
 
-		if kStackAttr.syscall != "" {
-			dp.Attributes().PutStr(syscallAttrName, kStackAttr.syscall)
+		if aInfo.syscall != "" {
+			dp.Attributes().PutStr(syscallAttrName, aInfo.syscall)
 		}
 
-		if kStackAttr.class != "" {
-			cSplit := strings.Split(kStackAttr.class, "/")
+		if aInfo.class != "" {
+			cSplit := strings.Split(aInfo.class, "/")
 			cSplitLen := len(cSplit)
 			kClassAttrNamesLen := len(kernelClassAttrNames)
 			if cSplitLen > kClassAttrNamesLen {
