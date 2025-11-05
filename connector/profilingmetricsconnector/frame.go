@@ -36,9 +36,9 @@ type metric struct {
 }
 
 type frameInfo struct {
-	typ          string
-	fileName     string
-	functionName string
+	typ      string
+	fileName string
+	funcName string
 }
 
 type class struct {
@@ -248,14 +248,14 @@ func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.Profiles
 
 	// End validation
 	return frameInfo{
-		typ:          frameType,
-		fileName:     fileName,
-		functionName: funcName,
+		typ:      frameType,
+		fileName: fileName,
+		funcName: funcName,
 	}, nil
 }
 
 // classifyUser classifies a non-kernel frame by increasing relevant metric counts.
-// Should NOT be called for kernel frames.
+// Must NOT be called for kernel frames.
 func classifyUser(fi frameInfo,
 	counts map[metric]int64,
 	nativeCounts map[attrInfo]int64,
@@ -320,7 +320,7 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 		}
 
 		hasKernel = true
-		if fi.functionName == "" {
+		if fi.funcName == "" {
 			// No classification possible for this frame
 			continue
 		}
@@ -331,7 +331,7 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 				// Early exit if there's no higher priority match possible
 				break
 			}
-			if class.rx.MatchString(fi.functionName) {
+			if class.rx.MatchString(fi.funcName) {
 				className = class.name
 				lastMatchIdx = cIdx
 				break
@@ -340,9 +340,9 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 
 		// Try to match a syscall and avoid string allocations by using indices
 		// to string location.
-		sysIndices := syscallRx.FindStringSubmatchIndex(fi.functionName)
+		sysIndices := syscallRx.FindStringSubmatchIndex(fi.funcName)
 		if len(sysIndices) == 4 {
-			syscall = fi.functionName[sysIndices[2]:sysIndices[3]]
+			syscall = fi.funcName[sysIndices[2]:sysIndices[3]]
 			// If we match a syscall, we don't need to keep iterating frames
 			// as there are no further (syscall or category) matches possible.
 			break
@@ -440,6 +440,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 
 			for i, v := range cSplit {
 				if v != "" {
+					// Add kernel classifications as separate attributes
 					dp.Attributes().PutStr(kernelClassAttrNames[i], v)
 				}
 			}
