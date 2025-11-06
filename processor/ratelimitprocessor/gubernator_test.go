@@ -131,8 +131,7 @@ func newGubernatorRateLimiterFrom(t *testing.T, cfg *Config, daemon *gubernator.
 
 func startGubernatorCluster(t *testing.T, c chan<- gubernator.HitEvent) *gubernator.Daemon {
 	var err error
-	const local = "127.0.0.1:0"
-	peers := []gubernator.PeerInfo{{GRPCAddress: local, HTTPAddress: local}}
+	peers := []gubernator.PeerInfo{{GRPCAddress: "127.0.0.1:65155", HTTPAddress: "127.0.0.1:65156"}}
 	if c != nil {
 		err = cluster.StartWith(peers, cluster.WithEventChannel(c))
 	} else {
