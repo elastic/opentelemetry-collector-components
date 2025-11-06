@@ -62,6 +62,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -77,6 +78,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -92,6 +94,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -108,6 +111,7 @@ func TestLoadConfig(t *testing.T) {
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				MetadataKeys:        []string{"project_id"},
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -123,6 +127,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -147,6 +152,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -170,6 +176,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -193,6 +200,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -217,6 +225,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -244,6 +253,23 @@ func TestLoadConfig(t *testing.T) {
 					DefaultWindowMultiplier: 1.5,
 					WindowDuration:          time.Minute,
 				},
+				GubernatorBehavior: GubernatorBehaviorBatching,
+			},
+		},
+		{
+			name: "gubernator_global",
+			expected: &Config{
+				Type: GubernatorRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
+				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorGlobal,
 			},
 		},
 		{
@@ -300,6 +326,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{

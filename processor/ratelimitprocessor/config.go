@@ -341,8 +341,9 @@ func createDefaultConfig() component.Config {
 			DefaultWindowMultiplier: 1.3,
 			WindowDuration:          2 * time.Minute,
 		},
-		Classes:      nil,
-		DefaultClass: "",
+		Classes:            nil,
+		DefaultClass:       "",
+		GubernatorBehavior: GubernatorBehaviorBatching,
 	}
 }
 
@@ -553,8 +554,6 @@ func (t RateLimiterType) Validate() error {
 func (b GubernatorBehavior) Validate() error {
 	switch b {
 	case GubernatorBehaviorBatching, GubernatorBehaviorGlobal:
-		return nil
-	case "":
 		return nil
 	}
 	return fmt.Errorf(

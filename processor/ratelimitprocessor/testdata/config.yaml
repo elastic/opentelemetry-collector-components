@@ -167,3 +167,9 @@ ratelimit/invalid_gubernator_behavior:
   rate: 1
   burst: 1
   gubernator_behavior: foo
+
+ratelimit/gubernator_global:
+  rate: 100
+  burst: 200
+  type: gubernator
+  gubernator_behavior: global
