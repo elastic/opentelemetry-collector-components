@@ -339,6 +339,8 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 			if class.rx.MatchString(fi.funcName) {
 				className = class.name
 				lastMatchIdx = cIdx
+				// If we find a match we stop the iteration as there's not going to
+				// be a higher priority match (decreasing priority ordering).
 				break
 			}
 		}
@@ -369,14 +371,13 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 	nativeCounts := make(map[attrInfo]int64)
 	kernelCounts := make(map[attrInfo]int64)
 
-	// Process all samples and extract metric counts
+	// Process all samples and increment metric counts
 	for _, sample := range profile.Sample().All() {
 		multiplier := max(int64(sample.TimestampsUnixNano().Len()), 1)
 		stack := stackTable.At(int(sample.StackIndex()))
 		if err := c.classifyFrames(dictionary, stack.LocationIndices(),
 			counts, nativeCounts, kernelCounts, multiplier); err != nil {
 			c.logger.Error("classifyFrames", zap.Error(err))
-			continue
 		}
 	}
 
