@@ -126,6 +126,9 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	}
 	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
 		Addresses: []string{a.config.Endpoint},
+		Header: map[string][]string{
+			"User-Agent": {"foobar"},
+		},
 		Transport: httpClient.Transport,
 		Instrumentation: elasticsearch.NewOpenTelemetryInstrumentation(
 			a.telemetrySettings.TracerProvider, false,
@@ -203,7 +206,6 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	}
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
-	req.Header("User-Agent", "foobar")
 	req.Request(&hasprivileges.Request{Application: applications})
 	resp, err := req.Do(ctx)
 	if err != nil {
