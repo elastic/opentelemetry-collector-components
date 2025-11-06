@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,9 +34,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/extension/extensiontest"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 )
 
 const user = "test"
@@ -198,8 +202,9 @@ func TestAuthenticator_Caching(t *testing.T) {
 
 func TestAuthenticator_UserAgent(t *testing.T) {
 	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		// Verify that the User-Agent header is set to "foobar"
-		assert.Equal(t, "foobar", r.Header.Get("User-Agent"))
+		wantPrefix := "OpenTelemetry Collector/latest ("
+		userAgent := r.Header.Get("User-Agent")
+		assert.Truef(t, strings.HasPrefix(userAgent, wantPrefix), "want %s; got %s", wantPrefix, userAgent)
 		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
 	})
 
@@ -497,7 +502,7 @@ func BenchmarkAuthenticator(b *testing.B) {
 
 func newTestAuthenticator(t testing.TB, srv *httptest.Server, config *Config) *authenticator {
 	config.Endpoint = srv.URL
-	auth, err := newAuthenticator(config, componenttest.NewNopTelemetrySettings())
+	auth, err := newAuthenticator(config, extensiontest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
 
 	err = auth.Start(context.Background(), componenttest.NewNopHost())

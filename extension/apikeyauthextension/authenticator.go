@@ -27,10 +27,12 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
+	"runtime"
 	"strings"
 
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/extensionauth"
 	"golang.org/x/crypto/pbkdf2"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
@@ -91,13 +93,14 @@ func (a *authData) GetAttributeNames() []string {
 type authenticator struct {
 	config            *Config
 	telemetrySettings component.TelemetrySettings
+	userAgent         string
 
 	esClient *elasticsearch.TypedClient
 	cache    freelru.Cache[string, *cacheEntry]
 	salt     [16]byte // used for deriving keys from API Keys
 }
 
-func newAuthenticator(cfg *Config, set component.TelemetrySettings) (*authenticator, error) {
+func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, error) {
 	cache, err := freelru.NewSharded[string, *cacheEntry](cfg.Cache.Capacity, func(key string) uint32 {
 		h := fnv.New32a()
 		h.Write([]byte(key))
@@ -108,9 +111,18 @@ func newAuthenticator(cfg *Config, set component.TelemetrySettings) (*authentica
 	}
 	cache.SetLifetime(cfg.Cache.TTL)
 
+	userAgent := fmt.Sprintf(
+		"%s/%s (%s/%s)",
+		set.BuildInfo.Description,
+		set.BuildInfo.Version,
+		runtime.GOOS,
+		runtime.GOARCH,
+	)
+
 	authenticator := &authenticator{
 		config:            cfg,
-		telemetrySettings: set,
+		telemetrySettings: set.TelemetrySettings,
+		userAgent:         userAgent,
 		cache:             cache,
 	}
 	if _, err := rand.Read(authenticator.salt[:]); err != nil {
@@ -127,7 +139,7 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
 		Addresses: []string{a.config.Endpoint},
 		Header: map[string][]string{
-			"User-Agent": {"foobar"},
+			"User-Agent": {a.userAgent},
 		},
 		Transport: httpClient.Transport,
 		Instrumentation: elasticsearch.NewOpenTelemetryInstrumentation(
