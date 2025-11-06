@@ -8,19 +8,19 @@ The following telemetry is emitted by this component.
 
 ### otelcol_ratelimit.concurrent_requests
 
-Number of in-flight requests at any given time [development]
+Number of in-flight requests at any given time [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| {requests} | Gauge | Int | development |
+| {requests} | Gauge | Int | Development |
 
 ### otelcol_ratelimit.dynamic.escalations
 
-Total number of dynamic rate escalations (dynamic > static)
+Total number of dynamic rate escalations (dynamic > static) [Development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| {count} | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {count} | Sum | Int | true | Development |
 
 #### Attributes
 
@@ -32,27 +32,27 @@ Total number of dynamic rate escalations (dynamic > static)
 
 ### otelcol_ratelimit.request_duration
 
-Time(in seconds) taken to process a rate limit request [development]
+Time(in seconds) taken to process a rate limit request [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| {seconds} | Histogram | Double | development |
+| {seconds} | Histogram | Double | Development |
 
 ### otelcol_ratelimit.request_size
 
-Number of bytes in received request. Only available if strategy is rate per bytes. [development]
+Number of bytes in received request. Only available if strategy is rate per bytes. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| {bytes} | Histogram | Int | development |
+| {bytes} | Histogram | Int | Development |
 
 ### otelcol_ratelimit.requests
 
-Number of rate-limiting requests [development]
+Number of rate-limiting requests [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| {requests} | Sum | Int | true | development |
+| {requests} | Sum | Int | true | Development |
 
 #### Attributes
 
@@ -63,11 +63,11 @@ Number of rate-limiting requests [development]
 
 ### otelcol_ratelimit.resolver.failures
 
-Total number of class resolver failures
+Total number of class resolver failures [Development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| {count} | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {count} | Sum | Int | true | Development |
 
 #### Attributes
 
