@@ -61,9 +61,12 @@ const (
 )
 
 var kernelClassAttrNames = [...]string{
-	kernelClassAttrPrefix + "0",
-	kernelClassAttrPrefix + "1",
-	kernelClassAttrPrefix + "2",
+	// network/ipc/disk/memory/synchronization
+	kernelClassAttrPrefix + "area",
+	// tcp/udp/other
+	kernelClassAttrPrefix + "proto",
+	// read/write
+	kernelClassAttrPrefix + "io",
 }
 
 var (
@@ -96,7 +99,9 @@ var (
 		frameTypeBeam:   metricBeam,
 	}
 
-	shlibRx   = regexp.MustCompile(`(?:.*/)?(.+)\.so`)
+	// Match a shared library name (e.g. libc.so.6)
+	shlibRx = regexp.MustCompile(`(?:.*/)?(.+)\.so`)
+	// Match a system call and extract its name (e.g. __arm64_sys_write)
 	syscallRx = regexp.MustCompile(`^(?:__x64_sys|__arm64_sys|ksys)_(\w+)`)
 
 	// The following regular expressions try to match certain kernel functions
