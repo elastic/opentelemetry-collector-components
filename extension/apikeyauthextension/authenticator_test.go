@@ -196,6 +196,20 @@ func TestAuthenticator_Caching(t *testing.T) {
 	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = API Key "id2" unauthorized`)
 }
 
+func TestAuthenticator_UserAgent(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		// Verify that the User-Agent header is set to "foobar"
+		assert.Equal(t, "foobar", r.Header.Get("User-Agent"))
+		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
+	})
+
+	authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	assert.NoError(t, err)
+}
+
 func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 	for name, testcase := range map[string]struct {
 		setup            func(*testing.T) (*authenticator, map[string][]string)

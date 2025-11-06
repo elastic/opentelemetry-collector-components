@@ -203,6 +203,7 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	}
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
+	req.Header("User-Agent", "foobar")
 	req.Request(&hasprivileges.Request{Application: applications})
 	resp, err := req.Do(ctx)
 	if err != nil {
