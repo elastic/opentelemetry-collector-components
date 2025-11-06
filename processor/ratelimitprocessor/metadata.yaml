@@ -26,6 +26,8 @@ telemetry:
       enabled: true
       description: Total number of dynamic rate escalations (dynamic > static)
       unit: "{count}"
+      stability:
+        level: development
       sum:
         value_type: int
         monotonic: true
@@ -95,6 +97,8 @@ telemetry:
       enabled: true
       description: Total number of class resolver failures
       unit: "{count}"
+      stability:
+        level: development
       sum:
         value_type: int
         monotonic: true

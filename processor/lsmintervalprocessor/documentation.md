@@ -8,11 +8,11 @@ The following telemetry is emitted by this component.
 
 ### otelcol_lsminterval.exported_bytes
 
-The size in bytes of metric data points exported by the processor. [development]
+The size in bytes of metric data points exported by the processor. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| By | Sum | Int | true | development |
+| By | Sum | Int | true | Development |
 
 #### Attributes
 
@@ -22,11 +22,11 @@ The size in bytes of metric data points exported by the processor. [development]
 
 ### otelcol_lsminterval.exported_data_points
 
-The count of metric data points exported by the processor. [development]
+The count of metric data points exported by the processor. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| {count} | Sum | Int | true | development |
+| {count} | Sum | Int | true | Development |
 
 #### Attributes
 
@@ -36,128 +36,128 @@ The count of metric data points exported by the processor. [development]
 
 ### otelcol_lsminterval.pebble_compacted_bytes_read
 
-The size in bytes read by pebble during compaction. [development]
+The size in bytes read by pebble during compaction. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| By | Sum | Int | true | development |
+| By | Sum | Int | true | Development |
 
 ### otelcol_lsminterval.pebble_compacted_bytes_written
 
-The size in bytes written by pebble during compaction. [development]
+The size in bytes written by pebble during compaction. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| By | Sum | Int | true | development |
+| By | Sum | Int | true | Development |
 
 ### otelcol_lsminterval.pebble_compactions
 
-The number of pebble table compactions. [development]
+The number of pebble table compactions. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| 1 | Sum | Int | true | development |
+| 1 | Sum | Int | true | Development |
 
 ### otelcol_lsminterval.pebble_flushed_bytes
 
-The size in bytes written by pebble during flush. [development]
+The size in bytes written by pebble during flush. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| By | Sum | Int | true | development |
+| By | Sum | Int | true | Development |
 
 ### otelcol_lsminterval.pebble_flushes
 
-The number of pebble memtable flushes to disk. [development]
+The number of pebble memtable flushes to disk. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| 1 | Sum | Int | true | development |
+| 1 | Sum | Int | true | Development |
 
 ### otelcol_lsminterval.pebble_ingested_bytes
 
-The size in bytes ingested to pebble. [development]
+The size in bytes ingested to pebble. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| By | Sum | Int | true | development |
+| By | Sum | Int | true | Development |
 
 ### otelcol_lsminterval.pebble_keys_tombstones
 
-The approximate number of delete keys across the pebble storage engine. [development]
+The approximate number of delete keys across the pebble storage engine. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| 1 | Gauge | Int | development |
+| 1 | Gauge | Int | Development |
 
 ### otelcol_lsminterval.pebble_marked_for_compaction_files
 
-The current number of pebble SSTables marked for compaction. [development]
+The current number of pebble SSTables marked for compaction. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| 1 | Gauge | Int | development |
+| 1 | Gauge | Int | Development |
 
 ### otelcol_lsminterval.pebble_pending_compaction
 
-The estimated size in bytes of pending compaction in pebble. [development]
+The estimated size in bytes of pending compaction in pebble. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| By | Gauge | Int | development |
+| By | Gauge | Int | Development |
 
 ### otelcol_lsminterval.pebble_read_amplification
 
-The current pebble db read amplification. [development]
+The current pebble db read amplification. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| 1 | Gauge | Int | development |
+| 1 | Gauge | Int | Development |
 
 ### otelcol_lsminterval.pebble_readers_memory
 
-The estimated size in bytes of memory used by pebble index and filter blocks. [development]
+The estimated size in bytes of memory used by pebble index and filter blocks. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| By | Gauge | Int | development |
+| By | Gauge | Int | Development |
 
 ### otelcol_lsminterval.pebble_sstables
 
-The current number of pebble storage engine SSTables. [development]
+The current number of pebble storage engine SSTables. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| 1 | Gauge | Int | development |
+| 1 | Gauge | Int | Development |
 
 ### otelcol_lsminterval.pebble_total_disk_usage
 
-The current size in bytes of disk used by pebble, including live and obsolete files. [development]
+The current size in bytes of disk used by pebble, including live and obsolete files. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| By | Gauge | Int | development |
+| By | Gauge | Int | Development |
 
 ### otelcol_lsminterval.pebble_total_memtable_size
 
-The current size in bytes of pebble memtable. [development]
+The current size in bytes of pebble memtable. [Development]
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
-| By | Gauge | Int | development |
+| By | Gauge | Int | Development |
 
 ### otelcol_lsminterval.processed_bytes
 
-The size in bytes of metric data points processed by the processor. [development]
+The size in bytes of metric data points processed by the processor. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| By | Sum | Int | true | development |
+| By | Sum | Int | true | Development |
 
 ### otelcol_lsminterval.processed_data_points
 
-The count of metric data points processed by the processor. [development]
+The count of metric data points processed by the processor. [Development]
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| {count} | Sum | Int | true | development |
+| {count} | Sum | Int | true | Development |
