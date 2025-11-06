@@ -204,7 +204,7 @@ func TestAuthenticator_UserAgent(t *testing.T) {
 	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
 		wantPrefix := "OpenTelemetry Collector/latest ("
 		userAgent := r.Header.Get("User-Agent")
-		assert.Truef(t, strings.HasPrefix(userAgent, wantPrefix), "want %s; got %s", wantPrefix, userAgent)
+		assert.Truef(t, strings.HasPrefix(userAgent, wantPrefix), "want prefix %s; got %s", wantPrefix, userAgent)
 		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
 	})
 
