@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/gubernator-io/gubernator/v2"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
@@ -62,7 +63,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -78,7 +78,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -94,7 +93,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -111,7 +109,6 @@ func TestLoadConfig(t *testing.T) {
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
 				MetadataKeys:        []string{"project_id"},
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -127,7 +124,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -152,7 +148,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -176,7 +171,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -200,7 +194,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -225,7 +218,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -253,7 +245,6 @@ func TestLoadConfig(t *testing.T) {
 					DefaultWindowMultiplier: 1.5,
 					WindowDuration:          time.Minute,
 				},
-				GubernatorBehavior: GubernatorBehaviorBatching,
 			},
 		},
 		{
@@ -269,7 +260,7 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorGlobal,
+				GubernatorBehavior:  gubernator.Behavior_GLOBAL,
 			},
 		},
 		{
@@ -294,7 +285,7 @@ func TestLoadConfig(t *testing.T) {
 		},
 		{
 			name:        "invalid_gubernator_behavior",
-			expectedErr: `invalid gubernator behavior "foo", expected one of ["batching" "global"]`,
+			expectedErr: `invalid gubernator behavior 123, expected one of [0 1 2]`,
 		},
 		{
 			name:        "invalid_default_class",
@@ -326,7 +317,6 @@ func TestLoadConfig(t *testing.T) {
 					RetryDelay:       1 * time.Second,
 				},
 				DynamicRateLimiting: defaultDynamicRateLimiting,
-				GubernatorBehavior:  GubernatorBehaviorBatching,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{

@@ -127,22 +127,13 @@ func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder 
 	return &gubernatorRateLimiter{
 		cfg:                cfg,
 		logger:             logger,
-		behavior:           guberBehavior(cfg.GubernatorBehavior),
+		behavior:           cfg.GubernatorBehavior,
 		daemonCfg:          daemonCfg,
 		telemetryBuilder:   telemetryBuilder,
 		tracerProvider:     tracerProvider,
 		classResolver:      noopResolver{},
 		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DynamicRateLimiting.DefaultWindowMultiplier},
 	}, nil
-}
-
-func guberBehavior(b GubernatorBehavior) gubernator.Behavior {
-	switch b {
-	case GubernatorBehaviorGlobal:
-		return gubernator.Behavior_GLOBAL
-	default:
-		return gubernator.Behavior_BATCHING
-	}
 }
 
 func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) (err error) {

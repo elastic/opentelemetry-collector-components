@@ -7,21 +7,22 @@ a in-memory rate limiter, or makes use of a [gubernator](https://github.com/gube
 
 ## Configuration
 
-| Field               | Description                                                                                                                                                                                                       | Required | Default    |
-|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|
-| `metadata_keys`     | List of metadata keys inside the request's context that will be used to create a unique key to make a [rate limit request](https://pkg.go.dev/github.com/mailgun/gubernator/v2#section-readme) to the gubernator. | No       |            |
-| `strategy`          | Rate limit by requests (`requests`), records (`records`), or by bytes (`bytes`). If by `records`, then it will limit what is applicable between log record, span, metric data point, or profile sample.           | Yes      | `requests` |
-| `rate`              | Bucket refill rate, in tokens per second.                                                                                                                                                                         | Yes      |            |
-| `burst`             | Maximum number of tokens that can be consumed.                                                                                                                                                                    | Yes      |            |
-| `throttle_behavior` | Processor behavior for when the rate limit is exceeded. Options are `error`, return an error immediately on throttle and does not send the event, and `delay`, delay the sending until it is no longer throttled. | Yes      | `error`    |
-| `throttle_interval` | Time interval for throttling. It has effects only when `type` is `gubernator`.                                                                                                                                    | No       | `1s`       |
-| `retry_delay`       | Suggested client retry delay included via gRPC `RetryInfo` when throttled.                                                                                                                                        | No       | `1s`       |
-| `type`              | Type of rate limiter. Options are `local` or `gubernator`.                                                                                                                                                        | No       | `local`    |
-| `overrides`         | Allows customizing rate limiting parameters for specific metadata key-value pairs. Use this to apply different rate limits to different tenants, projects, or other entities identified by metadata. Each override is identified by a set of metadata key values and can specify custom `rate`, `burst`, and `throttle_interval` settings that take precedence over the global configuration for matching requests. | No       |            |
-| `dynamic_limits`    | Holds the dynamic rate limiting configuration. This is only applicable when the rate limiter type is `gubernator`.                                                                                                | No       |            |
-| `classes`           | Named rate limit class definitions for class-based dynamic rate limiting. Only applicable when the rate limiter type is `gubernator`.                                                                             | No       |            |
-| `default_class`     | Default class name to use when resolver returns unknown/empty class. Must exist in classes when set. Only applicable when the rate limiter type is `gubernator`.                                                  | No       |            |
-| `class_resolver`    | Extension ID used to resolve a class name for a given unique key. Only applicable when the rate limiter type is `gubernator`.                                                                                     | No       |            |
+| Field                 | Description                                                                                                                                                                                                                                                                                                                                                                                                         | Required | Default        |
+|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------|
+| `metadata_keys`       | List of metadata keys inside the request's context that will be used to create a unique key to make a [rate limit request](https://pkg.go.dev/github.com/mailgun/gubernator/v2#section-readme) to the gubernator.                                                                                                                                                                                                   | No       |                |
+| `strategy`            | Rate limit by requests (`requests`), records (`records`), or by bytes (`bytes`). If by `records`, then it will limit what is applicable between log record, span, metric data point, or profile sample.                                                                                                                                                                                                             | Yes      | `requests`     |
+| `rate`                | Bucket refill rate, in tokens per second.                                                                                                                                                                                                                                                                                                                                                                           | Yes      |                |
+| `burst`               | Maximum number of tokens that can be consumed.                                                                                                                                                                                                                                                                                                                                                                      | Yes      |                |
+| `throttle_behavior`   | Processor behavior for when the rate limit is exceeded. Options are `error`, return an error immediately on throttle and does not send the event, and `delay`, delay the sending until it is no longer throttled.                                                                                                                                                                                                   | Yes      | `error`        |
+| `throttle_interval`   | Time interval for throttling. It has effects only when `type` is `gubernator`.                                                                                                                                                                                                                                                                                                                                      | No       | `1s`           |
+| `retry_delay`         | Suggested client retry delay included via gRPC `RetryInfo` when throttled.                                                                                                                                                                                                                                                                                                                                          | No       | `1s`           |
+| `type`                | Type of rate limiter. Options are `local` or `gubernator`.                                                                                                                                                                                                                                                                                                                                                          | No       | `local`        |
+| `overrides`           | Allows customizing rate limiting parameters for specific metadata key-value pairs. Use this to apply different rate limits to different tenants, projects, or other entities identified by metadata. Each override is identified by a set of metadata key values and can specify custom `rate`, `burst`, and `throttle_interval` settings that take precedence over the global configuration for matching requests. | No       |                |
+| `dynamic_limits`      | Holds the dynamic rate limiting configuration. This is only applicable when the rate limiter type is `gubernator`.                                                                                                                                                                                                                                                                                                  | No       |                |
+| `classes`             | Named rate limit class definitions for class-based dynamic rate limiting. Only applicable when the rate limiter type is `gubernator`.                                                                                                                                                                                                                                                                               | No       |                |
+| `default_class`       | Default class name to use when resolver returns unknown/empty class. Must exist in classes when set. Only applicable when the rate limiter type is `gubernator`.                                                                                                                                                                                                                                                    | No       |                |
+| `class_resolver`      | Extension ID used to resolve a class name for a given unique key. Only applicable when the rate limiter type is `gubernator`.                                                                                                                                                                                                                                                                                       | No       |                |
+| `gubernator_behavior` | Behavior of the `gubernator` rate limiter. Options are `0` (BATCHING), `1` (NON_BATCHING) or `2` (GLOBAL). See [gubernator architecture docs](https://github.com/gubernator-io/gubernator/blob/master/docs/architecture.md#global-behavior) for more information.                                                                                                                                                   | No       | `0` (BATCHING) |
 
 ### Overrides
 
@@ -204,6 +205,24 @@ processors:
       enabled: true
       window_multiplier: 1.5
       window_duration: 1m
+```
+
+Example when using as a distributed rate limiter (Gubernator) with GLOBAL behavior:
+
+```yaml
+processors:
+  ratelimiter:
+    metadata_keys:
+    - x-tenant-id
+    rate: 1000
+    burst: 10000
+    strategy: requests
+    type: gubernator
+    # The behavior of the rate limit in gubernator.
+    # 0 = BATCHING (Enables batching of requests to peers)
+    # 1 = NO_BATCHING (Disables batching)
+    # 2 = GLOBAL (Enable global caching for this rate limit)
+    gubernator_behavior: 2
 ```
 
 ### Class-Based Dynamic Rate Limiting

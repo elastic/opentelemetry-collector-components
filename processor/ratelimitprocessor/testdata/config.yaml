@@ -166,10 +166,11 @@ ratelimit/deprecated_overrides:
 ratelimit/invalid_gubernator_behavior:
   rate: 1
   burst: 1
-  gubernator_behavior: foo
+  type: gubernator
+  gubernator_behavior: 123
 
 ratelimit/gubernator_global:
   rate: 100
   burst: 200
   type: gubernator
-  gubernator_behavior: global
+  gubernator_behavior: 2
