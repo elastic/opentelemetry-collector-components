@@ -280,7 +280,7 @@ resourceLogs:
               - key: http.request.cookies.c2
                 value:
                   stringValue: string_value:"v2"
-              - key: http.request.body
+              - key: http.request.body.original
                 value:
                   stringValue: Hello World
               - key: http.request.referrer

@@ -62,9 +62,6 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.id
-                value:
-                  stringValue: 945254c567a5417e
               - key: transaction.name
                 value:
                   stringValue: ""
@@ -83,6 +80,9 @@ resourceSpans:
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.id
+                value:
+                  stringValue: 945254c567a5417e
               - key: transaction.span_count.started
                 value:
                   intValue: "43"
