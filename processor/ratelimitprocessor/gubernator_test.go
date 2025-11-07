@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -157,7 +158,7 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 	)
 
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			rateLimiter := newTestGubernatorRateLimiter(t, &Config{
 				Type: GubernatorRateLimiter,
 				RateLimitSettings: RateLimitSettings{
@@ -241,7 +242,7 @@ func normalizeHits(hits int, windowPeriod time.Duration) int {
 
 func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			for _, throttleBehavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
 				t.Run(string(throttleBehavior), func(t *testing.T) {
 					rateLimiter := newTestGubernatorRateLimiter(t, &Config{
@@ -277,7 +278,7 @@ func TestGubernatorRateLimiter_RateLimit(t *testing.T) {
 
 func TestGubernatorRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			rateLimiter := newTestGubernatorRateLimiter(t, &Config{
 				Type: GubernatorRateLimiter,
 				RateLimitSettings: RateLimitSettings{
@@ -325,7 +326,7 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 	)
 
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			config := &Config{
 				Type: GubernatorRateLimiter,
 				RateLimitSettings: RateLimitSettings{
@@ -506,7 +507,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 	}
 
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			t.Run("override_with_disable_dynamic_disables_dynamic", func(t *testing.T) {
 				eventChannel := make(chan gubernator.HitEvent, EventBufferSize)
 				// OVERRIDES
@@ -646,7 +647,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 
 func TestGubernatorRateLimiter_ClassResolver(t *testing.T) {
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			eventChannel := make(chan gubernator.HitEvent, 20)
 			rateLimiter := newTestGubernatorRateLimiter(t, &Config{
 				Type: GubernatorRateLimiter,
@@ -786,7 +787,7 @@ func TestGubernatorRateLimiter_LoadClassResolverExtension(t *testing.T) {
 
 func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			eventChannel := make(chan gubernator.HitEvent, 20)
 			windowDuration := 100 * time.Millisecond
 			staticRatePerSec := 500
@@ -961,7 +962,7 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 	)
 
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			baseCfg := &Config{
 				Type: GubernatorRateLimiter,
 				RateLimitSettings: RateLimitSettings{
@@ -1093,7 +1094,7 @@ func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
 	)
 
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			t.Run("failure_uses_default_class_and_counts", func(t *testing.T) {
 				cfg := &Config{
 					Type: GubernatorRateLimiter,
@@ -1314,7 +1315,7 @@ func assertRequestRateLimitEvent(t *testing.T, uniqueKey string,
 
 func TestGubernatorRateLimiter_MultipleRequests_Delay(t *testing.T) {
 	for _, behavior := range availableGubernatorBehaviors {
-		t.Run(string(behavior), func(t *testing.T) {
+		t.Run(strings.ToLower(behavior.String()), func(t *testing.T) {
 			throttleInterval := 100 * time.Millisecond
 			rl := newTestGubernatorRateLimiter(t, &Config{
 				RateLimitSettings: RateLimitSettings{
