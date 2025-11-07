@@ -20,7 +20,7 @@ To release a single component:
 All components in the repository can be released together as part of a coordinated release.
 The process for releasing all components is described in the section below.
 
-## (Optional) Updating upstream OTel dependencies
+### (Optional) Updating upstream OTel dependencies
 
 Normally the following steps are not required for releasing the components. The update of otel based on upstream
 is automated and should not be performed manually unless there are specific reasons for this.
@@ -39,7 +39,7 @@ is automated and should not be performed manually unless there are specific reas
    - Open the PR
      🛑 **Do not move forward until this PR is merged.** 🛑
 
-## Create the new tags
+### Create the new tags
 
 2. Bump up the `module-sets.edit-base.version` in `versions.yaml` i.e. from `v0.20.0` to `v0.21.0`
 
