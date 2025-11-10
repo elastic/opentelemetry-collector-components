@@ -108,7 +108,7 @@ exporters:
       - http://localhost:9200
     auth:
       authenticator: basicauth/es
-    logs_index: logs-raw-samples
+    logs_index: logs-rawsamples
     timeout: 30s
     mapping:
       mode: ecs
@@ -153,6 +153,7 @@ service:
         - rawretriever    # Retrieve raw log from buffer
       exporters:
         - debug           # Just debug for now
+        - elasticsearch/raw
 
   telemetry:
     logs:

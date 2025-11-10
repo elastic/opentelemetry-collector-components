@@ -80,15 +80,17 @@ func (p *samplingDecideProcessor) ConsumeLogs(ctx context.Context, logs plog.Log
 		rl := resourceLogs.At(i)
 		scopeLogs := rl.ScopeLogs()
 
-		// Create resource logs entry in filtered logs
+		// Track if we need to create resource logs entry
 		var filteredRL plog.ResourceLogs
+		rlCreated := false
 
 		for j := 0; j < scopeLogs.Len(); j++ {
 			sl := scopeLogs.At(j)
 			logRecords := sl.LogRecords()
 
-			// Create scope logs entry
+			// Track if we need to create scope logs entry
 			var filteredSL plog.ScopeLogs
+			slCreated := false
 
 			for k := 0; k < logRecords.Len(); k++ {
 				lr := logRecords.At(k)
@@ -119,15 +121,19 @@ func (p *samplingDecideProcessor) ConsumeLogs(ctx context.Context, logs plog.Log
 					continue
 				}
 
-				// Log passed sampling decision - add it to filtered logs
-				if filteredRL.SchemaUrl() == "" && filteredRL.Resource().Attributes().Len() == 0 {
+				// Log passed sampling decision - create containers if needed
+				if !rlCreated {
 					filteredRL = filteredLogs.ResourceLogs().AppendEmpty()
 					rl.Resource().CopyTo(filteredRL.Resource())
+					filteredRL.SetSchemaUrl(rl.SchemaUrl())
+					rlCreated = true
 				}
 
-				if filteredSL.Scope().Name() == "" {
+				if !slCreated {
 					filteredSL = filteredRL.ScopeLogs().AppendEmpty()
 					sl.Scope().CopyTo(filteredSL.Scope())
+					filteredSL.SetSchemaUrl(sl.SchemaUrl())
+					slCreated = true
 				}
 
 				lr.CopyTo(filteredSL.LogRecords().AppendEmpty())
