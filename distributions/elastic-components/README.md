@@ -18,10 +18,82 @@ This directory contains configuration files and distribution manifests for the O
    - Elastic Pipeline Extension with localhost:9200 connection
    - Logging exporter for debugging
 
+3. **`config.sampling.yaml`** - ⭐ **NEW** Raw log sampling configuration with:
+   - Tail-based sampling for logs
+   - Raw log capture and retrieval
+   - Three-pipeline architecture (intake → prod + sampling)
+   - OTTL-based filtering for error logs
+   - See [docs/raw-sampling.md](../../docs/raw-sampling.md) for details
+
 ### Distribution Manifests
 
-1. **`manifest.yaml`** - Full Elastic distribution with all components
+1. **`manifest.yaml`** - Full Elastic distribution with all components including raw sampling
 2. **`simple-manifest.yaml`** - Simplified distribution with core components and the pipeline extension
+
+### Test Scripts
+
+- **`test-sampling.sh`** - Send test logs to validate raw sampling functionality
+
+## Quick Start: Raw Log Sampling
+
+### Build the Collector
+
+```bash
+../../.tools/builder --config manifest.yaml
+```
+
+### Run with Sampling Config
+
+```bash
+./_build/elastic-collector-with-pipeline-extension --config config.sampling.yaml
+```
+
+### Send Test Logs
+
+```bash
+# Send both error and info logs
+./test-sampling.sh both
+
+# Send only error logs (will be sampled)
+./test-sampling.sh error
+
+# Send only info logs (won't be sampled)
+./test-sampling.sh info
+
+# Send 10 error logs to test sampling rate
+./test-sampling.sh multiple
+```
+
+### Or Use curl Directly
+
+```bash
+curl -X POST http://localhost:4318/v1/logs \
+  -H "Content-Type: application/json" \
+  -d '{
+  "resourceLogs": [{
+    "resource": {
+      "attributes": [{
+        "key": "service.name",
+        "value": {"stringValue": "test-service"}
+      }]
+    },
+    "scopeLogs": [{
+      "scope": {"name": "test-scope"},
+      "logRecords": [{
+        "timeUnixNano": "1699632000000000000",
+        "severityText": "ERROR",
+        "body": {"stringValue": "{\"message\": \"Test error\", \"level\": \"error\"}"}
+      }]
+    }]
+  }]
+}'
+```
+
+**Expected Output:**
+- Production pipeline: Processed log with parsed JSON attributes
+- Sampling pipeline: Original raw log (ERROR logs only, 10% sampling rate)
+
+For complete documentation, see [docs/raw-sampling.md](../../docs/raw-sampling.md)
 
 ## Using the Elastic Pipeline Extension
 

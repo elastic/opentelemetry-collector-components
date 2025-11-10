@@ -6,7 +6,7 @@ extensions:
   basicauth/es:
     client_auth:
       username: elastic
-      password: changeme
+      password: password
   
   # Raw sampling buffer extension
   rawsamplingbuffer:
@@ -32,9 +32,9 @@ processors:
     skip_on_error: false
   
   samplingdecide:
-    # Example: Sample all logs from "Guest" network at 5% rate
-    condition: 'attributes["network.name"] == "Guest"'
-    sample_rate: 0.05
+    # Example: Sample all error logs at 10% rate
+    condition: 'severity_text == "ERROR" or attributes["level"] == "error"'
+    sample_rate: 1
     invert_match: false
   
   rawretriever:
@@ -73,6 +73,12 @@ processors:
       - context: log
         statements:
           - set(attributes["processed"], true)
+          # Parse JSON body into structured attributes
+          - merge_maps(attributes, ParseJSON(body), "upsert") where IsMatch(body, "^\\{")
+          # Extract log level from body if present
+          - set(severity_text, attributes["level"]) where attributes["level"] != nil
+          # Add processing timestamp
+          - set(attributes["processed_at"], Now())
 
 connectors:
   routing:
