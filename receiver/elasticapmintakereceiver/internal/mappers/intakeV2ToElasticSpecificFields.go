@@ -75,7 +75,7 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 			attributesMap.PutStr(attr.SpanCompositeCompressionStrategy, compressionStrategy)
 		}
 		attributesMap.PutInt(attr.SpanCompositeCount, int64(event.Span.Composite.Count))
-		attributesMap.PutInt(attr.SpanCompositeSum, int64(event.Span.Composite.Sum))
+		attributesMap.PutDouble(attr.SpanCompositeSumUs, event.Span.Composite.Sum)
 	}
 
 	if event.Span.DestinationService != nil {
