@@ -126,7 +126,6 @@ func newGubernatorRateLimiterFrom(t *testing.T, cfg *Config, daemon *gubernator.
 		cfg:                cfg,
 		logger:             telSettings.Logger,
 		telemetryBuilder:   tb,
-		behavior:           cfg.GubernatorBehavior,
 		daemonCfg:          daemon.Config(),
 		daemon:             daemon,
 		clientConn:         conn,
