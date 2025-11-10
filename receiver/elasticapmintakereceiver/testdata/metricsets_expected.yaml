@@ -28,9 +28,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -93,9 +90,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -173,9 +167,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -343,9 +334,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -426,9 +414,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
