@@ -12,6 +12,8 @@ extensions:
   - gomod: go.opentelemetry.io/collector/extension/memorylimiterextension v0.138.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/elasticpipelineextension v0.0.1
     path: ../../extension/elasticpipelineextension
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/rawsamplingbuffer v0.0.1
+    path: ../../extension/rawsamplingbuffer
 
 receivers:
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.138.0
@@ -26,6 +28,13 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.138.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/routingprocessor v0.132.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/rawcapture v0.0.1
+    path: ../../processor/rawcapture
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/samplingdecide v0.0.1
+    path: ../../processor/samplingdecide
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/rawretriever v0.0.1
+    path: ../../processor/rawretriever
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.138.0
@@ -57,3 +66,7 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver => ../receiver/elasticapmintakereceiver
   - github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver => ../receiver/integrationreceiver
   - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
+  - github.com/elastic/opentelemetry-collector-components/extension/rawsamplingbuffer => ../extension/rawsamplingbuffer
+  - github.com/elastic/opentelemetry-collector-components/processor/rawcapture => ../processor/rawcapture
+  - github.com/elastic/opentelemetry-collector-components/processor/samplingdecide => ../processor/samplingdecide
+  - github.com/elastic/opentelemetry-collector-components/processor/rawretriever => ../processor/rawretriever

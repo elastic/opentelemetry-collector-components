@@ -1,0 +1,15 @@
+type: samplingdecide
+
+status:
+  class: processor
+  stability:
+    development: [logs]
+  distributions: []
+  codeowners:
+    active: [joereuter]
+
+tests:
+  config:
+    condition: 'attributes["network.name"] == "Guest"'
+    sample_rate: 0.05
+    invert_match: false

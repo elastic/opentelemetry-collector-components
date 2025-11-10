@@ -1,0 +1,144 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  basicauth/es:
+    client_auth:
+      username: elastic
+      password: changeme
+  
+  # Raw sampling buffer extension
+  rawsamplingbuffer:
+    buffer_size: 10000
+    max_entry_size: 1048576  # 1MB
+    ttl: 5m
+    eviction_policy: lru
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # == Custom Raw Sampling Processors ==
+  
+  rawcapture:
+    attribute_key: raw.id
+    extension_name: rawsamplingbuffer
+    skip_on_error: false
+  
+  samplingdecide:
+    # Example: Sample all logs from "Guest" network at 5% rate
+    condition: 'attributes["network.name"] == "Guest"'
+    sample_rate: 0.05
+    invert_match: false
+  
+  rawretriever:
+    attribute_key: raw.id
+    extension_name: rawsamplingbuffer
+    remove_attribute: true
+    on_retrieval_error: drop
+  
+  # == Standard Processors ==
+  
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: production
+        action: upsert
+  
+  attributes:
+    actions:
+      - key: environment
+        value: production
+        action: insert
+  
+  # Drop the raw.id attribute from production logs
+  attributes/drop_id:
+    actions:
+      - key: raw.id
+        action: delete
+  
+  transform:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["processed"], true)
+
+exporters:
+  debug:
+    verbosity: detailed
+  
+  # Production Elasticsearch exporter
+  elasticsearch/prod:
+    endpoints:
+      - http://localhost:9200
+    auth:
+      authenticator: basicauth/es
+    logs_index: logs-production
+    timeout: 30s
+    mapping:
+      mode: ecs
+  
+  # Raw logs Elasticsearch exporter
+  elasticsearch/raw:
+    endpoints:
+      - http://localhost:9200
+    auth:
+      authenticator: basicauth/es
+    logs_index: logs-raw-samples
+    timeout: 30s
+    mapping:
+      mode: ecs
+
+service:
+  extensions:
+    - health_check
+    - pprof
+    - basicauth/es
+    - rawsamplingbuffer
+  
+  pipelines:
+    # == 1. Production Pipeline ==
+    logs/prod:
+      receivers:
+        - otlp
+      processors:
+        - rawcapture      # 1. Captures raw log, stores in buffer, adds raw.id
+        - resource        # 2. Standard processing
+        - attributes
+        - transform
+        - attributes/drop_id  # 3. Remove raw.id attribute
+        - batch           # 4. Batch before export
+      exporters:
+        - elasticsearch/prod
+        - debug
+    
+    # == 2. Sampling Pipeline (Raw Logs) ==
+    logs/sampling:
+      receivers:
+        - otlp
+      processors:
+        - rawcapture      # 1. Captures raw log, stores in buffer, adds raw.id (must be same as prod)
+        - resource        # 2. Standard processing (same as prod)
+        - attributes
+        - transform
+        - batch           # 3. Batch before filtering
+        - samplingdecide  # 4. Evaluate condition, drop non-matches
+        - rawretriever    # 5. Retrieve raw log from buffer
+      exporters:
+        - elasticsearch/raw
+        - debug
+
+  telemetry:
+    logs:
+      level: info

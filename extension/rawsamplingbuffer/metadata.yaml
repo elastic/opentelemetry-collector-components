@@ -1,0 +1,16 @@
+type: rawsamplingbuffer
+
+status:
+  class: extension
+  stability:
+    development: [extension]
+  distributions: []
+  codeowners:
+    active: [joereuter]
+
+tests:
+  config:
+    buffer_size: 1000
+    max_entry_size: 1048576
+    ttl: 5m
+    eviction_policy: lru

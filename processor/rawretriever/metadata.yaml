@@ -1,0 +1,16 @@
+type: rawretriever
+
+status:
+  class: processor
+  stability:
+    development: [logs]
+  distributions: []
+  codeowners:
+    active: [joereuter]
+
+tests:
+  config:
+    attribute_key: raw.id
+    extension_name: rawsamplingbuffer
+    remove_attribute: true
+    on_retrieval_error: drop
