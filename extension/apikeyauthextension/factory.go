@@ -36,5 +36,5 @@ func NewFactory() extension.Factory {
 }
 
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
-	return newAuthenticator(cfg.(*Config), set.TelemetrySettings)
+	return newAuthenticator(cfg.(*Config), set)
 }
