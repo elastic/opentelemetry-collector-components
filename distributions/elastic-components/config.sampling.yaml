@@ -14,6 +14,16 @@ extensions:
     max_entry_size: 1048576  # 1MB
     ttl: 5m
     eviction_policy: lru
+  
+  # Dynamic sampling configuration extension
+  # Fetches sampling rules from Elasticsearch for real-time updates
+  samplingconfigextension:
+    endpoint: http://localhost:9200
+    username: elastic
+    password: password
+    config_index: .elastic-sampling-config
+    poll_interval: 3s  # Check for updates every 30 seconds
+    default_sample_rate: 0.0
 
 receivers:
   otlp:
@@ -32,10 +42,15 @@ processors:
     skip_on_error: false
   
   samplingdecide:
-    # Example: Sample all error logs at 10% rate
+    # Static fallback: Sample all error logs at 100% rate
+    # These settings are used when no dynamic rule matches
     condition: 'severity_text == "ERROR" or attributes["level"] == "error"'
-    sample_rate: 1
+    sample_rate: 1.0
     invert_match: false
+    
+    # Enable dynamic configuration from Elasticsearch
+    # Rules from the extension override static config when matched
+    extension_name: samplingconfigextension
   
   rawretriever:
     attribute_key: raw.id
@@ -122,6 +137,7 @@ service:
     - pprof
     - basicauth/es
     - rawsamplingbuffer
+    - samplingconfigextension  # Add dynamic config extension
   
   pipelines:
     # == 1. Intake Pipeline ==

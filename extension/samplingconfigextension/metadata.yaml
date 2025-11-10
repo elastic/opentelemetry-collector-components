@@ -1,0 +1,9 @@
+type: samplingconfigextension
+
+status:
+  class: extension
+  stability:
+    development: [extension]
+  distributions: []
+  codeowners:
+    active: [elastic/stack-monitoring]

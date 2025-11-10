@@ -33,6 +33,11 @@ type Config struct {
 
 	// InvertMatch inverts the condition logic.
 	InvertMatch bool `mapstructure:"invert_match"`
+
+	// ExtensionName is the name of the samplingconfigextension to use for dynamic configuration.
+	// If set, the processor will query the extension for sampling rules that override the
+	// static configuration above.
+	ExtensionName string `mapstructure:"extension_name"`
 }
 
 var _ component.Config = (*Config)(nil)
