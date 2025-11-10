@@ -1,0 +1,12 @@
+type: rawsample
+
+status:
+  class: exporter
+  stability:
+    development: [logs]
+  distributions: []
+  codeowners:
+    active: [joereuter]
+  warnings: []
+
+resource_attributes: {}

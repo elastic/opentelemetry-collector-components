@@ -102,16 +102,19 @@ exporters:
     mapping:
       mode: ecs
   
-  # Raw logs Elasticsearch exporter
-  elasticsearch/raw:
-    endpoints:
-      - http://localhost:9200
-    auth:
-      authenticator: basicauth/es
-    logs_index: logs-rawsamples
+  # Raw sample exporter - sends to sample API
+  rawsample:
+    endpoint: http://localhost:9200
+    username: elastic
+    password: changeme
+    index: logs-raw-samples
+    max_batch_size: 100
     timeout: 30s
-    mapping:
-      mode: ecs
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
 
 service:
   extensions:
@@ -152,8 +155,8 @@ service:
         - samplingdecide  # Evaluate condition, drop non-matches
         - rawretriever    # Retrieve raw log from buffer
       exporters:
-        - debug           # Just debug for now
-        - elasticsearch/raw
+        - rawsample       # Send to sample API
+        - debug           # Also debug output
 
   telemetry:
     logs:
