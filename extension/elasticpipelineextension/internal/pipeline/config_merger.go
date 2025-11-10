@@ -70,7 +70,7 @@ func (m *Manager) mergeComponentConfig(defaultCfg component.Config, providedCfg 
 		return defaultCfg, nil
 	}
 
-	m.logger.Debug("Successfully merged component configuration",
+	m.logger.Info("Successfully merged component configuration",
 		zap.Any("merged_config", mergedCfg))
 
 	return mergedCfg, nil

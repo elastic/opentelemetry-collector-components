@@ -21,7 +21,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
 )
@@ -46,8 +45,14 @@ type SourceConfig struct {
 
 // ElasticsearchConfig configures the Elasticsearch source for pipeline configurations.
 type ElasticsearchConfig struct {
-	// Elasticsearch client configuration.
-	configelasticsearch.ClientConfig `mapstructure:",squash"`
+	// Endpoint is the Elasticsearch endpoint to connect to.
+	Endpoint string `mapstructure:"endpoint"`
+
+	// Username for basic authentication
+	Username string `mapstructure:"username"`
+
+	// Password for basic authentication
+	Password string `mapstructure:"password"`
 
 	// Index is the Elasticsearch index containing pipeline configurations.
 	Index string `mapstructure:"index"`
@@ -124,6 +129,10 @@ func (cfg *Config) Unmarshal(conf *confmap.Conf) error {
 func (cfg *Config) Validate() error {
 	if cfg.Source.Elasticsearch == nil {
 		return errors.New("elasticsearch source configuration is required")
+	}
+
+	if cfg.Source.Elasticsearch.Endpoint == "" {
+		return errors.New("elasticsearch endpoint must be specified")
 	}
 
 	if cfg.Source.Elasticsearch.Index == "" {

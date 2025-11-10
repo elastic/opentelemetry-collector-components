@@ -111,6 +111,40 @@ send_multiple() {
     echo -e "\n✅ Sent 10 ERROR logs (expect ~1 to be sampled at 10% rate)\n"
 }
 
+send_loop() {
+    echo "🔄 Starting continuous log stream (1 per second, Ctrl+C to stop)..."
+    counter=1
+    while true; do
+        timestamp=$(date +%s)
+        curl -s -X POST "$ENDPOINT" \
+          -H "Content-Type: application/json" \
+          -d '{
+          "resourceLogs": [{
+            "resource": {
+              "attributes": [{
+                "key": "service.name",
+                "value": {"stringValue": "continuous-test"}
+              }]
+            },
+            "scopeLogs": [{
+              "scope": {
+                "name": "test-loop"
+              },
+              "logRecords": [{
+                "timeUnixNano": "'"${timestamp}000000000"'",
+                "body": {
+                  "stringValue": "'"Hello world, message ${counter}"'"
+                }
+              }]
+            }]
+          }]
+        }' > /dev/null
+        echo "$(date '+%H:%M:%S') - Sent log #$counter"
+        counter=$((counter + 1))
+        sleep 1
+    done
+}
+
 # Main
 case "${1:-both}" in
     error)
@@ -122,13 +156,16 @@ case "${1:-both}" in
     multiple)
         send_multiple
         ;;
+    loop)
+        send_loop
+        ;;
     both)
         send_error_log
         sleep 1
         send_info_log
         ;;
     *)
-        echo "Usage: $0 [error|info|both|multiple]"
+        echo "Usage: $0 [error|info|both|multiple|loop]"
         exit 1
         ;;
 esac

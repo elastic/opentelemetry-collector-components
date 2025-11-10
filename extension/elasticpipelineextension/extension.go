@@ -46,6 +46,11 @@ type elasticPipelineExtension struct {
 	// Pipeline management
 	pipelineManager *pipeline.Manager
 
+	// Processor configuration management
+	processorConfigs  map[string]map[string]interface{}         // key -> config
+	processorWatchers map[string][]func(map[string]interface{}) // key -> callbacks
+	processorMu       sync.RWMutex
+
 	// Health reporting
 	healthReporter *healthReporter
 
@@ -74,6 +79,8 @@ func newElasticPipelineExtension(config *Config, set extension.Settings) *elasti
 		config:            config,
 		telemetrySettings: set.TelemetrySettings,
 		logger:            set.TelemetrySettings.Logger,
+		processorConfigs:  make(map[string]map[string]interface{}),
+		processorWatchers: make(map[string][]func(map[string]interface{})),
 	}
 }
 
@@ -208,9 +215,19 @@ func (e *elasticPipelineExtension) initializeElasticsearchClient(ctx context.Con
 		return fmt.Errorf("elasticsearch configuration is required")
 	}
 
-	// Create Elasticsearch client using direct configuration
-	// For now, we'll create a basic client - this should be enhanced to use configelasticsearch
-	esClient, err := elasticsearch.NewDefaultClient()
+	// Create Elasticsearch client configuration
+	cfg := elasticsearch.Config{
+		Addresses: []string{e.config.Source.Elasticsearch.Endpoint},
+	}
+
+	// Add Basic Auth if credentials are provided
+	if e.config.Source.Elasticsearch.Username != "" {
+		cfg.Username = e.config.Source.Elasticsearch.Username
+		cfg.Password = e.config.Source.Elasticsearch.Password
+	}
+
+	// Create Elasticsearch client
+	esClient, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create Elasticsearch client: %w", err)
 	}
@@ -242,6 +259,9 @@ func (e *elasticPipelineExtension) initializeElasticsearchClient(ctx context.Con
 // onConfigurationChange handles configuration changes detected by the watcher.
 func (e *elasticPipelineExtension) onConfigurationChange(ctx context.Context, documents []esclient.PipelineDocument) error {
 	e.logger.Info("Processing configuration changes", zap.Int("document_count", len(documents)))
+
+	// Extract processor configurations from all documents
+	e.extractProcessorConfigs(documents)
 
 	for _, doc := range documents {
 		if err := e.pipelineManager.ApplyConfiguration(ctx, doc); err != nil {
@@ -296,4 +316,118 @@ func (hr *healthReporter) reportHealth(ctx context.Context) {
 				zap.String("status", health.Status))
 		}
 	}
+}
+
+// GetProcessorConfig implements ProcessorConfigProvider interface.
+// Returns the configuration for a specific processor by key.
+func (e *elasticPipelineExtension) GetProcessorConfig(ctx context.Context, key string) (map[string]interface{}, error) {
+	e.processorMu.RLock()
+	defer e.processorMu.RUnlock()
+
+	config, ok := e.processorConfigs[key]
+	if !ok {
+		return nil, fmt.Errorf("processor config not found for key: %s", key)
+	}
+
+	e.logger.Debug("Retrieved processor config", zap.String("key", key))
+	return config, nil
+}
+
+// WatchProcessorConfig implements ProcessorConfigProvider interface.
+// Registers a callback to be notified when the processor config changes.
+// Returns a cancel function to stop watching.
+func (e *elasticPipelineExtension) WatchProcessorConfig(key string, callback func(config map[string]interface{})) (cancel func()) {
+	e.processorMu.Lock()
+	defer e.processorMu.Unlock()
+
+	// Add callback to watchers
+	e.processorWatchers[key] = append(e.processorWatchers[key], callback)
+
+	e.logger.Debug("Registered processor config watcher", zap.String("key", key))
+
+	// Return cancel function
+	return func() {
+		e.processorMu.Lock()
+		defer e.processorMu.Unlock()
+
+		watchers := e.processorWatchers[key]
+		for i, cb := range watchers {
+			// Compare function pointers (this is a best-effort approach)
+			if &cb == &callback {
+				e.processorWatchers[key] = append(watchers[:i], watchers[i+1:]...)
+				e.logger.Debug("Unregistered processor config watcher", zap.String("key", key))
+				break
+			}
+		}
+	}
+}
+
+// extractProcessorConfigs extracts processor configurations from pipeline documents
+// and stores them for retrieval by dynamic processors.
+func (e *elasticPipelineExtension) extractProcessorConfigs(documents []esclient.PipelineDocument) {
+	e.processorMu.Lock()
+	defer e.processorMu.Unlock()
+
+	// Build new processor configs map
+	newConfigs := make(map[string]map[string]interface{})
+
+	for _, doc := range documents {
+		if doc.Config.Processors == nil {
+			continue
+		}
+
+		// Store each processor config with its full key (e.g., "transform/myprocessor")
+		for processorKey, processorConfig := range doc.Config.Processors {
+			if configMap, ok := processorConfig.(map[string]interface{}); ok {
+				newConfigs[processorKey] = configMap
+				e.logger.Debug("Extracted processor config",
+					zap.String("key", processorKey),
+					zap.String("pipeline_id", doc.PipelineID))
+			}
+		}
+	}
+
+	// Detect changes and notify watchers
+	for key, newConfig := range newConfigs {
+		oldConfig, existed := e.processorConfigs[key]
+
+		// Update config
+		e.processorConfigs[key] = newConfig
+
+		// Notify watchers if config changed or is new
+		if !existed || !configsEqual(oldConfig, newConfig) {
+			e.logger.Info("Processor config changed, notifying watchers",
+				zap.String("key", key),
+				zap.Int("watchers", len(e.processorWatchers[key])))
+
+			for _, callback := range e.processorWatchers[key] {
+				// Call in goroutine to avoid blocking
+				go callback(newConfig)
+			}
+		}
+	}
+
+	// Remove configs that no longer exist
+	for key := range e.processorConfigs {
+		if _, exists := newConfigs[key]; !exists {
+			delete(e.processorConfigs, key)
+			e.logger.Info("Processor config removed", zap.String("key", key))
+		}
+	}
+}
+
+// configsEqual does a simple comparison of two config maps.
+// This is a basic implementation - could be enhanced for deep comparison.
+func configsEqual(a, b map[string]interface{}) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for k, v := range a {
+		if bv, ok := b[k]; !ok || fmt.Sprintf("%v", v) != fmt.Sprintf("%v", bv) {
+			return false
+		}
+	}
+
+	return true
 }

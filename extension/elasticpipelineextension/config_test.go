@@ -64,6 +64,13 @@ func TestLoadConfig(t *testing.T) {
 			ValidateConfigs:          true,
 			DryRunMode:               true,
 		},
+		Integration: IntegrationConfig{
+			Mode:               "standalone",
+			StreamIngress:      "",
+			StreamEgress:       "",
+			ComponentPrefix:    "stream_",
+			ValidateConnectors: true,
+		},
 	}
 
 	assert.Equal(t, expected, cfg)

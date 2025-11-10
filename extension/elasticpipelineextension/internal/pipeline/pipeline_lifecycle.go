@@ -27,7 +27,7 @@ import (
 // startSignalPipelines starts all signal pipelines in the collection
 func (m *Manager) startSignalPipelines(ctx context.Context, signalPipelines map[string]*SignalPipeline) error {
 	for pipelineName, sp := range signalPipelines {
-		m.logger.Debug("Starting signal pipeline", zap.String("pipeline_name", pipelineName))
+		m.logger.Info("Starting signal pipeline", zap.String("pipeline_name", pipelineName))
 
 		// Start all receivers
 		for _, receiver := range sp.Receivers {
@@ -56,7 +56,7 @@ func (m *Manager) startSignalPipelines(ctx context.Context, signalPipelines map[
 // shutdownSignalPipelines shuts down all signal pipelines in the collection
 func (m *Manager) shutdownSignalPipelines(ctx context.Context, signalPipelines map[string]*SignalPipeline) {
 	for pipelineName, sp := range signalPipelines {
-		m.logger.Debug("Shutting down signal pipeline", zap.String("pipeline_name", pipelineName))
+		m.logger.Info("Shutting down signal pipeline", zap.String("pipeline_name", pipelineName))
 
 		// Shutdown receivers first to stop data flow
 		for _, receiver := range sp.Receivers {

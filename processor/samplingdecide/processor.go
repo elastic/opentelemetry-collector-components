@@ -155,7 +155,13 @@ func (p *samplingDecideProcessor) getConditionAndRate(ctx context.Context, lr pl
 }
 
 // getOrCompileCondition gets a cached compiled condition or compiles a new one.
+// Returns nil condition (no error) for empty condition strings, which means "always match".
 func (p *samplingDecideProcessor) getOrCompileCondition(conditionStr string) (*ottl.Condition[ottllog.TransformContext], error) {
+	// Empty condition means "always match" - return nil without error
+	if conditionStr == "" {
+		return nil, nil
+	}
+
 	p.mu.RLock()
 	cond, ok := p.conditionCache[conditionStr]
 	p.mu.RUnlock()
@@ -212,11 +218,15 @@ func (p *samplingDecideProcessor) ConsumeLogs(ctx context.Context, logs plog.Log
 				// Create OTTL transform context
 				tCtx := ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl)
 
-				// Evaluate condition
-				match, err := condition.Eval(ctx, tCtx)
-				if err != nil {
-					p.logger.Warn("Failed to evaluate condition", zap.Error(err))
-					continue
+				// Evaluate condition (nil condition means "always match")
+				match := true
+				if condition != nil {
+					var err error
+					match, err = condition.Eval(ctx, tCtx)
+					if err != nil {
+						p.logger.Warn("Failed to evaluate condition", zap.Error(err))
+						continue
+					}
 				}
 
 				// Apply invert logic

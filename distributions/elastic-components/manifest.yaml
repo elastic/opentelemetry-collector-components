@@ -33,6 +33,8 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.138.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticdynamictransform v0.0.1
+    path: ../../processor/elasticdynamictransform
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/rawcapture v0.0.1
     path: ../../processor/rawcapture
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/samplingdecide v0.0.1
@@ -75,6 +77,7 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
   - github.com/elastic/opentelemetry-collector-components/extension/rawsamplingbuffer => ../extension/rawsamplingbuffer
   - github.com/elastic/opentelemetry-collector-components/extension/samplingconfigextension => ../extension/samplingconfigextension
+  - github.com/elastic/opentelemetry-collector-components/processor/elasticdynamictransform => ../processor/elasticdynamictransform
   - github.com/elastic/opentelemetry-collector-components/processor/rawcapture => ../processor/rawcapture
   - github.com/elastic/opentelemetry-collector-components/processor/samplingdecide => ../processor/samplingdecide
   - github.com/elastic/opentelemetry-collector-components/processor/rawretriever => ../processor/rawretriever

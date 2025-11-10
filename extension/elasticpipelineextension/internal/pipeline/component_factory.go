@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -45,6 +46,26 @@ func (m *Manager) createSignalExporters(
 	var exporters []component.Component
 
 	for _, exporterName := range exporterNames {
+		// Skip connectors - they are managed by static config
+		// Connectors can be:
+		// 1. Defined in the dynamic pipeline's connectors section
+		// 2. Reference static config connectors (like routing/stream_egress)
+		// Both use "/" in the name to indicate type/instance
+		if _, existsInConnectors := config.Connectors[exporterName]; existsInConnectors {
+			m.logger.Info("Skipping connector in exporter list (defined in dynamic config)",
+				zap.String("connector", exporterName))
+			continue
+		}
+
+		// Check if this looks like a connector reference from static config
+		// Connectors always have the format "type/instance" with a "/"
+		if strings.Contains(exporterName, "/") {
+			m.logger.Info("Skipping connector reference in exporter list (from static config)",
+				zap.String("connector", exporterName))
+			continue
+		}
+
+		// Otherwise, look for it in exporters
 		exporterConfigInterface, exists := config.Exporters[exporterName]
 		if !exists {
 			return nil, fmt.Errorf("exporter %q not found in configuration", exporterName)
@@ -82,21 +103,21 @@ func (m *Manager) createSignalExporters(
 			if factory.LogsStability() != component.StabilityLevelUndefined {
 				exp, err = factory.CreateLogs(ctx, settings, mergedCfg)
 			} else {
-				m.logger.Debug("Exporter does not support logs", zap.String("exporter", exporterName))
+				m.logger.Info("Exporter does not support logs", zap.String("exporter", exporterName))
 				continue
 			}
 		case "metrics":
 			if factory.MetricsStability() != component.StabilityLevelUndefined {
 				exp, err = factory.CreateMetrics(ctx, settings, mergedCfg)
 			} else {
-				m.logger.Debug("Exporter does not support metrics", zap.String("exporter", exporterName))
+				m.logger.Info("Exporter does not support metrics", zap.String("exporter", exporterName))
 				continue
 			}
 		case "traces":
 			if factory.TracesStability() != component.StabilityLevelUndefined {
 				exp, err = factory.CreateTraces(ctx, settings, mergedCfg)
 			} else {
-				m.logger.Debug("Exporter does not support traces", zap.String("exporter", exporterName))
+				m.logger.Info("Exporter does not support traces", zap.String("exporter", exporterName))
 				continue
 			}
 		default:
@@ -112,10 +133,8 @@ func (m *Manager) createSignalExporters(
 		}
 	}
 
-	if len(exporters) == 0 {
-		return nil, fmt.Errorf("no valid exporters created for signal type %s", signalType)
-	}
-
+	// Note: It's valid to have zero exporters if all exporters are connectors
+	// managed by the static config (e.g., routing/stream_egress)
 	return exporters, nil
 }
 
@@ -185,7 +204,7 @@ func (m *Manager) createSignalProcessors(
 					currentConsumer = proc.(consumer.Logs)
 				}
 			} else {
-				m.logger.Debug("Processor does not support logs", zap.String("processor", processorName))
+				m.logger.Info("Processor does not support logs", zap.String("processor", processorName))
 				continue
 			}
 		case "metrics":
@@ -199,7 +218,7 @@ func (m *Manager) createSignalProcessors(
 					currentConsumer = proc.(consumer.Metrics)
 				}
 			} else {
-				m.logger.Debug("Processor does not support metrics", zap.String("processor", processorName))
+				m.logger.Info("Processor does not support metrics", zap.String("processor", processorName))
 				continue
 			}
 		case "traces":
@@ -213,7 +232,7 @@ func (m *Manager) createSignalProcessors(
 					currentConsumer = proc.(consumer.Traces)
 				}
 			} else {
-				m.logger.Debug("Processor does not support traces", zap.String("processor", processorName))
+				m.logger.Info("Processor does not support traces", zap.String("processor", processorName))
 				continue
 			}
 		default:
@@ -247,6 +266,25 @@ func (m *Manager) createSignalReceivers(
 	var receivers []component.Component
 
 	for _, receiverName := range receiverNames {
+		// Skip connectors - they are managed by static config
+		// Connectors can be:
+		// 1. Defined in the dynamic pipeline's connectors section
+		// 2. Reference static config connectors (like routing/stream_ingress)
+		// Both use "/" in the name to indicate type/instance
+		if _, existsInConnectors := config.Connectors[receiverName]; existsInConnectors {
+			m.logger.Info("Skipping connector in receiver list (defined in dynamic config)",
+				zap.String("connector", receiverName))
+			continue
+		}
+
+		// Check if this looks like a connector reference from static config
+		// Connectors always have the format "type/instance" with a "/"
+		if strings.Contains(receiverName, "/") {
+			m.logger.Info("Skipping connector reference in receiver list (from static config)",
+				zap.String("connector", receiverName))
+			continue
+		}
+
 		receiverConfigInterface, exists := config.Receivers[receiverName]
 		if !exists {
 			return nil, fmt.Errorf("receiver %q not found in configuration", receiverName)
@@ -288,7 +326,7 @@ func (m *Manager) createSignalReceivers(
 				}
 				recv, err = factory.CreateLogs(ctx, settings, mergedCfg, logsConsumer)
 			} else {
-				m.logger.Debug("Receiver does not support logs", zap.String("receiver", receiverName))
+				m.logger.Info("Receiver does not support logs", zap.String("receiver", receiverName))
 				continue
 			}
 		case "metrics":
@@ -299,7 +337,7 @@ func (m *Manager) createSignalReceivers(
 				}
 				recv, err = factory.CreateMetrics(ctx, settings, mergedCfg, metricsConsumer)
 			} else {
-				m.logger.Debug("Receiver does not support metrics", zap.String("receiver", receiverName))
+				m.logger.Info("Receiver does not support metrics", zap.String("receiver", receiverName))
 				continue
 			}
 		case "traces":
@@ -310,7 +348,7 @@ func (m *Manager) createSignalReceivers(
 				}
 				recv, err = factory.CreateTraces(ctx, settings, mergedCfg, tracesConsumer)
 			} else {
-				m.logger.Debug("Receiver does not support traces", zap.String("receiver", receiverName))
+				m.logger.Info("Receiver does not support traces", zap.String("receiver", receiverName))
 				continue
 			}
 		default:

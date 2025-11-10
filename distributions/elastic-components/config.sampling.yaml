@@ -22,8 +22,33 @@ extensions:
     username: elastic
     password: password
     config_index: .elastic-sampling-config
-    poll_interval: 3s  # Check for updates every 30 seconds
+    poll_interval: 30s  # Check for updates every 30 seconds
     default_sample_rate: 0.0
+  
+  # Dynamic pipeline extension
+  # Loads stream processing pipelines from Elasticsearch
+  elasticpipeline:
+    source:
+      elasticsearch:
+        endpoint: http://localhost:9200
+        username: elastic
+        password: password
+        index: .otel-pipeline-config
+        cache_duration: 5m
+    watcher:
+      poll_interval: 3s
+      cache_duration: 5m
+      filters: []
+    pipeline_management:
+      namespace: elastic
+      enable_health_reporting: true
+      health_report_interval: 60s
+      startup_timeout: 6s
+      shutdown_timeout: 30s
+      max_pipelines: 50
+      max_components_per_pipeline: 20
+      validate_configs: true
+      dry_run_mode: false
 
 receivers:
   otlp:
@@ -45,7 +70,7 @@ processors:
     # Static fallback: Sample all error logs at 100% rate
     # These settings are used when no dynamic rule matches
     condition: 'severity_text == "ERROR" or attributes["level"] == "error"'
-    sample_rate: 1.0
+    sample_rate: 0.0
     invert_match: false
     
     # Enable dynamic configuration from Elasticsearch
@@ -96,8 +121,17 @@ processors:
           - set(attributes["processed_at"], Now())
 
 connectors:
-  routing:
-    default_pipelines: []
+  # Stream ingress: Routes to sampling decision
+  # Dynamic pipeline support requires full pipeline definitions in Elasticsearch
+  routing/stream_ingress:
+    default_pipelines: [logs/sampling_decision]
+    table:
+      - statement: route()
+        pipelines: [logs/sampling_decision]
+  
+  # Output split: Routes to sampling and/or production based on sampling decision
+  routing/output_split:
+    default_pipelines: [logs/prod, logs/sampling]
     table:
       - statement: route()
         pipelines: [logs/prod, logs/sampling]
@@ -137,42 +171,74 @@ service:
     - pprof
     - basicauth/es
     - rawsamplingbuffer
-    - samplingconfigextension  # Add dynamic config extension
+    - samplingconfigextension
+    - elasticpipeline  # Dynamic pipeline extension
   
   pipelines:
-    # == 1. Intake Pipeline ==
+    # ========================================================================
+    # STAGE 1: INTAKE - Raw Capture & Basic Enrichment
+    # ========================================================================
+    # Receives incoming telemetry, captures raw data, and performs basic enrichment
+    # before routing to stream processing.
     logs/intake:
       receivers:
         - otlp
       processors:
-        - rawcapture      # 1. Captures raw log, stores in buffer, adds raw.id
-        - resource        # 2. Standard processing
-        - attributes
-        - transform
-        - batch           # 3. Batch before routing
+        - rawcapture          # 1. Captures raw log, stores in buffer, adds raw.id
+        - resource            # 2. Add deployment.environment
+        - attributes          # 3. Add environment tag
       exporters:
-        - routing         # 4. Fork to prod and sampling pipelines
+        - routing/stream_ingress  # 4. Route to stream processing
     
-    # == 2. Production Pipeline ==
-    logs/prod:
+    # ========================================================================
+    # STAGE 2: STREAM PROCESSING
+    # ========================================================================
+    # This pipeline applies dynamic transforms loaded from Elasticsearch
+    # NOTE: For processor-only configs from Elasticsearch, we need a different approach
+    # The current architecture requires full pipeline definitions in Elasticsearch
+    # including receivers, processors, and exporters
+    
+    # ========================================================================
+    # STAGE 3: SAMPLING DECISION - Evaluate & Decide
+    # ========================================================================
+    # Receives logs directly from intake (bypassing stream processing for now)
+    logs/sampling_decision:
       receivers:
-        - routing         # Receives from routing connector
+        - routing/stream_ingress  # Receives directly from intake
       processors:
-        - attributes/drop_id  # Remove raw.id attribute
+        - transform              # 4. Post-stream processing (JSON parsing, etc.)
+        - batch                  # 5. Batch before sampling decision
+        - samplingdecide         # 6. Decide what to sample (adds sampled=true attribute)
       exporters:
-        - elasticsearch/prod
-        - debug
+        - routing/output_split   # 7. Route based on sampling decision
     
-    # == 3. Sampling Pipeline (Raw Logs) ==
+    # ========================================================================
+    # STAGE 4a: SAMPLING PATH - Raw Sample Export
+    # ========================================================================
+    # For logs marked as sampled, retrieve the original raw data and send to
+    # the raw sample exporter for storage in the sampling system.
     logs/sampling:
       receivers:
-        - routing         # Receives from routing connector
+        - routing/output_split   # Receives sampled logs
       processors:
-        - samplingdecide  # Evaluate condition, drop non-matches
-        - rawretriever    # Retrieve raw log from buffer
+        - rawretriever           # Retrieve original raw log from buffer
       exporters:
-        - rawsample       # Send to sample API
-        - debug           # Also debug output
+        - rawsample              # Send raw sample to API
+        - debug                  # Debug output
+    
+    # ========================================================================
+    # STAGE 4b: PRODUCTION PATH - Processed Export
+    # ========================================================================
+    # All logs (sampled and non-sampled) go to production with processed data.
+    # The raw.id attribute is removed before export.
+    logs/prod:
+      receivers:
+        - routing/output_split   # Receives all logs
+      processors:
+        - attributes/drop_id     # Remove raw.id attribute
+      exporters:
+        - elasticsearch/prod     # Send to production Elasticsearch
+        - debug                  # Debug output
 
   telemetry:
     logs:

@@ -33,6 +33,7 @@ const (
 	defaultNamespace                = "elastic"
 	defaultHealthInterval           = 60 * time.Second
 	defaultIndex                    = ".otel-pipeline-config"
+	defaultEndpoint                 = "http://localhost:9200"
 	defaultStartupTimeout           = 60 * time.Second
 	defaultShutdownTimeout          = 30 * time.Second
 	defaultMaxPipelines             = 50
@@ -53,7 +54,8 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		Source: SourceConfig{
 			Elasticsearch: &ElasticsearchConfig{
-				Index: defaultIndex,
+				Endpoint: defaultEndpoint,
+				Index:    defaultIndex,
 			},
 		},
 		Watcher: WatcherConfig{

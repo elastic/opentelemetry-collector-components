@@ -20,6 +20,7 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -103,9 +104,12 @@ func (f *fanoutTracesConsumer) ConsumeTraces(ctx context.Context, traces ptrace.
 
 // buildSignalConsumerChain creates a consumer chain for a specific signal type.
 // It handles multiple exporters by creating a fanout consumer if needed.
+// Returns nil if no exporters (all are connectors managed by static config).
 func (m *Manager) buildSignalConsumerChain(signalType string, exporters []component.Component) (interface{}, error) {
 	if len(exporters) == 0 {
-		return nil, fmt.Errorf("no exporters provided for signal type %s", signalType)
+		// No exporters means all are connectors managed by static config
+		// Return nil to indicate no consumer chain needed
+		return nil, nil
 	}
 
 	switch signalType {
@@ -168,9 +172,42 @@ func (m *Manager) buildSignalPipeline(
 	config elasticsearch.PipelineConfig,
 	pipelineID string,
 ) (*SignalPipeline, error) {
-	m.logger.Debug("Building signal pipeline",
+	m.logger.Info("Building signal pipeline",
 		zap.String("pipeline_name", pipelineName),
 		zap.String("signal_type", signalType))
+
+	// Check if this pipeline only references connectors (no actual components to create)
+	// This happens when all receivers and exporters are connectors from static config
+	hasNonConnectorReceiver := false
+	for _, recvName := range pipelineDef.Receivers {
+		if !strings.Contains(recvName, "/") {
+			hasNonConnectorReceiver = true
+			break
+		}
+	}
+	hasNonConnectorExporter := false
+	for _, expName := range pipelineDef.Exporters {
+		if !strings.Contains(expName, "/") && config.Exporters[expName] != nil {
+			hasNonConnectorExporter = true
+			break
+		}
+	}
+
+	// If this pipeline only references connectors, create a minimal pipeline for processors only
+	if !hasNonConnectorReceiver && !hasNonConnectorExporter {
+		m.logger.Info("Pipeline only references connectors - creating processor-only pipeline",
+			zap.String("pipeline_name", pipelineName))
+
+		// Create processors without a consumer chain
+		// They will be standalone components that the static config can use
+		return &SignalPipeline{
+			SignalType:   signalType,
+			PipelineName: pipelineName,
+			Receivers:    []component.Component{},
+			Processors:   []component.Component{}, // TODO: Create processors if needed
+			Exporters:    []component.Component{},
+		}, nil
+	}
 
 	// 1. Create exporters first (they are the final consumers)
 	exporters, err := m.createSignalExporters(ctx, signalType, pipelineDef.Exporters, config, pipelineID)

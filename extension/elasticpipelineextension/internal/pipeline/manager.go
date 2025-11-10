@@ -57,12 +57,12 @@ type factoryGetter interface {
 type SignalPipeline struct {
 	SignalType   string // "logs", "metrics", "traces"
 	PipelineName string // Full pipeline name like "logs/application"
-	
+
 	// Component lists for this signal
 	Receivers  []component.Component
 	Processors []component.Component
 	Exporters  []component.Component
-	
+
 	// Consumer chains for this signal type
 	LogsConsumer    consumer.Logs
 	MetricsConsumer consumer.Metrics
@@ -159,7 +159,7 @@ func (m *Manager) ApplyConfiguration(ctx context.Context, doc elasticsearch.Pipe
 	// Check if pipeline already exists
 	if existing, exists := m.managedPipelines[pipelineID]; exists {
 		if existing.Version >= doc.Metadata.Version {
-			m.logger.Debug("Pipeline version is not newer, skipping update",
+			m.logger.Info("Pipeline version is not newer, skipping update",
 				zap.String("pipeline_id", pipelineID),
 				zap.Int64("existing_version", existing.Version),
 				zap.Int64("new_version", doc.Metadata.Version))
@@ -256,10 +256,26 @@ func (m *Manager) createPipelineInternal(ctx context.Context, pipelineID string,
 		SignalPipelines: make(map[string]*SignalPipeline),
 	}
 
-	// Create signal pipelines for each pipeline definition
+	// ARCHITECTURE LIMITATION:
+	// OpenTelemetry Collector does not support dynamically creating pipelines that reference
+	// connectors from the static configuration. Connectors can only wire together pipelines
+	// that are both defined in the static config.
+	//
+	// To support processor-only configs from Elasticsearch, we would need to either:
+	// 1. Create a custom "dynamic transform" processor that loads configs from the extension
+	// 2. Require full pipeline definitions in Elasticsearch (not just processors)
+	// 3. Modify the OTel Collector core to support dynamic pipeline registration
+	//
+	// For now, this extension only supports full pipeline definitions from Elasticsearch.
+	
+	if len(doc.Config.Pipelines) == 0 {
+		return fmt.Errorf("no pipelines defined in configuration - processor-only configs are not supported")
+	}
+
+	// Create signal pipelines from full pipeline definitions
 	for pipelineName, pipelineDef := range doc.Config.Pipelines {
 		signalType := extractSignalType(pipelineName)
-		
+
 		if !isValidSignalType(signalType) {
 			m.logger.Warn("Invalid signal type in pipeline name, skipping",
 				zap.String("pipeline_name", pipelineName),
@@ -267,7 +283,7 @@ func (m *Manager) createPipelineInternal(ctx context.Context, pipelineID string,
 			continue
 		}
 
-		m.logger.Debug("Creating signal pipeline",
+		m.logger.Info("Creating signal pipeline",
 			zap.String("pipeline_name", pipelineName),
 			zap.String("signal_type", signalType))
 
@@ -283,7 +299,6 @@ func (m *Manager) createPipelineInternal(ctx context.Context, pipelineID string,
 		managed.SignalPipelines[pipelineName] = signalPipeline
 	}
 
-	// Check if we created any pipelines
 	if len(managed.SignalPipelines) == 0 {
 		return fmt.Errorf("no valid signal pipelines created")
 	}
@@ -333,7 +348,7 @@ func (m *Manager) updatePipelineInternal(ctx context.Context, pipelineID string,
 	// Recreate signal pipelines with new configuration
 	for pipelineName, pipelineDef := range doc.Config.Pipelines {
 		signalType := extractSignalType(pipelineName)
-		
+
 		if !isValidSignalType(signalType) {
 			m.logger.Warn("Invalid signal type in pipeline name, skipping",
 				zap.String("pipeline_name", pipelineName),
@@ -341,7 +356,7 @@ func (m *Manager) updatePipelineInternal(ctx context.Context, pipelineID string,
 			continue
 		}
 
-		m.logger.Debug("Recreating signal pipeline during update",
+		m.logger.Info("Recreating signal pipeline during update",
 			zap.String("pipeline_name", pipelineName),
 			zap.String("signal_type", signalType))
 
@@ -388,7 +403,7 @@ func (m *Manager) removePipelineInternal(ctx context.Context, pipelineID string)
 
 	managed, exists := m.managedPipelines[fullID]
 	if !exists {
-		m.logger.Debug("Pipeline not found for removal", zap.String("pipeline_id", pipelineID))
+		m.logger.Info("Pipeline not found for removal", zap.String("pipeline_id", pipelineID))
 		return nil // Not an error - pipeline might have been removed already
 	}
 

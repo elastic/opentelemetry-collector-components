@@ -100,6 +100,137 @@ extensions:
       dry_run_mode: false  # Set to true for validation without applying
 ```
 
+### Streaming Integration Mode
+
+When integrated with raw sampling pipelines, the extension operates in **streaming mode** where dynamic pipelines are injected into the stream processing flow rather than operating as standalone pipelines.
+
+```yaml
+extensions:
+  elasticpipeline:
+    source:
+      elasticsearch:
+        endpoint: "http://localhost:9200"
+        auth:
+          authenticator: basicauth/es
+        index: ".otel-pipeline-config"
+    watcher:
+      poll_interval: 30s
+      cache_duration: 5m
+    pipeline_management:
+      namespace: "elastic"
+      enable_health_reporting: true
+      health_report_interval: 60s
+      max_pipelines: 50
+      max_components_per_pipeline: 20
+      validate_configs: true
+      dry_run_mode: false
+    integration:
+      mode: "streaming"                        # Enable streaming integration
+      stream_ingress: "routing/stream_ingress" # Connector to receive from
+      stream_egress: "routing/stream_egress"   # Connector to export to
+      component_prefix: "stream_"              # Prefix for internal components
+      validate_connectors: true                # Validate connectors exist
+```
+
+#### How Streaming Mode Works
+
+In streaming mode, the extension automatically transforms pipeline configurations:
+
+1. **Entry Pipeline Transformation**: Replaces receivers with `stream_ingress` connector
+2. **Exit Pipeline Transformation**: Replaces exporters with `stream_egress` connector
+3. **Component Prefixing**: Prefixes all internal connector names to avoid conflicts
+4. **Filtering**: Removes receivers/exporters that conflict with static configuration
+
+**Example Transformation**:
+
+Original pipeline document (from `.otel-pipeline-config`):
+```json
+{
+  "config": {
+    "processors": {
+      "transform/logs_metadata": { /* ... */ }
+    },
+    "connectors": {
+      "routing/logs": { /* ... */ }
+    },
+    "service": {
+      "pipelines": {
+        "logs/application": {
+          "receivers": ["otlp"],
+          "processors": ["transform/logs_metadata"],
+          "exporters": ["routing/logs"]
+        },
+        "logs/output": {
+          "receivers": ["routing/logs"],
+          "exporters": ["elasticsearch"]
+        }
+      }
+    }
+  }
+}
+```
+
+Transformed configuration (applied to collector):
+```json
+{
+  "processors": {
+    "transform/logs_metadata": { /* ... */ }
+  },
+  "connectors": {
+    "stream_routing/logs": { /* ... */ }
+  },
+  "service": {
+    "pipelines": {
+      "logs/application": {
+        "receivers": ["routing/stream_ingress"],
+        "processors": ["transform/logs_metadata"],
+        "exporters": ["stream_routing/logs"]
+      },
+      "logs/output": {
+        "receivers": ["stream_routing/logs"],
+        "exporters": ["routing/stream_egress"]
+      }
+    }
+  }
+}
+```
+
+#### Static Configuration Requirements
+
+For streaming mode, your static collector configuration must define the ingress and egress connectors:
+
+```yaml
+connectors:
+  routing/stream_ingress:
+    default_pipelines: [logs/sampling_decision]
+    table:
+      - statement: route()
+        pipelines: []  # Dynamic pipelines will be added here
+  
+  routing/stream_egress:
+    default_pipelines: []
+    table:
+      - statement: route()
+        pipelines: [logs/sampling_decision]
+```
+
+#### Use Cases for Streaming Mode
+
+- **Raw Sampling Integration**: Insert stream processing between raw capture and sampling decision
+- **Multi-Stage Processing**: Add custom transforms without replacing entire pipelines
+- **Stream-Based Routing**: Dynamic routing based on stream hierarchies
+- **Gradual Migration**: Incrementally move processing logic to dynamic configurations
+
+#### Comparison: Standalone vs Streaming
+
+| Aspect | Standalone Mode | Streaming Mode |
+|--------|----------------|----------------|
+| **Pipeline Structure** | Complete, self-contained | Integrated into larger flow |
+| **Receivers** | Defined in dynamic config | Replaced with stream_ingress |
+| **Exporters** | Defined in dynamic config | Replaced with stream_egress |
+| **Connectors** | Internal use only | Prefixed to avoid conflicts |
+| **Use Case** | Independent pipelines | Stream processing integration |
+
 ## Elasticsearch Index Structure
 
 ### `.otel-pipeline-config` Index Mapping

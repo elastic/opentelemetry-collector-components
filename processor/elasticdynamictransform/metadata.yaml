@@ -1,0 +1,17 @@
+type: elasticdynamictransform
+
+status:
+  class: processor
+  stability:
+    alpha: [logs]
+  distributions: []
+  codeowners:
+    active: [elastic]
+
+resource_attributes:
+
+attributes:
+
+metrics:
+
+tests:
