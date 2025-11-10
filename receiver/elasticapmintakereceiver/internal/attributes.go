@@ -48,6 +48,7 @@ const (
 
 	DestinationIP = "destination.ip"
 
+	MessageRoutingKey    = "message.routing_key"
 	MessageBody          = "message.body"
 	MessageAgeMs         = "message.age.ms"
 	MessageHeadersPrefix = "message.headers"
@@ -56,7 +57,7 @@ const (
 	HTTPRequestHeaders          = "http.request.headers"
 	HTTPRequestEnv              = "http.request.env"
 	HTTPRequestCookies          = "http.request.cookies"
-	HTTPRequestBody             = "http.request.body"
+	HTTPRequestBodyOriginal     = "http.request.body.original"
 	HTTPRequestID               = "http.request.id"
 	HTTPRequestReferrer         = "http.request.referrer"
 	HTTPResponseFinished        = "http.response.finished"

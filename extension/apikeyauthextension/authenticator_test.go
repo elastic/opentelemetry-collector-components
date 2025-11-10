@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,9 +34,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/extension/extensiontest"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 )
 
 const user = "test"
@@ -194,6 +198,21 @@ func TestAuthenticator_Caching(t *testing.T) {
 		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id2:secret2"))},
 	})
 	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = API Key "id2" unauthorized`)
+}
+
+func TestAuthenticator_UserAgent(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		wantPrefix := "OpenTelemetry Collector/latest ("
+		userAgent := r.Header.Get("User-Agent")
+		assert.Truef(t, strings.HasPrefix(userAgent, wantPrefix), "want prefix %s; got %s", wantPrefix, userAgent)
+		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
+	})
+
+	authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	assert.NoError(t, err)
 }
 
 func TestAuthenticator_ErrorWithDetails(t *testing.T) {
@@ -483,7 +502,7 @@ func BenchmarkAuthenticator(b *testing.B) {
 
 func newTestAuthenticator(t testing.TB, srv *httptest.Server, config *Config) *authenticator {
 	config.Endpoint = srv.URL
-	auth, err := newAuthenticator(config, componenttest.NewNopTelemetrySettings())
+	auth, err := newAuthenticator(config, extensiontest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
 
 	err = auth.Start(context.Background(), componenttest.NewNopHost())

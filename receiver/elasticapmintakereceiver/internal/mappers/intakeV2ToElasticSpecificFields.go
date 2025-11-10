@@ -116,7 +116,7 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 		if http.Request.Body != nil {
 			// add http body as an object since it is required by the APM index template
 			// see: https://github.com/elastic/elasticsearch/blob/714c077b11363f168e261ad43cff0b5b74556b7f/x-pack/plugin/apm-data/src/main/resources/component-templates/traces-apm%40mappings.yaml#L30
-			bodyValue := attributesMap.PutEmpty(attr.HTTPRequestBody)
+			bodyValue := attributesMap.PutEmpty(attr.HTTPRequestBodyOriginal)
 			insertValue(bodyValue, http.Request.Body)
 		}
 		if http.Request.Id != "" {
@@ -172,6 +172,9 @@ func setHTTPHeadersMap(prefix string, attributesMap pcommon.Map, headers []*mode
 func setMessage(prefix string, m *modelpb.Message, attributesMap pcommon.Map) {
 	if m == nil {
 		return
+	}
+	if m.RoutingKey != "" {
+		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageRoutingKey), m.RoutingKey)
 	}
 	if m.Body != "" {
 		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageBody), m.Body)
@@ -539,13 +542,6 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 // Allows key names with spaces to match existing behavior.
 // Ignored empty keys and values.
 //
-// Note: modelpb.Events supports single and slice label values,
-// but the apm data model only support single value labels, so the slice values are ignored.
-// See schema:
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L75
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L433
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L969
-//
 // The apm data library logic will take care of overwriting metadata labels with event labels when decoding
 // the input to modelpb.APMEvent, so we simply copy all labels from the event here.
 func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
@@ -553,6 +549,15 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 		if key != "" && labelValue != nil && labelValue.Value != "" {
 			attrKey := "labels." + key
 			attributesMap.PutStr(attrKey, labelValue.Value)
+		}
+
+		if key != "" && labelValue != nil && len(labelValue.Values) > 0 {
+			attrKey := "labels." + key
+			labelValues := attributesMap.PutEmptySlice(attrKey)
+			labelValues.EnsureCapacity(len(labelValue.Values))
+			for _, v := range labelValue.Values {
+				labelValues.AppendEmpty().SetStr(v)
+			}
 		}
 	}
 

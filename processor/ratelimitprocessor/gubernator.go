@@ -159,19 +159,27 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) 
 		r.windowConfigurator = wc.(WindowConfigurator)
 	}
 
-	r.daemon, err = gubernator.SpawnDaemon(ctx, r.daemonCfg)
-	if err != nil {
-		return fmt.Errorf("failed to spawn gubernator daemon: %w", err)
+	if r.daemon == nil {
+		r.daemon, err = gubernator.SpawnDaemon(ctx, r.daemonCfg)
+		if err != nil {
+			return fmt.Errorf("failed to spawn gubernator daemon: %w", err)
+		}
 	}
 
-	r.clientConn, err = grpc.NewClient(r.daemonCfg.GRPCListenAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler(otelgrpc.WithTracerProvider(r.tracerProvider))),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create gRPC client connection: %w", err)
+	if r.clientConn == nil {
+		r.clientConn, err = grpc.NewClient(r.daemonCfg.GRPCListenAddress,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler(otelgrpc.WithTracerProvider(r.tracerProvider))),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create gRPC client connection: %w", err)
+		}
 	}
-	r.client = gubernator.NewV1Client(r.clientConn)
+
+	if r.client == nil {
+		r.client = gubernator.NewV1Client(r.clientConn)
+	}
+
 	return nil
 }
 
