@@ -73,7 +73,9 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.SpanName, event.Span.Name)
 	attributes.PutStr(elasticattr.SpanType, event.Span.Type)
 	attributes.PutStr(elasticattr.SpanSubtype, event.Span.Subtype)
-	attributes.PutStr("span.action", event.Span.Action)
+	if event.Span.Action != "" {
+		attributes.PutStr("span.action", event.Span.Action)
+	}
 
 	if event.Span.Sync != nil {
 		attributes.PutBool("span.sync", *event.Span.Sync)
