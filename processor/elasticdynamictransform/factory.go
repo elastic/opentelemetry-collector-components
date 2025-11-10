@@ -1,4 +1,3 @@
-package elasticdynamictransform
 // Licensed to Elasticsearch B.V. under one or more contributor
 // license agreements. See the NOTICE file distributed with
 // this work for additional information regarding copyright
@@ -30,7 +29,7 @@ import (
 const (
 	// Type is the component type name
 	Type = "elasticdynamictransform"
-	
+
 	// Stability level
 	stability = component.StabilityLevelAlpha
 )
@@ -61,6 +60,6 @@ func createLogsProcessor(
 	nextConsumer consumer.Logs,
 ) (processor.Logs, error) {
 	pCfg := cfg.(*Config)
-	
+
 	return newDynamicTransformProcessor(ctx, set, pCfg, nextConsumer)
 }

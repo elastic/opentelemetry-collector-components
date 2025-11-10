@@ -107,6 +107,18 @@ processors:
       - key: raw.id
         action: delete
   
+  # == Dynamic Transform Processor ==
+  # This processor loads transform configurations dynamically from Elasticsearch
+  # via the elasticpipeline extension. The configuration is fetched at runtime
+  # and can be updated without restarting the collector.
+  elasticdynamictransform/stream_processing:
+    extension: elasticpipeline              # Extension to fetch config from
+    processor_key: "transform/stream_processing"  # Key in Elasticsearch config
+    reload_interval: 30s                    # How often to check for updates
+    fallback_mode: passthrough              # What to do if config unavailable (passthrough/error/drop)
+    initial_wait_timeout: 5s                # How long to wait for initial config
+  
+  # Static transform processor (fallback when dynamic not configured)
   transform:
     error_mode: ignore
     log_statements:
@@ -121,14 +133,6 @@ processors:
           - set(attributes["processed_at"], Now())
 
 connectors:
-  # Stream ingress: Routes to sampling decision
-  # Dynamic pipeline support requires full pipeline definitions in Elasticsearch
-  routing/stream_ingress:
-    default_pipelines: [logs/sampling_decision]
-    table:
-      - statement: route()
-        pipelines: [logs/sampling_decision]
-  
   # Output split: Routes to sampling and/or production based on sampling decision
   routing/output_split:
     default_pipelines: [logs/prod, logs/sampling]
@@ -179,41 +183,20 @@ service:
     # STAGE 1: INTAKE - Raw Capture & Basic Enrichment
     # ========================================================================
     # Receives incoming telemetry, captures raw data, and performs basic enrichment
-    # before routing to stream processing.
+    # before routing to sampling decision.
     logs/intake:
       receivers:
         - otlp
       processors:
-        - rawcapture          # 1. Captures raw log, stores in buffer, adds raw.id
-        - resource            # 2. Add deployment.environment
-        - attributes          # 3. Add environment tag
+        - rawcapture                            # 1. Captures raw log, stores in buffer, adds raw.id
+        - resource                              # 2. Add deployment.environment
+        - attributes                            # 3. Add environment tag
+        - elasticdynamictransform/stream_processing  # 4. Dynamic transform from Elasticsearch
       exporters:
-        - routing/stream_ingress  # 4. Route to stream processing
+        - routing/output_split                  # 7. Route based on sampling decision
     
     # ========================================================================
-    # STAGE 2: STREAM PROCESSING
-    # ========================================================================
-    # This pipeline applies dynamic transforms loaded from Elasticsearch
-    # NOTE: For processor-only configs from Elasticsearch, we need a different approach
-    # The current architecture requires full pipeline definitions in Elasticsearch
-    # including receivers, processors, and exporters
-    
-    # ========================================================================
-    # STAGE 3: SAMPLING DECISION - Evaluate & Decide
-    # ========================================================================
-    # Receives logs directly from intake (bypassing stream processing for now)
-    logs/sampling_decision:
-      receivers:
-        - routing/stream_ingress  # Receives directly from intake
-      processors:
-        - transform              # 4. Post-stream processing (JSON parsing, etc.)
-        - batch                  # 5. Batch before sampling decision
-        - samplingdecide         # 6. Decide what to sample (adds sampled=true attribute)
-      exporters:
-        - routing/output_split   # 7. Route based on sampling decision
-    
-    # ========================================================================
-    # STAGE 4a: SAMPLING PATH - Raw Sample Export
+    # STAGE 2: SAMPLING PATH - Raw Sample Export
     # ========================================================================
     # For logs marked as sampled, retrieve the original raw data and send to
     # the raw sample exporter for storage in the sampling system.
@@ -221,13 +204,14 @@ service:
       receivers:
         - routing/output_split   # Receives sampled logs
       processors:
+        - samplingdecide                        # 6. Decide what to sample (adds sampled=true attribute)
         - rawretriever           # Retrieve original raw log from buffer
       exporters:
         - rawsample              # Send raw sample to API
         - debug                  # Debug output
     
     # ========================================================================
-    # STAGE 4b: PRODUCTION PATH - Processed Export
+    # STAGE 3: PRODUCTION PATH - Processed Export
     # ========================================================================
     # All logs (sampled and non-sampled) go to production with processed data.
     # The raw.id attribute is removed before export.

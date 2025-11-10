@@ -1,4 +1,3 @@
-package elasticdynamictransform
 // Licensed to Elasticsearch B.V. under one or more contributor
 // license agreements. See the NOTICE file distributed with
 // this work for additional information regarding copyright
@@ -29,10 +28,10 @@ type FallbackMode string
 const (
 	// FallbackModePassthrough forwards data unchanged when config is unavailable
 	FallbackModePassthrough FallbackMode = "passthrough"
-	
+
 	// FallbackModeError returns an error when config is unavailable
 	FallbackModeError FallbackMode = "error"
-	
+
 	// FallbackModeDrop silently drops data when config is unavailable
 	FallbackModeDrop FallbackMode = "drop"
 )
@@ -42,21 +41,21 @@ type Config struct {
 	// ExtensionID is the component ID of the elasticpipeline extension
 	// Example: "elasticpipeline" or "elasticpipeline/custom"
 	ExtensionID string `mapstructure:"extension"`
-	
+
 	// ProcessorKey is the key to look up in the extension's processor configs
 	// This should match the key in the Elasticsearch document
 	// Example: "transform/stream_processing"
 	ProcessorKey string `mapstructure:"processor_key"`
-	
+
 	// ReloadInterval is how often to check for config updates
 	// Default: 30s
 	ReloadInterval time.Duration `mapstructure:"reload_interval"`
-	
+
 	// FallbackMode defines behavior when config is unavailable
 	// Options: "passthrough" (forward unchanged), "error" (return error), "drop" (drop data)
 	// Default: "passthrough"
 	FallbackMode FallbackMode `mapstructure:"fallback_mode"`
-	
+
 	// InitialWaitTimeout is how long to wait for initial config load
 	// If exceeded and no config available, uses fallback mode
 	// Default: 5s
@@ -71,10 +70,10 @@ func (cfg *Config) Validate() error {
 	if cfg.ProcessorKey == "" {
 		return errors.New("processor_key must be specified")
 	}
-	if cfg.FallbackMode != "" && 
-	   cfg.FallbackMode != FallbackModePassthrough && 
-	   cfg.FallbackMode != FallbackModeError && 
-	   cfg.FallbackMode != FallbackModeDrop {
+	if cfg.FallbackMode != "" &&
+		cfg.FallbackMode != FallbackModePassthrough &&
+		cfg.FallbackMode != FallbackModeError &&
+		cfg.FallbackMode != FallbackModeDrop {
 		return errors.New("fallback_mode must be one of: passthrough, error, drop")
 	}
 	if cfg.ReloadInterval < 0 {

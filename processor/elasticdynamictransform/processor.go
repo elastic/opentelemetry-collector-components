@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/processor"
@@ -215,33 +215,60 @@ func (p *dynamicTransformProcessor) reloadConfig(ctx context.Context, host compo
 	}
 
 	p.logger.Debug("Fetched processor configuration from extension",
-		zap.String("processor_key", p.config.ProcessorKey))
+		zap.String("processor_key", p.config.ProcessorKey),
+		zap.Any("config", configMap))
 
-	// Convert map to transform processor config
+	// The config from Elasticsearch has the structure:
+	// {
+	//   "error_mode": "propagate",
+	//   "log_statements": [...]
+	// }
+	// We need to unmarshal this into transformprocessor.Config
+	conf := confmap.NewFromStringMap(configMap)
 	var transformConfig transformprocessor.Config
-	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		Result:           &transformConfig,
-		WeaklyTypedInput: true,
-		TagName:          "mapstructure",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create config decoder: %w", err)
+	if err := conf.Unmarshal(&transformConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal transform config: %w", err)
 	}
 
-	if err := decoder.Decode(configMap); err != nil {
-		return fmt.Errorf("failed to decode transform config: %w", err)
-	}
+	p.logger.Debug("Unmarshaled transform config",
+		zap.Int("log_statements_count", len(transformConfig.LogStatements)),
+		zap.String("error_mode", string(transformConfig.ErrorMode)))
 
-	// Validate the transform config
-	if err := transformConfig.Validate(); err != nil {
-		return fmt.Errorf("invalid transform config: %w", err)
+	// Clear the context field to enable context inference.
+	// When context is empty, the transform processor infers it from the paths used,
+	// allowing cleaner syntax without "log." prefix in statements.
+	// This is simpler than manually adding "log." prefix to all paths.
+	// for i := range transformConfig.LogStatements {
+	// 	transformConfig.LogStatements[i].Context = ""
+	// }
+
+	// Log the actual statements for debugging
+	for i, stmt := range transformConfig.LogStatements {
+		p.logger.Debug("Log statement group",
+			zap.Int("index", i),
+			zap.String("context", string(stmt.Context)),
+			zap.Strings("statements", stmt.Statements),
+			zap.Strings("conditions", stmt.Conditions))
 	}
 
 	// Create transform processor factory
 	factory := transformprocessor.NewFactory()
 
+	// NOTE: We don't call transformConfig.Validate() here because the config's
+	// logFunctions map is not yet initialized. The factory will handle validation
+	// during CreateLogs() after setting up the OTTL function registry.
+
+	// Create processor settings for the transform processor
+	// We need to use a component ID with type "transform" to satisfy the factory's type check
+	transformID := component.NewIDWithName(factory.Type(), p.config.ProcessorKey)
+	transformSettings := processor.Settings{
+		ID:                transformID,
+		TelemetrySettings: p.settings.TelemetrySettings,
+		BuildInfo:         p.settings.BuildInfo,
+	}
+
 	// Create the transform processor
-	newProcessor, err := factory.CreateLogs(ctx, p.settings, &transformConfig, p.nextConsumer)
+	newProcessor, err := factory.CreateLogs(ctx, transformSettings, &transformConfig, p.nextConsumer)
 	if err != nil {
 		return fmt.Errorf("failed to create transform processor: %w", err)
 	}

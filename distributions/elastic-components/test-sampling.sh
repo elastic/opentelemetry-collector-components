@@ -117,6 +117,7 @@ send_loop() {
     while true; do
         timestamp=$(date +%s)
         curl -s -X POST "$ENDPOINT" \
+        --verbose \
           -H "Content-Type: application/json" \
           -d '{
           "resourceLogs": [{
@@ -138,7 +139,7 @@ send_loop() {
               }]
             }]
           }]
-        }' > /dev/null
+        }'
         echo "$(date '+%H:%M:%S') - Sent log #$counter"
         counter=$((counter + 1))
         sleep 1

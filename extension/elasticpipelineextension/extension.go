@@ -261,20 +261,13 @@ func (e *elasticPipelineExtension) onConfigurationChange(ctx context.Context, do
 	e.logger.Info("Processing configuration changes", zap.Int("document_count", len(documents)))
 
 	// Extract processor configurations from all documents
+	// These will be consumed by dynamic processors (e.g., elasticdynamictransform)
+	// that implement the ProcessorConfigProvider interface
 	e.extractProcessorConfigs(documents)
 
-	for _, doc := range documents {
-		if err := e.pipelineManager.ApplyConfiguration(ctx, doc); err != nil {
-			e.logger.Error("Failed to apply pipeline configuration",
-				zap.String("pipeline_id", doc.PipelineID),
-				zap.Error(err))
-			// Continue processing other documents
-		} else {
-			e.logger.Info("Successfully applied pipeline configuration",
-				zap.String("pipeline_id", doc.PipelineID),
-				zap.Int64("version", doc.Metadata.Version))
-		}
-	}
+	// Note: We no longer apply pipeline configurations via pipelineManager.
+	// The processor configurations extracted above are consumed directly by
+	// dynamic processors that watch for config changes.
 
 	return nil
 }
