@@ -180,10 +180,14 @@ func (e *rawSampleExporter) sendBatches(ctx context.Context, index string, docs 
 
 // sendBatch sends a single batch of documents to the sample API.
 func (e *rawSampleExporter) sendBatch(ctx context.Context, index string, docs []json.RawMessage) error {
-	// Marshal JSON array
-	payload, err := json.Marshal(docs)
+	// Wrap array in object with "docs" property
+	requestBody := map[string]interface{}{
+		"docs": docs,
+	}
+
+	payload, err := json.Marshal(requestBody)
 	if err != nil {
-		return fmt.Errorf("failed to marshal document array: %w", err)
+		return fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
 	// Build URL with the specified index
