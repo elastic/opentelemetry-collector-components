@@ -21,6 +21,9 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver v0.138.0
 
+connectors:
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/routingconnector v0.138.0
+
 processors:
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.138.0
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.138.0
@@ -28,7 +31,6 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.138.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.138.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/routingprocessor v0.132.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/rawcapture v0.0.1
     path: ../../processor/rawcapture
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/samplingdecide v0.0.1

@@ -74,6 +74,13 @@ processors:
         statements:
           - set(attributes["processed"], true)
 
+connectors:
+  routing:
+    default_pipelines: []
+    table:
+      - statement: route()
+        pipelines: [logs/prod, logs/sampling]
+
 exporters:
   debug:
     verbosity: detailed
@@ -108,8 +115,8 @@ service:
     - rawsamplingbuffer
   
   pipelines:
-    # == 1. Production Pipeline ==
-    logs/prod:
+    # == 1. Intake Pipeline ==
+    logs/intake:
       receivers:
         - otlp
       processors:
@@ -117,27 +124,29 @@ service:
         - resource        # 2. Standard processing
         - attributes
         - transform
-        - attributes/drop_id  # 3. Remove raw.id attribute
-        - batch           # 4. Batch before export
+        - batch           # 3. Batch before routing
+      exporters:
+        - routing         # 4. Fork to prod and sampling pipelines
+    
+    # == 2. Production Pipeline ==
+    logs/prod:
+      receivers:
+        - routing         # Receives from routing connector
+      processors:
+        - attributes/drop_id  # Remove raw.id attribute
       exporters:
         - elasticsearch/prod
         - debug
     
-    # == 2. Sampling Pipeline (Raw Logs) ==
+    # == 3. Sampling Pipeline (Raw Logs) ==
     logs/sampling:
       receivers:
-        - otlp
+        - routing         # Receives from routing connector
       processors:
-        - rawcapture      # 1. Captures raw log, stores in buffer, adds raw.id (must be same as prod)
-        - resource        # 2. Standard processing (same as prod)
-        - attributes
-        - transform
-        - batch           # 3. Batch before filtering
-        - samplingdecide  # 4. Evaluate condition, drop non-matches
-        - rawretriever    # 5. Retrieve raw log from buffer
+        - samplingdecide  # Evaluate condition, drop non-matches
+        - rawretriever    # Retrieve raw log from buffer
       exporters:
-        - elasticsearch/raw
-        - debug
+        - debug           # Just debug for now
 
   telemetry:
     logs:
