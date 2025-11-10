@@ -11,12 +11,16 @@ Tail-based sampling for logs that:
 
 ```bash
 # 1. Build
-../../.tools/builder --config manifest.yaml
+cd distributions/elastic-components
+go run go.opentelemetry.io/collector/cmd/builder@v0.138.0 --config manifest.yaml
 
-# 2. Run
-./run-sampling.sh
+# 2. Validate config
+./_build/elastic-collector-with-pipeline-extension validate --config config.sampling.yaml
 
-# 3. Test (in another terminal)
+# 3. Run
+./_build/elastic-collector-with-pipeline-extension --config config.sampling.yaml
+
+# 4. Test (in another terminal)
 ./test-sampling.sh both
 ```
 

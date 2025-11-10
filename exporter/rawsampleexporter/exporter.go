@@ -43,8 +43,8 @@ func (e *rawSampleExporter) Shutdown(_ context.Context) error {
 
 // ConsumeLogs processes and sends logs to the Elasticsearch sample API.
 func (e *rawSampleExporter) ConsumeLogs(ctx context.Context, logs plog.Logs) error {
-	// Collect all serialized log documents
-	var jsonDocs []json.RawMessage
+	// Group documents by index (stream.name or fallback)
+	docsByIndex := make(map[string][]json.RawMessage)
 
 	// Iterate through all logs and serialize to JSON
 	for i := 0; i < logs.ResourceLogs().Len(); i++ {
@@ -58,6 +58,12 @@ func (e *rawSampleExporter) ConsumeLogs(ctx context.Context, logs plog.Logs) err
 			for k := 0; k < sl.LogRecords().Len(); k++ {
 				record := sl.LogRecords().At(k)
 
+				// Determine target index from stream.name attribute or use fallback
+				targetIndex := e.config.Index
+				if streamName, ok := record.Attributes().Get("stream.name"); ok {
+					targetIndex = streamName.AsString()
+				}
+
 				// Serialize log to JSON
 				doc, err := e.serializeLogRecord(resource, scope, record)
 				if err != nil {
@@ -65,18 +71,24 @@ func (e *rawSampleExporter) ConsumeLogs(ctx context.Context, logs plog.Logs) err
 					continue
 				}
 
-				// Collect as RawMessage
-				jsonDocs = append(jsonDocs, doc)
+				// Group by index
+				docsByIndex[targetIndex] = append(docsByIndex[targetIndex], doc)
 			}
 		}
 	}
 
-	if len(jsonDocs) == 0 {
+	if len(docsByIndex) == 0 {
 		return nil
 	}
 
-	// Send in batches
-	return e.sendBatches(ctx, jsonDocs)
+	// Send batches for each index
+	for index, docs := range docsByIndex {
+		if err := e.sendBatches(ctx, index, docs); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // serializeLogRecord converts a log record to JSON.
@@ -145,7 +157,7 @@ func (e *rawSampleExporter) serializeLogRecord(resource, scope, record interface
 }
 
 // sendBatches sends documents in batches to avoid large payloads.
-func (e *rawSampleExporter) sendBatches(ctx context.Context, docs []json.RawMessage) error {
+func (e *rawSampleExporter) sendBatches(ctx context.Context, index string, docs []json.RawMessage) error {
 	batchSize := e.config.MaxBatchSize
 	if batchSize <= 0 {
 		batchSize = 100 // default
@@ -158,7 +170,7 @@ func (e *rawSampleExporter) sendBatches(ctx context.Context, docs []json.RawMess
 		}
 
 		batch := docs[i:end]
-		if err := e.sendBatch(ctx, batch); err != nil {
+		if err := e.sendBatch(ctx, index, batch); err != nil {
 			return err
 		}
 	}
@@ -167,15 +179,15 @@ func (e *rawSampleExporter) sendBatches(ctx context.Context, docs []json.RawMess
 }
 
 // sendBatch sends a single batch of documents to the sample API.
-func (e *rawSampleExporter) sendBatch(ctx context.Context, docs []json.RawMessage) error {
+func (e *rawSampleExporter) sendBatch(ctx context.Context, index string, docs []json.RawMessage) error {
 	// Marshal JSON array
 	payload, err := json.Marshal(docs)
 	if err != nil {
 		return fmt.Errorf("failed to marshal document array: %w", err)
 	}
 
-	// Build URL
-	url := fmt.Sprintf("%s/%s/_sample/docs", e.config.Endpoint, e.config.Index)
+	// Build URL with the specified index
+	url := fmt.Sprintf("%s/%s/_sample/docs", e.config.Endpoint, index)
 
 	// Create request
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payload))
@@ -204,7 +216,7 @@ func (e *rawSampleExporter) sendBatch(ctx context.Context, docs []json.RawMessag
 
 	e.logger.Debug("Sent batch to sample API",
 		zap.Int("count", len(docs)),
-		zap.String("index", e.config.Index),
+		zap.String("index", index),
 	)
 
 	return nil

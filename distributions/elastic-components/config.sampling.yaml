@@ -97,7 +97,7 @@ exporters:
       - http://localhost:9200
     auth:
       authenticator: basicauth/es
-    logs_index: logs-production
+    logs_index: logs
     timeout: 30s
     mapping:
       mode: ecs
@@ -106,8 +106,8 @@ exporters:
   rawsample:
     endpoint: http://localhost:9200
     username: elastic
-    password: changeme
-    index: logs-raw-samples
+    password: password
+    index: logs
     max_batch_size: 100
     timeout: 30s
     retry_on_failure:
