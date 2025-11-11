@@ -124,7 +124,7 @@ func (p *samplingDecideProcessor) getConditionAndRate(ctx context.Context, lr pl
 	if p.configProvider != nil {
 		// Extract stream name from attributes
 		streamName := ""
-		if streamAttr, ok := lr.Attributes().Get("stream.name"); ok {
+		if streamAttr, ok := lr.Attributes().Get("target_stream"); ok {
 			streamName = streamAttr.AsString()
 		}
 
@@ -188,6 +188,9 @@ func (p *samplingDecideProcessor) ConsumeLogs(ctx context.Context, logs plog.Log
 	// Create a new Logs structure to hold the filtered logs
 	filteredLogs := plog.NewLogs()
 
+	totalLogs := logs.LogRecordCount()
+	p.logger.Info("Processing batch", zap.Int("total_logs", totalLogs))
+
 	resourceLogs := logs.ResourceLogs()
 	for i := 0; i < resourceLogs.Len(); i++ {
 		rl := resourceLogs.At(i)
@@ -215,11 +218,23 @@ func (p *samplingDecideProcessor) ConsumeLogs(ctx context.Context, logs plog.Log
 					continue
 				}
 
+				// Extract log details for debugging
+				streamName := ""
+				if streamAttr, ok := lr.Attributes().Get("stream.name"); ok {
+					streamName = streamAttr.AsString()
+				}
+				severityText := lr.SeverityText()
+				body := lr.Body().AsString()
+				if len(body) > 100 {
+					body = body[:100] + "..."
+				}
+
 				// Create OTTL transform context
 				tCtx := ottllog.NewTransformContext(lr, sl.Scope(), rl.Resource(), sl, rl)
 
 				// Evaluate condition (nil condition means "always match")
 				match := true
+				conditionUsed := "always_match"
 				if condition != nil {
 					var err error
 					match, err = condition.Eval(ctx, tCtx)
@@ -227,6 +242,7 @@ func (p *samplingDecideProcessor) ConsumeLogs(ctx context.Context, logs plog.Log
 						p.logger.Warn("Failed to evaluate condition", zap.Error(err))
 						continue
 					}
+					conditionUsed = p.config.Condition
 				}
 
 				// Apply invert logic
@@ -235,15 +251,42 @@ func (p *samplingDecideProcessor) ConsumeLogs(ctx context.Context, logs plog.Log
 					shouldSample = !match
 				}
 
+				p.logger.Info("Evaluating log",
+					zap.String("stream_name", streamName),
+					zap.String("severity", severityText),
+					zap.String("body_preview", body),
+					zap.String("condition", conditionUsed),
+					zap.Bool("condition_match", match),
+					zap.Bool("invert_match", p.config.InvertMatch),
+					zap.Bool("should_sample_after_condition", shouldSample),
+					zap.Float64("sample_rate", sampleRate),
+				)
+
 				// If condition doesn't match (after invert), drop the log
 				if !shouldSample {
+					p.logger.Info("Log dropped: condition not met",
+						zap.String("stream_name", streamName),
+					)
 					continue
 				}
 
 				// Apply sample rate
-				if p.rand.Float64() >= sampleRate {
+				randomValue := p.rand.Float64()
+				if randomValue >= sampleRate {
+					p.logger.Info("Log dropped: probabilistic sampling",
+						zap.String("stream_name", streamName),
+						zap.Float64("random_value", randomValue),
+						zap.Float64("sample_rate", sampleRate),
+					)
 					continue
 				}
+
+				p.logger.Info("Log SAMPLED - will be sent",
+					zap.String("stream_name", streamName),
+					zap.String("severity", severityText),
+					zap.Float64("random_value", randomValue),
+					zap.Float64("sample_rate", sampleRate),
+				)
 
 				// Log passed sampling decision - create containers if needed
 				if !rlCreated {
@@ -266,9 +309,17 @@ func (p *samplingDecideProcessor) ConsumeLogs(ctx context.Context, logs plog.Log
 	}
 
 	// Only pass to next consumer if we have any logs left
-	if filteredLogs.LogRecordCount() == 0 {
+	sampledCount := filteredLogs.LogRecordCount()
+	if sampledCount == 0 {
+		p.logger.Info("No logs passed sampling", zap.Int("total_logs", totalLogs))
 		return nil
 	}
+
+	p.logger.Info("Sending sampled logs",
+		zap.Int("sampled_logs", sampledCount),
+		zap.Int("total_logs", totalLogs),
+		zap.Float64("sampling_percentage", float64(sampledCount)/float64(totalLogs)*100),
+	)
 
 	return p.nextConsumer.ConsumeLogs(ctx, filteredLogs)
 }

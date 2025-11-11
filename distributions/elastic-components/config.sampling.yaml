@@ -18,11 +18,11 @@ extensions:
   # Dynamic sampling configuration extension
   # Fetches sampling rules from Elasticsearch for real-time updates
   samplingconfigextension:
-    endpoint: http://localhost:9200
+    endpoint: http://localhost:8080
     username: elastic
     password: password
     config_index: .elastic-sampling-config
-    poll_interval: 30s  # Check for updates every 30 seconds
+    poll_interval: 3s  # Check for updates every 30 seconds
     default_sample_rate: 0.0
   
   # Dynamic pipeline extension
@@ -30,7 +30,7 @@ extensions:
   elasticpipeline:
     source:
       elasticsearch:
-        endpoint: http://localhost:9200
+        endpoint: http://localhost:8080
         username: elastic
         password: password
         index: .otel-pipeline-config
@@ -69,7 +69,7 @@ processors:
   samplingdecide:
     # Static fallback: Sample all error logs at 100% rate
     # These settings are used when no dynamic rule matches
-    condition: 'severity_text == "ERROR" or attributes["level"] == "error"'
+    condition: 'false'
     sample_rate: 0.0
     invert_match: false
     
@@ -147,17 +147,17 @@ exporters:
   # Production Elasticsearch exporter
   elasticsearch/prod:
     endpoints:
-      - http://localhost:9200
+      - http://localhost:8080
     auth:
       authenticator: basicauth/es
     logs_index: logs
     timeout: 30s
     mapping:
-      mode: ecs
+      mode: otel
   
   # Raw sample exporter - sends to sample API
   rawsample:
-    endpoint: http://localhost:9200
+    endpoint: http://localhost:8080
     username: elastic
     password: password
     index: logs
@@ -208,7 +208,7 @@ service:
         - rawretriever           # Retrieve original raw log from buffer
       exporters:
         - rawsample              # Send raw sample to API
-        - debug                  # Debug output
+        # - debug                  # Debug output
     
     # ========================================================================
     # STAGE 3: PRODUCTION PATH - Processed Export

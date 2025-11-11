@@ -82,6 +82,9 @@ func (p *rawRetrieverProcessor) ConsumeLogs(ctx context.Context, logs plog.Logs)
 	// Create a new Logs structure to hold the retrieved raw logs
 	retrievedLogs := plog.NewLogs()
 
+	totalLogs := logs.LogRecordCount()
+	p.logger.Info("Raw retriever processing batch", zap.Int("total_logs", totalLogs))
+
 	resourceLogs := logs.ResourceLogs()
 	for i := 0; i < resourceLogs.Len(); i++ {
 		rl := resourceLogs.At(i)
@@ -92,11 +95,18 @@ func (p *rawRetrieverProcessor) ConsumeLogs(ctx context.Context, logs plog.Logs)
 			for k := 0; k < logRecords.Len(); k++ {
 				lr := logRecords.At(k)
 
+				// Get stream.name for logging
+				processedStreamName := ""
+				if streamAttr, ok := lr.Attributes().Get("stream.name"); ok {
+					processedStreamName = streamAttr.AsString()
+				}
+
 				// Get UUID from attributes
 				idValue, found := lr.Attributes().Get(p.config.AttributeKey)
 				if !found {
 					p.logger.Warn("UUID attribute not found in log record",
 						zap.String("attribute_key", p.config.AttributeKey),
+						zap.String("processed_stream_name", processedStreamName),
 					)
 					if p.config.OnRetrievalError == "error" {
 						return fmt.Errorf("UUID attribute %q not found", p.config.AttributeKey)
@@ -110,12 +120,18 @@ func (p *rawRetrieverProcessor) ConsumeLogs(ctx context.Context, logs plog.Logs)
 
 				id := idValue.Str()
 
+				p.logger.Info("Retrieving raw log",
+					zap.String("id", id),
+					zap.String("processed_stream_name", processedStreamName),
+				)
+
 				// Retrieve raw log from buffer
 				rawData, err := p.buffer.Retrieve(id)
 				if err != nil {
 					p.logger.Warn("Failed to retrieve raw log from buffer",
 						zap.Error(err),
 						zap.String("id", id),
+						zap.String("processed_stream_name", processedStreamName),
 					)
 					if p.config.OnRetrievalError == "error" {
 						return fmt.Errorf("failed to retrieve raw log: %w", err)
@@ -134,6 +150,7 @@ func (p *rawRetrieverProcessor) ConsumeLogs(ctx context.Context, logs plog.Logs)
 					p.logger.Error("Failed to unmarshal raw log",
 						zap.Error(err),
 						zap.String("id", id),
+						zap.String("processed_stream_name", processedStreamName),
 					)
 					if p.config.OnRetrievalError == "error" {
 						return fmt.Errorf("failed to unmarshal raw log: %w", err)
@@ -145,15 +162,38 @@ func (p *rawRetrieverProcessor) ConsumeLogs(ctx context.Context, logs plog.Logs)
 					continue
 				}
 
-				// Remove UUID attribute if configured
+				// Remove UUID attribute if configured and preserve stream.name
 				if rawLog.ResourceLogs().Len() > 0 {
 					rawRL := rawLog.ResourceLogs().At(0)
 					if rawRL.ScopeLogs().Len() > 0 {
 						rawSL := rawRL.ScopeLogs().At(0)
 						if rawSL.LogRecords().Len() > 0 {
 							rawLR := rawSL.LogRecords().At(0)
+
+							// Get original stream.name from raw log (if any)
+							rawStreamName := ""
+							if rawStreamAttr, ok := rawLR.Attributes().Get("stream.name"); ok {
+								rawStreamName = rawStreamAttr.AsString()
+							}
+
 							if p.config.RemoveAttribute {
 								rawLR.Attributes().Remove(p.config.AttributeKey)
+							}
+
+							// Preserve stream.name from the processed log
+							if streamName, found := lr.Attributes().Get("target_stream"); found {
+								rawLR.Attributes().PutStr("target_stream", streamName.Str())
+								p.logger.Info("Preserved target_stream attribute",
+									zap.String("id", id),
+									zap.String("raw_stream_name", rawStreamName),
+									zap.String("processed_stream_name", processedStreamName),
+									zap.String("final_stream_name", streamName.Str()),
+								)
+							} else {
+								p.logger.Info("No target_stream to preserve",
+									zap.String("id", id),
+									zap.String("raw_stream_name", rawStreamName),
+								)
 							}
 
 							// Add the raw log to retrieved logs
@@ -166,9 +206,16 @@ func (p *rawRetrieverProcessor) ConsumeLogs(ctx context.Context, logs plog.Logs)
 	}
 
 	// Only pass to next consumer if we have any logs
-	if retrievedLogs.LogRecordCount() == 0 {
+	retrievedCount := retrievedLogs.LogRecordCount()
+	if retrievedCount == 0 {
+		p.logger.Info("No logs retrieved", zap.Int("total_logs", totalLogs))
 		return nil
 	}
+
+	p.logger.Info("Sending retrieved raw logs",
+		zap.Int("retrieved_logs", retrievedCount),
+		zap.Int("total_logs", totalLogs),
+	)
 
 	return p.nextConsumer.ConsumeLogs(ctx, retrievedLogs)
 }

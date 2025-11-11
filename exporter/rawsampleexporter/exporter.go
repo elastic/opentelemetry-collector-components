@@ -60,7 +60,7 @@ func (e *rawSampleExporter) ConsumeLogs(ctx context.Context, logs plog.Logs) err
 
 				// Determine target index from stream.name attribute or use fallback
 				targetIndex := e.config.Index
-				if streamName, ok := record.Attributes().Get("stream.name"); ok {
+				if streamName, ok := record.Attributes().Get("target_stream"); ok {
 					targetIndex = streamName.AsString()
 				}
 

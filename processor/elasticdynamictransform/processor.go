@@ -20,6 +20,7 @@ package elasticdynamictransform
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sync"
 	"time"
 
@@ -31,6 +32,24 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 )
+
+// prefixLogPathsRegex matches OTTL paths that need "log." prefix
+// Matches: attributes, body, cache, flags, instrumentation_scope, observed_time_unix_nano,
+// severity_number, severity_text, span_id, time_unix_nano, trace_flags, trace_id
+// The pattern matches these keywords when they appear as standalone identifiers or followed by [
+// but NOT when already prefixed with "log." or part of a string literal
+var prefixLogPathsRegex = regexp.MustCompile(`\b(attributes|body|cache|flags|instrumentation_scope|observed_time_unix_nano|severity_number|severity_text|span_id|time_unix_nano|trace_flags|trace_id)(\[|(?:\s*[,)])|(?:\s*$))`)
+
+// addLogPrefixToStatement adds "log." prefix to OTTL paths in a statement
+func addLogPrefixToStatement(stmt string) string {
+	// First pass: add prefix to all matching paths
+	result := prefixLogPathsRegex.ReplaceAllString(stmt, "log.$1$2")
+
+	// Second pass: fix any double-prefixing (log.log. -> log.)
+	result = regexp.MustCompile(`\blog\.log\.`).ReplaceAllString(result, "log.")
+
+	return result
+}
 
 // ProcessorConfigProvider is the interface that extensions must implement
 // to provide processor configurations dynamically
@@ -186,11 +205,11 @@ func (p *dynamicTransformProcessor) ConsumeLogs(ctx context.Context, ld plog.Log
 	// No processor loaded, apply fallback behavior
 	switch p.config.FallbackMode {
 	case FallbackModePassthrough:
-		p.logger.Debug("Passthrough mode - forwarding logs unchanged (no processor config loaded)")
+		p.logger.Info("Passthrough mode - forwarding logs unchanged (no processor config loaded)")
 		return p.nextConsumer.ConsumeLogs(ctx, ld)
 
 	case FallbackModeDrop:
-		p.logger.Debug("Drop mode - dropping logs (no processor config loaded)")
+		p.logger.Info("Drop mode - dropping logs (no processor config loaded)")
 		return nil
 
 	case FallbackModeError:
@@ -214,7 +233,7 @@ func (p *dynamicTransformProcessor) reloadConfig(ctx context.Context, host compo
 		return fmt.Errorf("failed to get processor config: %w", err)
 	}
 
-	p.logger.Debug("Fetched processor configuration from extension",
+	p.logger.Info("Fetched processor configuration from extension",
 		zap.String("processor_key", p.config.ProcessorKey),
 		zap.Any("config", configMap))
 
@@ -230,21 +249,27 @@ func (p *dynamicTransformProcessor) reloadConfig(ctx context.Context, host compo
 		return fmt.Errorf("failed to unmarshal transform config: %w", err)
 	}
 
-	p.logger.Debug("Unmarshaled transform config",
+	p.logger.Info("Unmarshaled transform config",
 		zap.Int("log_statements_count", len(transformConfig.LogStatements)),
 		zap.String("error_mode", string(transformConfig.ErrorMode)))
 
-	// Clear the context field to enable context inference.
-	// When context is empty, the transform processor infers it from the paths used,
-	// allowing cleaner syntax without "log." prefix in statements.
-	// This is simpler than manually adding "log." prefix to all paths.
-	// for i := range transformConfig.LogStatements {
-	// 	transformConfig.LogStatements[i].Context = ""
-	// }
+	// When context is explicitly set to "log", OTTL requires all paths to be prefixed with "log."
+	// Our dynamic config uses unprefixed syntax for cleaner configuration.
+	// Automatically add "log." prefix to all paths in statements and conditions.
+	for i := range transformConfig.LogStatements {
+		// Prefix all statements
+		for j := range transformConfig.LogStatements[i].Statements {
+			transformConfig.LogStatements[i].Statements[j] = addLogPrefixToStatement(transformConfig.LogStatements[i].Statements[j])
+		}
+		// Prefix all conditions
+		for j := range transformConfig.LogStatements[i].Conditions {
+			transformConfig.LogStatements[i].Conditions[j] = addLogPrefixToStatement(transformConfig.LogStatements[i].Conditions[j])
+		}
+	}
 
 	// Log the actual statements for debugging
 	for i, stmt := range transformConfig.LogStatements {
-		p.logger.Debug("Log statement group",
+		p.logger.Info("Log statement group",
 			zap.Int("index", i),
 			zap.String("context", string(stmt.Context)),
 			zap.Strings("statements", stmt.Statements),
@@ -296,7 +321,7 @@ func (p *dynamicTransformProcessor) reloadConfig(ctx context.Context, host compo
 			p.logger.Warn("Failed to shutdown old processor",
 				zap.Error(err))
 		} else {
-			p.logger.Debug("Old processor shut down successfully")
+			p.logger.Info("Old processor shut down successfully")
 		}
 	}
 
@@ -314,17 +339,17 @@ func (p *dynamicTransformProcessor) periodicReload(ctx context.Context, host com
 			if p.provider != nil {
 				reloadCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				if err := p.reloadConfig(reloadCtx, host); err != nil {
-					p.logger.Debug("Periodic reload failed", zap.Error(err))
+					p.logger.Info("Periodic reload failed", zap.Error(err))
 				}
 				cancel()
 			}
 
 		case <-p.shutdownChan:
-			p.logger.Debug("Periodic reload stopped")
+			p.logger.Info("Periodic reload stopped")
 			return
 
 		case <-ctx.Done():
-			p.logger.Debug("Periodic reload stopped due to context cancellation")
+			p.logger.Info("Periodic reload stopped due to context cancellation")
 			return
 		}
 	}
