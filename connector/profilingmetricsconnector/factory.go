@@ -45,8 +45,10 @@ func createProfilesToMetrics(
 	nextConsumer consumer.Metrics,
 ) (xconnector.Profiles, error) {
 	c := cfg.(*Config)
+
 	return &profilesToMetricsConnector{
 		nextConsumer: nextConsumer,
 		config:       c,
+		logger:       set.Logger,
 	}, nil
 }
