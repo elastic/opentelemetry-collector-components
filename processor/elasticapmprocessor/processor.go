@@ -135,7 +135,8 @@ func (p *MetricProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	if isECS(ctx) {
+	ecsMode := isECS(ctx)
+	if ecsMode {
 		resourceMetrics := md.ResourceMetrics()
 		for i := 0; i < resourceMetrics.Len(); i++ {
 			resourceMetric := resourceMetrics.At(i)
@@ -147,14 +148,15 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.skipEnrichment || isECS(ctx) {
+	if !p.skipEnrichment || ecsMode {
 		p.enricher.EnrichMetrics(md)
 	}
 	return p.next.ConsumeMetrics(ctx, md)
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	if isECS(ctx) {
+	ecsMode := isECS(ctx)
+	if ecsMode {
 		resourceLogs := ld.ResourceLogs()
 		for i := 0; i < resourceLogs.Len(); i++ {
 			resourceLog := resourceLogs.At(i)
@@ -167,7 +169,7 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.skipEnrichment || isECS(ctx) {
+	if !p.skipEnrichment || ecsMode {
 		p.enricher.EnrichLogs(ld)
 	}
 	return p.next.ConsumeLogs(ctx, ld)
