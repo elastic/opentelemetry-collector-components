@@ -111,6 +111,9 @@ var (
 	// stacktrace which would be incorrect. The elements are ordered in decreasing
 	// priority: if there are multiple classifications, the element with the lower
 	// slice index always wins.
+	//
+	// TODO: CNIs like Cilium may introduce complications and the following list
+	// may need to be updated.
 	classes = []class{
 		{name: "network/tcp/read",
 			rx: regexp.MustCompile(`^(?:tcp_recvmsg|tcp_read|tcp_rcv|tcp_v4_rcv|tcp_v6_rcv)`)},
