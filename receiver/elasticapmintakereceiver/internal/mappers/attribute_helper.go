@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package mappers
+package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
