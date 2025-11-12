@@ -1,0 +1,17 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: test log message
+        scope: {}
