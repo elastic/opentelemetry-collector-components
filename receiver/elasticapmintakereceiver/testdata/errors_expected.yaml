@@ -4,9 +4,6 @@ resourceLogs:
         - key: service.name
           value:
             stringValue: service1
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -1086,12 +1083,12 @@ resourceLogs:
               - key: processor.event
                 value:
                   stringValue: error
-              - key: error.id
-                value:
-                  stringValue: abcdef0123456789
               - key: transaction.id
                 value:
                   stringValue: "1234567890987654"
+              - key: error.id
+                value:
+                  stringValue: abcdef0123456789
               - key: parent.id
                 value:
                   stringValue: 9632587410abcdef
