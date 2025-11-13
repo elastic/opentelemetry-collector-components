@@ -1076,7 +1076,7 @@ resourceSpans:
         - key: cloud.project.name
           value:
             stringValue: project_name
-        - key: faas.trigger.request.id
+        - key: faas.trigger.request_id
           value:
             stringValue: FuH2Cir_vHcEMUA=
         - key: faas.execution

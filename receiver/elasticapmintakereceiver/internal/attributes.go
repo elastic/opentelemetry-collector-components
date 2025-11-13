@@ -77,7 +77,7 @@ const (
 	CloudProjectID         = "cloud.project.id"
 	CloudProjectName       = "cloud.project.name"
 
-	TriggerRequestID = "faas.trigger.request.id"
+	TriggerRequestID = "faas.trigger.request_id"
 	FaaSExecution    = "faas.execution"
 
 	AgentEphemeralID      = "agent.ephemeral_id"
