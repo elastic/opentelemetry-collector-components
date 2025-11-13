@@ -92,16 +92,18 @@ type LogProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next     consumer.Logs
-	enricher *enrichments.Enricher
-	logger   *zap.Logger
+	next           consumer.Logs
+	enricher       *enrichments.Enricher
+	logger         *zap.Logger
+	skipEnrichment bool
 }
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
 	return &LogProcessor{
-		next:     next,
-		logger:   logger,
-		enricher: enrichments.NewEnricher(cfg.Config),
+		next:           next,
+		logger:         logger,
+		enricher:       enrichments.NewEnricher(cfg.Config),
+		skipEnrichment: cfg.SkipEnrichment,
 	}
 }
 
@@ -113,16 +115,18 @@ type MetricProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next     consumer.Metrics
-	enricher *enrichments.Enricher
-	logger   *zap.Logger
+	next           consumer.Metrics
+	enricher       *enrichments.Enricher
+	logger         *zap.Logger
+	skipEnrichment bool
 }
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
 	return &MetricProcessor{
-		next:     next,
-		logger:   logger,
-		enricher: enrichments.NewEnricher(cfg.Config),
+		next:           next,
+		logger:         logger,
+		enricher:       enrichments.NewEnricher(cfg.Config),
+		skipEnrichment: cfg.SkipEnrichment,
 	}
 }
 
@@ -131,7 +135,8 @@ func (p *MetricProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	if isECS(ctx) {
+	ecsMode := isECS(ctx)
+	if ecsMode {
 		resourceMetrics := md.ResourceMetrics()
 		for i := 0; i < resourceMetrics.Len(); i++ {
 			resourceMetric := resourceMetrics.At(i)
@@ -141,12 +146,17 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
-	p.enricher.EnrichMetrics(md)
+	// When skipEnrichment is true, only enrich when mapping mode is ecs
+	// When skipEnrichment is false (default), always enrich (backwards compatible)
+	if !p.skipEnrichment || ecsMode {
+		p.enricher.EnrichMetrics(md)
+	}
 	return p.next.ConsumeMetrics(ctx, md)
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	if isECS(ctx) {
+	ecsMode := isECS(ctx)
+	if ecsMode {
 		resourceLogs := ld.ResourceLogs()
 		for i := 0; i < resourceLogs.Len(); i++ {
 			resourceLog := resourceLogs.At(i)
@@ -157,6 +167,10 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
-	p.enricher.EnrichLogs(ld)
+	// When skipEnrichment is true, only enrich when mapping mode is ecs
+	// When skipEnrichment is false (default), always enrich (backwards compatible)
+	if !p.skipEnrichment || ecsMode {
+		p.enricher.EnrichLogs(ld)
+	}
 	return p.next.ConsumeLogs(ctx, ld)
 }

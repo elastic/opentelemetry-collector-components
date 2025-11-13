@@ -32,8 +32,12 @@ import (
 // TranslateToOtelResourceAttributes translates resource attributes from the Elastic APM model to SemConv resource attributes
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Service != nil {
-		attributes.PutStr(string(semconv.ServiceNameKey), event.Service.Name)
-		attributes.PutStr(string(semconv.ServiceVersionKey), event.Service.Version)
+		if event.Service.Name != "" {
+			attributes.PutStr(string(semconv.ServiceNameKey), event.Service.Name)
+		}
+		if event.Service.Version != "" {
+			attributes.PutStr(string(semconv.ServiceVersionKey), event.Service.Version)
+		}
 		if event.Service.Language != nil && event.Service.Language.Name != "" {
 			attributes.PutStr(string(semconv.TelemetrySDKLanguageKey), translateElasticServiceLanguageToOtelSdkLanguage(event.Service.Language.Name))
 		}

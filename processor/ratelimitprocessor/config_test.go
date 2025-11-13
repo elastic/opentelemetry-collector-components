@@ -22,8 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/gubernator-io/gubernator/v2"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -45,10 +43,9 @@ func TestLoadConfig(t *testing.T) {
 	grpcClientConfig.Endpoint = "localhost:1081"
 
 	tests := []struct {
-		name                     string
-		expected                 component.Config
-		expectedErr              string
-		ignoreLimitOverrideOrder bool
+		name        string
+		expected    component.Config
+		expectedErr string
 	}{
 		{
 			name: "local",
@@ -303,39 +300,6 @@ func TestLoadConfig(t *testing.T) {
 			name:        "classes_set_but_no_class_resolver",
 			expectedErr: `classes defined but class_resolver not specified`,
 		},
-		{
-			name:                     "deprecated_overrides",
-			ignoreLimitOverrideOrder: true,
-			expected: &Config{
-				Type: LocalRateLimiter,
-				RateLimitSettings: RateLimitSettings{
-					Rate:             100,
-					Burst:            200,
-					Strategy:         StrategyRateLimitBytes,
-					ThrottleBehavior: ThrottleBehaviorError,
-					ThrottleInterval: 1 * time.Second,
-					RetryDelay:       1 * time.Second,
-				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
-				Overrides: []RateLimitOverrides{
-					{
-						Matches: map[string][]string{
-							"project-id": {"e678ebd7-3a15-43dd-a95c-1cf0639a6292"},
-						},
-						Rate:  ptr(300),
-						Burst: ptr(400),
-					},
-					{
-						Matches: map[string][]string{
-							"project-id":   {"e994532b-5n94-48et-a95c-1fa0638g6288"},
-							"project-type": {"test"},
-						},
-						Rate:  ptr(3000),
-						Burst: ptr(5000),
-					},
-				},
-			},
-		},
 	}
 
 	factory := NewFactory()
@@ -356,23 +320,7 @@ func TestLoadConfig(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			if tt.ignoreLimitOverrideOrder {
-				require.Empty(t, cmp.Diff(
-					tt.expected, cfg,
-					cmpopts.IgnoreFields(Config{}, "ClassResolver"),
-					cmpopts.IgnoreFields(DynamicRateLimiting{}, "WindowConfigurator"),
-					cmpopts.IgnoreFields(RateLimitSettings{}, "disableDynamic"),
-					// Since ignoring limit override is a temporary test while the old
-					// format of overrides is deprecated, we will need to ignore the
-					// order of slices. Our test case for this allows us to just compare
-					// the override slices by length of key-values.
-					cmpopts.SortSlices(func(a, b RateLimitOverrides) bool {
-						return len(a.Matches) < len(b.Matches)
-					}),
-				))
-			} else {
-				require.Equal(t, tt.expected, cfg)
-			}
+			require.Equal(t, tt.expected, cfg)
 		})
 	}
 }

@@ -4,9 +4,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: serviceabc
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -116,27 +113,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: true
-              - key: transaction.type
-                value:
-                  stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.result
+                value:
+                  stringValue: success
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -649,9 +646,6 @@ resourceSpans:
               - key: span.subtype
                 value:
                   stringValue: external
-              - key: span.action
-                value:
-                  stringValue: ""
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -906,12 +900,6 @@ resourceSpans:
               - key: span.type
                 value:
                   stringValue: request
-              - key: span.subtype
-                value:
-                  stringValue: ""
-              - key: span.action
-                value:
-                  stringValue: ""
               - key: child.id
                 value:
                   arrayValue:
@@ -1026,27 +1014,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: true
-              - key: transaction.type
-                value:
-                  stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: failure
               - key: transaction.duration.us
                 value:
                   intValue: "13980"
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4340
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.result
+                value:
+                  stringValue: failure
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "0"
@@ -1155,27 +1143,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: false
-              - key: transaction.root
-                value:
-                  boolValue: true
-              - key: transaction.type
-                value:
-                  stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: "200"
               - key: transaction.duration.us
                 value:
                   intValue: "13980"
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4341
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.result
+                value:
+                  stringValue: "200"
+              - key: transaction.sampled
+                value:
+                  boolValue: false
               - key: transaction.span_count.started
                 value:
                   intValue: "0"
@@ -1284,27 +1272,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: true
-              - key: transaction.type
-                value:
-                  stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: "200"
               - key: transaction.duration.us
                 value:
                   intValue: "13980"
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4342
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.result
+                value:
+                  stringValue: "200"
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "1"
@@ -1322,9 +1310,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: serviceabc
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript

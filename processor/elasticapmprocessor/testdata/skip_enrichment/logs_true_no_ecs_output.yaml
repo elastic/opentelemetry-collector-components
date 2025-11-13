@@ -1,0 +1,11 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: test log message
+        scope: {}

@@ -25,6 +25,7 @@ import (
 	"hash"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -576,11 +577,16 @@ func (r *elasticAPMIntakeReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, 
 	mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForTransaction(event, s.Attributes())
 
-	if event.Http != nil && event.Http.Request != nil {
-		s.SetKind(ptrace.SpanKindServer)
-	} else if event.Message != "" { // this check is TBD
-		s.SetKind(ptrace.SpanKindConsumer)
+	spanKind := mapSpanKind(event.GetSpan().GetKind())
+	if spanKind == ptrace.SpanKindUnspecified {
+		// derive span kind
+		if event.Http != nil && event.Http.Request != nil {
+			spanKind = ptrace.SpanKindServer
+		} else if event.Message != "" { // this check is TBD
+			spanKind = ptrace.SpanKindConsumer
+		}
 	}
+	s.SetKind(spanKind)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
@@ -591,8 +597,29 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
 
-	if event.Http != nil || event.Message != "" {
-		s.SetKind(ptrace.SpanKindClient)
+	spanKind := mapSpanKind(event.GetSpan().GetKind())
+	if spanKind == ptrace.SpanKindUnspecified {
+		if event.Http != nil || event.Message != "" {
+			spanKind = ptrace.SpanKindClient
+		}
+	}
+	s.SetKind(spanKind)
+}
+
+func mapSpanKind(kind string) ptrace.SpanKind {
+	switch strings.ToUpper(kind) {
+	case "INTERNAL":
+		return ptrace.SpanKindInternal
+	case "CLIENT":
+		return ptrace.SpanKindClient
+	case "PRODUCER":
+		return ptrace.SpanKindProducer
+	case "CONSUMER":
+		return ptrace.SpanKindConsumer
+	case "SERVER":
+		return ptrace.SpanKindServer
+	default:
+		return ptrace.SpanKindUnspecified
 	}
 }
 

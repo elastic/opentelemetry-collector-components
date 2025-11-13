@@ -21,13 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/confmap"
 )
 
 // Config holds configuration for the ratelimit processor.
@@ -82,63 +80,6 @@ type Config struct {
 	//
 	// Defaults to 0 (BATCHING).
 	GubernatorBehavior gubernator.Behavior `mapstructure:"gubernator_behavior"`
-}
-
-// Unmarshal implements temporary logic to parse the older format of the overrides.
-// This is achieved by identifying if overrides are defined using the old config
-// and mapping it to the new config.
-func (cfg *Config) Unmarshal(componentParser *confmap.Conf) error {
-	if componentParser == nil {
-		return nil
-	}
-
-	var oldFmtOverrideKeys []string
-	raw := componentParser.Get("overrides")
-	if oldFmtOverrides, ok := raw.(map[string]any); ok {
-		// Delete the older deprecated overrides config
-		componentParser.Delete("overrides")
-
-		// Convert the older overrides config into the new format and create a
-		// new `Conf` from the newer config. The old format override keys are
-		// cached and converted to the new format later.
-		newRawOverrides := make([]any, 0, len(oldFmtOverrides))
-		oldFmtOverrideKeys = make([]string, 0, len(oldFmtOverrides))
-		for k, v := range oldFmtOverrides {
-			newRawOverrides = append(newRawOverrides, v)
-			oldFmtOverrideKeys = append(oldFmtOverrideKeys, k)
-		}
-		// confM will be missing the `matches` config which will be populated
-		// after parsing the old format override keys later.
-		confM := map[string]any{"overrides": newRawOverrides}
-		if err := componentParser.Merge(confmap.NewFromStringMap(confM)); err != nil {
-			return fmt.Errorf("failed to parse deprecated overrides format: %w", err)
-		}
-	}
-
-	if err := componentParser.Unmarshal(cfg, confmap.WithIgnoreUnused()); err != nil {
-		return err
-	}
-
-	// Parse the old format override keys and populate `matches`.
-	for i, k := range oldFmtOverrideKeys {
-		if len(k) == 0 {
-			continue
-		}
-		matches := make(map[string][]string)
-		cfg.Overrides[i].Matches = matches
-		matchKVs := strings.Split(k, ";")
-		for _, matchKV := range matchKVs {
-			if len(matchKV) == 0 {
-				continue
-			}
-			meta := strings.Split(matchKV, ":")
-			if len(meta) < 2 {
-				return fmt.Errorf("invalid overrides found: %s", matchKV)
-			}
-			matches[meta[0]] = meta[1:]
-		}
-	}
-	return nil
 }
 
 // DynamicRateLimiting defines settings for dynamic rate limiting.
