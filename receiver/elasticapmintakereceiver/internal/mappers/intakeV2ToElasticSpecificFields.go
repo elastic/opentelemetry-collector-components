@@ -457,7 +457,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 
 	if event.Faas != nil {
 		if event.Faas.TriggerRequestId != "" {
-			attributesMap.PutStr(attr.TriggerRequestID, event.Faas.TriggerRequestId)
+			attributesMap.PutStr(attr.FaaSTriggerRequestID, event.Faas.TriggerRequestId)
 		}
 		if event.Faas.Execution != "" {
 			attributesMap.PutStr(attr.FaaSExecution, event.Faas.Execution)
