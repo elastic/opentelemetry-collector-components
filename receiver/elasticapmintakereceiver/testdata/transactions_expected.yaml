@@ -146,12 +146,12 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
+              - key: transaction.duration.us
                 value:
-                  stringValue: ""
-              - key: transaction.sampled
+                  intValue: "32592"
+              - key: transaction.id
                 value:
-                  boolValue: true
+                  stringValue: 945254c567a5417e
               - key: transaction.root
                 value:
                   boolValue: false
@@ -161,12 +161,9 @@ resourceSpans:
               - key: transaction.result
                 value:
                   stringValue: Success
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "32592"
-              - key: transaction.id
-                value:
-                  stringValue: 945254c567a5417e
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "43"
@@ -178,6 +175,7 @@ resourceSpans:
                       - stringValue: bar
                       - stringValue: foo
             endTimeUnixNano: "1496170407186592981"
+            kind: 2
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
@@ -349,27 +347,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: true
-              - key: transaction.type
-                value:
-                  stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: 4340a8e0df1906ecbfa9
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.result
+                value:
+                  stringValue: success
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -675,27 +673,21 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: ""
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: true
-              - key: transaction.type
-                value:
-                  stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: ""
               - key: transaction.duration.us
                 value:
                   intValue: "13980"
               - key: transaction.id
                 value:
                   stringValue: cdef4340a8e0df19
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -900,27 +892,24 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: amqp receive
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: false
-              - key: transaction.type
-                value:
-                  stringValue: messaging
-              - key: transaction.result
-                value:
-                  stringValue: ""
               - key: transaction.duration.us
                 value:
                   intValue: "3000"
               - key: transaction.id
                 value:
                   stringValue: 00xxxxFFaaaa1234
+              - key: transaction.root
+                value:
+                  boolValue: false
+              - key: transaction.name
+                value:
+                  stringValue: amqp receive
+              - key: transaction.type
+                value:
+                  stringValue: messaging
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: messaging.destination.name
                 value:
                   stringValue: new_users
@@ -1139,27 +1128,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: july-2021-delete-after-july-31
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: true
-              - key: transaction.type
-                value:
-                  stringValue: lambda
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.duration.us
                 value:
                   intValue: "38853"
               - key: transaction.id
                 value:
                   stringValue: 142e61450efb8574
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: july-2021-delete-after-july-31
+              - key: transaction.type
+                value:
+                  stringValue: lambda
+              - key: transaction.result
+                value:
+                  stringValue: success
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "0"

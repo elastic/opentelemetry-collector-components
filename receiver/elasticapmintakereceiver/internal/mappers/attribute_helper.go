@@ -15,16 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
+package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
-import "github.com/elastic/opentelemetry-lib/enrichments/config"
+import (
+	"go.opentelemetry.io/collector/pdata/pcommon"
+)
 
-type Config struct {
-	config.Config `mapstructure:",squash"`
-
-	// SkipEnrichment controls whether enrichment should be skipped for logs and metrics
-	// when the mapping mode is not "ecs". When true, logs and metrics are only enriched when
-	// the x-elastic-mapping-mode metadata is set to "ecs". Traces are always enriched regardless
-	// of this setting. Defaults to false for backwards compatibility (always enrich).
-	SkipEnrichment bool `mapstructure:"skip_enrichment"`
+// putNonEmptyStr puts a string attribute in the given map
+// only if the provided value is not empty.
+func putNonEmptyStr(attributes pcommon.Map, key, value string) {
+	if value != "" {
+		attributes.PutStr(key, value)
+	}
 }
