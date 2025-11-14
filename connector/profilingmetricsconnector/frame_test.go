@@ -236,8 +236,7 @@ func (tp *testProfiles) newProfile() pprofile.Profile {
 }
 
 func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
-	multiplier int64, frames ...testFrame,
-) {
+	multiplier int64, frames ...testFrame) {
 	strTable := tp.dict.StringTable()
 	locTable := tp.dict.LocationTable()
 	mappingTable := tp.dict.MappingTable()

@@ -115,60 +115,36 @@ var (
 	// TODO: CNIs like Cilium may introduce complications and the following list
 	// may need to be updated.
 	classes = []class{
-		{
-			name: "network/tcp/read",
-			rx:   regexp.MustCompile(`^(?:tcp_recvmsg|tcp_read|tcp_rcv|tcp_v4_rcv|tcp_v6_rcv)`),
-		},
-		{
-			name: "network/tcp/write",
-			rx:   regexp.MustCompile(`^(?:tcp_sendmsg|tcp_transmit|tcp_write|tcp_push|tcp_sendpage)`),
-		},
-		{
-			name: "network/udp/read",
-			rx:   regexp.MustCompile(`^(?:udp_recvmsg|udp_read|udp_rcv|udp_v4_rcv|udp_v6_rcv)`),
-		},
-		{
-			name: "network/udp/write",
-			rx:   regexp.MustCompile(`^(?:udp_sendmsg|udp_write|udp_push|udp_sendpage)`),
-		},
-		{
-			name: "ipc/read",
+		{name: "network/tcp/read",
+			rx: regexp.MustCompile(`^(?:tcp_recvmsg|tcp_read|tcp_rcv|tcp_v4_rcv|tcp_v6_rcv)`)},
+		{name: "network/tcp/write",
+			rx: regexp.MustCompile(`^(?:tcp_sendmsg|tcp_transmit|tcp_write|tcp_push|tcp_sendpage)`)},
+		{name: "network/udp/read",
+			rx: regexp.MustCompile(`^(?:udp_recvmsg|udp_read|udp_rcv|udp_v4_rcv|udp_v6_rcv)`)},
+		{name: "network/udp/write",
+			rx: regexp.MustCompile(`^(?:udp_sendmsg|udp_write|udp_push|udp_sendpage)`)},
+		{name: "ipc/read",
 			rx: regexp.MustCompile(`^(?:pipe_read|pipe_read_iter|eventfd_read` +
-				`|unix_stream_read_generic|unix_stream_recvmsg)`),
-		},
-		{
-			name: "ipc/write",
+				`|unix_stream_read_generic|unix_stream_recvmsg)`)},
+		{name: "ipc/write",
 			rx: regexp.MustCompile(`^(?:pipe_write|pipe_write_iter|eventfd_write` +
-				`|unix_stream_write_generic|unix_stream_sendmsg)`),
-		},
-		{
-			name: "network/other/read",
-			rx:   regexp.MustCompile(`^(?:sock_recvmsg|__sock_recvmsg|sock_read_iter)`),
-		},
-		{
-			name: "network/other/write",
-			rx:   regexp.MustCompile(`^(?:sock_sendmsg|__sock_sendmsg|sock_write_iter)`),
-		},
-		{
-			name: "disk/read",
+				`|unix_stream_write_generic|unix_stream_sendmsg)`)},
+		{name: "network/other/read",
+			rx: regexp.MustCompile(`^(?:sock_recvmsg|__sock_recvmsg|sock_read_iter)`)},
+		{name: "network/other/write",
+			rx: regexp.MustCompile(`^(?:sock_sendmsg|__sock_sendmsg|sock_write_iter)`)},
+		{name: "disk/read",
 			rx: regexp.MustCompile(`^(?:ext4_file_read_iter|xfs_file_read_iter` +
-				`|btrfs_file_read_iter|filemap_read|generic_file_read_iter)`),
-		},
-		{
-			name: "disk/write",
+				`|btrfs_file_read_iter|filemap_read|generic_file_read_iter)`)},
+		{name: "disk/write",
 			rx: regexp.MustCompile(`^(?:ext4_file_write_iter|xfs_file_write_iter` +
 				`|btrfs_file_write_iter|filemap_write|generic_file_write_iter` +
-				`|writeback_sb_inodes)`),
-		},
-		{
-			name: "memory",
+				`|writeback_sb_inodes)`)},
+		{name: "memory",
 			rx: regexp.MustCompile(`^do_mmap|do_munmap|^do_anonymous_page|mmap_|madvise` +
-				`|^handle_mm_fault|^alloc_pages|^free_pages`),
-		},
-		{
-			name: "synchronization",
-			rx:   regexp.MustCompile(`futex_|^schedule|__schedule|^wake_up_|^wake_q_`),
-		},
+				`|^handle_mm_fault|^alloc_pages|^free_pages`)},
+		{name: "synchronization",
+			rx: regexp.MustCompile(`futex_|^schedule|__schedule|^wake_up_|^wake_q_`)},
 	}
 )
 
@@ -291,8 +267,7 @@ func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.Profiles
 func classifyUser(fi frameInfo,
 	counts map[metric]int64,
 	nativeCounts map[attrInfo]int64,
-	multiplier int64,
-) {
+	multiplier int64) {
 	ft := fi.typ
 
 	// We have a distinct metricUser (even if there's no specific frame type for it)
