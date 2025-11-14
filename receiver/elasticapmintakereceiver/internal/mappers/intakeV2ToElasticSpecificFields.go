@@ -100,18 +100,8 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 
 	if http.Request != nil {
 		setHTTPHeadersMap(attr.HTTPRequestHeaders, attributesMap, http.Request.Headers)
-
-		// set env and cookies as a flat map
-		for _, env := range http.Request.Env {
-			if env != nil && env.Key != "" && env.Value != nil && env.Value.String() != "" {
-				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestEnv, env.Key), env.Value.String())
-			}
-		}
-		for _, cookie := range http.Request.Cookies {
-			if cookie != nil && cookie.Key != "" && cookie.Value != nil && cookie.Value.String() != "" {
-				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestCookies, cookie.Key), cookie.Value.String())
-			}
-		}
+		setKeyValueSliceMap(attr.HTTPRequestEnv, attributesMap, http.Request.Env)
+		setKeyValueSliceMap(attr.HTTPRequestCookies, attributesMap, http.Request.Cookies)
 
 		if http.Request.Body != nil {
 			// add http body as an object since it is required by the APM index template
@@ -144,6 +134,22 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 
 		if http.Response.TransferSize != nil {
 			attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*http.Response.TransferSize))
+		}
+	}
+}
+
+// setKeyValueSliceMap adds a list of KeyValue pairs as a map attribute with the given prefix.
+func setKeyValueSliceMap(prefix string, attributesMap pcommon.Map, kvList []*modelpb.KeyValue) {
+	if len(kvList) == 0 {
+		return
+	}
+
+	kvMap := attributesMap.PutEmptyMap(prefix)
+	kvMap.EnsureCapacity(len(kvList))
+	for _, entry := range kvList {
+		if entry != nil && entry.Key != "" && entry.Value != nil {
+			mapEntry := kvMap.PutEmpty(entry.Key)
+			insertValue(mapEntry, entry.Value)
 		}
 	}
 }

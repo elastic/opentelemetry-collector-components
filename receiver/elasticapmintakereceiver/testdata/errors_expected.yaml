@@ -233,6 +233,21 @@ resourceLogs:
                 value:
                   kvlistValue:
                     values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2,c3=3
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
                       - key: Array
                         value:
                           arrayValue:
@@ -250,33 +265,32 @@ resourceLogs:
                           arrayValue:
                             values:
                               - stringValue: 123.0.0.1
-                      - key: Content-Type
+              - key: http.request.env
+                value:
+                  kvlistValue:
+                    values:
+                      - key: SERVER_SOFTWARE
                         value:
-                          arrayValue:
-                            values:
-                              - stringValue: text/html
-                      - key: Cookie
+                          stringValue: nginx
+                      - key: GATEWAY_INTERFACE
                         value:
-                          arrayValue:
-                            values:
-                              - stringValue: c1=v1,c2=v2
-                      - key: Some-Other-Header
+                          stringValue: CGI/1.1
+                      - key: SOME_NUMERIC_VALUE
                         value:
-                          arrayValue:
-                            values:
-                              - stringValue: foo
-              - key: http.request.env.SERVER_SOFTWARE
+                          doubleValue: 123
+              - key: http.request.cookies
                 value:
-                  stringValue: string_value:"nginx"
-              - key: http.request.env.GATEWAY_INTERFACE
-                value:
-                  stringValue: string_value:"CGI/1.1"
-              - key: http.request.cookies.c1
-                value:
-                  stringValue: string_value:"v1"
-              - key: http.request.cookies.c2
-                value:
-                  stringValue: string_value:"v2"
+                  kvlistValue:
+                    values:
+                      - key: c1
+                        value:
+                          stringValue: v1
+                      - key: c2
+                        value:
+                          stringValue: v2
+                      - key: c3
+                        value:
+                          doubleValue: 3
               - key: http.request.body.original
                 value:
                   stringValue: Hello World
