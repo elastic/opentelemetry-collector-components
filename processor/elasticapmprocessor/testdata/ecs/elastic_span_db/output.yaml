@@ -290,7 +290,7 @@ resourceSpans:
         - key: faas.coldstart
           value:
             boolValue: false
-        - key: faas.trigger.request.id
+        - key: labels.faas_trigger_request_id
           value:
             stringValue: req-123
         - key: faas.execution

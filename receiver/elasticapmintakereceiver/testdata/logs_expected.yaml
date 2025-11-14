@@ -988,7 +988,7 @@ resourceLogs:
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: faas.trigger.request.id
+        - key: faas.trigger.request_id
           value:
             stringValue: request-id-xyz789
         - key: faas.execution
@@ -1135,7 +1135,7 @@ resourceLogs:
         - key: service.language.version
           value:
             stringValue: 10.0.2
-        - key: faas.trigger.request.id
+        - key: faas.trigger.request_id
           value:
             stringValue: request-id-xyz789
         - key: faas.execution
