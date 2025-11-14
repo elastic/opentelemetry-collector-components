@@ -408,17 +408,6 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: User-Agent
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
-                              - stringValue: Mozilla Chrome Edge
-                      - key: Content-Type
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: text/html
                       - key: Cookie
                         value:
                           arrayValue:
@@ -436,25 +425,41 @@ resourceSpans:
                               - stringValue: foo
                               - stringValue: bar
                               - stringValue: baz
-              - key: http.request.env.SERVER_SOFTWARE
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
+                              - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+              - key: http.request.env
                 value:
-                  stringValue: string_value:"nginx"
-              - key: http.request.env.GATEWAY_INTERFACE
+                  kvlistValue:
+                    values:
+                      - key: SERVER_SOFTWARE
+                        value:
+                          stringValue: nginx
+                      - key: GATEWAY_INTERFACE
+                        value:
+                          stringValue: CGI/1.1
+              - key: http.request.cookies
                 value:
-                  stringValue: string_value:"CGI/1.1"
-              - key: http.request.cookies.c1
-                value:
-                  stringValue: string_value:"v1"
-              - key: http.request.cookies.c2
-                value:
-                  stringValue: string_value:"v2"
+                  kvlistValue:
+                    values:
+                      - key: c1
+                        value:
+                          stringValue: v1
+                      - key: c2
+                        value:
+                          stringValue: v2
               - key: http.request.body.original
                 value:
                   kvlistValue:
                     values:
-                      - key: str
-                        value:
-                          stringValue: hello world
                       - key: additional
                         value:
                           kvlistValue:
@@ -465,6 +470,9 @@ resourceSpans:
                               - key: req
                                 value:
                                   stringValue: additional information
+                      - key: str
+                        value:
+                          stringValue: hello world
               - key: http.request.referrer
                 value:
                   stringValue: http://localhost:8000/test/e2e/
