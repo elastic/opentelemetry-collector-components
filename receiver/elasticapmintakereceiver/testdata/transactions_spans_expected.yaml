@@ -192,7 +192,7 @@ resourceSpans:
                         value:
                           arrayValue:
                             values:
-                              - stringValue: c1=v1,c2=v2
+                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -208,10 +208,16 @@ resourceSpans:
                       - key: GATEWAY_INTERFACE
                         value:
                           stringValue: CGI/1.1
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
               - key: http.request.cookies
                 value:
                   kvlistValue:
                     values:
+                      - key: c3
+                        value:
+                          doubleValue: 3
                       - key: c1
                         value:
                           stringValue: v1

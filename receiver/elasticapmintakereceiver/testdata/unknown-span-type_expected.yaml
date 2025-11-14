@@ -169,7 +169,7 @@ resourceSpans:
                         value:
                           arrayValue:
                             values:
-                              - stringValue: c1=v1,c2=v2
+                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -196,6 +196,9 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
                       - key: SERVER_SOFTWARE
                         value:
                           stringValue: nginx
@@ -206,12 +209,15 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: c2
-                        value:
-                          stringValue: v2
                       - key: c1
                         value:
                           stringValue: v1
+                      - key: c2
+                        value:
+                          stringValue: v2
+                      - key: c3
+                        value:
+                          doubleValue: 3
               - key: http.request.body.original
                 value:
                   kvlistValue:

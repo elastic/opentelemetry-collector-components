@@ -242,7 +242,7 @@ resourceLogs:
                         value:
                           arrayValue:
                             values:
-                              - stringValue: c1=v1,c2=v2
+                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -275,6 +275,9 @@ resourceLogs:
                       - key: GATEWAY_INTERFACE
                         value:
                           stringValue: CGI/1.1
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
               - key: http.request.cookies
                 value:
                   kvlistValue:
@@ -285,6 +288,9 @@ resourceLogs:
                       - key: c2
                         value:
                           stringValue: v2
+                      - key: c3
+                        value:
+                          doubleValue: 3
               - key: http.request.body.original
                 value:
                   stringValue: Hello World
