@@ -19,37 +19,20 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
-// mockMetricsConsumer is a mock implementation of consumer.Metrics.
-type mockMetricsConsumer struct {
-	mock.Mock
-}
-
-func (m *mockMetricsConsumer) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: false}
-}
-
-func (m *mockMetricsConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	args := m.Called(ctx, md)
-	return args.Error(0)
-}
-
 func TestConsumeProfiles_WithMetrics(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
+	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		MetricsPrefix: "test.",
-		ByFrameType:   true,
+		ByFrameType: true,
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
@@ -70,21 +53,16 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 	st.SetUnitStrindex(1)
 	prof.Sample().AppendEmpty() // Add a sample to ensure metric count > 0
 
-	// Expect ConsumeMetrics to be called once.
-	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.MatchedBy(func(md pmetric.Metrics) bool {
-		return md.MetricCount() > 0
-	})).Return(nil).Once()
-
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
-	mockConsumer.AssertExpectations(t)
+	metrics := mockConsumer.AllMetrics()
+	assert.Len(t, metrics, 1)
 }
 
 func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
+	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		MetricsPrefix: "test.",
-		ByFrameType:   true,
+		ByFrameType: true,
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
@@ -132,7 +110,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	stack.LocationIndices().Append(0)
 
 	// Expect ConsumeMetrics to be called with metrics containing frame type metric
-	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.MatchedBy(func(md pmetric.Metrics) bool {
+	assertMetricType := func(md pmetric.Metrics) bool {
 		found := false
 		rms := md.ResourceMetrics()
 		for i := 0; i < rms.Len(); i++ {
@@ -142,7 +120,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 				for k := 0; k < metrics.Len(); k++ {
 					metric := metrics.At(k)
 					name := metric.Name()
-					if name == "test.samples.frame_type" {
+					if name == "samples.frame_type" {
 						// Verify it's a Gauge metric
 						if metric.Type() == pmetric.MetricTypeGauge {
 							gauge := metric.Gauge()
@@ -160,18 +138,20 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 			}
 		}
 		return found
-	})).Return(nil).Once()
+	}
 
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
-	mockConsumer.AssertExpectations(t)
+
+	metrics := mockConsumer.AllMetrics()
+	assert.Len(t, metrics, 1)
+	assert.True(t, assertMetricType(metrics[0]))
 }
 
 func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
+	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		MetricsPrefix: "test.",
-		ByFrameType:   true,
+		ByFrameType: true,
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
@@ -227,7 +207,7 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	samplePy.SetStackIndex(2)
 
 	// Expect ConsumeMetrics to be called with both frame type metrics
-	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.MatchedBy(func(md pmetric.Metrics) bool {
+	assertMetricsType := func(md pmetric.Metrics) bool {
 		foundGo := false
 		foundPy := false
 		rms := md.ResourceMetrics()
@@ -238,7 +218,7 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 				for k := 0; k < metrics.Len(); k++ {
 					metric := metrics.At(k)
 					name := metric.Name()
-					if name == "test.samples.frame_type" {
+					if name == "samples.frame_type" {
 						// Verify it's a Gauge metric
 						if metric.Type() == pmetric.MetricTypeGauge {
 							gauge := metric.Gauge()
@@ -260,16 +240,18 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 			}
 		}
 		return foundGo && foundPy
-	})).Return(nil).Once()
+	}
 
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
-	mockConsumer.AssertExpectations(t)
+	metrics := mockConsumer.AllMetrics()
+	assert.Len(t, metrics, 1)
+	assert.True(t, assertMetricsType(metrics[0]))
 }
 
 func TestConsumeProfiles_NoMetrics(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
+	mockConsumer := new(consumertest.MetricsSink)
+	cfg := &Config{}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
@@ -282,40 +264,11 @@ func TestConsumeProfiles_NoMetrics(t *testing.T) {
 	// Expect ConsumeMetrics NOT to be called.
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
-	mockConsumer.AssertNotCalled(t, "ConsumeMetrics", mock.Anything, mock.Anything)
-}
-
-func TestConsumeProfiles_ConsumeMetricsError(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
-	conn := &profilesToMetricsConnector{
-		nextConsumer: mockConsumer,
-		config:       cfg,
-	}
-
-	// Create a profiles object that will result in at least one metric.
-	profiles := pprofile.NewProfiles()
-	profiles.Dictionary().StringTable().Append("sample")
-	profiles.Dictionary().StringTable().Append("count")
-	resProf := profiles.ResourceProfiles().AppendEmpty()
-	scopeProf := resProf.ScopeProfiles().AppendEmpty()
-	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType()
-	st.SetTypeStrindex(0)
-	st.SetUnitStrindex(1)
-	prof.Sample().AppendEmpty()
-
-	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.Anything).Return(errors.New("consume error")).Once()
-
-	err := conn.ConsumeProfiles(context.Background(), profiles)
-	assert.Error(t, err)
-	assert.EqualError(t, err, "consume error")
-	mockConsumer.AssertExpectations(t)
+	assert.Len(t, mockConsumer.AllMetrics(), 0)
 }
 
 func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	cfg := &Config{
-		MetricsPrefix:    "test.",
 		ByClassification: true,
 	}
 	conn := &profilesToMetricsConnector{
