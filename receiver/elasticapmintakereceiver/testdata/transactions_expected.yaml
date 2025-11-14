@@ -936,6 +936,12 @@ resourceSpans:
                     values:
                       - stringValue: user
                       - stringValue: auth
+              - key: session.id
+                value:
+                  stringValue: sunday
+              - key: session.sequence
+                value:
+                  intValue: "123"
             endTimeUnixNano: "1496170407157000000"
             name: amqp receive
             parentSpanId: abcdefabcdef0123

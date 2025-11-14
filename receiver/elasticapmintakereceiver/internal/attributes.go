@@ -112,7 +112,8 @@ const (
 
 	ProcessThreadName = "process.thread.name"
 
-	SessionID = "session.id"
+	SessionID       = "session.id"
+	SessionSequence = "session.sequence"
 
 	TransactionCustom                                      = "transaction.custom"
 	TransactionUserExperienceCumulativeLayoutShift         = "transaction.experience.cls"
