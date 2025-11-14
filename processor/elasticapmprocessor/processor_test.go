@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/ptracetest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -117,4 +119,138 @@ func TestProcessorECS(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	assert.NoError(t, ptracetest.CompareTraces(expectedTraces, actual))
+}
+
+// TestSkipEnrichmentLogs tests that logs are only enriched when skipEnrichment is false or when mapping mode is ecs
+func TestSkipEnrichmentLogs(t *testing.T) {
+	testCases := []struct {
+		name           string
+		skipEnrichment bool
+		mappingMode    string
+	}{
+		{
+			name:           "logs_false",
+			skipEnrichment: false,
+			mappingMode:    "",
+		},
+		{
+			name:           "logs_false_ecs",
+			skipEnrichment: false,
+			mappingMode:    "ecs",
+		},
+		{
+			name:           "logs_true_ecs",
+			skipEnrichment: true,
+			mappingMode:    "ecs",
+		},
+		{
+			name:           "logs_true_no_ecs",
+			skipEnrichment: true,
+			mappingMode:    "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.mappingMode != "" {
+				ctx = client.NewContext(ctx, client.Info{
+					Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {tc.mappingMode}}),
+				})
+			}
+
+			factory := NewFactory()
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+			next := &consumertest.LogsSink{}
+
+			cfg := createDefaultConfig().(*Config)
+			cfg.SkipEnrichment = tc.skipEnrichment
+
+			lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+			require.NoError(t, err)
+
+			dir := filepath.Join("testdata", "skip_enrichment")
+			inputLogs, err := golden.ReadLogs(filepath.Join(dir, tc.name+"_input.yaml"))
+			require.NoError(t, err)
+
+			outputFile := filepath.Join(dir, tc.name+"_output.yaml")
+			require.NoError(t, lp.ConsumeLogs(ctx, inputLogs))
+			actual := next.AllLogs()[0]
+			if *update {
+				err := golden.WriteLogs(t, outputFile, actual)
+				assert.NoError(t, err)
+			}
+			expectedLogs, err := golden.ReadLogs(outputFile)
+			require.NoError(t, err)
+			assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
+		})
+	}
+}
+
+// TestSkipEnrichmentMetrics tests that metrics are only enriched when skipEnrichment is false or when mapping mode is ecs
+func TestSkipEnrichmentMetrics(t *testing.T) {
+	testCases := []struct {
+		name           string
+		skipEnrichment bool
+		mappingMode    string
+	}{
+		{
+			name:           "metrics_false",
+			skipEnrichment: false,
+			mappingMode:    "",
+		},
+		{
+			name:           "metrics_false_ecs",
+			skipEnrichment: false,
+			mappingMode:    "ecs",
+		},
+		{
+			name:           "metrics_true_ecs",
+			skipEnrichment: true,
+			mappingMode:    "ecs",
+		},
+		{
+			name:           "metrics_true_no_ecs",
+			skipEnrichment: true,
+			mappingMode:    "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.mappingMode != "" {
+				ctx = client.NewContext(ctx, client.Info{
+					Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {tc.mappingMode}}),
+				})
+			}
+
+			factory := NewFactory()
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+			next := &consumertest.MetricsSink{}
+
+			cfg := createDefaultConfig().(*Config)
+			cfg.SkipEnrichment = tc.skipEnrichment
+
+			mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+			require.NoError(t, err)
+
+			dir := filepath.Join("testdata", "skip_enrichment")
+			inputMetrics, err := golden.ReadMetrics(filepath.Join(dir, tc.name+"_input.yaml"))
+			require.NoError(t, err)
+
+			outputFile := filepath.Join(dir, tc.name+"_output.yaml")
+			require.NoError(t, mp.ConsumeMetrics(ctx, inputMetrics))
+			actual := next.AllMetrics()[0]
+			if *update {
+				err := golden.WriteMetrics(t, outputFile, actual)
+				assert.NoError(t, err)
+			}
+			expectedMetrics, err := golden.ReadMetrics(outputFile)
+			require.NoError(t, err)
+			assert.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actual, pmetrictest.IgnoreMetricsOrder(), pmetrictest.IgnoreResourceMetricsOrder()))
+		})
+	}
 }

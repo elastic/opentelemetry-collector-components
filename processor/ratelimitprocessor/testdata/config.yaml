@@ -149,16 +149,3 @@ ratelimit/classes_set_but_no_class_resolver:
     trial:
       rate: 200
       burst: 400
-
-ratelimit/deprecated_overrides:
-  rate: 100
-  burst: 200
-  strategy: bytes
-  throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
-      rate: 300
-      burst: 400
-    project-id:e994532b-5n94-48et-a95c-1fa0638g6288;project-type:test:
-      rate: 3000
-      burst: 5000

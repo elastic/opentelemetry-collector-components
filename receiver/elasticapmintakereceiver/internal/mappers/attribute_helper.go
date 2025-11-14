@@ -15,26 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apikeyauthextension // import "github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension"
+package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
-	"context"
-
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/extension"
-
-	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
-func NewFactory() extension.Factory {
-	return extension.NewFactory(
-		metadata.Type,
-		createDefaultConfig,
-		createExtension,
-		metadata.ExtensionStability,
-	)
-}
-
-func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
-	return newAuthenticator(cfg.(*Config), set)
+// putNonEmptyStr puts a string attribute in the given map
+// only if the provided value is not empty.
+func putNonEmptyStr(attributes pcommon.Map, key, value string) {
+	if value != "" {
+		attributes.PutStr(key, value)
+	}
 }

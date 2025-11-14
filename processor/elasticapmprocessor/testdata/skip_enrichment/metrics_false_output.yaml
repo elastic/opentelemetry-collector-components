@@ -1,0 +1,19 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: service.name
+          value:
+            stringValue: test-service
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asInt: "123"
+            name: test_metric
+        scope: {}
