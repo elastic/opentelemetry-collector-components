@@ -355,6 +355,16 @@ func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesM
 
 	setTransactionMarks(event.Transaction.Marks, attributesMap)
 	setMessage("transaction", event.Transaction.Message, attributesMap)
+
+	// add session attributes which hold optional transaction session information for RUM
+	if event.Session != nil {
+		if event.Session.Id != "" {
+			attributesMap.PutStr(attr.SessionID, event.Session.Id)
+		}
+		if event.Session.Sequence != 0 {
+			attributesMap.PutInt(attr.SessionSequence, int64(event.Session.Sequence))
+		}
+	}
 }
 
 func setProfilerStackTraceIDs(ids []string, attributesMap pcommon.Map) {
@@ -626,12 +636,6 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 			if event.Process.Thread.Name != "" {
 				attributesMap.PutStr(attr.ProcessThreadName, event.Process.Thread.Name)
 			}
-		}
-	}
-
-	if event.Session != nil {
-		if event.Session.Id != "" {
-			attributesMap.PutStr(attr.SessionID, event.Session.Id)
 		}
 	}
 
