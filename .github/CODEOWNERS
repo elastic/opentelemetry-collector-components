@@ -13,6 +13,5 @@ processor/integrationprocessor         @elastic/ecosystem @elastic/ingest-otel-d
 connector/elasticapmconnector          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 extension/apikeyauthextension          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 extension/apmconfigextension           @elastic/ingest-otel-data
-extension/beatsauthextension           @elastic/elastic-agent-data-plane
 extension/fileintegrationextension     @elastic/ecosystem @elastic/ingest-otel-data
 pkg/integrations                       @elastic/ecosystem @elastic/ingest-otel-data
