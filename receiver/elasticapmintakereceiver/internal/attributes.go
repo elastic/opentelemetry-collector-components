@@ -23,7 +23,7 @@ const (
 	SpanDBLink                       = "span.db.link"
 	SpanDBRowsAffected               = "span.db.rows_affected"
 	SpanDBUserName                   = "span.db.user.name"
-	SpanCompositeSum                 = "span.composite.sum"
+	SpanCompositeSumUs               = "span.composite.sum.us"
 	SpanCompositeCompressionStrategy = "span.composite.compression_strategy"
 	SpanCompositeCount               = "span.composite.count"
 	SpanDestinationServiceName       = "span.destination.service.name"

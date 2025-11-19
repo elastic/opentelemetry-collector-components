@@ -34,22 +34,28 @@ import (
 // SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "transaction")
-	attributes.PutStr(elasticattr.TransactionName, event.Transaction.Name)
-	attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
-	// from whatever reason Transaction.Root is always false. That seems to be a derived field already - I don't see that fields directly on IntakeV2 - there is only ParentId
-	attributes.PutBool(elasticattr.TransactionRoot, event.ParentId == "")
-	attributes.PutStr(elasticattr.TransactionType, event.Transaction.Type)
-	attributes.PutStr(elasticattr.TransactionResult, event.Transaction.Result)
 	attributes.PutInt(elasticattr.TransactionDurationUs, int64(event.Event.Duration/1_000))
 
 	setCommonDerivedRecordAttributes(event, attributes)
+
+	// from whatever reason Transaction.Root is always false. That seems to be a derived field already - I don't see that fields directly on IntakeV2 - there is only ParentId
+	attributes.PutBool(elasticattr.TransactionRoot, event.ParentId == "")
+
+	if event.Transaction == nil {
+		return
+	}
+
+	putNonEmptyStr(attributes, elasticattr.TransactionName, event.Transaction.Name)
+	putNonEmptyStr(attributes, elasticattr.TransactionType, event.Transaction.Type)
+	putNonEmptyStr(attributes, elasticattr.TransactionResult, event.Transaction.Result)
+	attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
 }
 
 // setCommonDerivedRecordAttributes sets common attributes which are shared at the record
 // level for span, transaction, and error events.
 func setCommonDerivedRecordAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	if event.Transaction != nil && event.Transaction.Id != "" {
-		attributes.PutStr(elasticattr.TransactionID, event.Transaction.Id)
+	if event.Transaction != nil {
+		putNonEmptyStr(attributes, elasticattr.TransactionID, event.Transaction.Id)
 	}
 
 	if event.Service != nil && event.Service.Target != nil {
@@ -70,17 +76,18 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 
 	attributes.PutStr("span.id", event.Span.Id)
-	attributes.PutStr(elasticattr.SpanName, event.Span.Name)
-	attributes.PutStr(elasticattr.SpanType, event.Span.Type)
-	attributes.PutStr(elasticattr.SpanSubtype, event.Span.Subtype)
-	attributes.PutStr("span.action", event.Span.Action)
+
+	putNonEmptyStr(attributes, elasticattr.SpanName, event.Span.Name)
+	putNonEmptyStr(attributes, elasticattr.SpanType, event.Span.Type)
+	putNonEmptyStr(attributes, elasticattr.SpanSubtype, event.Span.Subtype)
+	putNonEmptyStr(attributes, "span.action", event.Span.Action)
 
 	if event.Span.Sync != nil {
 		attributes.PutBool("span.sync", *event.Span.Sync)
 	}
 
 	if event.Span.DestinationService != nil {
-		attributes.PutStr(elasticattr.SpanDestinationServiceResource, event.Span.DestinationService.Resource)
+		putNonEmptyStr(attributes, elasticattr.SpanDestinationServiceResource, event.Span.DestinationService.Resource)
 	}
 }
 

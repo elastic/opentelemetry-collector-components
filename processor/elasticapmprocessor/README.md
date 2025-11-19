@@ -22,3 +22,13 @@ The processor enriches traces, metrics, and logs with elastic specific requireme
 processors:
   elasticapm:
 ```
+
+### Conditionally enrich logs and metrics only for ECS mapping mode
+
+When `skip_enrichment` is set to `true`, logs and metrics are only enriched when the `x-elastic-mapping-mode` metadata is set to `ecs`. Traces are always enriched regardless of this setting. This defaults to `false` for backwards compatibility (always enrich).
+
+```yaml
+processors:
+  elasticapm:
+    skip_enrichment: true
+```

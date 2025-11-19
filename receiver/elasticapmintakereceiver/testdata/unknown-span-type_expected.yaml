@@ -4,9 +4,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: serviceabc
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -110,27 +107,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: true
-              - key: transaction.type
-                value:
-                  stringValue: unknown
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.duration.us
                 value:
                   intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
+              - key: transaction.type
+                value:
+                  stringValue: unknown
+              - key: transaction.result
+                value:
+                  stringValue: success
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -420,12 +417,6 @@ resourceSpans:
               - key: span.type
                 value:
                   stringValue: unknown
-              - key: span.subtype
-                value:
-                  stringValue: ""
-              - key: span.action
-                value:
-                  stringValue: ""
               - key: span.sync
                 value:
                   boolValue: false

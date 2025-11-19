@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"regexp"
 
+	"go.uber.org/zap"
+
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -55,6 +57,7 @@ type profilesToMetricsConnector struct {
 	nextConsumer consumer.Metrics
 	config       *Config
 	aggregations []aggregation
+	logger       *zap.Logger
 }
 
 type aggregation struct {
