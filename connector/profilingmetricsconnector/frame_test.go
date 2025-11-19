@@ -33,7 +33,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
-var metricRx = regexp.MustCompile(`frametest\.samples\..+\.count`)
+var metricRx = regexp.MustCompile(`samples\..+\.count`)
 
 type metricsConsumerStub struct {
 	t *testing.T
@@ -295,8 +295,7 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	conn := &profilesToMetricsConnector{
 		nextConsumer: m,
 		config: &Config{
-			MetricsPrefix: "frametest.",
-			ByFrame:       true,
+			ByFrame: true,
 		},
 	}
 
@@ -311,9 +310,9 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), m.execCount.Load())
 	assert.Equal(t, map[string]int64{
-		"frametest.samples.go.count":      1,
-		"frametest.samples.user.count":    43,
-		"frametest.samples.cpython.count": 42,
+		"samples.go.count":      1,
+		"samples.user.count":    43,
+		"samples.cpython.count": 42,
 	},
 		m.counts)
 }
@@ -323,8 +322,7 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	conn := &profilesToMetricsConnector{
 		nextConsumer: m,
 		config: &Config{
-			MetricsPrefix: "frametest.",
-			ByFrame:       true,
+			ByFrame: true,
 		},
 	}
 
@@ -346,12 +344,12 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), m.execCount.Load())
 	assert.Equal(t, map[string]int64{
-		"frametest.samples.go.count":          2,
-		"frametest.samples.cpython.count":     5,
-		"frametest.samples.user.count":        20,
-		"frametest.samples.kernel.count":      8,
-		"frametest.samples.native.count":      1,
-		"frametest.samples.native.count/libc": 12,
+		"samples.go.count":          2,
+		"samples.cpython.count":     5,
+		"samples.user.count":        20,
+		"samples.kernel.count":      8,
+		"samples.native.count":      1,
+		"samples.native.count/libc": 12,
 	},
 		m.counts)
 }
@@ -369,8 +367,7 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	conn := &profilesToMetricsConnector{
 		nextConsumer: m,
 		config: &Config{
-			MetricsPrefix: "frametest.",
-			ByFrame:       true,
+			ByFrame: true,
 		},
 	}
 
@@ -411,18 +408,18 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), m.execCount.Load())
 	assert.Equal(t, map[string]int64{
-		"frametest.samples.kernel.count/network/tcp/read":         1,
-		"frametest.samples.kernel.count/network/tcp/read[read]":   1,
-		"frametest.samples.kernel.count/network/tcp/write":        1,
-		"frametest.samples.kernel.count/network/udp/write[write]": 42,
-		"frametest.samples.kernel.count/ipc/write":                1,
-		"frametest.samples.kernel.count/ipc/read":                 1,
-		"frametest.samples.kernel.count/disk/read":                1,
-		"frametest.samples.kernel.count/disk/write":               1,
-		"frametest.samples.kernel.count/network/other/read":       7,
-		"frametest.samples.kernel.count/network/other/write":      2,
-		"frametest.samples.kernel.count/synchronization":          1,
-		"frametest.samples.kernel.count/memory[mmap]":             1,
+		"samples.kernel.count/network/tcp/read":         1,
+		"samples.kernel.count/network/tcp/read[read]":   1,
+		"samples.kernel.count/network/tcp/write":        1,
+		"samples.kernel.count/network/udp/write[write]": 42,
+		"samples.kernel.count/ipc/write":                1,
+		"samples.kernel.count/ipc/read":                 1,
+		"samples.kernel.count/disk/read":                1,
+		"samples.kernel.count/disk/write":               1,
+		"samples.kernel.count/network/other/read":       7,
+		"samples.kernel.count/network/other/write":      2,
+		"samples.kernel.count/synchronization":          1,
+		"samples.kernel.count/memory[mmap]":             1,
 	},
 		m.counts)
 }
