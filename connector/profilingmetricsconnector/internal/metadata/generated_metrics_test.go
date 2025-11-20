@@ -114,7 +114,7 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordSamplesKernelCountDataPoint(ts, 1, WithKernelAreaMetricAttribute(AttributeKernelAreaNetwork), WithKernelIoMetricAttribute(AttributeKernelIoRead), WithKernelProtoMetricAttribute(AttributeKernelProtoTcp), WithSyscallNameMetricAttribute("syscall_name-val"))
+			mb.RecordSamplesKernelCountDataPoint(ts, 1, WithKernelAreaMetricAttribute(AttributeKernelAreaNetwork.String()), WithKernelIoMetricAttribute(AttributeKernelIoRead.String()), WithKernelProtoMetricAttribute(AttributeKernelProtoTcp.String()), WithSyscallNameMetricAttribute("syscall_name-val"))
 
 			defaultMetricsCount++
 			allMetricsCount++
