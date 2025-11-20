@@ -165,6 +165,11 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -187,23 +192,32 @@ resourceSpans:
                           arrayValue:
                             values:
                               - stringValue: text/html
-                      - key: Cookie
+              - key: http.request.env
+                value:
+                  kvlistValue:
+                    values:
+                      - key: SOME_NUMERIC_VALUE
                         value:
-                          arrayValue:
-                            values:
-                              - stringValue: c1=v1,c2=v2
-              - key: http.request.env.SERVER_SOFTWARE
+                          doubleValue: 123
+                      - key: SERVER_SOFTWARE
+                        value:
+                          stringValue: nginx
+                      - key: GATEWAY_INTERFACE
+                        value:
+                          stringValue: CGI/1.1
+              - key: http.request.cookies
                 value:
-                  stringValue: string_value:"nginx"
-              - key: http.request.env.GATEWAY_INTERFACE
-                value:
-                  stringValue: string_value:"CGI/1.1"
-              - key: http.request.cookies.c1
-                value:
-                  stringValue: string_value:"v1"
-              - key: http.request.cookies.c2
-                value:
-                  stringValue: string_value:"v2"
+                  kvlistValue:
+                    values:
+                      - key: c1
+                        value:
+                          stringValue: v1
+                      - key: c2
+                        value:
+                          stringValue: v2
+                      - key: c3
+                        value:
+                          doubleValue: 3
               - key: http.request.body.original
                 value:
                   kvlistValue:
