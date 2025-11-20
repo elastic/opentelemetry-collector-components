@@ -118,9 +118,9 @@ Number of samples executing kernel code (self)
 
 | Name | Description | Values | Requirement Level |
 | ---- | ----------- | ------ | -------- |
-| kernel_area | Breakdown of Kernel area type. | Str: ``network``, ``ipc``, ``disk``, ``memory``, ``synchronization`` | Conditionally Required |
-| kernel_io | Breakdown of Kernel IO type. | Str: ``read``, ``write`` | Conditionally Required |
-| kernel_proto | Breakdown of Kernel proto type. | Str: ``tcp``, ``udp``, ``other`` | Conditionally Required |
+| kernel_area | Breakdown of Kernel area type. | Any Str | Conditionally Required |
+| kernel_io | Breakdown of Kernel IO type. | Any Str | Conditionally Required |
+| kernel_proto | Breakdown of Kernel proto type. | Any Str | Conditionally Required |
 | syscall_name | Syscall name | Any Str | Conditionally Required |
 
 ### samples.native.count

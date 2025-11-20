@@ -114,7 +114,7 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount++
 			allMetricsCount++
-			mb.RecordSamplesKernelCountDataPoint(ts, 1, WithKernelAreaMetricAttribute(AttributeKernelAreaNetwork.String()), WithKernelIoMetricAttribute(AttributeKernelIoRead.String()), WithKernelProtoMetricAttribute(AttributeKernelProtoTcp.String()), WithSyscallNameMetricAttribute("syscall_name-val"))
+			mb.RecordSamplesKernelCountDataPoint(ts, 1, WithKernelAreaMetricAttribute("kernel_area-val"), WithKernelIoMetricAttribute("kernel_io-val"), WithKernelProtoMetricAttribute("kernel_proto-val"), WithSyscallNameMetricAttribute("syscall_name-val"))
 
 			defaultMetricsCount++
 			allMetricsCount++
@@ -323,13 +323,13 @@ func TestMetricsBuilder(t *testing.T) {
 					assert.Equal(t, int64(1), dp.IntValue())
 					attrVal, ok := dp.Attributes().Get("kernel_area")
 					assert.True(t, ok)
-					assert.Equal(t, "network", attrVal.Str())
+					assert.Equal(t, "kernel_area-val", attrVal.Str())
 					attrVal, ok = dp.Attributes().Get("kernel_io")
 					assert.True(t, ok)
-					assert.Equal(t, "read", attrVal.Str())
+					assert.Equal(t, "kernel_io-val", attrVal.Str())
 					attrVal, ok = dp.Attributes().Get("kernel_proto")
 					assert.True(t, ok)
-					assert.Equal(t, "tcp", attrVal.Str())
+					assert.Equal(t, "kernel_proto-val", attrVal.Str())
 					attrVal, ok = dp.Attributes().Get("syscall_name")
 					assert.True(t, ok)
 					assert.Equal(t, "syscall_name-val", attrVal.Str())

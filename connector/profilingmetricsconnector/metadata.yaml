@@ -19,17 +19,20 @@ attributes:
   kernel_area:
     description: Breakdown of Kernel area type.
     type: string
-    enum: [network, ipc, disk, memory, synchronization]
+    # TODO: Use enum once https://github.com/open-telemetry/opentelemetry-collector/issues/14196 is fixed
+    # enum: [network, ipc, disk, memory, synchronization]
     requirement_level: conditionally_required
   kernel_io:
     description: Breakdown of Kernel IO type.
     type: string
-    enum: [read, write]
+    # TODO: Use enum once https://github.com/open-telemetry/opentelemetry-collector/issues/14196 is fixed
+    # enum: [read, write]
     requirement_level: conditionally_required
   kernel_proto:
     description: Breakdown of Kernel proto type.
     type: string
-    enum: [tcp, udp, other]
+    # TODO: Use enum once https://github.com/open-telemetry/opentelemetry-collector/issues/14196 is fixed
+    # enum: [tcp, udp, other]
     requirement_level: conditionally_required
   profile.type_unit:
     description: Profile type unit
