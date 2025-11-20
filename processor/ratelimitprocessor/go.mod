@@ -7,7 +7,7 @@ require (
 	github.com/gubernator-io/gubernator/v2 v2.16.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
-	github.com/uptrace/opentelemetry-go-extra/otellogrus v0.2.1
+	github.com/uptrace/opentelemetry-go-extra/otellogrus v0.3.2
 	go.opentelemetry.io/collector/client v1.44.0
 	go.opentelemetry.io/collector/component v1.44.0
 	go.opentelemetry.io/collector/component/componenttest v0.138.0
@@ -100,7 +100,7 @@ require (
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/segmentio/fasthash v1.0.2 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/uptrace/opentelemetry-go-extra/otelutil v0.2.1 // indirect
+	github.com/uptrace/opentelemetry-go-extra/otelutil v0.3.2 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.5 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.5 // indirect
