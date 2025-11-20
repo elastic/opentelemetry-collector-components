@@ -20,7 +20,6 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 import (
 	"context"
 	"path/filepath"
-	"regexp"
 	"testing"
 	"time"
 
@@ -34,8 +33,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
-
-var metricRx = regexp.MustCompile(`samples\..+\.count`)
 
 var testDataDir = "testdata"
 
@@ -232,6 +229,7 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	// err = golden.WriteMetrics(t, filepath.Join(testDataDir, "frame_metrics", "output-metrics.yaml"), actualMetrics[0])
 	// assert.NoError(t, err)
 	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir, "frame_metrics", "output-metrics.yaml"))
+	assert.NoError(t, err)
 	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }
 
@@ -268,6 +266,7 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	// err = golden.WriteMetrics(t, filepath.Join(testDataDir, "frame_metrics_multiple", "output-metrics.yaml"), actualMetrics[0])
 	// assert.NoError(t, err)
 	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir, "frame_metrics_multiple", "output-metrics.yaml"))
+	assert.NoError(t, err)
 	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }
 
@@ -332,5 +331,6 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	// assert.NoError(t, err)
 	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir,
 		"frame_metrics_kernel", "output-metrics.yaml"))
+	assert.NoError(t, err)
 	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }

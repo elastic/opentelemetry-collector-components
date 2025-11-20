@@ -75,8 +75,7 @@ func (c *profilesToMetricsConnector) Capabilities() consumer.Capabilities {
 
 // ConsumeProfiles processes profiles data and extracts metrics.
 func (c *profilesToMetricsConnector) ConsumeProfiles(ctx context.Context, profiles pprofile.Profiles) error {
-	c.extractMetricsFromProfiles(ctx, profiles)
-	return nil
+	return c.extractMetricsFromProfiles(ctx, profiles)
 }
 
 func (c *profilesToMetricsConnector) Start(ctx context.Context, host component.Host) error {
@@ -113,7 +112,7 @@ type origin struct {
 }
 
 // extractMetricsFromProfiles extracts basic metrics from the profiles data.
-func (c *profilesToMetricsConnector) extractMetricsFromProfiles(ctx context.Context, profiles pprofile.Profiles) {
+func (c *profilesToMetricsConnector) extractMetricsFromProfiles(ctx context.Context, profiles pprofile.Profiles) error {
 	dictionary := profiles.Dictionary()
 	resourceProfiles := profiles.ResourceProfiles().All()
 	for _, resourceProfile := range resourceProfiles {
@@ -124,8 +123,12 @@ func (c *profilesToMetricsConnector) extractMetricsFromProfiles(ctx context.Cont
 			c.extractMetricsFromScopeProfiles(dictionary, scopeProfile)
 		}
 
-		c.nextConsumer.ConsumeMetrics(ctx, c.mb.Emit(metadata.WithResource(resourceProfile.Resource())))
+		err := c.nextConsumer.ConsumeMetrics(ctx, c.mb.Emit(metadata.WithResource(resourceProfile.Resource())))
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // extractMetricsFromScopeProfiles extracts basic metrics from scope-level profile data.

@@ -17,7 +17,9 @@
 
 package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"
 
-import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata" // Aggregation applies Match as a regular expression on function strings
+import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+
+// Aggregation applies Match as a regular expression on function strings
 // and generates a metric with Label if it matches.
 type Aggregation struct {
 	Match string `mapstructure:"match"`
