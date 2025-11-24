@@ -267,7 +267,7 @@ func (c *profilesToMetricsConnector) addMetrics(origin origin, counts map[string
 	}
 
 	metric := scopeMetrics.Metrics().AppendEmpty()
-	metric.SetName(c.config.MetricsPrefix + metricName)
+	metric.SetName(metricName)
 	metric.SetDescription(metricDesc)
 	metric.SetUnit("1")
 
@@ -379,7 +379,7 @@ func (c *profilesToMetricsConnector) collectCustomAggregationCounts(dictionary p
 // addSampleCountMetric adds a metric for the total number of samples.
 func (c *profilesToMetricsConnector) addSampleCountMetric(profile pprofile.Profile, scopeMetrics pmetric.ScopeMetrics) {
 	metric := scopeMetrics.Metrics().AppendEmpty()
-	metric.SetName(c.config.MetricsPrefix + "samples.count")
+	metric.SetName("samples.count")
 	metric.SetDescription("Total number of profiling samples")
 	metric.SetUnit("1")
 

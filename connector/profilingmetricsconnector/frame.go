@@ -387,7 +387,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 	// Generate metrics
 	for metric, count := range counts {
 		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(c.config.MetricsPrefix + metric.name)
+		m.SetName(metric.name)
 		m.SetDescription(metric.desc)
 		m.SetUnit("1")
 
@@ -402,7 +402,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 
 	for aInfo, count := range nativeCounts {
 		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(c.config.MetricsPrefix + metricNative.name)
+		m.SetName(metricNative.name)
 		m.SetDescription(metricNative.desc)
 		m.SetUnit("1")
 
@@ -420,7 +420,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 
 	for aInfo, count := range kernelCounts {
 		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(c.config.MetricsPrefix + metricKernel.name)
+		m.SetName(metricKernel.name)
 		m.SetDescription(metricKernel.desc)
 		m.SetUnit("1")
 

@@ -58,7 +58,7 @@ const (
 	ecsAttrUserDomain                = "user.domain"
 	ecsAttrSourceNATIP               = "source.nat.ip"
 	ecsAttrDestinationIP             = "destination.ip"
-	ecsAttrFaaSTriggerRequestID      = "faas.trigger.request.id"
+	ecsAttrFaaSTriggerRequestID      = "faas.trigger.request_id"
 	ecsAttrFaaSExecution             = "faas.execution"
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
 	ecsAttrAgentName                 = "agent.name"
