@@ -3,6 +3,10 @@ type: elasticinframetrics
 status:
   class: processor
   stability:
-    alpha: [metrics]
+    deprecated: [metrics]
+  deprecation:
+    metrics:
+      migration: "The use of native OTel schema is only supported"
+      date: "2025-11-06"
   codeowners:
     active: [ishleenk17]
