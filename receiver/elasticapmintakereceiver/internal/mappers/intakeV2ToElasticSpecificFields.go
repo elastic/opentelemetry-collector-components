@@ -75,7 +75,7 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 			attributesMap.PutStr(attr.SpanCompositeCompressionStrategy, compressionStrategy)
 		}
 		attributesMap.PutInt(attr.SpanCompositeCount, int64(event.Span.Composite.Count))
-		attributesMap.PutInt(attr.SpanCompositeSum, int64(event.Span.Composite.Sum))
+		attributesMap.PutDouble(attr.SpanCompositeSumUs, event.Span.Composite.Sum)
 	}
 
 	if event.Span.DestinationService != nil {
@@ -100,23 +100,13 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 
 	if http.Request != nil {
 		setHTTPHeadersMap(attr.HTTPRequestHeaders, attributesMap, http.Request.Headers)
-
-		// set env and cookies as a flat map
-		for _, env := range http.Request.Env {
-			if env != nil && env.Key != "" && env.Value != nil && env.Value.String() != "" {
-				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestEnv, env.Key), env.Value.String())
-			}
-		}
-		for _, cookie := range http.Request.Cookies {
-			if cookie != nil && cookie.Key != "" && cookie.Value != nil && cookie.Value.String() != "" {
-				attributesMap.PutStr(fmt.Sprintf("%s.%s", attr.HTTPRequestCookies, cookie.Key), cookie.Value.String())
-			}
-		}
+		setKeyValueSliceMap(attr.HTTPRequestEnv, attributesMap, http.Request.Env)
+		setKeyValueSliceMap(attr.HTTPRequestCookies, attributesMap, http.Request.Cookies)
 
 		if http.Request.Body != nil {
 			// add http body as an object since it is required by the APM index template
 			// see: https://github.com/elastic/elasticsearch/blob/714c077b11363f168e261ad43cff0b5b74556b7f/x-pack/plugin/apm-data/src/main/resources/component-templates/traces-apm%40mappings.yaml#L30
-			bodyValue := attributesMap.PutEmpty(attr.HTTPRequestBody)
+			bodyValue := attributesMap.PutEmpty(attr.HTTPRequestBodyOriginal)
 			insertValue(bodyValue, http.Request.Body)
 		}
 		if http.Request.Id != "" {
@@ -148,6 +138,22 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 	}
 }
 
+// setKeyValueSliceMap adds a list of KeyValue pairs as a map attribute with the given prefix.
+func setKeyValueSliceMap(prefix string, attributesMap pcommon.Map, kvList []*modelpb.KeyValue) {
+	if len(kvList) == 0 {
+		return
+	}
+
+	kvMap := attributesMap.PutEmptyMap(prefix)
+	kvMap.EnsureCapacity(len(kvList))
+	for _, entry := range kvList {
+		if entry != nil && entry.Key != "" && entry.Value != nil {
+			mapEntry := kvMap.PutEmpty(entry.Key)
+			insertValue(mapEntry, entry.Value)
+		}
+	}
+}
+
 // setHTTPHeadersMap sets HTTP headers to attributes map.
 // The headers will be a map of string to array of strings.
 func setHTTPHeadersMap(prefix string, attributesMap pcommon.Map, headers []*modelpb.HTTPHeader) {
@@ -172,6 +178,9 @@ func setHTTPHeadersMap(prefix string, attributesMap pcommon.Map, headers []*mode
 func setMessage(prefix string, m *modelpb.Message, attributesMap pcommon.Map) {
 	if m == nil {
 		return
+	}
+	if m.RoutingKey != "" {
+		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageRoutingKey), m.RoutingKey)
 	}
 	if m.Body != "" {
 		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageBody), m.Body)
@@ -346,6 +355,16 @@ func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesM
 
 	setTransactionMarks(event.Transaction.Marks, attributesMap)
 	setMessage("transaction", event.Transaction.Message, attributesMap)
+
+	// add session attributes which hold optional transaction session information for RUM
+	if event.Session != nil {
+		if event.Session.Id != "" {
+			attributesMap.PutStr(attr.SessionID, event.Session.Id)
+		}
+		if event.Session.Sequence != 0 {
+			attributesMap.PutInt(attr.SessionSequence, int64(event.Session.Sequence))
+		}
+	}
 }
 
 func setProfilerStackTraceIDs(ids []string, attributesMap pcommon.Map) {
@@ -454,7 +473,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 
 	if event.Faas != nil {
 		if event.Faas.TriggerRequestId != "" {
-			attributesMap.PutStr(attr.TriggerRequestID, event.Faas.TriggerRequestId)
+			attributesMap.PutStr(attr.FaaSTriggerRequestID, event.Faas.TriggerRequestId)
 		}
 		if event.Faas.Execution != "" {
 			attributesMap.PutStr(attr.FaaSExecution, event.Faas.Execution)
@@ -539,13 +558,6 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 // Allows key names with spaces to match existing behavior.
 // Ignored empty keys and values.
 //
-// Note: modelpb.Events supports single and slice label values,
-// but the apm data model only support single value labels, so the slice values are ignored.
-// See schema:
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L75
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L433
-// - https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/v2/model.go#L969
-//
 // The apm data library logic will take care of overwriting metadata labels with event labels when decoding
 // the input to modelpb.APMEvent, so we simply copy all labels from the event here.
 func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
@@ -553,6 +565,15 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 		if key != "" && labelValue != nil && labelValue.Value != "" {
 			attrKey := "labels." + key
 			attributesMap.PutStr(attrKey, labelValue.Value)
+		}
+
+		if key != "" && labelValue != nil && len(labelValue.Values) > 0 {
+			attrKey := "labels." + key
+			labelValues := attributesMap.PutEmptySlice(attrKey)
+			labelValues.EnsureCapacity(len(labelValue.Values))
+			for _, v := range labelValue.Values {
+				labelValues.AppendEmpty().SetStr(v)
+			}
 		}
 	}
 
@@ -615,12 +636,6 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 			if event.Process.Thread.Name != "" {
 				attributesMap.PutStr(attr.ProcessThreadName, event.Process.Thread.Name)
 			}
-		}
-	}
-
-	if event.Session != nil {
-		if event.Session.Id != "" {
-			attributesMap.PutStr(attr.SessionID, event.Session.Id)
 		}
 	}
 

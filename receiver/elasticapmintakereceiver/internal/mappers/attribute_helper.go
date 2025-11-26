@@ -15,17 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package beatsauthextension // import "github.com/elastic/opentelemetry-collector-components/extension/beatsauthextension"
+package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
-	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
-type Config struct {
-	BeatAuthConfig  map[string]interface{} `mapstructure:",remain"`
-	ContinueOnError bool                   `mapstructure:"continue_on_error"`
-}
-
-func createDefaultConfig() component.Config {
-	return &Config{}
+// putNonEmptyStr puts a string attribute in the given map
+// only if the provided value is not empty.
+func putNonEmptyStr(attributes pcommon.Map, key, value string) {
+	if value != "" {
+		attributes.PutStr(key, value)
+	}
 }

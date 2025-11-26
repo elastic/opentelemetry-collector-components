@@ -28,9 +28,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -48,86 +45,6 @@ resourceMetrics:
             stringValue: logged-in-user
     scopeMetrics:
       - metrics:
-          - gauge:
-              dataPoints:
-                - asDouble: 6.520832e+06
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421364000"
-                  timeUnixNano: "1496170421364000000"
-            name: go.memstats.heap.sys.bytes
-        scope: {}
-  - resource:
-      attributes:
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: labels.tag1
-          value:
-            stringValue: one
-        - key: numeric_labels.tag2
-          value:
-            doubleValue: 2
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: service.instance.id
-          value:
-            stringValue: node-1
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: user.email
-          value:
-            stringValue: user@mail.com
-        - key: user.id
-          value:
-            stringValue: axb123hg
-        - key: user.name
-          value:
-            stringValue: logged-in-user
-    scopeMetrics:
-      - metrics:
-          - gauge:
-              dataPoints:
-                - asDouble: 1024
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421366000"
-                  timeUnixNano: "1496170421366000000"
-            name: system.process.cgroup.memory.mem.usage.bytes
           - gauge:
               dataPoints:
                 - asDouble: 2048
@@ -143,6 +60,21 @@ resourceMetrics:
                         intValue: "1496170421366000"
                   timeUnixNano: "1496170421366000000"
             name: system.process.cgroup.memory.mem.limit.bytes
+          - gauge:
+              dataPoints:
+                - asDouble: 1024
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421366000"
+                  timeUnixNano: "1496170421366000000"
+            name: system.process.cgroup.memory.mem.usage.bytes
         scope: {}
   - resource:
       attributes:
@@ -173,9 +105,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -193,6 +122,21 @@ resourceMetrics:
             stringValue: logged-in-user
     scopeMetrics:
       - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421367000"
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpuacct.total.ns
           - gauge:
               dataPoints:
                 - asDouble: 1024
@@ -298,21 +242,6 @@ resourceMetrics:
                         intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpuacct.id
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpuacct.total.ns
         scope: {}
   - resource:
       attributes:
@@ -343,9 +272,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -426,9 +352,6 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -490,4 +413,87 @@ resourceMetrics:
                   timeUnixNano: "1496170422281000000"
             name: span.self_time.count
             unit: '{span}'
+        scope: {}
+  - resource:
+      attributes:
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: faas.coldstart
+          value:
+            boolValue: false
+        - key: faas.execution
+          value:
+            stringValue: test_execution
+        - key: faas.instance
+          value:
+            stringValue: test_faas_id
+        - key: faas.name
+          value:
+            stringValue: test_faas
+        - key: faas.trigger
+          value:
+            stringValue: http
+        - key: faas.trigger.request_id
+          value:
+            stringValue: test_request_id
+        - key: faas.version
+          value:
+            stringValue: 1.0.0
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 2
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: service.instance.id
+          value:
+            stringValue: node-1
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.name
+          value:
+            stringValue: 1234_service-12a3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: user.email
+          value:
+            stringValue: user@mail.com
+        - key: user.id
+          value:
+            stringValue: axb123hg
+        - key: user.name
+          value:
+            stringValue: logged-in-user
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 6.520832e+06
+                  attributes:
+                    - key: event.outcome
+                      value:
+                        stringValue: unknown
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                    - key: timestamp.us
+                      value:
+                        intValue: "1496170421364000"
+                  timeUnixNano: "1496170421364000000"
+            name: go.memstats.heap.sys.bytes
         scope: {}

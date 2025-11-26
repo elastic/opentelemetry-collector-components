@@ -32,8 +32,12 @@ import (
 // TranslateToOtelResourceAttributes translates resource attributes from the Elastic APM model to SemConv resource attributes
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Service != nil {
-		attributes.PutStr(string(semconv.ServiceNameKey), event.Service.Name)
-		attributes.PutStr(string(semconv.ServiceVersionKey), event.Service.Version)
+		if event.Service.Name != "" {
+			attributes.PutStr(string(semconv.ServiceNameKey), event.Service.Name)
+		}
+		if event.Service.Version != "" {
+			attributes.PutStr(string(semconv.ServiceVersionKey), event.Service.Version)
+		}
 		if event.Service.Language != nil && event.Service.Language.Name != "" {
 			attributes.PutStr(string(semconv.TelemetrySDKLanguageKey), translateElasticServiceLanguageToOtelSdkLanguage(event.Service.Language.Name))
 		}
@@ -100,7 +104,6 @@ func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attri
 
 	if event.Transaction.Message != nil {
 		attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Transaction.Message.QueueName)
-		attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Transaction.Message.RoutingKey)
 	}
 }
 
@@ -127,9 +130,6 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 
 		if event.Span.Message.QueueName != "" {
 			attributes.PutStr(string(semconv.MessagingDestinationNameKey), event.Span.Message.QueueName)
-		}
-		if event.Span.Message.RoutingKey != "" {
-			attributes.PutStr(string(semconv.MessagingRabbitmqDestinationRoutingKeyKey), event.Span.Message.RoutingKey)
 		}
 	}
 

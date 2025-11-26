@@ -4,9 +4,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -41,12 +38,6 @@ resourceSpans:
               - key: span.type
                 value:
                   stringValue: request
-              - key: span.subtype
-                value:
-                  stringValue: ""
-              - key: span.action
-                value:
-                  stringValue: ""
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -65,9 +56,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -90,27 +78,21 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: abcdef1478523690
-              - key: transaction.name
-                value:
-                  stringValue: ""
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: true
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
+              - key: transaction.sampled
                 value:
-                  stringValue: ""
-              - key: transaction.duration.us
-                value:
-                  intValue: "32592"
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "0"

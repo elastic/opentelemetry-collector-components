@@ -23,7 +23,7 @@ const (
 	SpanDBLink                       = "span.db.link"
 	SpanDBRowsAffected               = "span.db.rows_affected"
 	SpanDBUserName                   = "span.db.user.name"
-	SpanCompositeSum                 = "span.composite.sum"
+	SpanCompositeSumUs               = "span.composite.sum.us"
 	SpanCompositeCompressionStrategy = "span.composite.compression_strategy"
 	SpanCompositeCount               = "span.composite.count"
 	SpanDestinationServiceName       = "span.destination.service.name"
@@ -48,6 +48,7 @@ const (
 
 	DestinationIP = "destination.ip"
 
+	MessageRoutingKey    = "message.routing_key"
 	MessageBody          = "message.body"
 	MessageAgeMs         = "message.age.ms"
 	MessageHeadersPrefix = "message.headers"
@@ -56,7 +57,7 @@ const (
 	HTTPRequestHeaders          = "http.request.headers"
 	HTTPRequestEnv              = "http.request.env"
 	HTTPRequestCookies          = "http.request.cookies"
-	HTTPRequestBody             = "http.request.body"
+	HTTPRequestBodyOriginal     = "http.request.body.original"
 	HTTPRequestID               = "http.request.id"
 	HTTPRequestReferrer         = "http.request.referrer"
 	HTTPResponseFinished        = "http.response.finished"
@@ -76,8 +77,8 @@ const (
 	CloudProjectID         = "cloud.project.id"
 	CloudProjectName       = "cloud.project.name"
 
-	TriggerRequestID = "faas.trigger.request.id"
-	FaaSExecution    = "faas.execution"
+	FaaSTriggerRequestID = "faas.trigger.request_id"
+	FaaSExecution        = "faas.execution"
 
 	AgentEphemeralID      = "agent.ephemeral_id"
 	AgentActivationMethod = "agent.activation_method"
@@ -111,7 +112,8 @@ const (
 
 	ProcessThreadName = "process.thread.name"
 
-	SessionID = "session.id"
+	SessionID       = "session.id"
+	SessionSequence = "session.sequence"
 
 	TransactionCustom                                      = "transaction.custom"
 	TransactionUserExperienceCumulativeLayoutShift         = "transaction.experience.cls"

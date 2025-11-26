@@ -4,9 +4,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: serviceabc
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -116,27 +113,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
               - key: transaction.result
                 value:
                   stringValue: success
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "32592"
+                  boolValue: true
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -174,6 +171,13 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
                       - key: User-Agent
                         value:
                           arrayValue:
@@ -188,32 +192,39 @@ resourceSpans:
                         value:
                           arrayValue:
                             values:
-                              - stringValue: c1=v1,c2=v2
+                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
                             values:
                               - stringValue: foo
-                      - key: Array
+              - key: http.request.env
+                value:
+                  kvlistValue:
+                    values:
+                      - key: SERVER_SOFTWARE
                         value:
-                          arrayValue:
-                            values:
-                              - stringValue: foo
-                              - stringValue: bar
-                              - stringValue: baz
-              - key: http.request.env.SERVER_SOFTWARE
+                          stringValue: nginx
+                      - key: GATEWAY_INTERFACE
+                        value:
+                          stringValue: CGI/1.1
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
+              - key: http.request.cookies
                 value:
-                  stringValue: string_value:"nginx"
-              - key: http.request.env.GATEWAY_INTERFACE
-                value:
-                  stringValue: string_value:"CGI/1.1"
-              - key: http.request.cookies.c1
-                value:
-                  stringValue: string_value:"v1"
-              - key: http.request.cookies.c2
-                value:
-                  stringValue: string_value:"v2"
-              - key: http.request.body
+                  kvlistValue:
+                    values:
+                      - key: c3
+                        value:
+                          doubleValue: 3
+                      - key: c1
+                        value:
+                          stringValue: v1
+                      - key: c2
+                        value:
+                          stringValue: v2
+              - key: http.request.body.original
                 value:
                   kvlistValue:
                     values:
@@ -649,9 +660,6 @@ resourceSpans:
               - key: span.subtype
                 value:
                   stringValue: external
-              - key: span.action
-                value:
-                  stringValue: ""
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -906,12 +914,6 @@ resourceSpans:
               - key: span.type
                 value:
                   stringValue: request
-              - key: span.subtype
-                value:
-                  stringValue: ""
-              - key: span.action
-                value:
-                  stringValue: ""
               - key: child.id
                 value:
                   arrayValue:
@@ -1026,27 +1028,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "13980"
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4340
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
               - key: transaction.result
                 value:
                   stringValue: failure
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "13980"
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "0"
@@ -1155,27 +1157,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "13980"
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4341
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: false
               - key: transaction.root
                 value:
                   boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
               - key: transaction.result
                 value:
                   stringValue: "200"
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "13980"
+                  boolValue: false
               - key: transaction.span_count.started
                 value:
                   intValue: "0"
@@ -1284,27 +1286,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "13980"
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4342
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
               - key: transaction.result
                 value:
                   stringValue: "200"
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "13980"
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "1"
@@ -1322,9 +1324,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: serviceabc
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript

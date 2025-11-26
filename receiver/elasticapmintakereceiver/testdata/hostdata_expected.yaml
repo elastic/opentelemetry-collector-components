@@ -4,9 +4,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: SampleAspNetCoreApp
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: dotnet
@@ -62,15 +59,12 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.name
-                value:
-                  stringValue: ""
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: false
@@ -80,9 +74,9 @@ resourceSpans:
               - key: transaction.result
                 value:
                   stringValue: Success
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "32592"
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "43"
@@ -94,6 +88,7 @@ resourceSpans:
                       - stringValue: bar
                       - stringValue: foo
             endTimeUnixNano: "1496170407186592981"
+            kind: 2
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"

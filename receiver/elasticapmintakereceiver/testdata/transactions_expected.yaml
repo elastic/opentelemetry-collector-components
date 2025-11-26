@@ -146,15 +146,12 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.name
-                value:
-                  stringValue: ""
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: false
@@ -164,9 +161,9 @@ resourceSpans:
               - key: transaction.result
                 value:
                   stringValue: Success
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "32592"
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "43"
@@ -178,6 +175,7 @@ resourceSpans:
                       - stringValue: bar
                       - stringValue: foo
             endTimeUnixNano: "1496170407186592981"
+            kind: 2
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
@@ -349,27 +347,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: 4340a8e0df1906ecbfa9
-              - key: transaction.name
-                value:
-                  stringValue: GET /api/types
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
               - key: transaction.result
                 value:
                   stringValue: success
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "32592"
+                  boolValue: true
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -410,22 +408,11 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: User-Agent
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
-                              - stringValue: Mozilla Chrome Edge
-                      - key: Content-Type
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: text/html
                       - key: Cookie
                         value:
                           arrayValue:
                             values:
-                              - stringValue: c1=v1, c2=v2
+                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -438,25 +425,47 @@ resourceSpans:
                               - stringValue: foo
                               - stringValue: bar
                               - stringValue: baz
-              - key: http.request.env.SERVER_SOFTWARE
-                value:
-                  stringValue: string_value:"nginx"
-              - key: http.request.env.GATEWAY_INTERFACE
-                value:
-                  stringValue: string_value:"CGI/1.1"
-              - key: http.request.cookies.c1
-                value:
-                  stringValue: string_value:"v1"
-              - key: http.request.cookies.c2
-                value:
-                  stringValue: string_value:"v2"
-              - key: http.request.body
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
+                              - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+              - key: http.request.env
                 value:
                   kvlistValue:
                     values:
-                      - key: str
+                      - key: SERVER_SOFTWARE
                         value:
-                          stringValue: hello world
+                          stringValue: nginx
+                      - key: GATEWAY_INTERFACE
+                        value:
+                          stringValue: CGI/1.1
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
+              - key: http.request.cookies
+                value:
+                  kvlistValue:
+                    values:
+                      - key: c2
+                        value:
+                          stringValue: v2
+                      - key: c3
+                        value:
+                          doubleValue: 3
+                      - key: c1
+                        value:
+                          stringValue: v1
+              - key: http.request.body.original
+                value:
+                  kvlistValue:
+                    values:
                       - key: additional
                         value:
                           kvlistValue:
@@ -467,6 +476,9 @@ resourceSpans:
                               - key: req
                                 value:
                                   stringValue: additional information
+                      - key: str
+                        value:
+                          stringValue: hello world
               - key: http.request.referrer
                 value:
                   stringValue: http://localhost:8000/test/e2e/
@@ -675,27 +687,21 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "13980"
               - key: transaction.id
                 value:
                   stringValue: cdef4340a8e0df19
-              - key: transaction.name
-                value:
-                  stringValue: ""
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: true
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
+              - key: transaction.sampled
                 value:
-                  stringValue: ""
-              - key: transaction.duration.us
-                value:
-                  intValue: "13980"
+                  boolValue: true
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -900,36 +906,33 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
-              - key: transaction.id
-                value:
-                  stringValue: 00xxxxFFaaaa1234
-              - key: transaction.name
-                value:
-                  stringValue: amqp receive
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: transaction.root
-                value:
-                  boolValue: false
-              - key: transaction.type
-                value:
-                  stringValue: messaging
-              - key: transaction.result
-                value:
-                  stringValue: ""
               - key: transaction.duration.us
                 value:
                   intValue: "3000"
+              - key: transaction.id
+                value:
+                  stringValue: 00xxxxFFaaaa1234
+              - key: transaction.root
+                value:
+                  boolValue: false
+              - key: transaction.name
+                value:
+                  stringValue: amqp receive
+              - key: transaction.type
+                value:
+                  stringValue: messaging
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: messaging.destination.name
                 value:
                   stringValue: new_users
-              - key: messaging.rabbitmq.destination.routing_key
-                value:
-                  stringValue: user-created-transaction
               - key: transaction.span_count.started
                 value:
                   intValue: "1"
+              - key: transaction.message.routing_key
+                value:
+                  stringValue: user-created-transaction
               - key: transaction.message.body
                 value:
                   stringValue: user created
@@ -947,6 +950,12 @@ resourceSpans:
                     values:
                       - stringValue: user
                       - stringValue: auth
+              - key: session.id
+                value:
+                  stringValue: sunday
+              - key: session.sequence
+                value:
+                  intValue: "123"
             endTimeUnixNano: "1496170407157000000"
             name: amqp receive
             parentSpanId: abcdefabcdef0123
@@ -1087,7 +1096,7 @@ resourceSpans:
         - key: cloud.project.name
           value:
             stringValue: project_name
-        - key: faas.trigger.request.id
+        - key: faas.trigger.request_id
           value:
             stringValue: FuH2Cir_vHcEMUA=
         - key: faas.execution
@@ -1139,27 +1148,27 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "38853"
               - key: transaction.id
                 value:
                   stringValue: 142e61450efb8574
-              - key: transaction.name
-                value:
-                  stringValue: july-2021-delete-after-july-31
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: july-2021-delete-after-july-31
               - key: transaction.type
                 value:
                   stringValue: lambda
               - key: transaction.result
                 value:
                   stringValue: success
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "38853"
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "0"

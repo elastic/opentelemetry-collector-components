@@ -146,27 +146,21 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: foobarInvalid
-              - key: transaction.name
-                value:
-                  stringValue: ""
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: false
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
+              - key: transaction.sampled
                 value:
-                  stringValue: ""
-              - key: transaction.duration.us
-                value:
-                  intValue: "32592"
+                  boolValue: true
               - key: transaction.span_count.started
                 value:
                   intValue: "43"

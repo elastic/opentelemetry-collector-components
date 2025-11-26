@@ -130,6 +130,13 @@ resourceSpans:
         - key: labels.tag1
           value:
             stringValue: label1
+        - key: labels.elastic_profiler_stack_trace_ids
+          value:
+            arrayValue:
+              values:
+                - stringValue: foo
+                - stringValue: bar
+                - stringValue: foo
     scopeSpans:
       - scope: {}
         spans:
@@ -173,6 +180,7 @@ resourceSpans:
                 value:
                   doubleValue: 1
             endTimeUnixNano: "1532976822422581000"
+            kind: 2
             name: GET /api/types
             parentSpanId: abcdef0123456789
             spanId: abcdef0123456700
@@ -354,12 +362,6 @@ resourceSpans:
               - key: span.type
                 value:
                   stringValue: request
-              - key: span.subtype
-                value:
-                  stringValue: ""
-              - key: span.action
-                value:
-                  stringValue: ""
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -541,9 +543,6 @@ resourceSpans:
               - key: span.subtype
                 value:
                   stringValue: http
-              - key: span.action
-                value:
-                  stringValue: ""
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -734,9 +733,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: service1
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -1063,9 +1059,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: service1
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -1388,9 +1381,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: service1
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -2085,12 +2075,12 @@ resourceSpans:
               - key: messaging.destination.name
                 value:
                   stringValue: new_users
-              - key: messaging.rabbitmq.destination.routing_key
-                value:
-                  stringValue: user-created-span
               - key: destination.address
                 value:
                   stringValue: 0:0::0:1
+              - key: span.message.routing_key
+                value:
+                  stringValue: user-created-span
               - key: span.message.body
                 value:
                   stringValue: message body
@@ -2288,9 +2278,9 @@ resourceSpans:
               - key: span.composite.count
                 value:
                   intValue: "10"
-              - key: span.composite.sum
+              - key: span.composite.sum.us
                 value:
-                  intValue: "359"
+                  doubleValue: 359.2981
               - key: span.representative_count
                 value:
                   doubleValue: 1

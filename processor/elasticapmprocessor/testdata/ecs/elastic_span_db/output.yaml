@@ -16,6 +16,13 @@ resourceSpans:
         - key: numeric_labels.foo
           value:
             doubleValue: 42
+        - key: labels.elastic_profiler_stack_trace_ids
+          value:
+            arrayValue:
+              values:
+                - stringValue: foo
+                - stringValue: bar
+                - stringValue: foo
         - key: service.name
           value:
             stringValue: test-service
@@ -28,15 +35,15 @@ resourceSpans:
         - key: service.namespace
           value:
             stringValue: production
-        - key: service.framework.name
-          value:
-            stringValue: Node
         - key: service.language.name
           value:
             stringValue: go
         - key: service.language.version
           value:
             stringValue: 1.21.0
+        - key: service.framework.name
+          value:
+            stringValue: Node
         - key: service.framework.version
           value:
             stringValue: 1.9.0
@@ -283,7 +290,7 @@ resourceSpans:
         - key: faas.coldstart
           value:
             boolValue: false
-        - key: faas.trigger.request.id
+        - key: labels.faas_trigger_request_id
           value:
             stringValue: req-123
         - key: faas.execution
