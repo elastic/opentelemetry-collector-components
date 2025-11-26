@@ -41,11 +41,13 @@ is automated and should not be performed manually unless there are specific reas
 
 ### Create the new tags
 
-2. Bump up the `module-sets.edit-base.version` in `versions.yaml` i.e. from `v0.20.0` to `v0.21.0`
+2. Decide the next version:
+   - 🛑 **Cross-check the [repository tags](https://github.com/elastic/opentelemetry-collector-components/tags) against the modules defined in [versions.yaml](../versions.yaml). Identify the highest version number currently in use.** 🛑
+   - The next version should be a **minor update** of the highest existing tag (i.e. processor/ratelimitprocessor/v0.20.1 → v0.21.0).
 
-    🛑 **Cross check latest version used by [EDOT](https://github.com/elastic/elastic-agent/blob/main/internal/pkg/otel/README.md?plain=1#L30) and https://github.com/elastic/opentelemetry-collector-components/tags** 🛑
+3. Bump up the `module-sets.edit-base.version` in `versions.yaml` i.e. from `v0.20.0` to `v0.21.0`
 
-3. Tag the module groups with the new release version by running:
+4. Tag the module groups with the new release version by running:
 
    ⚠️ If you set your remote using `https`, you need to
       include `REMOTE=https://github.com/elastic/opentelemetry-collector-components.git` in each command. ⚠️
@@ -68,5 +70,5 @@ is automated and should not be performed manually unless there are specific reas
    make push-tags
    ```
 
-4. Last step is to commit the change of `module-sets.edit-base.version` in `versions.yaml` and push it so as to store
+5. Last step is to commit the change of `module-sets.edit-base.version` in `versions.yaml` and push it so as to store
    the new latest version.
