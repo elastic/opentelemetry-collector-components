@@ -1,0 +1,152 @@
+resourceMetrics:
+  - resource: {}
+    scopeMetrics:
+      - metrics:
+          - description: Total number of profiling samples
+            name: samples.count
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asInt: "14"
+                  startTimeUnixNano: "1000000"
+              isMonotonic: true
+            unit: "1"
+          - description: Number of samples executing kernel code (self)
+            name: samples.kernel.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: synchronization
+                  startTimeUnixNano: "1000000"
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: disk
+                    - key: kernel_proto
+                      value:
+                        stringValue: read
+                  startTimeUnixNano: "1000000"
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: disk
+                    - key: kernel_proto
+                      value:
+                        stringValue: write
+                  startTimeUnixNano: "1000000"
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: ipc
+                    - key: kernel_proto
+                      value:
+                        stringValue: read
+                  startTimeUnixNano: "1000000"
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: ipc
+                    - key: kernel_proto
+                      value:
+                        stringValue: write
+                  startTimeUnixNano: "1000000"
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: memory
+                    - key: syscall_name
+                      value:
+                        stringValue: mmap
+                  startTimeUnixNano: "1000000"
+                - asInt: "7"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: network
+                    - key: kernel_io
+                      value:
+                        stringValue: read
+                    - key: kernel_proto
+                      value:
+                        stringValue: other
+                  startTimeUnixNano: "1000000"
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: network
+                    - key: kernel_io
+                      value:
+                        stringValue: read
+                    - key: kernel_proto
+                      value:
+                        stringValue: tcp
+                  startTimeUnixNano: "1000000"
+                - asInt: "2"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: network
+                    - key: kernel_io
+                      value:
+                        stringValue: write
+                    - key: kernel_proto
+                      value:
+                        stringValue: other
+                  startTimeUnixNano: "1000000"
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: network
+                    - key: kernel_io
+                      value:
+                        stringValue: write
+                    - key: kernel_proto
+                      value:
+                        stringValue: tcp
+                  startTimeUnixNano: "1000000"
+                - asInt: "1"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: network
+                    - key: kernel_io
+                      value:
+                        stringValue: read
+                    - key: kernel_proto
+                      value:
+                        stringValue: tcp
+                    - key: syscall_name
+                      value:
+                        stringValue: read
+                  startTimeUnixNano: "1000000"
+                - asInt: "42"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: network
+                    - key: kernel_io
+                      value:
+                        stringValue: write
+                    - key: kernel_proto
+                      value:
+                        stringValue: udp
+                    - key: syscall_name
+                      value:
+                        stringValue: write
+                  startTimeUnixNano: "1000000"
+              isMonotonic: true
+            unit: "1"
+        scope:
+          name: github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector
+          version: latest

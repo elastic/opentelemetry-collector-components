@@ -17,6 +17,8 @@
 
 package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"
 
+import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+
 // Aggregation applies Match as a regular expression on function strings
 // and generates a metric with Label if it matches.
 type Aggregation struct {
@@ -26,6 +28,7 @@ type Aggregation struct {
 
 // Config represents the receiver config settings within the collector's config.yaml
 type Config struct {
+	metadata.MetricsBuilderConfig `mapstructure:",squash"`
 	// Generate metrics based on frame information (including frame type,
 	// supersedes ByFrameType).
 	ByFrame bool `mapstructure:"by_frame"`
