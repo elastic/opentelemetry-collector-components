@@ -23,6 +23,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/gubernator-io/gubernator/v2"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 )
@@ -68,6 +69,17 @@ type Config struct {
 	// If not set, class resolution is disabled.
 	// Only applicable when the rate limiter type is "gubernator".
 	ClassResolver component.ID `mapstructure:"class_resolver"`
+
+	// GubernatorBehavior configures the behavior of rate limiter in Gubernator.
+	// Only applicable when the rate limiter type is "gubernator".
+	//
+	// Options are:
+	//  - 0 = BATCHING (Enables batching of requests to peers)
+	//  - 1 = NO_BATCHING (Disables batching)
+	//  - 2 = GLOBAL (Enable global caching for this rate limit)
+	//
+	// Defaults to 0 (BATCHING).
+	GubernatorBehavior gubernator.Behavior `mapstructure:"gubernator_behavior"`
 }
 
 // DynamicRateLimiting defines settings for dynamic rate limiting.
@@ -255,9 +267,6 @@ const (
 	GubernatorRateLimiter RateLimiterType = "gubernator"
 )
 
-// GubernatorBehavior controls Gubernator's behavior.
-type GubernatorBehavior string
-
 func createDefaultConfig() component.Config {
 	return &Config{
 		Type: LocalRateLimiter,
@@ -271,8 +280,9 @@ func createDefaultConfig() component.Config {
 			DefaultWindowMultiplier: 1.3,
 			WindowDuration:          2 * time.Minute,
 		},
-		Classes:      nil,
-		DefaultClass: "",
+		Classes:            nil,
+		DefaultClass:       "",
+		GubernatorBehavior: gubernator.Behavior_BATCHING,
 	}
 }
 
@@ -423,6 +433,19 @@ func (config *Config) Validate() error {
 		if config.ClassResolver.String() == "" && len(config.Classes) > 0 {
 			errs = append(errs, errors.New(
 				"classes defined but class_resolver not specified",
+			))
+		}
+		// Validate gubernator behavior
+		switch config.GubernatorBehavior {
+		case gubernator.Behavior_BATCHING, gubernator.Behavior_NO_BATCHING, gubernator.Behavior_GLOBAL:
+		default:
+			errs = append(errs, fmt.Errorf(
+				"invalid gubernator behavior %d, expected one of %d",
+				int32(config.GubernatorBehavior), []int32{
+					int32(gubernator.Behavior_BATCHING),
+					int32(gubernator.Behavior_NO_BATCHING),
+					int32(gubernator.Behavior_GLOBAL),
+				},
 			))
 		}
 	}
