@@ -10,3 +10,53 @@ apikeyauth/invalid_cache_capacity:
 apikeyauth/invalid_cache_ttl:
   cache:
     ttl: 0s
+apikeyauth/dynamic_resources:
+  application_privileges:
+    - application: my_app
+      privileges: [write]
+      resources: ['static-resource']
+      dynamic_resources:
+        - metadata: X-Resource-Name
+          format: "resource:%s"
+  cache:
+    key_metadata: [X-Resource-Name]
+apikeyauth/dynamic_resources_missing_metadata:
+  application_privileges:
+    - application: my_app
+      privileges: [write]
+      dynamic_resources:
+        - format: "resource:%s"
+apikeyauth/dynamic_resources_missing_cache_key_metadata:
+  application_privileges:
+    - application: my_app
+      privileges: [write]
+      dynamic_resources:
+        - metadata: X-Resource-Name
+          format: "resource:%s"
+apikeyauth/dynamic_resources_invalid_format:
+  application_privileges:
+    - application: my_app
+      privileges: [write]
+      dynamic_resources:
+        - metadata: X-Resource-Name
+          format: "resource"
+  cache:
+    key_metadata: [X-Resource-Name]
+apikeyauth/dynamic_resources_multiple_format:
+  application_privileges:
+    - application: my_app
+      privileges: [write]
+      dynamic_resources:
+        - metadata: X-Resource-Name
+          format: "resource:%s:%s"
+  cache:
+    key_metadata: [X-Resource-Name]
+apikeyauth/dynamic_resources_empty_metadata:
+  application_privileges:
+    - application: my_app
+      privileges: [write]
+      dynamic_resources:
+        - metadata: ""
+          format: "%s"
+  cache:
+    key_metadata: [X-Resource-Name]

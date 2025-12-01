@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/confmap/xconfmap"
@@ -61,6 +62,43 @@ func TestLoadConfig(t *testing.T) {
 			id:                 component.NewIDWithName(metadata.Type, "invalid_cache_ttl"),
 			expectedErrMessage: "cache: invalid ttl: 0s, must be greater than 0",
 		},
+		{
+			id: component.NewIDWithName(metadata.Type, "dynamic_resources"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+					Application: "my_app",
+					Privileges:  []string{"write"},
+					Resources:   []string{"static-resource"},
+					DynamicResources: []DynamicResource{{
+						Metadata: "X-Resource-Name",
+						Format:   "resource:%s",
+					}},
+				}}
+				config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "dynamic_resources_missing_metadata"),
+			expectedErrMessage: `application_privileges::0::dynamic_resources::0: metadata must be non-empty`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "dynamic_resources_missing_cache_key_metadata"),
+			expectedErrMessage: `application_privileges::0::dynamic_resources::0: dynamic resource metadata "X-Resource-Name" must be included in cache.key_metadata`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "dynamic_resources_invalid_format"),
+			expectedErrMessage: `application_privileges::0::dynamic_resources::0: format must contain exactly one %s placeholder, found 0`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "dynamic_resources_multiple_format"),
+			expectedErrMessage: `application_privileges::0::dynamic_resources::0: format must contain exactly one %s placeholder, found 2`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "dynamic_resources_empty_metadata"),
+			expectedErrMessage: `application_privileges::0::dynamic_resources::0: metadata must be non-empty`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.id.String(), func(t *testing.T) {
@@ -75,6 +113,7 @@ func TestLoadConfig(t *testing.T) {
 
 			err = xconfmap.Validate(cfg)
 			if tt.expectedErrMessage != "" {
+				require.Error(t, err)
 				assert.EqualError(t, err, tt.expectedErrMessage)
 				return
 			}
