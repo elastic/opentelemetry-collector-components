@@ -23,6 +23,7 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 import (
 	"fmt"
 	"net/netip"
+	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"google.golang.org/protobuf/types/known/structpb"
