@@ -29,16 +29,6 @@ type Aggregation struct {
 // Config represents the receiver config settings within the collector's config.yaml
 type Config struct {
 	metadata.MetricsBuilderConfig `mapstructure:",squash"`
-	// Generate metrics based on frame information (including frame type,
-	// supersedes ByFrameType).
-	ByFrame bool `mapstructure:"by_frame"`
-
-	// Generate metrics based on frame type.
-	ByFrameType bool `mapstructure:"by_frametype"`
-
-	// Generate metrics based on functional classification.
-	// Currently only Java and Go are supported.
-	ByClassification bool `mapstructure:"by_classification"`
 
 	// CustomAggregations allows to generate custom metrics.
 	CustomAggregations []Aggregation `mapstructure:"aggregations"`

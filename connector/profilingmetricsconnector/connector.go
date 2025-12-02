@@ -149,19 +149,17 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 		// Add basic sample count metric.
 		c.mb.RecordSamplesCountDataPoint(profile.Time(), int64(profile.Sample().Len()))
 
-		if c.config.ByFrame {
-			// TODO: For better efficiency, don't generate separate metrics per-profile
-			// under the same scope, instead merge the values across profiles into
-			// metrics (assuming scope and sample type is the same for these profiles).
-			// The following is fine for now, as the current eBPF profiler will not
-			// generate multiple profiles with the same sample type in the same scope.
-			if origin.typ == "samples" && origin.unit == "count" {
-				// TODO: For now, only extract frame-based metrics from OnCPU stacktraces.
-				c.addFrameMetrics(dictionary, profile)
-			}
+		// TODO: For better efficiency, don't generate separate metrics per-profile
+		// under the same scope, instead merge the values across profiles into
+		// metrics (assuming scope and sample type is the same for these profiles).
+		// The following is fine for now, as the current eBPF profiler will not
+		// generate multiple profiles with the same sample type in the same scope.
+		if origin.typ == "samples" && origin.unit == "count" {
+			// TODO: For now, only extract frame-based metrics from OnCPU stacktraces.
+			c.addFrameMetrics(dictionary, profile)
 		}
 
-		if c.config.ByFrameType {
+		if c.config.Metrics.SamplesFrameType.Enabled {
 			// Collect frame type information.
 			frameTypeCounts := make(map[string]int64)
 			for _, sample := range profile.Sample().All() {
@@ -179,7 +177,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 			}
 		}
 
-		if c.config.ByClassification {
+		if c.config.Metrics.SamplesClassification.Enabled {
 			classificationCounts := make(map[string]map[string]int64)
 			for _, sample := range profile.Sample().All() {
 				if sample.StackIndex() == 0 {

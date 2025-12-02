@@ -206,7 +206,6 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	m := new(consumertest.MetricsSink)
 	cfg := &Config{
-		ByFrame:              true,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
@@ -236,7 +235,6 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	m := new(consumertest.MetricsSink)
 	cfg := &Config{
-		ByFrame:              true,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
@@ -281,7 +279,6 @@ func kstackToFrames(functions ...string) []testFrame {
 func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	m := new(consumertest.MetricsSink)
 	cfg := &Config{
-		ByFrame:              true,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{

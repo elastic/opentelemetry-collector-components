@@ -34,7 +34,6 @@ import (
 func TestConsumeProfiles_WithMetrics(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		ByFrameType:          true,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
@@ -66,7 +65,6 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		ByFrameType:          true,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
@@ -157,7 +155,6 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		ByFrameType:          true,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
@@ -280,7 +277,6 @@ func TestConsumeProfiles_NoMetrics(t *testing.T) {
 
 func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	cfg := &Config{
-		ByClassification:     true,
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
