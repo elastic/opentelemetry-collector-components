@@ -19,10 +19,42 @@ package routing // import "github.com/elastic/opentelemetry-collector-components
 
 import "go.opentelemetry.io/collector/pdata/pcommon"
 
-func EncodeDataStream(resource pcommon.Resource, dataStreamType string) {
+// DataStreamType tracks the text associated with a data stream type.
+const (
+	DataStreamTypeLogs    = "logs"
+	DataStreamTypeMetrics = "metrics"
+	DataStreamTypeTraces  = "traces"
+
+	ServiceNameAttributeKey = "service.name"
+
+	NamespaceDefault = "default"
+)
+
+func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceNameInDataset bool) {
+	if serviceNameInDataset {
+		encodeDataStreamWithServiceName(resource, dataStreamType)
+	} else {
+		encodeDataStreamDefault(resource, dataStreamType)
+	}
+}
+
+func encodeDataStreamDefault(resource pcommon.Resource, dataStreamType string) {
 	attributes := resource.Attributes()
 
 	attributes.PutStr("data_stream.type", dataStreamType)
 	attributes.PutStr("data_stream.dataset", "apm")
-	attributes.PutStr("data_stream.namespace", "default") //TODO: make this configurable
+	attributes.PutStr("data_stream.namespace", NamespaceDefault) //TODO: make this configurable
+}
+
+func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType string) {
+	attributes := resource.Attributes()
+
+	serviceName, ok := attributes.Get(ServiceNameAttributeKey)
+	if !ok || serviceName.Str() == "" {
+		serviceName = pcommon.NewValueStr("unknown_service")
+	}
+
+	attributes.PutStr("data_stream.type", dataStreamType)
+	attributes.PutStr("data_stream.dataset", "apm.app."+serviceName.Str())
+	attributes.PutStr("data_stream.namespace", NamespaceDefault) //TODO: make this configurable
 }
