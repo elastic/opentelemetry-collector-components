@@ -69,7 +69,7 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: true,
 		},
 		SamplesClassification: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SamplesCount: MetricConfig{
 			Enabled: true,
@@ -84,7 +84,7 @@ func DefaultMetricsConfig() MetricsConfig {
 			Enabled: true,
 		},
 		SamplesFrameType: MetricConfig{
-			Enabled: true,
+			Enabled: false,
 		},
 		SamplesGoCount: MetricConfig{
 			Enabled: true,

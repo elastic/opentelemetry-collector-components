@@ -20,22 +20,6 @@ Number of samples executing Beam code (self)
 | ---- | ----------- | ---------- | ----------------------- | --------- | --------- |
 | 1 | Sum | Int | Delta | true | Development |
 
-### samples.classification
-
-Number of profiling frames by classification
-
-| Unit | Metric Type | Value Type | Stability |
-| ---- | ----------- | ---------- | --------- |
-| 1 | Gauge | Int | Development |
-
-#### Attributes
-
-| Name | Description | Values | Requirement Level |
-| ---- | ----------- | ------ | -------- |
-| classification | Profile type unit | Any Str | Recommended |
-| frame_type | Frame type | Any Str | Recommended |
-| profile.type_unit | Profile type unit | Any Str | Recommended |
-
 ### samples.count
 
 Total number of profiling samples
@@ -74,21 +58,6 @@ Number of samples executing Dotnet code (self)
 | Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic | Stability |
 | ---- | ----------- | ---------- | ----------------------- | --------- | --------- |
 | 1 | Sum | Int | Delta | true | Development |
-
-### samples.frame_type
-
-Number of profiles frames by frame type
-
-| Unit | Metric Type | Value Type | Stability |
-| ---- | ----------- | ---------- | --------- |
-| 1 | Gauge | Int | Development |
-
-#### Attributes
-
-| Name | Description | Values | Requirement Level |
-| ---- | ----------- | ------ | -------- |
-| frame_type | Frame type | Any Str | Recommended |
-| profile.type_unit | Profile type unit | Any Str | Recommended |
 
 ### samples.go.count
 
@@ -184,3 +153,44 @@ Number of samples executing v8js code (self)
 | Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic | Stability |
 | ---- | ----------- | ---------- | ----------------------- | --------- | --------- |
 | 1 | Sum | Int | Delta | true | Development |
+
+## Optional Metrics
+
+The following metrics are not emitted by default. Each of them can be enabled by applying the following configuration:
+
+```yaml
+metrics:
+  <metric_name>:
+    enabled: true
+```
+
+### samples.classification
+
+Number of profiling frames by classification
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| 1 | Gauge | Int | Development |
+
+#### Attributes
+
+| Name | Description | Values | Requirement Level |
+| ---- | ----------- | ------ | -------- |
+| classification | Profile type unit | Any Str | Recommended |
+| frame_type | Frame type | Any Str | Recommended |
+| profile.type_unit | Profile type unit | Any Str | Recommended |
+
+### samples.frame_type
+
+Number of profiles frames by frame type
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| 1 | Gauge | Int | Development |
+
+#### Attributes
+
+| Name | Description | Values | Requirement Level |
+| ---- | ----------- | ------ | -------- |
+| frame_type | Frame type | Any Str | Recommended |
+| profile.type_unit | Profile type unit | Any Str | Recommended |

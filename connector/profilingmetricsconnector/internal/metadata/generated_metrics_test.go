@@ -80,7 +80,6 @@ func TestMetricsBuilder(t *testing.T) {
 			allMetricsCount++
 			mb.RecordSamplesBeamCountDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesClassificationDataPoint(ts, 1, "classification-val", "frame_type-val", "profile.type_unit-val")
 
@@ -100,7 +99,6 @@ func TestMetricsBuilder(t *testing.T) {
 			allMetricsCount++
 			mb.RecordSamplesDotnetCountDataPoint(ts, 1)
 
-			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesFrameTypeDataPoint(ts, 1, "frame_type-val", "profile.type_unit-val")
 

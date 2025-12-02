@@ -64,8 +64,10 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 
 func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
+	metricsCfg := metadata.DefaultMetricsBuilderConfig()
+	metricsCfg.Metrics.SamplesFrameType.Enabled = true
 	cfg := &Config{
-		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+		MetricsBuilderConfig: metricsCfg,
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
@@ -154,8 +156,10 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 
 func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
+	metricsCfg := metadata.DefaultMetricsBuilderConfig()
+	metricsCfg.Metrics.SamplesFrameType.Enabled = true
 	cfg := &Config{
-		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+		MetricsBuilderConfig: metricsCfg,
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,

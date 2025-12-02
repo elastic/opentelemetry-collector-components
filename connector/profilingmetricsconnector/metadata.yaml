@@ -59,7 +59,7 @@ metrics:
       monotonic: true
 
   samples.classification:
-    enabled: true
+    enabled: false
     description: Number of profiling frames by classification
     unit: "1"
     stability:
@@ -113,7 +113,7 @@ metrics:
       monotonic: true
 
   samples.frame_type:
-    enabled: true
+    enabled: false
     description: Number of profiles frames by frame type
     unit: "1"
     stability:
