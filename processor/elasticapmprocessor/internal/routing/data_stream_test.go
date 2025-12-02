@@ -2,7 +2,7 @@ package routing_test
 
 import (
 	"testing"
-	
+
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -40,7 +40,7 @@ func TestDataStreamEncoderWithServiceName(t *testing.T) {
 
 	dataStreamDataset, ok := attributes.Get("data_stream.dataset")
 	assert.True(t, ok)
-	assert.Equal(t, "apm.app.my-service", dataStreamDataset.Str())
+	assert.Equal(t, "apm.app.my_service", dataStreamDataset.Str())
 
 	dataStreamNamespace, ok := attributes.Get("data_stream.namespace")
 	assert.True(t, ok)
