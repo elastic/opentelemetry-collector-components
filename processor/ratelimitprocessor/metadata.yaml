@@ -19,9 +19,9 @@ telemetry:
       unit: "{requests}"
       stability:
         level: development
-      gauge:
+      sum:
         value_type: int
-        monotonic: true
+        monotonic: false
     ratelimit.dynamic.escalations:
       enabled: true
       description: Total number of dynamic rate escalations (dynamic > static)

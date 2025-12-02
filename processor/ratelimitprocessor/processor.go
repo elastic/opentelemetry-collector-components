@@ -19,7 +19,6 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-	"sync/atomic"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -47,7 +46,6 @@ type rateLimiterProcessor struct {
 	telemetryBuilder *metadata.TelemetryBuilder
 	tracerProvider   trace.TracerProvider
 	logger           *zap.Logger
-	inflight         *int64
 	strategy         Strategy
 }
 
@@ -82,7 +80,6 @@ func NewLogsRateLimiterProcessor(
 	tracerProvider trace.TracerProvider,
 	strategy Strategy,
 	next func(ctx context.Context, logs plog.Logs) error,
-	inflight *int64,
 	metadataKeys []string,
 ) (*LogsRateLimiterProcessor, error) {
 	return &LogsRateLimiterProcessor{
@@ -92,7 +89,6 @@ func NewLogsRateLimiterProcessor(
 			telemetryBuilder: telemetryBuilder,
 			tracerProvider:   tracerProvider,
 			logger:           logger,
-			inflight:         inflight,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
 		},
@@ -108,7 +104,6 @@ func NewMetricsRateLimiterProcessor(
 	tracerProvider trace.TracerProvider,
 	strategy Strategy,
 	next func(ctx context.Context, metrics pmetric.Metrics) error,
-	inflight *int64, // used to calculate concurrent requests
 	metadataKeys []string,
 ) (*MetricsRateLimiterProcessor, error) {
 	return &MetricsRateLimiterProcessor{
@@ -118,7 +113,6 @@ func NewMetricsRateLimiterProcessor(
 			telemetryBuilder: telemetryBuilder,
 			tracerProvider:   tracerProvider,
 			logger:           logger,
-			inflight:         inflight,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
 		},
@@ -134,7 +128,6 @@ func NewTracesRateLimiterProcessor(
 	tracerProvider trace.TracerProvider,
 	strategy Strategy,
 	next func(ctx context.Context, traces ptrace.Traces) error,
-	inflight *int64,
 	metadataKeys []string,
 ) (*TracesRateLimiterProcessor, error) {
 	return &TracesRateLimiterProcessor{
@@ -144,7 +137,6 @@ func NewTracesRateLimiterProcessor(
 			telemetryBuilder: telemetryBuilder,
 			tracerProvider:   tracerProvider,
 			logger:           logger,
-			inflight:         inflight,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
 		},
@@ -160,7 +152,6 @@ func NewProfilesRateLimiterProcessor(
 	tracerProvider trace.TracerProvider,
 	strategy Strategy,
 	next func(ctx context.Context, profiles pprofile.Profiles) error,
-	inflight *int64,
 	metadataKeys []string,
 ) (*ProfilesRateLimiterProcessor, error) {
 	return &ProfilesRateLimiterProcessor{
@@ -170,7 +161,6 @@ func NewProfilesRateLimiterProcessor(
 			telemetryBuilder: telemetryBuilder,
 			tracerProvider:   tracerProvider,
 			logger:           logger,
-			inflight:         inflight,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
 		},
@@ -216,34 +206,31 @@ func getTelemetryAttrs(attrsCommon []attribute.KeyValue, err error) (attrs []att
 	return attrs
 }
 
-func rateLimit(ctx context.Context,
+func withRateLimit[T any](ctx context.Context,
 	hits int,
 	rateLimit func(ctx context.Context, n int) error,
 	metadataKeys []string,
 	tb *metadata.TelemetryBuilder,
 	logger *zap.Logger,
-	inflight *int64,
+	next func(ctx context.Context, data T) error,
+	data T,
 ) error {
-	current := atomic.AddInt64(inflight, 1)
 	attrsCommon := getAttrsFromContext(ctx, metadataKeys)
 	attrsSet := attribute.NewSet(attrsCommon...)
-	tb.RatelimitConcurrentRequests.Record(ctx, current,
+	tb.RatelimitConcurrentRequests.Add(ctx, 1, metric.WithAttributeSet(attrsSet))
+	defer tb.RatelimitConcurrentRequests.Add(ctx, -1, metric.WithAttributeSet(attrsSet))
+
+	start := time.Now()
+	err := rateLimit(ctx, hits)
+	tb.RatelimitRequestDuration.Record(ctx,
+		time.Since(start).Seconds(),
 		metric.WithAttributeSet(attrsSet),
 	)
 
-	defer func(start time.Time) {
-		atomic.AddInt64(inflight, -1)
-		tb.RatelimitRequestDuration.Record(ctx, time.Since(start).Seconds(),
-			metric.WithAttributeSet(attrsSet),
-		)
-	}(time.Now())
-
-	err := rateLimit(ctx, hits)
 	attrRequests := getTelemetryAttrs(attrsCommon, err)
 	attrRequestsSet := attribute.NewSet(attrRequests...)
-	tb.RatelimitRequestSize.Record(ctx, int64(hits),
-		metric.WithAttributeSet(attrRequestsSet),
-	)
+	tb.RatelimitRequestSize.Record(ctx, int64(hits), metric.WithAttributeSet(attrRequestsSet))
+	tb.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attrRequestsSet))
 	if err != nil {
 		// enhance error logging with metadata keys
 		fields := make([]zap.Field, 0, len(attrsCommon)+1)
@@ -256,71 +243,61 @@ func rateLimit(ctx context.Context,
 				fields = append(fields, zap.String(string(kv.Key), kv.Value.AsString()))
 			}
 		}
-		logger.Error("request is over the limits defined by the rate limiter", append(fields, zap.Error(err))...)
+		logger.Error(
+			"request is over the limits defined by the rate limiter",
+			append(fields, zap.Error(err))...,
+		)
+		return err
 	}
-
-	tb.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attrRequestsSet))
-	return err
+	return next(ctx, data)
 }
 
 func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	if err := rateLimit(
+	return withRateLimit(
 		ctx,
 		r.count(ld),
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
 		r.logger,
-		r.inflight,
-	); err != nil {
-		return err
-	}
-	return r.next(ctx, ld)
+		r.next, ld,
+	)
 }
 
 func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	if err := rateLimit(
+	return withRateLimit(
 		ctx,
 		r.count(md),
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
 		r.logger,
-		r.inflight,
-	); err != nil {
-		return err
-	}
-	return r.next(ctx, md)
+		r.next, md,
+	)
 }
 
 func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	if err := rateLimit(
+	return withRateLimit(
 		ctx,
 		r.count(td),
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
 		r.logger,
-		r.inflight,
-	); err != nil {
-		return err
-	}
-	return r.next(ctx, td)
+		r.next, td,
+	)
 }
 
 func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd pprofile.Profiles) error {
-	if err := rateLimit(
+	return withRateLimit(
 		ctx,
 		r.count(pd),
 		r.rl.RateLimit,
 		r.metadataKeys,
 		r.telemetryBuilder,
 		r.logger,
-		r.inflight,
-	); err != nil {
-		return err
-	}
-	return r.next(ctx, pd)
+		r.next, pd,
+	)
 }
 
 func getLogsCountFunc(strategy Strategy) func(ld plog.Logs) int {

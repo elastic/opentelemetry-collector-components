@@ -43,8 +43,10 @@ func AssertEqualRatelimitConcurrentRequests(t *testing.T, tt *componenttest.Tele
 		Name:        "otelcol_ratelimit.concurrent_requests",
 		Description: "Number of in-flight requests at any given time [Development]",
 		Unit:        "{requests}",
-		Data: metricdata.Gauge[int64]{
-			DataPoints: dps,
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: false,
+			DataPoints:  dps,
 		},
 	}
 	got, err := tt.GetMetric("otelcol_ratelimit.concurrent_requests")
