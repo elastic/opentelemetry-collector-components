@@ -20,9 +20,6 @@ package elasticapmprocessor // import "github.com/elastic/opentelemetry-collecto
 import (
 	"context"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
-	"github.com/elastic/opentelemetry-lib/enrichments"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -31,6 +28,10 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
+	"github.com/elastic/opentelemetry-lib/enrichments"
 )
 
 var _ processor.Traces = (*TraceProcessor)(nil)
@@ -65,6 +66,7 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 			resourceSpan := resourceSpans.At(i)
 			resource := resourceSpan.Resource()
 			ecs.TranslateResourceMetadata(resource)
+			ecs.SetHostIP(ctx, resource.Attributes())
 			routing.EncodeDataStream(resource, "traces")
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
@@ -142,6 +144,7 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 			resourceMetric := resourceMetrics.At(i)
 			resource := resourceMetric.Resource()
 			ecs.TranslateResourceMetadata(resource)
+			ecs.SetHostIP(ctx, resource.Attributes())
 			routing.EncodeDataStream(resource, "metrics")
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
@@ -162,6 +165,7 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			resourceLog := resourceLogs.At(i)
 			resource := resourceLog.Resource()
 			ecs.TranslateResourceMetadata(resource)
+			ecs.SetHostIP(ctx, resource.Attributes())
 			routing.EncodeDataStream(resource, "logs")
 			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false

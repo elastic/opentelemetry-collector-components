@@ -180,9 +180,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: amd64
-        - key: host.ip
-          value:
-            stringValue: 10.0.0.1
         # host.* elastic attributes
         - key: host.os.platform
           value:

@@ -20,6 +20,7 @@ package elasticapmprocessor // import "github.com/elastic/opentelemetry-collecto
 import (
 	"context"
 	"flag"
+	"net"
 	"path/filepath"
 	"testing"
 
@@ -90,6 +91,9 @@ func TestProcessor(t *testing.T) {
 // TestProcessorECS does a basic test to check if traces are processed correctly when ECS mode is enabled in the client metadata.
 func TestProcessorECS(t *testing.T) {
 	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{
+			IP: net.IPv4(1, 2, 3, 4),
+		},
 		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
 	})
 	cancel := func() {}
