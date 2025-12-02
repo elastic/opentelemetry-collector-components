@@ -27,4 +27,9 @@ type Config struct {
 	// the x-elastic-mapping-mode metadata is set to "ecs". Traces are always enriched regardless
 	// of this setting. Defaults to false for backwards compatibility (always enrich).
 	SkipEnrichment bool `mapstructure:"skip_enrichment"`
+
+	// HostIPEnabled controls whether the `host.ip` resource attribute should be set using client info address.
+	// When true, the processor will set the `host.ip` attribute from the client address when
+	// the mapping mode is "ecs". Defaults to true.
+	HostIPEnabled bool `mapstructure:"host_ip_enabled"`
 }

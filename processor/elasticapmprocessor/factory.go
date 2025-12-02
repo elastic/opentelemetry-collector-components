@@ -43,7 +43,9 @@ func NewFactory() processor.Factory {
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		Config: config.Enabled(),
+		Config:         config.Enabled(),
+		SkipEnrichment: false,
+		HostIPEnabled:  true,
 	}
 }
 

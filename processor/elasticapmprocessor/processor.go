@@ -45,6 +45,7 @@ type TraceProcessor struct {
 	next     consumer.Traces
 	enricher *enrichments.Enricher
 	logger   *zap.Logger
+	cfg      *Config
 }
 
 func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
@@ -52,6 +53,7 @@ func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *T
 		next:     next,
 		logger:   logger,
 		enricher: enrichments.NewEnricher(cfg.Config),
+		cfg:      cfg,
 	}
 }
 
@@ -66,7 +68,9 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 			resourceSpan := resourceSpans.At(i)
 			resource := resourceSpan.Resource()
 			ecs.TranslateResourceMetadata(resource)
-			ecs.SetHostIP(ctx, resource.Attributes())
+			if p.cfg.HostIPEnabled {
+				ecs.SetHostIP(ctx, resource.Attributes())
+			}
 			routing.EncodeDataStream(resource, "traces")
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
@@ -94,18 +98,18 @@ type LogProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next           consumer.Logs
-	enricher       *enrichments.Enricher
-	logger         *zap.Logger
-	skipEnrichment bool
+	next     consumer.Logs
+	enricher *enrichments.Enricher
+	logger   *zap.Logger
+	cfg      *Config
 }
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
 	return &LogProcessor{
-		next:           next,
-		logger:         logger,
-		enricher:       enrichments.NewEnricher(cfg.Config),
-		skipEnrichment: cfg.SkipEnrichment,
+		next:     next,
+		logger:   logger,
+		enricher: enrichments.NewEnricher(cfg.Config),
+		cfg:      cfg,
 	}
 }
 
@@ -117,18 +121,18 @@ type MetricProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next           consumer.Metrics
-	enricher       *enrichments.Enricher
-	logger         *zap.Logger
-	skipEnrichment bool
+	next     consumer.Metrics
+	enricher *enrichments.Enricher
+	logger   *zap.Logger
+	cfg      *Config
 }
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
 	return &MetricProcessor{
-		next:           next,
-		logger:         logger,
-		enricher:       enrichments.NewEnricher(cfg.Config),
-		skipEnrichment: cfg.SkipEnrichment,
+		next:     next,
+		logger:   logger,
+		enricher: enrichments.NewEnricher(cfg.Config),
+		cfg:      cfg,
 	}
 }
 
@@ -144,14 +148,16 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 			resourceMetric := resourceMetrics.At(i)
 			resource := resourceMetric.Resource()
 			ecs.TranslateResourceMetadata(resource)
-			ecs.SetHostIP(ctx, resource.Attributes())
+			if p.cfg.HostIPEnabled {
+				ecs.SetHostIP(ctx, resource.Attributes())
+			}
 			routing.EncodeDataStream(resource, "metrics")
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.skipEnrichment || ecsMode {
+	if !p.cfg.SkipEnrichment || ecsMode {
 		p.enricher.EnrichMetrics(md)
 	}
 	return p.next.ConsumeMetrics(ctx, md)
@@ -165,7 +171,9 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			resourceLog := resourceLogs.At(i)
 			resource := resourceLog.Resource()
 			ecs.TranslateResourceMetadata(resource)
-			ecs.SetHostIP(ctx, resource.Attributes())
+			if p.cfg.HostIPEnabled {
+				ecs.SetHostIP(ctx, resource.Attributes())
+			}
 			routing.EncodeDataStream(resource, "logs")
 			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
@@ -173,7 +181,7 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.skipEnrichment || ecsMode {
+	if !p.cfg.SkipEnrichment || ecsMode {
 		p.enricher.EnrichLogs(ld)
 	}
 	return p.next.ConsumeLogs(ctx, ld)
