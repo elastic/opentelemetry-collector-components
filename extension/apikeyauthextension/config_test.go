@@ -73,9 +73,15 @@ func TestLoadConfig(t *testing.T) {
 					DynamicResources: []DynamicResource{{
 						Metadata: "X-Resource-Name",
 						Format:   "resource:%s",
+					}, {
+						Metadata: "X-Resource-Name-Default-Format",
+						Format:   "%s",
 					}},
 				}}
-				config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+				config.Cache.KeyMetadata = []string{
+					"X-Resource-Name",
+					"X-Resource-Name-Default-Format",
+				}
 				return config
 			}(),
 		},

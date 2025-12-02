@@ -18,8 +18,9 @@ apikeyauth/dynamic_resources:
       dynamic_resources:
         - metadata: X-Resource-Name
           format: "resource:%s"
+        - metadata: X-Resource-Name-Default-Format
   cache:
-    key_metadata: [X-Resource-Name]
+    key_metadata: [X-Resource-Name, X-Resource-Name-Default-Format]
 apikeyauth/dynamic_resources_missing_metadata:
   application_privileges:
     - application: my_app

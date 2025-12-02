@@ -24,6 +24,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/confmap"
 )
 
 type Config struct {
@@ -118,23 +119,30 @@ func (cfg *CacheConfig) Validate() error {
 	return nil
 }
 
+// Unmarshal unmarshals the DynamicResource configuration.
+func (dr *DynamicResource) Unmarshal(conf *confmap.Conf) error {
+	if err := conf.Unmarshal(dr); err != nil {
+		return err
+	}
+	if dr.Format == "" {
+		dr.Format = "%s"
+	}
+	return nil
+}
+
 // Validate validates the DynamicResource configuration.
 func (dr *DynamicResource) Validate() error {
 	if dr.Metadata == "" {
 		return fmt.Errorf("metadata must be non-empty")
 	}
-	format := dr.Format
-	if format == "" {
-		format = "%s"
-	}
 	// Count occurrences of %s
-	count := strings.Count(format, "%s")
+	count := strings.Count(dr.Format, "%s")
 	// Check for other format verbs (like %d, %v, etc.)
 	// We'll do a simple check: count all % that aren't followed by s or %
 	otherVerbs := 0
-	for i := 0; i < len(format)-1; i++ {
-		if format[i] == '%' {
-			next := format[i+1]
+	for i := 0; i < len(dr.Format)-1; i++ {
+		if dr.Format[i] == '%' {
+			next := dr.Format[i+1]
 			if next != 's' && next != '%' {
 				otherVerbs++
 			}

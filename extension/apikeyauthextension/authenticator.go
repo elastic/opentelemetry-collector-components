@@ -237,11 +237,7 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 					message: fmt.Sprintf("client metadata %q must have exactly one value, found %d", dr.Metadata, len(values)),
 				}
 			}
-			format := dr.Format
-			if format == "" {
-				format = "%s"
-			}
-			formatted := fmt.Sprintf(format, values[0])
+			formatted := fmt.Sprintf(dr.Format, values[0])
 			resources = append(resources, formatted)
 		}
 

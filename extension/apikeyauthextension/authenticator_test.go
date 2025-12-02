@@ -518,45 +518,6 @@ func TestAuthenticator_DynamicResources(t *testing.T) {
 	assert.Equal(t, "id", clientInfo.Auth.GetAttribute("api_key"))
 }
 
-func TestAuthenticator_DynamicResourcesDefaultFormat(t *testing.T) {
-	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		var body hasprivileges.Request
-		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		assert.Equal(t, hasprivileges.Request{
-			Application: []types.ApplicationPrivilegesCheck{{
-				Application: "my_app",
-				Resources:   []string{"my-resource"}, // no format, just raw value
-				Privileges:  []string{"write"},
-			}},
-		}, body)
-		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
-	})
-
-	config := createDefaultConfig().(*Config)
-	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
-		Application: "my_app",
-		Privileges:  []string{"write"},
-		DynamicResources: []DynamicResource{{
-			Metadata: "X-Resource-Name",
-			// Format empty, should default to "%s"
-		}},
-	}}
-	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
-	authenticator := newTestAuthenticator(t, srv, config)
-
-	withMetadata := client.NewContext(context.Background(), client.Info{
-		Metadata: client.NewMetadata(map[string][]string{
-			"X-Resource-Name": {"my-resource"},
-		}),
-	})
-	ctx, err := authenticator.Authenticate(withMetadata, map[string][]string{
-		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-	})
-	assert.NoError(t, err)
-	clientInfo := client.FromContext(ctx)
-	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
-}
-
 func TestAuthenticator_DynamicResourcesMissingMetadata(t *testing.T) {
 	config := createDefaultConfig().(*Config)
 	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
