@@ -43,7 +43,7 @@ type TelemetryBuilder struct {
 	meter                       metric.Meter
 	mu                          sync.Mutex
 	registrations               []metric.Registration
-	RatelimitConcurrentRequests metric.Int64Gauge
+	RatelimitConcurrentRequests metric.Int64UpDownCounter
 	RatelimitDynamicEscalations metric.Int64Counter
 	RatelimitRequestDuration    metric.Float64Histogram
 	RatelimitRequestSize        metric.Int64Histogram
@@ -80,7 +80,7 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	}
 	builder.meter = Meter(settings)
 	var err, errs error
-	builder.RatelimitConcurrentRequests, err = builder.meter.Int64Gauge(
+	builder.RatelimitConcurrentRequests, err = builder.meter.Int64UpDownCounter(
 		"otelcol_ratelimit.concurrent_requests",
 		metric.WithDescription("Number of in-flight requests at any given time [Development]"),
 		metric.WithUnit("{requests}"),
