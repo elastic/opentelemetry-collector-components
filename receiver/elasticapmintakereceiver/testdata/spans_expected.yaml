@@ -2280,7 +2280,7 @@ resourceSpans:
                   intValue: "10"
               - key: span.composite.sum.us
                 value:
-                  doubleValue: 359.2981
+                  intValue: "359298"
               - key: span.representative_count
                 value:
                   doubleValue: 1
