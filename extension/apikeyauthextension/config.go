@@ -55,6 +55,9 @@ type ApplicationPrivilegesConfig struct {
 	// DynamicResources holds the list of dynamic resources that are
 	// extracted from client metadata at runtime and combined with
 	// static Resources.
+	//
+	// If there are multiple metadata values for a given dynamic
+	// resource, then multiple resources will be generated.
 	DynamicResources []DynamicResource `mapstructure:"dynamic_resources,omitempty"`
 }
 

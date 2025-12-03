@@ -232,13 +232,10 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 				return false, "", &metadataValidationError{
 					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
 				}
-			} else if len(values) != 1 {
-				return false, "", &metadataValidationError{
-					message: fmt.Sprintf("client metadata %q must have exactly one value, found %d", dr.Metadata, len(values)),
-				}
 			}
-			formatted := fmt.Sprintf(dr.Format, values[0])
-			resources = append(resources, formatted)
+			for _, value := range values {
+				resources = append(resources, fmt.Sprintf(dr.Format, value))
+			}
 		}
 
 		applications[i] = types.ApplicationPrivilegesCheck{
