@@ -477,6 +477,140 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 	}
 }
 
+func TestAuthenticator_DynamicResources(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		var body hasprivileges.Request
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, hasprivileges.Request{
+			Application: []types.ApplicationPrivilegesCheck{{
+				Application: "my_app",
+				Resources:   []string{"static-resource", "resource:my-resource"},
+				Privileges:  []string{"write"},
+			}},
+		}, body)
+		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
+	})
+
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		Resources:   []string{"static-resource"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	withMetadata := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"X-Resource-Name": {"my-resource"},
+		}),
+	})
+	ctx, err := authenticator.Authenticate(withMetadata, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	assert.NoError(t, err)
+	clientInfo := client.FromContext(ctx)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+	assert.Equal(t, "id", clientInfo.Auth.GetAttribute("api_key"))
+}
+
+func TestAuthenticator_DynamicResourcesMultipleValues(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		var body hasprivileges.Request
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, hasprivileges.Request{
+			Application: []types.ApplicationPrivilegesCheck{{
+				Application: "my_app",
+				Resources:   []string{"resource:my-resource", "resource:another-resource"},
+				Privileges:  []string{"write"},
+			}},
+		}, body)
+		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
+	})
+
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	withMetadata := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"X-Resource-Name": {"my-resource", "another-resource"},
+		}),
+	})
+	ctx, err := authenticator.Authenticate(withMetadata, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	assert.NoError(t, err)
+	clientInfo := client.FromContext(ctx)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+	assert.Equal(t, "id", clientInfo.Auth.GetAttribute("api_key"))
+}
+
+func TestAuthenticator_DynamicResourcesMissingMetadata(t *testing.T) {
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse)), config)
+
+	// Missing metadata should return an error, since it is required
+	// to be in the cache key, and that is computed before formatting
+	// the dynamic resource for checking application privileges.
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	require.Error(t, err)
+	assert.EqualError(t, err, `error computing cache key: missing client metadata "X-Resource-Name"`)
+}
+
+func TestAuthenticator_DynamicResourcesMissingMetadataInHasPrivileges(t *testing.T) {
+	// This tests the edge case where metadata is missing during hasPrivileges check
+	// (though in practice this shouldn't happen since cache key validation happens first)
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	// Don't include in cache key metadata to allow it to pass cache key check
+	// but fail in hasPrivileges
+	config.Cache.KeyMetadata = []string{}
+	authenticator := newTestAuthenticator(t, newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse)), config)
+
+	// Missing metadata should return InvalidArgument (client error), not Unavailable
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	require.Error(t, err)
+
+	// Should be InvalidArgument, not Unavailable
+	st, ok := status.FromError(err)
+	require.True(t, ok, "Expected gRPC status error")
+	assert.Equal(t, codes.InvalidArgument, st.Code())
+	assert.Equal(t, st.Message(), `missing client metadata "X-Resource-Name" required for dynamic resource`)
+}
+
 func BenchmarkAuthenticator(b *testing.B) {
 	for _, iters := range []int{1, 10, 100, 1000} {
 		b.Run(fmt.Sprintf("iters_%d", iters), func(b *testing.B) {
