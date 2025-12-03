@@ -2098,6 +2098,15 @@ resourceSpans:
                     values:
                       - stringValue: value1
                       - stringValue: value2
+              - key: span.composite.compression_strategy
+                value:
+                  stringValue: exact_match
+              - key: span.composite.count
+                value:
+                  intValue: "10"
+              - key: span.composite.sum.us
+                value:
+                  intValue: "0"
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -2280,7 +2289,7 @@ resourceSpans:
                   intValue: "10"
               - key: span.composite.sum.us
                 value:
-                  doubleValue: 359.2981
+                  intValue: "359298"
               - key: span.representative_count
                 value:
                   doubleValue: 1

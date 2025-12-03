@@ -36,7 +36,7 @@ func TestSetupTelemetry(t *testing.T) {
 	tb, err := metadata.NewTelemetryBuilder(testTel.NewTelemetrySettings())
 	require.NoError(t, err)
 	defer tb.Shutdown()
-	tb.RatelimitConcurrentRequests.Record(context.Background(), 1)
+	tb.RatelimitConcurrentRequests.Add(context.Background(), 1)
 	tb.RatelimitDynamicEscalations.Add(context.Background(), 1)
 	tb.RatelimitRequestDuration.Record(context.Background(), 1)
 	tb.RatelimitRequestSize.Record(context.Background(), 1)

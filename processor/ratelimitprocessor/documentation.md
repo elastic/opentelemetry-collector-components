@@ -10,9 +10,9 @@ The following telemetry is emitted by this component.
 
 Number of in-flight requests at any given time [Development]
 
-| Unit | Metric Type | Value Type | Stability |
-| ---- | ----------- | ---------- | --------- |
-| {requests} | Gauge | Int | Development |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {requests} | Sum | Int | false | Development |
 
 ### otelcol_ratelimit.dynamic.escalations
 
