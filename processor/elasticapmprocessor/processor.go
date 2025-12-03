@@ -68,10 +68,11 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 			resourceSpan := resourceSpans.At(i)
 			resource := resourceSpan.Resource()
 			ecs.TranslateResourceMetadata(resource)
+			routing.EncodeDataStream(resource, routing.DataStreamTypeTraces, false)
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
-			routing.EncodeDataStream(resource, "traces")
+			// Traces signal never need to be routed to service-specific datasets
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
@@ -151,7 +152,7 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
-			routing.EncodeDataStream(resource, "metrics")
+			routing.EncodeDataStream(resource, routing.DataStreamTypeMetrics, p.cfg.ServiceNameInDataStreamDataset)
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
@@ -174,7 +175,7 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
-			routing.EncodeDataStream(resource, "logs")
+			routing.EncodeDataStream(resource, routing.DataStreamTypeLogs, p.cfg.ServiceNameInDataStreamDataset)
 			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}

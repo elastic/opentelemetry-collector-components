@@ -178,7 +178,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 		if c.config.ByFrameType {
 			// Collect frame type information.
 			frameTypeCounts := make(map[string]int64)
-			for _, sample := range profile.Sample().All() {
+			for _, sample := range profile.Samples().All() {
 				if sample.StackIndex() == 0 {
 					continue
 				}
@@ -195,7 +195,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 
 		if c.config.ByClassification {
 			classificationCounts := make(map[string]map[string]int64)
-			for _, sample := range profile.Sample().All() {
+			for _, sample := range profile.Samples().All() {
 				if sample.StackIndex() == 0 {
 					continue
 				}
@@ -214,7 +214,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 
 		if len(c.aggregations) > 0 {
 			customAggregationCounts := make(map[string]int64)
-			for _, sample := range profile.Sample().All() {
+			for _, sample := range profile.Samples().All() {
 				if sample.StackIndex() == 0 {
 					continue
 				}
@@ -322,7 +322,7 @@ func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary ppro
 			continue
 		}
 
-		for _, line := range loc.Line().All() {
+		for _, line := range loc.Lines().All() {
 			fnIdx := line.FunctionIndex
 			fnEntry := funcTable.At(int(fnIdx()))
 
@@ -362,7 +362,7 @@ func (c *profilesToMetricsConnector) collectCustomAggregationCounts(dictionary p
 		}
 		loc := locationTable.At(int(li))
 
-		for _, line := range loc.Line().All() {
+		for _, line := range loc.Lines().All() {
 			fnIdx := line.FunctionIndex
 			fnEntry := funcTable.At(int(fnIdx()))
 			fnStr := strTable.At(int(fnEntry.NameStrindex()))
@@ -389,5 +389,5 @@ func (c *profilesToMetricsConnector) addSampleCountMetric(profile pprofile.Profi
 
 	dataPoint := sum.DataPoints().AppendEmpty()
 	dataPoint.SetTimestamp(profile.Time())
-	dataPoint.SetIntValue(int64(profile.Sample().Len()))
+	dataPoint.SetIntValue(int64(profile.Samples().Len()))
 }
