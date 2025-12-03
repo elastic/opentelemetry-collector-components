@@ -119,7 +119,7 @@ func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host com
 
 	var err error
 	if r.httpServer, err = r.cfg.ToServer(
-		ctx, host, r.settings.TelemetrySettings, httpMux,
+		ctx, host.GetExtensions(), r.settings.TelemetrySettings, httpMux,
 		confighttp.WithErrorHandler(errorHandler),
 	); err != nil {
 		return err
@@ -160,7 +160,6 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errMsg string, statusC
 }
 
 func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http.Request) context.Context) http.HandlerFunc {
-
 	var (
 		// TODO make semaphore size configurable and/or find a different way
 		// to limit concurrency that fits better with OTel Collector.
@@ -465,7 +464,7 @@ func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.R
 	sum_metric := sm.Metrics().AppendEmpty()
 	sum_metric.SetName("span.self_time.sum.us")
 
-	//TODO: without Unit, the es exporter throws this:
+	// TODO: without Unit, the es exporter throws this:
 	// error	elasticsearchexporter@v0.124.1/bulkindexer.go:367	failed to index document	{"index": "metrics-generic.otel-default", "error.type": "illegal_argument_exception", "error.reason": ""}
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter.flushBulkIndexer
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367

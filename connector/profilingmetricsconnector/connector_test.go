@@ -51,7 +51,7 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
-	prof.Sample().AppendEmpty() // Add a sample to ensure metric count > 0
+	prof.Samples().AppendEmpty() // Add a sample to ensure metric count > 0
 
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
@@ -79,7 +79,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
-	sample := prof.Sample().AppendEmpty()
+	sample := prof.Samples().AppendEmpty()
 
 	// Setup dictionary tables
 	dict := profiles.Dictionary()
@@ -201,9 +201,9 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	stackPy.LocationIndices().Append(1)
 
 	// Add two samples, each referencing a different location
-	sampleGo := prof.Sample().AppendEmpty()
+	sampleGo := prof.Samples().AppendEmpty()
 	sampleGo.SetStackIndex(1)
-	samplePy := prof.Sample().AppendEmpty()
+	samplePy := prof.Samples().AppendEmpty()
 	samplePy.SetStackIndex(2)
 
 	// Expect ConsumeMetrics to be called with both frame type metrics
@@ -303,7 +303,7 @@ func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	locIdx := locTable.Len()
 	loc := locTable.AppendEmpty()
 	loc.AttributeIndices().Append(int32(attrIdx))
-	line := loc.Line().AppendEmpty()
+	line := loc.Lines().AppendEmpty()
 	line.SetFunctionIndex(int32(fnNameIdx))
 
 	stackTable.AppendEmpty()

@@ -142,7 +142,7 @@ func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, erro
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-	httpClient, err := a.config.ToClient(ctx, host, a.telemetrySettings)
+	httpClient, err := a.config.ToClient(ctx, host.GetExtensions(), a.telemetrySettings)
 	if err != nil {
 		return err
 	}

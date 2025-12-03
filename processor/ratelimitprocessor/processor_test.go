@@ -112,9 +112,9 @@ func TestGetCountFunc_Traces(t *testing.T) {
 func TestGetCountFunc_Profiles(t *testing.T) {
 	profiles := pprofile.NewProfiles()
 	resourceProfiles := profiles.ResourceProfiles().AppendEmpty()
-	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Sample().AppendEmpty()
-	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Sample().AppendEmpty()
-	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Sample().AppendEmpty()
+	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Samples().AppendEmpty()
+	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Samples().AppendEmpty()
+	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Samples().AppendEmpty()
 
 	f := getProfilesCountFunc(StrategyRateLimitRequests)
 	assert.Equal(t, 1, f(profiles))
