@@ -254,3 +254,61 @@ func TestSkipEnrichmentMetrics(t *testing.T) {
 		})
 	}
 }
+
+func TestServiceNameInDataStreamDataset_Logs(t *testing.T) {
+	ctx := context.Background()
+	ctx = client.NewContext(ctx, client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+	cfg := createDefaultConfig().(*Config)
+	cfg.ServiceNameInDataStreamDataset = true
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+	next := &consumertest.LogsSink{}
+
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	dir := filepath.Join("testdata", "elastic_apm")
+	inputLogs, err := golden.ReadLogs(filepath.Join(dir, "logs_input.yaml"))
+	require.NoError(t, err)
+
+	outputFile := filepath.Join(dir, "logs_output.yaml")
+	require.NoError(t, lp.ConsumeLogs(ctx, inputLogs))
+	actual := next.AllLogs()[0]
+
+	expectedLogs, err := golden.ReadLogs(outputFile)
+	require.NoError(t, err)
+	assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
+}
+
+func TestServiceNameInDataStream_Metrics(t *testing.T) {
+	ctx := context.Background()
+	ctx = client.NewContext(ctx, client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+	cfg := createDefaultConfig().(*Config)
+	cfg.ServiceNameInDataStreamDataset = true
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+	next := &consumertest.MetricsSink{}
+
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	dir := filepath.Join("testdata", "elastic_apm")
+	inputMetrics, err := golden.ReadMetrics(filepath.Join(dir, "metrics_input.yaml"))
+	require.NoError(t, err)
+
+	outputFile := filepath.Join(dir, "metrics_output.yaml")
+	require.NoError(t, mp.ConsumeMetrics(ctx, inputMetrics))
+	actual := next.AllMetrics()[0]
+
+	expectedMetrics, err := golden.ReadMetrics(outputFile)
+	require.NoError(t, err)
+	assert.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actual))
+}
