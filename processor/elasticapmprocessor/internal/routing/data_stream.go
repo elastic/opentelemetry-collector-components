@@ -31,7 +31,9 @@ const (
 
 	ServiceNameAttributeKey = "service.name"
 
-	NamespaceDefault = "default"
+	NamespaceDefault = "default" //TODO: make this configurable
+
+	ServiceNameUnknownAttributeUnknonw = "unknown"
 )
 
 func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceNameInDataset bool) {
@@ -47,7 +49,7 @@ func encodeDataStreamDefault(resource pcommon.Resource, dataStreamType string) {
 
 	attributes.PutStr("data_stream.type", dataStreamType)
 	attributes.PutStr("data_stream.dataset", "apm")
-	attributes.PutStr("data_stream.namespace", NamespaceDefault) //TODO: make this configurable
+	attributes.PutStr("data_stream.namespace", NamespaceDefault)
 }
 
 func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType string) {
@@ -55,12 +57,12 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 
 	serviceName, ok := attributes.Get(ServiceNameAttributeKey)
 	if !ok || serviceName.Str() == "" {
-		serviceName = pcommon.NewValueStr("unknown_service")
+		serviceName = pcommon.NewValueStr(ServiceNameUnknownAttributeUnknonw)
 	}
 
 	attributes.PutStr("data_stream.type", dataStreamType)
 	attributes.PutStr("data_stream.dataset", "apm.app."+normalizeServiceName(serviceName.Str()))
-	attributes.PutStr("data_stream.namespace", NamespaceDefault) //TODO: make this configurable
+	attributes.PutStr("data_stream.namespace", NamespaceDefault)
 }
 
 // The follwing is Copied from apm-data
