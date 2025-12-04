@@ -27,4 +27,9 @@ type Config struct {
 	// the x-elastic-mapping-mode metadata is set to "ecs". Traces are always enriched regardless
 	// of this setting. Defaults to false for backwards compatibility (always enrich).
 	SkipEnrichment bool `mapstructure:"skip_enrichment"`
+
+	// ServiceNameInDataStreamDataset controls whether the service.name attribute
+	// is included in the data_stream.dataset value. If true, the dataset will be
+	// in the format "apm.app.<service.name>". Defaults to false for backwards compatibility.
+	ServiceNameInDataStreamDataset bool `mapstructure:"service_name_in_datastream_dataset"`
 }

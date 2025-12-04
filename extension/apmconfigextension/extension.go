@@ -76,7 +76,7 @@ func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) er
 	httpMux := http.NewServeMux()
 	httpMux.HandleFunc(defaultOpAMPPath, opampHandler)
 
-	op.serverHTTP, err = op.extensionConfig.OpAMP.ServerConfig.ToServer(ctx, host, op.telemetrySettings, httpMux)
+	op.serverHTTP, err = op.extensionConfig.OpAMP.ServerConfig.ToServer(ctx, host.GetExtensions(), op.telemetrySettings, httpMux)
 	if err != nil {
 		return err
 	}

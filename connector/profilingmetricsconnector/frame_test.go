@@ -156,7 +156,7 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 	funcTable := tp.dict.FunctionTable()
 	stackTable := tp.dict.StackTable()
 
-	sample := prof.Sample().AppendEmpty()
+	sample := prof.Samples().AppendEmpty()
 	for range multiplier {
 		sample.TimestampsUnixNano().Append(uint64(time.Now().UnixNano()))
 	}
@@ -179,7 +179,7 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 		case frameTypeKernel:
 			ftIdx = tp.attrKernelIdx
 			if frame.funcName != "" {
-				ln := loc.Line().AppendEmpty()
+				ln := loc.Lines().AppendEmpty()
 				ln.SetFunctionIndex(int32(funcTable.Len()))
 				fn := funcTable.AppendEmpty()
 				fn.SetNameStrindex(int32(strTable.Len()))

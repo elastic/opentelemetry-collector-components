@@ -23,6 +23,7 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 import (
 	"fmt"
 	"net/netip"
+	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -75,7 +76,9 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 			attributesMap.PutStr(attr.SpanCompositeCompressionStrategy, compressionStrategy)
 		}
 		attributesMap.PutInt(attr.SpanCompositeCount, int64(event.Span.Composite.Count))
-		attributesMap.PutDouble(attr.SpanCompositeSumUs, event.Span.Composite.Sum)
+
+		sumDuration := time.Duration(event.Span.Composite.Sum * float64(time.Millisecond))
+		attributesMap.PutInt(attr.SpanCompositeSumUs, sumDuration.Microseconds())
 	}
 
 	if event.Span.DestinationService != nil {

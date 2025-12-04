@@ -147,7 +147,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 		}
 
 		// Add basic sample count metric.
-		c.mb.RecordSamplesCountDataPoint(profile.Time(), int64(profile.Sample().Len()))
+		c.mb.RecordSamplesCountDataPoint(profile.Time(), int64(profile.Samples().Len()))
 
 		// TODO: For better efficiency, don't generate separate metrics per-profile
 		// under the same scope, instead merge the values across profiles into
@@ -162,7 +162,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 		if c.config.Metrics.SamplesFrameType.Enabled {
 			// Collect frame type information.
 			frameTypeCounts := make(map[string]int64)
-			for _, sample := range profile.Sample().All() {
+			for _, sample := range profile.Samples().All() {
 				if sample.StackIndex() == 0 {
 					continue
 				}
@@ -179,7 +179,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 
 		if c.config.Metrics.SamplesClassification.Enabled {
 			classificationCounts := make(map[string]map[string]int64)
-			for _, sample := range profile.Sample().All() {
+			for _, sample := range profile.Samples().All() {
 				if sample.StackIndex() == 0 {
 					continue
 				}
@@ -198,7 +198,7 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 
 		if len(c.aggregations) > 0 {
 			customAggregationCounts := make(map[string]int64)
-			for _, sample := range profile.Sample().All() {
+			for _, sample := range profile.Samples().All() {
 				if sample.StackIndex() == 0 {
 					continue
 				}
@@ -279,7 +279,7 @@ func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary ppro
 			continue
 		}
 
-		for _, line := range loc.Line().All() {
+		for _, line := range loc.Lines().All() {
 			fnIdx := line.FunctionIndex
 			fnEntry := funcTable.At(int(fnIdx()))
 
@@ -319,7 +319,7 @@ func (c *profilesToMetricsConnector) collectCustomAggregationCounts(dictionary p
 		}
 		loc := locationTable.At(int(li))
 
-		for _, line := range loc.Line().All() {
+		for _, line := range loc.Lines().All() {
 			fnIdx := line.FunctionIndex
 			fnEntry := funcTable.At(int(fnIdx()))
 			fnStr := strTable.At(int(fnEntry.NameStrindex()))

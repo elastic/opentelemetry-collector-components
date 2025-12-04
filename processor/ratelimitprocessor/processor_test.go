@@ -48,7 +48,6 @@ import (
 )
 
 var (
-	inflight      int64
 	clientContext = client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{
 			"x-tenant-id": {"TestProjectID"},
@@ -113,9 +112,9 @@ func TestGetCountFunc_Traces(t *testing.T) {
 func TestGetCountFunc_Profiles(t *testing.T) {
 	profiles := pprofile.NewProfiles()
 	resourceProfiles := profiles.ResourceProfiles().AppendEmpty()
-	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Sample().AppendEmpty()
-	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Sample().AppendEmpty()
-	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Sample().AppendEmpty()
+	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Samples().AppendEmpty()
+	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Samples().AppendEmpty()
+	resourceProfiles.ScopeProfiles().AppendEmpty().Profiles().AppendEmpty().Samples().AppendEmpty()
 
 	f := getProfilesCountFunc(StrategyRateLimitRequests)
 	assert.Equal(t, 1, f(profiles))
@@ -153,7 +152,6 @@ func TestConsume_Logs(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		logger:           zap.New(observedZapCore),
-		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 		strategy:         StrategyRateLimitBytes,
 	}
@@ -230,7 +228,6 @@ func TestConsume_Metrics(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		logger:           zap.New(observedZapCore),
-		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 		strategy:         StrategyRateLimitBytes,
 	}
@@ -307,7 +304,6 @@ func TestConsume_Traces(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		logger:           zap.New(observedZapCore),
-		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 		strategy:         StrategyRateLimitBytes,
 	}
@@ -385,7 +381,6 @@ func TestConsume_Profiles(t *testing.T) {
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
 		logger:           zap.New(observedZapCore),
-		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 		strategy:         StrategyRateLimitBytes,
 	}
@@ -470,7 +465,6 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 	rl := rateLimiterProcessor{
 		rl:               rateLimiter,
 		telemetryBuilder: telemetryBuilder,
-		inflight:         &inflight,
 		metadataKeys:     []string{"x-tenant-id"},
 	}
 	processor := &MetricsRateLimiterProcessor{
@@ -501,11 +495,9 @@ func TestConcurrentRequestsTelemetry(t *testing.T) {
 
 	m, err := tt.GetMetric("otelcol_ratelimit.concurrent_requests")
 	require.NoError(t, err, "expected to observe otelcol_ratelimit.concurrent_requests")
-	for _, dp := range m.Data.(metricdata.Gauge[int64]).DataPoints {
-		if assert.Equal(t, int64(2), dp.Value, "expected to observe otelcol_ratelimit.concurrent_requests == 2") {
-			break
-		}
-	}
+	dps := m.Data.(metricdata.Sum[int64]).DataPoints
+	require.Len(t, dps, 1)
+	assert.Equal(t, int64(numWorkers), dps[0].Value)
 
 	// Release both goroutines
 	close(blockCh)
