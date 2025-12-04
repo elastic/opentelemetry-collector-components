@@ -91,6 +91,9 @@ func TestProcessor(t *testing.T) {
 
 // TestProcessorECS does a basic test to check if traces, logs, and metrics are processed correctly when ECS mode is enabled in the client metadata.
 func TestProcessorECS(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.HostIPEnabled = true
+
 	testCases := []struct {
 		name     string
 		testDir  string
@@ -134,19 +137,19 @@ func TestProcessorECS(t *testing.T) {
 
 			switch tc.testType {
 			case "traces":
-				testTraces(t, ctx, factory, settings, inputFile, outputFile)
+				testTraces(t, ctx, factory, settings, cfg, inputFile, outputFile)
 			case "logs":
-				testLogs(t, ctx, factory, settings, inputFile, outputFile)
+				testLogs(t, ctx, factory, settings, cfg, inputFile, outputFile)
 			case "metrics":
-				testMetrics(t, ctx, factory, settings, inputFile, outputFile)
+				testMetrics(t, ctx, factory, settings, cfg, inputFile, outputFile)
 			}
 		})
 	}
 }
 
-func testTraces(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, inputFile, outputFile string) {
+func testTraces(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config, inputFile, outputFile string) {
 	next := &consumertest.TracesSink{}
-	tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
+	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
 	require.NoError(t, err)
 	require.IsType(t, &TraceProcessor{}, tp)
 
@@ -164,9 +167,9 @@ func testTraces(t *testing.T, ctx context.Context, factory processor.Factory, se
 	assert.NoError(t, ptracetest.CompareTraces(expectedTraces, actual))
 }
 
-func testLogs(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, inputFile, outputFile string) {
+func testLogs(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config, inputFile, outputFile string) {
 	next := &consumertest.LogsSink{}
-	lp, err := factory.CreateLogs(ctx, settings, createDefaultConfig(), next)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
 	require.NoError(t, err)
 
 	inputLogs, err := golden.ReadLogs(inputFile)
@@ -183,9 +186,9 @@ func testLogs(t *testing.T, ctx context.Context, factory processor.Factory, sett
 	assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
 }
 
-func testMetrics(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, inputFile, outputFile string) {
+func testMetrics(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config, inputFile, outputFile string) {
 	next := &consumertest.MetricsSink{}
-	mp, err := factory.CreateMetrics(ctx, settings, createDefaultConfig(), next)
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
 	require.NoError(t, err)
 
 	inputMetrics, err := golden.ReadMetrics(inputFile)
