@@ -4,6 +4,18 @@ The Profiling metrics connector is an opinionated OTel connector that generates 
 
 ## Configuration
 
-The following settings can be optionally configured:
+Any [generated metric](./metadata.yaml) can be disabled through the configuration. For example:
 
-- `metrics_prefix`: Define a prefix that is used for all generated metric names.
+```
+metrics:
+  samples.classification:
+    enabled: false
+  samples.dotnet.count:
+    enabled: false
+```
+
+**⚠️ Configuration Warning: Metric Dependencies**
+
+To ensure data integrity and accurate ratio calculations, adhere to the following rules:
+  - Required Combination: You must enable `samples.kernel.count` and `samples.user.count`. Their sum is the only reliable way to calculate the total sample count.
+  - Frame metrics: Avoid disabling specific frame metrics like `samples.native.count`. Disabling these results in a loss of information regarding shared libraries.
