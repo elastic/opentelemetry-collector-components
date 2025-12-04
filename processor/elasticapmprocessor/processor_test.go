@@ -20,6 +20,7 @@ package elasticapmprocessor // import "github.com/elastic/opentelemetry-collecto
 import (
 	"context"
 	"flag"
+	"net"
 	"path/filepath"
 	"testing"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processortest"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
@@ -87,29 +89,71 @@ func TestProcessor(t *testing.T) {
 	}
 }
 
-// TestProcessorECS does a basic test to check if traces are processed correctly when ECS mode is enabled in the client metadata.
+// TestProcessorECS does a basic test to check if traces, logs, and metrics are processed correctly when ECS mode is enabled in the client metadata.
 func TestProcessorECS(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.HostIPEnabled = true
+
+	testCases := []struct {
+		name     string
+		testDir  string
+		testType string
+	}{
+		{
+			name:     "elastic_span_db",
+			testDir:  "elastic_span_db",
+			testType: "traces",
+		},
+		{
+			name:     "elastic_log",
+			testDir:  "elastic_log",
+			testType: "logs",
+		},
+		{
+			name:     "elastic_metric",
+			testDir:  "elastic_metric",
+			testType: "metrics",
+		},
+	}
+
 	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{
+			IP: net.IPv4(1, 2, 3, 4),
+		},
 		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
 	})
 	cancel := func() {}
 	defer cancel()
 
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory := NewFactory()
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+
+			dir := filepath.Join("testdata", "ecs", tc.testDir)
+			inputFile := filepath.Join(dir, "input.yaml")
+			outputFile := filepath.Join(dir, "output.yaml")
+
+			switch tc.testType {
+			case "traces":
+				testTraces(t, ctx, factory, settings, cfg, inputFile, outputFile)
+			case "logs":
+				testLogs(t, ctx, factory, settings, cfg, inputFile, outputFile)
+			case "metrics":
+				testMetrics(t, ctx, factory, settings, cfg, inputFile, outputFile)
+			}
+		})
+	}
+}
+
+func testTraces(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config, inputFile, outputFile string) {
 	next := &consumertest.TracesSink{}
-
-	tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
-
+	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
 	require.NoError(t, err)
 	require.IsType(t, &TraceProcessor{}, tp)
 
-	inputTraces, err := golden.ReadTraces("testdata/ecs/elastic_span_db/input.yaml")
-	require.NoError(t, err)
-
-	outputFile := "testdata/ecs/elastic_span_db/output.yaml"
-	expectedTraces, err := golden.ReadTraces(outputFile)
+	inputTraces, err := golden.ReadTraces(inputFile)
 	require.NoError(t, err)
 
 	require.NoError(t, tp.ConsumeTraces(ctx, inputTraces))
@@ -118,7 +162,47 @@ func TestProcessorECS(t *testing.T) {
 		err := golden.WriteTraces(t, outputFile, actual)
 		assert.NoError(t, err)
 	}
+	expectedTraces, err := golden.ReadTraces(outputFile)
+	require.NoError(t, err)
 	assert.NoError(t, ptracetest.CompareTraces(expectedTraces, actual))
+}
+
+func testLogs(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config, inputFile, outputFile string) {
+	next := &consumertest.LogsSink{}
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	inputLogs, err := golden.ReadLogs(inputFile)
+	require.NoError(t, err)
+
+	require.NoError(t, lp.ConsumeLogs(ctx, inputLogs))
+	actual := next.AllLogs()[0]
+	if *update {
+		err := golden.WriteLogs(t, outputFile, actual)
+		assert.NoError(t, err)
+	}
+	expectedLogs, err := golden.ReadLogs(outputFile)
+	require.NoError(t, err)
+	assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
+}
+
+func testMetrics(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config, inputFile, outputFile string) {
+	next := &consumertest.MetricsSink{}
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	inputMetrics, err := golden.ReadMetrics(inputFile)
+	require.NoError(t, err)
+
+	require.NoError(t, mp.ConsumeMetrics(ctx, inputMetrics))
+	actual := next.AllMetrics()[0]
+	if *update {
+		err := golden.WriteMetrics(t, outputFile, actual)
+		assert.NoError(t, err)
+	}
+	expectedMetrics, err := golden.ReadMetrics(outputFile)
+	require.NoError(t, err)
+	assert.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actual, pmetrictest.IgnoreMetricsOrder(), pmetrictest.IgnoreResourceMetricsOrder(), pmetrictest.IgnoreTimestamp()))
 }
 
 // TestSkipEnrichmentLogs tests that logs are only enriched when skipEnrichment is false or when mapping mode is ecs
