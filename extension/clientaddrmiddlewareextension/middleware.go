@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package clientaddrmiddlewareextension
+package clientaddrmiddlewareextension // import "github.com/elastic/opentelemetry-collector-components/extension/clientaddrmiddlewareextension"
 
 import (
 	"context"
