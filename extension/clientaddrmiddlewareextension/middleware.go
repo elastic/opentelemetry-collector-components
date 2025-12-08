@@ -31,7 +31,7 @@ type clientAddrMiddleware struct {
 }
 
 func newClientAddrMiddleware(cfg *Config, set extension.Settings) (*clientAddrMiddleware, error) {
-	return &clientAddrMiddleware{}, nil
+	return &clientAddrMiddleware{cfg: cfg}, nil
 }
 
 func (c *clientAddrMiddleware) Start(ctx context.Context, host component.Host) error {
