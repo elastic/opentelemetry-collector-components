@@ -22,10 +22,6 @@ import (
 )
 
 type Config struct {
-	// MetadataKeys list of metadata keys to determine the client address.
-	// Keys are processed in order, the first valid value is used to set the client address.
-	// If there are no valid addresses found, the client address is not updated.
-	MetadataKeys []string `mapstructure:"metadata_keys,omitempty"`
 }
 
 func createDefaultConfig() component.Config {
