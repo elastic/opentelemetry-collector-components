@@ -190,10 +190,29 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 		if len(vs) == 0 {
 			continue
 		}
-		hash.WriteString(k)
+		if _, err := hash.WriteString(k); err != nil {
+			// xxhash writes are not expected to return an error, we are logging
+			// errors for such unexpected cases and continuing nonetheless.
+			r.logger.Error(
+				"unexpected failure on creating hash key from client metadata",
+				zap.Error(err),
+			)
+		}
 		for _, v := range vs {
-			hash.WriteString(":")
-			hash.WriteString(v)
+			// xxhash writes are not expected to return an error, we are logging
+			// errors for such unexpected cases and continuing nonetheless.
+			if _, err := hash.WriteString(":"); err != nil {
+				r.logger.Error(
+					"unexpected failure on creating hash key from client metadata",
+					zap.Error(err),
+				)
+			}
+			if _, err := hash.WriteString(v); err != nil {
+				r.logger.Error(
+					"unexpected failure on creating hash key from client metadata",
+					zap.Error(err),
+				)
+			}
 		}
 	}
 
