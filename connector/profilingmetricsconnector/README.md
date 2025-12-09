@@ -19,3 +19,6 @@ metrics:
 To ensure data integrity and accurate ratio calculations, adhere to the following rules:
   - Required Combination: You must enable `samples.kernel.count` and `samples.user.count`. Their sum is the only reliable way to calculate the total sample count.
   - Frame metrics: Avoid disabling specific frame metrics like `samples.native.count`. Disabling these results in a loss of information regarding shared libraries.
+
+
+[Quickstart guide](https://www.elastic.co/docs/reference/edot-collector/config/configure-profiles-collection) to use this connector as part of [EDOT](https://www.elastic.co/docs/reference/opentelemetry).

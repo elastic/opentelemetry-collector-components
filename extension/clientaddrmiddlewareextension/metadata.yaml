@@ -1,0 +1,10 @@
+type: clientaddrmiddleware
+scope_name: github.com/elastic/opentelemetry-collector-components/extension/clientaddrmiddlewareextension
+
+status:
+  class: extension
+  stability:
+    development: [extension]
+
+tests:
+  config:
