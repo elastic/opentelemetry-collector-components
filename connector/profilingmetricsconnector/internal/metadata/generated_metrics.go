@@ -35,9 +35,6 @@ var MetricsInfo = metricsInfo{
 	SamplesClassification: metricInfo{
 		Name: "samples.classification",
 	},
-	SamplesCount: metricInfo{
-		Name: "samples.count",
-	},
 	SamplesCpythonCount: metricInfo{
 		Name: "samples.cpython.count",
 	},
@@ -85,7 +82,6 @@ var MetricsInfo = metricsInfo{
 type metricsInfo struct {
 	SamplesBeamCount         metricInfo
 	SamplesClassification    metricInfo
-	SamplesCount             metricInfo
 	SamplesCpythonCount      metricInfo
 	SamplesCustomAggregation metricInfo
 	SamplesDotnetCount       metricInfo
@@ -243,57 +239,6 @@ func (m *metricSamplesClassification) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesClassification(cfg MetricConfig) metricSamplesClassification {
 	m := metricSamplesClassification{config: cfg}
-	if cfg.Enabled {
-		m.data = pmetric.NewMetric()
-		m.init()
-	}
-	return m
-}
-
-type metricSamplesCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
-}
-
-// init fills samples.count metric with initial data.
-func (m *metricSamplesCount) init() {
-	m.data.SetName("samples.count")
-	m.data.SetDescription("Total number of profiling samples")
-	m.data.SetUnit("1")
-	m.data.SetEmptySum()
-	m.data.Sum().SetIsMonotonic(true)
-	m.data.Sum().SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
-}
-
-func (m *metricSamplesCount) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64) {
-	if !m.config.Enabled {
-		return
-	}
-	dp := m.data.Sum().DataPoints().AppendEmpty()
-	dp.SetStartTimestamp(start)
-	dp.SetTimestamp(ts)
-	dp.SetIntValue(val)
-}
-
-// updateCapacity saves max length of data point slices that will be used for the slice capacity.
-func (m *metricSamplesCount) updateCapacity() {
-	if m.data.Sum().DataPoints().Len() > m.capacity {
-		m.capacity = m.data.Sum().DataPoints().Len()
-	}
-}
-
-// emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
-func (m *metricSamplesCount) emit(metrics pmetric.MetricSlice) {
-	if m.config.Enabled && m.data.Sum().DataPoints().Len() > 0 {
-		m.updateCapacity()
-		m.data.MoveTo(metrics.AppendEmpty())
-		m.init()
-	}
-}
-
-func newMetricSamplesCount(cfg MetricConfig) metricSamplesCount {
-	m := metricSamplesCount{config: cfg}
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -1035,7 +980,6 @@ type MetricsBuilder struct {
 	buildInfo                      component.BuildInfo  // contains version information.
 	metricSamplesBeamCount         metricSamplesBeamCount
 	metricSamplesClassification    metricSamplesClassification
-	metricSamplesCount             metricSamplesCount
 	metricSamplesCpythonCount      metricSamplesCpythonCount
 	metricSamplesCustomAggregation metricSamplesCustomAggregation
 	metricSamplesDotnetCount       metricSamplesDotnetCount
@@ -1077,7 +1021,6 @@ func NewMetricsBuilder(mbc MetricsBuilderConfig, settings connector.Settings, op
 		buildInfo:                      settings.BuildInfo,
 		metricSamplesBeamCount:         newMetricSamplesBeamCount(mbc.Metrics.SamplesBeamCount),
 		metricSamplesClassification:    newMetricSamplesClassification(mbc.Metrics.SamplesClassification),
-		metricSamplesCount:             newMetricSamplesCount(mbc.Metrics.SamplesCount),
 		metricSamplesCpythonCount:      newMetricSamplesCpythonCount(mbc.Metrics.SamplesCpythonCount),
 		metricSamplesCustomAggregation: newMetricSamplesCustomAggregation(mbc.Metrics.SamplesCustomAggregation),
 		metricSamplesDotnetCount:       newMetricSamplesDotnetCount(mbc.Metrics.SamplesDotnetCount),
@@ -1159,7 +1102,6 @@ func (mb *MetricsBuilder) EmitForResource(options ...ResourceMetricsOption) {
 	ils.Metrics().EnsureCapacity(mb.metricsCapacity)
 	mb.metricSamplesBeamCount.emit(ils.Metrics())
 	mb.metricSamplesClassification.emit(ils.Metrics())
-	mb.metricSamplesCount.emit(ils.Metrics())
 	mb.metricSamplesCpythonCount.emit(ils.Metrics())
 	mb.metricSamplesCustomAggregation.emit(ils.Metrics())
 	mb.metricSamplesDotnetCount.emit(ils.Metrics())
@@ -1203,11 +1145,6 @@ func (mb *MetricsBuilder) RecordSamplesBeamCountDataPoint(ts pcommon.Timestamp, 
 // RecordSamplesClassificationDataPoint adds a data point to samples.classification metric.
 func (mb *MetricsBuilder) RecordSamplesClassificationDataPoint(ts pcommon.Timestamp, val int64, classificationAttributeValue string, frameTypeAttributeValue string, profileTypeUnitAttributeValue string) {
 	mb.metricSamplesClassification.recordDataPoint(mb.startTime, ts, val, classificationAttributeValue, frameTypeAttributeValue, profileTypeUnitAttributeValue)
-}
-
-// RecordSamplesCountDataPoint adds a data point to samples.count metric.
-func (mb *MetricsBuilder) RecordSamplesCountDataPoint(ts pcommon.Timestamp, val int64) {
-	mb.metricSamplesCount.recordDataPoint(mb.startTime, ts, val)
 }
 
 // RecordSamplesCpythonCountDataPoint adds a data point to samples.cpython.count metric.

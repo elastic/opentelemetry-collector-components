@@ -146,9 +146,6 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 			unit: dictionary.StringTable().At(unitStrIdx),
 		}
 
-		// Add basic sample count metric.
-		c.mb.RecordSamplesCountDataPoint(profile.Time(), int64(profile.Samples().Len()))
-
 		// TODO: For better efficiency, don't generate separate metrics per-profile
 		// under the same scope, instead merge the values across profiles into
 		// metrics (assuming scope and sample type is the same for these profiles).

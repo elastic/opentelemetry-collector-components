@@ -2,15 +2,6 @@ resourceMetrics:
   - resource: {}
     scopeMetrics:
       - metrics:
-          - description: Total number of profiling samples
-            name: samples.count
-            sum:
-              aggregationTemporality: 2
-              dataPoints:
-                - asInt: "14"
-                  startTimeUnixNano: "1000000"
-              isMonotonic: true
-            unit: "1"
           - description: Number of samples executing kernel code (self)
             name: samples.kernel.count
             sum:

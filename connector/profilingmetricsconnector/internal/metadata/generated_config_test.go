@@ -46,7 +46,6 @@ func TestMetricsBuilderConfig(t *testing.T) {
 				Metrics: MetricsConfig{
 					SamplesBeamCount:         MetricConfig{Enabled: true},
 					SamplesClassification:    MetricConfig{Enabled: true},
-					SamplesCount:             MetricConfig{Enabled: true},
 					SamplesCpythonCount:      MetricConfig{Enabled: true},
 					SamplesCustomAggregation: MetricConfig{Enabled: true},
 					SamplesDotnetCount:       MetricConfig{Enabled: true},
@@ -70,7 +69,6 @@ func TestMetricsBuilderConfig(t *testing.T) {
 				Metrics: MetricsConfig{
 					SamplesBeamCount:         MetricConfig{Enabled: false},
 					SamplesClassification:    MetricConfig{Enabled: false},
-					SamplesCount:             MetricConfig{Enabled: false},
 					SamplesCpythonCount:      MetricConfig{Enabled: false},
 					SamplesCustomAggregation: MetricConfig{Enabled: false},
 					SamplesDotnetCount:       MetricConfig{Enabled: false},

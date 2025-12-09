@@ -5,8 +5,6 @@ all_set:
       enabled: true
     samples.classification:
       enabled: true
-    samples.count:
-      enabled: true
     samples.cpython.count:
       enabled: true
     samples.custom_aggregation:
@@ -40,8 +38,6 @@ none_set:
     samples.beam.count:
       enabled: false
     samples.classification:
-      enabled: false
-    samples.count:
       enabled: false
     samples.cpython.count:
       enabled: false

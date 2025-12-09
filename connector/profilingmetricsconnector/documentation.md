@@ -20,14 +20,6 @@ Number of samples executing Beam code (self)
 | ---- | ----------- | ---------- | ----------------------- | --------- | --------- |
 | 1 | Sum | Int | Delta | true | Development |
 
-### samples.count
-
-Total number of profiling samples
-
-| Unit | Metric Type | Value Type | Aggregation Temporality | Monotonic | Stability |
-| ---- | ----------- | ---------- | ----------------------- | --------- | --------- |
-| 1 | Sum | Int | Cumulative | true | Development |
-
 ### samples.cpython.count
 
 Number of samples executing Python code (self)

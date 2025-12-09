@@ -46,7 +46,6 @@ func (ms *MetricConfig) Unmarshal(parser *confmap.Conf) error {
 type MetricsConfig struct {
 	SamplesBeamCount         MetricConfig `mapstructure:"samples.beam.count"`
 	SamplesClassification    MetricConfig `mapstructure:"samples.classification"`
-	SamplesCount             MetricConfig `mapstructure:"samples.count"`
 	SamplesCpythonCount      MetricConfig `mapstructure:"samples.cpython.count"`
 	SamplesCustomAggregation MetricConfig `mapstructure:"samples.custom_aggregation"`
 	SamplesDotnetCount       MetricConfig `mapstructure:"samples.dotnet.count"`
@@ -70,9 +69,6 @@ func DefaultMetricsConfig() MetricsConfig {
 		},
 		SamplesClassification: MetricConfig{
 			Enabled: false,
-		},
-		SamplesCount: MetricConfig{
-			Enabled: true,
 		},
 		SamplesCpythonCount: MetricConfig{
 			Enabled: true,

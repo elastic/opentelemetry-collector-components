@@ -68,18 +68,6 @@ metrics:
       value_type: int
     attributes: [classification, frame_type, profile.type_unit]
 
-  samples.count:
-    enabled: true
-    description: Total number of profiling samples
-    unit: "1"
-    stability:
-      level: development
-    sum:
-      value_type: int
-      aggregation_temporality: cumulative
-      monotonic: true
-    attributes: []
-
   samples.cpython.count:
     enabled: true
     description: Number of samples executing Python code (self)
