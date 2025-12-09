@@ -6,7 +6,6 @@ The Dynamic Routing Connector is an OpenTelemetry Collector connector that route
 | Status        |           |
 | ------------- |-----------|
 | Distributions | [] |
-| Warnings      | [Statefulness](#warnings) |
 | Issues        | [![Open issues](https://img.shields.io/github/issues-search/elastic/opentelemetry-collector-components?query=is%3Aissue%20is%3Aopen%20label%3Aconnector%2Fdynamicrouting%20&label=open&color=orange&logo=opentelemetry)](https://github.com/elastic/opentelemetry-collector-components/issues?q=is%3Aopen+is%3Aissue+label%3Aconnector%2Fdynamicrouting) [![Closed issues](https://img.shields.io/github/issues-search/elastic/opentelemetry-collector-components?query=is%3Aissue%20is%3Aclosed%20label%3Aconnector%2Fdynamicrouting%20&label=closed&color=blue&logo=opentelemetry)](https://github.com/elastic/opentelemetry-collector-components/issues?q=is%3Aclosed+is%3Aissue+label%3Aconnector%2Fdynamicrouting) |
 | Code coverage | [![codecov](https://codecov.io/github/elastic/opentelemetry-collector-components/graph/main/badge.svg?component=connector_dynamicrouting)](https://app.codecov.io/gh/elastic/opentelemetry-collector-components/tree/main/?components%5B0%5D=connector_dynamicrouting&displayType=list) |
 
