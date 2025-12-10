@@ -10,6 +10,7 @@ module-sets:
       - github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor
       - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector
       - github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector
+      - github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector
       - github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension
       - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
       - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
