@@ -4,10 +4,12 @@ go 1.24.0
 
 require (
 	github.com/stretchr/testify v1.11.1
+	go.opentelemetry.io/collector/client v1.47.0
 	go.opentelemetry.io/collector/component v1.47.0
 	go.opentelemetry.io/collector/component/componenttest v0.141.0
 	go.opentelemetry.io/collector/confmap v1.47.0
 	go.opentelemetry.io/collector/extension v1.47.0
+	go.opentelemetry.io/collector/extension/extensionmiddleware v0.141.0
 	go.opentelemetry.io/collector/extension/extensiontest v0.141.0
 	go.uber.org/goleak v1.3.0
 	google.golang.org/grpc v1.77.0

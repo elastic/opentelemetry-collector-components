@@ -18,56 +18,59 @@
 package netutil
 
 import (
+	"net"
 	"net/http"
-	"net/netip"
 	"strconv"
 	"strings"
 )
 
-// ClientAddrFromHeaders returns the IP address, and optionally port, of the client
+// ClientAddrFromHeaders returns the IP address of the client
 // for an HTTP request from one of various headers in order: Forwarded, X-Real-IP,
 // X-Forwarded-For. For the multi-valued Forwarded and X-Forwarded-For headers, the
-// first value in the list is returned. If the port is unknown, it will be zero.
+// first value in the list is returned.
 //
 // If the client is able to control the headers, they can control the result of this
 // function. The result should therefore not necessarily be trusted to be correct;
-// that depends on the presence and configuration of proxies in front of apm-server.
-func ClientAddrFromHeaders(header http.Header) (ip netip.Addr, port uint16) {
+// that depends on the presence and configuration of proxies in front of the server/collector.
+//
+// This code is from: https://github.com/elastic/apm-server/blob/main/internal/netutil/netutil.go
+// and has been updated to return a `*net.IPAddr ` and no port.
+func ClientAddrFromHeaders(header http.Header) *net.IPAddr {
 	for _, parse := range parseHeadersInOrder {
-		if ip, port := parse(header); ip.IsValid() {
-			return ip, port
+		if ip := parse(header); ip != nil {
+			return ip
 		}
 	}
-	return netip.Addr{}, 0
+	return nil
 }
 
-var parseHeadersInOrder = []func(http.Header) (netip.Addr, uint16){
+var parseHeadersInOrder = []func(http.Header) *net.IPAddr{
 	parseForwardedHeader,
 	parseXRealIP,
 	parseXForwardedFor,
 }
 
-func parseForwardedHeader(header http.Header) (netip.Addr, uint16) {
+func parseForwardedHeader(header http.Header) *net.IPAddr {
 	forwarded := parseForwarded(getHeader(header, "Forwarded", "forwarded"))
 	if forwarded.For == "" {
-		return netip.Addr{}, 0
+		return nil
 	}
 
 	return SplitAddrPort(forwarded.For)
 }
 
-func parseXRealIP(header http.Header) (netip.Addr, uint16) {
+func parseXRealIP(header http.Header) *net.IPAddr {
 	return SplitAddrPort(getHeader(header, "X-Real-Ip", "x-real-ip"))
 }
 
-func parseXForwardedFor(header http.Header) (netip.Addr, uint16) {
+func parseXForwardedFor(header http.Header) *net.IPAddr {
 	if xff := getHeader(header, "X-Forwarded-For", "x-forwarded-for"); xff != "" {
 		if sep := strings.IndexRune(xff, ','); sep > 0 {
 			xff = xff[:sep]
 		}
 		return SplitAddrPort(strings.TrimSpace(xff))
 	}
-	return netip.Addr{}, 0
+	return nil
 }
 
 func getHeader(header http.Header, key, keyLower string) string {
@@ -136,30 +139,31 @@ func parseForwarded(f string) forwardedHeader {
 }
 
 // SplitAddrPort splits a network address of the form "host",
-// "host:port", "[host]:port" or "[host]:port" into a netip.Addr
-// and port.
+// "host:port", "[host]:port" or "[host]:port" into a net.IPAddr.
 //
-// If input has no port, 0 will be returned for the port.
-// If input cannot be parsed or it is empty, (invalidip, 0) will
-// be returned.
-func SplitAddrPort(in string) (netip.Addr, uint16) {
+// The port portion is ignored. If input cannot be parsed or it is empty,
+// nil will be returned.
+func SplitAddrPort(in string) *net.IPAddr {
 	if in == "" {
-		return netip.Addr{}, 0
+		return nil
 	}
 
-	// [host]:port or host:port
-	if in[0] == '[' || (strings.Contains(in, ".") && strings.Contains(in, ":")) {
-		if addr, err := netip.ParseAddrPort(in); err == nil {
-			return addr.Addr(), addr.Port()
-		}
-
-		return netip.Addr{}, 0
+	var host string
+	// Try to split host and port using net.SplitHostPort
+	// This handles: "host:port", "[host]:port", and "host" correctly
+	if h, _, err := net.SplitHostPort(in); err == nil {
+		host = h
+	} else {
+		// If SplitHostPort fails, it might be just a host without port
+		// Try parsing the whole string as an IP
+		host = in
 	}
 
-	// host
-	if addr, err := netip.ParseAddr(in); err == nil {
-		return addr, 0
+	// Parse the IP address
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return nil
 	}
 
-	return netip.Addr{}, 0
+	return &net.IPAddr{IP: ip}
 }

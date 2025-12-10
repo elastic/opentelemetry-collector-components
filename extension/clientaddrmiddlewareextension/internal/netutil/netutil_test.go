@@ -35,7 +35,6 @@ func TestClientAddrFromHeaders(t *testing.T) {
 	for name, tc := range map[string]struct {
 		header http.Header
 		ip     string
-		port   uint16
 	}{
 		"no header": {},
 		"Invalid-X-Forwarded-For": {
@@ -61,7 +60,6 @@ func TestClientAddrFromHeaders(t *testing.T) {
 		"X-Real-IP": {
 			header: http.Header{headerXRealIP: []string{"123.0.0.1:6060"}},
 			ip:     "123.0.0.1",
-			port:   6060,
 		},
 		"X-Real-IP-Fallback": {
 			header: http.Header{headerXRealIP: []string{"invalid"}, headerXForwardedFor: []string{"182.0.0.9"}},
@@ -70,7 +68,6 @@ func TestClientAddrFromHeaders(t *testing.T) {
 		"Forwarded": {
 			header: http.Header{headerForwarded: []string{"for=[2001:db8:cafe::17]:4711"}},
 			ip:     "2001:db8:cafe::17",
-			port:   4711,
 		},
 		"Forwarded-Fallback": {
 			header: http.Header{headerForwarded: []string{"invalid"}, headerXForwardedFor: []string{"182.0.0.9"}},
@@ -87,14 +84,13 @@ func TestClientAddrFromHeaders(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			ip, port := ClientAddrFromHeaders(tc.header)
+			ip := ClientAddrFromHeaders(tc.header)
 			if tc.ip == "" {
-				assert.False(t, ip.IsValid())
+				assert.Nil(t, ip)
 			} else {
 				require.NotNil(t, ip)
-				assert.Equal(t, tc.ip, ip.String())
+				assert.Equal(t, tc.ip, ip.IP.String())
 			}
-			assert.Equal(t, tc.port, port)
 		})
 	}
 }
