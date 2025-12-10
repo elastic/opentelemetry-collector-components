@@ -164,6 +164,7 @@ func isSupportedAttribute(attr string) bool {
 
 	// host.*
 	case string(semconv.HostNameKey),
+		"host.hostname", // legacy hostname key for backwards compatibility
 		string(semconv.HostIDKey),
 		string(semconv.HostTypeKey),
 		string(semconv.HostArchKey),
@@ -259,4 +260,36 @@ func isSupportedAttribute(attr string) bool {
 	}
 
 	return false
+}
+
+func ApplyResourceConventions(resource pcommon.Resource) {
+	setHostnameFromKubernetes(resource)
+}
+
+// setHostnameFromKubernetes sets the host.hostname attribute based on kubernetes attributes for backwards compatibility with MIS and APM Server.
+func setHostnameFromKubernetes(resource pcommon.Resource) {
+	attrs := resource.Attributes()
+
+	hostHostnameKey := "host.hostname"
+	hostName, hostNameExists := attrs.Get(string(semconv.HostNameKey))
+	k8sNodeName, k8sNodeNameExists := attrs.Get(string(semconv.K8SNodeNameKey))
+	k8sPodName, k8sPodNameExists := attrs.Get(string(semconv.K8SPodNameKey))
+	k8sPodUID, k8sPodUIDExists := attrs.Get(string(semconv.K8SPodUIDKey))
+	k8sNamespace, k8sNamespaceExists := attrs.Get(string(semconv.K8SNamespaceNameKey))
+
+	if k8sNodeNameExists && k8sNodeName.Str() != "" {
+		// kubernetes.node.name is set: set host.hostname to its value
+		attrs.PutStr(hostHostnameKey, k8sNodeName.Str())
+	} else if (k8sPodNameExists && k8sPodName.Str() != "") ||
+		(k8sPodUIDExists && k8sPodUID.Str() != "") ||
+		(k8sNamespaceExists && k8sNamespace.Str() != "") {
+		// kubernetes.* is set but kubernetes.node.name is not: don't set host.hostname
+		attrs.Remove(hostHostnameKey)
+	}
+
+	// If host.name is not set but host.hostname is, use hostname as name
+	hostHostname, hostHostnameExists := attrs.Get(hostHostnameKey)
+	if (!hostNameExists || hostName.Str() == "") && hostHostnameExists && hostHostname.Str() != "" {
+		attrs.PutStr(string(semconv.HostNameKey), hostHostname.Str())
+	}
 }
