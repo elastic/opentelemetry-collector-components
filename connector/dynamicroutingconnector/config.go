@@ -27,7 +27,7 @@ import (
 
 type Config struct {
 	DefaultPipelines   []pipeline.ID   `mapstructure:"default_pipelines"`
-	EvaluationInterval time.Duration   `mapstructure:"evalaution_interval"`
+	EvaluationInterval time.Duration   `mapstructure:"evaluation_interval"`
 	Pipelines          [][]pipeline.ID `mapstructure:"pipelines"`
 	Thresholds         []int           `mapstructure:"thresholds"`
 	PrimaryMetadataKey string          `mapstructure:"primary_metadata_key"`
