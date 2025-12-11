@@ -55,9 +55,6 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 		if event.Host.Name != "" {
 			attributes.PutStr(string(semconv.HostNameKey), event.Host.Name)
 		}
-		if event.Host.Hostname != "" {
-			attributes.PutStr("host.hostname", event.Host.Hostname)
-		}
 		if event.Host.Id != "" {
 			attributes.PutStr(string(semconv.HostIDKey), event.Host.Id)
 		}
