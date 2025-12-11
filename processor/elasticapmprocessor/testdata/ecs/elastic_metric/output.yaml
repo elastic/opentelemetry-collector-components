@@ -84,7 +84,7 @@ resourceMetrics:
             stringValue: docker
         - key: data_stream.dataset
           value:
-            stringValue: apm
+            stringValue: apm.app.test_service
         - key: data_stream.namespace
           value:
             stringValue: default
@@ -133,6 +133,9 @@ resourceMetrics:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: host.hostname
+          value:
+            stringValue: node-1
         - key: host.id
           value:
             stringValue: host-123

@@ -295,7 +295,7 @@ resourceLogs:
             stringValue: exec-456
         - key: data_stream.dataset
           value:
-            stringValue: apm
+            stringValue: apm.app.test_service
         - key: data_stream.namespace
           value:
             stringValue: default
@@ -308,12 +308,15 @@ resourceLogs:
         - key: agent.activation_method
           value:
             stringValue: automatic
-        - key: host.ip
+        - key: host.hostname
           value:
-            stringValue: 1.2.3.4
+            stringValue: node-1
         - key: data_stream.type
           value:
             stringValue: logs
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
     scopeLogs:
       - logRecords:
           - body:

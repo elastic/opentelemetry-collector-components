@@ -314,6 +314,9 @@ resourceSpans:
         - key: data_stream.type
           value:
             stringValue: traces
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
     scopeSpans:
       - scope: {}
         spans:
