@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package netutil
+package netutil // import "github.com/elastic/opentelemetry-collector-components/extension/clientaddrmiddlewareextension/internal/netutil"
 
 import (
 	"net"
