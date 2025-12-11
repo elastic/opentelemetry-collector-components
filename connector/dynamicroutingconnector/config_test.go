@@ -62,7 +62,7 @@ func TestConfig(t *testing.T) {
 					pipeline.NewIDWithName(pipeline.SignalLogs, "default"),
 				},
 				EvaluationInterval: time.Minute,
-				DynamicPipelines: []Pipeline{
+				DynamicPipelines: []DynamicPipeline{
 					{
 						Pipelines: []pipeline.ID{
 							pipeline.NewIDWithName(pipeline.SignalLogs, "test1"),

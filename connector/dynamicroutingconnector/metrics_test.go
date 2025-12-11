@@ -44,7 +44,7 @@ func TestMetricsRouting(t *testing.T) {
 	pipeline_5_inf := pipeline.NewIDWithName(pipeline.SignalMetrics, "thershold_5_inf")
 	cfg := Config{
 		DefaultPipelines: []pipeline.ID{pipelineDefault},
-		DynamicPipelines: []Pipeline{
+		DynamicPipelines: []DynamicPipeline{
 			{Pipelines: []pipeline.ID{pipeline_0_2}, MaxCount: 2},
 			{Pipelines: []pipeline.ID{pipeline_2_5}, MaxCount: 5},
 			{Pipelines: []pipeline.ID{pipeline_5_inf}, MaxCount: math.Inf(1)},

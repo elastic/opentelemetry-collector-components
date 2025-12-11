@@ -28,14 +28,14 @@ import (
 )
 
 type Config struct {
-	PrimaryMetadataKeys []string      `mapstructure:"primary_metadata_keys"`
-	DefaultPipelines    []pipeline.ID `mapstructure:"default_pipelines"`
-	EvaluationInterval  time.Duration `mapstructure:"evaluation_interval"`
-	DynamicPipelines    []Pipeline    `mapstructure:"dynamic_pipelines"`
-	MetadataKeys        []string      `mapstructure:"metadata_keys"`
+	PrimaryMetadataKeys []string          `mapstructure:"primary_metadata_keys"`
+	DefaultPipelines    []pipeline.ID     `mapstructure:"default_pipelines"`
+	EvaluationInterval  time.Duration     `mapstructure:"evaluation_interval"`
+	DynamicPipelines    []DynamicPipeline `mapstructure:"dynamic_pipelines"`
+	MetadataKeys        []string          `mapstructure:"metadata_keys"`
 }
 
-type Pipeline struct {
+type DynamicPipeline struct {
 	Pipelines []pipeline.ID `mapstructure:"pipelines"`
 	MaxCount  float64       `mapstructure:"max_count"`
 }
@@ -53,7 +53,7 @@ func (c *Config) Validate() error {
 	if !math.IsInf(c.DynamicPipelines[len(c.DynamicPipelines)-1].MaxCount, 1) {
 		return errors.New("last dynamic pipeline must have max count set to positive infinity (.inf)")
 	}
-	if !slices.IsSortedFunc(c.DynamicPipelines, func(a, b Pipeline) int {
+	if !slices.IsSortedFunc(c.DynamicPipelines, func(a, b DynamicPipeline) int {
 		return cmp.Compare(a.MaxCount, b.MaxCount)
 	}) {
 		return errors.New("pipelines must be defined in ascending order of max_count")
