@@ -19,6 +19,7 @@ package dynamicroutingconnector
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -43,12 +44,11 @@ func TestLogsRouting(t *testing.T) {
 	pipeline_5_inf := pipeline.NewIDWithName(pipeline.SignalLogs, "thershold_5_inf")
 	cfg := Config{
 		DefaultPipelines: []pipeline.ID{pipelineDefault},
-		Pipelines: [][]pipeline.ID{
-			{pipeline_0_2},
-			{pipeline_2_5},
-			{pipeline_5_inf},
+		DynamicPipelines: []Pipeline{
+			{Pipelines: []pipeline.ID{pipeline_0_2}, MaxCount: 2},
+			{Pipelines: []pipeline.ID{pipeline_2_5}, MaxCount: 5},
+			{Pipelines: []pipeline.ID{pipeline_5_inf}, MaxCount: math.Inf(1)},
 		},
-		Thresholds:         []int{2, 5},
 		PrimaryMetadataKey: "x-tenant-id",
 		MetadataKeys:       []string{"x-forwarded-for", "user-agent"},
 	}

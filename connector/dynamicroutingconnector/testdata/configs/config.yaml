@@ -1,0 +1,54 @@
+dynamicrouting/empty:
+
+dynamicrouting/no-dynamic-pipelines:
+  primary_metadata_key: "x-tenant"
+  default_pipelines:
+    - logs/default
+  evaluation_interval: 1m
+  dynamic_pipelines: []
+
+dynamicrouting/invalid-dynamic-pipelines/no-inf:
+  primary_metadata_key: "x-tenant"
+  default_pipelines:
+    - logs/default
+  evaluation_interval: 1m
+  dynamic_pipelines:
+    - pipelines:
+        - logs/test2
+      max_count: 100
+    - pipelines:
+        - logs/test1
+      max_count: 10
+
+dynamicrouting/invalid-dynamic-pipelines/out-of-order:
+  primary_metadata_key: "x-tenant"
+  default_pipelines:
+    - logs/default
+  evaluation_interval: 1m
+  dynamic_pipelines:
+    - pipelines:
+        - logs/test2
+      max_count: 100
+    - pipelines:
+        - logs/test1
+      max_count: 10
+    - pipelines:
+        - logs/final
+      max_count: .inf
+
+dynamicrouting/invalid-dynamic-pipelines/valid:
+  primary_metadata_key: "x-tenant"
+  default_pipelines:
+    - logs/default
+  evaluation_interval: 1m
+  dynamic_pipelines:
+    - pipelines:
+        - logs/test1
+      max_count: 10
+    - pipelines:
+        - logs/test2
+      max_count: 100
+    - pipelines:
+        - logs/final
+      max_count: .inf
+

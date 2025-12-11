@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -46,8 +45,7 @@ type router[C any] struct {
 	primaryMetadataKey string
 	sortedMetadataKeys []string
 	defaultConsumer    C
-	thresholds         []int
-	consumers          []C
+	consumers          []ct[C]
 
 	logger *zap.Logger
 
@@ -57,7 +55,12 @@ type router[C any] struct {
 	stopped chan struct{}
 
 	dmu      sync.RWMutex
-	decision map[string]*hyperloglog.Sketch
+	decision map[string]ct[C]
+}
+
+type ct[C any] struct {
+	consumer C
+	maxCount float64
 }
 
 func newRouter[C any](
@@ -67,14 +70,13 @@ func newRouter[C any](
 ) (*router[C], error) {
 	sortedMetadataKeys := slices.Clone(cfg.MetadataKeys)
 	slices.Sort(sortedMetadataKeys)
-
-	consumers := make([]C, 0, len(cfg.Pipelines))
-	for i, p := range cfg.Pipelines {
-		c, err := provider(p...)
+	consumers := make([]ct[C], 0, len(cfg.DynamicPipelines))
+	for i, p := range cfg.DynamicPipelines {
+		c, err := provider(p.Pipelines...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create consumer from provided pipelines at idx %d: %w", i, err)
 		}
-		consumers = append(consumers, c)
+		consumers = append(consumers, ct[C]{consumer: c, maxCount: p.MaxCount})
 	}
 
 	var (
@@ -92,11 +94,10 @@ func newRouter[C any](
 		primaryMetadataKey: cfg.PrimaryMetadataKey,
 		sortedMetadataKeys: sortedMetadataKeys,
 		defaultConsumer:    defaultConsumer,
-		thresholds:         cfg.Thresholds,
 		consumers:          consumers,
 		logger:             settings.Logger,
 		stop:               make(chan struct{}),
-		decision:           make(map[string]*hyperloglog.Sketch),
+		decision:           make(map[string]ct[C]),
 		m:                  make(map[string]*hyperloglog.Sketch),
 	}, nil
 }
@@ -230,34 +231,52 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 
 func (r *router[C]) getNextConsumer(pk string) C {
 	if pk == "" {
-		r.logger.Debug("returning default consumer due to empty primary key")
+		r.logger.Debug(
+			"returning default consumer due to empty primary key",
+			zap.String("primary_key", pk),
+		)
 		return r.defaultConsumer
 	}
 
 	r.dmu.RLock()
 	defer r.dmu.RUnlock()
 
-	hll, ok := r.decision[pk]
+	next, ok := r.decision[pk]
 	if !ok {
+		r.logger.Debug(
+			"returning default consumer due to missing decision",
+			zap.String("primary_key", pk),
+		)
 		return r.defaultConsumer
 	}
-	cardinality := hll.Estimate()
 	r.logger.Debug(
 		"returning non-default consumer",
 		zap.String("primary_key", pk),
-		zap.Uint64("cardinality", cardinality),
+		zap.Float64("max_count", next.maxCount),
 	)
-	return r.consumers[sort.SearchInts(r.thresholds, int(cardinality))]
+	return next.consumer
 }
 
 // updateDecisions updates the current cache to be used for decisions, discarding
 // the previous decision map.
 func (r *router[C]) updateDecisions() {
+	r.mu.Lock()
+	oldM := r.m
+	r.m = make(map[string]*hyperloglog.Sketch)
+	r.mu.Unlock()
+
+	newDecision := make(map[string]ct[C], len(oldM))
+	for k, hll := range oldM {
+		estimate := hll.Estimate()
+		for _, c := range r.consumers {
+			if float64(estimate) <= c.maxCount {
+				newDecision[k] = c
+				break
+			}
+		}
+	}
+
 	r.dmu.Lock()
 	defer r.dmu.Unlock()
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.decision = r.m
-	r.m = make(map[string]*hyperloglog.Sketch)
+	r.decision = newDecision
 }

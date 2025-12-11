@@ -45,10 +45,7 @@ The connector uses the following approach:
 
 1. **Metadata Extraction**: For each incoming telemetry signal, the connector extracts metadata from the client context using the configured `primary_metadata_key` and `metadata_keys`. The `primary_metadata_key` is used to partition cardinality estimates (e.g., per tenant, per service), while `metadata_keys` define what unique combinations are being counted.
 
-2. **Cardinality Estimation**: The connector uses the HyperLogLog algorithm to estimate the number of unique combinations of the configured `metadata_keys` for each value of the `primary_metadata_key`. For example:
-   - If `metadata_keys` are `["x-forwarded-for", "user-agent"]`, it estimates unique connection combinations
-   - If `metadata_keys` are `["pod.name", "container.id"]`, it estimates unique pod/container combinations
-   - If `metadata_keys` are `["service.name", "deployment.name"]`, it estimates unique service/deployment combinations
+2. **Cardinality Estimation**: The connector uses the HyperLogLog algorithm to estimate the number of unique combinations of the configured `metadata_keys` for each value of the `primary_metadata_key`.
 
 3. **Threshold-Based Routing**: Based on the estimated cardinality for each primary key value, the connector routes data to different pipelines defined by threshold boundaries. For example:
    - Low cardinality (0-10 unique combinations) → Pipeline A
@@ -70,14 +67,17 @@ connectors:
     metadata_keys:
       - "x-forwarded-for"
       - "user-agent"
-    thresholds: [10, 100, 500]
-    pipelines:
-      - ["traces/low_cardinality"]
-      - ["traces/medium_cardinality"]
-      - ["traces/high_cardinality"]
-      - ["traces/very_high_cardinality"]
+    dynamic_pipelines:
+      - pipelines:  ["traces/low_cardinality"]
+        max_count: 10
+      - pipelines: ["traces/medium_cardinality"]
+        max_count: 100
+      - pipelines: ["traces/high_cardinality"]
+        max_count: 500
+      - pipelines: ["traces/very_high_cardinality"]
+        max_count: .inf
     default_pipelines: ["traces/default"]
-    evalaution_interval: 30s
+    evaluation_interval: 30s
 ```
 
 ### Configuration Fields
@@ -86,25 +86,25 @@ connectors:
 |-------|------|-------------|----------|
 | `primary_metadata_key` | string | The primary metadata key used to partition cardinality estimates (e.g., tenant ID, service name). Each unique value of this key will have its own cardinality estimate. | Yes |
 | `metadata_keys` | []string | Metadata keys used to define unique combinations for cardinality estimation. The connector counts how many unique combinations of these keys exist for each value of `primary_metadata_key`. The choice of keys determines what type of cardinality is measured (e.g., unique connections, unique pods, unique deployments). | No |
-| `thresholds` | []int | Array of threshold values in ascending order. Defines the boundaries for routing decisions. Must have `len(pipelines) - 1` elements. | Yes |
-| `pipelines` | [][]pipeline.ID | Array of pipeline ID arrays, one for each threshold bucket. The number of pipeline arrays must be `len(thresholds) + 1` (to include the +inf bucket). | Yes |
-| `default_pipelines` | []pipeline.ID | Pipelines to use when the primary metadata key is missing from the client context. | No |
-| `evalaution_interval` | duration | How often to re-evaluate routing decisions based on new cardinality estimates. Default: 30s | No |
+| `dynamic_pipelines` | []Pipeline | Array of pipeline configurations, each containing `pipelines` (array of pipeline IDs) and `max_count` (float64). Pipelines must be defined in ascending order of `max_count`, and the last pipeline must have `max_count` set to `.inf` (positive infinity). The connector routes to the first pipeline where the estimated cardinality is less than or equal to `max_count`. | Yes |
+| `default_pipelines` | []pipeline.ID | Pipelines to use when the primary metadata key is missing from the client context. | Yes |
+| `evaluation_interval` | duration | How often to re-evaluate routing decisions based on new cardinality estimates. Default: 30s | No |
 
 ### Configuration Rules
 
-- `thresholds` must be in ascending order and contain unique values
-- The number of `pipelines` must equal `len(thresholds) + 1` (one for each threshold interval plus one for values above the highest threshold)
-- At least one pipeline must be defined
+- `dynamic_pipelines` must contain at least one pipeline configuration
+- `dynamic_pipelines` must be defined in ascending order of `max_count` values
+- The last pipeline in `dynamic_pipelines` must have `max_count` set to `.inf` (positive infinity)
+- Each pipeline configuration must specify at least one pipeline ID in the `pipelines` array
 
 ### Routing Logic
 
 The connector routes data based on the estimated cardinality for the primary key:
 
 - If `primary_metadata_key` is missing → routes to `default_pipelines`
-- If cardinality < `thresholds[0]` → routes to `pipelines[0]`
-- If `thresholds[i]` ≤ cardinality < `thresholds[i+1]` → routes to `pipelines[i+1]`
-- If cardinality ≥ `thresholds[len(thresholds)-1]` → routes to `pipelines[len(pipelines)-1]`
+- Otherwise, routes to the first pipeline in `dynamic_pipelines` where `estimated_cardinality ≤ max_count`
+  - The connector iterates through `dynamic_pipelines` in order and selects the first pipeline where the condition is met
+  - Since the last pipeline must have `max_count: .inf`, all cardinality values will match at least one pipeline
 
 ## Use Cases
 
@@ -133,18 +133,21 @@ connectors:
     metadata_keys:
       - "x-forwarded-for"
       - "user-agent"
-    thresholds: [10, 50, 200]
-    pipelines:
-      # 0-10 unique connections: Small batches, frequent flush
-      - ["traces/small_batch"]
-      # 11-50 unique connections: Medium batches
-      - ["traces/medium_batch"]
-      # 51-200 unique connections: Large batches
-      - ["traces/large_batch"]
-      # 200+ unique connections: Very large batches, aggressive batching
-      - ["traces/xlarge_batch"]
+    dynamic_pipelines:
+      # ≤10 unique connections: Small batches, frequent flush
+      - pipelines: ["traces/small_batch"]
+        max_count: 10
+      # ≤50 unique connections: Medium batches
+      - pipelines: ["traces/medium_batch"]
+        max_count: 50
+      # ≤200 unique connections: Large batches
+      - pipelines: ["traces/large_batch"]
+        max_count: 200
+      # >200 unique connections: Very large batches, aggressive batching
+      - pipelines: ["traces/xlarge_batch"]
+        max_count: .inf
     default_pipelines: ["traces/default"]
-    evalaution_interval: 30s
+    evaluation_interval: 30s
 
 processors:
   batch/small:
@@ -220,18 +223,6 @@ service:
 - **Resource Efficiency**: Memory and CPU usage are optimized per tenant workload
 - **Automatic Adaptation**: No manual intervention needed as traffic patterns change
 
-### Other Use Cases
-
-The connector is flexible—the metadata keys you configure determine what type of cardinality is measured:
-
-- **Unique Services per Tenant**: Set `primary_metadata_key: "x-tenant-id"` and `metadata_keys: ["service.name"]` to route based on the number of unique services per tenant
-- **Unique Pods per Service**: Set `primary_metadata_key: "service.name"` and `metadata_keys: ["pod.name", "container.id"]` to route based on the number of unique pod/container combinations per service
-- **Unique Deployments per Namespace**: Set `primary_metadata_key: "namespace"` and `metadata_keys: ["deployment.name"]` to route based on deployment cardinality
-- **Sampling Strategies**: Route high-cardinality entities to pipelines with more aggressive sampling
-- **Processing Pipelines**: Apply different processors (filtering, transformation) based on cardinality patterns
-- **Export Destinations**: Route different tiers to different exporters or backends based on their cardinality characteristics
-- **Quality of Service**: Provide different QoS guarantees based on observed cardinality
-
 ## Implementation Details
 
 ### HyperLogLog Algorithm
@@ -244,7 +235,7 @@ The connector uses the HyperLogLog probabilistic data structure to estimate card
 
 ### Evaluation Interval
 
-The `evalaution_interval` determines how frequently routing decisions are updated:
+The `evaluation_interval` determines how frequently routing decisions are updated:
 - **Shorter intervals**: More responsive to changes but higher CPU usage
 - **Longer intervals**: More stable routing but slower adaptation to traffic changes
 - **Recommended**: 30-60 seconds for most use cases
@@ -275,7 +266,7 @@ This connector maintains state (HyperLogLog sketches) in memory. Important consi
 
 ### Routing Not Updating
 
-- **Check**: Verify `evalaution_interval` is not too long
+- **Check**: Verify `evaluation_interval` is not too long
 - **Solution**: Reduce the interval or manually trigger evaluation (requires collector restart)
 
 ### High Memory Usage

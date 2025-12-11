@@ -18,37 +18,45 @@
 package dynamicroutingconnector // import "github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector"
 
 import (
+	"cmp"
 	"errors"
-	"sort"
+	"math"
+	"slices"
 	"time"
 
 	"go.opentelemetry.io/collector/pipeline"
 )
 
 type Config struct {
-	DefaultPipelines   []pipeline.ID   `mapstructure:"default_pipelines"`
-	EvaluationInterval time.Duration   `mapstructure:"evaluation_interval"`
-	Pipelines          [][]pipeline.ID `mapstructure:"pipelines"`
-	Thresholds         []int           `mapstructure:"thresholds"`
-	PrimaryMetadataKey string          `mapstructure:"primary_metadata_key"`
-	MetadataKeys       []string        `mapstructure:"metadata_keys"`
+	PrimaryMetadataKey string        `mapstructure:"primary_metadata_key"`
+	DefaultPipelines   []pipeline.ID `mapstructure:"default_pipelines"`
+	EvaluationInterval time.Duration `mapstructure:"evaluation_interval"`
+	DynamicPipelines   []Pipeline    `mapstructure:"dynamic_pipelines"`
+	MetadataKeys       []string      `mapstructure:"metadata_keys"`
+}
+
+type Pipeline struct {
+	Pipelines []pipeline.ID `mapstructure:"pipelines"`
+	MaxCount  float64       `mapstructure:"max_count"`
 }
 
 func (c *Config) Validate() error {
-	if len(c.Pipelines) == 0 {
+	if c.PrimaryMetadataKey == "" {
+		return errors.New("primary_metadata_key must be defined")
+	}
+	if len(c.DefaultPipelines) == 0 {
+		return errors.New("default pipeline must be specified")
+	}
+	if len(c.DynamicPipelines) == 0 {
 		return errors.New("atleast one pipeline needs to be defined")
 	}
-	if len(c.Pipelines)+1 != len(c.Thresholds) {
-		return errors.New("pipelines need to be defined for each threshold bucket, including +inf")
+	if !math.IsInf(c.DynamicPipelines[len(c.DynamicPipelines)-1].MaxCount, 1) {
+		return errors.New("last dynamic pipeline must have max count set to positive infinity (.inf)")
 	}
-	if !sort.IntsAreSorted(c.Thresholds) {
-		return errors.New("thresolds is expected to be in increasing order")
-	}
-
-	for i := 1; i < len(c.Thresholds); i++ {
-		if c.Thresholds[i] == c.Thresholds[i-1] {
-			return errors.New("thresholds are expected to be unique")
-		}
+	if !slices.IsSortedFunc(c.DynamicPipelines, func(a, b Pipeline) int {
+		return cmp.Compare(a.MaxCount, b.MaxCount)
+	}) {
+		return errors.New("pipelines must be defined in ascending order of max_count")
 	}
 	return nil
 }
