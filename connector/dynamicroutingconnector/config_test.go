@@ -57,7 +57,7 @@ func TestConfig(t *testing.T) {
 		{
 			name: "invalid-dynamic-pipelines/valid",
 			expected: &Config{
-				PrimaryMetadataKey: "x-tenant",
+				PrimaryMetadataKeys: []string{"x-tenant"},
 				DefaultPipelines: []pipeline.ID{
 					pipeline.NewIDWithName(pipeline.SignalLogs, "default"),
 				},

@@ -41,11 +41,11 @@ var _ component.Component = (*router[any])(nil)
 type consumerProvider[C any] func(...pipeline.ID) (C, error)
 
 type router[C any] struct {
-	evaluationInterval time.Duration
-	primaryMetadataKey string
-	sortedMetadataKeys []string
-	defaultConsumer    C
-	consumers          []ct[C]
+	evaluationInterval  time.Duration
+	primaryMetadataKeys []string
+	sortedMetadataKeys  []string
+	defaultConsumer     C
+	consumers           []ct[C]
 
 	logger *zap.Logger
 
@@ -90,15 +90,15 @@ func newRouter[C any](
 		}
 	}
 	return &router[C]{
-		evaluationInterval: cfg.EvaluationInterval,
-		primaryMetadataKey: cfg.PrimaryMetadataKey,
-		sortedMetadataKeys: sortedMetadataKeys,
-		defaultConsumer:    defaultConsumer,
-		consumers:          consumers,
-		logger:             settings.Logger,
-		stop:               make(chan struct{}),
-		decision:           make(map[string]ct[C]),
-		m:                  make(map[string]*hyperloglog.Sketch),
+		evaluationInterval:  cfg.EvaluationInterval,
+		primaryMetadataKeys: cfg.PrimaryMetadataKeys,
+		sortedMetadataKeys:  sortedMetadataKeys,
+		defaultConsumer:     defaultConsumer,
+		consumers:           consumers,
+		logger:              settings.Logger,
+		stop:                make(chan struct{}),
+		decision:            make(map[string]ct[C]),
+		m:                   make(map[string]*hyperloglog.Sketch),
 	}, nil
 }
 
@@ -175,14 +175,32 @@ func (r *router[C]) Process(ctx context.Context) C {
 
 func (r *router[C]) estimateCardinality(ctx context.Context) string {
 	clientMeta := client.FromContext(ctx).Metadata
-	var pk string
-	switch pks := clientMeta.Get(r.primaryMetadataKey); len(pks) {
-	case 0:
-		return ""
-	case 1:
-		pk = pks[0]
-	default:
-		pk = strings.Join(pks, ":")
+	var pkb strings.Builder
+	for _, k := range r.primaryMetadataKeys {
+		vs := clientMeta.Get(k)
+		if len(vs) == 0 {
+			continue
+		}
+		for _, mk := range vs {
+			if _, err := pkb.WriteString(mk); err != nil {
+				r.logger.Error(
+					"unexpected failure on concatenating primary metadata keys",
+					zap.Error(err),
+				)
+			}
+			if err := pkb.WriteByte(':'); err != nil {
+				r.logger.Error(
+					"unexpected failure on concatenating primary metadata keys",
+					zap.Error(err),
+				)
+			}
+		}
+		if err := pkb.WriteByte(';'); err != nil {
+			r.logger.Error(
+				"unexpected failure on concatenating primary metadata keys",
+				zap.Error(err),
+			)
+		}
 	}
 
 	var hash xxhash.Digest
@@ -216,6 +234,8 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 			}
 		}
 	}
+
+	pk := pkb.String()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()

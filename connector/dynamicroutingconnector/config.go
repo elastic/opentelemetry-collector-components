@@ -28,11 +28,11 @@ import (
 )
 
 type Config struct {
-	PrimaryMetadataKey string        `mapstructure:"primary_metadata_key"`
-	DefaultPipelines   []pipeline.ID `mapstructure:"default_pipelines"`
-	EvaluationInterval time.Duration `mapstructure:"evaluation_interval"`
-	DynamicPipelines   []Pipeline    `mapstructure:"dynamic_pipelines"`
-	MetadataKeys       []string      `mapstructure:"metadata_keys"`
+	PrimaryMetadataKeys []string      `mapstructure:"primary_metadata_keys"`
+	DefaultPipelines    []pipeline.ID `mapstructure:"default_pipelines"`
+	EvaluationInterval  time.Duration `mapstructure:"evaluation_interval"`
+	DynamicPipelines    []Pipeline    `mapstructure:"dynamic_pipelines"`
+	MetadataKeys        []string      `mapstructure:"metadata_keys"`
 }
 
 type Pipeline struct {
@@ -41,8 +41,8 @@ type Pipeline struct {
 }
 
 func (c *Config) Validate() error {
-	if c.PrimaryMetadataKey == "" {
-		return errors.New("primary_metadata_key must be defined")
+	if len(c.PrimaryMetadataKeys) == 0 {
+		return errors.New("atleast one primary_metadata_key must be defined")
 	}
 	if len(c.DefaultPipelines) == 0 {
 		return errors.New("default pipeline must be specified")

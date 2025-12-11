@@ -49,8 +49,8 @@ func TestLogsRouting(t *testing.T) {
 			{Pipelines: []pipeline.ID{pipeline_2_5}, MaxCount: 5},
 			{Pipelines: []pipeline.ID{pipeline_5_inf}, MaxCount: math.Inf(1)},
 		},
-		PrimaryMetadataKey: "x-tenant-id",
-		MetadataKeys:       []string{"x-forwarded-for", "user-agent"},
+		PrimaryMetadataKeys: []string{"x-tenant-id"},
+		MetadataKeys:        []string{"x-forwarded-for", "user-agent"},
 	}
 
 	for _, tc := range []struct {
