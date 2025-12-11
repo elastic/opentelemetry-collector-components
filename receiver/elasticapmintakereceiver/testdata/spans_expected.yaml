@@ -22,6 +22,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -211,6 +214,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -395,6 +401,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -576,6 +585,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -748,6 +760,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1074,6 +1089,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1396,6 +1414,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1723,6 +1744,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1921,6 +1945,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -2139,6 +2166,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider

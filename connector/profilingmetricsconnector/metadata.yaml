@@ -9,3 +9,215 @@ status:
       - profiles_to_metrics
   distributions: []
 
+attributes:
+  classification:
+    description: Profile type unit
+    type: string
+  frame_type:
+    description: Frame type
+    type: string
+  kernel_area:
+    description: Breakdown of Kernel area type.
+    type: string
+    # TODO: Use enum once https://github.com/open-telemetry/opentelemetry-collector/issues/14196 is fixed
+    # enum: [network, ipc, disk, memory, synchronization]
+    requirement_level: conditionally_required
+  kernel_io:
+    description: Breakdown of Kernel IO type.
+    type: string
+    # TODO: Use enum once https://github.com/open-telemetry/opentelemetry-collector/issues/14196 is fixed
+    # enum: [read, write]
+    requirement_level: conditionally_required
+  kernel_proto:
+    description: Breakdown of Kernel proto type.
+    type: string
+    # TODO: Use enum once https://github.com/open-telemetry/opentelemetry-collector/issues/14196 is fixed
+    # enum: [tcp, udp, other]
+    requirement_level: conditionally_required
+  profile.type_unit:
+    description: Profile type unit
+    type: string
+  shlib_name:
+    description: Shared library name
+    type: string
+    requirement_level: conditionally_required
+  syscall_name:
+    description: Syscall name
+    type: string
+    requirement_level: conditionally_required
+
+metrics:
+  samples.beam.count:
+    enabled: true
+    description: Number of samples executing Beam code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.classification:
+    enabled: false
+    description: Number of profiling frames by classification
+    unit: "1"
+    stability:
+      level: development
+    gauge:
+      value_type: int
+    attributes: [classification, frame_type, profile.type_unit]
+
+  samples.cpython.count:
+    enabled: true
+    description: Number of samples executing Python code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.custom_aggregation:
+    enabled: true
+    description: Number of profiling frames by classification
+    unit: "1"
+    stability:
+      level: development
+    gauge:
+      value_type: int
+    attributes: [frame_type, profile.type_unit]
+
+  samples.dotnet.count:
+    enabled: true
+    description: Number of samples executing Dotnet code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.frame_type:
+    enabled: false
+    description: Number of profiles frames by frame type
+    unit: "1"
+    stability:
+      level: development
+    gauge:
+      value_type: int
+    attributes: [frame_type, profile.type_unit]
+
+  samples.go.count:
+    enabled: true
+    description: Number of samples executing Go code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.jvm.count:
+    enabled: true
+    description: Number of samples executing HotSpot code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.kernel.count:
+    enabled: true
+    description: Number of samples executing kernel code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+    attributes: [kernel_area, kernel_io, kernel_proto, syscall_name]
+
+  samples.native.count:
+    enabled: true
+    description: Number of samples executing native code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+    attributes: [shlib_name]
+
+  samples.perl.count:
+    enabled: true
+    description: Number of samples executing Perl code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.php.count:
+    enabled: true
+    description: Number of samples executing PHP code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.ruby.count:
+    enabled: true
+    description: Number of samples executing Ruby code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.rust.count:
+    enabled: true
+    description: Number of samples executing Rust code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.user.count:
+    enabled: true
+    description: Number of samples executing userspace code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true
+
+  samples.v8js.count:
+    enabled: true
+    description: Number of samples executing v8js code (self)
+    unit: "1"
+    stability:
+      level: development
+    sum:
+      value_type: int
+      aggregation_temporality: delta
+      monotonic: true

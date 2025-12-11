@@ -1,0 +1,18 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: host.hostname
+          value:
+            stringValue: hostname-1
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: some.key
+                value:
+                  stringValue: main
+            endTimeUnixNano: "1581452773000000789"
+            name: span-elastic-db
+            parentSpanId: "bcff497b5a47310f"
+            startTimeUnixNano: "1581452772000000321"
+

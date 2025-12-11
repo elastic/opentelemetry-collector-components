@@ -161,6 +161,9 @@ resourceSpans:
         - key: host.name
           value:
             stringValue: node-1
+        - key: host.hostname
+          value:
+            stringValue: node-1
         - key: host.id
           value:
             stringValue: host-123
@@ -308,9 +311,6 @@ resourceSpans:
         - key: agent.activation_method
           value:
             stringValue: automatic
-        - key: host.ip
-          value:
-            stringValue: 1.2.3.4
         - key: data_stream.type
           value:
             stringValue: traces

@@ -1,0 +1,15 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: host.hostname
+          value:
+            stringValue: hostname-1
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: test log message
+            timeUnixNano: "0"
+        scope: {}

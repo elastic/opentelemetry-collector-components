@@ -22,6 +22,12 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -131,6 +137,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -241,6 +250,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -351,6 +363,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -470,6 +485,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -626,6 +644,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -779,6 +800,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -932,6 +956,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: svc-node-name
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -1079,6 +1106,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: svc-node-name
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1

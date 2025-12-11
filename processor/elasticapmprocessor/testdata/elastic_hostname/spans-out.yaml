@@ -1,0 +1,63 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: data_stream.dataset
+          value:
+            stringValue: apm
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: data_stream.type
+          value:
+            stringValue: traces
+        - key: service.instance.id
+          value:
+            stringValue: hostname-1
+        - key: host.name
+          value:
+            stringValue: hostname-1
+        - key: host.hostname
+          value:
+            stringValue: hostname-1
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: some.key
+                value:
+                  stringValue: main
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: event.success_count
+                value:
+                  intValue: "1"
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "1000000"
+              - key: span.name
+                value:
+                  stringValue: span-elastic-db
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.type
+                value:
+                  stringValue: unknown
+              - key: timestamp.us
+                value:
+                  intValue: "1581452772000000"
+            endTimeUnixNano: "1581452773000000789"
+            name: span-elastic-db
+            parentSpanId: bcff497b5a47310f
+            startTimeUnixNano: "1581452772000000321"
+            status: {}
