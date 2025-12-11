@@ -22,8 +22,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.uber.org/zap"
 
@@ -391,7 +391,7 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 }
 
 func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.ProfilesDictionary,
-	profile pprofile.Profile, scopeMetrics pmetric.ScopeMetrics,
+	profile pprofile.Profile,
 ) {
 	stackTable := dictionary.StackTable()
 
@@ -411,54 +411,45 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 
 	// Generate metrics
 	for metric, count := range counts {
-		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(metric.name)
-		m.SetDescription(metric.desc)
-		m.SetUnit("1")
-
-		sum := m.SetEmptySum()
-		sum.SetIsMonotonic(true)
-		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-
-		dp := sum.DataPoints().AppendEmpty()
-		dp.SetTimestamp(profile.Time())
-		dp.SetIntValue(count)
+		// TODO: share MetricBuilder with classifyFrames to
+		// automatically record the metrics
+		switch metric {
+		case metricGo:
+			c.mb.RecordSamplesGoCountDataPoint(profile.Time(), count)
+		case metricBeam:
+			c.mb.RecordSamplesBeamCountDataPoint(profile.Time(), count)
+		case metricDotnet:
+			c.mb.RecordSamplesDotnetCountDataPoint(profile.Time(), count)
+		case metricJVM:
+			c.mb.RecordSamplesJvmCountDataPoint(profile.Time(), count)
+		case metricPHP:
+			c.mb.RecordSamplesPhpCountDataPoint(profile.Time(), count)
+		case metricPerl:
+			c.mb.RecordSamplesPerlCountDataPoint(profile.Time(), count)
+		case metricPython:
+			c.mb.RecordSamplesCpythonCountDataPoint(profile.Time(), count)
+		case metricRust:
+			c.mb.RecordSamplesRustCountDataPoint(profile.Time(), count)
+		case metricRuby:
+			c.mb.RecordSamplesRubyCountDataPoint(profile.Time(), count)
+		case metricUser:
+			c.mb.RecordSamplesUserCountDataPoint(profile.Time(), count)
+		}
 	}
 
 	for aInfo, count := range nativeCounts {
-		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(metricNative.name)
-		m.SetDescription(metricNative.desc)
-		m.SetUnit("1")
-
-		sum := m.SetEmptySum()
-		sum.SetIsMonotonic(true)
-		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-
-		dp := sum.DataPoints().AppendEmpty()
-		dp.SetTimestamp(profile.Time())
-		dp.SetIntValue(count)
 		if aInfo.shlib != "" {
-			dp.Attributes().PutStr(nativeLibraryAttrName, aInfo.shlib)
+			c.mb.RecordSamplesNativeCountDataPoint(profile.Time(), count, metadata.WithShlibNameMetricAttribute(aInfo.shlib))
+		} else {
+			c.mb.RecordSamplesNativeCountDataPoint(profile.Time(), count)
 		}
 	}
 
 	for aInfo, count := range kernelCounts {
-		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(metricKernel.name)
-		m.SetDescription(metricKernel.desc)
-		m.SetUnit("1")
-
-		sum := m.SetEmptySum()
-		sum.SetIsMonotonic(true)
-		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-
-		dp := sum.DataPoints().AppendEmpty()
-		dp.SetTimestamp(profile.Time())
-		dp.SetIntValue(count)
+		attrs := make([]metadata.MetricAttributeOption, 0)
 
 		if aInfo.syscall != "" {
-			dp.Attributes().PutStr(syscallAttrName, aInfo.syscall)
+			attrs = append(attrs, metadata.WithSyscallNameMetricAttribute(aInfo.syscall))
 		}
 
 		if aInfo.class != "" {
@@ -475,9 +466,17 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 			for i, v := range cSplit {
 				if v != "" {
 					// Add kernel classifications as separate attributes
-					dp.Attributes().PutStr(kernelClassAttrNames[i], v)
+					switch i {
+					case 0:
+						attrs = append(attrs, metadata.WithKernelAreaMetricAttribute(v))
+					case 1:
+						attrs = append(attrs, metadata.WithKernelProtoMetricAttribute(v))
+					case 2:
+						attrs = append(attrs, metadata.WithKernelIoMetricAttribute(v))
+					}
 				}
 			}
 		}
+		c.mb.RecordSamplesKernelCountDataPoint(profile.Time(), count, attrs...)
 	}
 }
