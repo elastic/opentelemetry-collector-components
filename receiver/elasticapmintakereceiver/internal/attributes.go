@@ -94,6 +94,7 @@ const (
 	ServiceOriginVersion    = "service.origin.version"
 
 	HostOSPlatform = "host.os.platform"
+	HostHostname   = "host.hostname"
 
 	SourceNatIP = "source.nat.ip"
 

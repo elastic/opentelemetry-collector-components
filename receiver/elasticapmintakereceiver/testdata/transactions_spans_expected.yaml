@@ -22,6 +22,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user_agent.original
           value:
             stringValue: Mozilla Chrome Edge
@@ -343,6 +346,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -566,6 +572,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -693,6 +702,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -823,6 +835,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -952,6 +967,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -1081,6 +1099,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -1210,6 +1231,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -1339,6 +1363,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id

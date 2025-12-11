@@ -1,0 +1,33 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: data_stream.type
+          value:
+            stringValue: logs
+        - key: data_stream.dataset
+          value:
+            stringValue: apm.app.test_service
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: service.instance.id
+          value:
+            stringValue: hostname-1
+        - key: host.name
+          value:
+            stringValue: hostname-1
+        - key: host.hostname
+          value:
+            stringValue: hostname-1
+    scopeSpans:
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: test log message
+        scope: {}
