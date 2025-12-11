@@ -67,7 +67,7 @@ func (c *logsConnector) Shutdown(ctx context.Context) error {
 }
 
 func (c *logsConnector) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: true}
+	return consumer.Capabilities{MutatesData: false}
 }
 
 func (c *logsConnector) ConsumeLogs(ctx context.Context, ld plog.Logs) error {

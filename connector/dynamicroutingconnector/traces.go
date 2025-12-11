@@ -67,7 +67,7 @@ func (c *tracesConnector) Shutdown(ctx context.Context) error {
 }
 
 func (c *tracesConnector) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: true}
+	return consumer.Capabilities{MutatesData: false}
 }
 
 func (c *tracesConnector) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
