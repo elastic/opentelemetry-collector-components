@@ -83,33 +83,3 @@ func (c *clientAddrMiddleware) GetGRPCServerOptions() ([]grpc.ServerOption, erro
 	)
 	return []grpc.ServerOption{opt}, nil
 }
-
-type clientAddrRoundTripper struct {
-	base http.RoundTripper
-}
-
-func (c *clientAddrRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
-	ctx := ctxWithClientAddr(r.Context(), r.Header)
-	return c.base.RoundTrip(r.WithContext(ctx))
-}
-
-// GetHTTPRoundTripper HTTP client middleware that returns a HTTP round tripper that updates the ctx client.Info.Address
-// using request headers.
-func (c *clientAddrMiddleware) GetHTTPRoundTripper(base http.RoundTripper) (http.RoundTripper, error) {
-	return &clientAddrRoundTripper{base: base}, nil
-}
-
-// GetGRPCClientOptions GRPC client middleware that returns gRPC client dial options that updates the ctx client.Info.Address
-// using request metadata.
-func (c *clientAddrMiddleware) GetGRPCClientOptions() ([]grpc.DialOption, error) {
-	opt := grpc.WithChainUnaryInterceptor(
-		func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-			md, ok := metadata.FromOutgoingContext(ctx)
-			if ok {
-				ctx = ctxWithClientAddr(ctx, md)
-			}
-			return invoker(ctx, method, req, reply, cc, opts...)
-		},
-	)
-	return []grpc.DialOption{opt}, nil
-}
