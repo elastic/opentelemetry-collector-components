@@ -131,7 +131,7 @@ func TestProcessorECS(t *testing.T) {
 		{
 			testDir:  "span_hostname",
 			input:    "testdata/elastic_hostname/spans_input.yaml",
-			output:   "testdata/elastic_hostname/spanss_output.yaml",
+			output:   "testdata/elastic_hostname/spans_output.yaml",
 			testType: "traces",
 			cfg:      disableHostNameEnrichmentConfig,
 		},
