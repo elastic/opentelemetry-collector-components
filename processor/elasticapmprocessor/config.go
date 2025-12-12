@@ -32,4 +32,9 @@ type Config struct {
 	// is included in the data_stream.dataset value. If true, the dataset will be
 	// in the format "apm.app.<service.name>". Defaults to false for backwards compatibility.
 	ServiceNameInDataStreamDataset bool `mapstructure:"service_name_in_datastream_dataset"`
+
+	// HostIPEnabled controls whether the `host.ip` resource attribute should be set using client info address.
+	// When true, the processor will set the `host.ip` attribute from the client address when
+	// the mapping mode is "ecs". Defaults to true.
+	HostIPEnabled bool `mapstructure:"host_ip_enabled"`
 }

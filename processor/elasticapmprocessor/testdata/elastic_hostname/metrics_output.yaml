@@ -16,19 +16,18 @@ resourceMetrics:
         - key: data_stream.type
           value:
             stringValue: metrics
-        - key: service.name
-          value:
-            stringValue: test-service
-        - key: service.instance.id
+        - key: host.hostname
           value:
             stringValue: hostname-1
         - key: host.name
           value:
             stringValue: hostname-1
-        - key: host.hostname
+        - key: service.instance.id
           value:
             stringValue: hostname-1
-    scopeSpans:
+        - key: service.name
+          value:
+            stringValue: test-service
     scopeMetrics:
       - metrics:
           - gauge:
