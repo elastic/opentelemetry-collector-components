@@ -1,0 +1,50 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: my-app
+        - key: data_stream.type
+          value:
+            stringValue: logs
+        - key: data_stream.dataset
+          value:
+            stringValue: apm.app.my_app
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: agent.name
+          value:
+            stringValue: otlp
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: processor.event
+                value:
+                  stringValue: error
+              - key: exception.message
+                value:
+                  stringValue: Something went wrong
+              - key: exception.type
+                value:
+                  stringValue: RuntimeError
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: apm.error
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              stringValue: Error occurred
+            timeUnixNano: "1000000000"
+          - attributes:
+              - key: log.level
+                value:
+                  stringValue: info
+            body:
+              stringValue: Regular log message
+            timeUnixNano: "1000000000"
+        scope: {}

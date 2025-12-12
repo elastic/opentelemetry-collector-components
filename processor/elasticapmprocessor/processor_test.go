@@ -399,3 +399,62 @@ func TestECSMetrics(t *testing.T) {
 		})
 	}
 }
+
+// TestErrorLogsRouting tests that error logs are routed to apm.error data stream
+func TestErrorLogsRouting(t *testing.T) {
+	testcases := map[string]struct {
+		input  string
+		output string
+		cfg    *Config
+	}{
+		"error-logs-default": {
+			input:  "testdata/error_routing/logs_input.yaml",
+			output: "testdata/error_routing/logs_output.yaml",
+			cfg: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				return cfg
+			}(),
+		},
+		"error-logs-with-servicename": {
+			input:  "testdata/error_routing/logs_servicename_input.yaml",
+			output: "testdata/error_routing/logs_servicename_output.yaml",
+			cfg: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.ServiceNameInDataStreamDataset = true
+				return cfg
+			}(),
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = client.NewContext(ctx, client.Info{
+				Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+			})
+
+			factory := NewFactory()
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+			next := &consumertest.LogsSink{}
+
+			lp, err := factory.CreateLogs(ctx, settings, tc.cfg, next)
+			require.NoError(t, err)
+
+			inputLogs, err := golden.ReadLogs(tc.input)
+			require.NoError(t, err)
+
+			require.NoError(t, lp.ConsumeLogs(ctx, inputLogs))
+			actual := next.AllLogs()[0]
+
+			if *update {
+				err := golden.WriteLogs(t, tc.output, actual)
+				assert.NoError(t, err)
+			}
+
+			expectedLogs, err := golden.ReadLogs(tc.output)
+			require.NoError(t, err)
+			assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
+		})
+	}
+}

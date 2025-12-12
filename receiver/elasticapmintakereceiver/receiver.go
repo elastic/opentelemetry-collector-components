@@ -240,6 +240,8 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	}
 
 	for _, event := range *batch {
+		// TODO(inge4pres) conversion to time.Time can be removed,
+		// OTel facilites accept UNIX nanos timestamps directly
 		timestampNanos := event.GetTimestamp()
 		timestamp := time.Unix(
 			int64(timestampNanos/1e9), // Convert nanoseconds to seconds
@@ -501,7 +503,7 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	return dp
 }
 
-func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) {
+func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, _ context.Context) {
 	sl := rl.ScopeLogs().AppendEmpty()
 	l := sl.LogRecords().AppendEmpty()
 
