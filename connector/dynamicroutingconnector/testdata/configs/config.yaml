@@ -1,0 +1,59 @@
+dynamicrouting/empty:
+
+dynamicrouting/no-dynamic-pipelines:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  evaluation_interval: 1m
+  routing_pipelines: []
+
+dynamicrouting/invalid-dynamic-pipelines/no-inf:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  evaluation_interval: 1m
+  routing_pipelines:
+    - pipelines:
+        - logs/test2
+      max_cardinality: 100
+    - pipelines:
+        - logs/test1
+      max_cardinality: 10
+
+dynamicrouting/invalid-dynamic-pipelines/out-of-order:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  evaluation_interval: 1m
+  routing_pipelines:
+    - pipelines:
+        - logs/test2
+      max_cardinality: 100
+    - pipelines:
+        - logs/test1
+      max_cardinality: 10
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+
+dynamicrouting/invalid-dynamic-pipelines/valid:
+  routing_keys:
+    partition_by: ["x-tenant"]
+    measure_by: ["x-forwarded-for"]
+  default_pipelines:
+    - logs/default
+  evaluation_interval: 1m
+  routing_pipelines:
+    - pipelines:
+        - logs/test1
+      max_cardinality: 10
+    - pipelines:
+        - logs/test2
+      max_cardinality: 100
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+
