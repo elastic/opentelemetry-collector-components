@@ -1,0 +1,28 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: my-app
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: processor.event
+                value:
+                  stringValue: "error"
+              - key: exception.message
+                value:
+                  stringValue: "Something went wrong"
+              - key: exception.type
+                value:
+                  stringValue: "RuntimeError"
+            body:
+              stringValue: "Error occurred"
+            timeUnixNano: "1000000000"
+          - attributes:
+              - key: log.level
+                value:
+                  stringValue: "info"
+            body:
+              stringValue: "Regular log message"
+            timeUnixNano: "1000000000"

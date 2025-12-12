@@ -20,6 +20,7 @@ package routing // import "github.com/elastic/opentelemetry-collector-components
 import (
 	"strings"
 
+	"github.com/elastic/opentelemetry-lib/elasticattr"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
@@ -91,4 +92,22 @@ func replaceReservedRune(r rune) rune {
 		return '_'
 	}
 	return r
+}
+
+// IsErrorLog checks if a log record represents an APM error event.
+// The processor.event attribute is set by the elasticapmintakereceiver
+// when converting APM error events to OTLP logs.
+func IsErrorLog(attributes pcommon.Map) bool {
+	if processorEvent, ok := attributes.Get(elasticattr.ProcessorEvent); ok {
+		return processorEvent.Str() == "error"
+	}
+	return false
+}
+
+// EncodeErrorDataStream sets the data stream attributes for error logs.
+// Error logs should always be routed to the "apm.error" dataset regardless of service name.
+func EncodeErrorDataStream(attributes pcommon.Map, dataStreamType string) {
+	attributes.PutStr("data_stream.type", dataStreamType)
+	attributes.PutStr("data_stream.dataset", "apm.error")
+	attributes.PutStr("data_stream.namespace", NamespaceDefault)
 }

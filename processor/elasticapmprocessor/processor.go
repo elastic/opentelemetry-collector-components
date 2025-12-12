@@ -182,6 +182,20 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			}
 			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
+
+			// Check each log record for error events and route to apm.error dataset
+			// This follows the same logic as apm-data to detect error events
+			scopeLogs := resourceLog.ScopeLogs()
+			for j := 0; j < scopeLogs.Len(); j++ {
+				logRecords := scopeLogs.At(j).LogRecords()
+				for k := 0; k < logRecords.Len(); k++ {
+					logRecord := logRecords.At(k)
+					if routing.IsErrorLog(logRecord.Attributes()) {
+						// Override the resource-level data stream for error logs
+						routing.EncodeErrorDataStream(logRecord.Attributes(), routing.DataStreamTypeLogs)
+					}
+				}
+			}
 		}
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs

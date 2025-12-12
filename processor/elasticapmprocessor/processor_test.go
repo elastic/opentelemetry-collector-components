@@ -424,3 +424,176 @@ func TestSkipEnrichmentMetrics(t *testing.T) {
 		})
 	}
 }
+
+func TestECSLogs(t *testing.T) {
+	testcases := map[string]struct {
+		input  string
+		output string
+		cfg    *Config
+	}{
+		"servicename-in-datastream": {
+			input:  "testdata/elastic_apm/logs_input.yaml",
+			output: "testdata/elastic_apm/logs_output.yaml",
+			cfg: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.ServiceNameInDataStreamDataset = true
+				return cfg
+			}(),
+		},
+		"hostname-settings": {
+			input:  "testdata/elastic_hostname/logs_input.yaml",
+			output: "testdata/elastic_hostname/logs_output.yaml",
+			cfg: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				// Disable default hostname enrichment from opentelemetry-lib
+				// to only test processor logic
+				cfg.Resource.OverrideHostName.Enabled = false
+				return cfg
+			}(),
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = client.NewContext(ctx, client.Info{
+				Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+			})
+			cfg := createDefaultConfig().(*Config)
+			cfg.ServiceNameInDataStreamDataset = true
+
+			factory := NewFactory()
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+			next := &consumertest.LogsSink{}
+
+			lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+			require.NoError(t, err)
+
+			inputLogs, err := golden.ReadLogs(tc.input)
+			require.NoError(t, err)
+
+			require.NoError(t, lp.ConsumeLogs(ctx, inputLogs))
+			actual := next.AllLogs()[0]
+
+			expectedLogs, err := golden.ReadLogs(tc.output)
+			require.NoError(t, err)
+			assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
+		})
+	}
+}
+
+func TestECSMetrics(t *testing.T) {
+	testcases := map[string]struct {
+		input  string
+		output string
+		cfg    *Config
+	}{
+		"servicename-in-datastream": {
+			input:  "testdata/elastic_apm/metrics_input.yaml",
+			output: "testdata/elastic_apm/metrics_output.yaml",
+			cfg: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.ServiceNameInDataStreamDataset = true
+				return cfg
+			}(),
+		},
+		"hostname-settings": {
+			input:  "testdata/elastic_hostname/metrics_input.yaml",
+			output: "testdata/elastic_hostname/metrics_output.yaml",
+			cfg: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				// Disable default hostname enrichment from opentelemetry-lib
+				// to only test processor logic
+				cfg.Resource.OverrideHostName.Enabled = false
+				return cfg
+			}(),
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = client.NewContext(ctx, client.Info{
+				Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+			})
+
+			factory := NewFactory()
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+			next := &consumertest.MetricsSink{}
+
+			mp, err := factory.CreateMetrics(ctx, settings, tc.cfg, next)
+			require.NoError(t, err)
+
+			inputMetrics, err := golden.ReadMetrics(tc.input)
+			require.NoError(t, err)
+
+			require.NoError(t, mp.ConsumeMetrics(ctx, inputMetrics))
+			actual := next.AllMetrics()[0]
+
+			expectedMetrics, err := golden.ReadMetrics(tc.output)
+			require.NoError(t, err)
+			assert.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actual))
+		})
+	}
+}
+
+// TestErrorLogsRouting tests that error logs are routed to apm.error data stream
+func TestErrorLogsRouting(t *testing.T) {
+	testcases := map[string]struct {
+		input  string
+		output string
+		cfg    *Config
+	}{
+		"error-logs-default": {
+			input:  "testdata/error_routing/logs_input.yaml",
+			output: "testdata/error_routing/logs_output.yaml",
+			cfg: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				return cfg
+			}(),
+		},
+		"error-logs-with-servicename": {
+			input:  "testdata/error_routing/logs_servicename_input.yaml",
+			output: "testdata/error_routing/logs_servicename_output.yaml",
+			cfg: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.ServiceNameInDataStreamDataset = true
+				return cfg
+			}(),
+		},
+	}
+
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			ctx = client.NewContext(ctx, client.Info{
+				Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+			})
+
+			factory := NewFactory()
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+			next := &consumertest.LogsSink{}
+
+			lp, err := factory.CreateLogs(ctx, settings, tc.cfg, next)
+			require.NoError(t, err)
+
+			inputLogs, err := golden.ReadLogs(tc.input)
+			require.NoError(t, err)
+
+			require.NoError(t, lp.ConsumeLogs(ctx, inputLogs))
+			actual := next.AllLogs()[0]
+
+			if *update {
+				err := golden.WriteLogs(t, tc.output, actual)
+				assert.NoError(t, err)
+			}
+
+			expectedLogs, err := golden.ReadLogs(tc.output)
+			require.NoError(t, err)
+			assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
+		})
+	}
+}

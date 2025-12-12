@@ -63,3 +63,73 @@ func TestDataStreamEncoderWithServiceName(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "default", dataStreamNamespace.Str())
 }
+
+func TestIsErrorLog(t *testing.T) {
+	tests := []struct {
+		name     string
+		setupFn  func(pcommon.Map)
+		expected bool
+	}{
+		{
+			name: "has processor.event=error",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr("processor.event", "error")
+			},
+			expected: true,
+		},
+		{
+			name: "has processor.event=transaction",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr("processor.event", "transaction")
+			},
+			expected: false,
+		},
+		{
+			name: "has processor.event=span",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr("processor.event", "span")
+			},
+			expected: false,
+		},
+		{
+			name: "no processor.event attribute",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr("some.other.attribute", "value")
+			},
+			expected: false,
+		},
+		{
+			name: "empty attributes",
+			setupFn: func(attrs pcommon.Map) {
+				// no attributes set
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			tt.setupFn(attrs)
+			result := routing.IsErrorLog(attrs)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestEncodeErrorDataStream(t *testing.T) {
+	attrs := pcommon.NewMap()
+	routing.EncodeErrorDataStream(attrs, "logs")
+
+	dataStreamType, ok := attrs.Get("data_stream.type")
+	assert.True(t, ok)
+	assert.Equal(t, "logs", dataStreamType.Str())
+
+	dataStreamDataset, ok := attrs.Get("data_stream.dataset")
+	assert.True(t, ok)
+	assert.Equal(t, "apm.error", dataStreamDataset.Str())
+
+	dataStreamNamespace, ok := attrs.Get("data_stream.namespace")
+	assert.True(t, ok)
+	assert.Equal(t, "default", dataStreamNamespace.Str())
+}
