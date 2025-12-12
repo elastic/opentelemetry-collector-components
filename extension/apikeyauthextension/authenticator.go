@@ -61,6 +61,16 @@ var (
 	_ extensionauth.Server = (*authenticator)(nil)
 )
 
+// metadataValidationError represents a client error related to metadata validation
+// for dynamic resources. This is used to distinguish client errors from server errors.
+type metadataValidationError struct {
+	message string
+}
+
+func (e *metadataValidationError) Error() string {
+	return e.message
+}
+
 type cacheEntry struct {
 	// key holds the PBKDF2 hashed value of the API Key.
 	// This is used to ensure that the key is not stored in
@@ -132,7 +142,7 @@ func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, erro
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-	httpClient, err := a.config.ToClient(ctx, host, a.telemetrySettings)
+	httpClient, err := a.config.ToClient(ctx, host.GetExtensions(), a.telemetrySettings)
 	if err != nil {
 		return err
 	}
@@ -208,12 +218,30 @@ func getHeader(headers map[string][]string, titlecase, lowercase string) (string
 
 // hasPrivileges checks if the API Key is valid and has the required privileges.
 func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue string) (bool, string, error) {
+	clientMetadata := client.FromContext(ctx).Metadata
 	applications := make([]types.ApplicationPrivilegesCheck, len(a.config.ApplicationPrivileges))
 	for i, app := range a.config.ApplicationPrivileges {
+		// Start with static resources
+		resources := make([]string, len(app.Resources))
+		copy(resources, app.Resources)
+
+		// Add dynamic resources from client metadata
+		for _, dr := range app.DynamicResources {
+			values := clientMetadata.Get(dr.Metadata)
+			if len(values) == 0 {
+				return false, "", &metadataValidationError{
+					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
+				}
+			}
+			for _, value := range values {
+				resources = append(resources, fmt.Sprintf(dr.Format, value))
+			}
+		}
+
 		applications[i] = types.ApplicationPrivilegesCheck{
 			Application: app.Application,
 			Privileges:  app.Privileges,
-			Resources:   app.Resources,
+			Resources:   resources,
 		}
 	}
 	req := a.esClient.Security.HasPrivileges()
@@ -305,6 +333,15 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
 			}
 		}
+		// Check if this is a metadata validation error (client error)
+		var metadataErr *metadataValidationError
+		if errors.As(err, &metadataErr) {
+			return ctx, errorWithDetails(codes.InvalidArgument, metadataErr.Error(), map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   id,
+			})
+		}
+		// Assume it's a retryable server error
 		return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error for API Key %q: %v", id, err), map[string]string{
 			"component": "apikeyauthextension",
 			"api_key":   id,

@@ -65,7 +65,9 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 			resourceSpan := resourceSpans.At(i)
 			resource := resourceSpan.Resource()
 			ecs.TranslateResourceMetadata(resource)
-			routing.EncodeDataStream(resource, "traces")
+			ecs.ApplyResourceConventions(resource)
+			// Traces signal never need to be routed to service-specific datasets
+			routing.EncodeDataStream(resource, routing.DataStreamTypeTraces, false)
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
@@ -92,18 +94,20 @@ type LogProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next           consumer.Logs
-	enricher       *enrichments.Enricher
-	logger         *zap.Logger
-	skipEnrichment bool
+	next                   consumer.Logs
+	enricher               *enrichments.Enricher
+	logger                 *zap.Logger
+	skipEnrichment         bool
+	datasetWithServiceName bool
 }
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
 	return &LogProcessor{
-		next:           next,
-		logger:         logger,
-		enricher:       enrichments.NewEnricher(cfg.Config),
-		skipEnrichment: cfg.SkipEnrichment,
+		next:                   next,
+		logger:                 logger,
+		enricher:               enrichments.NewEnricher(cfg.Config),
+		skipEnrichment:         cfg.SkipEnrichment,
+		datasetWithServiceName: cfg.ServiceNameInDataStreamDataset,
 	}
 }
 
@@ -115,18 +119,20 @@ type MetricProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next           consumer.Metrics
-	enricher       *enrichments.Enricher
-	logger         *zap.Logger
-	skipEnrichment bool
+	next                   consumer.Metrics
+	enricher               *enrichments.Enricher
+	logger                 *zap.Logger
+	skipEnrichment         bool
+	datasetWithServiceName bool
 }
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
 	return &MetricProcessor{
-		next:           next,
-		logger:         logger,
-		enricher:       enrichments.NewEnricher(cfg.Config),
-		skipEnrichment: cfg.SkipEnrichment,
+		next:                   next,
+		logger:                 logger,
+		enricher:               enrichments.NewEnricher(cfg.Config),
+		skipEnrichment:         cfg.SkipEnrichment,
+		datasetWithServiceName: cfg.ServiceNameInDataStreamDataset,
 	}
 }
 
@@ -142,7 +148,8 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 			resourceMetric := resourceMetrics.At(i)
 			resource := resourceMetric.Resource()
 			ecs.TranslateResourceMetadata(resource)
-			routing.EncodeDataStream(resource, "metrics")
+			ecs.ApplyResourceConventions(resource)
+			routing.EncodeDataStream(resource, routing.DataStreamTypeMetrics, p.datasetWithServiceName)
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}
 	}
@@ -162,7 +169,8 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			resourceLog := resourceLogs.At(i)
 			resource := resourceLog.Resource()
 			ecs.TranslateResourceMetadata(resource)
-			routing.EncodeDataStream(resource, "logs")
+			ecs.ApplyResourceConventions(resource)
+			routing.EncodeDataStream(resource, routing.DataStreamTypeLogs, p.datasetWithServiceName)
 			p.enricher.Config.Resource.AgentVersion.Enabled = false
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 		}

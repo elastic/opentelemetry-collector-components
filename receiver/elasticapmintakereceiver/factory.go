@@ -94,7 +94,7 @@ func esFetcherFactory(cfg *Config, set receiver.Settings) agentCfgFetcherFactory
 			return nil, nil
 		}
 
-		esClient, err := cfg.AgentConfig.Elasticsearch.ToClient(ctx, host, set.TelemetrySettings)
+		esClient, err := cfg.AgentConfig.Elasticsearch.ToClient(ctx, host.GetExtensions(), set.TelemetrySettings)
 		if err != nil {
 			return nil, err
 		}

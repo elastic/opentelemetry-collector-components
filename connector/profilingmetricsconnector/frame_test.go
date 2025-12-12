@@ -19,110 +19,22 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"context"
-	"fmt"
-	"regexp"
-	"strings"
-	"sync/atomic"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/pdata/pmetric"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/connector/connectortest"
+	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
-var metricRx = regexp.MustCompile(`samples\..+\.count`)
-
-type metricsConsumerStub struct {
-	t *testing.T
-
-	execCount atomic.Int64
-	counts    map[string]int64
-}
-
-func (m *metricsConsumerStub) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: false}
-}
-
-func newMetricsConsumer(t *testing.T) *metricsConsumerStub {
-	return &metricsConsumerStub{
-		t:      t,
-		counts: map[string]int64{},
-	}
-}
-
-func (m *metricsConsumerStub) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	// Generic test method that contains assertions applicable to all tests
-	m.execCount.Add(1)
-	rms := md.ResourceMetrics()
-	for i := 0; i < rms.Len(); i++ {
-		sm := rms.At(i).ScopeMetrics()
-		for j := 0; j < sm.Len(); j++ {
-			metrics := sm.At(j).Metrics()
-			for k := 0; k < metrics.Len(); k++ {
-				metric := metrics.At(k)
-				name := metric.Name()
-				if metricRx.MatchString(name) {
-					// Verify it's a Sum metric and then its properties
-					assert.Equal(m.t, pmetric.MetricTypeSum, metric.Type())
-					assert.Equal(m.t, "1", metric.Unit())
-					sum := metric.Sum()
-					assert.Equal(m.t, true, sum.IsMonotonic())
-					assert.Equal(m.t, pmetric.AggregationTemporalityDelta,
-						sum.AggregationTemporality())
-					assert.Equal(m.t, 1, sum.DataPoints().Len())
-					dp := sum.DataPoints().At(0)
-
-					// For native metrics, this is convenient way to test library name extraction
-					if strings.HasSuffix(name, metricNative.name) {
-						if shlibName, exists := dp.Attributes().Get(nativeLibraryAttrName); exists {
-							name = fmt.Sprintf("%v/%v", name, shlibName.AsString())
-						}
-					} else if strings.HasSuffix(name, metricKernel.name) {
-						// For kernel metrics, we need two levels of annotation:
-						//   1. "class0/class1/class2" for classes
-						//   2. "[syscall]" as string postfix only for syscall name
-						classValues := map[string]string{}
-						syscall := ""
-						for attrName, attrValue := range dp.Attributes().All() {
-							if strings.HasPrefix(attrName, kernelClassAttrPrefix) {
-								assert.Contains(m.t, kernelClassAttrNames, attrName)
-								classValues[attrName] = attrValue.AsString()
-							} else {
-								assert.Equal(m.t, syscallAttrName, attrName)
-								syscall = attrValue.AsString()
-							}
-						}
-						switch len(classValues) {
-						case 3:
-							name = fmt.Sprintf("%v/%v/%v/%v", name,
-								classValues[kernelClassAttrNames[0]],
-								classValues[kernelClassAttrNames[1]],
-								classValues[kernelClassAttrNames[2]])
-						case 2:
-							name = fmt.Sprintf("%v/%v/%v", name,
-								classValues[kernelClassAttrNames[0]],
-								classValues[kernelClassAttrNames[1]])
-						case 1:
-							name = fmt.Sprintf("%v/%v", name,
-								classValues[kernelClassAttrNames[0]])
-						}
-						if syscall != "" {
-							name = fmt.Sprintf("%v[%v]", name, syscall)
-						}
-					} else {
-						// Non-native, non-kernel metrics should not have attributes attached
-						assert.Equal(m.t, 0, dp.Attributes().Len())
-					}
-					m.counts[name] += dp.IntValue()
-				}
-			}
-		}
-	}
-	return nil
-}
+var testDataDir = "testdata"
 
 // Wraps envelope creation
 type testProfiles struct {
@@ -236,14 +148,15 @@ func (tp *testProfiles) newProfile() pprofile.Profile {
 }
 
 func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
-	multiplier int64, frames ...testFrame) {
+	multiplier int64, frames ...testFrame,
+) {
 	strTable := tp.dict.StringTable()
 	locTable := tp.dict.LocationTable()
 	mappingTable := tp.dict.MappingTable()
 	funcTable := tp.dict.FunctionTable()
 	stackTable := tp.dict.StackTable()
 
-	sample := prof.Sample().AppendEmpty()
+	sample := prof.Samples().AppendEmpty()
 	for range multiplier {
 		sample.TimestampsUnixNano().Append(uint64(time.Now().UnixNano()))
 	}
@@ -266,7 +179,7 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 		case frameTypeKernel:
 			ftIdx = tp.attrKernelIdx
 			if frame.funcName != "" {
-				ln := loc.Line().AppendEmpty()
+				ln := loc.Lines().AppendEmpty()
 				ln.SetFunctionIndex(int32(funcTable.Len()))
 				fn := funcTable.AppendEmpty()
 				fn.SetNameStrindex(int32(strTable.Len()))
@@ -291,12 +204,14 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 }
 
 func TestConsumeProfiles_FrameMetrics(t *testing.T) {
-	m := newMetricsConsumer(t)
+	m := new(consumertest.MetricsSink)
+	cfg := &Config{
+		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: m,
-		config: &Config{
-			ByFrame: true,
-		},
+		config:       cfg,
+		mb:           metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, connectortest.NewNopSettings(metadata.Type)),
 	}
 
 	// Create a Profile and higher-level envelopes
@@ -308,22 +223,24 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), m.execCount.Load())
-	assert.Equal(t, map[string]int64{
-		"samples.go.count":      1,
-		"samples.user.count":    43,
-		"samples.cpython.count": 42,
-	},
-		m.counts)
+	actualMetrics := m.AllMetrics()
+	assert.Len(t, actualMetrics, 1)
+	// err = golden.WriteMetrics(t, filepath.Join(testDataDir, "frame_metrics", "output-metrics.yaml"), actualMetrics[0])
+	// assert.NoError(t, err)
+	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir, "frame_metrics", "output-metrics.yaml"))
+	assert.NoError(t, err)
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }
 
 func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
-	m := newMetricsConsumer(t)
+	m := new(consumertest.MetricsSink)
+	cfg := &Config{
+		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: m,
-		config: &Config{
-			ByFrame: true,
-		},
+		config:       cfg,
+		mb:           metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, connectortest.NewNopSettings(metadata.Type)),
 	}
 
 	// Create a Profile and higher-level envelopes
@@ -342,16 +259,13 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), m.execCount.Load())
-	assert.Equal(t, map[string]int64{
-		"samples.go.count":          2,
-		"samples.cpython.count":     5,
-		"samples.user.count":        20,
-		"samples.kernel.count":      8,
-		"samples.native.count":      1,
-		"samples.native.count/libc": 12,
-	},
-		m.counts)
+	actualMetrics := m.AllMetrics()
+	assert.Len(t, actualMetrics, 1)
+	// err = golden.WriteMetrics(t, filepath.Join(testDataDir, "frame_metrics_multiple", "output-metrics.yaml"), actualMetrics[0])
+	// assert.NoError(t, err)
+	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir, "frame_metrics_multiple", "output-metrics.yaml"))
+	assert.NoError(t, err)
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }
 
 func kstackToFrames(functions ...string) []testFrame {
@@ -363,12 +277,14 @@ func kstackToFrames(functions ...string) []testFrame {
 }
 
 func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
-	m := newMetricsConsumer(t)
+	m := new(consumertest.MetricsSink)
+	cfg := &Config{
+		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: m,
-		config: &Config{
-			ByFrame: true,
-		},
+		config:       cfg,
+		mb:           metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, connectortest.NewNopSettings(metadata.Type)),
 	}
 
 	// Create a Profile and higher-level envelopes
@@ -406,20 +322,12 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(1), m.execCount.Load())
-	assert.Equal(t, map[string]int64{
-		"samples.kernel.count/network/tcp/read":         1,
-		"samples.kernel.count/network/tcp/read[read]":   1,
-		"samples.kernel.count/network/tcp/write":        1,
-		"samples.kernel.count/network/udp/write[write]": 42,
-		"samples.kernel.count/ipc/write":                1,
-		"samples.kernel.count/ipc/read":                 1,
-		"samples.kernel.count/disk/read":                1,
-		"samples.kernel.count/disk/write":               1,
-		"samples.kernel.count/network/other/read":       7,
-		"samples.kernel.count/network/other/write":      2,
-		"samples.kernel.count/synchronization":          1,
-		"samples.kernel.count/memory[mmap]":             1,
-	},
-		m.counts)
+	actualMetrics := m.AllMetrics()
+	assert.Len(t, actualMetrics, 1)
+	// err = golden.WriteMetrics(t, filepath.Join(testDataDir, "frame_metrics_kernel", "output-metrics.yaml"), actualMetrics[0])
+	// assert.NoError(t, err)
+	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir,
+		"frame_metrics_kernel", "output-metrics.yaml"))
+	assert.NoError(t, err)
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }

@@ -19,6 +19,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-xyz
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -483,6 +486,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -657,6 +663,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -815,6 +824,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -977,6 +989,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example

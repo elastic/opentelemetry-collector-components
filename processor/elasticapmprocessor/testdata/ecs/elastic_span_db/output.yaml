@@ -161,6 +161,9 @@ resourceSpans:
         - key: host.name
           value:
             stringValue: node-1
+        - key: host.hostname
+          value:
+            stringValue: node-1
         - key: host.id
           value:
             stringValue: host-123

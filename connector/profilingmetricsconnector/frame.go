@@ -22,8 +22,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	"go.uber.org/zap"
 
@@ -115,36 +115,60 @@ var (
 	// TODO: CNIs like Cilium may introduce complications and the following list
 	// may need to be updated.
 	classes = []class{
-		{name: "network/tcp/read",
-			rx: regexp.MustCompile(`^(?:tcp_recvmsg|tcp_read|tcp_rcv|tcp_v4_rcv|tcp_v6_rcv)`)},
-		{name: "network/tcp/write",
-			rx: regexp.MustCompile(`^(?:tcp_sendmsg|tcp_transmit|tcp_write|tcp_push|tcp_sendpage)`)},
-		{name: "network/udp/read",
-			rx: regexp.MustCompile(`^(?:udp_recvmsg|udp_read|udp_rcv|udp_v4_rcv|udp_v6_rcv)`)},
-		{name: "network/udp/write",
-			rx: regexp.MustCompile(`^(?:udp_sendmsg|udp_write|udp_push|udp_sendpage)`)},
-		{name: "ipc/read",
+		{
+			name: "network/tcp/read",
+			rx:   regexp.MustCompile(`^(?:tcp_recvmsg|tcp_read|tcp_rcv|tcp_v4_rcv|tcp_v6_rcv)`),
+		},
+		{
+			name: "network/tcp/write",
+			rx:   regexp.MustCompile(`^(?:tcp_sendmsg|tcp_transmit|tcp_write|tcp_push|tcp_sendpage)`),
+		},
+		{
+			name: "network/udp/read",
+			rx:   regexp.MustCompile(`^(?:udp_recvmsg|udp_read|udp_rcv|udp_v4_rcv|udp_v6_rcv)`),
+		},
+		{
+			name: "network/udp/write",
+			rx:   regexp.MustCompile(`^(?:udp_sendmsg|udp_write|udp_push|udp_sendpage)`),
+		},
+		{
+			name: "ipc/read",
 			rx: regexp.MustCompile(`^(?:pipe_read|pipe_read_iter|eventfd_read` +
-				`|unix_stream_read_generic|unix_stream_recvmsg)`)},
-		{name: "ipc/write",
+				`|unix_stream_read_generic|unix_stream_recvmsg)`),
+		},
+		{
+			name: "ipc/write",
 			rx: regexp.MustCompile(`^(?:pipe_write|pipe_write_iter|eventfd_write` +
-				`|unix_stream_write_generic|unix_stream_sendmsg)`)},
-		{name: "network/other/read",
-			rx: regexp.MustCompile(`^(?:sock_recvmsg|__sock_recvmsg|sock_read_iter)`)},
-		{name: "network/other/write",
-			rx: regexp.MustCompile(`^(?:sock_sendmsg|__sock_sendmsg|sock_write_iter)`)},
-		{name: "disk/read",
+				`|unix_stream_write_generic|unix_stream_sendmsg)`),
+		},
+		{
+			name: "network/other/read",
+			rx:   regexp.MustCompile(`^(?:sock_recvmsg|__sock_recvmsg|sock_read_iter)`),
+		},
+		{
+			name: "network/other/write",
+			rx:   regexp.MustCompile(`^(?:sock_sendmsg|__sock_sendmsg|sock_write_iter)`),
+		},
+		{
+			name: "disk/read",
 			rx: regexp.MustCompile(`^(?:ext4_file_read_iter|xfs_file_read_iter` +
-				`|btrfs_file_read_iter|filemap_read|generic_file_read_iter)`)},
-		{name: "disk/write",
+				`|btrfs_file_read_iter|filemap_read|generic_file_read_iter)`),
+		},
+		{
+			name: "disk/write",
 			rx: regexp.MustCompile(`^(?:ext4_file_write_iter|xfs_file_write_iter` +
 				`|btrfs_file_write_iter|filemap_write|generic_file_write_iter` +
-				`|writeback_sb_inodes)`)},
-		{name: "memory",
+				`|writeback_sb_inodes)`),
+		},
+		{
+			name: "memory",
 			rx: regexp.MustCompile(`^do_mmap|do_munmap|^do_anonymous_page|mmap_|madvise` +
-				`|^handle_mm_fault|^alloc_pages|^free_pages`)},
-		{name: "synchronization",
-			rx: regexp.MustCompile(`futex_|^schedule|__schedule|^wake_up_|^wake_q_`)},
+				`|^handle_mm_fault|^alloc_pages|^free_pages`),
+		},
+		{
+			name: "synchronization",
+			rx:   regexp.MustCompile(`futex_|^schedule|__schedule|^wake_up_|^wake_q_`),
+		},
 	}
 )
 
@@ -231,7 +255,7 @@ func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.Profiles
 		fileName = strTable.At(mapFileStrIdx)
 	case frameTypeKernel:
 		// Extract function name
-		for _, ln := range loc.Line().All() {
+		for _, ln := range loc.Lines().All() {
 			funcIdx := int(ln.FunctionIndex())
 			if funcIdx >= funcTbLen {
 				c.logger.Error("fetchFrameInfo",
@@ -267,7 +291,8 @@ func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.Profiles
 func classifyUser(fi frameInfo,
 	counts map[metric]int64,
 	nativeCounts map[attrInfo]int64,
-	multiplier int64) {
+	multiplier int64,
+) {
 	ft := fi.typ
 
 	// We have a distinct metricUser (even if there's no specific frame type for it)
@@ -366,7 +391,7 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 }
 
 func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.ProfilesDictionary,
-	profile pprofile.Profile, scopeMetrics pmetric.ScopeMetrics,
+	profile pprofile.Profile,
 ) {
 	stackTable := dictionary.StackTable()
 
@@ -375,7 +400,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 	kernelCounts := make(map[attrInfo]int64)
 
 	// Process all samples and increment metric counts
-	for _, sample := range profile.Sample().All() {
+	for _, sample := range profile.Samples().All() {
 		multiplier := max(int64(sample.TimestampsUnixNano().Len()), 1)
 		stack := stackTable.At(int(sample.StackIndex()))
 		if err := c.classifyFrames(dictionary, stack.LocationIndices(),
@@ -386,54 +411,45 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 
 	// Generate metrics
 	for metric, count := range counts {
-		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(metric.name)
-		m.SetDescription(metric.desc)
-		m.SetUnit("1")
-
-		sum := m.SetEmptySum()
-		sum.SetIsMonotonic(true)
-		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-
-		dp := sum.DataPoints().AppendEmpty()
-		dp.SetTimestamp(profile.Time())
-		dp.SetIntValue(count)
+		// TODO: share MetricBuilder with classifyFrames to
+		// automatically record the metrics
+		switch metric {
+		case metricGo:
+			c.mb.RecordSamplesGoCountDataPoint(profile.Time(), count)
+		case metricBeam:
+			c.mb.RecordSamplesBeamCountDataPoint(profile.Time(), count)
+		case metricDotnet:
+			c.mb.RecordSamplesDotnetCountDataPoint(profile.Time(), count)
+		case metricJVM:
+			c.mb.RecordSamplesJvmCountDataPoint(profile.Time(), count)
+		case metricPHP:
+			c.mb.RecordSamplesPhpCountDataPoint(profile.Time(), count)
+		case metricPerl:
+			c.mb.RecordSamplesPerlCountDataPoint(profile.Time(), count)
+		case metricPython:
+			c.mb.RecordSamplesCpythonCountDataPoint(profile.Time(), count)
+		case metricRust:
+			c.mb.RecordSamplesRustCountDataPoint(profile.Time(), count)
+		case metricRuby:
+			c.mb.RecordSamplesRubyCountDataPoint(profile.Time(), count)
+		case metricUser:
+			c.mb.RecordSamplesUserCountDataPoint(profile.Time(), count)
+		}
 	}
 
 	for aInfo, count := range nativeCounts {
-		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(metricNative.name)
-		m.SetDescription(metricNative.desc)
-		m.SetUnit("1")
-
-		sum := m.SetEmptySum()
-		sum.SetIsMonotonic(true)
-		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-
-		dp := sum.DataPoints().AppendEmpty()
-		dp.SetTimestamp(profile.Time())
-		dp.SetIntValue(count)
 		if aInfo.shlib != "" {
-			dp.Attributes().PutStr(nativeLibraryAttrName, aInfo.shlib)
+			c.mb.RecordSamplesNativeCountDataPoint(profile.Time(), count, metadata.WithShlibNameMetricAttribute(aInfo.shlib))
+		} else {
+			c.mb.RecordSamplesNativeCountDataPoint(profile.Time(), count)
 		}
 	}
 
 	for aInfo, count := range kernelCounts {
-		m := scopeMetrics.Metrics().AppendEmpty()
-		m.SetName(metricKernel.name)
-		m.SetDescription(metricKernel.desc)
-		m.SetUnit("1")
-
-		sum := m.SetEmptySum()
-		sum.SetIsMonotonic(true)
-		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
-
-		dp := sum.DataPoints().AppendEmpty()
-		dp.SetTimestamp(profile.Time())
-		dp.SetIntValue(count)
+		attrs := make([]metadata.MetricAttributeOption, 0)
 
 		if aInfo.syscall != "" {
-			dp.Attributes().PutStr(syscallAttrName, aInfo.syscall)
+			attrs = append(attrs, metadata.WithSyscallNameMetricAttribute(aInfo.syscall))
 		}
 
 		if aInfo.class != "" {
@@ -450,9 +466,17 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 			for i, v := range cSplit {
 				if v != "" {
 					// Add kernel classifications as separate attributes
-					dp.Attributes().PutStr(kernelClassAttrNames[i], v)
+					switch i {
+					case 0:
+						attrs = append(attrs, metadata.WithKernelAreaMetricAttribute(v))
+					case 1:
+						attrs = append(attrs, metadata.WithKernelProtoMetricAttribute(v))
+					case 2:
+						attrs = append(attrs, metadata.WithKernelIoMetricAttribute(v))
+					}
 				}
 			}
 		}
+		c.mb.RecordSamplesKernelCountDataPoint(profile.Time(), count, attrs...)
 	}
 }

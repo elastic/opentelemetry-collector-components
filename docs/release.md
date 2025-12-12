@@ -1,6 +1,26 @@
 # Releasing opentelemetry-collector-components
 
-## Optional steps
+## Single component
+
+Single components should only be released independently when there is a bug fix or new feature that needs to be shipped for that specific component, without waiting for a full repository release.
+
+To release a single component:
+
+1. Identify the component path — for example: `processor/ratelimitprocessor`
+2. Check the latest released tag for that component (e.g. `processor/ratelimitprocessor/v0.1.0`).
+3. Decide the next version:
+ - Use a patch version bump for bug fixes (v0.1.1 → v0.1.2).
+ - Use a minor version bump for new features (v0.1.1 → v0.2.0).
+4. Create a new tag following the Go module path naming convention, either:
+ - Via GitHub UI: Go to Releases → Draft a new release, select or create the new tag (e.g. `processor/ratelimit/v0.2.0`), and publish it.
+ - Via Git CLI
+
+## All repository components
+
+All components in the repository can be released together as part of a coordinated release.
+The process for releasing all components is described in the section below.
+
+### (Optional) Updating upstream OTel dependencies
 
 Normally the following steps are not required for releasing the components. The update of otel based on upstream
 is automated and should not be performed manually unless there are specific reasons for this.
@@ -19,13 +39,15 @@ is automated and should not be performed manually unless there are specific reas
    - Open the PR
      🛑 **Do not move forward until this PR is merged.** 🛑
 
-## Create the new tags
+### Create the new tags
 
-2. Bump up the `module-sets.edit-base.version` in `versions.yaml` i.e. from `v0.20.0` to `v0.21.0`
+2. Decide the next version:
+   - 🛑 **Cross-check the [repository tags](https://github.com/elastic/opentelemetry-collector-components/tags) against the modules defined in [versions.yaml](../versions.yaml). Identify the highest version number currently in use.** 🛑
+   - The next version should be a **minor update** of the highest existing tag (i.e. processor/ratelimitprocessor/v0.20.1 → v0.21.0).
 
-    🛑 **Cross check latest version used by [EDOT](https://github.com/elastic/elastic-agent/blob/main/internal/pkg/otel/README.md?plain=1#L30) and https://github.com/elastic/opentelemetry-collector-components/tags** 🛑
+3. Bump up the `module-sets.edit-base.version` in `versions.yaml` i.e. from `v0.20.0` to `v0.21.0`
 
-3. Tag the module groups with the new release version by running:
+4. Tag the module groups with the new release version by running:
 
    ⚠️ If you set your remote using `https`, you need to
       include `REMOTE=https://github.com/elastic/opentelemetry-collector-components.git` in each command. ⚠️
@@ -48,5 +70,5 @@ is automated and should not be performed manually unless there are specific reas
    make push-tags
    ```
 
-4. Last step is to commit the change of `module-sets.edit-base.version` in `versions.yaml` and push it so as to store
+5. Last step is to commit the change of `module-sets.edit-base.version` in `versions.yaml` and push it so as to store
    the new latest version.

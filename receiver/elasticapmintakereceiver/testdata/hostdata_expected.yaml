@@ -46,6 +46,9 @@ resourceSpans:
         - key: service.runtime.version
           value:
             stringValue: 8.0.5
+        - key: host.hostname
+          value:
+            stringValue: gregs-mbp-2
     scopeSpans:
       - scope: {}
         spans:

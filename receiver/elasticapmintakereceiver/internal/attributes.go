@@ -94,6 +94,7 @@ const (
 	ServiceOriginVersion    = "service.origin.version"
 
 	HostOSPlatform = "host.os.platform"
+	HostHostname   = "host.hostname"
 
 	SourceNatIP = "source.nat.ip"
 
@@ -112,7 +113,8 @@ const (
 
 	ProcessThreadName = "process.thread.name"
 
-	SessionID = "session.id"
+	SessionID       = "session.id"
+	SessionSequence = "session.sequence"
 
 	TransactionCustom                                      = "transaction.custom"
 	TransactionUserExperienceCumulativeLayoutShift         = "transaction.experience.cls"

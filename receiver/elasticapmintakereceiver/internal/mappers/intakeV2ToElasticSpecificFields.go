@@ -23,6 +23,7 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 import (
 	"fmt"
 	"net/netip"
+	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -75,7 +76,9 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 			attributesMap.PutStr(attr.SpanCompositeCompressionStrategy, compressionStrategy)
 		}
 		attributesMap.PutInt(attr.SpanCompositeCount, int64(event.Span.Composite.Count))
-		attributesMap.PutDouble(attr.SpanCompositeSumUs, event.Span.Composite.Sum)
+
+		sumDuration := time.Duration(event.Span.Composite.Sum * float64(time.Millisecond))
+		attributesMap.PutInt(attr.SpanCompositeSumUs, sumDuration.Microseconds())
 	}
 
 	if event.Span.DestinationService != nil {
@@ -355,6 +358,16 @@ func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesM
 
 	setTransactionMarks(event.Transaction.Marks, attributesMap)
 	setMessage("transaction", event.Transaction.Message, attributesMap)
+
+	// add session attributes which hold optional transaction session information for RUM
+	if event.Session != nil {
+		if event.Session.Id != "" {
+			attributesMap.PutStr(attr.SessionID, event.Session.Id)
+		}
+		if event.Session.Sequence != 0 {
+			attributesMap.PutInt(attr.SessionSequence, int64(event.Session.Sequence))
+		}
+	}
 }
 
 func setProfilerStackTraceIDs(ids []string, attributesMap pcommon.Map) {
@@ -515,6 +528,9 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 				attributesMap.PutStr(attr.HostOSPlatform, event.Host.Os.Platform)
 			}
 		}
+		if event.Host.Hostname != "" {
+			attributesMap.PutStr(attr.HostHostname, event.Host.Hostname)
+		}
 	}
 
 	if event.Source != nil {
@@ -626,12 +642,6 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 			if event.Process.Thread.Name != "" {
 				attributesMap.PutStr(attr.ProcessThreadName, event.Process.Thread.Name)
 			}
-		}
-	}
-
-	if event.Session != nil {
-		if event.Session.Id != "" {
-			attributesMap.PutStr(attr.SessionID, event.Session.Id)
 		}
 	}
 
