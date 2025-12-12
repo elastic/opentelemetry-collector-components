@@ -43,9 +43,9 @@ The Dynamic Routing Connector fills this gap by providing **adaptive, cardinalit
 
 The connector uses the following approach:
 
-1. **Metadata Extraction**: For each incoming telemetry signal, the connector extracts metadata from the client context using the configured `primary_metadata_keys` and `metadata_keys`. The `primary_metadata_keys` are used to create a composite key that partitions cardinality estimates (e.g., per tenant, per tenant+service, per region+environment). Multiple keys can be specified to create composite partitions. The `metadata_keys` define what unique combinations are being counted for each composite primary key value.
+1. **Metadata Extraction**: For each incoming telemetry signal, the connector extracts metadata from the client context using the configured `routing_keys.partition_by` and `routing_keys.measure_by`. The `partition_by` keys are used to create a composite key that partitions cardinality estimates (e.g., per tenant, per tenant+type, per region+environment). Multiple keys can be specified to create composite partitions. The `measure_by` keys define what unique combinations are being counted for each composite partition key value.
 
-2. **Cardinality Estimation**: The connector uses the HyperLogLog algorithm to estimate the number of unique combinations of the configured `metadata_keys` for each composite value of the `primary_metadata_keys`. Composite keys are constructed by concatenating values from all specified primary metadata keys, separated by colons (`:`) for multiple values of the same key and semicolons (`;`) for different keys.
+2. **Cardinality Estimation**: The connector uses the HyperLogLog algorithm to estimate the number of unique combinations of the configured `measure_by` keys for each composite value of the `partition_by` keys. Composite keys are constructed by concatenating values from all specified partition keys, separated by colons (`:`) for multiple values of the same key and semicolons (`;`) for different keys.
 
 3. **Threshold-Based Routing**: Based on the estimated cardinality for each primary key value, the connector routes data to different pipelines defined by threshold boundaries. For example:
    - Low cardinality (0-10 unique combinations) → Pipeline A
@@ -63,40 +63,42 @@ The connector uses the following approach:
 ```yaml
 connectors:
   dynamicrouting:
-    primary_metadata_keys: ["x-tenant-id"]
-    metadata_keys:
-      - "x-forwarded-for"
-      - "user-agent"
-    dynamic_pipelines:
+    routing_keys:
+      partition_by: ["x-tenant-id"]
+      measure_by:
+        - "x-forwarded-for"
+        - "user-agent"
+    routing_pipelines:
       - pipelines:  ["traces/low_cardinality"]
-        max_count: 10
+        max_cardinality: 10
       - pipelines: ["traces/medium_cardinality"]
-        max_count: 100
+        max_cardinality: 100
       - pipelines: ["traces/high_cardinality"]
-        max_count: 500
+        max_cardinality: 500
       - pipelines: ["traces/very_high_cardinality"]
-        max_count: .inf
+        max_cardinality: .inf
     default_pipelines: ["traces/default"]
     evaluation_interval: 30s
 ```
 
-### Composite Primary Keys
+### Composite Partition Keys
 
-You can specify multiple keys in `primary_metadata_keys` to create composite partitions. This is useful when you want to track cardinality per combination of multiple dimensions (e.g., per tenant AND service, or per region AND environment).
+You can specify multiple keys in `routing_keys.partition_by` to create composite partitions. This is useful when you want to track cardinality per combination of multiple dimensions (e.g., per tenant AND tenant type, or per region AND environment).
 
 ```yaml
 connectors:
   dynamicrouting:
-    # Composite key: partitions by both tenant and tenant type
-    primary_metadata_keys: ["x-tenant-id", "x-tenant-type"]
-    metadata_keys:
-      - "x-forwarded-for"
-      - "user-agent"
-    dynamic_pipelines:
+    routing_keys:
+      # Composite key: partitions by both tenant and tenant type
+      partition_by: ["x-tenant-id", "x-tenant-type"]
+      measure_by:
+        - "x-forwarded-for"
+        - "user-agent"
+    routing_pipelines:
       - pipelines: ["traces/low_cardinality"]
-        max_count: 10
+        max_cardinality: 10
       - pipelines: ["traces/high_cardinality"]
-        max_count: .inf
+        max_cardinality: .inf
     default_pipelines: ["traces/default"]
     evaluation_interval: 30s
 ```
@@ -112,34 +114,36 @@ In this example, the connector will:
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
-| `primary_metadata_keys` | []string | Array of primary metadata keys used to create a composite key for partitioning cardinality estimates. Multiple keys can be specified to create composite partitions (e.g., `["x-tenant-id"]` for per-tenant, or `["x-tenant-id", "x-tenant-type"]` for per-tenant+type). Composite keys are constructed by concatenating values from all specified keys. Each unique composite key value will have its own cardinality estimate. At least one key must be specified. | Yes |
-| `metadata_keys` | []string | Metadata keys used to define unique combinations for cardinality estimation. The connector counts how many unique combinations of these keys exist for each composite value of `primary_metadata_keys`. The choice of keys determines what type of cardinality is measured (e.g., unique connections, unique pods, unique deployments). | No |
-| `dynamic_pipelines` | []Pipeline | Array of pipeline configurations, each containing `pipelines` (array of pipeline IDs) and `max_count` (float64). Pipelines must be defined in ascending order of `max_count`, and the last pipeline must have `max_count` set to `.inf` (positive infinity). The connector routes to the first pipeline where the estimated cardinality is less than or equal to `max_count`. | Yes |
-| `default_pipelines` | []pipeline.ID | Pipelines to use when the primary metadata key is missing from the client context. | Yes |
+| `routing_keys` | RoutingKeys | Configuration object for routing keys. Contains `partition_by` and `measure_by` fields. | Yes |
+| `routing_keys.partition_by` | []string | Array of metadata keys used to create a composite key for partitioning cardinality estimates. Multiple keys can be specified to create composite partitions (e.g., `["x-tenant-id"]` for per-tenant, or `["x-tenant-id", "x-tenant-type"]` for per-tenant+type). Composite keys are constructed by concatenating values from all specified keys. Each unique composite key value will have its own cardinality estimate. At least one key must be specified. | Yes |
+| `routing_keys.measure_by` | []string | Metadata keys used to define unique combinations for cardinality estimation. The connector counts how many unique combinations of these keys exist for each composite value of `partition_by`. The choice of keys determines what type of cardinality is measured (e.g., unique connections, unique pods, unique deployments). | No |
+| `routing_pipelines` | []RoutingPipeline | Array of pipeline configurations, each containing `pipelines` (array of pipeline IDs) and `max_cardinality` (float64). Pipelines must be defined in ascending order of `max_cardinality`, and the last pipeline must have `max_cardinality` set to `.inf` (positive infinity). The connector routes to the first pipeline where the estimated cardinality is less than or equal to `max_cardinality`. | Yes |
+| `default_pipelines` | []pipeline.ID | Pipelines to use when all partition keys are missing from the client context. | Yes |
 | `evaluation_interval` | duration | How often to re-evaluate routing decisions based on new cardinality estimates. Default: 30s | No |
 
 ### Configuration Rules
 
-- `dynamic_pipelines` must contain at least one pipeline configuration
-- `dynamic_pipelines` must be defined in ascending order of `max_count` values
-- The last pipeline in `dynamic_pipelines` must have `max_count` set to `.inf` (positive infinity)
+- `routing_keys.partition_by` must contain at least one key
+- `routing_pipelines` must contain at least one pipeline configuration
+- `routing_pipelines` must be defined in ascending order of `max_cardinality` values
+- The last pipeline in `routing_pipelines` must have `max_cardinality` set to `.inf` (positive infinity)
 - Each pipeline configuration must specify at least one pipeline ID in the `pipelines` array
 
 ### Routing Logic
 
-The connector routes data based on the estimated cardinality for the composite primary key:
+The connector routes data based on the estimated cardinality for the composite partition key:
 
-- If all `primary_metadata_keys` are missing from the client context → routes to `default_pipelines`
-- Otherwise, constructs a composite key from the `primary_metadata_keys` and routes to the first pipeline in `dynamic_pipelines` where `estimated_cardinality ≤ max_count`
-  - The connector iterates through `dynamic_pipelines` in order and selects the first pipeline where the condition is met
-  - Since the last pipeline must have `max_count: .inf`, all cardinality values will match at least one pipeline
-  - Composite keys are created by concatenating values from all `primary_metadata_keys` (values separated by `:`, keys separated by `;`)
+- If all `routing_keys.partition_by` keys are missing from the client context → routes to `default_pipelines`
+- Otherwise, constructs a composite key from the `partition_by` keys and routes to the first pipeline in `routing_pipelines` where `estimated_cardinality ≤ max_cardinality`
+  - The connector iterates through `routing_pipelines` in order and selects the first pipeline where the condition is met
+  - Since the last pipeline must have `max_cardinality: .inf`, all cardinality values will match at least one pipeline
+  - Composite keys are created by concatenating values from all `partition_by` keys (values separated by `:`, keys separated by `;`)
 
 ## Use Cases
 
 ### Dynamic Batching Based on Cardinality
 
-One of the most powerful use cases for the Dynamic Routing Connector is implementing dynamic batching strategies based on cardinality. By configuring `metadata_keys` to represent unique connections (e.g., source IP and user agent), you can route tenants with different connection volumes to different batching pipelines.
+One of the most powerful use cases for the Dynamic Routing Connector is implementing dynamic batching strategies based on cardinality. By configuring `routing_keys.measure_by` to represent unique connections (e.g., source IP and user agent), you can route tenants with different connection volumes to different batching pipelines.
 
 **Scenario**: You're operating a multi-tenant observability platform where different tenants have vastly different cardinality patterns. Some tenants have a few unique combinations (e.g., few connections, few pods, few services), while others have many.
 
@@ -158,23 +162,24 @@ receivers:
 
 connectors:
   dynamicrouting:
-    primary_metadata_keys: ["x-tenant-id"]
-    metadata_keys:
-      - "x-forwarded-for"
-      - "user-agent"
-    dynamic_pipelines:
+    routing_keys:
+      partition_by: ["x-tenant-id"]
+      measure_by:
+        - "x-forwarded-for"
+        - "user-agent"
+    routing_pipelines:
       # ≤10 unique connections: Small batches, frequent flush
       - pipelines: ["traces/small_batch"]
-        max_count: 10
+        max_cardinality: 10
       # ≤50 unique connections: Medium batches
       - pipelines: ["traces/medium_batch"]
-        max_count: 50
+        max_cardinality: 50
       # ≤200 unique connections: Large batches
       - pipelines: ["traces/large_batch"]
-        max_count: 200
+        max_cardinality: 200
       # >200 unique connections: Very large batches, aggressive batching
       - pipelines: ["traces/xlarge_batch"]
-        max_count: .inf
+        max_cardinality: .inf
     default_pipelines: ["traces/default"]
     evaluation_interval: 30s
 
@@ -234,7 +239,7 @@ service:
 
 **How It Works**:
 
-1. **Cardinality Tracking**: For each tenant (identified by `x-tenant-id`), the connector tracks unique combinations of the configured `metadata_keys` (`x-forwarded-for` and `user-agent` in this example). This measures the cardinality of unique connection combinations per tenant.
+1. **Cardinality Tracking**: For each tenant (identified by `x-tenant-id`), the connector tracks unique combinations of the configured `routing_keys.measure_by` keys (`x-forwarded-for` and `user-agent` in this example). This measures the cardinality of unique connection combinations per tenant.
 
 2. **Cardinality Estimation**: Using HyperLogLog, the connector estimates how many unique combinations each tenant has without storing all identifiers. In this case, it estimates unique connection combinations.
 
@@ -275,22 +280,22 @@ The `evaluation_interval` determines how frequently routing decisions are update
 
 This connector maintains state (HyperLogLog sketches) in memory. Important considerations:
 
-- **Memory Usage**: Memory usage scales with the number of unique primary key values, not the total number of unique combinations being tracked
+- **Memory Usage**: Memory usage scales with the number of unique partition key values, not the total number of unique combinations being tracked
 - **State Loss**: State is lost on collector restart. Routing decisions will rebuild over the evaluation interval
-- **High Cardinality Primary Keys**: If you have many unique composite values for `primary_metadata_keys`, memory usage will increase proportionally. Using multiple keys in `primary_metadata_keys` will create more partitions (one per unique combination), which increases memory usage.
+- **High Cardinality Partition Keys**: If you have many unique composite values for `routing_keys.partition_by`, memory usage will increase proportionally. Using multiple keys in `partition_by` will create more partitions (one per unique combination), which increases memory usage.
 
 ### Metadata Requirements
 
 - The connector requires client metadata to be set in the context. Ensure your receivers/proxies propagate metadata appropriately
-- Missing all `primary_metadata_keys` will route to `default_pipelines`. If some (but not all) keys are missing, the composite key will be constructed from the available keys.
-- Missing `metadata_keys` will still work, but the cardinality estimation will be based on the primary key alone (which may not provide meaningful cardinality measurements)
-- The choice of `metadata_keys` determines what type of cardinality is being measured—choose keys that represent the unique combinations you want to track
+- Missing all `routing_keys.partition_by` keys will route to `default_pipelines`. If some (but not all) keys are missing, the composite key will be constructed from the available keys.
+- Missing `routing_keys.measure_by` keys will still work, but the cardinality estimation will be based on the partition key alone (which may not provide meaningful cardinality measurements)
+- The choice of `measure_by` keys determines what type of cardinality is being measured—choose keys that represent the unique combinations you want to track
 
 ## Troubleshooting
 
 ### All Data Routes to Default Pipeline
 
-- **Check**: Verify that at least one of the `primary_metadata_keys` is present in client metadata
+- **Check**: Verify that at least one of the `routing_keys.partition_by` keys is present in client metadata
 - **Solution**: Ensure your receiver or proxy is setting the metadata in the context
 
 ### Routing Not Updating
@@ -300,8 +305,8 @@ This connector maintains state (HyperLogLog sketches) in memory. Important consi
 
 ### High Memory Usage
 
-- **Check**: Number of unique composite values for `primary_metadata_keys`
-- **Solution**: Consider using a more selective primary key or increasing evaluation interval to reduce state accumulation
+- **Check**: Number of unique composite values for `routing_keys.partition_by`
+- **Solution**: Consider using a more selective partition key or increasing evaluation interval to reduce state accumulation
 
 ## Contributing
 
