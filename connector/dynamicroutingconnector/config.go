@@ -28,35 +28,39 @@ import (
 )
 
 type Config struct {
-	PrimaryMetadataKeys []string          `mapstructure:"primary_metadata_keys"`
-	DefaultPipelines    []pipeline.ID     `mapstructure:"default_pipelines"`
-	EvaluationInterval  time.Duration     `mapstructure:"evaluation_interval"`
-	DynamicPipelines    []DynamicPipeline `mapstructure:"dynamic_pipelines"`
-	MetadataKeys        []string          `mapstructure:"metadata_keys"`
+	RoutingKeys        RoutingKeys       `mapstructure:"routing_keys"`
+	DefaultPipelines   []pipeline.ID     `mapstructure:"default_pipelines"`
+	EvaluationInterval time.Duration     `mapstructure:"evaluation_interval"`
+	RoutingPipelines   []RoutingPipeline `mapstructure:"routing_pipelines"`
 }
 
-type DynamicPipeline struct {
-	Pipelines []pipeline.ID `mapstructure:"pipelines"`
-	MaxCount  float64       `mapstructure:"max_count"`
+type RoutingPipeline struct {
+	Pipelines      []pipeline.ID `mapstructure:"pipelines"`
+	MaxCardinality float64       `mapstructure:"max_cardinality"`
+}
+
+type RoutingKeys struct {
+	PartitionBy []string `mapstructure:"partition_by"`
+	MeasureBy   []string `mapstructure:"measure_by"`
 }
 
 func (c *Config) Validate() error {
-	if len(c.PrimaryMetadataKeys) == 0 {
-		return errors.New("atleast one primary_metadata_key must be defined")
+	if len(c.RoutingKeys.PartitionBy) == 0 {
+		return errors.New("atleast one key for routing_keys.partition_by must be defined")
 	}
 	if len(c.DefaultPipelines) == 0 {
 		return errors.New("default pipeline must be specified")
 	}
-	if len(c.DynamicPipelines) == 0 {
+	if len(c.RoutingPipelines) == 0 {
 		return errors.New("atleast one pipeline needs to be defined")
 	}
-	if !math.IsInf(c.DynamicPipelines[len(c.DynamicPipelines)-1].MaxCount, 1) {
+	if !math.IsInf(c.RoutingPipelines[len(c.RoutingPipelines)-1].MaxCardinality, 1) {
 		return errors.New("last dynamic pipeline must have max count set to positive infinity (.inf)")
 	}
-	if !slices.IsSortedFunc(c.DynamicPipelines, func(a, b DynamicPipeline) int {
-		return cmp.Compare(a.MaxCount, b.MaxCount)
+	if !slices.IsSortedFunc(c.RoutingPipelines, func(a, b RoutingPipeline) int {
+		return cmp.Compare(a.MaxCardinality, b.MaxCardinality)
 	}) {
-		return errors.New("pipelines must be defined in ascending order of max_count")
+		return errors.New("pipelines must be defined in ascending order of max_cardinality")
 	}
 	return nil
 }

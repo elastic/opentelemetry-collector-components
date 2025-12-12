@@ -41,11 +41,11 @@ var _ component.Component = (*router[any])(nil)
 type consumerProvider[C any] func(...pipeline.ID) (C, error)
 
 type router[C any] struct {
-	evaluationInterval  time.Duration
-	primaryMetadataKeys []string
-	sortedMetadataKeys  []string
-	defaultConsumer     C
-	consumers           []ct[C]
+	evaluationInterval time.Duration
+	partitionKeys      []string
+	sortedMetadataKeys []string
+	defaultConsumer    C
+	consumers          []ct[C]
 
 	logger *zap.Logger
 
@@ -68,15 +68,15 @@ func newRouter[C any](
 	settings component.TelemetrySettings,
 	provider consumerProvider[C],
 ) (*router[C], error) {
-	sortedMetadataKeys := slices.Clone(cfg.MetadataKeys)
+	sortedMetadataKeys := slices.Clone(cfg.RoutingKeys.MeasureBy)
 	slices.Sort(sortedMetadataKeys)
-	consumers := make([]ct[C], 0, len(cfg.DynamicPipelines))
-	for i, p := range cfg.DynamicPipelines {
+	consumers := make([]ct[C], 0, len(cfg.RoutingPipelines))
+	for i, p := range cfg.RoutingPipelines {
 		c, err := provider(p.Pipelines...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create consumer from provided pipelines at idx %d: %w", i, err)
 		}
-		consumers = append(consumers, ct[C]{consumer: c, maxCount: p.MaxCount})
+		consumers = append(consumers, ct[C]{consumer: c, maxCount: p.MaxCardinality})
 	}
 
 	var (
@@ -90,15 +90,15 @@ func newRouter[C any](
 		}
 	}
 	return &router[C]{
-		evaluationInterval:  cfg.EvaluationInterval,
-		primaryMetadataKeys: cfg.PrimaryMetadataKeys,
-		sortedMetadataKeys:  sortedMetadataKeys,
-		defaultConsumer:     defaultConsumer,
-		consumers:           consumers,
-		logger:              settings.Logger,
-		stop:                make(chan struct{}),
-		decision:            make(map[string]ct[C]),
-		m:                   make(map[string]*hyperloglog.Sketch),
+		evaluationInterval: cfg.EvaluationInterval,
+		partitionKeys:      cfg.RoutingKeys.PartitionBy,
+		sortedMetadataKeys: sortedMetadataKeys,
+		defaultConsumer:    defaultConsumer,
+		consumers:          consumers,
+		logger:             settings.Logger,
+		stop:               make(chan struct{}),
+		decision:           make(map[string]ct[C]),
+		m:                  make(map[string]*hyperloglog.Sketch),
 	}, nil
 }
 
@@ -176,22 +176,26 @@ func (r *router[C]) Process(ctx context.Context) C {
 func (r *router[C]) estimateCardinality(ctx context.Context) string {
 	clientMeta := client.FromContext(ctx).Metadata
 	var pkb strings.Builder
-	for _, k := range r.primaryMetadataKeys {
+	for _, k := range r.partitionKeys {
 		vs := clientMeta.Get(k)
 		if len(vs) == 0 {
 			continue
 		}
-		for _, mk := range vs {
-			if _, err := pkb.WriteString(mk); err != nil {
+		for _, v := range vs {
+			if _, err := pkb.WriteString(v); err != nil {
 				r.logger.Error(
 					"unexpected failure on concatenating primary metadata keys",
 					zap.Error(err),
+					zap.String("partition_key", k),
+					zap.String("value", v),
 				)
 			}
 			if err := pkb.WriteByte(':'); err != nil {
 				r.logger.Error(
 					"unexpected failure on concatenating primary metadata keys",
 					zap.Error(err),
+					zap.String("partition_key", k),
+					zap.String("value", v),
 				)
 			}
 		}
@@ -199,6 +203,7 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 			r.logger.Error(
 				"unexpected failure on concatenating primary metadata keys",
 				zap.Error(err),
+				zap.String("partition_key", k),
 			)
 		}
 	}
@@ -215,6 +220,7 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 			r.logger.Error(
 				"unexpected failure on creating hash key from client metadata",
 				zap.Error(err),
+				zap.String("metadata_key", k),
 			)
 		}
 		for _, v := range vs {
@@ -224,12 +230,16 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 				r.logger.Error(
 					"unexpected failure on creating hash key from client metadata",
 					zap.Error(err),
+					zap.String("metadata_key", k),
+					zap.String("value", v),
 				)
 			}
 			if _, err := hash.WriteString(v); err != nil {
 				r.logger.Error(
 					"unexpected failure on creating hash key from client metadata",
 					zap.Error(err),
+					zap.String("metadata_key", k),
+					zap.String("value", v),
 				)
 			}
 		}

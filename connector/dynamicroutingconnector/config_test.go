@@ -40,7 +40,7 @@ func TestConfig(t *testing.T) {
 	}{
 		{
 			name:   "empty",
-			errMsg: "primary_metadata_key must be defined",
+			errMsg: "atleast one key for routing_keys.partition_by must be defined",
 		},
 		{
 			name:   "no-dynamic-pipelines",
@@ -52,34 +52,37 @@ func TestConfig(t *testing.T) {
 		},
 		{
 			name:   "invalid-dynamic-pipelines/out-of-order",
-			errMsg: "pipelines must be defined in ascending order of max_count",
+			errMsg: "pipelines must be defined in ascending order of max_cardinality",
 		},
 		{
 			name: "invalid-dynamic-pipelines/valid",
 			expected: &Config{
-				PrimaryMetadataKeys: []string{"x-tenant"},
+				RoutingKeys: RoutingKeys{
+					PartitionBy: []string{"x-tenant"},
+					MeasureBy:   []string{"x-forwarded-for"},
+				},
 				DefaultPipelines: []pipeline.ID{
 					pipeline.NewIDWithName(pipeline.SignalLogs, "default"),
 				},
 				EvaluationInterval: time.Minute,
-				DynamicPipelines: []DynamicPipeline{
+				RoutingPipelines: []RoutingPipeline{
 					{
 						Pipelines: []pipeline.ID{
 							pipeline.NewIDWithName(pipeline.SignalLogs, "test1"),
 						},
-						MaxCount: 10,
+						MaxCardinality: 10,
 					},
 					{
 						Pipelines: []pipeline.ID{
 							pipeline.NewIDWithName(pipeline.SignalLogs, "test2"),
 						},
-						MaxCount: 100,
+						MaxCardinality: 100,
 					},
 					{
 						Pipelines: []pipeline.ID{
 							pipeline.NewIDWithName(pipeline.SignalLogs, "final"),
 						},
-						MaxCount: math.Inf(1),
+						MaxCardinality: math.Inf(1),
 					},
 				},
 			},
