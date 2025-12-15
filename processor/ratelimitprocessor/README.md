@@ -22,6 +22,7 @@ a in-memory rate limiter, or makes use of a [gubernator](https://github.com/gube
 | `classes`           | Named rate limit class definitions for class-based dynamic rate limiting. Only applicable when the rate limiter type is `gubernator`.                                                                             | No       |            |
 | `default_class`     | Default class name to use when resolver returns unknown/empty class. Must exist in classes when set. Only applicable when the rate limiter type is `gubernator`.                                                  | No       |            |
 | `class_resolver`    | Extension ID used to resolve a class name for a given unique key. Only applicable when the rate limiter type is `gubernator`.                                                                                     | No       |            |
+| `fail_open`         | When `true`, allows traffic to pass through when Gubernator is unavailable (e.g., connection errors during pod scaling). When `false` (default), errors cause requests to be rejected. Only applicable when the rate limiter type is `gubernator`. | No       | `false`    |
 
 ### Overrides
 
