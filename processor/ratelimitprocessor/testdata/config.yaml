@@ -149,3 +149,15 @@ ratelimit/classes_set_but_no_class_resolver:
     trial:
       rate: 200
       burst: 400
+
+ratelimit/invalid_gubernator_behavior:
+  rate: 1
+  burst: 1
+  type: gubernator
+  gubernator_behavior: 123
+
+ratelimit/gubernator_global:
+  rate: 100
+  burst: 200
+  type: gubernator
+  gubernator_behavior: 2

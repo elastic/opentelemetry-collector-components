@@ -79,9 +79,8 @@ func (d defaultWindowConfigurator) Multiplier(context.Context, time.Duration, st
 }
 
 type gubernatorRateLimiter struct {
-	cfg      *Config
-	logger   *zap.Logger
-	behavior gubernator.Behavior
+	cfg    *Config
+	logger *zap.Logger
 
 	daemonCfg  gubernator.DaemonConfig
 	daemon     *gubernator.Daemon
@@ -127,7 +126,6 @@ func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder 
 	return &gubernatorRateLimiter{
 		cfg:                cfg,
 		logger:             logger,
-		behavior:           gubernator.Behavior_BATCHING,
 		daemonCfg:          daemonCfg,
 		telemetryBuilder:   telemetryBuilder,
 		tracerProvider:     tracerProvider,
@@ -300,7 +298,7 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 					Name:      cfg.Strategy.String(),
 					UniqueKey: uniqueKey,
 					Hits:      int64(hits),
-					Behavior:  r.behavior,
+					Behavior:  r.cfg.GubernatorBehavior,
 					Algorithm: gubernator.Algorithm_LEAKY_BUCKET,
 					Limit:     int64(rate), // rate is per ThrottleInterval, not per second.
 					Burst:     int64(burst),
@@ -480,7 +478,7 @@ func (r *gubernatorRateLimiter) newDynamicRequest(
 		Name:      "dynamic",
 		UniqueKey: uniqueKey,
 		Hits:      hits,
-		Behavior:  r.behavior,
+		Behavior:  r.cfg.GubernatorBehavior,
 		// Use the TOKEN_BUCKET algorithm for dynamic rate limiting, since we
 		// want to keep all the recorded tokens in the bucket. Using leaky
 		// bucket is undesirable since it would leak tokens over time.

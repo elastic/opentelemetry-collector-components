@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gubernator-io/gubernator/v2"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
@@ -244,6 +245,22 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "gubernator_global",
+			expected: &Config{
+				Type: GubernatorRateLimiter,
+				RateLimitSettings: RateLimitSettings{
+					Rate:             100,
+					Burst:            200,
+					Strategy:         StrategyRateLimitRequests,
+					ThrottleBehavior: ThrottleBehaviorError,
+					ThrottleInterval: 1 * time.Second,
+					RetryDelay:       1 * time.Second,
+				},
+				DynamicRateLimiting: defaultDynamicRateLimiting,
+				GubernatorBehavior:  gubernator.Behavior_GLOBAL,
+			},
+		},
+		{
 			name:        "invalid_rate",
 			expectedErr: "rate must be greater than zero",
 		},
@@ -262,6 +279,10 @@ func TestLoadConfig(t *testing.T) {
 		{
 			name:        "invalid_type",
 			expectedErr: `invalid rate limiter type "invalid", expected one of ["local" "gubernator"]`,
+		},
+		{
+			name:        "invalid_gubernator_behavior",
+			expectedErr: `invalid gubernator behavior 123, expected one of [0 1 2]`,
 		},
 		{
 			name:        "invalid_default_class",
