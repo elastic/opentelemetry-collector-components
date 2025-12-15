@@ -1,7 +1,7 @@
-resourceSpans:
+resourceLogs:
   - resource:
       attributes:
-        - key: unsupported.key
+        - key: labels.unsupported_key
           value:
             stringValue: foo
         - key: agent.name
@@ -15,7 +15,7 @@ resourceSpans:
             stringValue: foo
         - key: numeric_labels.foo
           value:
-            doubleValue: 42.0
+            doubleValue: 42
         - key: labels.elastic_profiler_stack_trace_ids
           value:
             arrayValue:
@@ -23,7 +23,6 @@ resourceSpans:
                 - stringValue: foo
                 - stringValue: bar
                 - stringValue: foo
-        # service.* attributes
         - key: service.name
           value:
             stringValue: test-service
@@ -36,7 +35,6 @@ resourceSpans:
         - key: service.namespace
           value:
             stringValue: production
-        # service.* elastic attributes
         - key: service.language.name
           value:
             stringValue: go
@@ -45,7 +43,7 @@ resourceSpans:
             stringValue: 1.21.0
         - key: service.framework.name
           value:
-              stringValue: Node
+            stringValue: Node
         - key: service.framework.version
           value:
             stringValue: 1.9.0
@@ -70,14 +68,12 @@ resourceSpans:
         - key: service.target.type
           value:
             stringValue: container
-        # deployment.* attributes
         - key: deployment.environment
           value:
             stringValue: prod
         - key: deployment.environment.name
           value:
             stringValue: production
-        # telemetry.sdk.* attributes
         - key: telemetry.sdk.name
           value:
             stringValue: opentelemetry
@@ -87,7 +83,6 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: go
-        # cloud.* attributes
         - key: cloud.provider
           value:
             stringValue: aws
@@ -103,7 +98,6 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: aws_ec2
-        # cloud.* elastic attributes
         - key: cloud.origin.account.id
           value:
             stringValue: "987654321098"
@@ -134,7 +128,6 @@ resourceSpans:
         - key: cloud.project.name
           value:
             stringValue: my-project
-        # container.* attributes
         - key: container.name
           value:
             stringValue: my-container
@@ -150,11 +143,9 @@ resourceSpans:
         - key: container.runtime
           value:
             stringValue: docker
-        # container.* elastic attributes
         - key: container.image.tag
           value:
             stringValue: latest
-        # k8s.* attributes
         - key: k8s.namespace.name
           value:
             stringValue: default
@@ -167,13 +158,9 @@ resourceSpans:
         - key: k8s.pod.uid
           value:
             stringValue: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-        # host.* attributes
         - key: host.name
           value:
-            stringValue: host-1
-        - key: host.hostname
-          value:
-            stringValue: hostname-1
+            stringValue: node-1
         - key: host.id
           value:
             stringValue: host-123
@@ -183,17 +170,15 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: amd64
-        # host.* elastic attributes
         - key: host.os.platform
           value:
             stringValue: linux
-        # process.* attributes
         - key: process.pid
           value:
-            intValue: 12345
+            intValue: "12345"
         - key: process.parent_pid
           value:
-            intValue: 1
+            intValue: "1"
         - key: process.executable.name
           value:
             stringValue: myapp
@@ -206,14 +191,12 @@ resourceSpans:
         - key: process.owner
           value:
             stringValue: appuser
-        # process.* elastic attributes
         - key: process.runtime.name
           value:
             stringValue: java
         - key: process.runtime.version
           value:
             stringValue: "17"
-        # os.* attributes
         - key: os.type
           value:
             stringValue: linux
@@ -226,7 +209,6 @@ resourceSpans:
         - key: os.version
           value:
             stringValue: "22.04"
-        # device.* attributes
         - key: device.id
           value:
             stringValue: device-123
@@ -236,11 +218,9 @@ resourceSpans:
         - key: device.model.name
           value:
             stringValue: MacBook Pro
-        # device.* elastic attributes
         - key: device.manufacturer
           value:
             stringValue: Apple
-        # user.* attributes
         - key: user.id
           value:
             stringValue: user-1234
@@ -250,15 +230,12 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: john.doe
-        # user.* elastic attributes
         - key: user.domain
           value:
             stringValue: example.com
-        # user_agent.* attributes
         - key: user_agent.original
           value:
             stringValue: Mozilla/5.0
-        # network.* attributes
         - key: network.connection.type
           value:
             stringValue: wifi
@@ -270,36 +247,31 @@ resourceSpans:
             stringValue: carrier-name
         - key: network.carrier.mcc
           value:
-            intValue: 310
+            intValue: "310"
         - key: network.carrier.mnc
           value:
-            intValue: 260
+            intValue: "260"
         - key: network.carrier.icc
           value:
             stringValue: US
-        # client.* attributes
         - key: client.address
           value:
             stringValue: 192.168.1.100
         - key: client.port
           value:
-            intValue: 8080
-        # source.* attributes
+            intValue: "8080"
         - key: source.address
           value:
             stringValue: 10.0.0.1
         - key: source.port
           value:
-            intValue: 9000
-        # source.* elastic attributes
+            intValue: "9000"
         - key: source.nat.ip
           value:
             stringValue: 203.0.113.1
-        # destination.* attributes
         - key: destination.ip
           value:
             stringValue: 172.16.0.1
-        # faas.* attributes
         - key: faas.instance
           value:
             stringValue: faas-instance-1
@@ -315,64 +287,39 @@ resourceSpans:
         - key: faas.coldstart
           value:
             boolValue: false
-        # faas.* elastic attributes
-        - key: faas.trigger.request.id
+        - key: labels.faas_trigger_request_id
           value:
             stringValue: req-123
         - key: faas.execution
           value:
             stringValue: exec-456
-        # data_stream.* attributes
         - key: data_stream.dataset
           value:
-            stringValue: default
+            stringValue: apm.app.test_service
         - key: data_stream.namespace
           value:
             stringValue: default
-        # Legacy OpenCensus attributes
         - key: opencensus.exporterversion
           value:
             stringValue: 1.0.0
-        # APM Agent enrichment (remaining)
         - key: agent.ephemeral_id
           value:
             stringValue: ephem-123
         - key: agent.activation_method
           value:
             stringValue: automatic
-    scopeSpans:
-      - scope: {}
-        spans:
-          - attributes:
-              - key: db.name
-                value:
-                  stringValue: main
-              - key: db.system
-                value:
-                  stringValue: mysql
-            endTimeUnixNano: "1581452773000000789"
-            events:
-              - attributes:
-                  - key: event.attr1
-                    value:
-                      stringValue: foo1
-                  - key: event.attr2
-                    value:
-                      stringValue: bar1
-                name: event1
-                timeUnixNano: "1581452773000000123"
-              - attributes:
-                  - key: event.attr1
-                    value:
-                      stringValue: foo2
-                  - key: event.attr2
-                    value:
-                      stringValue: bar2
-                name: event2
-                timeUnixNano: "1581452773000000123"
-              - name: event-with-no-attrs
-                timeUnixNano: "1581452773000000123"
-            name: span-elastic-db
-            parentSpanId: "bcff497b5a47310f"
-            startTimeUnixNano: "1581452772000000321"
-
+        - key: host.hostname
+          value:
+            stringValue: node-1
+        - key: data_stream.type
+          value:
+            stringValue: logs
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: test log message
+            timeUnixNano: "1581452772000000321"
+        scope: {}
