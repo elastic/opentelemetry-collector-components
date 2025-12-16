@@ -1,9 +1,6 @@
 # Client Address Middleware Extension
 
-> [!WARNING]
-> 🚧 This component is a work in progress
-
-The client address middleware provides the ability to set the [`client.Info.Addr`](https://github.com/open-telemetry/opentelemetry-collector/blob/client/v1.47.0/client/client.go#L95) based on the following metadata keys:
+The client address server middleware provides the ability to set the [`client.Info.Addr`](https://github.com/open-telemetry/opentelemetry-collector/blob/client/v1.47.0/client/client.go#L95) based on the following metadata keys:
 - `forwarded`
 - `x-real-ip`
 - `x-forwarded-for`

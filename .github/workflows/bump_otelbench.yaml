@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.get-new-version.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: '0'
 
@@ -53,7 +53,7 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           token: ${{ steps.get_token.outputs.token }}
 
@@ -68,7 +68,7 @@ jobs:
 
       - name: Cache go tools
         id: go-tools-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ./.tools
           key: go-tools-${{ runner.os }}-${{ hashFiles('internal/tools/go.sum') }}

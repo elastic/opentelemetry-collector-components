@@ -161,6 +161,9 @@ resourceSpans:
         - key: host.name
           value:
             stringValue: node-1
+        - key: host.hostname
+          value:
+            stringValue: node-1
         - key: host.id
           value:
             stringValue: host-123
@@ -170,9 +173,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: amd64
-        - key: host.ip
-          value:
-            stringValue: 10.0.0.1
         - key: host.os.platform
           value:
             stringValue: linux
@@ -314,6 +314,9 @@ resourceSpans:
         - key: data_stream.type
           value:
             stringValue: traces
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
     scopeSpans:
       - scope: {}
         spans:

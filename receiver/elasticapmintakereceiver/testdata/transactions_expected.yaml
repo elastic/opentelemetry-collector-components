@@ -25,6 +25,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -208,6 +211,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user_agent.original
           value:
             stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36, Mozilla Chrome Edge
@@ -563,6 +569,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -785,6 +794,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -988,6 +1000,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider

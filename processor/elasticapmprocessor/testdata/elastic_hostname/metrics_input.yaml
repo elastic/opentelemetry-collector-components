@@ -4,6 +4,9 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: test-service
+        - key: host.hostname
+          value:
+            stringValue: hostname-1
     scopeMetrics:
       - metrics:
           - name: test_metric

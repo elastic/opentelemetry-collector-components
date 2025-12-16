@@ -16,9 +16,11 @@ extensions:
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension v0.20.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/extension/clientaddrmiddlewareextension v0.0.0
 
 connectors:
   - gomod: github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector v0.20.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector v0.20.0
 
 converters:
 
@@ -82,7 +84,9 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension => ../extension/apikeyauthextension
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension => ../extension/configintegrationextension
   - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension => ../extension/fileintegrationextension
+  - github.com/elastic/opentelemetry-collector-components/extension/clientaddrmiddlewareextension => ../extension/clientaddrmiddlewareextension
   - github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector => ../connector/elasticapmconnector
+  - github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector => ../connector/dynamicroutingconnector
   - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver => ../receiver/elasticapmintakereceiver
   - github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver => ../receiver/integrationreceiver
   - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor

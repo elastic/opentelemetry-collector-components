@@ -4,6 +4,9 @@ resourceLogs:
         - key: service.name
           value:
             stringValue: test-service
+        - key: host.hostname
+          value:
+            stringValue: hostname-1
     scopeLogs:
       - logRecords:
           - body:

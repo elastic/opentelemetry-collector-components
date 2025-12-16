@@ -528,6 +528,9 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 				attributesMap.PutStr(attr.HostOSPlatform, event.Host.Os.Platform)
 			}
 		}
+		if event.Host.Hostname != "" {
+			attributesMap.PutStr(attr.HostHostname, event.Host.Hostname)
+		}
 	}
 
 	if event.Source != nil {

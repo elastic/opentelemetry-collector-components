@@ -171,6 +171,9 @@ resourceSpans:
         - key: host.name
           value:
             stringValue: host-1
+        - key: host.hostname
+          value:
+            stringValue: hostname-1
         - key: host.id
           value:
             stringValue: host-123
@@ -180,9 +183,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: amd64
-        - key: host.ip
-          value:
-            stringValue: 10.0.0.1
         # host.* elastic attributes
         - key: host.os.platform
           value:
