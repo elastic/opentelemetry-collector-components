@@ -27,7 +27,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/cespare/xxhash"
 	"go.opentelemetry.io/collector/client"
@@ -241,10 +240,6 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 
 	for _, event := range *batch {
 		timestampNanos := event.GetTimestamp()
-		timestamp := time.Unix(
-			int64(timestampNanos/1e9), // Convert nanoseconds to seconds
-			int64(timestampNanos%1e9), // Remainder in nanoseconds
-		)
 
 		// TODO record metrics about events processed by type?
 		switch event.Type() {
@@ -253,7 +248,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 
 			r.setResourceAttributes(rm.Resource().Attributes(), event)
 
-			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestamp); err != nil {
+			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestampNanos); err != nil {
 				return err
 			}
 		case modelpb.ErrorEventType:
@@ -261,19 +256,19 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 
 			r.setResourceAttributes(rl.Resource().Attributes(), event)
 
-			r.elasticErrorToOtelLogRecord(&rl, event, timestamp, ctx)
+			r.elasticErrorToOtelLogRecord(&rl, event, timestampNanos)
 		case modelpb.LogEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 
 			r.setResourceAttributes(rl.Resource().Attributes(), event)
 
-			r.elasticLogToOtelLogRecord(&rl, event, timestamp)
+			r.elasticLogToOtelLogRecord(&rl, event, timestampNanos)
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
 
 			r.setResourceAttributes(rs.Resource().Attributes(), event)
 
-			s := r.elasticEventToOtelSpan(&rs, event, timestamp)
+			s := r.elasticEventToOtelSpan(&rs, event, timestampNanos)
 
 			isTransaction := event.Type() == modelpb.TransactionEventType
 			if isTransaction {
@@ -315,11 +310,11 @@ func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, even
 	mappers.SetElasticSpecificResourceAttributes(event, attrs)
 }
 
-func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) error {
+func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) error {
 	metricset := event.GetMetricset()
 	// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
 	if metricset.Name == "span_breakdown" {
-		r.translateBreakdownMetricsToOtel(rm, event, timestamp)
+		r.translateBreakdownMetricsToOtel(rm, event, timestampNanos)
 		return nil
 	}
 
@@ -345,15 +340,15 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 		case modelpb.MetricType_METRIC_TYPE_COUNTER:
 			dp := m.SetEmptySum().DataPoints().AppendEmpty()
 			dp.SetDoubleValue(sample.GetValue())
-			r.populateDataPointCommon(&dp, event, timestamp)
+			r.populateDataPointCommon(&dp, event, timestampNanos)
 		// Type does not seem to be enforced in APM server, and many agents send `unspecified` type.
 		case modelpb.MetricType_METRIC_TYPE_GAUGE, modelpb.MetricType_METRIC_TYPE_UNSPECIFIED:
 			dp := m.SetEmptyGauge().DataPoints().AppendEmpty()
 			dp.SetDoubleValue(sample.GetValue())
-			r.populateDataPointCommon(&dp, event, timestamp)
+			r.populateDataPointCommon(&dp, event, timestampNanos)
 		case modelpb.MetricType_METRIC_TYPE_HISTOGRAM:
 			dp := m.SetEmptyHistogram().DataPoints().AppendEmpty()
-			r.populateDataPointCommon(&dp, event, timestamp)
+			r.populateDataPointCommon(&dp, event, timestampNanos)
 			populateOTelHistogramDataPoint(sample, &dp)
 		case modelpb.MetricType_METRIC_TYPE_SUMMARY:
 			// Note: The apm-data lib will reject a valid summary (contains only a count and sum), so
@@ -374,8 +369,8 @@ type otelDataPoint interface {
 	Attributes() pcommon.Map
 }
 
-func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestamp time.Time) {
-	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
+func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestampNanos uint64) {
+	dp.SetTimestamp(pcommon.Timestamp(timestampNanos))
 	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 }
@@ -459,7 +454,7 @@ func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric
 	explicitBounds.FromRaw(apmHistogramValues[:len(apmHistogramValues)-1])
 }
 
-func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestamp time.Time) {
+func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) {
 	sm := rm.ScopeMetrics().AppendEmpty()
 	sum_metric := sm.Metrics().AppendEmpty()
 	sum_metric.SetName("span.self_time.sum.us")
@@ -469,20 +464,20 @@ func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.R
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter.flushBulkIndexer
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367
 	sum_metric.SetUnit("us")
-	sum_dp := createBreakdownMetricsCommon(sum_metric, event, timestamp)
+	sum_dp := createBreakdownMetricsCommon(sum_metric, event, timestampNanos)
 	sum_dp.SetIntValue(int64(event.GetSpan().GetSelfTime().Sum))
 
 	count_metric := sm.Metrics().AppendEmpty()
 	count_metric.SetName("span.self_time.count")
 	count_metric.SetUnit("{span}")
-	count_metric_dp := createBreakdownMetricsCommon(count_metric, event, timestamp)
+	count_metric_dp := createBreakdownMetricsCommon(count_metric, event, timestampNanos)
 	count_metric_dp.SetDoubleValue(float64(event.GetSpan().GetSelfTime().Count))
 }
 
-func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent, timestamp time.Time) pmetric.NumberDataPoint {
+func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent, timestampNanos uint64) pmetric.NumberDataPoint {
 	g := metric.SetEmptyGauge()
 	dp := g.DataPoints().AppendEmpty()
-	dp.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
+	dp.SetTimestamp(pcommon.Timestamp(timestampNanos))
 
 	attr := dp.Attributes()
 	if event.Transaction != nil {
@@ -501,11 +496,11 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	return dp
 }
 
-func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time, ctx context.Context) {
+func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestampNanos uint64) {
 	sl := rl.ScopeLogs().AppendEmpty()
 	l := sl.LogRecords().AppendEmpty()
 
-	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
+	mappers.SetTopLevelFieldsLogRecord(event, timestampNanos, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForError(event, l.Attributes())
 	mappers.TranslateIntakeV2LogToOTelAttributes(event, l.Attributes())
 
@@ -518,11 +513,11 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 	}
 }
 
-func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestamp time.Time) {
+func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestampNanos uint64) {
 	sl := rl.ScopeLogs().AppendEmpty()
 	l := sl.LogRecords().AppendEmpty()
 
-	mappers.SetTopLevelFieldsLogRecord(event, timestamp, l, r.settings.Logger)
+	mappers.SetTopLevelFieldsLogRecord(event, timestampNanos, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForLog(event, l.Attributes())
 	mappers.TranslateIntakeV2LogToOTelAttributes(event, l.Attributes())
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
@@ -537,11 +532,11 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 	}
 }
 
-func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestamp time.Time) ptrace.Span {
+func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestampNanos uint64) ptrace.Span {
 	ss := rs.ScopeSpans().AppendEmpty()
 	s := ss.Spans().AppendEmpty()
 
-	mappers.SetTopLevelFieldsSpan(event, timestamp, s, r.settings.Logger)
+	mappers.SetTopLevelFieldsSpan(event, timestampNanos, s, r.settings.Logger)
 	mappers.SetDerivedFieldsCommon(event, s.Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
 	return s
