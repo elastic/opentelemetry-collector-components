@@ -1,0 +1,28 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: exception.message
+                value:
+                  stringValue: "Null pointer exception"
+              - key: exception.type
+                value:
+                  stringValue: "java.lang.NullPointerException"
+              - key: exception.stacktrace
+                value:
+                  stringValue: "at com.example.MyClass.method(MyClass.java:42)"
+            body:
+              stringValue: "Application error occurred"
+            timeUnixNano: "1000000000"
+          - attributes:
+              - key: log.level
+                value:
+                  stringValue: "info"
+            body:
+              stringValue: "Regular log message"
+            timeUnixNano: "1000000000"

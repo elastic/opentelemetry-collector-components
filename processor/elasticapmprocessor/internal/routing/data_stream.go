@@ -22,6 +22,7 @@ import (
 
 	"github.com/elastic/opentelemetry-lib/elasticattr"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
 // DataStreamType tracks the text associated with a data stream type.
@@ -97,10 +98,23 @@ func replaceReservedRune(r rune) rune {
 // IsErrorLog checks if a log record represents an APM error event.
 // The processor.event attribute is set by the elasticapmintakereceiver
 // when converting APM error events to OTLP logs.
+// For OTLP logs, error events are identified by the presence of exception.type
+// and exception.message attributes, following OpenTelemetry semantic conventions.
 func IsErrorLog(attributes pcommon.Map) bool {
+	// Check for APM-specific error events
 	if processorEvent, ok := attributes.Get(elasticattr.ProcessorEvent); ok {
-		return processorEvent.Str() == "error"
+		if processorEvent.Str() == "error" {
+			return true
+		}
 	}
+
+	// Check for OTLP exception attributes
+	_, hasExceptionType := attributes.Get(string(semconv.ExceptionTypeKey))
+	_, hasExceptionMessage := attributes.Get(string(semconv.ExceptionMessageKey))
+	if hasExceptionType || hasExceptionMessage {
+		return true
+	}
+
 	return false
 }
 

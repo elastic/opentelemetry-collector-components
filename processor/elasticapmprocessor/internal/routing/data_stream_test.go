@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
 func TestDataStremaEncoderDefault(t *testing.T) {
@@ -104,6 +105,37 @@ func TestIsErrorLog(t *testing.T) {
 				// no attributes set
 			},
 			expected: false,
+		},
+		{
+			name: "has exception.type and exception.message",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr(string(semconv.ExceptionTypeKey), "java.lang.NullPointerException")
+				attrs.PutStr(string(semconv.ExceptionMessageKey), "Cannot invoke method on null object")
+			},
+			expected: true,
+		},
+		{
+			name: "has only exception.type",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr(string(semconv.ExceptionTypeKey), "java.lang.NullPointerException")
+			},
+			expected: true,
+		},
+		{
+			name: "has only exception.message",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr(string(semconv.ExceptionMessageKey), "Cannot invoke method on null object")
+			},
+			expected: true,
+		},
+		{
+			name: "has both processor.event and exception attributes",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr("processor.event", "error")
+				attrs.PutStr(string(semconv.ExceptionTypeKey), "java.lang.NullPointerException")
+				attrs.PutStr(string(semconv.ExceptionMessageKey), "Cannot invoke method on null object")
+			},
+			expected: true,
 		},
 	}
 

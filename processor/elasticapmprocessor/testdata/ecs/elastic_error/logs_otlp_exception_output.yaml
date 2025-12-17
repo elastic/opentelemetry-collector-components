@@ -1,0 +1,49 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: data_stream.type
+          value:
+            stringValue: logs
+        - key: data_stream.dataset
+          value:
+            stringValue: apm
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: exception.message
+                value:
+                  stringValue: "Null pointer exception"
+              - key: exception.type
+                value:
+                  stringValue: "java.lang.NullPointerException"
+              - key: exception.stacktrace
+                value:
+                  stringValue: "at com.example.MyClass.method(MyClass.java:42)"
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: apm.error
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              stringValue: "Application error occurred"
+            timeUnixNano: "1000000000"
+          - attributes:
+              - key: log.level
+                value:
+                  stringValue: "info"
+            body:
+              stringValue: "Regular log message"
+            timeUnixNano: "1000000000"
