@@ -19,113 +19,104 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"context"
-	"errors"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/connector/connectortest"
+	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
-// mockMetricsConsumer is a mock implementation of consumer.Metrics.
-type mockMetricsConsumer struct {
-	mock.Mock
-}
-
-func (m *mockMetricsConsumer) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{MutatesData: false}
-}
-
-func (m *mockMetricsConsumer) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	args := m.Called(ctx, md)
-	return args.Error(0)
-}
-
 func TestConsumeProfiles_WithMetrics(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
+	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		MetricsPrefix: "test.",
-		ByFrameType:   true,
+		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
+		mb:           metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, connectortest.NewNopSettings(metadata.Type)),
 	}
 
 	// Create a profiles object that will result in at least one metric.
 	profiles := pprofile.NewProfiles()
-	profiles.ProfilesDictionary().StringTable().Append("sample")
-	profiles.ProfilesDictionary().StringTable().Append("count")
+	profiles.Dictionary().StringTable().Append("sample")
+	profiles.Dictionary().StringTable().Append("count")
 
 	// Add a ResourceProfile with one ScopeProfile and one Profile with one sample.
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType().AppendEmpty()
+	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
-	prof.Sample().AppendEmpty() // Add a sample to ensure metric count > 0
-
-	// Expect ConsumeMetrics to be called once.
-	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.MatchedBy(func(md pmetric.Metrics) bool {
-		return md.MetricCount() > 0
-	})).Return(nil).Once()
+	prof.Samples().AppendEmpty() // Add a sample to ensure metric count > 0
 
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
-	mockConsumer.AssertExpectations(t)
+	metrics := mockConsumer.AllMetrics()
+	assert.Len(t, metrics, 1)
 }
 
 func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
+	mockConsumer := new(consumertest.MetricsSink)
+	metricsCfg := metadata.DefaultMetricsBuilderConfig()
+	metricsCfg.Metrics.SamplesFrameType.Enabled = true
 	cfg := &Config{
-		MetricsPrefix: "test.",
-		ByFrameType:   true,
+		MetricsBuilderConfig: metricsCfg,
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
+		mb:           metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, connectortest.NewNopSettings(metadata.Type)),
 	}
 
 	// Create a profiles object with a sample that has a location with a frame type attribute.
 	profiles := pprofile.NewProfiles()
-	profiles.ProfilesDictionary().StringTable().Append("sample")
-	profiles.ProfilesDictionary().StringTable().Append("count")
+	profiles.Dictionary().StringTable().Append("sample")
+	profiles.Dictionary().StringTable().Append("count")
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType().AppendEmpty()
+	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
-	sample := prof.Sample().AppendEmpty()
+	sample := prof.Samples().AppendEmpty()
 
 	// Setup dictionary tables
-	dict := profiles.ProfilesDictionary()
+	dict := profiles.Dictionary()
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
+	strTable := dict.StringTable()
+	stackTable := dict.StackTable()
+
+	strTable.Append("")
 
 	// Add an attribute for frame type
 	attr := attrTable.AppendEmpty()
-	attr.SetKey(string(semconv.ProfileFrameTypeKey))
+	attr.SetKeyStrindex(int32(strTable.Len()))
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
 	attr.Value().SetStr("go")
 
 	// Add a location referencing the attribute
 	loc := locTable.AppendEmpty()
 	loc.AttributeIndices().Append(0)
 
-	// Add location index to the profile's location indices
-	prof.LocationIndices().Append(0)
+	stackTable.AppendEmpty()
 
-	// Set sample to reference the location
-	sample.SetLocationsStartIndex(0)
-	sample.SetLocationsLength(1)
+	// Set sample to reference the stack
+	sample.SetStackIndex(int32(stackTable.Len()))
+
+	stack := stackTable.AppendEmpty()
+	// Add location index to the stack's location indices
+	stack.LocationIndices().Append(0)
 
 	// Expect ConsumeMetrics to be called with metrics containing frame type metric
-	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.MatchedBy(func(md pmetric.Metrics) bool {
+	assertMetricType := func(md pmetric.Metrics) bool {
 		found := false
 		rms := md.ResourceMetrics()
 		for i := 0; i < rms.Len(); i++ {
@@ -135,7 +126,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 				for k := 0; k < metrics.Len(); k++ {
 					metric := metrics.At(k)
 					name := metric.Name()
-					if name == "test.samples.frame_type" {
+					if name == "samples.frame_type" {
 						// Verify it's a Gauge metric
 						if metric.Type() == pmetric.MetricTypeGauge {
 							gauge := metric.Gauge()
@@ -153,44 +144,55 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 			}
 		}
 		return found
-	})).Return(nil).Once()
+	}
 
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
-	mockConsumer.AssertExpectations(t)
+
+	metrics := mockConsumer.AllMetrics()
+	assert.Len(t, metrics, 1)
+	assert.True(t, assertMetricType(metrics[0]))
 }
 
 func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
+	mockConsumer := new(consumertest.MetricsSink)
+	metricsCfg := metadata.DefaultMetricsBuilderConfig()
+	metricsCfg.Metrics.SamplesFrameType.Enabled = true
 	cfg := &Config{
-		MetricsPrefix: "test.",
-		ByFrameType:   true,
+		MetricsBuilderConfig: metricsCfg,
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
+		mb:           metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, connectortest.NewNopSettings(metadata.Type)),
 	}
 
 	profiles := pprofile.NewProfiles()
-	profiles.ProfilesDictionary().StringTable().Append("sample")
-	profiles.ProfilesDictionary().StringTable().Append("count")
+	profiles.Dictionary().StringTable().Append("sample")
+	profiles.Dictionary().StringTable().Append("count")
 	resProf := profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType().AppendEmpty()
+	st := prof.SampleType()
 	st.SetTypeStrindex(0)
 	st.SetUnitStrindex(1)
 
-	dict := profiles.ProfilesDictionary()
+	dict := profiles.Dictionary()
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
+	strTable := dict.StringTable()
+	stackTable := dict.StackTable()
+
+	strTable.Append("")
 
 	// Add two attributes for frame types
 	attrGo := attrTable.AppendEmpty()
-	attrGo.SetKey(string(semconv.ProfileFrameTypeKey))
+	attrGo.SetKeyStrindex(int32(strTable.Len()))
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
 	attrGo.Value().SetStr("go")
 	attrPy := attrTable.AppendEmpty()
-	attrPy.SetKey(string(semconv.ProfileFrameTypeKey))
+	attrPy.SetKeyStrindex(int32(strTable.Len()))
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
 	attrPy.Value().SetStr("python")
 
 	// Add two locations, each referencing a different attribute
@@ -199,20 +201,22 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	locPy := locTable.AppendEmpty()
 	locPy.AttributeIndices().Append(1)
 
-	// Add location indices to the profile's location indices
-	prof.LocationIndices().Append(0)
-	prof.LocationIndices().Append(1)
+	stackTable.AppendEmpty()
+	stackGo := stackTable.AppendEmpty()
+	stackPy := stackTable.AppendEmpty()
+
+	// Add location indices to the stack's location indices
+	stackGo.LocationIndices().Append(0)
+	stackPy.LocationIndices().Append(1)
 
 	// Add two samples, each referencing a different location
-	sampleGo := prof.Sample().AppendEmpty()
-	sampleGo.SetLocationsStartIndex(0)
-	sampleGo.SetLocationsLength(1)
-	samplePy := prof.Sample().AppendEmpty()
-	samplePy.SetLocationsStartIndex(1)
-	samplePy.SetLocationsLength(1)
+	sampleGo := prof.Samples().AppendEmpty()
+	sampleGo.SetStackIndex(1)
+	samplePy := prof.Samples().AppendEmpty()
+	samplePy.SetStackIndex(2)
 
 	// Expect ConsumeMetrics to be called with both frame type metrics
-	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.MatchedBy(func(md pmetric.Metrics) bool {
+	assertMetricsType := func(md pmetric.Metrics) bool {
 		foundGo := false
 		foundPy := false
 		rms := md.ResourceMetrics()
@@ -223,7 +227,7 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 				for k := 0; k < metrics.Len(); k++ {
 					metric := metrics.At(k)
 					name := metric.Name()
-					if name == "test.samples.frame_type" {
+					if name == "samples.frame_type" {
 						// Verify it's a Gauge metric
 						if metric.Type() == pmetric.MetricTypeGauge {
 							gauge := metric.Gauge()
@@ -245,19 +249,24 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 			}
 		}
 		return foundGo && foundPy
-	})).Return(nil).Once()
+	}
 
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
-	mockConsumer.AssertExpectations(t)
+	metrics := mockConsumer.AllMetrics()
+	assert.Len(t, metrics, 1)
+	assert.True(t, assertMetricsType(metrics[0]))
 }
 
 func TestConsumeProfiles_NoMetrics(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
+	mockConsumer := new(consumertest.MetricsSink)
+	cfg := &Config{
+		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
 		config:       cfg,
+		mb:           metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, connectortest.NewNopSettings(metadata.Type)),
 	}
 
 	// Create a profiles object that will result in zero metrics.
@@ -267,53 +276,26 @@ func TestConsumeProfiles_NoMetrics(t *testing.T) {
 	// Expect ConsumeMetrics NOT to be called.
 	err := conn.ConsumeProfiles(context.Background(), profiles)
 	assert.NoError(t, err)
-	mockConsumer.AssertNotCalled(t, "ConsumeMetrics", mock.Anything, mock.Anything)
-}
-
-func TestConsumeProfiles_ConsumeMetricsError(t *testing.T) {
-	mockConsumer := new(mockMetricsConsumer)
-	cfg := &Config{MetricsPrefix: "test."}
-	conn := &profilesToMetricsConnector{
-		nextConsumer: mockConsumer,
-		config:       cfg,
-	}
-
-	// Create a profiles object that will result in at least one metric.
-	profiles := pprofile.NewProfiles()
-	profiles.ProfilesDictionary().StringTable().Append("sample")
-	profiles.ProfilesDictionary().StringTable().Append("count")
-	resProf := profiles.ResourceProfiles().AppendEmpty()
-	scopeProf := resProf.ScopeProfiles().AppendEmpty()
-	prof := scopeProf.Profiles().AppendEmpty()
-	st := prof.SampleType().AppendEmpty()
-	st.SetTypeStrindex(0)
-	st.SetUnitStrindex(1)
-	prof.Sample().AppendEmpty()
-
-	mockConsumer.On("ConsumeMetrics", mock.Anything, mock.Anything).Return(errors.New("consume error")).Once()
-
-	err := conn.ConsumeProfiles(context.Background(), profiles)
-	assert.Error(t, err)
-	assert.EqualError(t, err, "consume error")
-	mockConsumer.AssertExpectations(t)
+	assert.Len(t, mockConsumer.AllMetrics(), 0)
 }
 
 func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	cfg := &Config{
-		MetricsPrefix:    "test.",
-		ByClassification: true,
+		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
 		config: cfg,
+		mb:     metadata.NewMetricsBuilder(cfg.MetricsBuilderConfig, connectortest.NewNopSettings(metadata.Type)),
 	}
 
 	// Setup dictionary tables
 	profiles := pprofile.NewProfiles()
-	dict := profiles.ProfilesDictionary()
+	dict := profiles.Dictionary()
 	strTable := dict.StringTable()
 	locTable := dict.LocationTable()
 	attrTable := dict.AttributeTable()
 	funcTable := dict.FunctionTable()
+	stackTable := dict.StackTable()
 
 	// Add strings for function name and package
 	fnNameIdx := strTable.Len()
@@ -326,20 +308,23 @@ func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	// Add attribute for frame type "go"
 	attrIdx := attrTable.Len()
 	attr := attrTable.AppendEmpty()
-	attr.SetKey(string(semconv.ProfileFrameTypeKey))
+	attr.SetKeyStrindex(int32(strTable.Len()))
+	strTable.Append(string(semconv.ProfileFrameTypeKey))
 	attr.Value().SetStr("go")
 
 	// Add location referencing the attribute and function
 	locIdx := locTable.Len()
 	loc := locTable.AppendEmpty()
 	loc.AttributeIndices().Append(int32(attrIdx))
-	line := loc.Line().AppendEmpty()
+	line := loc.Lines().AppendEmpty()
 	line.SetFunctionIndex(int32(fnNameIdx))
+
+	stackTable.AppendEmpty()
 
 	// Prepare sample referencing the location
 	sample := pprofile.NewSample()
-	sample.SetLocationsStartIndex(0)
-	sample.SetLocationsLength(1)
+	sample.SetStackIndex(int32(stackTable.Len()))
+	stackTable.AppendEmpty()
 
 	// Prepare location indices
 	locationIndices := pcommon.NewInt32Slice()

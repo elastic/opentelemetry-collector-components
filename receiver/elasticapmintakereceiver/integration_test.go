@@ -83,7 +83,8 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 			expectedStatusCode int
 			expectedEtagHeader []string
-			expectedBody       func(*testing.T, []byte) bool
+			// assert.TestingT used in assert.EventuallyWithT evaluation
+			expectedBody func(assert.TestingT, []byte) bool
 		}{
 			{
 				name:                  "empty request, service.name required",
@@ -91,7 +92,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 				agentCfgIndexModifier: func(*testing.T, *elasticsearch.Client) {},
 
 				expectedStatusCode: http.StatusBadRequest,
-				expectedBody: func(t *testing.T, b []byte) bool {
+				expectedBody: func(t assert.TestingT, b []byte) bool {
 					return assert.JSONEq(t, string([]byte(`{"error":"service.name is required"}`)), string(b))
 				},
 			},
@@ -106,7 +107,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 				expectedStatusCode: http.StatusOK,
 				expectedEtagHeader: []string{"\"-\""},
-				expectedBody: func(t *testing.T, b []byte) bool {
+				expectedBody: func(t assert.TestingT, b []byte) bool {
 					return assert.JSONEq(t, string([]byte(`{}`)), string(b))
 				},
 			},
@@ -124,7 +125,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 				expectedStatusCode: http.StatusOK,
 				expectedEtagHeader: []string{"\"abcd\""},
-				expectedBody: func(t *testing.T, b []byte) bool {
+				expectedBody: func(t assert.TestingT, b []byte) bool {
 					return assert.JSONEq(t, string([]byte(`{"transaction_max_spans":"124"}`)), string(b))
 				},
 			},
@@ -142,7 +143,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 				expectedStatusCode: http.StatusOK,
 				expectedEtagHeader: []string{"\"abc\""},
-				expectedBody: func(t *testing.T, b []byte) bool {
+				expectedBody: func(t assert.TestingT, b []byte) bool {
 					return assert.JSONEq(t, string([]byte(`{"transaction_max_spans":"123"}`)), string(b))
 				},
 			},
@@ -163,7 +164,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 				expectedStatusCode: http.StatusOK,
 				expectedEtagHeader: []string{"\"abc\""},
-				expectedBody: func(t *testing.T, b []byte) bool {
+				expectedBody: func(t assert.TestingT, b []byte) bool {
 					return assert.JSONEq(t, string([]byte(`{"transaction_max_spans":"125"}`)), string(b))
 				},
 			},
@@ -182,7 +183,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 				expectedStatusCode: http.StatusNotModified,
 				expectedEtagHeader: []string{"\"test\""},
-				expectedBody: func(t *testing.T, b []byte) bool {
+				expectedBody: func(t assert.TestingT, b []byte) bool {
 					return assert.Empty(t, b)
 				},
 			},
@@ -201,7 +202,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 				expectedStatusCode: http.StatusOK,
 				expectedEtagHeader: []string{"\"new\""},
-				expectedBody: func(t *testing.T, b []byte) bool {
+				expectedBody: func(t assert.TestingT, b []byte) bool {
 					return assert.JSONEq(t, string([]byte(`{"transaction_max_spans":"1"}`)), string(b))
 				},
 			},
@@ -223,8 +224,8 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 		require.NoError(t, err)
 
 		// ES writes might are not immediately available
-		assert.Eventually(t, func() bool {
-			return assert.NoError(t, createApmConfigIndex(esClient, esEndpoint))
+		assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+			assert.NoError(collect, createApmConfigIndex(esClient, esEndpoint))
 		}, 2*time.Minute, 20*time.Second)
 
 		rcvrFactory := NewFactory()
@@ -252,22 +253,24 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 
 				jsonQuery, err := json.Marshal(tt.query)
 				require.NoError(t, err)
-				r, err := http.NewRequest("POST", "http://"+testEndpoint+agentConfigPath, bytes.NewBuffer(jsonQuery))
-				require.NoError(t, err)
-
-				r.Header.Add("Content-Type", "application/json")
 
 				// Internal cache takes some time to be modified
-				assert.Eventually(t, func() bool {
-					res, err := http.DefaultClient.Do(r)
+				assert.EventuallyWithT(t, func(collect *assert.CollectT) {
+					r, err := http.NewRequest("POST", "http://"+testEndpoint+agentConfigPath, bytes.NewBuffer(jsonQuery))
 					require.NoError(t, err)
+
+					r.Header.Add("Content-Type", "application/json")
+					res, err := http.DefaultClient.Do(r)
+					require.NoError(collect, err)
 
 					bodyBytes, err := io.ReadAll(res.Body)
-					require.NoError(t, err)
+					require.NoError(collect, err)
 
-					require.NoError(t, res.Body.Close())
+					require.NoError(collect, res.Body.Close())
 
-					return assert.Equal(t, tt.expectedStatusCode, res.StatusCode) && assert.Equal(t, tt.expectedEtagHeader, res.Header[Etag]) && tt.expectedBody(t, bodyBytes)
+					assert.Equal(collect, tt.expectedStatusCode, res.StatusCode)
+					assert.Equal(collect, tt.expectedEtagHeader, res.Header[Etag])
+					tt.expectedBody(collect, bodyBytes)
 				}, 30*time.Second, 1*time.Second)
 			})
 		}

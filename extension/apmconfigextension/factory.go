@@ -75,7 +75,7 @@ func createDefaultConfig() component.Config {
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
 	extCfg := cfg.(*Config)
 	elasticsearchRemoteConfig := func(ctx context.Context, host component.Host, telemetry component.TelemetrySettings) (apmconfig.RemoteConfigClient, error) {
-		esClient, err := extCfg.Source.Elasticsearch.ClientConfig.ToClient(ctx, host, telemetry)
+		esClient, err := extCfg.Source.Elasticsearch.ClientConfig.ToClient(ctx, host.GetExtensions(), telemetry)
 		if err != nil {
 			return nil, err
 		}

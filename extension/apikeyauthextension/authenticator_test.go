@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +34,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/extension/extensiontest"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 )
 
 const user = "test"
@@ -74,7 +81,27 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 400,
 			}),
-			expectedErr: `error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
+			expectedErr: `rpc error: code = Internal desc = error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
+		},
+		"auth_error": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "auth_reason",
+					Reason: func() *string {
+						reason := "auth_reason"
+						return &reason
+					}(),
+				},
+				Status: 401,
+			}),
+			expectedErr: `rpc error: code = Unauthenticated desc = status: 401, failed: [auth_reason], reason: auth_reason`,
+		},
+		"proxy_502_error": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				// Simulate proxy returning 502 when ES is unreachable - empty response body
+				w.WriteHeader(http.StatusBadGateway)
+			},
+			expectedErr: `rpc error: code = Unavailable desc = retryable server error for API Key "id": EOF`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
@@ -173,8 +200,112 @@ func TestAuthenticator_Caching(t *testing.T) {
 	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = API Key "id2" unauthorized`)
 }
 
+func TestAuthenticator_UserAgent(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		wantPrefix := "OpenTelemetry Collector/latest ("
+		userAgent := r.Header.Get("User-Agent")
+		assert.Truef(t, strings.HasPrefix(userAgent, wantPrefix), "want prefix %s; got %s", wantPrefix, userAgent)
+		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
+	})
+
+	authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	assert.NoError(t, err)
+}
+
+func TestAuthenticator_ErrorWithDetails(t *testing.T) {
+	for name, testcase := range map[string]struct {
+		setup            func(*testing.T) (*authenticator, map[string][]string)
+		expectedCode     codes.Code
+		expectedMsg      string
+		expectedMetadata map[string]string
+	}{
+		"invalid_header": {
+			setup: func(t *testing.T) (*authenticator, map[string][]string) {
+				srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse))
+				authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+				headers := map[string][]string{
+					"Authorization": {"Bearer invalid"},
+				}
+				return authenticator, headers
+			},
+			expectedCode: codes.Unauthenticated,
+			expectedMsg:  "ApiKey prefix not found, expected ApiKey <value>",
+			expectedMetadata: map[string]string{
+				"component": "apikeyauthextension",
+			},
+		},
+		"api_key_collision": {
+			setup: func(t *testing.T) (*authenticator, map[string][]string) {
+				srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse))
+				authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+				_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+					"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("collision_id:secret1"))},
+				})
+				require.NoError(t, err)
+				// cause collision case
+				headers := map[string][]string{
+					"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("collision_id:secret2"))},
+				}
+				return authenticator, headers
+			},
+			expectedCode: codes.Unauthenticated,
+			expectedMsg:  `API Key "collision_id" unauthorized`,
+			expectedMetadata: map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   "collision_id",
+			},
+		},
+		"missing_privileges": {
+			setup: func(t *testing.T) (*authenticator, map[string][]string) {
+				srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(hasprivileges.Response{
+					Username:        user,
+					HasAllRequested: false,
+				}))
+				authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+				headers := map[string][]string{
+					"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("no_privs_id:secret"))},
+				}
+				return authenticator, headers
+			},
+			expectedCode: codes.PermissionDenied,
+			expectedMsg:  `API Key "no_privs_id" unauthorized`,
+			expectedMetadata: map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   "no_privs_id",
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			authenticator, headers := testcase.setup(t)
+			_, err := authenticator.Authenticate(context.Background(), headers)
+			require.Error(t, err)
+
+			st, ok := status.FromError(err)
+			require.True(t, ok, "Expected gRPC status error")
+			assert.Equal(t, testcase.expectedCode, st.Code())
+			assert.Equal(t, testcase.expectedMsg, st.Message())
+
+			details := st.Details()
+			require.Len(t, details, 1, "expected 1 errorinfo detail")
+
+			errorInfo, ok := details[0].(*errdetails.ErrorInfo)
+			require.True(t, ok, "expected errorinfo detail")
+			assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
+			assert.Equal(t, testcase.expectedMetadata, errorInfo.Metadata)
+		})
+	}
+}
+
 func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
-	srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse))
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		h := newCannedHasPrivilegesHandler(successfulResponse)
+		h.ServeHTTP(w, r)
+		calls++
+	})
 	config := createDefaultConfig().(*Config)
 	config.Cache.KeyHeaders = []string{"X-Tenant-Id"}
 	authenticator := newTestAuthenticator(t, srv, config)
@@ -193,6 +324,7 @@ func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
 	clientInfo := client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 1, calls)
 
 	// Different x-tenant-id header value should result in a cache miss,
 	// despite the API Key ID being the same.
@@ -204,6 +336,55 @@ func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
 	clientInfo = client.FromContext(ctx)
 	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
 	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 2, calls)
+}
+
+func TestAuthenticator_CacheKeyMetadata(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		h := newCannedHasPrivilegesHandler(successfulResponse)
+		h.ServeHTTP(w, r)
+		calls++
+	})
+	config := createDefaultConfig().(*Config)
+	config.Cache.KeyMetadata = []string{"X-Tenant-Id"}
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	// Missing X-Tenant-Id header should result in an error.
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret1"))},
+	})
+	require.EqualError(t, err, `error computing cache key: missing client metadata "X-Tenant-Id"`)
+
+	withMetadata := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"X-Tenant-Id": {"tenant1"},
+		}),
+	})
+	ctx, err := authenticator.Authenticate(withMetadata, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret1"))},
+	})
+	require.NoError(t, err)
+	clientInfo := client.FromContext(ctx)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 1, calls)
+
+	// Different x-tenant-id header value should result in a cache miss,
+	// despite the API Key ID being the same.
+	withMetadata2 := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"X-Tenant-Id": {"tenant2"},
+		}),
+	})
+	ctx, err = authenticator.Authenticate(withMetadata2, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret2"))},
+	})
+	require.NoError(t, err)
+	clientInfo = client.FromContext(ctx)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+	assert.Equal(t, "id1", clientInfo.Auth.GetAttribute("api_key"))
+	assert.Equal(t, 2, calls)
 }
 
 func TestAuthenticator_CacheTTL(t *testing.T) {
@@ -259,7 +440,7 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 		},
 		"missing_header": {
 			headers:     map[string][]string{},
-			expectedErr: `rpc error: code = Unauthenticated desc = missing header "Authorization"`,
+			expectedErr: `rpc error: code = Unauthenticated desc = missing header "Authorization", expected "ApiKey <value>"`,
 		},
 		"invalid_scheme": {
 			headers: map[string][]string{
@@ -267,7 +448,7 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 					"Bearer " + base64.StdEncoding.EncodeToString([]byte("id:secret")),
 				},
 			},
-			expectedErr: `rpc error: code = Unauthenticated desc = ApiKey prefix not found`,
+			expectedErr: `rpc error: code = Unauthenticated desc = ApiKey prefix not found, expected ApiKey <value>`,
 		},
 		"invalid_base64": {
 			headers: map[string][]string{
@@ -296,6 +477,140 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 	}
 }
 
+func TestAuthenticator_DynamicResources(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		var body hasprivileges.Request
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, hasprivileges.Request{
+			Application: []types.ApplicationPrivilegesCheck{{
+				Application: "my_app",
+				Resources:   []string{"static-resource", "resource:my-resource"},
+				Privileges:  []string{"write"},
+			}},
+		}, body)
+		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
+	})
+
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		Resources:   []string{"static-resource"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	withMetadata := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"X-Resource-Name": {"my-resource"},
+		}),
+	})
+	ctx, err := authenticator.Authenticate(withMetadata, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	assert.NoError(t, err)
+	clientInfo := client.FromContext(ctx)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+	assert.Equal(t, "id", clientInfo.Auth.GetAttribute("api_key"))
+}
+
+func TestAuthenticator_DynamicResourcesMultipleValues(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		var body hasprivileges.Request
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, hasprivileges.Request{
+			Application: []types.ApplicationPrivilegesCheck{{
+				Application: "my_app",
+				Resources:   []string{"resource:my-resource", "resource:another-resource"},
+				Privileges:  []string{"write"},
+			}},
+		}, body)
+		assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
+	})
+
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	withMetadata := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"X-Resource-Name": {"my-resource", "another-resource"},
+		}),
+	})
+	ctx, err := authenticator.Authenticate(withMetadata, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	assert.NoError(t, err)
+	clientInfo := client.FromContext(ctx)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+	assert.Equal(t, "id", clientInfo.Auth.GetAttribute("api_key"))
+}
+
+func TestAuthenticator_DynamicResourcesMissingMetadata(t *testing.T) {
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse)), config)
+
+	// Missing metadata should return an error, since it is required
+	// to be in the cache key, and that is computed before formatting
+	// the dynamic resource for checking application privileges.
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	require.Error(t, err)
+	assert.EqualError(t, err, `error computing cache key: missing client metadata "X-Resource-Name"`)
+}
+
+func TestAuthenticator_DynamicResourcesMissingMetadataInHasPrivileges(t *testing.T) {
+	// This tests the edge case where metadata is missing during hasPrivileges check
+	// (though in practice this shouldn't happen since cache key validation happens first)
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	// Don't include in cache key metadata to allow it to pass cache key check
+	// but fail in hasPrivileges
+	config.Cache.KeyMetadata = []string{}
+	authenticator := newTestAuthenticator(t, newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse)), config)
+
+	// Missing metadata should return InvalidArgument (client error), not Unavailable
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	require.Error(t, err)
+
+	// Should be InvalidArgument, not Unavailable
+	st, ok := status.FromError(err)
+	require.True(t, ok, "Expected gRPC status error")
+	assert.Equal(t, codes.InvalidArgument, st.Code())
+	assert.Equal(t, st.Message(), `missing client metadata "X-Resource-Name" required for dynamic resource`)
+}
+
 func BenchmarkAuthenticator(b *testing.B) {
 	for _, iters := range []int{1, 10, 100, 1000} {
 		b.Run(fmt.Sprintf("iters_%d", iters), func(b *testing.B) {
@@ -321,7 +636,7 @@ func BenchmarkAuthenticator(b *testing.B) {
 
 func newTestAuthenticator(t testing.TB, srv *httptest.Server, config *Config) *authenticator {
 	config.Endpoint = srv.URL
-	auth, err := newAuthenticator(config, componenttest.NewNopTelemetrySettings())
+	auth, err := newAuthenticator(config, extensiontest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
 
 	err = auth.Start(context.Background(), componenttest.NewNopHost())

@@ -8,35 +8,51 @@ The following telemetry is emitted by this component.
 
 ### otelcol_ratelimit.concurrent_requests
 
-Number of in-flight requests at any given time
+Number of in-flight requests at any given time [Development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| {requests} | Gauge | Int |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {requests} | Sum | Int | false | Development |
+
+### otelcol_ratelimit.dynamic.escalations
+
+Total number of dynamic rate escalations (dynamic > static) [Development]
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {count} | Sum | Int | true | Development |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| class | rate limit class used | Any Str |
+| source_kind | precedence source used to resolve the rate limit settings | Any Str |
+| result | result of the rate limit request | Any Str |
 
 ### otelcol_ratelimit.request_duration
 
-Time(in seconds) taken to process a rate limit request
+Time(in seconds) taken to process a rate limit request [Development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| {seconds} | Histogram | Double |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {seconds} | Histogram | Double | Development |
 
 ### otelcol_ratelimit.request_size
 
-Number of bytes in received request. Only available if strategy is rate per bytes.
+Number of bytes in received request. Only available if strategy is rate per bytes. [Development]
 
-| Unit | Metric Type | Value Type |
-| ---- | ----------- | ---------- |
-| {bytes} | Histogram | Int |
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {bytes} | Histogram | Int | Development |
 
 ### otelcol_ratelimit.requests
 
-Number of rate-limiting requests
+Number of rate-limiting requests [Development]
 
-| Unit | Metric Type | Value Type | Monotonic |
-| ---- | ----------- | ---------- | --------- |
-| {requests} | Sum | Int | true |
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {requests} | Sum | Int | true | Development |
 
 #### Attributes
 
@@ -44,3 +60,17 @@ Number of rate-limiting requests
 | ---- | ----------- | ------ |
 | decision | rate limit decision | Any Str |
 | reason | rate limit reason | Any Str |
+
+### otelcol_ratelimit.resolver.failures
+
+Total number of class resolver failures [Development]
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| {count} | Sum | Int | true | Development |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| unique_key | unique key for the request used in class resolution | Any Str |

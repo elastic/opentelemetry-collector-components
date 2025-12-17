@@ -1,0 +1,37 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: data_stream.dataset
+          value:
+            stringValue: apm
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: data_stream.type
+          value:
+            stringValue: metrics
+        - key: host.hostname
+          value:
+            stringValue: hostname-1
+        - key: host.name
+          value:
+            stringValue: hostname-1
+        - key: service.instance.id
+          value:
+            stringValue: hostname-1
+        - key: service.name
+          value:
+            stringValue: test-service
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asInt: "123"
+            name: test_metric
+        scope: {}

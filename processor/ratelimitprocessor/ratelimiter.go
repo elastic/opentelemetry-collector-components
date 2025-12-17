@@ -19,16 +19,20 @@ package ratelimitprocessor // import "github.com/elastic/opentelemetry-collector
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"go.opentelemetry.io/collector/client"
 )
 
 var (
-	errTooManyRequests = errors.New("too many requests")
+	errTooManyRequests = status.Error(codes.ResourceExhausted, "too many requests")
 )
 
 // RateLimiter provides an interface for rate limiting by some number
@@ -52,16 +56,15 @@ type RateLimiter interface {
 // high cardinality: tenant ID would be a good choice. For rate
 // limiting by IP (e.g. to avoid DDoS), consider running OpenTelemetry
 // Collector behind a WAF/API Gateway/proxy.
-func getUniqueKey(ctx context.Context, metadataKeys []string) string {
+func getUniqueKey(metadata client.Metadata, metadataKeys []string) string {
 	if len(metadataKeys) == 0 {
 		return "default"
 	}
 
 	// Generate a unique key from client metadata.
 	var uniqueKey strings.Builder
-	clientInfo := client.FromContext(ctx)
 	for i, metadataKey := range metadataKeys {
-		values := clientInfo.Metadata.Get(metadataKey)
+		values := metadata.Get(metadataKey)
 		if i > 0 {
 			uniqueKey.WriteByte(';')
 		}
@@ -90,4 +93,23 @@ func getAttrsFromContext(ctx context.Context, metadataKeys []string) []attribute
 		}
 	}
 	return attrs
+}
+
+// errorWithDetails provides a user friendly error with additional error details that
+// can be later used to provide more detailed error information to the user.
+func errorWithDetails(err error, cfg RateLimitSettings) error {
+	st := status.Convert(err)
+	if detailedSt, stErr := st.WithDetails(&errdetails.ErrorInfo{
+		Domain: "ingest.elastic.co",
+		Metadata: map[string]string{
+			"component":         "ratelimitprocessor",
+			"limit":             fmt.Sprintf("%d", cfg.Rate),
+			"throttle_interval": cfg.ThrottleInterval.String(),
+		},
+	}, &errdetails.RetryInfo{
+		RetryDelay: durationpb.New(cfg.RetryDelay),
+	}); stErr == nil {
+		return detailedSt.Err()
+	}
+	return st.Err()
 }

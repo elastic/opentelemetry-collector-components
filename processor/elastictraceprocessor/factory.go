@@ -21,12 +21,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/elastic/opentelemetry-lib/enrichments/config"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-lib/enrichments/config"
 )
 
 // NewFactory returns a processor.Factory that constructs elastic
@@ -40,7 +41,7 @@ func NewFactory() processor.Factory {
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{
+	return &elasticapmprocessor.Config{
 		Config: config.Enabled(),
 	}
 }
@@ -48,9 +49,10 @@ func createDefaultConfig() component.Config {
 func createTraces(
 	_ context.Context, set processor.Settings, cfg component.Config, next consumer.Traces,
 ) (processor.Traces, error) {
-	processorCfg, ok := cfg.(*Config)
+
+	processorCfg, ok := cfg.(*elasticapmprocessor.Config)
 	if !ok {
 		return nil, fmt.Errorf("configuration parsing error")
 	}
-	return newProcessor(processorCfg, next, set.Logger), nil
+	return elasticapmprocessor.NewTraceProcessor(processorCfg, next, set.Logger), nil
 }

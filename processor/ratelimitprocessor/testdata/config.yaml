@@ -46,8 +46,9 @@ ratelimit/overrides_all:
   burst: 200
   strategy: bytes
   throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       rate: 300
       burst: 400
 
@@ -56,8 +57,9 @@ ratelimit/overrides_rate:
   burst: 200
   strategy: bytes
   throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       rate: 300
   
 ratelimit/overrides_burst:
@@ -65,8 +67,9 @@ ratelimit/overrides_burst:
   burst: 200
   strategy: bytes
   throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       burst: 400
   
 ratelimit/overrides_throttle_interval:
@@ -74,7 +77,75 @@ ratelimit/overrides_throttle_interval:
   burst: 200
   strategy: bytes
   throttle_behavior: error
-  overrides:  
-    project-id:e678ebd7-3a15-43dd-a95c-1cf0639a6292:
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
       rate: 400
       throttle_interval: 10s
+
+ratelimit/overrides_disable_dynamic:
+  rate: 100
+  burst: 200
+  strategy: bytes
+  throttle_behavior: error
+  overrides:
+    - matches:
+        project-id: [e678ebd7-3a15-43dd-a95c-1cf0639a6292]
+      disable_dynamic: true
+
+ratelimit/dynamic_rate_limit:
+  rate: 100
+  burst: 200
+  type: gubernator
+  strategy: bytes
+  throttle_behavior: error
+  dynamic_limits:
+    enabled: true
+    default_window_multiplier: 1.5
+    window_duration: 1m
+
+ratelimit/invalid_default_class:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: 200
+      burst: 400
+  default_class: nonexistent
+
+ratelimit/invalid_class_rate_zero:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: 0
+      burst: 400
+
+ratelimit/invalid_class_rate_negative:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: -100
+      burst: 400
+
+ratelimit/invalid_class_burst_negative:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: 200
+      burst: -1
+
+ratelimit/classes_set_but_no_class_resolver:
+  rate: 100
+  burst: 200
+  type: gubernator
+  classes:
+    trial:
+      rate: 200
+      burst: 400

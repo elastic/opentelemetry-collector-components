@@ -26,12 +26,16 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"net/http"
+	"runtime"
 	"strings"
 
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/extension/extensionauth"
 	"golang.org/x/crypto/pbkdf2"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -50,12 +54,22 @@ const (
 )
 
 var (
-	errAuthorizationHeaderWrongScheme = errors.New("ApiKey prefix not found")
+	errAuthorizationHeaderWrongScheme = errors.New("ApiKey prefix not found, expected ApiKey <value>")
 	errAuthorizationHeaderInvalid     = errors.New("invalid API Key")
 
 	_ client.AuthData      = (*authData)(nil)
 	_ extensionauth.Server = (*authenticator)(nil)
 )
+
+// metadataValidationError represents a client error related to metadata validation
+// for dynamic resources. This is used to distinguish client errors from server errors.
+type metadataValidationError struct {
+	message string
+}
+
+func (e *metadataValidationError) Error() string {
+	return e.message
+}
 
 type cacheEntry struct {
 	// key holds the PBKDF2 hashed value of the API Key.
@@ -89,13 +103,14 @@ func (a *authData) GetAttributeNames() []string {
 type authenticator struct {
 	config            *Config
 	telemetrySettings component.TelemetrySettings
+	userAgent         string
 
 	esClient *elasticsearch.TypedClient
 	cache    freelru.Cache[string, *cacheEntry]
 	salt     [16]byte // used for deriving keys from API Keys
 }
 
-func newAuthenticator(cfg *Config, set component.TelemetrySettings) (*authenticator, error) {
+func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, error) {
 	cache, err := freelru.NewSharded[string, *cacheEntry](cfg.Cache.Capacity, func(key string) uint32 {
 		h := fnv.New32a()
 		h.Write([]byte(key))
@@ -106,9 +121,18 @@ func newAuthenticator(cfg *Config, set component.TelemetrySettings) (*authentica
 	}
 	cache.SetLifetime(cfg.Cache.TTL)
 
+	userAgent := fmt.Sprintf(
+		"%s/%s (%s/%s)",
+		set.BuildInfo.Description,
+		set.BuildInfo.Version,
+		runtime.GOOS,
+		runtime.GOARCH,
+	)
+
 	authenticator := &authenticator{
 		config:            cfg,
-		telemetrySettings: set,
+		telemetrySettings: set.TelemetrySettings,
+		userAgent:         userAgent,
 		cache:             cache,
 	}
 	if _, err := rand.Read(authenticator.salt[:]); err != nil {
@@ -118,12 +142,15 @@ func newAuthenticator(cfg *Config, set component.TelemetrySettings) (*authentica
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-	httpClient, err := a.config.ToClient(ctx, host, a.telemetrySettings)
+	httpClient, err := a.config.ToClient(ctx, host.GetExtensions(), a.telemetrySettings)
 	if err != nil {
 		return err
 	}
 	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
 		Addresses: []string{a.config.Endpoint},
+		Header: map[string][]string{
+			"User-Agent": {a.userAgent},
+		},
 		Transport: httpClient.Transport,
 		Instrumentation: elasticsearch.NewOpenTelemetryInstrumentation(
 			a.telemetrySettings.TracerProvider, false,
@@ -146,7 +173,7 @@ func (a *authenticator) Shutdown(ctx context.Context) error {
 func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (string, string, error) {
 	orig, ok := getHeader(headers, authorizationHeader, lowerAuthorizationHeader)
 	if !ok {
-		return "", "", fmt.Errorf("missing header %q", authorizationHeader)
+		return "", "", fmt.Errorf("missing header %q, expected %q", authorizationHeader, "ApiKey <value>")
 	}
 
 	// The expected format of the Authorization header is:
@@ -191,12 +218,30 @@ func getHeader(headers map[string][]string, titlecase, lowercase string) (string
 
 // hasPrivileges checks if the API Key is valid and has the required privileges.
 func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue string) (bool, string, error) {
+	clientMetadata := client.FromContext(ctx).Metadata
 	applications := make([]types.ApplicationPrivilegesCheck, len(a.config.ApplicationPrivileges))
 	for i, app := range a.config.ApplicationPrivileges {
+		// Start with static resources
+		resources := make([]string, len(app.Resources))
+		copy(resources, app.Resources)
+
+		// Add dynamic resources from client metadata
+		for _, dr := range app.DynamicResources {
+			values := clientMetadata.Get(dr.Metadata)
+			if len(values) == 0 {
+				return false, "", &metadataValidationError{
+					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
+				}
+			}
+			for _, value := range values {
+				resources = append(resources, fmt.Sprintf(dr.Format, value))
+			}
+		}
+
 		applications[i] = types.ApplicationPrivilegesCheck{
 			Application: app.Application,
 			Privileges:  app.Privileges,
-			Resources:   app.Resources,
+			Resources:   resources,
 		}
 	}
 	req := a.esClient.Security.HasPrivileges()
@@ -210,7 +255,11 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 }
 
 // getCacheKey computes a cache key for the given API Key ID and headers.
-func (a *authenticator) getCacheKey(id string, headers map[string][]string) (string, error) {
+func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[string][]string) (string, error) {
+	var clientMetadata client.Metadata
+	if len(a.config.Cache.KeyMetadata) != 0 {
+		clientMetadata = client.FromContext(ctx).Metadata
+	}
 	key := id
 	for _, header := range a.config.Cache.KeyHeaders {
 		value, ok := getHeader(headers, header, strings.ToLower(header))
@@ -218,6 +267,13 @@ func (a *authenticator) getCacheKey(id string, headers map[string][]string) (str
 			return "", fmt.Errorf("error computing cache key: missing header %q", header)
 		}
 		key += " " + value
+	}
+	for _, metadataKey := range a.config.Cache.KeyMetadata {
+		values := clientMetadata.Get(metadataKey)
+		if len(values) == 0 {
+			return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
+		}
+		key += " " + values[0]
 	}
 	return key, nil
 }
@@ -231,10 +287,13 @@ func (a *authenticator) getCacheKey(id string, headers map[string][]string) (str
 func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]string) (context.Context, error) {
 	authHeaderValue, id, err := a.parseAuthorizationHeader(headers)
 	if err != nil {
-		return ctx, status.Error(codes.Unauthenticated, err.Error())
+		detailedErr := errorWithDetails(codes.Unauthenticated, err.Error(), map[string]string{
+			"component": "apikeyauthextension",
+		})
+		return ctx, detailedErr
 	}
 
-	cacheKey, err := a.getCacheKey(id, headers)
+	cacheKey, err := a.getCacheKey(ctx, id, headers)
 	if err != nil {
 		return ctx, err
 	}
@@ -251,9 +310,11 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			// Client has specified an API Key with a colliding ID,
 			// but whose secret component does not match the one in
 			// the cache.
-			return ctx, status.Errorf(codes.Unauthenticated,
-				"API Key %q unauthorized", id,
-			)
+			detailedErr := errorWithDetails(codes.Unauthenticated, fmt.Sprintf("API Key %q unauthorized", id), map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   id,
+			})
+			return ctx, detailedErr
 		}
 		if cacheEntry.err != nil {
 			return ctx, status.Error(codes.Unauthenticated, cacheEntry.err.Error())
@@ -263,17 +324,39 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
-		return ctx, fmt.Errorf(
-			"error checking privileges for API Key %q: %v", id, err,
-		)
+		var elasticsearchErr *types.ElasticsearchError
+		if errors.As(err, &elasticsearchErr) {
+			switch elasticsearchErr.Status {
+			case http.StatusUnauthorized, http.StatusForbidden:
+				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			default:
+				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
+			}
+		}
+		// Check if this is a metadata validation error (client error)
+		var metadataErr *metadataValidationError
+		if errors.As(err, &metadataErr) {
+			return ctx, errorWithDetails(codes.InvalidArgument, metadataErr.Error(), map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   id,
+			})
+		}
+		// Assume it's a retryable server error
+		return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error for API Key %q: %v", id, err), map[string]string{
+			"component": "apikeyauthextension",
+			"api_key":   id,
+		})
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{
 			key: derivedKey,
-			err: fmt.Errorf("API Key %q unauthorized", id),
+			err: errorWithDetails(codes.PermissionDenied, fmt.Sprintf("API Key %q unauthorized", id), map[string]string{
+				"component": "apikeyauthextension",
+				"api_key":   id,
+			}),
 		}
 		a.cache.Add(cacheKey, cacheEntry)
-		return ctx, status.Error(codes.PermissionDenied, cacheEntry.err.Error())
+		return ctx, cacheEntry.err
 	}
 	cacheEntry := &cacheEntry{
 		key: derivedKey,
@@ -290,4 +373,17 @@ func newCtxWithAuthData(ctx context.Context, authData *authData) context.Context
 	clientInfo := client.FromContext(ctx)
 	clientInfo.Auth = authData
 	return client.NewContext(ctx, clientInfo)
+}
+
+// errorWithDetails provides a user friendly error with additional error details that
+// can be later used to provide more detailed error information to the user.
+func errorWithDetails(code codes.Code, msg string, metadata map[string]string) error {
+	st := status.New(code, msg)
+	if detailedSt, err := st.WithDetails(&errdetails.ErrorInfo{
+		Domain:   "ingest.elastic.co",
+		Metadata: metadata,
+	}); err == nil {
+		return detailedSt.Err()
+	}
+	return st.Err()
 }

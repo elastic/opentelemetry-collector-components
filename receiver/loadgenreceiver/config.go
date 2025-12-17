@@ -23,6 +23,8 @@ import (
 	"go.opentelemetry.io/collector/component"
 )
 
+const maxScannerBufSize = 1024 * 1024
+
 type (
 	JsonlFile string
 )
@@ -46,16 +48,25 @@ type Config struct {
 	DisablePdataReuse bool `mapstructure:"disable_pdata_reuse"`
 }
 
+type SignalConfig struct {
+	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
+	MaxReplay int `mapstructure:"max_replay"`
+
+	// MaxBufferSize defines the maximum acceptable size for the file content. Set to 0 if you don't want
+	// to set a limit.
+	MaxBufferSize int `mapstructure:"max_buffer_size"`
+
+	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
+	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
+	doneCh chan Stats
+}
+
 type MetricsConfig struct {
 	// JsonlFile is an optional configuration option to specify the path to
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
 
-	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
-	MaxReplay int `mapstructure:"max_replay"`
-	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
-	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
-	doneCh chan Stats
+	SignalConfig `mapstructure:",squash"`
 
 	// AddCounterAttr, if true, adds a loadgenreceiver_counter resource attribute containing increasing counter value to the generated metrics.
 	// It can be used to workaround timestamp precision and duplication detection of backends,
@@ -70,11 +81,7 @@ type LogsConfig struct {
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
 
-	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
-	MaxReplay int `mapstructure:"max_replay"`
-	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
-	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
-	doneCh chan Stats
+	SignalConfig `mapstructure:",squash"`
 }
 
 type TracesConfig struct {
@@ -82,11 +89,7 @@ type TracesConfig struct {
 	// get the base generated signals from.
 	JsonlFile `mapstructure:"jsonl_file"`
 
-	// MaxReplay is an optional configuration to specify the number of times the file is replayed.
-	MaxReplay int `mapstructure:"max_replay"`
-	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
-	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
-	doneCh chan Stats
+	SignalConfig `mapstructure:",squash"`
 }
 
 var _ component.Config = (*Config)(nil)
@@ -101,6 +104,15 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.Traces.MaxReplay < 0 {
 		return fmt.Errorf("traces::max_replay must be >= 0")
+	}
+	if cfg.Logs.MaxBufferSize < 0 {
+		return fmt.Errorf("logs::max_buffer_size must be >= 0")
+	}
+	if cfg.Metrics.MaxBufferSize < 0 {
+		return fmt.Errorf("metrics::max_buffer_size must be >= 0")
+	}
+	if cfg.Traces.MaxBufferSize < 0 {
+		return fmt.Errorf("traces::max_buffer_size must be >= 0")
 	}
 	return nil
 }

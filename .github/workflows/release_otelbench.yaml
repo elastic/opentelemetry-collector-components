@@ -20,11 +20,14 @@ jobs:
       contents: write
     env:
       ELASTIC_REGISTRY: "docker.elastic.co/observability-ci/otelbench"
+    strategy:
+      matrix:
+        platform: ["linux/amd64", "linux/arm64"] 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Login to Elastic container registry
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ${{ env.ELASTIC_REGISTRY }}
           username: ${{ secrets.ELASTIC_DOCKER_USERNAME }}
@@ -42,5 +45,4 @@ jobs:
         working-directory: ./loadgen/cmd/otelbench
         run: |
           export KO_DOCKER_REPO=${{ env.ELASTIC_REGISTRY }}
-          local_platform="linux/$(go env GOARCH)"
-          ko build --bare --platform=$local_platform --tags ${{ env.OTELBENCH_VERSION }}
+          ko build --bare --platform=${{ matrix.platform }} --tags ${{ env.OTELBENCH_VERSION }}

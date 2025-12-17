@@ -40,6 +40,12 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "5"
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: host.os.platform
+          value:
+            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:
@@ -53,15 +59,12 @@ resourceSpans:
               - key: processor.event
                 value:
                   stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.name
-                value:
-                  stringValue: ""
-              - key: transaction.sampled
-                value:
-                  boolValue: true
               - key: transaction.root
                 value:
                   boolValue: false
@@ -71,10 +74,21 @@ resourceSpans:
               - key: transaction.result
                 value:
                   stringValue: Success
-              - key: transaction.duration.us
+              - key: transaction.sampled
                 value:
-                  intValue: "32592"
+                  boolValue: true
+              - key: transaction.span_count.started
+                value:
+                  intValue: "43"
+              - key: transaction.profiler_stack_trace_ids
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: foo
+                      - stringValue: bar
+                      - stringValue: foo
             endTimeUnixNano: "1496170407186592981"
+            kind: 2
             parentSpanId: abcdefabcdef0123
             spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"

@@ -18,12 +18,17 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
@@ -57,6 +62,36 @@ func TestLogsGenerator_doneCh(t *testing.T) {
 			assert.Equal(t, want, stats.Requests)
 			assert.Equal(t, want, len(sink.AllLogs()))
 			assert.Equal(t, sink.LogRecordCount(), stats.LogRecords)
+		})
+	}
+}
+
+func TestLogsGenerator_MaxBufferSizeAttr(t *testing.T) {
+	dummyData := `{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"my.service"}}]},"scopeLogs":[{"logRecords":[{"timeUnixNano":"1727411470107912000","body":{"stringValue":"Example log record"}}]}]}]}`
+	for _, maxBufferSize := range []int{0, 10} {
+		t.Run(fmt.Sprintf("max_buffer_size=%d", maxBufferSize), func(t *testing.T) {
+			dir := t.TempDir()
+			filePath := filepath.Join(dir, strings.ReplaceAll(t.Name(), "/", "_")+".jsonl")
+			content := []byte(dummyData)
+			require.NoError(t, os.WriteFile(filePath, content, 0644))
+
+			doneCh := make(chan Stats)
+			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+			cfg.(*Config).Logs.MaxBufferSize = maxBufferSize
+			cfg.(*Config).Logs.JsonlFile = JsonlFile(filePath)
+
+			_, err := createLogsReceiver(context.Background(), receiver.Settings{
+				ID: component.ID{},
+				TelemetrySettings: component.TelemetrySettings{
+					Logger: zap.NewNop(),
+				},
+				BuildInfo: component.BuildInfo{},
+			}, cfg, consumertest.NewNop())
+			if maxBufferSize == 0 {
+				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, bufio.ErrTooLong.Error())
+			}
 		})
 	}
 }

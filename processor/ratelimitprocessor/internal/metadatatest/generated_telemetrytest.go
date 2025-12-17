@@ -41,10 +41,12 @@ func NewSettings(tt *componenttest.Telemetry) processor.Settings {
 func AssertEqualRatelimitConcurrentRequests(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.concurrent_requests",
-		Description: "Number of in-flight requests at any given time",
+		Description: "Number of in-flight requests at any given time [Development]",
 		Unit:        "{requests}",
-		Data: metricdata.Gauge[int64]{
-			DataPoints: dps,
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: false,
+			DataPoints:  dps,
 		},
 	}
 	got, err := tt.GetMetric("otelcol_ratelimit.concurrent_requests")
@@ -52,10 +54,26 @@ func AssertEqualRatelimitConcurrentRequests(t *testing.T, tt *componenttest.Tele
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
 
+func AssertEqualRatelimitDynamicEscalations(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.dynamic.escalations",
+		Description: "Total number of dynamic rate escalations (dynamic > static) [Development]",
+		Unit:        "{count}",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.dynamic.escalations")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
 func AssertEqualRatelimitRequestDuration(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[float64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.request_duration",
-		Description: "Time(in seconds) taken to process a rate limit request",
+		Description: "Time(in seconds) taken to process a rate limit request [Development]",
 		Unit:        "{seconds}",
 		Data: metricdata.Histogram[float64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -70,7 +88,7 @@ func AssertEqualRatelimitRequestDuration(t *testing.T, tt *componenttest.Telemet
 func AssertEqualRatelimitRequestSize(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.request_size",
-		Description: "Number of bytes in received request. Only available if strategy is rate per bytes.",
+		Description: "Number of bytes in received request. Only available if strategy is rate per bytes. [Development]",
 		Unit:        "{bytes}",
 		Data: metricdata.Histogram[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -85,7 +103,7 @@ func AssertEqualRatelimitRequestSize(t *testing.T, tt *componenttest.Telemetry, 
 func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.requests",
-		Description: "Number of rate-limiting requests",
+		Description: "Number of rate-limiting requests [Development]",
 		Unit:        "{requests}",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -94,6 +112,22 @@ func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps
 		},
 	}
 	got, err := tt.GetMetric("otelcol_ratelimit.requests")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualRatelimitResolverFailures(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.resolver.failures",
+		Description: "Total number of class resolver failures [Development]",
+		Unit:        "{count}",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.resolver.failures")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }

@@ -81,9 +81,14 @@ func createMetricsReceiver(
 		}
 	}
 
+	maxBufferSize := genConfig.Metrics.MaxBufferSize
+	if maxBufferSize == 0 {
+		maxBufferSize = len(sampleMetrics) + 10 // add some margin
+	}
+
 	var items []pmetric.Metrics
 	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
-	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
+	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		metricBytes := scanner.Bytes()
 		lineMetrics, err := parser.UnmarshalMetrics(metricBytes)
@@ -132,16 +137,17 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 				}
 				// For graceful shutdown, use ctx instead of startCtx to shield Consume* from context canceled
 				// In other words, Consume* will finish at its own pace, which may take indefinitely long.
+				recordCount := next.DataPointCount()
 				if err := ar.consumer.ConsumeMetrics(ctx, next); err != nil {
 					ar.logger.Error(err.Error())
 					ar.statsMu.Lock()
 					ar.stats.FailedRequests++
-					ar.stats.FailedMetricDataPoints += next.DataPointCount()
+					ar.stats.FailedMetricDataPoints += recordCount
 					ar.statsMu.Unlock()
 				} else {
 					ar.statsMu.Lock()
 					ar.stats.Requests++
-					ar.stats.MetricDataPoints += next.DataPointCount()
+					ar.stats.MetricDataPoints += recordCount
 					ar.statsMu.Unlock()
 				}
 			}

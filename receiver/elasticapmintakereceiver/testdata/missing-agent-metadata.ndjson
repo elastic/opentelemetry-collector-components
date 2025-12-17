@@ -1,0 +1,2 @@
+{"metadata": {"service": {"name": "1234_service-12a3", "version": "4.3.0", "agent": {"version": "", "name": ""}}}}
+{"log": {"message": "test log message without timestamp"}}

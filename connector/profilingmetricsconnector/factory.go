@@ -20,6 +20,7 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 import (
 	"context"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/xconnector"
@@ -35,7 +36,9 @@ func NewFactory() connector.Factory {
 }
 
 func createDefaultConfig() component.Config {
-	return &Config{}
+	return &Config{
+		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+	}
 }
 
 func createProfilesToMetrics(
@@ -45,8 +48,11 @@ func createProfilesToMetrics(
 	nextConsumer consumer.Metrics,
 ) (xconnector.Profiles, error) {
 	c := cfg.(*Config)
+
 	return &profilesToMetricsConnector{
 		nextConsumer: nextConsumer,
 		config:       c,
+		logger:       set.Logger,
+		mb:           metadata.NewMetricsBuilder(c.MetricsBuilderConfig, set),
 	}, nil
 }

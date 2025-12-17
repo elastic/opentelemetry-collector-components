@@ -37,8 +37,6 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
 )
 
-const maxScannerBufSize = 1024 * 1024
-
 //go:embed testdata/traces.jsonl
 var demoTraces []byte
 
@@ -76,9 +74,14 @@ func createTracesReceiver(
 		}
 	}
 
+	maxBufferSize := genConfig.Traces.MaxBufferSize
+	if maxBufferSize == 0 {
+		maxBufferSize = len(sampleTraces) + 10 // add some margin
+	}
+
 	var items []ptrace.Traces
 	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
-	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
+	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		traceBytes := scanner.Bytes()
 		lineTraces, err := parser.UnmarshalTraces(traceBytes)
@@ -127,16 +130,17 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 				}
 				// For graceful shutdown, use ctx instead of startCtx to shield Consume* from context canceled
 				// In other words, Consume* will finish at its own pace, which may take indefinitely long.
+				recordCount := next.SpanCount()
 				if err := ar.consumer.ConsumeTraces(ctx, next); err != nil {
 					ar.logger.Error(err.Error())
 					ar.statsMu.Lock()
 					ar.stats.FailedRequests++
-					ar.stats.FailedSpans += next.SpanCount()
+					ar.stats.FailedSpans += recordCount
 					ar.statsMu.Unlock()
 				} else {
 					ar.statsMu.Lock()
 					ar.stats.Requests++
-					ar.stats.Spans += next.SpanCount()
+					ar.stats.Spans += recordCount
 					ar.statsMu.Unlock()
 				}
 			}

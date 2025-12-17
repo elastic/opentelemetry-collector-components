@@ -1,0 +1,69 @@
+default:
+all_set:
+  metrics:
+    samples.beam.count:
+      enabled: true
+    samples.classification:
+      enabled: true
+    samples.cpython.count:
+      enabled: true
+    samples.custom_aggregation:
+      enabled: true
+    samples.dotnet.count:
+      enabled: true
+    samples.frame_type:
+      enabled: true
+    samples.go.count:
+      enabled: true
+    samples.jvm.count:
+      enabled: true
+    samples.kernel.count:
+      enabled: true
+    samples.native.count:
+      enabled: true
+    samples.perl.count:
+      enabled: true
+    samples.php.count:
+      enabled: true
+    samples.ruby.count:
+      enabled: true
+    samples.rust.count:
+      enabled: true
+    samples.user.count:
+      enabled: true
+    samples.v8js.count:
+      enabled: true
+none_set:
+  metrics:
+    samples.beam.count:
+      enabled: false
+    samples.classification:
+      enabled: false
+    samples.cpython.count:
+      enabled: false
+    samples.custom_aggregation:
+      enabled: false
+    samples.dotnet.count:
+      enabled: false
+    samples.frame_type:
+      enabled: false
+    samples.go.count:
+      enabled: false
+    samples.jvm.count:
+      enabled: false
+    samples.kernel.count:
+      enabled: false
+    samples.native.count:
+      enabled: false
+    samples.perl.count:
+      enabled: false
+    samples.php.count:
+      enabled: false
+    samples.ruby.count:
+      enabled: false
+    samples.rust.count:
+      enabled: false
+    samples.user.count:
+      enabled: false
+    samples.v8js.count:
+      enabled: false

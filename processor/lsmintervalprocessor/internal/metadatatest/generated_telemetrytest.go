@@ -41,7 +41,7 @@ func NewSettings(tt *componenttest.Telemetry) processor.Settings {
 func AssertEqualLsmintervalExportedBytes(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.exported_bytes",
-		Description: "The size in bytes of metric data points exported by the processor.",
+		Description: "The size in bytes of metric data points exported by the processor. [Development]",
 		Unit:        "By",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -57,7 +57,7 @@ func AssertEqualLsmintervalExportedBytes(t *testing.T, tt *componenttest.Telemet
 func AssertEqualLsmintervalExportedDataPoints(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.exported_data_points",
-		Description: "The count of metric data points exported by the processor.",
+		Description: "The count of metric data points exported by the processor. [Development]",
 		Unit:        "{count}",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -73,7 +73,7 @@ func AssertEqualLsmintervalExportedDataPoints(t *testing.T, tt *componenttest.Te
 func AssertEqualLsmintervalPebbleCompactedBytesRead(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_compacted_bytes_read",
-		Description: "The size in bytes read by pebble during compaction.",
+		Description: "The size in bytes read by pebble during compaction. [Development]",
 		Unit:        "By",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -89,7 +89,7 @@ func AssertEqualLsmintervalPebbleCompactedBytesRead(t *testing.T, tt *componentt
 func AssertEqualLsmintervalPebbleCompactedBytesWritten(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_compacted_bytes_written",
-		Description: "The size in bytes written by pebble during compaction.",
+		Description: "The size in bytes written by pebble during compaction. [Development]",
 		Unit:        "By",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -105,7 +105,7 @@ func AssertEqualLsmintervalPebbleCompactedBytesWritten(t *testing.T, tt *compone
 func AssertEqualLsmintervalPebbleCompactions(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_compactions",
-		Description: "The number of pebble table compactions.",
+		Description: "The number of pebble table compactions. [Development]",
 		Unit:        "1",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -121,7 +121,7 @@ func AssertEqualLsmintervalPebbleCompactions(t *testing.T, tt *componenttest.Tel
 func AssertEqualLsmintervalPebbleFlushedBytes(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_flushed_bytes",
-		Description: "The size in bytes written by pebble during flush.",
+		Description: "The size in bytes written by pebble during flush. [Development]",
 		Unit:        "By",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -137,7 +137,7 @@ func AssertEqualLsmintervalPebbleFlushedBytes(t *testing.T, tt *componenttest.Te
 func AssertEqualLsmintervalPebbleFlushes(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_flushes",
-		Description: "The number of pebble memtable flushes to disk.",
+		Description: "The number of pebble memtable flushes to disk. [Development]",
 		Unit:        "1",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -153,7 +153,7 @@ func AssertEqualLsmintervalPebbleFlushes(t *testing.T, tt *componenttest.Telemet
 func AssertEqualLsmintervalPebbleIngestedBytes(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_ingested_bytes",
-		Description: "The size in bytes ingested to pebble.",
+		Description: "The size in bytes ingested to pebble. [Development]",
 		Unit:        "By",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -169,7 +169,7 @@ func AssertEqualLsmintervalPebbleIngestedBytes(t *testing.T, tt *componenttest.T
 func AssertEqualLsmintervalPebbleKeysTombstones(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_keys_tombstones",
-		Description: "The approximate number of delete keys across the pebble storage engine.",
+		Description: "The approximate number of delete keys across the pebble storage engine. [Development]",
 		Unit:        "1",
 		Data: metricdata.Gauge[int64]{
 			DataPoints: dps,
@@ -183,7 +183,7 @@ func AssertEqualLsmintervalPebbleKeysTombstones(t *testing.T, tt *componenttest.
 func AssertEqualLsmintervalPebbleMarkedForCompactionFiles(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_marked_for_compaction_files",
-		Description: "The current number of pebble SSTables marked for compaction.",
+		Description: "The current number of pebble SSTables marked for compaction. [Development]",
 		Unit:        "1",
 		Data: metricdata.Gauge[int64]{
 			DataPoints: dps,
@@ -197,7 +197,7 @@ func AssertEqualLsmintervalPebbleMarkedForCompactionFiles(t *testing.T, tt *comp
 func AssertEqualLsmintervalPebblePendingCompaction(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_pending_compaction",
-		Description: "The estimated size in bytes of pending compaction in pebble.",
+		Description: "The estimated size in bytes of pending compaction in pebble. [Development]",
 		Unit:        "By",
 		Data: metricdata.Gauge[int64]{
 			DataPoints: dps,
@@ -211,7 +211,7 @@ func AssertEqualLsmintervalPebblePendingCompaction(t *testing.T, tt *componentte
 func AssertEqualLsmintervalPebbleReadAmplification(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_read_amplification",
-		Description: "The current pebble db read amplification.",
+		Description: "The current pebble db read amplification. [Development]",
 		Unit:        "1",
 		Data: metricdata.Gauge[int64]{
 			DataPoints: dps,
@@ -225,7 +225,7 @@ func AssertEqualLsmintervalPebbleReadAmplification(t *testing.T, tt *componentte
 func AssertEqualLsmintervalPebbleReadersMemory(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_readers_memory",
-		Description: "The estimated size in bytes of memory used by pebble index and filter blocks.",
+		Description: "The estimated size in bytes of memory used by pebble index and filter blocks. [Development]",
 		Unit:        "By",
 		Data: metricdata.Gauge[int64]{
 			DataPoints: dps,
@@ -239,7 +239,7 @@ func AssertEqualLsmintervalPebbleReadersMemory(t *testing.T, tt *componenttest.T
 func AssertEqualLsmintervalPebbleSstables(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_sstables",
-		Description: "The current number of pebble storage engine SSTables.",
+		Description: "The current number of pebble storage engine SSTables. [Development]",
 		Unit:        "1",
 		Data: metricdata.Gauge[int64]{
 			DataPoints: dps,
@@ -253,7 +253,7 @@ func AssertEqualLsmintervalPebbleSstables(t *testing.T, tt *componenttest.Teleme
 func AssertEqualLsmintervalPebbleTotalDiskUsage(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_total_disk_usage",
-		Description: "The current size in bytes of disk used by pebble, including live and obsolete files.",
+		Description: "The current size in bytes of disk used by pebble, including live and obsolete files. [Development]",
 		Unit:        "By",
 		Data: metricdata.Gauge[int64]{
 			DataPoints: dps,
@@ -267,7 +267,7 @@ func AssertEqualLsmintervalPebbleTotalDiskUsage(t *testing.T, tt *componenttest.
 func AssertEqualLsmintervalPebbleTotalMemtableSize(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.pebble_total_memtable_size",
-		Description: "The current size in bytes of pebble memtable.",
+		Description: "The current size in bytes of pebble memtable. [Development]",
 		Unit:        "By",
 		Data: metricdata.Gauge[int64]{
 			DataPoints: dps,
@@ -281,7 +281,7 @@ func AssertEqualLsmintervalPebbleTotalMemtableSize(t *testing.T, tt *componentte
 func AssertEqualLsmintervalProcessedBytes(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.processed_bytes",
-		Description: "The size in bytes of metric data points processed by the processor.",
+		Description: "The size in bytes of metric data points processed by the processor. [Development]",
 		Unit:        "By",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
@@ -297,7 +297,7 @@ func AssertEqualLsmintervalProcessedBytes(t *testing.T, tt *componenttest.Teleme
 func AssertEqualLsmintervalProcessedDataPoints(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.processed_data_points",
-		Description: "The count of metric data points processed by the processor.",
+		Description: "The count of metric data points processed by the processor. [Development]",
 		Unit:        "{count}",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,

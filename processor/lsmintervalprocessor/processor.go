@@ -264,7 +264,6 @@ func (p *Processor) Shutdown(ctx context.Context) error {
 	}
 	if p.telemetryBuilder != nil {
 		p.telemetryBuilder.Shutdown()
-		p.telemetryBuilder = nil
 	}
 	return nil
 }

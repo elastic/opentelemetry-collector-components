@@ -74,9 +74,14 @@ func createLogsReceiver(
 		}
 	}
 
+	maxBufferSize := genConfig.Logs.MaxBufferSize
+	if maxBufferSize == 0 {
+		maxBufferSize = len(sampleLogs) + 10 // add some margin
+	}
+
 	var items []plog.Logs
 	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
-	scanner.Buffer(make([]byte, 0, maxScannerBufSize), maxScannerBufSize)
+	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		logBytes := scanner.Bytes()
 		lineLogs, err := parser.UnmarshalLogs(logBytes)
@@ -125,16 +130,17 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 				}
 				// For graceful shutdown, use ctx instead of startCtx to shield Consume* from context canceled
 				// In other words, Consume* will finish at its own pace, which may take indefinitely long.
+				recordCount := next.LogRecordCount()
 				if err := ar.consumer.ConsumeLogs(ctx, next); err != nil {
 					ar.logger.Error(err.Error())
 					ar.statsMu.Lock()
 					ar.stats.FailedRequests++
-					ar.stats.FailedLogRecords += next.LogRecordCount()
+					ar.stats.FailedLogRecords += recordCount
 					ar.statsMu.Unlock()
 				} else {
 					ar.statsMu.Lock()
 					ar.stats.Requests++
-					ar.stats.LogRecords += next.LogRecordCount()
+					ar.stats.LogRecords += recordCount
 					ar.statsMu.Unlock()
 				}
 			}

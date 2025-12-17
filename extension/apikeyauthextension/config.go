@@ -19,10 +19,12 @@ package apikeyauthextension // import "github.com/elastic/opentelemetry-collecto
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/confmap"
 )
 
 type Config struct {
@@ -49,6 +51,26 @@ type ApplicationPrivilegesConfig struct {
 	// Resources holds the list of application-specific resources
 	// that the API Key must have access to to be considered valid.
 	Resources []string `mapstructure:"resources"`
+
+	// DynamicResources holds the list of dynamic resources that are
+	// extracted from client metadata at runtime and combined with
+	// static Resources.
+	//
+	// If there are multiple metadata values for a given dynamic
+	// resource, then multiple resources will be generated.
+	DynamicResources []DynamicResource `mapstructure:"dynamic_resources,omitempty"`
+}
+
+// DynamicResource defines a resource that is extracted from client metadata
+// at runtime, with optional formatting.
+type DynamicResource struct {
+	// Metadata holds the client metadata key to extract the resource value from.
+	Metadata string `mapstructure:"metadata"`
+
+	// Format holds an optional fmt.Sprintf-style format string for formatting
+	// the metadata value. Must contain exactly one %s placeholder.
+	// Defaults to "%s" if empty.
+	Format string `mapstructure:"format"`
 }
 
 type CacheConfig struct {
@@ -56,6 +78,12 @@ type CacheConfig struct {
 	// cache key, for partitioning the API Key space. If any headers
 	// are missing from the request, an error will be returned.
 	KeyHeaders []string `mapstructure:"key_headers,omitempty"`
+
+	// KeyMetadata holds an optional set of client metadata keys to
+	// include in the cache key, for partitioning the API Key space.
+	// If any keys are missing from the client metadata, an error
+	// will be returned.
+	KeyMetadata []string `mapstructure:"key_metadata,omitempty"`
 
 	// PBKDF2Iterations defines the iteration count for PBKDF2
 	// for key derivation in cached API Keys.
@@ -90,6 +118,67 @@ func (cfg *CacheConfig) Validate() error {
 	}
 	if cfg.TTL <= 0 {
 		return fmt.Errorf("invalid ttl: %s, must be greater than 0", cfg.TTL)
+	}
+	return nil
+}
+
+// Unmarshal unmarshals the DynamicResource configuration.
+func (dr *DynamicResource) Unmarshal(conf *confmap.Conf) error {
+	if err := conf.Unmarshal(dr); err != nil {
+		return err
+	}
+	if dr.Format == "" {
+		dr.Format = "%s"
+	}
+	return nil
+}
+
+// Validate validates the DynamicResource configuration.
+func (dr *DynamicResource) Validate() error {
+	if dr.Metadata == "" {
+		return fmt.Errorf("metadata must be non-empty")
+	}
+	// Count occurrences of %s
+	count := strings.Count(dr.Format, "%s")
+	// Check for other format verbs (like %d, %v, etc.)
+	// We'll do a simple check: count all % that aren't followed by s or %
+	otherVerbs := 0
+	for i := 0; i < len(dr.Format)-1; i++ {
+		if dr.Format[i] == '%' {
+			next := dr.Format[i+1]
+			if next != 's' && next != '%' {
+				otherVerbs++
+			}
+		}
+	}
+	if count != 1 {
+		return fmt.Errorf("format must contain exactly one %%s placeholder, found %d", count)
+	}
+	if otherVerbs > 0 {
+		return fmt.Errorf("format may only contain %%s placeholder and %%%% (literal percent), found other format verbs")
+	}
+	return nil
+}
+
+// Validate validates the Config.
+func (cfg *Config) Validate() error {
+	// Build a set of metadata keys in cache.key_metadata for quick lookup
+	keyMetadataSet := make(map[string]bool)
+	for _, key := range cfg.Cache.KeyMetadata {
+		keyMetadataSet[key] = true
+	}
+	// Validate each application privilege config
+	for i, app := range cfg.ApplicationPrivileges {
+		// Check that dynamic resource metadata keys are in cache.key_metadata
+		for j, dr := range app.DynamicResources {
+			if dr.Metadata != "" && !keyMetadataSet[dr.Metadata] {
+				return fmt.Errorf(""+
+					"application_privileges::%d::dynamic_resources::%d: "+
+					"dynamic resource metadata %q must be included in cache.key_metadata",
+					i, j, dr.Metadata,
+				)
+			}
+		}
 	}
 	return nil
 }

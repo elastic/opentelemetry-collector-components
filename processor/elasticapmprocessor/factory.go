@@ -64,7 +64,7 @@ func createTraces(
 	if !ok {
 		return nil, fmt.Errorf("configuration parsing error")
 	}
-	return newTraceProcessor(processorCfg, next, set.Logger), nil
+	return NewTraceProcessor(processorCfg, next, set.Logger), nil
 }
 
 func createMetrics(

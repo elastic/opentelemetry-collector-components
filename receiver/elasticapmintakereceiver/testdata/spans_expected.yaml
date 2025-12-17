@@ -22,6 +22,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -63,13 +66,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -82,6 +91,55 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: labels.tag1
+          value:
+            stringValue: label1
+        - key: labels.elastic_profiler_stack_trace_ids
+          value:
+            arrayValue:
+              values:
+                - stringValue: foo
+                - stringValue: bar
+                - stringValue: foo
     scopeSpans:
       - scope: {}
         spans:
@@ -98,6 +156,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "141581"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
               - key: span.id
                 value:
                   stringValue: abcdef01234567
@@ -113,10 +174,19 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query.custom
+              - key: child.id
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: 51234abcdef56789
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822422581000"
+            kind: 2
             name: GET /api/types
             parentSpanId: abcdef0123456789
-            spanId: 01af25874dec69dd
+            spanId: abcdef0123456700
             startTimeUnixNano: "1532976822281000000"
             status:
               code: 1
@@ -144,6 +214,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -185,13 +258,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -204,6 +283,57 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Node
+        - key: service.framework.version
+          value:
+            stringValue: 1.0.0
+        - key: service.runtime.name
+          value:
+            stringValue: node.js
+        - key: service.runtime.version
+          value:
+            stringValue: 1.2.3
+        - key: service.origin.id
+          value:
+            stringValue: 1234567890abcdef
+        - key: service.origin.name
+          value:
+            stringValue: origin-name
+        - key: service.origin.version
+          value:
+            stringValue: 1.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -220,6 +350,15 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "32592"
+              - key: transaction.id
+                value:
+                  stringValue: ab45781d265894fe
+              - key: service.target.type
+                value:
+                  stringValue: target-type
+              - key: service.target.name
+                value:
+                  stringValue: target-name
               - key: span.id
                 value:
                   stringValue: 1234abcdef567895
@@ -229,16 +368,13 @@ resourceSpans:
               - key: span.type
                 value:
                   stringValue: request
-              - key: span.subtype
+              - key: span.representative_count
                 value:
-                  stringValue: ""
-              - key: span.action
-                value:
-                  stringValue: ""
+                  doubleValue: 1
             endTimeUnixNano: "1532976822313592981"
             name: GET /api/types
             parentSpanId: "0000000011111111"
-            spanId: ab45781d265894fe
+            spanId: 1234abcdef567895
             startTimeUnixNano: "1532976822281000000"
             status: {}
             traceId: abcdef0123456789abcdef9876543210
@@ -265,6 +401,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -306,13 +445,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -325,6 +470,57 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: labels.tag1
+          value:
+            stringValue: value1
+        - key: labels.tag4
+          value:
+            stringValue: "true"
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 123
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.34
     scopeSpans:
       - scope: {}
         spans:
@@ -341,6 +537,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3564"
+              - key: transaction.id
+                value:
+                  stringValue: ab23456a89012345
               - key: span.id
                 value:
                   stringValue: 0123456a89012345
@@ -353,13 +552,13 @@ resourceSpans:
               - key: span.subtype
                 value:
                   stringValue: http
-              - key: span.action
+              - key: span.representative_count
                 value:
-                  stringValue: ""
+                  doubleValue: 1
             endTimeUnixNano: "1532976822284564298"
             name: GET /api/types
             parentSpanId: abcdefabcdef7890
-            spanId: ab23456a89012345
+            spanId: 0123456a89012345
             startTimeUnixNano: "1532976822281000000"
             status: {}
             traceId: abcdef0123456789abcdef9876543210
@@ -386,6 +585,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -427,13 +629,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -446,6 +654,48 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -480,6 +730,9 @@ resourceSpans:
               - key: span.sync
                 value:
                   boolValue: false
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822294980298"
             name: get /api/types
             parentSpanId: ababcdcdefefabde
@@ -492,9 +745,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: service1
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -510,6 +760,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -551,13 +804,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -570,6 +829,54 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -586,6 +893,12 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: service.target.type
+                value:
+                  stringValue: postgres
+              - key: service.target.name
+                value:
+                  stringValue: testdb
               - key: span.id
                 value:
                   stringValue: 1234567890aaaade
@@ -604,12 +917,6 @@ resourceSpans:
               - key: span.sync
                 value:
                   boolValue: true
-              - key: service.target.name
-                value:
-                  stringValue: postgresql
-              - key: service.target.type
-                value:
-                  stringValue: db
               - key: span.destination.service.resource
                 value:
                   stringValue: postgres/testdb
@@ -619,6 +926,12 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.body.size
+                value:
+                  intValue: "356"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -628,6 +941,125 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "401"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "30012"
+              - key: span.db.link
+                value:
+                  stringValue: other.db.com
+              - key: span.db.rows_affected
+                value:
+                  intValue: "2"
+              - key: span.db.user.name
+                value:
+                  stringValue: readonly_user
+              - key: span.destination.service.name
+                value:
+                  stringValue: postgresql
+              - key: span.destination.service.type
+                value:
+                  stringValue: db
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: classname
+                              value:
+                                stringValue: Core.js
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "12"
+                            - key: filename
+                              value:
+                                stringValue: file2.js
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '}'
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                                    - key: key2
+                                      value:
+                                        stringValue: value2
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: some module
+                            - key: function
+                              value:
+                                stringValue: onread
+                            - key: abs_path
+                              value:
+                                stringValue: net.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -642,9 +1074,6 @@ resourceSpans:
         - key: service.name
           value:
             stringValue: service1
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -660,6 +1089,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -701,13 +1133,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -720,6 +1158,54 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -736,6 +1222,12 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: service.target.type
+                value:
+                  stringValue: postgres
+              - key: service.target.name
+                value:
+                  stringValue: testdb
               - key: span.id
                 value:
                   stringValue: fdc4567890aaaade
@@ -754,12 +1246,6 @@ resourceSpans:
               - key: span.sync
                 value:
                   boolValue: true
-              - key: service.target.name
-                value:
-                  stringValue: postgresql
-              - key: service.target.type
-                value:
-                  stringValue: db
               - key: span.destination.service.resource
                 value:
                   stringValue: postgresql
@@ -769,6 +1255,12 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.body.size
+                value:
+                  intValue: "356"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -778,6 +1270,122 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "401"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "30012"
+              - key: span.db.link
+                value:
+                  stringValue: other.db.com
+              - key: span.db.rows_affected
+                value:
+                  intValue: "2"
+              - key: span.db.user.name
+                value:
+                  stringValue: readonly_user
+              - key: span.destination.service.name
+                value:
+                  stringValue: postgresql
+              - key: span.destination.service.type
+                value:
+                  stringValue: db
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: classname
+                              value:
+                                stringValue: Core.js
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "12"
+                            - key: filename
+                              value:
+                                stringValue: file2.js
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '}'
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                                    - key: key2
+                                      value:
+                                        stringValue: value2
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: some module
+                            - key: function
+                              value:
+                                stringValue: onread
+                            - key: abs_path
+                              value:
+                                stringValue: net.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
@@ -786,15 +1394,11 @@ resourceSpans:
             startTimeUnixNano: "1532976822281000000"
             status:
               code: 1
-            traceId: ""
   - resource:
       attributes:
         - key: service.name
           value:
             stringValue: service1
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -810,6 +1414,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -851,13 +1458,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -870,6 +1483,54 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -886,6 +1547,12 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "3781"
+              - key: service.target.type
+                value:
+                  stringValue: postgresql
+              - key: service.target.name
+                value:
+                  stringValue: ""
               - key: span.id
                 value:
                   stringValue: ute4567890aaaade
@@ -904,12 +1571,6 @@ resourceSpans:
               - key: span.sync
                 value:
                   boolValue: true
-              - key: service.target.name
-                value:
-                  stringValue: postgresql
-              - key: service.target.type
-                value:
-                  stringValue: db
               - key: span.destination.service.resource
                 value:
                   stringValue: postgresql
@@ -919,6 +1580,12 @@ resourceSpans:
               - key: http.response.status_code
                 value:
                   intValue: "200"
+              - key: http.response.body.size
+                value:
+                  intValue: "356"
+              - key: url.original
+                value:
+                  stringValue: http://localhost:8000
               - key: db.system
                 value:
                   stringValue: sql
@@ -928,15 +1595,132 @@ resourceSpans:
               - key: db.query.text
                 value:
                   stringValue: SELECT * FROM product_types WHERE user_id=?
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "5432"
+              - key: http.request.id
+                value:
+                  stringValue: some-request-id
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "401"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "30012"
+              - key: span.db.link
+                value:
+                  stringValue: other.db.com
+              - key: span.db.rows_affected
+                value:
+                  intValue: "2"
+              - key: span.db.user.name
+                value:
+                  stringValue: readonly_user
+              - key: span.destination.service.name
+                value:
+                  stringValue: postgresql
+              - key: span.destination.service.type
+                value:
+                  stringValue: db
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+              - key: span.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: classname
+                              value:
+                                stringValue: Core.js
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: line.number
+                              value:
+                                intValue: "12"
+                            - key: filename
+                              value:
+                                stringValue: file2.js
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '}'
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                                    - key: key2
+                                      value:
+                                        stringValue: value2
+                            - key: line.number
+                              value:
+                                intValue: "547"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: net.js
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: some module
+                            - key: function
+                              value:
+                                stringValue: onread
+                            - key: abs_path
+                              value:
+                                stringValue: net.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             endTimeUnixNano: "1532976822284781912"
             kind: 3
             name: SELECT FROM product_types
             parentSpanId: abcdef0123456789
-            spanId: ""
             startTimeUnixNano: "1532976822281000000"
             status:
               code: 1
-            traceId: ""
   - resource:
       attributes:
         - key: service.name
@@ -960,6 +1744,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1001,13 +1788,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -1020,6 +1813,51 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -1036,6 +1874,15 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "988"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
+              - key: service.target.type
+                value:
+                  stringValue: ""
+              - key: service.target.name
+                value:
+                  stringValue: localhost:8080
               - key: span.id
                 value:
                   stringValue: ljf4567890aaaade
@@ -1051,23 +1898,30 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: request
-              - key: service.target.name
-                value:
-                  stringValue: external
-              - key: service.target.type
-                value:
-                  stringValue: http
               - key: span.destination.service.resource
                 value:
                   stringValue: localhost:8080
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: destination.port
+                value:
+                  intValue: "8080"
+              - key: span.destination.service.name
+                value:
+                  stringValue: external
+              - key: span.destination.service.type
+                value:
+                  stringValue: http
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532975583585205000"
             name: Request
             parentSpanId: abcdef0123456789
-            spanId: 01af25874dec69dd
             startTimeUnixNano: "1532975583584217000"
             status:
               code: 1
-            traceId: ""
   - resource:
       attributes:
         - key: service.name
@@ -1091,6 +1945,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1132,13 +1989,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -1151,6 +2014,51 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: destination.ip
+          value:
+            stringValue: ::1
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -1167,6 +2075,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "141581"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
               - key: span.id
                 value:
                   stringValue: 00xxx12312312312
@@ -1191,13 +2102,44 @@ resourceSpans:
               - key: messaging.destination.name
                 value:
                   stringValue: new_users
-              - key: messaging.rabbitmq.destination.routing_key
+              - key: destination.address
+                value:
+                  stringValue: 0:0::0:1
+              - key: span.message.routing_key
                 value:
                   stringValue: user-created-span
+              - key: span.message.body
+                value:
+                  stringValue: message body
+              - key: span.message.age.ms
+                value:
+                  intValue: "1577958057123"
+              - key: span.message.headers.Content-Type
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: application/json
+              - key: span.message.headers.Header1
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: value1
+                      - stringValue: value2
+              - key: span.composite.compression_strategy
+                value:
+                  stringValue: exact_match
+              - key: span.composite.count
+                value:
+                  intValue: "10"
+              - key: span.composite.sum.us
+                value:
+                  intValue: "0"
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1532976822422581000"
             name: Rabbitmq receive
             parentSpanId: abcdef0123456789
-            spanId: 01af25874dec69dd
             startTimeUnixNano: "1532976822281000000"
             status: {}
             traceId: fdedef0123456789abcdef9876543210
@@ -1224,6 +2166,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1265,13 +2210,19 @@ resourceSpans:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: s@test.com
+        - key: user.name
+          value:
+            stringValue: john
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -1284,6 +2235,48 @@ resourceSpans:
         - key: service.language.version
           value:
             stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -1300,6 +2293,9 @@ resourceSpans:
               - key: span.duration.us
                 value:
                   intValue: "378191"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
               - key: span.id
                 value:
                   stringValue: abcdef01234567
@@ -1315,10 +2311,22 @@ resourceSpans:
               - key: span.action
                 value:
                   stringValue: query
+              - key: span.composite.compression_strategy
+                value:
+                  stringValue: exact_match
+              - key: span.composite.count
+                value:
+                  intValue: "10"
+              - key: span.composite.sum.us
+                value:
+                  intValue: "359298"
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
             endTimeUnixNano: "1625572686060463200"
             name: SELECT FROM p_details
             parentSpanId: abcdef0123456789
-            spanId: 01af25874dec69dd
+            spanId: abcdef0123456700
             startTimeUnixNano: "1625572685682272000"
             status:
               code: 1

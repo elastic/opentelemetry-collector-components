@@ -23,23 +23,33 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+	"go.uber.org/zap"
+
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
 
-var (
-	errInvalAgg = errors.New("invalid aggregation configuration")
-)
+var errInvalAgg = errors.New("invalid aggregation configuration")
 
 var (
 	// Helper strings to keep code readable.
-	frameTypeGo  = semconv.ProfileFrameTypeGo.Value.AsString()
-	frameTypeJVM = semconv.ProfileFrameTypeJVM.Value.AsString()
+	frameTypeNative = semconv.ProfileFrameTypeNative.Value.AsString()
+	frameTypeKernel = semconv.ProfileFrameTypeKernel.Value.AsString()
+	frameTypeGo     = semconv.ProfileFrameTypeGo.Value.AsString()
+	frameTypeJVM    = semconv.ProfileFrameTypeJVM.Value.AsString()
+	frameTypeBeam   = semconv.ProfileFrameTypeBeam.Value.AsString()
+	frameTypePython = semconv.ProfileFrameTypeCpython.Value.AsString()
+	frameTypeRuby   = semconv.ProfileFrameTypeRuby.Value.AsString()
+	frameTypePHP    = semconv.ProfileFrameTypePHP.Value.AsString()
+	frameTypeDotnet = semconv.ProfileFrameTypeDotnet.Value.AsString()
+	frameTypePerl   = semconv.ProfileFrameTypePerl.Value.AsString()
+	frameTypeV8JS   = semconv.ProfileFrameTypeV8JS.Value.AsString()
+	frameTypeRust   = semconv.ProfileFrameTypeRust.Value.AsString()
 )
 
 // profilesToMetricsConnector implements xconnector.Profiles
@@ -47,6 +57,8 @@ type profilesToMetricsConnector struct {
 	nextConsumer consumer.Metrics
 	config       *Config
 	aggregations []aggregation
+	logger       *zap.Logger
+	mb           *metadata.MetricsBuilder
 }
 
 type aggregation struct {
@@ -63,13 +75,7 @@ func (c *profilesToMetricsConnector) Capabilities() consumer.Capabilities {
 
 // ConsumeProfiles processes profiles data and extracts metrics.
 func (c *profilesToMetricsConnector) ConsumeProfiles(ctx context.Context, profiles pprofile.Profiles) error {
-	metrics := c.extractMetricsFromProfiles(profiles)
-
-	if metrics.MetricCount() > 0 {
-		return c.nextConsumer.ConsumeMetrics(ctx, metrics)
-	}
-
-	return nil
+	return c.extractMetricsFromProfiles(ctx, profiles)
 }
 
 func (c *profilesToMetricsConnector) Start(ctx context.Context, host component.Host) error {
@@ -106,93 +112,102 @@ type origin struct {
 }
 
 // extractMetricsFromProfiles extracts basic metrics from the profiles data.
-func (c *profilesToMetricsConnector) extractMetricsFromProfiles(profiles pprofile.Profiles) pmetric.Metrics {
-	metrics := pmetric.NewMetrics()
-
-	dictionary := profiles.ProfilesDictionary()
+func (c *profilesToMetricsConnector) extractMetricsFromProfiles(ctx context.Context, profiles pprofile.Profiles) error {
+	dictionary := profiles.Dictionary()
 	resourceProfiles := profiles.ResourceProfiles().All()
 	for _, resourceProfile := range resourceProfiles {
-		resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
-
-		// Copy resource attributes
-		resourceProfile.Resource().Attributes().CopyTo(resourceMetrics.Resource().Attributes())
-
 		// Process each scope's profiles
 		scopeProfiles := resourceProfile.ScopeProfiles().All()
 		for _, scopeProfile := range scopeProfiles {
-			scopeMetrics := resourceMetrics.ScopeMetrics().AppendEmpty()
-
-			// Copy scope information
-			scopeProfile.Scope().CopyTo(scopeMetrics.Scope())
-
 			// Extract metrics from profiles in this scope
-			c.extractMetricsFromScopeProfiles(dictionary, scopeProfile, scopeMetrics)
+			c.extractMetricsFromScopeProfiles(dictionary, scopeProfile)
+		}
+
+		err := c.nextConsumer.ConsumeMetrics(ctx, c.mb.Emit(metadata.WithResource(resourceProfile.Resource())))
+		if err != nil {
+			return err
 		}
 	}
-
-	return metrics
+	return nil
 }
 
 // extractMetricsFromScopeProfiles extracts basic metrics from scope-level profile data.
 func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary pprofile.ProfilesDictionary, scopeProfile pprofile.ScopeProfiles,
-	scopeMetrics pmetric.ScopeMetrics) {
+) {
 	profiles := scopeProfile.Profiles().All()
 
 	for _, profile := range profiles {
 		st := profile.SampleType()
-		if st.Len() != 1 {
-			// Opinionated check to make sure we have only a single SampleTyp, which is what OTel eBPF profiler generates.
-			continue
-		}
-		typStrIdx := int(st.At(0).TypeStrindex())
-		unitStrIdx := int(st.At(0).UnitStrindex())
+		typStrIdx := int(st.TypeStrindex())
+		unitStrIdx := int(st.UnitStrindex())
 
 		origin := origin{
 			typ:  dictionary.StringTable().At(typStrIdx),
 			unit: dictionary.StringTable().At(unitStrIdx),
 		}
 
-		// Add basic sample count metric.
-		c.addSampleCountMetric(profile, scopeMetrics)
-		locIndices := profile.LocationIndices()
+		// TODO: For better efficiency, don't generate separate metrics per-profile
+		// under the same scope, instead merge the values across profiles into
+		// metrics (assuming scope and sample type is the same for these profiles).
+		// The following is fine for now, as the current eBPF profiler will not
+		// generate multiple profiles with the same sample type in the same scope.
+		if origin.typ == "samples" && origin.unit == "count" {
+			// TODO: For now, only extract frame-based metrics from OnCPU stacktraces.
+			c.addFrameMetrics(dictionary, profile)
+		}
 
-		if c.config.ByFrameType {
+		if c.config.Metrics.SamplesFrameType.Enabled {
 			// Collect frame type information.
 			frameTypeCounts := make(map[string]int64)
-			for _, sample := range profile.Sample().All() {
-				c.collectFrameTypeCounts(dictionary, locIndices, sample, frameTypeCounts)
+			for _, sample := range profile.Samples().All() {
+				if sample.StackIndex() == 0 {
+					continue
+				}
+
+				stack := dictionary.StackTable().At(int(sample.StackIndex()))
+				c.collectFrameTypeCounts(dictionary, stack.LocationIndices(), sample, frameTypeCounts)
 			}
 
 			// Add metric for frame types.
-			c.addMetrics(origin, frameTypeCounts,
-				"", "samples.frame_type", "Number of profiling frames by frame type", "frame_type",
-				scopeMetrics, profile.Time())
+			for typ, count := range frameTypeCounts {
+				c.mb.RecordSamplesFrameTypeDataPoint(profile.Time(), count, typ, origin.typ+"_"+origin.unit)
+			}
 		}
 
-		if c.config.ByClassification {
+		if c.config.Metrics.SamplesClassification.Enabled {
 			classificationCounts := make(map[string]map[string]int64)
-			for _, sample := range profile.Sample().All() {
-				c.collectClassificationCounts(dictionary, locIndices, sample, classificationCounts)
+			for _, sample := range profile.Samples().All() {
+				if sample.StackIndex() == 0 {
+					continue
+				}
+
+				stack := dictionary.StackTable().At(int(sample.StackIndex()))
+				c.collectClassificationCounts(dictionary, stack.LocationIndices(), sample, classificationCounts)
 			}
 
 			for frameType, classifications := range classificationCounts {
 				// Add metric for classifications.
-				c.addMetrics(origin, classifications,
-					frameType, "samples.classification", "Number of profiling frames by classification", "classification",
-					scopeMetrics, profile.Time())
+				for typ, count := range classifications {
+					c.mb.RecordSamplesClassificationDataPoint(profile.Time(), count, frameType, typ, origin.typ+"_"+origin.unit)
+				}
 			}
 		}
 
 		if len(c.aggregations) > 0 {
 			customAggregationCounts := make(map[string]int64)
-			for _, sample := range profile.Sample().All() {
-				c.collectCustomAggregationCounts(dictionary, locIndices, sample, customAggregationCounts)
+			for _, sample := range profile.Samples().All() {
+				if sample.StackIndex() == 0 {
+					continue
+				}
+
+				stack := dictionary.StackTable().At(int(sample.StackIndex()))
+				c.collectCustomAggregationCounts(dictionary, stack.LocationIndices(), sample, customAggregationCounts)
 			}
 
 			// Add metric for custom aggregations.
-			c.addMetrics(origin, customAggregationCounts,
-				"", "samples.custom_aggregation", "Number of profiling frames by custom aggregation", "aggregation",
-				scopeMetrics, profile.Time())
+			for typ, count := range customAggregationCounts {
+				c.mb.RecordSamplesCustomAggregationDataPoint(profile.Time(), count, typ, origin.typ+"_"+origin.unit)
+			}
 		}
 	}
 }
@@ -201,13 +216,9 @@ func (c *profilesToMetricsConnector) extractMetricsFromScopeProfiles(dictionary 
 func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice, sample pprofile.Sample, frameTypeCounts map[string]int64) {
 	locationTable := dictionary.LocationTable()
 	attrTable := dictionary.AttributeTable()
+	strTable := dictionary.StringTable()
 
-	for sli := sample.LocationsStartIndex(); sli < sample.LocationsStartIndex()+sample.LocationsLength(); sli++ {
-		if int(sli) >= locationIndices.Len() {
-			continue
-		}
-
-		li := locationIndices.At(int(sli))
+	for _, li := range locationIndices.All() {
 		if int(li) >= locationTable.Len() {
 			continue
 		}
@@ -218,7 +229,7 @@ func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.
 				continue
 			}
 			attr := attrTable.At(int(idx))
-			if attr.Key() == string(semconv.ProfileFrameTypeKey) {
+			if strTable.At(int(attr.KeyStrindex())) == string(semconv.ProfileFrameTypeKey) {
 				typ := attr.Value().Str()
 				frameTypeCounts[typ]++
 				break
@@ -227,46 +238,16 @@ func (c *profilesToMetricsConnector) collectFrameTypeCounts(dictionary pprofile.
 	}
 }
 
-// addMetrics converts and adds count information as metric to the scopeMetrics.
-func (c *profilesToMetricsConnector) addMetrics(origin origin, counts map[string]int64,
-	frameType, metricName, metricDesc, dataPointAttribute string,
-	scopeMetrics pmetric.ScopeMetrics, ts pcommon.Timestamp) {
-	if len(counts) == 0 {
-		return
-	}
-
-	metric := scopeMetrics.Metrics().AppendEmpty()
-	metric.SetName(c.config.MetricsPrefix + metricName)
-	metric.SetDescription(metricDesc)
-	metric.SetUnit("1")
-
-	gauge := metric.SetEmptyGauge()
-	for typ, count := range counts {
-		dataPoint := gauge.DataPoints().AppendEmpty()
-		dataPoint.SetIntValue(count)
-		dataPoint.SetTimestamp(ts)
-		if frameType != "" {
-			dataPoint.Attributes().PutStr("frame_type", frameType)
-		}
-		dataPoint.Attributes().PutStr(dataPointAttribute, typ)
-		dataPoint.Attributes().PutStr("profile.type_unit", origin.typ+"_"+origin.unit)
-	}
-}
-
 // collectClassificationCounts walks all locations/frames of a sample and collects the classification information.
 func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary pprofile.ProfilesDictionary, locationIndices pcommon.Int32Slice,
-	sample pprofile.Sample, classificationCounts map[string]map[string]int64) {
+	sample pprofile.Sample, classificationCounts map[string]map[string]int64,
+) {
 	locationTable := dictionary.LocationTable()
 	attrTable := dictionary.AttributeTable()
 	funcTable := dictionary.FunctionTable()
 	strTable := dictionary.StringTable()
 
-	for sli := sample.LocationsStartIndex(); sli < sample.LocationsStartIndex()+sample.LocationsLength(); sli++ {
-		if int(sli) >= locationIndices.Len() {
-			continue
-		}
-
-		li := locationIndices.At(int(sli))
+	for _, li := range locationIndices.All() {
 		if int(li) >= locationTable.Len() {
 			continue
 		}
@@ -278,7 +259,7 @@ func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary ppro
 				continue
 			}
 			attr := attrTable.At(int(idx))
-			if attr.Key() == string(semconv.ProfileFrameTypeKey) {
+			if strTable.At(int(attr.KeyStrindex())) == string(semconv.ProfileFrameTypeKey) {
 				frameType = attr.Value().Str()
 				break
 			}
@@ -295,7 +276,7 @@ func (c *profilesToMetricsConnector) collectClassificationCounts(dictionary ppro
 			continue
 		}
 
-		for _, line := range loc.Line().All() {
+		for _, line := range loc.Lines().All() {
 			fnIdx := line.FunctionIndex
 			fnEntry := funcTable.At(int(fnIdx()))
 
@@ -329,18 +310,13 @@ func (c *profilesToMetricsConnector) collectCustomAggregationCounts(dictionary p
 	funcTable := dictionary.FunctionTable()
 	strTable := dictionary.StringTable()
 
-	for sli := sample.LocationsStartIndex(); sli < sample.LocationsStartIndex()+sample.LocationsLength(); sli++ {
-		if int(sli) >= locationIndices.Len() {
-			continue
-		}
-
-		li := locationIndices.At(int(sli))
+	for _, li := range locationIndices.All() {
 		if int(li) >= locationTable.Len() {
 			continue
 		}
 		loc := locationTable.At(int(li))
 
-		for _, line := range loc.Line().All() {
+		for _, line := range loc.Lines().All() {
 			fnIdx := line.FunctionIndex
 			fnEntry := funcTable.At(int(fnIdx()))
 			fnStr := strTable.At(int(fnEntry.NameStrindex()))
@@ -352,20 +328,4 @@ func (c *profilesToMetricsConnector) collectCustomAggregationCounts(dictionary p
 			}
 		}
 	}
-}
-
-// addSampleCountMetric adds a metric for the total number of samples.
-func (c *profilesToMetricsConnector) addSampleCountMetric(profile pprofile.Profile, scopeMetrics pmetric.ScopeMetrics) {
-	metric := scopeMetrics.Metrics().AppendEmpty()
-	metric.SetName(c.config.MetricsPrefix + "samples.count")
-	metric.SetDescription("Total number of profiling samples")
-	metric.SetUnit("1")
-
-	sum := metric.SetEmptySum()
-	sum.SetIsMonotonic(true)
-	sum.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
-
-	dataPoint := sum.DataPoints().AppendEmpty()
-	dataPoint.SetTimestamp(profile.Time())
-	dataPoint.SetIntValue(int64(profile.Sample().Len()))
 }

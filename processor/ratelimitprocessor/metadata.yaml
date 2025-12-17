@@ -13,18 +13,31 @@ tests:
 
 telemetry:
   metrics:
-    ratelimit.requests:
+    ratelimit.concurrent_requests:
       enabled: true
-      description: Number of rate-limiting requests
+      description: Number of in-flight requests at any given time
       unit: "{requests}"
+      stability:
+        level: development
+      sum:
+        value_type: int
+        monotonic: false
+    ratelimit.dynamic.escalations:
+      enabled: true
+      description: Total number of dynamic rate escalations (dynamic > static)
+      unit: "{count}"
+      stability:
+        level: development
       sum:
         value_type: int
         monotonic: true
-      attributes: ["decision", "reason"]
+      attributes: ["class", "source_kind", "result"]
     ratelimit.request_duration:
       enabled: true
       description: Time(in seconds) taken to process a rate limit request
       unit: "{seconds}"
+      stability:
+        level: development
       histogram:
         value_type: double
         monotonic: true
@@ -33,6 +46,8 @@ telemetry:
       enabled: true
       description: Number of bytes in received request. Only available if strategy is rate per bytes.
       unit: "{bytes}"
+      stability:
+        level: development
       histogram:
         value_type: int
         bucket_boundaries: [
@@ -68,17 +83,42 @@ telemetry:
           18874368,   # 18 MB
           20971520    # 20 MB (OTLP HTTP max)
         ]
-    ratelimit.concurrent_requests:
+    ratelimit.requests:
       enabled: true
-      description: Number of in-flight requests at any given time
+      description: Number of rate-limiting requests
       unit: "{requests}"
-      gauge:
+      stability:
+        level: development
+      sum:
         value_type: int
         monotonic: true
+      attributes: ["decision", "reason"]
+    ratelimit.resolver.failures:
+      enabled: true
+      description: Total number of class resolver failures
+      unit: "{count}"
+      stability:
+        level: development
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: ["unique_key"] # high cardinality
 attributes:
+  class:
+    description: rate limit class used
+    type: string
   decision:
     description: rate limit decision
     type: string
   reason:
     description: rate limit reason
+    type: string
+  result:
+    description: result of the rate limit request
+    type: string
+  source_kind:
+    description: precedence source used to resolve the rate limit settings
+    type: string
+  unique_key:
+    description: unique key for the request used in class resolution
     type: string

@@ -17,12 +17,78 @@
 
 package routing // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 
-import "go.opentelemetry.io/collector/pdata/pcommon"
+import (
+	"strings"
 
-func EncodeDataStream(resource pcommon.Resource, dataStreamType string) {
+	"go.opentelemetry.io/collector/pdata/pcommon"
+)
+
+// DataStreamType tracks the text associated with a data stream type.
+const (
+	DataStreamTypeLogs    = "logs"
+	DataStreamTypeMetrics = "metrics"
+	DataStreamTypeTraces  = "traces"
+
+	ServiceNameAttributeKey = "service.name"
+
+	NamespaceDefault = "default" //TODO: make this configurable
+
+	ServiceNameUnknownAttributeUnknonw = "unknown"
+)
+
+func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceNameInDataset bool) {
+	if serviceNameInDataset {
+		encodeDataStreamWithServiceName(resource, dataStreamType)
+	} else {
+		encodeDataStreamDefault(resource, dataStreamType)
+	}
+}
+
+func encodeDataStreamDefault(resource pcommon.Resource, dataStreamType string) {
 	attributes := resource.Attributes()
 
 	attributes.PutStr("data_stream.type", dataStreamType)
 	attributes.PutStr("data_stream.dataset", "apm")
-	attributes.PutStr("data_stream.namespace", "default") //TODO: make this configurable
+	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+}
+
+func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType string) {
+	attributes := resource.Attributes()
+
+	serviceName, ok := attributes.Get(ServiceNameAttributeKey)
+	if !ok || serviceName.Str() == "" {
+		serviceName = pcommon.NewValueStr(ServiceNameUnknownAttributeUnknonw)
+	}
+
+	attributes.PutStr("data_stream.type", dataStreamType)
+	attributes.PutStr("data_stream.dataset", "apm.app."+normalizeServiceName(serviceName.Str()))
+	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+}
+
+// The follwing is Copied from apm-data
+// https://github.com/elastic/apm-data/blob/46a81347bdbb81a7a308e8d2f58f39c0b1137a77/model/modelprocessor/datastream.go#L186C1-L209C2
+
+// normalizeServiceName translates serviceName into a string suitable
+// for inclusion in a data stream name.
+//
+// Concretely, this function will lowercase the string and replace any
+// reserved characters with "_".
+func normalizeServiceName(s string) string {
+	s = strings.ToLower(s)
+	s = strings.Map(replaceReservedRune, s)
+	return s
+}
+
+func replaceReservedRune(r rune) rune {
+	switch r {
+	case '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':':
+		// These characters are not permitted in data stream names
+		// by Elasticsearch.
+		return '_'
+	case '-':
+		// Hyphens are used to separate the data stream type, dataset,
+		// and namespace.
+		return '_'
+	}
+	return r
 }

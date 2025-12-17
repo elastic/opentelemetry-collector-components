@@ -1,24 +1,9 @@
 resourceLogs:
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "1.2"
         - key: service.name
           value:
             stringValue: service1
-        - key: service.version
-          value:
-            stringValue: ""
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
@@ -34,12 +19,18 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-xyz
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
         - key: host.arch
           value:
             stringValue: x64
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla Chrome Edge
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -81,19 +72,103 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "99"
+        - key: user.name
+          value:
+            stringValue: foo
         - key: client.address
           value:
-            stringValue: v4:204803073
+            stringValue: 123.0.0.1
+        - key: source.address
+          value:
+            stringValue: 123.0.0.1
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "1.2"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: abcdef123
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Node
+        - key: service.framework.version
+          value:
+            stringValue: "1"
+        - key: service.runtime.name
+          value:
+            stringValue: node.js
+        - key: service.runtime.version
+          value:
+            stringValue: 1.2.3
+        - key: service.origin.id
+          value:
+            stringValue: 1234567890abcdef
+        - key: service.origin.name
+          value:
+            stringValue: origin-name
+        - key: service.origin.version
+          value:
+            stringValue: 1.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: source.nat.ip
+          value:
+            stringValue: 12.53.12.1
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: labels.organization_uuid
+          value:
+            stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
     scopeLogs:
       - logRecords:
           - attributes:
               - key: processor.event
                 value:
                   stringValue: error
+              - key: service.target.type
+                value:
+                  stringValue: target-type
+              - key: service.target.name
+                value:
+                  stringValue: target-name
               - key: error.id
                 value:
                   stringValue: "0123456789012345"
@@ -124,26 +199,272 @@ resourceLogs:
               - key: error.exception.code
                 value:
                   stringValue: "42"
+              - key: http.request.method
+                value:
+                  stringValue: POST
+              - key: http.response.status_code
+                value:
+                  intValue: "200"
+              - key: url.original
+                value:
+                  stringValue: /p/a/t/h?query=string#hash
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: url.full
+                value:
+                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
+              - key: url.domain
+                value:
+                  stringValue: www.example.com
+              - key: url.path
+                value:
+                  stringValue: /p/a/t/h
+              - key: url.query
+                value:
+                  stringValue: ?query=string
+              - key: url.fragment
+                value:
+                  stringValue: '#hash'
+              - key: url.port
+                value:
+                  intValue: "8080"
+              - key: http.version
+                value:
+                  stringValue: "1.1"
+              - key: http.request.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2,c3=3
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla Chrome Edge
+                      - key: X-Forwarded-For
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: 123.0.0.1
+              - key: http.request.env
+                value:
+                  kvlistValue:
+                    values:
+                      - key: SERVER_SOFTWARE
+                        value:
+                          stringValue: nginx
+                      - key: GATEWAY_INTERFACE
+                        value:
+                          stringValue: CGI/1.1
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
+              - key: http.request.cookies
+                value:
+                  kvlistValue:
+                    values:
+                      - key: c1
+                        value:
+                          stringValue: v1
+                      - key: c2
+                        value:
+                          stringValue: v2
+                      - key: c3
+                        value:
+                          doubleValue: 3
+              - key: http.request.body.original
+                value:
+                  stringValue: Hello World
+              - key: http.request.referrer
+                value:
+                  stringValue: http://localhost:8000/test/e2e/
+              - key: http.response.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: application/json
+              - key: http.response.finished
+                value:
+                  boolValue: true
+              - key: http.response.headers_sent
+                value:
+                  boolValue: true
+              - key: error.custom
+                value:
+                  kvlistValue:
+                    values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
+                      - key: and_objects
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: foo
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: bar
+                                      - stringValue: baz
+              - key: error.log.message
+                value:
+                  stringValue: My service could not talk to the database named foobar
+              - key: error.log.level
+                value:
+                  stringValue: warning
+              - key: error.log.param_message
+                value:
+                  stringValue: My service could not talk to the database named %s
+              - key: error.log.logger_name
+                value:
+                  stringValue: my.logger.name
+              - key: error.log.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: classname
+                              value:
+                                stringValue: User::Common
+                            - key: library_frame
+                              value:
+                                boolValue: true
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                            - key: line.number
+                              value:
+                                intValue: "3"
+                            - key: line.column
+                              value:
+                                intValue: "4"
+                            - key: filename
+                              value:
+                                stringValue: /webpack/file/name.py
+                            - key: classname
+                              value:
+                                stringValue: Webpack::File::Name
+                            - key: line.context
+                              value:
+                                stringValue: line3
+                            - key: module
+                              value:
+                                stringValue: App::MyModule
+                            - key: function
+                              value:
+                                stringValue: foo
+                            - key: abs_path
+                              value:
+                                stringValue: /real/file/name.py
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: line1
+                                    - stringValue: line2
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: line4
+                                    - stringValue: line5
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
+                      - kvlistValue:
+                          values:
+                            - key: vars
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: key
+                                      value:
+                                        stringValue: value
+                            - key: line.number
+                              value:
+                                intValue: "102"
+                            - key: filename
+                              value:
+                                stringValue: lib/instrumentation/index.js
+                            - key: line.context
+                              value:
+                                stringValue: '    var result = original.apply(this, arguments)'
+                            - key: function
+                              value:
+                                stringValue: instrumented
+                            - key: abs_path
+                              value:
+                                stringValue: /Users/watson/code/node_modules/elastic/lib/instrumentation/index.js
+                            - key: context.pre
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '  var trans = this.currentTransaction'
+                                    - stringValue: ""
+                                    - stringValue: '  return instrumented'
+                                    - stringValue: ""
+                                    - stringValue: '  function instrumented () {'
+                                    - stringValue: '    var prev = ins.currentTransaction'
+                                    - stringValue: '    ins.currentTransaction = trans'
+                            - key: context.post
+                              value:
+                                arrayValue:
+                                  values:
+                                    - stringValue: '    ins.currentTransaction = prev'
+                                    - stringValue: '    return result'
+                                    - stringValue: '}'
+                                    - stringValue: '}'
+                                    - stringValue: ""
+                                    - stringValue: Instrumentation.prototype._recoverTransaction = function (trans) {
+                                    - stringValue: '  if (this.currentTransaction === trans) return'
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             body:
               stringValue: My service could not talk to the database named foobar
-            spanId: ""
             timeUnixNano: "1494342245999999000"
-            traceId: ""
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -165,6 +486,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -212,13 +536,73 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: user.name
+          value:
+            stringValue: bar
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: abcdef123
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -234,26 +618,30 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1533826745999000"
+              - key: error.log.message
+                value:
+                  stringValue: no user found
+              - key: error.log.level
+                value:
+                  stringValue: error
+              - key: error.log.stacktrace
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: classname
+                              value:
+                                stringValue: User::Special
+                            - key: exclude_from_grouping
+                              value:
+                                boolValue: false
             body:
               stringValue: no user found
-            spanId: ""
             timeUnixNano: "1533826745999000000"
-            traceId: ""
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -275,6 +663,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -322,13 +713,73 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: user.name
+          value:
+            stringValue: bar
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: abcdef123
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -348,24 +799,10 @@ resourceLogs:
                 value:
                   stringValue: Cannot read property 'baz' no defined
             body: {}
-            spanId: ""
             timeUnixNano: "1533826745999000000"
-            traceId: ""
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: elastic-ruby
-        - key: agent.version
-          value:
-            stringValue: 2.1.3
-        - key: service.language.name
-          value:
-            stringValue: ruby
-        - key: service.language.version
-          value:
-            stringValue: "2.5"
         - key: service.name
           value:
             stringValue: service1
@@ -387,6 +824,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -434,13 +874,73 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: user.name
+          value:
+            stringValue: bar
+        - key: agent.name
+          value:
+            stringValue: elastic-ruby
+        - key: agent.version
+          value:
+            stringValue: 2.1.3
+        - key: service.language.name
+          value:
+            stringValue: ruby
+        - key: service.language.version
+          value:
+            stringValue: "2.5"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Rails
+        - key: service.framework.version
+          value:
+            stringValue: "5.0"
+        - key: service.runtime.name
+          value:
+            stringValue: cruby
+        - key: service.runtime.version
+          value:
+            stringValue: "2.5"
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
@@ -463,24 +963,11 @@ resourceLogs:
                 value:
                   stringValue: DbError
             body: {}
-            spanId: ""
             timeUnixNano: "1547070053000000000"
             traceId: 0123456789abcdeffedcba0123456789
         scope: {}
   - resource:
       attributes:
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -502,6 +989,9 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -549,25 +1039,85 @@ resourceLogs:
             stringValue: node
         - key: process.command_line
           value:
-            stringValue: node server.js
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
         - key: user.id
           value:
             stringValue: "123"
         - key: user.email
           value:
             stringValue: bar@example.com
+        - key: user.name
+          value:
+            stringValue: bar
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: service.language.name
+          value:
+            stringValue: ecmascript
+        - key: service.language.version
+          value:
+            stringValue: "8"
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: agent.ephemeral_id
+          value:
+            stringValue: abcdef123
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.runtime.name
+          value:
+            stringValue: node
+        - key: service.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: host.os.platform
+          value:
+            stringValue: darwin
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
     scopeLogs:
       - logRecords:
           - attributes:
               - key: processor.event
                 value:
                   stringValue: error
-              - key: error.id
-                value:
-                  stringValue: abcdef0123456789
               - key: transaction.id
                 value:
                   stringValue: "1234567890987654"
+              - key: error.id
+                value:
+                  stringValue: abcdef0123456789
               - key: parent.id
                 value:
                   stringValue: 9632587410abcdef
@@ -577,6 +1127,12 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1533827045999000"
+              - key: error.log.message
+                value:
+                  stringValue: Cannot read property 'baz' of undefined
+              - key: error.log.level
+                value:
+                  stringValue: custom log level
             body:
               stringValue: Cannot read property 'baz' of undefined
             spanId: "1234567890987654"

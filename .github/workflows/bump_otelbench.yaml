@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.get-new-version.outputs.new_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: '0'
 
@@ -46,32 +46,29 @@ jobs:
     steps:
       - name: Get token to checkout on the repository and to create a PR
         id: get_token
-        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
+        uses: actions/create-github-app-token@v2
         with:
-          app_id: ${{ secrets.OBS_AUTOMATION_APP_ID }}
-          private_key: ${{ secrets.OBS_AUTOMATION_APP_PEM }}
-          permissions: >-
-            {
-              "contents": "write",
-              "pull_requests": "write"
-            }
+          app-id: ${{ secrets.OBS_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.OBS_AUTOMATION_APP_PEM }}
+          permission-contents: write
+          permission-pull-requests: write
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ steps.get_token.outputs.token }}
 
-      - uses: elastic/oblt-actions/git/setup@1a2fda5a6ac99a553fdcf672cbcf7eef2f7e6ffb # v1.24.7
+      - uses: elastic/oblt-actions/git/setup@54e84e6f0e4a41c4bed324fda6fb01f5bc7a53bf
         with:
           github-token: ${{ steps.get_token.outputs.token }}
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: internal/tools/go.mod
           cache: 'false'
 
       - name: Cache go tools
         id: go-tools-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ./.tools
           key: go-tools-${{ runner.os }}-${{ hashFiles('internal/tools/go.sum') }}
