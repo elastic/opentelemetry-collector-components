@@ -15,7 +15,7 @@ Receives data via HTTP using [APM IntakeV2 format](https://www.elastic.co/docs/s
 
 The main purpose of this receiver is to enable classic Elastic APM Agents to send data to an OTel collector. This way users can gradually switch to OTel without needing to potentially replace lots of APM Agents which may be also used with some manually instrumented code.
 
-The receiver currently supports the [Intake v2 protocol](https://github.com/elastic/apm-server/tree/main/docs/spec/v2). RUM intake, and older intake protocols, are not supported.
+The receiver currently supports the [Intake v2 protocol](https://github.com/elastic/apm-data/tree/main/input/elasticapm/docs/spec/v2). RUM intake, and older intake protocols, are not supported.
 
 ## Getting started
 
@@ -107,7 +107,7 @@ The output of this component is the OTel native translation of the Elastic APM d
 Because there is no clear 1:1 mapping between the OTel and the Elastic APM data model, there are three types of fields that go in the output OTel data. Everything that can be mapped to OTel, must be mapped into the OTel field defined by the OTel specs:
 
 - All fields that are defined as top level fields in OTel are populated according to the OTel spec. Examples are `ParentSpanID`, `TraceID`, `StartTimestamp`, `EndTimestamp`.
-- All Elastic APM Fields that can be mapped into a SemConv field, are mapped into SemConv fields. This hold true for both resource attributes and event specific attributes. For example, the [`service.name` field from the metadata](https://github.com/elastic/apm-server/blob/main/docs/spec/v2/metadata.json#L132) is stored on each event in the `service.name` SemConv attribute, while the [`node.name` field from the metadata](https://github.com/elastic/apm-server/blob/main/docs/spec/v2/metadata.json#L335) is stored on each event in the `service.instance.id`, and the `db.type` field from the Elastic APM span is stored in the `db.system` SemConv attribute.
+- All Elastic APM Fields that can be mapped into a SemConv field, are mapped into SemConv fields. This hold true for both resource attributes and event specific attributes. For example, the [`service.name` field from the metadata](https://github.com/elastic/apm-data/blob/main/input/elasticapm/docs/spec/v2/metadata.json#L132) is stored on each event in the `service.name` SemConv attribute, while the [`node.name` field from the metadata](https://github.com/elastic/apm-data/blob/main/input/elasticapm/docs/spec/v2/metadata.json#L335) is stored on each event in the `service.instance.id`, and the `db.type` field from the Elastic APM span is stored in the `db.system` SemConv attribute.
 
 - All fields required by Elastic APM, including Kibana, but are not part of any OTel spec, are stored in a custom attribute, using the Elastic APM field name as the key. Examples: the `transaction.name` of an Elastic APM transaction, which does not have an OTel equivalent, is stored in the `transaction.name` attribute. The `http.request.body` from the incoming Elastic APM data is stored in the `http.request.body` attribute.
 
