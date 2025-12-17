@@ -1,0 +1,51 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+    scopeSpans:
+      - scope: {}
+        spans:
+          - name: process-order
+            spanId: "1234567890abcdef"
+            traceId: "fedcba0987654321fedcba0987654321"
+            startTimeUnixNano: "1000000000"
+            endTimeUnixNano: "2000000000"
+            kind: 1
+            attributes:
+              - key: http.method
+                value:
+                  stringValue: POST
+            events:
+              - name: exception
+                timeUnixNano: "1500000000"
+                attributes:
+                  - key: exception.message
+                    value:
+                      stringValue: "Null pointer exception"
+                  - key: exception.type
+                    value:
+                      stringValue: "java.lang.NullPointerException"
+                  - key: exception.stacktrace
+                    value:
+                      stringValue: "at com.example.MyClass.method(MyClass.java:42)"
+              - name: regular-event
+                timeUnixNano: "1600000000"
+                attributes:
+                  - key: event.info
+                    value:
+                      stringValue: "This is a regular event"
+          - name: successful-span
+            spanId: "abcdef1234567890"
+            traceId: "fedcba0987654321fedcba0987654321"
+            startTimeUnixNano: "3000000000"
+            endTimeUnixNano: "4000000000"
+            kind: 1
+            events:
+              - name: info
+                timeUnixNano: "3500000000"
+                attributes:
+                  - key: event.message
+                    value:
+                      stringValue: "Operation completed successfully"
