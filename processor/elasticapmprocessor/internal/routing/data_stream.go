@@ -104,9 +104,7 @@ func IsErrorEvent(attributes pcommon.Map) bool {
 	// Check for APM-specific error events.
 	// Fast path for log records where apm-data always sets processor.event.
 	if processorEvent, ok := attributes.Get(elasticattr.ProcessorEvent); ok {
-		if processorEvent.Str() == "error" {
-			return true
-		}
+		return processorEvent.Str() == "error"
 	}
 
 	// Check for OTLP exception attributes
