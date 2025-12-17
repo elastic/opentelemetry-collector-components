@@ -23,7 +23,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
 )
 
 func TestDataStremaEncoderDefault(t *testing.T) {

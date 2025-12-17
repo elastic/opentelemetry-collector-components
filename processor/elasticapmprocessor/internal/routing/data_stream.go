@@ -22,7 +22,7 @@ import (
 
 	"github.com/elastic/opentelemetry-lib/elasticattr"
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
 )
 
 // DataStreamType tracks the text associated with a data stream type.
