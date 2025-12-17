@@ -491,3 +491,85 @@ func TestECSErrorRouting(t *testing.T) {
 		})
 	}
 }
+
+// TestECSSpanEventErrorRouting tests that span events with errors are routed to apm.error data stream
+func TestECSSpanEventErrorRouting(t *testing.T) {
+	ctx := context.Background()
+	ctx = client.NewContext(ctx, client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+	next := &consumertest.TracesSink{}
+
+	cfg := createDefaultConfig().(*Config)
+	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	inputTraces, err := golden.ReadTraces("testdata/ecs/elastic_error/span_otlp_exception_input.yaml")
+	require.NoError(t, err)
+
+	require.NoError(t, tp.ConsumeTraces(ctx, inputTraces))
+	actual := next.AllTraces()[0]
+
+	// Verify resource-level data stream attributes
+	require.Equal(t, 1, actual.ResourceSpans().Len())
+	resourceSpan := actual.ResourceSpans().At(0)
+	resourceAttrs := resourceSpan.Resource().Attributes()
+
+	dataStreamType, _ := resourceAttrs.Get("data_stream.type")
+	assert.Equal(t, "traces", dataStreamType.Str())
+	dataStreamDataset, _ := resourceAttrs.Get("data_stream.dataset")
+	assert.Equal(t, "apm", dataStreamDataset.Str())
+	dataStreamNamespace, _ := resourceAttrs.Get("data_stream.namespace")
+	assert.Equal(t, "default", dataStreamNamespace.Str())
+
+	// Verify span events
+	require.Equal(t, 1, resourceSpan.ScopeSpans().Len())
+	scopeSpan := resourceSpan.ScopeSpans().At(0)
+	require.Equal(t, 2, scopeSpan.Spans().Len())
+
+	// First span should have an error event with data stream routing
+	span1 := scopeSpan.Spans().At(0)
+	assert.Equal(t, "process-order", span1.Name())
+	require.Equal(t, 2, span1.Events().Len())
+
+	// Check exception event
+	exceptionEvent := span1.Events().At(0)
+	assert.Equal(t, "exception", exceptionEvent.Name())
+	exceptionAttrs := exceptionEvent.Attributes()
+
+	// Verify error data stream attributes on the event
+	eventDataStreamType, _ := exceptionAttrs.Get("data_stream.type")
+	assert.Equal(t, "traces", eventDataStreamType.Str())
+	eventDataStreamDataset, _ := exceptionAttrs.Get("data_stream.dataset")
+	assert.Equal(t, "apm.error", eventDataStreamDataset.Str())
+	eventDataStreamNamespace, _ := exceptionAttrs.Get("data_stream.namespace")
+	assert.Equal(t, "default", eventDataStreamNamespace.Str())
+
+	// Verify exception attributes are present
+	exceptionType, _ := exceptionAttrs.Get("exception.type")
+	assert.Equal(t, "java.lang.NullPointerException", exceptionType.Str())
+	exceptionMessage, _ := exceptionAttrs.Get("exception.message")
+	assert.Equal(t, "Null pointer exception", exceptionMessage.Str())
+
+	// Check regular event (should not have error data stream)
+	regularEvent := span1.Events().At(1)
+	assert.Equal(t, "regular-event", regularEvent.Name())
+	regularAttrs := regularEvent.Attributes()
+	_, hasErrorDataStream := regularAttrs.Get("data_stream.dataset")
+	assert.False(t, hasErrorDataStream)
+
+	// Second span should have no error events
+	span2 := scopeSpan.Spans().At(1)
+	assert.Equal(t, "successful-span", span2.Name())
+	require.Equal(t, 1, span2.Events().Len())
+
+	infoEvent := span2.Events().At(0)
+	assert.Equal(t, "info", infoEvent.Name())
+	infoAttrs := infoEvent.Attributes()
+	_, hasInfoErrorDataStream := infoAttrs.Get("data_stream.dataset")
+	assert.False(t, hasInfoErrorDataStream)
+}

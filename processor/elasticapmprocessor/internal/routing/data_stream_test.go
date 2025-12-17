@@ -65,7 +65,7 @@ func TestDataStreamEncoderWithServiceName(t *testing.T) {
 	assert.Equal(t, "default", dataStreamNamespace.Str())
 }
 
-func TestIsErrorLog(t *testing.T) {
+func TestIsErrorEvent(t *testing.T) {
 	tests := []struct {
 		name     string
 		setupFn  func(pcommon.Map)
@@ -143,7 +143,7 @@ func TestIsErrorLog(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			attrs := pcommon.NewMap()
 			tt.setupFn(attrs)
-			result := routing.IsErrorLog(attrs)
+			result := routing.IsErrorEvent(attrs)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

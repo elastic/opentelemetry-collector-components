@@ -76,6 +76,23 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 			}
 			// Traces signal never need to be routed to service-specific datasets
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
+
+			// Iterate through spans to find errors in span events
+			scopeSpans := resourceSpan.ScopeSpans()
+			for j := 0; j < scopeSpans.Len(); j++ {
+				spans := scopeSpans.At(j).Spans()
+				for k := 0; k < spans.Len(); k++ {
+					span := spans.At(k)
+					events := span.Events()
+					for l := 0; l < events.Len(); l++ {
+						event := events.At(l)
+						if routing.IsErrorEvent(event.Attributes()) {
+							// Override the resource-level data stream for error events in spans.
+							routing.EncodeErrorDataStream(event.Attributes(), routing.DataStreamTypeTraces)
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -190,7 +207,7 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 				logRecords := scopeLogs.At(j).LogRecords()
 				for k := 0; k < logRecords.Len(); k++ {
 					logRecord := logRecords.At(k)
-					if routing.IsErrorLog(logRecord.Attributes()) {
+					if routing.IsErrorEvent(logRecord.Attributes()) {
 						// Override the resource-level data stream for error logs
 						routing.EncodeErrorDataStream(logRecord.Attributes(), routing.DataStreamTypeLogs)
 					}
