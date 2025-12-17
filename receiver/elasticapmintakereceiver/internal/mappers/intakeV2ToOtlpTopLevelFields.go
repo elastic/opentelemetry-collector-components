@@ -19,7 +19,6 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"strings"
-	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -71,7 +70,7 @@ func SetTopLevelFieldsCommon(event *modelpb.APMEvent, t TopLevelFieldSetter, log
 }
 
 // Sets top level fields on ptrace.Span based on the APMEvent
-func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestamp time.Time, s ptrace.Span, logger *zap.Logger) {
+func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestampNanos uint64, s ptrace.Span, logger *zap.Logger) {
 	SetTopLevelFieldsCommon(event, s, logger)
 
 	if event.ParentId != "" {
@@ -90,13 +89,13 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestamp time.Time, s ptrac
 		s.Status().SetCode(ptrace.StatusCodeError)
 	}
 
-	duration := time.Duration(event.GetEvent().GetDuration())
-	s.SetStartTimestamp(pcommon.NewTimestampFromTime(timestamp))
-	s.SetEndTimestamp(pcommon.NewTimestampFromTime(timestamp.Add(duration)))
+	durationNanos := event.GetEvent().GetDuration()
+	s.SetStartTimestamp(pcommon.Timestamp(timestampNanos))
+	s.SetEndTimestamp(pcommon.Timestamp(timestampNanos + durationNanos))
 }
 
 // Sets top level fields on plog.LogRecord based on the APMEvent
-func SetTopLevelFieldsLogRecord(event *modelpb.APMEvent, timestamp time.Time, l plog.LogRecord, logger *zap.Logger) {
+func SetTopLevelFieldsLogRecord(event *modelpb.APMEvent, timestampNanos uint64, l plog.LogRecord, logger *zap.Logger) {
 	SetTopLevelFieldsCommon(event, l, logger)
-	l.SetTimestamp(pcommon.NewTimestampFromTime(timestamp))
+	l.SetTimestamp(pcommon.Timestamp(timestampNanos))
 }
