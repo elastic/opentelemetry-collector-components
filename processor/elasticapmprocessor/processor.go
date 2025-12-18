@@ -174,6 +174,15 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
 			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
+
+			// Check if resource has a service name for routing decisions
+			hasServiceName := false
+			if serviceName, ok := resource.Attributes().Get(routing.ServiceNameAttributeKey); ok && serviceName.Str() != "" {
+				hasServiceName = true
+			}
+
+			// Route internal metrics to appropriate data streams if needed.
+			routeMetricsToDataStream(resourceMetric.ScopeMetrics(), hasServiceName)
 		}
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
@@ -182,6 +191,45 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 		p.enricher.EnrichMetrics(md)
 	}
 	return p.next.ConsumeMetrics(ctx, md)
+}
+
+func routeMetricsToDataStream(scopeMetrics pmetric.ScopeMetricsSlice, hasServiceName bool) {
+	for j := 0; j < scopeMetrics.Len(); j++ {
+		metrics := scopeMetrics.At(j).Metrics()
+		for k := 0; k < metrics.Len(); k++ {
+			metric := metrics.At(k)
+			metricName := metric.Name()
+
+			// Route data points based on metric type
+			switch metric.Type() {
+			case pmetric.MetricTypeGauge:
+				dataPoints := metric.Gauge().DataPoints()
+				for l := 0; l < dataPoints.Len(); l++ {
+					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+				}
+			case pmetric.MetricTypeSum:
+				dataPoints := metric.Sum().DataPoints()
+				for l := 0; l < dataPoints.Len(); l++ {
+					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+				}
+			case pmetric.MetricTypeHistogram:
+				dataPoints := metric.Histogram().DataPoints()
+				for l := 0; l < dataPoints.Len(); l++ {
+					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+				}
+			case pmetric.MetricTypeExponentialHistogram:
+				dataPoints := metric.ExponentialHistogram().DataPoints()
+				for l := 0; l < dataPoints.Len(); l++ {
+					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+				}
+			case pmetric.MetricTypeSummary:
+				dataPoints := metric.Summary().DataPoints()
+				for l := 0; l < dataPoints.Len(); l++ {
+					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+				}
+			}
+		}
+	}
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {

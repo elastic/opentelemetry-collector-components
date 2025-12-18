@@ -18,8 +18,10 @@
 package routing // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/elastic/apm-data/model/modelprocessor"
 	"github.com/elastic/opentelemetry-lib/elasticattr"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
@@ -124,4 +126,93 @@ func EncodeErrorDataStream(attributes pcommon.Map, dataStreamType string) {
 	attributes.PutStr("data_stream.type", dataStreamType)
 	attributes.PutStr("data_stream.dataset", "apm.error")
 	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+}
+
+// hasTransactionSpanContext checks if the attributes contain transaction or span context.
+// This is used to identify metrics that include transaction/span fields, which should be
+// routed to internal metrics data streams.
+func hasTransactionSpanContext(attributes pcommon.Map) bool {
+	// Check for transaction-related attributes
+	if _, ok := attributes.Get("transaction.id"); ok {
+		return true
+	}
+	if _, ok := attributes.Get("transaction.name"); ok {
+		return true
+	}
+	if _, ok := attributes.Get("transaction.type"); ok {
+		return true
+	}
+
+	// Check for span-related attributes
+	if _, ok := attributes.Get("span.id"); ok {
+		return true
+	}
+	if _, ok := attributes.Get("span.name"); ok {
+		return true
+	}
+
+	return false
+}
+
+// getMetricsetInterval extracts the metricset.interval attribute value,
+// or empty string if not present.
+func getMetricsetInterval(attributes pcommon.Map) string {
+	if interval, ok := attributes.Get("metricset.interval"); ok {
+		return interval.Str()
+	}
+	return ""
+}
+
+// getMetricsetName extracts the metricset.name attribute value,
+// or empty string if not present.
+func getMetricsetName(attributes pcommon.Map) string {
+	if name, ok := attributes.Get("metricset.name"); ok {
+		return name.Str()
+	}
+	return ""
+}
+
+func isServiceSummary(attributes pcommon.Map) bool {
+	return getMetricsetName(attributes) == "service_summary"
+}
+
+// Using default "apm.internal" data stream
+func internalMetricDataStream(attributes pcommon.Map, dataStreamType string) {
+	attributes.PutStr("data_stream.type", dataStreamType)
+	attributes.PutStr("data_stream.dataset", "apm.internal")
+	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+}
+
+// Data stream formatted as: apm.${metricset.name}.${metricset.interval}
+func internalIntervalMetricDataStream(attributes pcommon.Map, dataStreamType, metricsetName, interval string) {
+	attributes.PutStr("data_stream.type", dataStreamType)
+	attributes.PutStr("data_stream.dataset", fmt.Sprintf("apm.%s.%s", metricsetName, interval))
+	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+}
+
+// EncodeDataStreamMetricDataPoint determines and sets the appropriate data stream for a metric data point.
+// This implements the routing logic from apm-data's metricsetDataset function.
+func EncodeDataStreamMetricDataPoint(attributes pcommon.Map, metricName string, hasServiceName bool) {
+	// Check for special cases: transaction/span context, no service name, or service_summary
+	if hasTransactionSpanContext(attributes) || !hasServiceName || isServiceSummary(attributes) {
+		// Check if there's a metricset interval for interval-based routing
+		interval := getMetricsetInterval(attributes)
+		if interval != "" {
+			metricsetName := getMetricsetName(attributes)
+			if metricsetName == "" {
+				// Fallback to a generic name if metricset.name is missing
+				metricsetName = "metrics"
+			}
+			internalIntervalMetricDataStream(attributes, DataStreamTypeMetrics, metricsetName, interval)
+		} else {
+			internalMetricDataStream(attributes, DataStreamTypeMetrics)
+		}
+		return
+	}
+
+	// Check if the metric name is recognized as an internal metric using apm-data conventions
+	if modelprocessor.IsInternalMetricName(metricName) {
+		internalMetricDataStream(attributes, DataStreamTypeMetrics)
+		return
+	}
 }
