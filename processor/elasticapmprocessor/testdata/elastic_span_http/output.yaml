@@ -29,12 +29,12 @@ resourceSpans:
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
+              - key: span.id
+                value:
+                  stringValue: ""
               - key: span.name
                 value:
                   stringValue: span-elastic-http
-              - key: processor.event
-                value:
-                  stringValue: span
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -62,6 +62,9 @@ resourceSpans:
               - key: span.destination.service.resource
                 value:
                   stringValue: www.foo.bar
+              - key: processor.event
+                value:
+                  stringValue: span
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
@@ -96,7 +99,5 @@ resourceSpans:
                 timeUnixNano: "1581452773000000123"
             name: span-elastic-http
             parentSpanId: bcff497b5a47310f
-            spanId: ""
             startTimeUnixNano: "1581452772000000321"
             status: {}
-            traceId: ""

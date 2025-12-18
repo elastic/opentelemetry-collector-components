@@ -35,6 +35,9 @@ resourceSpans:
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
+              - key: span.id
+                value:
+                  stringValue: ""
               - key: span.name
                 value:
                   stringValue: span-elastic-db
