@@ -25,9 +25,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -130,6 +127,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -211,9 +211,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: user_agent.original
           value:
             stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36, Mozilla Chrome Edge
@@ -322,6 +319,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -536,7 +536,6 @@ resourceSpans:
                         value:
                           stringValue: not a valid regex and that is fine
             endTimeUnixNano: "1496170407186592981"
-            kind: 2
             name: GET /api/types
             spanId: 4340a8e0df1906ec
             startTimeUnixNano: "1496170407154000000"
@@ -569,9 +568,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -677,6 +673,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -763,7 +762,6 @@ resourceSpans:
                                 value:
                                   doubleValue: 10
             endTimeUnixNano: "1532976822294980558"
-            kind: 2
             spanId: cdef4340a8e0df19
             startTimeUnixNano: "1532976822281000000"
             status: {}
@@ -794,9 +792,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -899,6 +894,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -1000,9 +998,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1144,6 +1139,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one

@@ -22,9 +22,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -127,6 +124,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -214,9 +214,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -328,6 +325,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -401,9 +401,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -506,6 +503,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -585,9 +585,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -690,6 +687,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -760,9 +760,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -868,6 +865,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -1061,7 +1061,6 @@ resourceSpans:
                               value:
                                 boolValue: false
             endTimeUnixNano: "1532976822284781912"
-            kind: 3
             name: SELECT FROM product_types
             parentSpanId: abcdef0123456789
             spanId: 1234567890aaaade
@@ -1089,9 +1088,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1197,6 +1193,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -1387,7 +1386,6 @@ resourceSpans:
                               value:
                                 boolValue: false
             endTimeUnixNano: "1532976822284781912"
-            kind: 3
             name: SELECT FROM product_types
             parentSpanId: abcdef0123456789
             spanId: fdc4567890aaaade
@@ -1414,9 +1412,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1522,6 +1517,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -1715,7 +1713,6 @@ resourceSpans:
                               value:
                                 boolValue: false
             endTimeUnixNano: "1532976822284781912"
-            kind: 3
             name: SELECT FROM product_types
             parentSpanId: abcdef0123456789
             startTimeUnixNano: "1532976822281000000"
@@ -1744,9 +1741,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1849,6 +1843,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -1945,9 +1942,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -2050,6 +2044,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -2166,9 +2163,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -2271,6 +2265,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
