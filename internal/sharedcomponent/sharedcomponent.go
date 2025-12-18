@@ -54,7 +54,7 @@ func (m *Map[K, V]) LoadOrStore(key K, create func() (V, error)) (*Component[V],
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if c, ok := m.components[key]; ok {
-		n := c.refCounter.Add(1)
+		c.refCounter.Add(1)
 		return c, nil
 	}
 	comp, err := create()
