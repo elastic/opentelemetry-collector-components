@@ -34,10 +34,10 @@ resourceSpans:
                   boolValue: true
               - key: transaction.id
                 value:
-                  stringValue: ""
+                  stringValue: abcdef0123456700
               - key: span.id
                 value:
-                  stringValue: ""
+                  stringValue: abcdef0123456700
               - key: transaction.root
                 value:
                   boolValue: true
@@ -98,5 +98,7 @@ resourceSpans:
                 name: event-with-no-attrs
                 timeUnixNano: "1581452773000000123"
             name: http-elastic-txn
+            spanId: abcdef0123456700
             startTimeUnixNano: "1581452772000000321"
             status: {}
+            traceId: fdedef0123456789abcdef9876543210

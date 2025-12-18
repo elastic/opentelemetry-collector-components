@@ -37,7 +37,7 @@ resourceSpans:
                   intValue: "1581452772000000"
               - key: span.id
                 value:
-                  stringValue: ""
+                  stringValue: abcdef0123456700
               - key: span.name
                 value:
                   stringValue: span-elastic-db
@@ -62,5 +62,7 @@ resourceSpans:
             endTimeUnixNano: "1581452773000000789"
             name: span-elastic-db
             parentSpanId: bcff497b5a47310f
+            spanId: abcdef0123456700
             startTimeUnixNano: "1581452772000000321"
             status: {}
+            traceId: fdedef0123456789abcdef9876543210
