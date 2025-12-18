@@ -172,7 +172,7 @@ func (h *hostWrapper) addSource(s componentstatus.Reporter) {
 // the shared component instance is used for 3 pipelines then it shuts down the
 // component at the third invocation of shutdown.
 //
-// Note that the logic for ref couting relies on each component's shutdown being called,
+// Note that the logic for ref counting relies on each component's shutdown being called,
 // in any order, during graceful shutdown.
 func (c *Component[V]) Shutdown(ctx context.Context) error {
 	if c.refCounter.Add(-1) == 0 {
