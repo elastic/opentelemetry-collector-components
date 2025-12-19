@@ -82,7 +82,6 @@ type Component[V component.Component] struct {
 
 	refCounter atomic.Int64
 	startOnce  sync.Once
-	stopOnce   sync.Once
 	removeFunc func()
 
 	hostWrapper *hostWrapper
@@ -176,25 +175,22 @@ func (h *hostWrapper) addSource(s componentstatus.Reporter) {
 // in any order, during graceful shutdown.
 func (c *Component[V]) Shutdown(ctx context.Context) error {
 	if c.refCounter.Add(-1) == 0 {
-		var err error
-		c.stopOnce.Do(func() {
-			// It's important that status for a shared component is reported through its
-			// telemetry settings to keep status in sync and avoid race conditions. This logic duplicates
-			// and takes priority over the automated status reporting that happens in graph, making the
-			// status reporting in graph a no-op.
-			if c.hostWrapper != nil {
-				c.hostWrapper.Report(componentstatus.NewEvent(componentstatus.StatusStopping))
+		// It's important that status for a shared component is reported through its
+		// telemetry settings to keep status in sync and avoid race conditions. This logic duplicates
+		// and takes priority over the automated status reporting that happens in graph, making the
+		// status reporting in graph a no-op.
+		if c.hostWrapper != nil {
+			c.hostWrapper.Report(componentstatus.NewEvent(componentstatus.StatusStopping))
+		}
+		err := c.component.Shutdown(ctx)
+		if c.hostWrapper != nil {
+			if err != nil {
+				c.hostWrapper.Report(componentstatus.NewPermanentErrorEvent(err))
+			} else {
+				c.hostWrapper.Report(componentstatus.NewEvent(componentstatus.StatusStopped))
 			}
-			err = c.component.Shutdown(ctx)
-			if c.hostWrapper != nil {
-				if err != nil {
-					c.hostWrapper.Report(componentstatus.NewPermanentErrorEvent(err))
-				} else {
-					c.hostWrapper.Report(componentstatus.NewEvent(componentstatus.StatusStopped))
-				}
-			}
-			c.removeFunc()
-		})
+		}
+		c.removeFunc()
 		return err
 	}
 	return nil
