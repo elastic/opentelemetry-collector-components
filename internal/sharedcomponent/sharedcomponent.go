@@ -174,6 +174,7 @@ func (h *hostWrapper) addSource(s componentstatus.Reporter) {
 // Note that the logic for ref counting relies on each component's shutdown being called,
 // in any order, during graceful shutdown.
 func (c *Component[V]) Shutdown(ctx context.Context) error {
+	var err error
 	if c.refCounter.Add(-1) == 0 {
 		// It's important that status for a shared component is reported through its
 		// telemetry settings to keep status in sync and avoid race conditions. This logic duplicates
@@ -182,7 +183,7 @@ func (c *Component[V]) Shutdown(ctx context.Context) error {
 		if c.hostWrapper != nil {
 			c.hostWrapper.Report(componentstatus.NewEvent(componentstatus.StatusStopping))
 		}
-		err := c.component.Shutdown(ctx)
+		err = c.component.Shutdown(ctx)
 		if c.hostWrapper != nil {
 			if err != nil {
 				c.hostWrapper.Report(componentstatus.NewPermanentErrorEvent(err))
@@ -191,7 +192,6 @@ func (c *Component[V]) Shutdown(ctx context.Context) error {
 			}
 		}
 		c.removeFunc()
-		return err
 	}
-	return nil
+	return err
 }
