@@ -17,21 +17,21 @@ resourceSpans:
       - scope: {}
         spans:
           - attributes:
-              - key: messaging.system
-                value:
-                  stringValue: kafka
-              - key: messaging.destination.name
+              - key: span.message.queue.name
                 value:
                   stringValue: TestTopic
-              - key: timestamp.us
-                value:
-                  intValue: "1581452772000000"
-              - key: span.name
-                value:
-                  stringValue: span-elastic-msg
               - key: processor.event
                 value:
                   stringValue: span
+              - key: timestamp.us
+                value:
+                  intValue: "1581452772000000"
+              - key: span.id
+                value:
+                  stringValue: abcdef0123456700
+              - key: span.name
+                value:
+                  stringValue: span-elastic-msg
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -93,7 +93,7 @@ resourceSpans:
                 timeUnixNano: "1581452773000000123"
             name: span-elastic-msg
             parentSpanId: bcff497b5a47310f
-            spanId: ""
+            spanId: abcdef0123456700
             startTimeUnixNano: "1581452772000000321"
             status: {}
-            traceId: ""
+            traceId: fdedef0123456789abcdef9876543210
