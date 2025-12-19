@@ -57,7 +57,7 @@ func createMetricsProcessor(
 		ivlDef := intervalDef{Duration: ivl.Duration}
 		if len(ivl.Statements) > 0 {
 			parser, err := ottldatapoint.NewParser(
-				ottlfuncs.StandardFuncs[ottldatapoint.TransformContext](),
+				ottlfuncs.StandardFuncs[*ottldatapoint.TransformContext](),
 				set.TelemetrySettings,
 			)
 			if err != nil {
@@ -88,5 +88,5 @@ func createMetricsProcessor(
 
 type intervalDef struct {
 	Duration   time.Duration
-	Statements *ottl.StatementSequence[ottldatapoint.TransformContext]
+	Statements *ottl.StatementSequence[*ottldatapoint.TransformContext]
 }
