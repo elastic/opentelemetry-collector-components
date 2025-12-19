@@ -149,6 +149,13 @@ func TestProcessorECS(t *testing.T) {
 			testType: "metrics",
 			cfg:      disableHostNameEnrichmentConfig,
 		},
+		{
+			testDir:  "internal_metrics",
+			input:    "testdata/ecs/elastic_internal_metrics/input.yaml",
+			output:   "testdata/ecs/elastic_internal_metrics/output.yaml",
+			testType: "metrics",
+			cfg:      defaultCfg,
+		},
 	}
 
 	ctx := client.NewContext(context.Background(), client.Info{

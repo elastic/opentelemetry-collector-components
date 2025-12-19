@@ -1,0 +1,37 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: my-service
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        - key: telemetry.sdk.name
+          value:
+            stringValue: opentelemetry
+    scopeMetrics:
+      - metrics:
+          - name: golang.heap.allocations.active
+            description: Active heap allocations
+            unit: By
+            gauge:
+              dataPoints:
+                - asInt: "1024000"
+                  timeUnixNano: "1609459200000000000"
+          - name: jvm.gc.count
+            description: JVM GC count
+            unit: "1"
+            sum:
+              aggregationTemporality: 2
+              isMonotonic: true
+              dataPoints:
+                - asInt: "42"
+                  timeUnixNano: "1609459200000000000"
+          - name: my.custom.metric
+            description: Custom application metric
+            unit: "1"
+            gauge:
+              dataPoints:
+                - asDouble: 123.45
+                  timeUnixNano: "1609459200000000000"
