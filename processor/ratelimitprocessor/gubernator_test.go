@@ -1377,6 +1377,56 @@ func TestGubernatorRateLimiter_UnavailableError(t *testing.T) {
 	require.Len(t, details, 2, "expected 2 details (ErrorInfo and RetryInfo)")
 }
 
+func TestGubernatorRateLimiter_FailOpen(t *testing.T) {
+	t.Run("fail_open enabled allows traffic when gubernator unavailable", func(t *testing.T) {
+		rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+			Type:     GubernatorRateLimiter,
+			FailOpen: true, // Enable fail-open behavior
+			RateLimitSettings: RateLimitSettings{
+				Strategy:         StrategyRateLimitRequests,
+				Rate:             100,
+				Burst:            10,
+				ThrottleBehavior: ThrottleBehaviorError,
+				ThrottleInterval: time.Second,
+				RetryDelay:       2 * time.Second,
+			},
+		}, nil)
+
+		// Close the daemon to simulate gubernator being unavailable
+		rateLimiter.daemon.Close()
+
+		// With fail_open enabled, traffic should pass despite error
+		err := rateLimiter.RateLimit(context.Background(), 1)
+		require.NoError(t, err, "expected no error with fail_open enabled")
+	})
+
+	t.Run("fail_open disabled returns error when gubernator unavailable", func(t *testing.T) {
+		rateLimiter := newTestGubernatorRateLimiter(t, &Config{
+			Type:     GubernatorRateLimiter,
+			FailOpen: false, // Disable fail-open (default behavior)
+			RateLimitSettings: RateLimitSettings{
+				Strategy:         StrategyRateLimitRequests,
+				Rate:             100,
+				Burst:            10,
+				ThrottleBehavior: ThrottleBehaviorError,
+				ThrottleInterval: time.Second,
+				RetryDelay:       2 * time.Second,
+			},
+		}, nil)
+
+		// Close the daemon to simulate gubernator being unavailable
+		rateLimiter.daemon.Close()
+
+		// With fail_open disabled, should return error (fail-closed)
+		err := rateLimiter.RateLimit(context.Background(), 1)
+		require.Error(t, err, "expected error with fail_open disabled")
+
+		st, ok := status.FromError(err)
+		require.True(t, ok, "expected gRPC status error")
+		assert.Equal(t, codes.Unavailable, st.Code(), "expected Unavailable status code")
+	})
+}
+
 type fakeHost map[component.ID]component.Component
 
 func (f fakeHost) GetExtensions() map[component.ID]component.Component {

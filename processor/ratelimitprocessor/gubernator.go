@@ -325,9 +325,25 @@ func (r *gubernatorRateLimiter) executeRateLimit(ctx context.Context,
 	}
 	resp, err := makeRateLimitRequest(now.UnixMilli())
 	if err != nil {
+		// If fail_open is enabled, allow traffic to pass despite the error
+		if r.cfg.FailOpen {
+			r.logger.Info("fail_open enabled, allowing traffic despite gubernator error",
+				zap.Error(err),
+				zap.Dict("ratelimit",
+					zap.String("strategy", cfg.Strategy.String()),
+					zap.String("unique_key", uniqueKey),
+					zap.String("behavior", "fail_open"),
+				),
+			)
+			return nil
+		}
 		r.logger.Error("error executing gubernator rate limit request",
 			zap.Error(err),
-			zap.Dict("ratelimit", zap.String("strategy", cfg.Strategy.String()), zap.String("unique_key", uniqueKey)),
+			zap.Dict("ratelimit",
+				zap.String("strategy", cfg.Strategy.String()),
+				zap.String("unique_key", uniqueKey),
+				zap.String("behavior", "fail_closed"),
+			),
 		)
 		// Make the error retryable as gubernator being down is treated as a transient error.
 		msg := fmt.Sprintf("service unavailable, try again in %v seconds", cfg.RetryDelay.Seconds())
