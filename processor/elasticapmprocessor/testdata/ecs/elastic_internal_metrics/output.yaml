@@ -46,7 +46,6 @@ resourceMetrics:
                         stringValue: metrics
                   timeUnixNano: "1000000"
             name: golang.heap.allocations.active
-            unit: By
           - description: JVM GC count
             name: jvm.gc.count
             sum:
@@ -65,7 +64,6 @@ resourceMetrics:
                         stringValue: metrics
                   timeUnixNano: "1000000"
               isMonotonic: true
-            unit: "1"
           - description: Custom application metric
             gauge:
               dataPoints:

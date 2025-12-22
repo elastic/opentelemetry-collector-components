@@ -193,7 +193,8 @@ func internalIntervalMetricDataStream(attributes pcommon.Map, dataStreamType, me
 // EncodeDataStreamMetricDataPoint determines if the metric represents an internal metric
 // and sets the appropriate data stream for a metric data point.
 // This implements the routing logic from apm-data's metricsetDataset function.
-func EncodeDataStreamMetricDataPoint(attributes pcommon.Map, metricName string, hasServiceName bool) {
+// Returns true if the metric is routed to an internal data stream, false otherwise.
+func EncodeDataStreamMetricDataPoint(attributes pcommon.Map, metricName string, hasServiceName bool) bool {
 	// Check for special cases: transaction/span context, no service name, or service_summary
 	if hasTransactionSpanContext(attributes) || !hasServiceName || isServiceSummary(attributes) {
 		// Check if there's a metricset interval for interval-based routing
@@ -208,12 +209,14 @@ func EncodeDataStreamMetricDataPoint(attributes pcommon.Map, metricName string, 
 		} else {
 			internalMetricDataStream(attributes, DataStreamTypeMetrics)
 		}
-		return
+		return true
 	}
 
 	// Check if the metric name is recognized as an internal metric using apm-data conventions
 	if modelprocessor.IsInternalMetricName(metricName) {
 		internalMetricDataStream(attributes, DataStreamTypeMetrics)
-		return
+		return true
 	}
+
+	return false
 }

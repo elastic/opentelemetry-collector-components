@@ -200,33 +200,54 @@ func routeMetricsToDataStream(scopeMetrics pmetric.ScopeMetricsSlice, hasService
 			metric := metrics.At(k)
 			metricName := metric.Name()
 
+			// Track if any data point is routed to internal metrics
+			isInternal := false
+
 			// Route data points based on metric type
 			switch metric.Type() {
 			case pmetric.MetricTypeGauge:
 				dataPoints := metric.Gauge().DataPoints()
 				for l := 0; l < dataPoints.Len(); l++ {
-					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
+						isInternal = true
+					}
 				}
 			case pmetric.MetricTypeSum:
 				dataPoints := metric.Sum().DataPoints()
 				for l := 0; l < dataPoints.Len(); l++ {
-					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
+						isInternal = true
+					}
 				}
 			case pmetric.MetricTypeHistogram:
 				dataPoints := metric.Histogram().DataPoints()
 				for l := 0; l < dataPoints.Len(); l++ {
-					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
+						isInternal = true
+					}
 				}
 			case pmetric.MetricTypeExponentialHistogram:
 				dataPoints := metric.ExponentialHistogram().DataPoints()
 				for l := 0; l < dataPoints.Len(); l++ {
-					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
+						isInternal = true
+					}
 				}
 			case pmetric.MetricTypeSummary:
 				dataPoints := metric.Summary().DataPoints()
 				for l := 0; l < dataPoints.Len(); l++ {
-					routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName)
+					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
+						isInternal = true
+					}
 				}
+			}
+
+			// Internal metrics data stream does not use dynamic mapping,
+			// so we must drop unit if specified.
+			// This matches the behavior in apm-data:
+			// https://github.com/elastic/apm-data/blob/main/model/modelprocessor/datastream.go#L160-L172
+			if isInternal {
+				metric.SetUnit("")
 			}
 		}
 	}

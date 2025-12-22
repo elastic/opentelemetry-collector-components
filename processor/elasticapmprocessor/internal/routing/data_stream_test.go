@@ -168,48 +168,52 @@ func TestEncodeErrorDataStream(t *testing.T) {
 
 func TestRouteMetricDataPoint(t *testing.T) {
 	tests := []struct {
-		name            string
-		setupFn         func(pcommon.Map)
-		metricName      string
-		hasServiceName  bool
-		expectedDataset string
+		name             string
+		setupFn          func(pcommon.Map)
+		metricName       string
+		hasServiceName   bool
+		expectedDataset  string
+		expectedInternal bool
 	}{
 		{
 			name: "internal metric with service name",
 			setupFn: func(attrs pcommon.Map) {
 				// No special attributes
 			},
-			metricName:      "golang.heap.allocations.active",
-			hasServiceName:  true,
-			expectedDataset: "apm.internal",
+			metricName:       "golang.heap.allocations.active",
+			hasServiceName:   true,
+			expectedDataset:  "apm.internal",
+			expectedInternal: true,
 		},
 		{
 			name: "non-internal metric with service name",
 			setupFn: func(attrs pcommon.Map) {
 				// No special attributes
 			},
-			metricName:     "my.custom.metric",
-			hasServiceName: true,
-			// Should not set dataset, keeping resource-level
-			expectedDataset: "",
+			metricName:       "my.custom.metric",
+			hasServiceName:   true,
+			expectedDataset:  "",
+			expectedInternal: false,
 		},
 		{
 			name: "metric without service name",
 			setupFn: func(attrs pcommon.Map) {
 				// No special attributes
 			},
-			metricName:      "my.custom.metric",
-			hasServiceName:  false,
-			expectedDataset: "apm.internal",
+			metricName:       "my.custom.metric",
+			hasServiceName:   false,
+			expectedDataset:  "apm.internal",
+			expectedInternal: true,
 		},
 		{
 			name: "service_summary metric",
 			setupFn: func(attrs pcommon.Map) {
 				attrs.PutStr("metricset.name", "service_summary")
 			},
-			metricName:      "some.metric",
-			hasServiceName:  true,
-			expectedDataset: "apm.internal",
+			metricName:       "some.metric",
+			hasServiceName:   true,
+			expectedDataset:  "apm.internal",
+			expectedInternal: true,
 		},
 		{
 			name: "service_summary with interval",
@@ -217,9 +221,10 @@ func TestRouteMetricDataPoint(t *testing.T) {
 				attrs.PutStr("metricset.name", "service_summary")
 				attrs.PutStr("metricset.interval", "10s")
 			},
-			metricName:      "some.metric",
-			hasServiceName:  true,
-			expectedDataset: "apm.service_summary.10s",
+			metricName:       "some.metric",
+			hasServiceName:   true,
+			expectedDataset:  "apm.service_summary.10s",
+			expectedInternal: true,
 		},
 		{
 			name: "transaction metric with interval",
@@ -228,29 +233,32 @@ func TestRouteMetricDataPoint(t *testing.T) {
 				attrs.PutStr("metricset.name", "transaction")
 				attrs.PutStr("metricset.interval", "1m")
 			},
-			metricName:      "transaction.duration",
-			hasServiceName:  true,
-			expectedDataset: "apm.transaction.1m",
+			metricName:       "transaction.duration",
+			hasServiceName:   true,
+			expectedDataset:  "apm.transaction.1m",
+			expectedInternal: true,
 		},
 		{
 			name: "span metric with interval",
 			setupFn: func(attrs pcommon.Map) {
 				attrs.PutStr("span.id", "xyz789")
-				attrs.PutStr("metricset.name", "span")
+				attrs.PutStr("metricset.name", "themetricspan")
 				attrs.PutStr("metricset.interval", "30s")
 			},
-			metricName:      "span.duration",
-			hasServiceName:  true,
-			expectedDataset: "apm.span.30s",
+			metricName:       "span.duration",
+			hasServiceName:   true,
+			expectedDataset:  "apm.themetricspan.30s",
+			expectedInternal: true,
 		},
 		{
 			name: "transaction metric without interval",
 			setupFn: func(attrs pcommon.Map) {
 				attrs.PutStr("transaction.id", "abc123")
 			},
-			metricName:      "transaction.duration",
-			hasServiceName:  true,
-			expectedDataset: "apm.internal",
+			metricName:       "transaction.duration",
+			hasServiceName:   true,
+			expectedDataset:  "apm.internal",
+			expectedInternal: true,
 		},
 	}
 
@@ -258,7 +266,9 @@ func TestRouteMetricDataPoint(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			attrs := pcommon.NewMap()
 			tt.setupFn(attrs)
-			routing.EncodeDataStreamMetricDataPoint(attrs, tt.metricName, tt.hasServiceName)
+			isInternal := routing.EncodeDataStreamMetricDataPoint(attrs, tt.metricName, tt.hasServiceName)
+
+			assert.Equal(t, tt.expectedInternal, isInternal, "unexpected internal metric detection")
 
 			if tt.expectedDataset == "" {
 				// Should not have set data stream attributes
