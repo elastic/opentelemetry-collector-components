@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processortest"
 	"go.uber.org/zap/zapcore"
@@ -148,6 +149,13 @@ func TestProcessorECS(t *testing.T) {
 			output:   "testdata/elastic_hostname/metrics_output.yaml",
 			testType: "metrics",
 			cfg:      disableHostNameEnrichmentConfig,
+		},
+		{
+			testDir:  "internal_metrics",
+			input:    "testdata/ecs/elastic_internal_metrics/input.yaml",
+			output:   "testdata/ecs/elastic_internal_metrics/output.yaml",
+			testType: "metrics",
+			cfg:      defaultCfg,
 		},
 	}
 
@@ -489,6 +497,74 @@ func TestECSErrorRouting(t *testing.T) {
 			require.NoError(t, err)
 			assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
 		})
+	}
+}
+
+// TestInternalMetricsUnitClearing tests that internal metrics have their unit field cleared.
+// This matches the behavior in apm-data:
+// https://github.com/elastic/apm-data/blob/main/model/modelprocessor/datastream_test.go#L241-L260
+func TestInternalMetricsUnitClearing(t *testing.T) {
+	ctx := context.Background()
+	ctx = client.NewContext(ctx, client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
+	next := &consumertest.MetricsSink{}
+
+	cfg := createDefaultConfig().(*Config)
+	cfg.ServiceNameInDataStreamDataset = true
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	inputMetrics, err := golden.ReadMetrics("testdata/ecs/elastic_internal_metrics/input.yaml")
+	require.NoError(t, err)
+
+	require.NoError(t, mp.ConsumeMetrics(ctx, inputMetrics))
+	actual := next.AllMetrics()[0]
+
+	// Verify that internal metrics have their unit cleared
+	resourceMetrics := actual.ResourceMetrics()
+	for i := 0; i < resourceMetrics.Len(); i++ {
+		scopeMetrics := resourceMetrics.At(i).ScopeMetrics()
+		for j := 0; j < scopeMetrics.Len(); j++ {
+			metrics := scopeMetrics.At(j).Metrics()
+			for k := 0; k < metrics.Len(); k++ {
+				metric := metrics.At(k)
+				metricName := metric.Name()
+
+				// Check data points to determine if this is an internal metric
+				isInternal := false
+				switch metric.Type() {
+				case pmetric.MetricTypeGauge:
+					dataPoints := metric.Gauge().DataPoints()
+					if dataPoints.Len() > 0 {
+						dp := dataPoints.At(0)
+						if dataset, ok := dp.Attributes().Get("data_stream.dataset"); ok {
+							if dataset.Str() == "apm.internal" || dataset.Str() == "apm.transaction.1m" {
+								isInternal = true
+							}
+						}
+					}
+				case pmetric.MetricTypeSum:
+					dataPoints := metric.Sum().DataPoints()
+					if dataPoints.Len() > 0 {
+						dp := dataPoints.At(0)
+						if dataset, ok := dp.Attributes().Get("data_stream.dataset"); ok {
+							if dataset.Str() == "apm.internal" || dataset.Str() == "apm.transaction.1m" {
+								isInternal = true
+							}
+						}
+					}
+				}
+
+				if isInternal {
+					assert.Empty(t, metric.Unit(), "internal metric %s should have empty unit", metricName)
+				}
+			}
+		}
 	}
 }
 
