@@ -539,6 +539,7 @@ func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	mappers.SetTopLevelFieldsSpan(event, timestampNanos, s, r.settings.Logger)
 	mappers.SetDerivedFieldsCommon(event, s.Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
+	s.SetKind(mapSpanKind(event.GetSpan().GetKind()))
 	return s
 }
 
@@ -570,17 +571,6 @@ func (r *elasticAPMIntakeReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, 
 	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
 	mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForTransaction(event, s.Attributes())
-
-	spanKind := mapSpanKind(event.GetSpan().GetKind())
-	if spanKind == ptrace.SpanKindUnspecified {
-		// derive span kind
-		if event.Http != nil && event.Http.Request != nil {
-			spanKind = ptrace.SpanKindServer
-		} else if event.Message != "" { // this check is TBD
-			spanKind = ptrace.SpanKindConsumer
-		}
-	}
-	s.SetKind(spanKind)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
@@ -590,14 +580,6 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
-
-	spanKind := mapSpanKind(event.GetSpan().GetKind())
-	if spanKind == ptrace.SpanKindUnspecified {
-		if event.Http != nil || event.Message != "" {
-			spanKind = ptrace.SpanKindClient
-		}
-	}
-	s.SetKind(spanKind)
 }
 
 func mapSpanKind(kind string) ptrace.SpanKind {
