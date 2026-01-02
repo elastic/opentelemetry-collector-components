@@ -373,16 +373,13 @@ func TestConnector_AggregatedFrameMetrics(t *testing.T) {
 		// Create a Profile and higher-level envelopes
 		tp := newTestProfiles()
 		prof := tp.newProfile()
-
 		tp.addSample(t, prof, 0, goFrame())
+		assert.NoError(t, conn.ConsumeProfiles(t.Context(), tp.profiles))
 
-		err = conn.ConsumeProfiles(t.Context(), tp.profiles)
-		assert.NoError(t, err)
 		tp = newTestProfiles()
 		prof = tp.newProfile()
 		tp.addSample(t, prof, 0, goFrame())
-		err = conn.ConsumeProfiles(t.Context(), tp.profiles)
-		assert.NoError(t, err)
+		assert.NoError(t, conn.ConsumeProfiles(t.Context(), tp.profiles))
 
 		// advance ticker clock
 		time.Sleep(flushInterval)
