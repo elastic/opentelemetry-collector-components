@@ -19,10 +19,17 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -348,4 +355,46 @@ func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 		}
 		assert.True(t, found, "Expected package 'mypkg' in classificationCounts[frameTypeGo]")
 	}
+}
+
+func TestConnector_AggregatedFrameMetrics(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := new(consumertest.MetricsSink)
+		flushInterval := 10 * time.Minute
+		cfg := &Config{
+			MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+			FlushInterval:        flushInterval,
+		}
+		conn, err := createProfilesToMetrics(t.Context(), connectortest.NewNopSettings(metadata.Type), cfg, m)
+		assert.NoError(t, err)
+
+		assert.NoError(t, conn.Start(t.Context(), componenttest.NewNopHost()))
+
+		// Create a Profile and higher-level envelopes
+		tp := newTestProfiles()
+		prof := tp.newProfile()
+
+		tp.addSample(t, prof, 0, goFrame())
+
+		err = conn.ConsumeProfiles(t.Context(), tp.profiles)
+		assert.NoError(t, err)
+		tp = newTestProfiles()
+		prof = tp.newProfile()
+		tp.addSample(t, prof, 0, goFrame())
+		err = conn.ConsumeProfiles(t.Context(), tp.profiles)
+		assert.NoError(t, err)
+
+		// advance ticker clock
+		time.Sleep(flushInterval)
+		synctest.Wait()
+
+		actualMetrics := m.AllMetrics()
+		assert.Len(t, actualMetrics, 1)
+		// err = golden.WriteMetrics(t, filepath.Join(testDataDir, "frame_metrics_aggregated", "output-metrics.yaml"), actualMetrics[0])
+		// assert.NoError(t, err)
+		expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir, "frame_metrics_aggregated", "output-metrics.yaml"))
+		assert.NoError(t, err)
+		require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreTimestamp(), pmetrictest.IgnoreMetricDataPointsOrder()))
+		assert.NoError(t, conn.Shutdown(t.Context()))
+	})
 }

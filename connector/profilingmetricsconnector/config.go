@@ -17,7 +17,11 @@
 
 package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"
 
-import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+import (
+	"time"
+
+	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+)
 
 // Aggregation applies Match as a regular expression on function strings
 // and generates a metric with Label if it matches.
@@ -32,4 +36,6 @@ type Config struct {
 
 	// CustomAggregations allows to generate custom metrics.
 	CustomAggregations []Aggregation `mapstructure:"aggregations"`
+
+	FlushInterval time.Duration `mapstructure:"flush_interval"`
 }

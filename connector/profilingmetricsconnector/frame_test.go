@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pprofile"
 	semconv "go.opentelemetry.io/otel/semconv/v1.34.0"
 )
@@ -139,6 +140,7 @@ func (tp *testProfiles) newProfile() pprofile.Profile {
 	resProf := tp.profiles.ResourceProfiles().AppendEmpty()
 	scopeProf := resProf.ScopeProfiles().AppendEmpty()
 	prof := scopeProf.Profiles().AppendEmpty()
+	prof.SetTime(pcommon.NewTimestampFromTime(time.Now()))
 	st := prof.SampleType()
 
 	st.SetTypeStrindex(1)
@@ -229,7 +231,7 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	// assert.NoError(t, err)
 	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir, "frame_metrics", "output-metrics.yaml"))
 	assert.NoError(t, err)
-	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreTimestamp(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }
 
 func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
@@ -265,7 +267,7 @@ func TestConsumeProfiles_FrameMetricsMultiple(t *testing.T) {
 	// assert.NoError(t, err)
 	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir, "frame_metrics_multiple", "output-metrics.yaml"))
 	assert.NoError(t, err)
-	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreTimestamp(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }
 
 func kstackToFrames(functions ...string) []testFrame {
@@ -329,5 +331,5 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 	expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir,
 		"frame_metrics_kernel", "output-metrics.yaml"))
 	assert.NoError(t, err)
-	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
+	require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreTimestamp(), pmetrictest.IgnoreMetricDataPointsOrder()))
 }

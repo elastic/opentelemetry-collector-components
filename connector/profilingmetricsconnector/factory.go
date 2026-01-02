@@ -49,10 +49,25 @@ func createProfilesToMetrics(
 ) (xconnector.Profiles, error) {
 	c := cfg.(*Config)
 
+	nextConsumerFn := func(ctx context.Context) (consumer.Metrics, error) {
+		return nextConsumer, nil
+	}
+
+	if c.FlushInterval > 0 {
+		nextConsumerFn = func(ctx context.Context) (consumer.Metrics, error) {
+			aggregationConsumer := newAggConsumer(nextConsumer, c.FlushInterval, set.Logger)
+			err := aggregationConsumer.Start(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return aggregationConsumer, nil
+		}
+	}
+
 	return &profilesToMetricsConnector{
-		nextConsumer: nextConsumer,
-		config:       c,
-		logger:       set.Logger,
-		mb:           metadata.NewMetricsBuilder(c.MetricsBuilderConfig, set),
+		nextConsumerFn: nextConsumerFn,
+		config:         c,
+		logger:         set.Logger,
+		mb:             metadata.NewMetricsBuilder(c.MetricsBuilderConfig, set),
 	}, nil
 }
