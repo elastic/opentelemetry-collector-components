@@ -1,0 +1,74 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: opentelemetry/go
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: data_stream.dataset
+          value:
+            stringValue: apm.app.my_service
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: data_stream.type
+          value:
+            stringValue: metrics
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
+        - key: service.name
+          value:
+            stringValue: my-service
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        - key: telemetry.sdk.name
+          value:
+            stringValue: opentelemetry
+    scopeMetrics:
+      - metrics:
+          - description: Active heap allocations
+            gauge:
+              dataPoints:
+                - asInt: "1024000"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: apm.internal
+                    - key: data_stream.namespace
+                      value:
+                        stringValue: default
+                    - key: data_stream.type
+                      value:
+                        stringValue: metrics
+                  timeUnixNano: "1000000"
+            name: golang.heap.allocations.active
+          - description: JVM GC count
+            name: jvm.gc.count
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asInt: "42"
+                  attributes:
+                    - key: data_stream.dataset
+                      value:
+                        stringValue: apm.internal
+                    - key: data_stream.namespace
+                      value:
+                        stringValue: default
+                    - key: data_stream.type
+                      value:
+                        stringValue: metrics
+                  timeUnixNano: "1000000"
+              isMonotonic: true
+          - description: Custom application metric
+            gauge:
+              dataPoints:
+                - asDouble: 123.45
+                  timeUnixNano: "1000000"
+            name: my.custom.metric
+            unit: "1"
+        scope: {}
