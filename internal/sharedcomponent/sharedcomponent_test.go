@@ -76,9 +76,14 @@ func TestSharedComponentsLoadOrStore(t *testing.T) {
 	require.NoError(t, err)
 	assert.Same(t, got, gotSecond)
 
-	// Shutdown nop will remove
+	// Shutdown nop will not remove the component on first call
 	require.NoError(t, got.Shutdown(context.Background()))
+	assert.NotEmpty(t, comps.components)
+	// Call shutdown for the second component to remove the
+	// component from the map.
+	require.NoError(t, gotSecond.Shutdown(context.Background()))
 	assert.Empty(t, comps.components)
+
 	gotThird, err := comps.LoadOrStore(
 		id,
 		func() (*baseComponent, error) { return nop, nil },
@@ -201,8 +206,11 @@ func TestReportStatusOnStartShutdown(t *testing.T) {
 
 			if tc.startErr == nil {
 				comp.hostWrapper.Report(componentstatus.NewEvent(componentstatus.StatusOK))
+				var err error
+				for i := 0; i < 3; i++ {
 
-				err = comp.Shutdown(context.Background())
+					err = comp.Shutdown(context.Background())
+				}
 				require.Equal(t, tc.shutdownErr, err)
 			}
 

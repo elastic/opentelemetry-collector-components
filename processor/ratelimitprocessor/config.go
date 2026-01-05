@@ -68,6 +68,15 @@ type Config struct {
 	// If not set, class resolution is disabled.
 	// Only applicable when the rate limiter type is "gubernator".
 	ClassResolver component.ID `mapstructure:"class_resolver"`
+
+	// FailOpen allows traffic to pass through when rate limiting fails
+	// (e.g., when Gubernator is unavailable due to connection errors).
+	// When false (default), errors cause requests to be rejected (fail-closed).
+	// When true, errors are logged but traffic is allowed through (fail-open).
+	// Only applicable when the rate limiter type is "gubernator".
+	//
+	// Defaults to false (fail-closed behavior)
+	FailOpen bool `mapstructure:"fail_open"`
 }
 
 // DynamicRateLimiting defines settings for dynamic rate limiting.

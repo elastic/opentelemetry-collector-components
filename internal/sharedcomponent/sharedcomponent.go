@@ -30,6 +30,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
@@ -53,6 +54,7 @@ func (m *Map[K, V]) LoadOrStore(key K, create func() (V, error)) (*Component[V],
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	if c, ok := m.components[key]; ok {
+		c.refCounter.Add(1)
 		return c, nil
 	}
 	comp, err := create()
@@ -69,6 +71,7 @@ func (m *Map[K, V]) LoadOrStore(key K, create func() (V, error)) (*Component[V],
 		},
 	}
 	m.components[key] = newComp
+	newComp.refCounter.Add(1)
 	return newComp, nil
 }
 
@@ -77,8 +80,8 @@ func (m *Map[K, V]) LoadOrStore(key K, create func() (V, error)) (*Component[V],
 type Component[V component.Component] struct {
 	component V
 
+	refCounter atomic.Int64
 	startOnce  sync.Once
-	stopOnce   sync.Once
 	removeFunc func()
 
 	hostWrapper *hostWrapper
@@ -163,10 +166,16 @@ func (h *hostWrapper) addSource(s componentstatus.Reporter) {
 	h.lock.Unlock()
 }
 
-// Shutdown shuts down the underlying component.
+// Shutdown shuts down the underlying component. It uses reference counting to attempt
+// shutting down the component when the last shutdown call is made. For example, if
+// the shared component instance is used for 3 pipelines then it shuts down the
+// component at the third invocation of shutdown.
+//
+// Note that the logic for ref counting relies on each component's shutdown being called,
+// in any order, during graceful shutdown.
 func (c *Component[V]) Shutdown(ctx context.Context) error {
 	var err error
-	c.stopOnce.Do(func() {
+	if c.refCounter.Add(-1) == 0 {
 		// It's important that status for a shared component is reported through its
 		// telemetry settings to keep status in sync and avoid race conditions. This logic duplicates
 		// and takes priority over the automated status reporting that happens in graph, making the
@@ -183,6 +192,6 @@ func (c *Component[V]) Shutdown(ctx context.Context) error {
 			}
 		}
 		c.removeFunc()
-	})
+	}
 	return err
 }

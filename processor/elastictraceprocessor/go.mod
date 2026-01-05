@@ -20,6 +20,7 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/elastic/apm-data v1.19.5 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
@@ -36,6 +37,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.141.0 // indirect
+	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/ua-parser/uap-go v0.0.0-20250213224047-9c035f085b90 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
