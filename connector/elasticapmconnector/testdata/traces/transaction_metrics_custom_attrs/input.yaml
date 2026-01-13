@@ -55,7 +55,7 @@ resourceSpans:
                   stringValue: "transaction"
               - key: transaction.representative_count
                 value:
-                  doubleValue: 1.0 # Should be 2, elastictrace doesn't handle ot=th at time of writing
+                  doubleValue: 1.0 # Should be 2, elasticapmprocessor doesn't handle ot=th at time of writing
               - key: transaction.duration.us
                 value:
                   intValue: 11000000
@@ -108,7 +108,7 @@ resourceSpans:
                   stringValue: "transaction"
               - key: transaction.representative_count
                 value:
-                  doubleValue: 1.0 # Should be 2, elastictrace doesn't handle ot=th at time of writing
+                  doubleValue: 1.0 # Should be 2, elasticapmprocessor doesn't handle ot=th at time of writing
               - key: transaction.duration.us
                 value:
                   intValue: 11000000

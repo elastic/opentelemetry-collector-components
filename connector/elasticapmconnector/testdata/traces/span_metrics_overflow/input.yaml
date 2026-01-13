@@ -49,7 +49,7 @@ resourceSpans:
                   stringValue: th-value-8
               - key: span.representative_count
                 value:
-                  doubleValue: 1.0 # Should be 2, elastictrace doesn't handle ot=th at time of writing
+                  doubleValue: 1.0 # Should be 2, elasticapmprocessor doesn't handle ot=th at time of writing
               - key: span.type
                 value:
                   stringValue: db

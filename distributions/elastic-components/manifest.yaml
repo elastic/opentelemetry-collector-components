@@ -55,7 +55,6 @@ processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.0.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.20.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.22.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor v0.20.0
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/nopexporter v0.142.0
@@ -89,4 +88,3 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector => ../connector/dynamicroutingconnector
   - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver => ../receiver/elasticapmintakereceiver
   - github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver => ../receiver/integrationreceiver
-  - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor

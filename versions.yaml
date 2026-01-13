@@ -14,7 +14,6 @@ module-sets:
       - github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension
       - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
       - github.com/elastic/opentelemetry-collector-components/extension/clientaddrmiddlewareextension
-      - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
 
 excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/internal/tools
