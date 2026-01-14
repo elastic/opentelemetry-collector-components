@@ -42,18 +42,23 @@ type TraceProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next     consumer.Traces
-	enricher *enrichments.Enricher
-	logger   *zap.Logger
-	cfg      *Config
+	next        consumer.Traces
+	enricher    *enrichments.Enricher
+	ecsEnricher *enrichments.Enricher
+	logger      *zap.Logger
+	cfg         *Config
 }
 
 func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
+	enricherConfig := cfg.Config
+	ecsEnricherConfig := cfg.Config
+	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	return &TraceProcessor{
-		next:     next,
-		logger:   logger,
-		enricher: enrichments.NewEnricher(cfg.Config),
-		cfg:      cfg,
+		next:        next,
+		logger:      logger,
+		enricher:    enrichments.NewEnricher(enricherConfig),
+		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
+		cfg:         cfg,
 	}
 }
 
@@ -62,7 +67,9 @@ func (p *TraceProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+	enricher := p.enricher
 	if isECS(ctx) {
+		enricher = p.ecsEnricher
 		resourceSpans := td.ResourceSpans()
 		for i := 0; i < resourceSpans.Len(); i++ {
 			resourceSpan := resourceSpans.At(i)
@@ -74,8 +81,6 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
-			// Traces signal never need to be routed to service-specific datasets
-			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 
 			// Iterate through spans to find errors in span events
 			scopeSpans := resourceSpan.ScopeSpans()
@@ -96,7 +101,7 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 		}
 	}
 
-	p.enricher.EnrichTraces(td)
+	enricher.EnrichTraces(td)
 
 	return p.next.ConsumeTraces(ctx, td)
 }
@@ -118,18 +123,24 @@ type LogProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next     consumer.Logs
-	enricher *enrichments.Enricher
-	logger   *zap.Logger
-	cfg      *Config
+	next        consumer.Logs
+	enricher    *enrichments.Enricher
+	ecsEnricher *enrichments.Enricher
+	logger      *zap.Logger
+	cfg         *Config
 }
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
+	enricherConfig := cfg.Config
+	ecsEnricherConfig := cfg.Config
+	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
+	ecsEnricherConfig.Resource.AgentVersion.Enabled = false
 	return &LogProcessor{
-		next:     next,
-		logger:   logger,
-		enricher: enrichments.NewEnricher(cfg.Config),
-		cfg:      cfg,
+		next:        next,
+		logger:      logger,
+		enricher:    enrichments.NewEnricher(enricherConfig),
+		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
+		cfg:         cfg,
 	}
 }
 
@@ -141,18 +152,23 @@ type MetricProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next     consumer.Metrics
-	enricher *enrichments.Enricher
-	logger   *zap.Logger
-	cfg      *Config
+	next        consumer.Metrics
+	enricher    *enrichments.Enricher
+	ecsEnricher *enrichments.Enricher
+	logger      *zap.Logger
+	cfg         *Config
 }
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
+	enricherConfig := cfg.Config
+	ecsEnricherConfig := cfg.Config
+	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	return &MetricProcessor{
-		next:     next,
-		logger:   logger,
-		enricher: enrichments.NewEnricher(cfg.Config),
-		cfg:      cfg,
+		next:        next,
+		logger:      logger,
+		enricher:    enrichments.NewEnricher(enricherConfig),
+		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
+		cfg:         cfg,
 	}
 }
 
@@ -161,8 +177,10 @@ func (p *MetricProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	enricher := p.enricher
 	ecsMode := isECS(ctx)
 	if ecsMode {
+		enricher = p.ecsEnricher
 		resourceMetrics := md.ResourceMetrics()
 		for i := 0; i < resourceMetrics.Len(); i++ {
 			resourceMetric := resourceMetrics.At(i)
@@ -173,7 +191,6 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
-			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 
 			// Check if resource has a service name for routing decisions
 			hasServiceName := false
@@ -188,7 +205,7 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
 	if !p.cfg.SkipEnrichment || ecsMode {
-		p.enricher.EnrichMetrics(md)
+		enricher.EnrichMetrics(md)
 	}
 	return p.next.ConsumeMetrics(ctx, md)
 }
@@ -254,8 +271,10 @@ func routeMetricsToDataStream(scopeMetrics pmetric.ScopeMetricsSlice, hasService
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	enricher := p.enricher
 	ecsMode := isECS(ctx)
 	if ecsMode {
+		enricher = p.ecsEnricher
 		resourceLogs := ld.ResourceLogs()
 		for i := 0; i < resourceLogs.Len(); i++ {
 			resourceLog := resourceLogs.At(i)
@@ -266,8 +285,6 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
-			p.enricher.Config.Resource.AgentVersion.Enabled = false
-			p.enricher.Config.Resource.DeploymentEnvironment.Enabled = false
 
 			// Check each log record for error events and route to apm.error dataset
 			// This follows the same logic as apm-data to detect error events
@@ -287,7 +304,7 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
 	if !p.cfg.SkipEnrichment || ecsMode {
-		p.enricher.EnrichLogs(ld)
+		enricher.EnrichLogs(ld)
 	}
 	return p.next.ConsumeLogs(ctx, ld)
 }
