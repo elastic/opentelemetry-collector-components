@@ -19,4 +19,4 @@
 // resources, instrumentation scopes, metrics, and metric streams.
 // These identities are used to uniquely and correlate profiling
 // metrics across resource, scope, and attribute dimensions.
-package identity
+package identity // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/identity"
