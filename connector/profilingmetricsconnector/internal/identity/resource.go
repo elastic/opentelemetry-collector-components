@@ -27,8 +27,6 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 )
 
-type resource = Resource
-
 type Resource struct {
 	attrs [16]byte
 }

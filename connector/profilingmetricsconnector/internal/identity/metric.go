@@ -26,7 +26,7 @@ import (
 )
 
 type Metric struct {
-	scope
+	scope Scope
 
 	name string
 	unit string
