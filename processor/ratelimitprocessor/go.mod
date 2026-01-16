@@ -10,8 +10,8 @@ require (
 	github.com/uptrace/opentelemetry-go-extra/otellogrus v0.2.1
 	go.opentelemetry.io/collector/client v1.49.0
 	go.opentelemetry.io/collector/component v1.49.0
-	go.opentelemetry.io/collector/component/componenttest v0.142.0
-	go.opentelemetry.io/collector/config/configgrpc v0.142.0
+	go.opentelemetry.io/collector/component/componenttest v0.143.0
+	go.opentelemetry.io/collector/config/configgrpc v0.143.0
 	go.opentelemetry.io/collector/confmap v1.49.0
 	go.opentelemetry.io/collector/confmap/xconfmap v0.143.0
 	go.opentelemetry.io/collector/consumer v1.49.0
@@ -20,8 +20,8 @@ require (
 	go.opentelemetry.io/collector/pdata v1.49.0
 	go.opentelemetry.io/collector/pdata/pprofile v0.143.0
 	go.opentelemetry.io/collector/processor v1.49.0
-	go.opentelemetry.io/collector/processor/processortest v0.142.0
-	go.opentelemetry.io/collector/processor/xprocessor v0.142.0
+	go.opentelemetry.io/collector/processor/processortest v0.143.0
+	go.opentelemetry.io/collector/processor/xprocessor v0.143.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.64.0
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/metric v1.39.0
@@ -105,7 +105,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.5.5 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.5 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/collector/component/componentstatus v0.142.0 // indirect
+	go.opentelemetry.io/collector/component/componentstatus v0.143.0 // indirect
 	go.opentelemetry.io/collector/config/configauth v1.49.0 // indirect
 	go.opentelemetry.io/collector/config/configcompression v1.49.0 // indirect
 	go.opentelemetry.io/collector/config/configmiddleware v1.49.0 // indirect

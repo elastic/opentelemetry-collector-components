@@ -9,8 +9,8 @@ require (
 	github.com/jcchavezs/porto v0.7.0
 	go.opentelemetry.io/build-tools/chloggen v0.29.0
 	go.opentelemetry.io/build-tools/multimod v0.29.0
-	go.opentelemetry.io/collector/cmd/builder v0.142.0
-	go.opentelemetry.io/collector/cmd/mdatagen v0.142.0
+	go.opentelemetry.io/collector/cmd/builder v0.143.0
+	go.opentelemetry.io/collector/cmd/mdatagen v0.143.0
 	golang.org/x/tools v0.39.0
 	golang.org/x/vuln v1.1.4
 )
@@ -118,7 +118,7 @@ require (
 	github.com/knadh/koanf/parsers/yaml v1.1.0 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
 	github.com/knadh/koanf/providers/env/v2 v2.0.0 // indirect
-	github.com/knadh/koanf/providers/file v1.2.0 // indirect
+	github.com/knadh/koanf/providers/file v1.2.1 // indirect
 	github.com/knadh/koanf/providers/fs v1.0.0 // indirect
 	github.com/knadh/koanf/v2 v2.3.0 // indirect
 	github.com/kulti/thelper v0.6.3 // indirect
@@ -214,7 +214,7 @@ require (
 	go.opentelemetry.io/collector/confmap v1.49.0 // indirect
 	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.49.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.49.0 // indirect
-	go.opentelemetry.io/collector/filter v0.142.0 // indirect
+	go.opentelemetry.io/collector/filter v0.143.0 // indirect
 	go.opentelemetry.io/collector/pdata v1.49.0 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
