@@ -26,6 +26,10 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 )
 
+// Stream represents the identity of a metric stream.
+//
+// It combines a metric identity with a specific set of data point attributes,
+// forming a hashable identifier for a distinct metric time series.
 type Stream struct {
 	metric Metric
 	attrs  [16]byte
@@ -45,6 +49,7 @@ func (s Stream) String() string {
 	return fmt.Sprintf("stream/%x", s.Hash().Sum64())
 }
 
+// OfStream constructs a Stream identity from a metric identity and a data point.
 func OfStream[DataPoint attrPoint](m Metric, dp DataPoint) Stream {
 	return Stream{metric: m, attrs: pdatautil.MapHash(dp.Attributes())}
 }

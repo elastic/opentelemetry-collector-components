@@ -30,6 +30,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// aggConsumer aggregates incoming metrics and forwards them downstream
+// at a fixed flush interval.
+//
+// It uses identity-based lookup tables (resource, scope, metric, and stream)
+// to deduplicate and efficiently merge data points into a single
+// pmetric.Metrics instance before flushing.
 type aggConsumer struct {
 	nextConsumer consumer.Metrics
 

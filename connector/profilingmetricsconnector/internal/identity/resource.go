@@ -27,6 +27,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 )
 
+// Resource represents the identity of an OpenTelemetry resource defined by the resource attributes.
 type Resource struct {
 	attrs [16]byte
 }
@@ -41,6 +42,10 @@ func (r Resource) String() string {
 	return fmt.Sprintf("resource/%x", r.Hash().Sum64())
 }
 
+// OfResource constructs a Resource identity from an OpenTelemetry resource.
+//
+// The resulting identity is derived exclusively from the resource attributes
+// and is suitable for stable hashing and equality comparisons.
 func OfResource(r pcommon.Resource) Resource {
 	return Resource{
 		attrs: pdatautil.MapHash(r.Attributes()),

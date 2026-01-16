@@ -26,6 +26,11 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
 )
 
+// Scope represents the identity of an OpenTelemetry instrumentation scope.
+//
+// It combines the resource identity with the scope name, version, and
+// attributes to form a hashable identifier for metrics produced
+// by a specific instrumentation scope.
 type Scope struct {
 	resource Resource
 
@@ -50,6 +55,8 @@ func (s Scope) String() string {
 	return fmt.Sprintf("scope/%x", s.Hash().Sum64())
 }
 
+// OfScope constructs a Scope identity from a resource identity and an
+// OpenTelemetry instrumentation scope.
 func OfScope(res Resource, scope pcommon.InstrumentationScope) Scope {
 	return Scope{
 		resource: res,

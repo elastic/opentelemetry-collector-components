@@ -25,6 +25,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
+// Metric represents the identity of an OpenTelemetry metric excluding
+// data point attributes, which are modeled separately as stream identities.
 type Metric struct {
 	scope Scope
 
@@ -53,6 +55,11 @@ func (m Metric) Scope() Scope {
 	return m.scope
 }
 
+// OfMetric constructs a Metric identity from the given instrumentation scope
+// and pmetric.Metric.
+//
+// The resulting identity is hashable, and is derived from the
+// metric name, unit, type, monotonicity, aggregation temporality, and scope.
 func OfMetric(scope Scope, m pmetric.Metric) Metric {
 	id := Metric{
 		scope: scope,
