@@ -189,6 +189,11 @@ func (c *aggConsumer) getOrCloneMetric(rm pmetric.ResourceMetrics, sm pmetric.Sc
 	return mClone, metricID
 }
 
+// aggregateDataPoints merges incoming number data points into a lookup table.
+//
+// For each data point in dataPoints, it sums the numeric values with any
+// existing datapoint in dpLookup. The resulting datapoint always has the
+// latest timestamp among all aggregated values.
 func aggregateDataPoints(dataPoints, mCloneDataPoints pmetric.NumberDataPointSlice, metricID identity.Metric, dpLookup map[identity.Stream]pmetric.NumberDataPoint) {
 	for i := 0; i < dataPoints.Len(); i++ {
 		dp := dataPoints.At(i)
@@ -202,17 +207,18 @@ func aggregateDataPoints(dataPoints, mCloneDataPoints pmetric.NumberDataPointSli
 			continue
 		}
 
-		// Check if the datapoint is newer
-		if dp.Timestamp() >= existingDP.Timestamp() {
-			switch existingDP.ValueType() {
-			case pmetric.NumberDataPointValueTypeInt:
-				dp.SetIntValue(dp.IntValue() + existingDP.IntValue())
-			case pmetric.NumberDataPointValueTypeDouble:
-				dp.SetDoubleValue(dp.DoubleValue() + existingDP.DoubleValue())
-			}
-
-			dp.CopyTo(existingDP)
-			continue
+		switch existingDP.ValueType() {
+		case pmetric.NumberDataPointValueTypeInt:
+			dp.SetIntValue(dp.IntValue() + existingDP.IntValue())
+		case pmetric.NumberDataPointValueTypeDouble:
+			dp.SetDoubleValue(dp.DoubleValue() + existingDP.DoubleValue())
 		}
+
+		// Preserve the latest timestamp
+		ts := existingDP.Timestamp()
+		if existingDP.Timestamp() > dp.Timestamp() {
+			dp.SetTimestamp(ts)
+		}
+		dp.CopyTo(existingDP)
 	}
 }

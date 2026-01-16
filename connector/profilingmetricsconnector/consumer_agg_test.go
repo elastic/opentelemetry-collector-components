@@ -30,8 +30,37 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
+
+func addDatapointDuration(md pmetric.Metrics, duration time.Duration) pmetric.Metrics {
+	setDpTimestamp := func(dataPoints pmetric.NumberDataPointSlice) {
+		for i := 0; i < dataPoints.Len(); i++ {
+			dp := dataPoints.At(i)
+			dp.SetTimestamp(pcommon.NewTimestampFromTime(dp.Timestamp().AsTime().Add(duration)))
+		}
+	}
+
+	// removeIf used to mutably iterate over pmetric.Metrics
+	md.ResourceMetrics().RemoveIf(func(rm pmetric.ResourceMetrics) bool {
+		rm.ScopeMetrics().RemoveIf(func(sm pmetric.ScopeMetrics) bool {
+			sm.Metrics().RemoveIf(func(m pmetric.Metric) bool {
+				switch m.Type() {
+				case pmetric.MetricTypeGauge:
+					setDpTimestamp(m.Gauge().DataPoints())
+				case pmetric.MetricTypeSum:
+					setDpTimestamp(m.Sum().DataPoints())
+				}
+				return false
+			})
+			return false
+		})
+		return false
+	})
+
+	return md
+}
 
 func TestConsumeProfiles_AggregatedFrameMetrics(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
@@ -50,7 +79,9 @@ func TestConsumeProfiles_AggregatedFrameMetrics(t *testing.T) {
 
 		// aggregate metrics
 		assert.NoError(t, agg.ConsumeMetrics(t.Context(), sampleMetrics()))
-		assert.NoError(t, agg.ConsumeMetrics(t.Context(), sampleMetrics()))
+		// Shift the timestamps backwards by 5s to simulate older metrics
+		// arriving and ensure they are aggregated correctly.
+		assert.NoError(t, agg.ConsumeMetrics(t.Context(), addDatapointDuration(sampleMetrics(), -5*time.Second)))
 
 		time.Sleep(flushInterval)
 		synctest.Wait()
@@ -61,7 +92,7 @@ func TestConsumeProfiles_AggregatedFrameMetrics(t *testing.T) {
 		// assert.NoError(t, err)
 		expectedMetrics, err := golden.ReadMetrics(filepath.Join(testDataDir, "frame_metrics", "output-agg-metrics.yaml"))
 		assert.NoError(t, err)
-		require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder()))
+		require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics[0], pmetrictest.IgnoreStartTimestamp(), pmetrictest.IgnoreDatapointAttributesOrder(), pmetrictest.IgnoreMetricDataPointsOrder(), pmetrictest.IgnoreTimestamp()))
 		cancelFn()
 	})
 }
