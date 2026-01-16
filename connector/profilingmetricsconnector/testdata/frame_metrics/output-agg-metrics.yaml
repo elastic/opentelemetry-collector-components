@@ -7,8 +7,9 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asInt: "84"
+                - asInt: "126"
                   startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
               isMonotonic: true
             unit: "1"
           - description: Number of samples executing Go code (self)
@@ -16,8 +17,9 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asInt: "2"
+                - asInt: "3"
                   startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
               isMonotonic: true
             unit: "1"
           - description: Number of samples executing userspace code (self)
@@ -25,8 +27,9 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asInt: "86"
+                - asInt: "129"
                   startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
               isMonotonic: true
             unit: "1"
         scope:

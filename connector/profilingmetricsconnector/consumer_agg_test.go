@@ -79,6 +79,7 @@ func TestConsumeProfiles_AggregatedFrameMetrics(t *testing.T) {
 
 		// aggregate metrics
 		assert.NoError(t, agg.ConsumeMetrics(t.Context(), sampleMetrics()))
+		assert.NoError(t, agg.ConsumeMetrics(t.Context(), sampleMetrics()))
 		// Shift the timestamps backwards by 5s to simulate older metrics
 		// arriving and ensure they are aggregated correctly.
 		assert.NoError(t, agg.ConsumeMetrics(t.Context(), addDatapointDuration(sampleMetrics(), -5*time.Second)))
