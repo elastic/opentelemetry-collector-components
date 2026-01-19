@@ -7,12 +7,18 @@ resourceSpans:
         - key: resource.optional
           value:
             stringValue: bar
+        - key: deployment.environment.name
+          value:
+            stringValue: from_deployment_environment_name
         - key: agent.name
           value:
             stringValue: otlp
         - key: agent.version
           value:
             stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: from_deployment_environment_name
     scopeSpans:
       - scope: {}
         spans:

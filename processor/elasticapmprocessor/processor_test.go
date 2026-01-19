@@ -35,145 +35,134 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processortest"
-	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zaptest"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
 )
 
 var update = flag.Bool("update", false, "Flag to generate/updated the expected yaml files")
 
-// TestProcessor does some basic tests to check if enrichment is happening.
-// More exhaustive test for the logic are left to the library.
+// TestProcessor does a basic test to check if traces, logs, and metrics
+// are processed correctly.
 func TestProcessor(t *testing.T) {
-	testCases := []string{
-		"elastic_txn_http",
-		"elastic_txn_messaging",
-		"elastic_txn_db",
-
-		"elastic_span_http",
-		"elastic_span_messaging",
-		"elastic_span_db",
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for _, tc := range testCases {
-		t.Run(tc, func(t *testing.T) {
-			factory := NewFactory()
-			settings := processortest.NewNopSettings(metadata.Type)
-			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
-			next := &consumertest.TracesSink{}
-
-			tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
-
-			require.NoError(t, err)
-			require.IsType(t, &TraceProcessor{}, tp)
-
-			dir := filepath.Join("testdata", tc)
-			inputTraces, err := golden.ReadTraces(filepath.Join(dir, "input.yaml"))
-			require.NoError(t, err)
-
-			outputFile := filepath.Join(dir, "output.yaml")
-			expectedTraces, err := golden.ReadTraces(outputFile)
-			require.NoError(t, err)
-
-			require.NoError(t, tp.ConsumeTraces(ctx, inputTraces))
-			actual := next.AllTraces()[0]
-			if *update {
-				err := golden.WriteTraces(t, outputFile, actual)
-				assert.NoError(t, err)
-			}
-			assert.NoError(t, ptracetest.CompareTraces(expectedTraces, actual))
-		})
-	}
-}
-
-// TestProcessorECS does a basic test to check if traces, logs, and metrics are processed correctly when ECS mode is enabled in the client metadata.
-func TestProcessorECS(t *testing.T) {
 	defaultCfg := createDefaultConfig().(*Config)
-	defaultCfg.HostIPEnabled = true
-	defaultCfg.ServiceNameInDataStreamDataset = true
+
+	// apmConfig is configuration that mimics APM Server behaviour,
+	// which is expected to be used with ECS mapping mode.
+	apmConfig := createDefaultConfig().(*Config)
+	apmConfig.HostIPEnabled = true
+	apmConfig.ServiceNameInDataStreamDataset = true
 
 	disableHostNameEnrichmentConfig := createDefaultConfig().(*Config)
-	// Disable default hostname enrichment from opentelemetry-lib
-	// to only test processor logic
 	disableHostNameEnrichmentConfig.Resource.OverrideHostName.Enabled = false
 
-	testCases := []struct {
-		testDir  string
-		input    string
-		output   string
-		testType string
-		cfg      *Config
+	testCases := map[string]struct {
+		input       string
+		output      string
+		mappingMode string
+		testType    string
+		cfg         *Config
 	}{
-		{
-			testDir:  "span",
-			input:    "testdata/ecs/elastic_span_db/input.yaml",
-			output:   "testdata/ecs/elastic_span_db/output.yaml",
+		"elastic_txn_http": {
+			input:    "testdata/elastic_txn_http/input.yaml",
+			output:   "testdata/elastic_txn_http/output.yaml",
 			testType: "traces",
 			cfg:      defaultCfg,
 		},
-		{
-			testDir:  "log",
-			input:    "testdata/ecs/elastic_log/input.yaml",
-			output:   "testdata/ecs/elastic_log/output.yaml",
-			testType: "logs",
-			cfg:      defaultCfg,
-		},
-		{
-			testDir:  "metrics",
-			input:    "testdata/ecs/elastic_metric/input.yaml",
-			output:   "testdata/ecs/elastic_metric/output.yaml",
-			testType: "metrics",
-			cfg:      defaultCfg,
-		},
-		{
-			testDir:  "span_hostname",
-			input:    "testdata/elastic_hostname/spans_input.yaml",
-			output:   "testdata/elastic_hostname/spans_output.yaml",
+		"elastic_txn_messaging": {
+			input:    "testdata/elastic_txn_messaging/input.yaml",
+			output:   "testdata/elastic_txn_messaging/output.yaml",
 			testType: "traces",
-			cfg:      disableHostNameEnrichmentConfig,
-		},
-		{
-			testDir:  "log_hostname",
-			input:    "testdata/elastic_hostname/logs_input.yaml",
-			output:   "testdata/elastic_hostname/logs_output.yaml",
-			testType: "logs",
-			cfg:      disableHostNameEnrichmentConfig,
-		},
-		{
-			testDir:  "metric_hostname",
-			input:    "testdata/elastic_hostname/metrics_input.yaml",
-			output:   "testdata/elastic_hostname/metrics_output.yaml",
-			testType: "metrics",
-			cfg:      disableHostNameEnrichmentConfig,
-		},
-		{
-			testDir:  "internal_metrics",
-			input:    "testdata/ecs/elastic_internal_metrics/input.yaml",
-			output:   "testdata/ecs/elastic_internal_metrics/output.yaml",
-			testType: "metrics",
 			cfg:      defaultCfg,
+		},
+		"elastic_txn_db": {
+			input:    "testdata/elastic_txn_db/input.yaml",
+			output:   "testdata/elastic_txn_db/output.yaml",
+			testType: "traces",
+			cfg:      defaultCfg,
+		},
+		"elastic_span_http": {
+			input:    "testdata/elastic_span_http/input.yaml",
+			output:   "testdata/elastic_span_http/output.yaml",
+			testType: "traces",
+			cfg:      defaultCfg,
+		},
+		"elastic_span_messaging": {
+			input:    "testdata/elastic_span_messaging/input.yaml",
+			output:   "testdata/elastic_span_messaging/output.yaml",
+			testType: "traces",
+			cfg:      defaultCfg,
+		},
+		"elastic_span_db": {
+			input:    "testdata/elastic_span_db/input.yaml",
+			output:   "testdata/elastic_span_db/output.yaml",
+			testType: "traces",
+			cfg:      defaultCfg,
+		},
+		"ecs_span": {
+			input:       "testdata/ecs/elastic_span_db/input.yaml",
+			output:      "testdata/ecs/elastic_span_db/output.yaml",
+			mappingMode: "ecs",
+			testType:    "traces",
+			cfg:         apmConfig,
+		},
+		"ecs_log": {
+			input:       "testdata/ecs/elastic_log/input.yaml",
+			output:      "testdata/ecs/elastic_log/output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
+		"ecs_metrics": {
+			input:       "testdata/ecs/elastic_metric/input.yaml",
+			output:      "testdata/ecs/elastic_metric/output.yaml",
+			mappingMode: "ecs",
+			testType:    "metrics",
+			cfg:         apmConfig,
+		},
+		"ecs_span_hostname": {
+			input:       "testdata/ecs/elastic_hostname/spans_input.yaml",
+			output:      "testdata/ecs/elastic_hostname/spans_output.yaml",
+			mappingMode: "ecs",
+			testType:    "traces",
+			cfg:         disableHostNameEnrichmentConfig,
+		},
+		"ecs_log_hostname": {
+			input:       "testdata/ecs/elastic_hostname/logs_input.yaml",
+			output:      "testdata/ecs/elastic_hostname/logs_output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         disableHostNameEnrichmentConfig,
+		},
+		"ecs_metric_hostname": {
+			input:       "testdata/ecs/elastic_hostname/metrics_input.yaml",
+			output:      "testdata/ecs/elastic_hostname/metrics_output.yaml",
+			mappingMode: "ecs",
+			testType:    "metrics",
+			cfg:         disableHostNameEnrichmentConfig,
+		},
+		"ecs_internal_metrics": {
+			input:       "testdata/ecs/elastic_internal_metrics/input.yaml",
+			output:      "testdata/ecs/elastic_internal_metrics/output.yaml",
+			mappingMode: "ecs",
+			testType:    "metrics",
+			cfg:         apmConfig,
 		},
 	}
 
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{
-			IP: net.IPv4(1, 2, 3, 4),
-		},
-		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
-	})
-	cancel := func() {}
-	defer cancel()
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			clientInfo := client.Info{
+				Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+			}
+			if tc.mappingMode != "" {
+				clientInfo.Metadata = client.NewMetadata(map[string][]string{
+					"x-elastic-mapping-mode": {tc.mappingMode},
+				})
+			}
 
-	for _, tc := range testCases {
-		t.Run(tc.testDir, func(t *testing.T) {
-			factory := NewFactory()
-			settings := processortest.NewNopSettings(metadata.Type)
-			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
-
+			ctx := client.NewContext(context.Background(), clientInfo)
 			switch tc.testType {
 			case "traces":
 				testTraces(t, ctx, factory, settings, tc.cfg, tc.input, tc.output)
@@ -244,61 +233,6 @@ func testMetrics(t *testing.T, ctx context.Context, factory processor.Factory, s
 	assert.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actual, pmetrictest.IgnoreMetricsOrder(), pmetrictest.IgnoreResourceMetricsOrder(), pmetrictest.IgnoreTimestamp()))
 }
 
-// TestECSTraces does a basic test to check if traces are processed correctly when ECS mode is enabled in the client metadata.
-func TestECSTraces(t *testing.T) {
-	testcases := map[string]struct {
-		input  string
-		output string
-		cfg    *Config
-	}{
-		"hostname-settings": {
-			input:  "testdata/elastic_hostname/metrics_input.yaml",
-			output: "testdata/elastic_hostname/metrics_output.yaml",
-			cfg: func() *Config {
-				cfg := createDefaultConfig().(*Config)
-				// Disable default hostname enrichment from opentelemetry-lib
-				// to only test processor logic
-				cfg.Resource.OverrideHostName.Enabled = false
-				return cfg
-			}(),
-		},
-	}
-
-	for name, tc := range testcases {
-		t.Run(name, func(t *testing.T) {
-			ctx := client.NewContext(context.Background(), client.Info{
-				Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
-			})
-			cancel := func() {}
-			defer cancel()
-
-			factory := NewFactory()
-			settings := processortest.NewNopSettings(metadata.Type)
-			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
-			next := &consumertest.TracesSink{}
-
-			tp, err := factory.CreateTraces(ctx, settings, createDefaultConfig(), next)
-
-			require.NoError(t, err)
-			require.IsType(t, &TraceProcessor{}, tp)
-
-			inputTraces, err := golden.ReadTraces(tc.input)
-			require.NoError(t, err)
-
-			expectedTraces, err := golden.ReadTraces(tc.output)
-			require.NoError(t, err)
-
-			require.NoError(t, tp.ConsumeTraces(ctx, inputTraces))
-			actual := next.AllTraces()[0]
-			if *update {
-				err := golden.WriteTraces(t, tc.output, actual)
-				assert.NoError(t, err)
-			}
-			assert.NoError(t, ptracetest.CompareTraces(expectedTraces, actual))
-		})
-	}
-}
-
 // TestSkipEnrichmentLogs tests that logs are only enriched when skipEnrichment is false or when mapping mode is ecs
 func TestSkipEnrichmentLogs(t *testing.T) {
 	testCases := []struct {
@@ -339,7 +273,6 @@ func TestSkipEnrichmentLogs(t *testing.T) {
 
 			factory := NewFactory()
 			settings := processortest.NewNopSettings(metadata.Type)
-			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 			next := &consumertest.LogsSink{}
 
 			cfg := createDefaultConfig().(*Config)
@@ -406,7 +339,6 @@ func TestSkipEnrichmentMetrics(t *testing.T) {
 
 			factory := NewFactory()
 			settings := processortest.NewNopSettings(metadata.Type)
-			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 			next := &consumertest.MetricsSink{}
 
 			cfg := createDefaultConfig().(*Config)
@@ -476,7 +408,6 @@ func TestECSErrorRouting(t *testing.T) {
 
 			factory := NewFactory()
 			settings := processortest.NewNopSettings(metadata.Type)
-			settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 			next := &consumertest.LogsSink{}
 
 			lp, err := factory.CreateLogs(ctx, settings, tc.cfg, next)
@@ -511,7 +442,6 @@ func TestInternalMetricsUnitClearing(t *testing.T) {
 
 	factory := NewFactory()
 	settings := processortest.NewNopSettings(metadata.Type)
-	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 	next := &consumertest.MetricsSink{}
 
 	cfg := createDefaultConfig().(*Config)
@@ -577,7 +507,6 @@ func TestECSSpanEventErrorRouting(t *testing.T) {
 
 	factory := NewFactory()
 	settings := processortest.NewNopSettings(metadata.Type)
-	settings.TelemetrySettings.Logger = zaptest.NewLogger(t, zaptest.Level(zapcore.DebugLevel))
 	next := &consumertest.TracesSink{}
 
 	cfg := createDefaultConfig().(*Config)
