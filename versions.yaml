@@ -1,6 +1,6 @@
 module-sets:
   edot-base:
-    version: v0.27.0
+    version: v0.28.0
     modules:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
