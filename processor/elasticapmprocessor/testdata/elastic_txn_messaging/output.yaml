@@ -17,12 +17,12 @@ resourceSpans:
       - scope: {}
         spans:
           - attributes:
-              - key: messaging.system
-                value:
-                  stringValue: kafka
-              - key: messaging.destination.name
+              - key: transaction.message.queue.name
                 value:
                   stringValue: TestTopic
+              - key: event.success_count
+                value:
+                  intValue: "1"
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
@@ -31,7 +31,10 @@ resourceSpans:
                   boolValue: true
               - key: transaction.id
                 value:
-                  stringValue: ""
+                  stringValue: abcdef0123456700
+              - key: span.id
+                value:
+                  stringValue: abcdef0123456700
               - key: transaction.root
                 value:
                   boolValue: true
@@ -56,9 +59,6 @@ resourceSpans:
               - key: event.outcome
                 value:
                   stringValue: success
-              - key: event.success_count
-                value:
-                  intValue: "1"
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
@@ -92,8 +92,7 @@ resourceSpans:
                 name: event-with-no-attrs
                 timeUnixNano: "1581452773000000123"
             name: msg-elastic-txn
-            parentSpanId: ""
-            spanId: ""
+            spanId: abcdef0123456700
             startTimeUnixNano: "1581452772000000321"
             status: {}
-            traceId: ""
+            traceId: fdedef0123456789abcdef9876543210
