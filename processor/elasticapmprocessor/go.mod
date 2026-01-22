@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/elastic/apm-data v1.19.5
-	github.com/elastic/opentelemetry-lib v0.29.0
+	github.com/elastic/opentelemetry-lib v0.30.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.143.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.143.0
 	github.com/stretchr/testify v1.11.1
