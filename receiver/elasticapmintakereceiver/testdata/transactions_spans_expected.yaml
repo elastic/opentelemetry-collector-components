@@ -122,9 +122,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
@@ -1050,9 +1047,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4340
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
@@ -1182,9 +1176,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4341
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
@@ -1314,9 +1305,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4342
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types

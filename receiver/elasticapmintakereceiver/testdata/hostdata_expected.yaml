@@ -68,9 +68,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.root
-                value:
-                  boolValue: false
               - key: transaction.type
                 value:
                   stringValue: request
