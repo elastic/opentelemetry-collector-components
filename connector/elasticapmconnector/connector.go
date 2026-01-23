@@ -99,7 +99,7 @@ func (c *elasticapmConnector) newTracesToMetrics(ctx context.Context) (consumer.
 }
 
 // transactionRootEnricher wraps a traces consumer to add the 'transaction.root'
-// boolean attribute which is true when the span has a ParentSpanID.
+// boolean attribute which is true when the span has an empty ParentSpanID.
 type transactionRootEnricher struct {
 	next consumer.Traces
 }
