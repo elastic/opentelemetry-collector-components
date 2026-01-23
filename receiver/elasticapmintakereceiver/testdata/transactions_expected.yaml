@@ -155,9 +155,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.root
-                value:
-                  boolValue: false
               - key: transaction.type
                 value:
                   stringValue: request
@@ -359,9 +356,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 4340a8e0df1906ecbfa9
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
@@ -701,9 +695,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: cdef4340a8e0df19
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.type
                 value:
                   stringValue: request
@@ -922,9 +913,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 00xxxxFFaaaa1234
-              - key: transaction.root
-                value:
-                  boolValue: false
               - key: transaction.name
                 value:
                   stringValue: amqp receive
@@ -1167,9 +1155,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 142e61450efb8574
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: july-2021-delete-after-july-31

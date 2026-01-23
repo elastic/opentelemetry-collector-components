@@ -38,9 +38,6 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 
 	setCommonDerivedRecordAttributes(event, attributes)
 
-	// from whatever reason Transaction.Root is always false. That seems to be a derived field already - I don't see that fields directly on IntakeV2 - there is only ParentId
-	attributes.PutBool(elasticattr.TransactionRoot, event.ParentId == "")
-
 	if event.Transaction == nil {
 		return
 	}
