@@ -26,12 +26,6 @@ resourceSpans:
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
-              - key: span.id
-                value:
-                  stringValue: abcdef0123456700
-              - key: span.name
-                value:
-                  stringValue: span-elastic-msg
               - key: span.representative_count
                 value:
                   doubleValue: 1
