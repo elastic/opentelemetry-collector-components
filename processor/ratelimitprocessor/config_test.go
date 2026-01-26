@@ -58,7 +58,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
+				DynamicLimits: defaultDynamicRateLimiting,
 			},
 		},
 		{
@@ -73,7 +73,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
+				DynamicLimits: defaultDynamicRateLimiting,
 			},
 		},
 		{
@@ -88,7 +88,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
+				DynamicLimits: defaultDynamicRateLimiting,
 			},
 		},
 		{
@@ -103,8 +103,8 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
-				MetadataKeys:        []string{"project_id"},
+				DynamicLimits: defaultDynamicRateLimiting,
+				MetadataKeys:  []string{"project_id"},
 			},
 		},
 		{
@@ -119,7 +119,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
+				DynamicLimits: defaultDynamicRateLimiting,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -143,7 +143,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
+				DynamicLimits: defaultDynamicRateLimiting,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -166,7 +166,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
+				DynamicLimits: defaultDynamicRateLimiting,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -189,7 +189,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
+				DynamicLimits: defaultDynamicRateLimiting,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -213,7 +213,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: defaultDynamicRateLimiting,
+				DynamicLimits: defaultDynamicRateLimiting,
 				Overrides: []RateLimitOverrides{
 					{
 						Matches: map[string][]string{
@@ -236,7 +236,7 @@ func TestLoadConfig(t *testing.T) {
 					ThrottleInterval: 1 * time.Second,
 					RetryDelay:       1 * time.Second,
 				},
-				DynamicRateLimiting: DynamicRateLimiting{
+				DynamicLimits: DynamicRateLimiting{
 					Enabled:                 true,
 					DefaultWindowMultiplier: 1.5,
 					WindowDuration:          time.Minute,
