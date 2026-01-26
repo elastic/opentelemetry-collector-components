@@ -299,7 +299,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 					// TODO (lahsivjar): implement support for gauges
 					//
 					// For now, pass through by copying across to nextMD below.
-					continue
+					break // nolint:staticcheck // we do want break
 				case pmetric.MetricTypeSummary:
 					if p.cfg.PassThrough.Summary {
 						// Copy across to nextMD below.
