@@ -68,7 +68,7 @@ func TestLoadConfig(t *testing.T) {
 				cfg := expectedDefaultConfig()
 				cfg.AgentConfig.Enabled = true
 				cfg.AgentConfig.CacheDuration = 10 * time.Second
-				cfg.AgentConfig.Elasticsearch.ClientConfig.Endpoint = "http://localhost:8200"
+				cfg.AgentConfig.Elasticsearch.Endpoint = "http://localhost:8200"
 				return cfg
 			}(),
 		},

@@ -111,7 +111,7 @@ func newGubernatorRateLimiterFrom(t *testing.T, cfg *Config, daemon *gubernator.
 	require.NoError(t, err)
 	client := gubernator.NewV1Client(conn)
 	t.Cleanup(func() { // Close the gRPC connection and daemon on test cleanup.
-		conn.Close()
+		_ = conn.Close()
 		daemon.Close()
 	})
 	return &gubernatorRateLimiter{

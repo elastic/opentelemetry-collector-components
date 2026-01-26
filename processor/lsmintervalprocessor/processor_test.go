@@ -464,7 +464,7 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 
 			factory := NewFactory()
 			settings := processortest.NewNopSettings(metadata.Type)
-			settings.TelemetrySettings.Logger = zap.NewNop()
+			settings.Logger = zap.NewNop()
 			mgp, err := factory.CreateMetrics(
 				context.Background(),
 				settings,

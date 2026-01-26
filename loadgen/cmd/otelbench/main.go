@@ -193,7 +193,9 @@ func main() {
 			flag.Usage()
 			os.Exit(3)
 		}
-		defer srv.Close()
+		defer func() {
+			_ = srv.Close()
+		}()
 		Config.CollectorConfigPath = url
 	}
 

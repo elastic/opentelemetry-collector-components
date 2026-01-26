@@ -139,7 +139,7 @@ func buildQuery(r *http.Request) (agentcfg.Query, error) {
 
 func ifNoneMatch(r *http.Request) string {
 	if h := r.Header.Get("If-None-Match"); h != "" {
-		return strings.Replace(h, "\"", "", -1)
+		return strings.ReplaceAll(h, "\"", "")
 	}
 	return r.URL.Query().Get(agentcfg.Etag)
 }
