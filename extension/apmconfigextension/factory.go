@@ -24,6 +24,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/extension"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
@@ -53,7 +54,10 @@ var defaultCacheConfig = CacheConfig{
 func createDefaultConfig() component.Config {
 	defaultElasticSearchClient := configelasticsearch.NewDefaultClientConfig()
 	httpCfg := confighttp.NewDefaultServerConfig()
-	httpCfg.Endpoint = "localhost:4320"
+	httpCfg.NetAddr = confignet.AddrConfig{
+		Endpoint:  "localhost:4320",
+		Transport: confignet.TransportTypeTCP,
+	}
 
 	return &Config{
 		Source: SourceConfig{
