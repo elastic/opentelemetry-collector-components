@@ -29,7 +29,6 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pipeline"
-	otelpipeline "go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
 
@@ -131,7 +130,7 @@ func (r *integrationReceiver) hasConsumerForPipelineType(id pipeline.ID) bool {
 	}
 }
 
-func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGetter, config integrations.Config, pipelineID pipeline.ID, pipeline integrations.PipelineConfig) error {
+func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGetter, config integrations.Config, pipelineID pipeline.ID, pipe integrations.PipelineConfig) error {
 	consumerChain := struct {
 		logs    consumer.Logs
 		metrics consumer.Metrics
@@ -142,27 +141,27 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		traces:  r.nextTracesConsumer,
 	}
 
-	if pipeline.Receiver == nil {
+	if pipe.Receiver == nil {
 		return errors.New("no receiver in pipeline configuration")
 	}
 
-	receiverConfig, found := config.Receivers[*pipeline.Receiver]
+	receiverConfig, found := config.Receivers[*pipe.Receiver]
 	if !found {
-		return fmt.Errorf("receiver %q not found", pipeline.Receiver)
+		return fmt.Errorf("receiver %q not found", pipe.Receiver)
 	}
 
-	receiverFactory, ok := host.GetFactory(component.KindReceiver, pipeline.Receiver.Type()).(receiver.Factory)
+	receiverFactory, ok := host.GetFactory(component.KindReceiver, pipe.Receiver.Type()).(receiver.Factory)
 	if !ok {
-		return fmt.Errorf("could not find receiver factory for %q", pipeline.Receiver.Type())
+		return fmt.Errorf("could not find receiver factory for %q", pipe.Receiver.Type())
 	}
 
 	preparedConfig, err := convertComponentConfig(receiverFactory.CreateDefaultConfig, receiverConfig)
 	if err != nil {
-		return fmt.Errorf("could not compose receiver config for %s: %w", pipeline.Receiver.String(), err)
+		return fmt.Errorf("could not compose receiver config for %s: %w", pipe.Receiver.String(), err)
 	}
 
 	var components []component.Component
-	processors := slices.Clone(pipeline.Processors)
+	processors := slices.Clone(pipe.Processors)
 	slices.Reverse(processors)
 	for i, id := range processors {
 		processorConfig, found := config.Processors[id]
@@ -222,7 +221,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		case err == nil:
 			components = append(components, logs)
 			receiversCreated += 1
-		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
+		case errors.Is(err, pipeline.ErrSignalNotSupported):
 			r.params.Logger.Debug("receiver does not support logs telemetry type",
 				zap.String("integration", r.params.ID.String()),
 				zap.String("receiver", params.ID.String()))
@@ -236,7 +235,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		case err == nil:
 			components = append(components, metrics)
 			receiversCreated += 1
-		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
+		case errors.Is(err, pipeline.ErrSignalNotSupported):
 			r.params.Logger.Debug("receiver does not support metrics telemetry type",
 				zap.String("integration", r.params.ID.String()),
 				zap.String("receiver", params.ID.String()))
@@ -250,7 +249,7 @@ func (r *integrationReceiver) startPipeline(ctx context.Context, host factoryGet
 		case err == nil:
 			components = append(components, traces)
 			receiversCreated += 1
-		case errors.Is(err, otelpipeline.ErrSignalNotSupported):
+		case errors.Is(err, pipeline.ErrSignalNotSupported):
 			r.params.Logger.Debug("receiver does not support traces telemetry type",
 				zap.String("integration", r.params.ID.String()),
 				zap.String("receiver", params.ID.String()))

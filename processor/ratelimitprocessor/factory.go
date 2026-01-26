@@ -84,7 +84,7 @@ func createLogsProcessor(
 	}
 	return NewLogsRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings.Logger,
+		set.Logger,
 		tb,
 		set.TracerProvider,
 		config.Strategy,
@@ -112,7 +112,7 @@ func createMetricsProcessor(
 	}
 	return NewMetricsRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings.Logger,
+		set.Logger,
 		tb,
 		set.TracerProvider,
 		config.Strategy,
@@ -140,7 +140,7 @@ func createTracesProcessor(
 	}
 	return NewTracesRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings.Logger,
+		set.Logger,
 		tb,
 		set.TracerProvider,
 		config.Strategy,
@@ -168,7 +168,7 @@ func createProfilesProcessor(
 	}
 	return NewProfilesRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings.Logger,
+		set.Logger,
 		tb,
 		set.TracerProvider,
 		config.Strategy,

@@ -139,7 +139,9 @@ func TestHTTPServerMiddleware(t *testing.T) {
 
 			// Get the response
 			resp := rec.Result()
-			defer resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 
 			// Verify the client address
 			cl := client.FromContext(capturedCtx)
@@ -190,7 +192,9 @@ func TestGRPCServerMiddleware(t *testing.T) {
 	// Create a listener for the test server
 	lis, err := net.Listen("tcp", "localhost:0")
 	require.NoError(t, err)
-	defer lis.Close()
+	defer func() {
+		_ = lis.Close()
+	}()
 
 	// Start the server
 	var wg sync.WaitGroup

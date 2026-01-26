@@ -299,7 +299,7 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 					// TODO (lahsivjar): implement support for gauges
 					//
 					// For now, pass through by copying across to nextMD below.
-					break
+					continue
 				case pmetric.MetricTypeSummary:
 					if p.cfg.PassThrough.Summary {
 						// Copy across to nextMD below.
@@ -453,7 +453,9 @@ func (p *Processor) commitAndExport(ctx context.Context, batch *pebble.Batch, to
 
 func (p *Processor) export(ctx context.Context, end time.Time) error {
 	snap := p.db.NewSnapshot()
-	defer snap.Close()
+	defer func() {
+		_ = snap.Close()
+	}()
 
 	var errs []error
 	for _, ivl := range p.intervals {
@@ -505,7 +507,9 @@ func (p *Processor) exportForInterval(
 	if err != nil {
 		return 0, fmt.Errorf("failed to create iterator: %w", err)
 	}
-	defer iter.Close()
+	defer func() {
+		_ = iter.Close()
+	}()
 
 	var errs []error
 	var exportedDPCount int
