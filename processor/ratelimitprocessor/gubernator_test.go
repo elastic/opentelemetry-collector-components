@@ -125,7 +125,7 @@ func newGubernatorRateLimiterFrom(t *testing.T, cfg *Config, daemon *gubernator.
 		clientConn:         conn,
 		client:             client,
 		classResolver:      noopResolver{},
-		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.drl.DefaultWindowMultiplier},
+		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.Drl.DefaultWindowMultiplier},
 	}
 }
 
@@ -158,7 +158,7 @@ func TestGubernatorRateLimiter_RateLimit_Dynamic_Simple(t *testing.T) {
 			ThrottleInterval: windowPeriod,
 			Rate:             staticRate,
 		},
-		drl: DynamicRateLimiting{
+		Drl: DynamicRateLimiting{
 			Enabled:                 true,
 			DefaultWindowMultiplier: 2.0, // Higher multiplier for clearer effect
 			WindowDuration:          windowPeriod,
@@ -310,7 +310,7 @@ func TestGubernatorRateLimiter_Dynamic_Scenarios(t *testing.T) {
 			ThrottleInterval: time.Second,
 			Rate:             StaticRate,
 		},
-		drl: DynamicRateLimiting{
+		Drl: DynamicRateLimiting{
 			Enabled:                 true,
 			DefaultWindowMultiplier: 1.5,
 			WindowDuration:          WindowPeriod,
@@ -485,7 +485,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 				Rate:             StaticRate,
 				Burst:            0,
 			},
-			drl: DynamicRateLimiting{
+			Drl: DynamicRateLimiting{
 				Enabled:                 true,
 				DefaultWindowMultiplier: 2.0,
 				WindowDuration:          WindowPeriod,
@@ -554,7 +554,7 @@ func TestGubernatorRateLimiter_OverrideDisablesDynamicLimit(t *testing.T) {
 				ThrottleInterval: time.Second,
 				Rate:             StaticRate,
 			},
-			drl: DynamicRateLimiting{
+			Drl: DynamicRateLimiting{
 				Enabled:                 true,
 				DefaultWindowMultiplier: 2.0,
 				WindowDuration:          WindowPeriod,
@@ -614,7 +614,7 @@ func TestGubernatorRateLimiter_ClassResolver(t *testing.T) {
 			ThrottleInterval: time.Second,
 			Rate:             500,
 		},
-		drl: DynamicRateLimiting{
+		Drl: DynamicRateLimiting{
 			Enabled:                 true,
 			DefaultWindowMultiplier: 2.0,
 			WindowDuration:          150 * time.Millisecond,
@@ -714,7 +714,7 @@ func TestGubernatorRateLimiter_LoadClassResolverExtension(t *testing.T) {
 			ThrottleInterval: time.Second,
 			Rate:             1000,
 		},
-		drl: DynamicRateLimiting{
+		Drl: DynamicRateLimiting{
 			Enabled:                 true,
 			DefaultWindowMultiplier: 2.0,
 			WindowDuration:          150 * time.Millisecond,
@@ -748,7 +748,7 @@ func TestGubernatorRateLimiter_WindowConfigurator(t *testing.T) {
 			ThrottleInterval: time.Second,
 			Rate:             staticRatePerSec,
 		},
-		drl: DynamicRateLimiting{
+		Drl: DynamicRateLimiting{
 			Enabled:                 true,
 			DefaultWindowMultiplier: 2.0,
 			WindowDuration:          windowDuration,
@@ -908,7 +908,7 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 			Rate:             StaticRate,
 			Burst:            0,
 		},
-		drl: DynamicRateLimiting{
+		Drl: DynamicRateLimiting{
 			Enabled:                 true,
 			DefaultWindowMultiplier: 1.5,
 			WindowDuration:          WindowPeriod,
@@ -934,7 +934,7 @@ func TestGubernatorRateLimiter_TelemetryCounters(t *testing.T) {
 		waitUntilNextPeriod(WindowPeriod)
 		time.Sleep(WindowPeriod - 10*time.Millisecond)
 		now := time.Now()
-		drc := newDynamicRateContext(uniqueKey, now, rl.cfg.drl)
+		drc := newDynamicRateContext(uniqueKey, now, rl.cfg.Drl)
 		// Convert reqs/sec into hits during WindowPeriod
 		hits := int64(float64(reqsPerSec) * WindowPeriod.Seconds())
 		_, err := rl.client.GetRateLimits(context.Background(), &gubernator.GetRateLimitsReq{
@@ -1035,7 +1035,7 @@ func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
 				Rate:             StaticRate,
 				Burst:            0,
 			},
-			drl: DynamicRateLimiting{
+			Drl: DynamicRateLimiting{
 				Enabled:                 true,
 				DefaultWindowMultiplier: 1.5,
 				WindowDuration:          WindowPeriod,
@@ -1095,7 +1095,7 @@ func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
 				Rate:             StaticRate,
 				Burst:            0,
 			},
-			drl: DynamicRateLimiting{
+			Drl: DynamicRateLimiting{
 				Enabled:                 true,
 				DefaultWindowMultiplier: 1.5,
 				WindowDuration:          WindowPeriod,
@@ -1150,7 +1150,7 @@ func TestGubernatorRateLimiter_ResolverFailures(t *testing.T) {
 				Rate:             StaticRate,
 				Burst:            0,
 			},
-			drl: DynamicRateLimiting{
+			Drl: DynamicRateLimiting{
 				Enabled:                 true,
 				DefaultWindowMultiplier: 1.5,
 				WindowDuration:          WindowPeriod,
