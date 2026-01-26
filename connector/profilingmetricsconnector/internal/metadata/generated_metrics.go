@@ -186,6 +186,7 @@ func (m *metricSamplesBeamCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesBeamCount(cfg MetricConfig) metricSamplesBeamCount {
 	m := metricSamplesBeamCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -239,6 +240,7 @@ func (m *metricSamplesClassification) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesClassification(cfg MetricConfig) metricSamplesClassification {
 	m := metricSamplesClassification{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -290,6 +292,7 @@ func (m *metricSamplesCpythonCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesCpythonCount(cfg MetricConfig) metricSamplesCpythonCount {
 	m := metricSamplesCpythonCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -342,6 +345,7 @@ func (m *metricSamplesCustomAggregation) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesCustomAggregation(cfg MetricConfig) metricSamplesCustomAggregation {
 	m := metricSamplesCustomAggregation{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -393,6 +397,7 @@ func (m *metricSamplesDotnetCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesDotnetCount(cfg MetricConfig) metricSamplesDotnetCount {
 	m := metricSamplesDotnetCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -445,6 +450,7 @@ func (m *metricSamplesFrameType) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesFrameType(cfg MetricConfig) metricSamplesFrameType {
 	m := metricSamplesFrameType{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -496,6 +502,7 @@ func (m *metricSamplesGoCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesGoCount(cfg MetricConfig) metricSamplesGoCount {
 	m := metricSamplesGoCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -547,6 +554,7 @@ func (m *metricSamplesJvmCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesJvmCount(cfg MetricConfig) metricSamplesJvmCount {
 	m := metricSamplesJvmCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -602,6 +610,7 @@ func (m *metricSamplesKernelCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesKernelCount(cfg MetricConfig) metricSamplesKernelCount {
 	m := metricSamplesKernelCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -657,6 +666,7 @@ func (m *metricSamplesNativeCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesNativeCount(cfg MetricConfig) metricSamplesNativeCount {
 	m := metricSamplesNativeCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -708,6 +718,7 @@ func (m *metricSamplesPerlCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesPerlCount(cfg MetricConfig) metricSamplesPerlCount {
 	m := metricSamplesPerlCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -759,6 +770,7 @@ func (m *metricSamplesPhpCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesPhpCount(cfg MetricConfig) metricSamplesPhpCount {
 	m := metricSamplesPhpCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -810,6 +822,7 @@ func (m *metricSamplesRubyCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesRubyCount(cfg MetricConfig) metricSamplesRubyCount {
 	m := metricSamplesRubyCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -861,6 +874,7 @@ func (m *metricSamplesRustCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesRustCount(cfg MetricConfig) metricSamplesRustCount {
 	m := metricSamplesRustCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -912,6 +926,7 @@ func (m *metricSamplesUserCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesUserCount(cfg MetricConfig) metricSamplesUserCount {
 	m := metricSamplesUserCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
@@ -963,6 +978,7 @@ func (m *metricSamplesV8jsCount) emit(metrics pmetric.MetricSlice) {
 
 func newMetricSamplesV8jsCount(cfg MetricConfig) metricSamplesV8jsCount {
 	m := metricSamplesV8jsCount{config: cfg}
+
 	if cfg.Enabled {
 		m.data = pmetric.NewMetric()
 		m.init()
