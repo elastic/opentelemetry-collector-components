@@ -132,7 +132,7 @@ func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder 
 		telemetryBuilder:   telemetryBuilder,
 		tracerProvider:     tracerProvider,
 		classResolver:      noopResolver{},
-		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DynamicRateLimiting.DefaultWindowMultiplier},
+		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DefaultWindowMultiplier},
 	}, nil
 }
 
@@ -148,7 +148,7 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) 
 		r.classResolver = cr.(ClassResolver)
 	}
 
-	if wCon := r.cfg.DynamicRateLimiting.WindowConfigurator; wCon.String() != "" {
+	if wCon := r.cfg.WindowConfigurator; wCon.String() != "" {
 		wc, ok := host.GetExtensions()[wCon]
 		if !ok {
 			return fmt.Errorf("window configurator %s not found", wCon)
@@ -230,7 +230,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	now := time.Now()
 	// If dynamic rate limiting is enabled and not disabled for this request,
 	// calculate the dynamic rate and burst.
-	if r.cfg.DynamicRateLimiting.Enabled && !cfg.disableDynamic {
+	if r.cfg.Enabled && !cfg.disableDynamic {
 		attrs := make([]attribute.KeyValue, 0, 3)
 		attrs = append(attrs,
 			attribute.String("source_kind", string(sourceKind)),
