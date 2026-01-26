@@ -41,9 +41,9 @@ type Config struct {
 	// Embed the rate limit settings
 	RateLimitSettings `mapstructure:",squash"`
 
-	// DynamicRateLimiting holds the dynamic rate limiting configuration.
+	// DynamicLimits holds the dynamic rate limiting configuration.
 	// This is only applicable when the rate limiter type is "gubernator".
-	Drl DynamicRateLimiting `mapstructure:"dynamic_limits"`
+	DynamicLimits DynamicRateLimiting `mapstructure:"dynamic_limits"`
 
 	// Overrides holds a list of overrides for the rate limiter.
 	//
@@ -276,7 +276,7 @@ func createDefaultConfig() component.Config {
 			ThrottleInterval: DefaultThrottleInterval,
 			RetryDelay:       DefaultRetryDelay,
 		},
-		Drl: DynamicRateLimiting{
+		DynamicLimits: DynamicRateLimiting{
 			DefaultWindowMultiplier: 1.3,
 			WindowDuration:          2 * time.Minute,
 		},
@@ -413,7 +413,7 @@ func (config *Config) Validate() error {
 		errs = append(errs, err)
 	}
 	if config.Type == GubernatorRateLimiter {
-		if err := config.Drl.Validate(); err != nil {
+		if err := config.DynamicLimits.Validate(); err != nil {
 			errs = append(errs, err)
 		}
 		// Validate class-based configuration

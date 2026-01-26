@@ -132,7 +132,7 @@ func newGubernatorRateLimiter(cfg *Config, logger *zap.Logger, telemetryBuilder 
 		telemetryBuilder:   telemetryBuilder,
 		tracerProvider:     tracerProvider,
 		classResolver:      noopResolver{},
-		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.Drl.DefaultWindowMultiplier},
+		windowConfigurator: defaultWindowConfigurator{multiplier: cfg.DynamicLimits.DefaultWindowMultiplier},
 	}, nil
 }
 
@@ -148,7 +148,7 @@ func (r *gubernatorRateLimiter) Start(ctx context.Context, host component.Host) 
 		r.classResolver = cr.(ClassResolver)
 	}
 
-	if wCon := r.cfg.Drl.WindowConfigurator; wCon.String() != "" {
+	if wCon := r.cfg.DynamicLimits.WindowConfigurator; wCon.String() != "" {
 		wc, ok := host.GetExtensions()[wCon]
 		if !ok {
 			return fmt.Errorf("window configurator %s not found", wCon)
@@ -230,7 +230,7 @@ func (r *gubernatorRateLimiter) RateLimit(ctx context.Context, hits int) error {
 	now := time.Now()
 	// If dynamic rate limiting is enabled and not disabled for this request,
 	// calculate the dynamic rate and burst.
-	if r.cfg.Drl.Enabled && !cfg.disableDynamic {
+	if r.cfg.DynamicLimits.Enabled && !cfg.disableDynamic {
 		attrs := make([]attribute.KeyValue, 0, 3)
 		attrs = append(attrs,
 			attribute.String("source_kind", string(sourceKind)),
@@ -422,7 +422,7 @@ func (r *gubernatorRateLimiter) getDynamicLimit(ctx context.Context,
 	// the throttle interval, not the rate itself which is set as the total
 	// reqs/events/bytes per Throttle interval may not be 1s.
 	staticRate := float64(cfg.Rate) / r.cfg.ThrottleInterval.Seconds()
-	drc := newDynamicRateContext(uniqueKey, now, r.cfg.Drl)
+	drc := newDynamicRateContext(uniqueKey, now, r.cfg.DynamicLimits)
 	// Get current and previous window rates, the current rates are without
 	// accounting for the new hits.
 	current, previous, err := r.peekRates(ctx, drc)
