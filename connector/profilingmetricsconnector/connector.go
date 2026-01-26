@@ -36,6 +36,8 @@ import (
 
 var errInvalAgg = errors.New("invalid aggregation configuration")
 
+type nextConsumerFactory = func(context.Context) (consumer.Metrics, error)
+
 var (
 	// Helper strings to keep code readable.
 	frameTypeNative = semconv.ProfileFrameTypeNative.Value.AsString()
@@ -54,11 +56,13 @@ var (
 
 // profilesToMetricsConnector implements xconnector.Profiles
 type profilesToMetricsConnector struct {
-	nextConsumer consumer.Metrics
-	config       *Config
-	aggregations []aggregation
-	logger       *zap.Logger
-	mb           *metadata.MetricsBuilder
+	nextConsumer   consumer.Metrics
+	nextConsumerFn nextConsumerFactory
+	cancelFn       context.CancelFunc
+	config         *Config
+	aggregations   []aggregation
+	logger         *zap.Logger
+	mb             *metadata.MetricsBuilder
 }
 
 type aggregation struct {
@@ -98,10 +102,17 @@ func (c *profilesToMetricsConnector) Start(ctx context.Context, host component.H
 		})
 	}
 
-	return nil
+	var err error
+	ctx, c.cancelFn = context.WithCancel(ctx)
+	c.nextConsumer, err = c.nextConsumerFn(ctx)
+
+	return err
 }
 
 func (c *profilesToMetricsConnector) Shutdown(ctx context.Context) error {
+	if c.cancelFn != nil {
+		c.cancelFn()
+	}
 	return nil
 }
 
