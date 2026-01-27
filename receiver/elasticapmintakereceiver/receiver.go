@@ -124,7 +124,7 @@ func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host com
 		return err
 	}
 
-	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.Endpoint))
+	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.NetAddr.Endpoint))
 
 	var hln net.Listener
 	if hln, err = r.cfg.ToListener(ctx); err != nil {
