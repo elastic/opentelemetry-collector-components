@@ -174,31 +174,216 @@ resourceLogs:
                   stringValue: "0123456789012345"
               - key: error.grouping_key
                 value:
-                  stringValue: 637be2ded470655b
+                  stringValue: 487f6c7468d018d4
               - key: timestamp.us
                 value:
                   intValue: "1494342245999999"
               - key: error.culprit
                 value:
                   stringValue: my.module.function_name
-              - key: error.exception.type
+              - key: error.exception
                 value:
-                  stringValue: DbError
-              - key: error.exception.message
-                value:
-                  stringValue: The username root is unknown
-              - key: error.exception.stacktrace
-                value:
-                  stringValue: "file/name.py:3 foo \nlib/instrumentation/index.js:102 instrumented \n"
-              - key: error.exception.module
-                value:
-                  stringValue: __builtins__
-              - key: error.exception.handled
-                value:
-                  boolValue: false
-              - key: error.exception.code
-                value:
-                  stringValue: "42"
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: code
+                              value:
+                                stringValue: "42"
+                            - key: message
+                              value:
+                                stringValue: The username root is unknown
+                            - key: type
+                              value:
+                                stringValue: DbError
+                            - key: module
+                              value:
+                                stringValue: __builtins__
+                            - key: handled
+                              value:
+                                boolValue: false
+                            - key: attributes
+                              value:
+                                kvlistValue:
+                                  values:
+                                    - key: foo
+                                      value:
+                                        stringValue: bar
+                            - key: stacktrace
+                              value:
+                                arrayValue:
+                                  values:
+                                    - kvlistValue:
+                                        values:
+                                          - key: exclude_from_grouping
+                                            value:
+                                              boolValue: false
+                                          - key: classname
+                                            value:
+                                              stringValue: BaseClass
+                                    - kvlistValue:
+                                        values:
+                                          - key: exclude_from_grouping
+                                            value:
+                                              boolValue: false
+                                          - key: abs_path
+                                            value:
+                                              stringValue: /real/file/name.py
+                                          - key: filename
+                                            value:
+                                              stringValue: file/name.py
+                                          - key: classname
+                                            value:
+                                              stringValue: RName
+                                          - key: function
+                                            value:
+                                              stringValue: foo
+                                          - key: module
+                                            value:
+                                              stringValue: App::MyModule
+                                          - key: library_frame
+                                            value:
+                                              boolValue: true
+                                          - key: line.number
+                                            value:
+                                              intValue: "3"
+                                          - key: line.column
+                                            value:
+                                              intValue: "4"
+                                          - key: line.context
+                                            value:
+                                              stringValue: line3
+                                          - key: context.pre
+                                            value:
+                                              arrayValue:
+                                                values:
+                                                  - stringValue: line1
+                                                  - stringValue: line2
+                                          - key: context.post
+                                            value:
+                                              arrayValue:
+                                                values:
+                                                  - stringValue: line4
+                                                  - stringValue: line5
+                                          - key: vars
+                                            value:
+                                              kvlistValue:
+                                                values:
+                                                  - key: key
+                                                    value:
+                                                      stringValue: value
+                                    - kvlistValue:
+                                        values:
+                                          - key: exclude_from_grouping
+                                            value:
+                                              boolValue: false
+                                          - key: abs_path
+                                            value:
+                                              stringValue: /Users/watson/code/node_modules/elastic/lib/instrumentation/index.js
+                                          - key: filename
+                                            value:
+                                              stringValue: lib/instrumentation/index.js
+                                          - key: function
+                                            value:
+                                              stringValue: instrumented
+                                          - key: line.number
+                                            value:
+                                              intValue: "102"
+                                          - key: line.context
+                                            value:
+                                              stringValue: '    var result = original.apply(this, arguments)'
+                                          - key: context.pre
+                                            value:
+                                              arrayValue:
+                                                values:
+                                                  - stringValue: '  var trans = this.currentTransaction'
+                                                  - stringValue: ""
+                                                  - stringValue: '  return instrumented'
+                                                  - stringValue: ""
+                                                  - stringValue: '  function instrumented () {'
+                                                  - stringValue: '    var prev = ins.currentTransaction'
+                                                  - stringValue: '    ins.currentTransaction = trans'
+                                          - key: context.post
+                                            value:
+                                              arrayValue:
+                                                values:
+                                                  - stringValue: '    ins.currentTransaction = prev'
+                                                  - stringValue: '    return result'
+                                                  - stringValue: '}'
+                                                  - stringValue: '}'
+                                                  - stringValue: ""
+                                                  - stringValue: Instrumentation.prototype._recoverTransaction = function (trans) {
+                                                  - stringValue: '  if (this.currentTransaction === trans) return'
+                                          - key: vars
+                                            value:
+                                              kvlistValue:
+                                                values:
+                                                  - key: key
+                                                    value:
+                                                      stringValue: value
+                      - kvlistValue:
+                          values:
+                            - key: code
+                              value:
+                                stringValue: INTERNAL_ERR
+                            - key: message
+                              value:
+                                stringValue: something wrong writing a file
+                            - key: type
+                              value:
+                                stringValue: InternalDbError
+                            - key: handled
+                              value:
+                                boolValue: true
+                      - kvlistValue:
+                          values:
+                            - key: message
+                              value:
+                                stringValue: disk spinning way too fast
+                            - key: type
+                              value:
+                                stringValue: VeryInternalDbError
+                            - key: module
+                              value:
+                                stringValue: disk_module
+                            - key: stacktrace
+                              value:
+                                arrayValue:
+                                  values:
+                                    - kvlistValue:
+                                        values:
+                                          - key: exclude_from_grouping
+                                            value:
+                                              boolValue: false
+                                          - key: filename
+                                            value:
+                                              stringValue: disk.go
+                                          - key: function
+                                            value:
+                                              stringValue: spinDisk
+                                          - key: line.number
+                                            value:
+                                              intValue: "42"
+                      - kvlistValue:
+                          values:
+                            - key: parent
+                              value:
+                                intValue: "1"
+                            - key: code
+                              value:
+                                stringValue: CONN_ERR
+                            - key: message
+                              value:
+                                stringValue: on top of it, internet doesn't work
+                            - key: type
+                              value:
+                                stringValue: ConnectionError
+                            - key: module
+                              value:
+                                stringValue: network_module
+                            - key: handled
+                              value:
+                                boolValue: false
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -795,9 +980,15 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1533826745999000"
-              - key: error.exception.message
+              - key: error.exception
                 value:
-                  stringValue: Cannot read property 'baz' no defined
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: message
+                              value:
+                                stringValue: Cannot read property 'baz' no defined
             body: {}
             timeUnixNano: "1533826745999000000"
         scope: {}
@@ -959,9 +1150,15 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1547070053000000"
-              - key: error.exception.type
+              - key: error.exception
                 value:
-                  stringValue: DbError
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: type
+                              value:
+                                stringValue: DbError
             body: {}
             timeUnixNano: "1547070053000000000"
             traceId: 0123456789abcdeffedcba0123456789

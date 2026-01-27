@@ -21,7 +21,6 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
-	"fmt"
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -143,68 +142,181 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 		attributes.PutStr(elasticattr.ParentID, event.ParentId)
 	}
 
-	if event.Error.Type != "" {
-		attributes.PutStr("error.type", event.Error.Type)
-	}
-	if event.Error.Message != "" {
-		attributes.PutStr("message", event.Error.Message)
-	}
 	attributes.PutStr(elasticattr.ErrorGroupingKey, event.Error.GroupingKey)
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
 
 	if event.Error.Culprit != "" {
-		attributes.PutStr("error.culprit", event.Error.Culprit)
+		attributes.PutStr(attr.ErrorCulprit, event.Error.Culprit)
 	}
 
 	if event.Error.Exception != nil {
-		event.Error.Exception.Cause
-		if event.Error.Exception.Type != "" {
-			// TODO: Convert the to an array which includes all Type values from the event.Error.Exception.Cause. Example:
-			//  "error.exception.type": [
-			//            "DbError",
-			//            "InternalDbError",
-			//            "VeryInternalDbError",
-			//            "ConnectionError"
-			//        ],
-			attributes.PutStr("error.exception.type", event.Error.Exception.Type)
+		// Create error.exception as an array of exception objects, following the apm-data JSON schema
+		// in https://github.com/elastic/apm-data/blob/main/model/modeljson/internal/error.go
+		setExceptionObjectArray(event.Error.Exception, attributes)
+	}
+}
+
+// exceptionWithParent holds an exception, its index, and its parent index in the flattened array.
+// A parentIdx of -1 indicates no parent (root exception).
+type exceptionWithParent struct {
+	exception *modelpb.Exception
+	index     int
+	parentIdx int
+}
+
+// setExceptionObjectArray creates `error.exception` as an array of exception objects,
+// following the apm-data JSON schema. Each exception is a structured object.
+// The exception tree is flattened depth-first with root exception first, followed by nested causes.
+func setExceptionObjectArray(exc *modelpb.Exception, attributes pcommon.Map) {
+	// Collect all exceptions (root + causes) into a flat list with parent indices
+	// Root exception has parentIdx=-1 (no parent) and startIdx=0
+	exceptions := collectExceptions(exc, -1, 0)
+
+	if len(exceptions) == 0 {
+		return
+	}
+
+	exceptionSlice := attributes.PutEmptySlice(attr.ErrorException)
+	exceptionSlice.EnsureCapacity(len(exceptions))
+
+	for _, e := range exceptions {
+		exceptionMap := exceptionSlice.AppendEmpty().SetEmptyMap()
+		setExceptionObject(e.exception, exceptionMap, e.index, e.parentIdx)
+	}
+}
+
+// collectExceptions recursively collects all exceptions from the tree into a flat list.
+// The root exception is collected first, followed by nested causes (depth-first).
+// Each exception is paired with its own index and parent's index in the resulting array.
+// startIdx is the index that the current exception will have in the final flattened array.
+func collectExceptions(e *modelpb.Exception, parentIdx int, startIdx int) []exceptionWithParent {
+	result := []exceptionWithParent{{exception: e, index: startIdx, parentIdx: parentIdx}}
+	myIdx := startIdx       // This exception's index in the flattened array
+	nextIdx := startIdx + 1 // Next available index for children
+
+	for _, cause := range e.Cause {
+		children := collectExceptions(cause, myIdx, nextIdx)
+		nextIdx += len(children) // Update next available index
+		result = append(result, children...)
+	}
+	return result
+}
+
+// setExceptionObject populates a single exception object map with all its fields.
+// index is the exception's position in the flattened array.
+// parentIdx is the index of the parent exception in the flattened array, or -1 for root.
+func setExceptionObject(e *modelpb.Exception, exceptionMap pcommon.Map, index int, parentIdx int) {
+	// Set parent index for chained exceptions only when necessary.
+	// Following apm-data logic: the parent field is only set when the exception
+	// is NOT immediately after its parent in the array (index > parentIdx + 1).
+	// If the exception directly follows its parent, the implicit rule is that
+	// the preceding exception is the parent.
+	if index > parentIdx+1 {
+		exceptionMap.PutInt(attr.ErrorExceptionParent, int64(parentIdx))
+	}
+
+	if e.Code != "" {
+		exceptionMap.PutStr(attr.ErrorExceptionCode, e.Code)
+	}
+	if e.Message != "" {
+		exceptionMap.PutStr(attr.ErrorExceptionMessage, e.Message)
+	}
+	if e.Type != "" {
+		exceptionMap.PutStr(attr.ErrorExceptionType, e.Type)
+	}
+	if e.Module != "" {
+		exceptionMap.PutStr(attr.ErrorExceptionModule, e.Module)
+	}
+	if e.Handled != nil {
+		exceptionMap.PutBool(attr.ErrorExceptionHandled, *e.Handled)
+	}
+
+	// Set attributes if present
+	if len(e.Attributes) > 0 {
+		attrMap := exceptionMap.PutEmptyMap(attr.ErrorExceptionAttributes)
+		attrMap.EnsureCapacity(len(e.Attributes))
+		for _, kv := range e.Attributes {
+			if kv.Key != "" && kv.Value != nil {
+				insertValue(attrMap.PutEmpty(kv.Key), kv.Value)
+			}
 		}
-		if event.Error.Exception.Message != "" {
-			// TODO: Convert the to an array which includes all Message values from the event.Error.Exception.Cause. Example:
-			//  "error.exception.message": [
-			//            "The username root is unknown",
-			//            "something wrong writing a file",
-			//            "disk spinning way too fast",
-			//            "on top of it, internet doesn't work"
-			//        ],
-			attributes.PutStr("error.exception.message", event.Error.Exception.Message)
+	}
+
+	// Set stacktrace as array of frame objects
+	if len(e.Stacktrace) > 0 {
+		setExceptionStacktrace(exceptionMap, e.Stacktrace)
+	}
+}
+
+// setExceptionStacktrace creates the stacktrace array of frame objects for an exception
+func setExceptionStacktrace(exceptionMap pcommon.Map, frames []*modelpb.StacktraceFrame) {
+	stacktraceSlice := exceptionMap.PutEmptySlice(attr.ErrorExceptionStacktrace)
+	stacktraceSlice.EnsureCapacity(len(frames))
+
+	for _, frame := range frames {
+		frameMap := stacktraceSlice.AppendEmpty().SetEmptyMap()
+
+		// Note: ExcludeFromGrouping does not have an 'omitempty' json tag in the apm-data model
+		// so we always set it to match the existing behavior.
+		frameMap.PutBool(attr.ErrorExceptionStacktraceExcludeFromGrouping, frame.ExcludeFromGrouping)
+
+		if frame.AbsPath != "" {
+			frameMap.PutStr(attr.ErrorExceptionStacktraceAbsPath, frame.AbsPath)
+		}
+		if frame.Filename != "" {
+			frameMap.PutStr(attr.ErrorExceptionStacktraceFilename, frame.Filename)
+		}
+		if frame.Classname != "" {
+			frameMap.PutStr(attr.ErrorExceptionStacktraceClassname, frame.Classname)
+		}
+		if frame.Function != "" {
+			frameMap.PutStr(attr.ErrorExceptionStacktraceFunction, frame.Function)
+		}
+		if frame.Module != "" {
+			frameMap.PutStr(attr.ErrorExceptionStacktraceModule, frame.Module)
+		}
+		if frame.LibraryFrame {
+			frameMap.PutBool(attr.ErrorExceptionStacktraceLibraryFrame, frame.LibraryFrame)
 		}
 
-		if event.Error.Exception.Stacktrace != nil {
-			str := ""
-			for _, frame := range event.Error.Exception.Stacktrace {
-				f := frame.GetFunction()
-				l := frame.GetLineno()
-				if f != "" {
-					str += fmt.Sprintf("%s:%d %s \n", frame.GetFilename(), l, f)
-				} else {
-					c := frame.GetClassname()
-					if c != "" && l != 0 {
-						str += fmt.Sprintf("%s:%d \n", c, l)
-					}
+		// Set line info as nested object
+		if frame.Lineno != nil || frame.Colno != nil || frame.ContextLine != "" {
+			if frame.Lineno != nil {
+				frameMap.PutInt(attr.ErrorExceptionStacktraceLineNumber, int64(*frame.Lineno))
+			}
+			if frame.Colno != nil {
+				frameMap.PutInt(attr.ErrorExceptionStacktraceLineColumn, int64(*frame.Colno))
+			}
+			if frame.ContextLine != "" {
+				frameMap.PutStr(attr.ErrorExceptionStacktraceLineContext, frame.ContextLine)
+			}
+		}
+
+		// Set context pre/post
+		if len(frame.PreContext) > 0 {
+			preSlice := frameMap.PutEmptySlice(attr.ErrorExceptionStacktraceContextPre)
+			preSlice.EnsureCapacity(len(frame.PreContext))
+			for _, pre := range frame.PreContext {
+				preSlice.AppendEmpty().SetStr(pre)
+			}
+		}
+		if len(frame.PostContext) > 0 {
+			postSlice := frameMap.PutEmptySlice(attr.ErrorExceptionStacktraceContextPost)
+			postSlice.EnsureCapacity(len(frame.PostContext))
+			for _, post := range frame.PostContext {
+				postSlice.AppendEmpty().SetStr(post)
+			}
+		}
+
+		// Set vars if present
+		if len(frame.Vars) > 0 {
+			varsMap := frameMap.PutEmptyMap(attr.ErrorExceptionStacktraceVars)
+			varsMap.EnsureCapacity(len(frame.Vars))
+			for _, kv := range frame.Vars {
+				if kv.Key != "" && kv.Value != nil {
+					insertValue(varsMap.PutEmpty(kv.Key), kv.Value)
 				}
 			}
-
-			attributes.PutStr("error.exception.stacktrace", str)
-		}
-
-		if event.Error.Exception.Module != "" {
-			attributes.PutStr("error.exception.module", event.Error.Exception.Module)
-		}
-		if event.Error.Exception.Handled != nil {
-			attributes.PutBool("error.exception.handled", *event.Error.Exception.Handled)
-		}
-		if event.Error.Exception.Code != "" {
-			attributes.PutStr("error.exception.code", event.Error.Exception.Code)
 		}
 	}
 }
