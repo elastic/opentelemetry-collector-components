@@ -157,11 +157,26 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 
 	if event.Error.Exception != nil {
+		event.Error.Exception.Cause
 		if event.Error.Exception.Type != "" {
-			attributes.PutStr("exception.type", event.Error.Exception.Type)
+			// TODO: Convert the to an array which includes all Type values from the event.Error.Exception.Cause. Example:
+			//  "error.exception.type": [
+			//            "DbError",
+			//            "InternalDbError",
+			//            "VeryInternalDbError",
+			//            "ConnectionError"
+			//        ],
+			attributes.PutStr("error.exception.type", event.Error.Exception.Type)
 		}
 		if event.Error.Exception.Message != "" {
-			attributes.PutStr("exception.message", event.Error.Exception.Message)
+			// TODO: Convert the to an array which includes all Message values from the event.Error.Exception.Cause. Example:
+			//  "error.exception.message": [
+			//            "The username root is unknown",
+			//            "something wrong writing a file",
+			//            "disk spinning way too fast",
+			//            "on top of it, internet doesn't work"
+			//        ],
+			attributes.PutStr("error.exception.message", event.Error.Exception.Message)
 		}
 
 		if event.Error.Exception.Stacktrace != nil {
@@ -179,7 +194,7 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 				}
 			}
 
-			attributes.PutStr("exception.stacktrace", str)
+			attributes.PutStr("error.exception.stacktrace", str)
 		}
 
 		if event.Error.Exception.Module != "" {

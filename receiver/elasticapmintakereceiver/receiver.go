@@ -228,13 +228,16 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	md := pmetric.NewMetrics()
 	td := ptrace.NewTraces()
 
-	gk := modelprocessor.SetGroupingKey{
-		NewHash: func() hash.Hash {
-			return xxhash.New()
+	processors := modelprocessor.Chained{
+		modelprocessor.SetGroupingKey{
+			NewHash: func() hash.Hash {
+				return xxhash.New()
+			},
 		},
+		modelprocessor.SetErrorMessage{},
 	}
 
-	if err := gk.ProcessBatch(ctx, batch); err != nil {
+	if err := processors.ProcessBatch(ctx, batch); err != nil {
 		r.settings.Logger.Error("failed to process batch", zap.Error(err))
 	}
 

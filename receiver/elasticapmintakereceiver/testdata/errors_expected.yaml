@@ -181,13 +181,13 @@ resourceLogs:
               - key: error.culprit
                 value:
                   stringValue: my.module.function_name
-              - key: exception.type
+              - key: error.exception.type
                 value:
                   stringValue: DbError
-              - key: exception.message
+              - key: error.exception.message
                 value:
                   stringValue: The username root is unknown
-              - key: exception.stacktrace
+              - key: error.exception.stacktrace
                 value:
                   stringValue: "file/name.py:3 foo \nlib/instrumentation/index.js:102 instrumented \n"
               - key: error.exception.module
@@ -795,7 +795,7 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1533826745999000"
-              - key: exception.message
+              - key: error.exception.message
                 value:
                   stringValue: Cannot read property 'baz' no defined
             body: {}
@@ -959,7 +959,7 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1547070053000000"
-              - key: exception.type
+              - key: error.exception.type
                 value:
                   stringValue: DbError
             body: {}
