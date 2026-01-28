@@ -41,9 +41,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: abcdef0123456700
-              - key: span.id
-                value:
-                  stringValue: abcdef0123456700
               - key: transaction.root
                 value:
                   boolValue: true
