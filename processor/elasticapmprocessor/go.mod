@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/elastic/apm-data v1.19.5
+	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.0.0
 	github.com/elastic/opentelemetry-lib v0.31.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.144.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.144.0
@@ -67,3 +68,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/elastic/opentelemetry-collector-components/internal/elasticattr => ../../internal/elasticattr
