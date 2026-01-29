@@ -19,9 +19,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-xyz
-        - key: host.hostname
-          value:
-            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -148,6 +145,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: source.nat.ip
           value:
             stringValue: 12.53.12.1
@@ -421,16 +421,6 @@ resourceLogs:
                 value:
                   kvlistValue:
                     values:
-                      - key: Content-Type
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: text/html
-                      - key: Cookie
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -453,19 +443,29 @@ resourceLogs:
                           arrayValue:
                             values:
                               - stringValue: 123.0.0.1
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2,c3=3
               - key: http.request.env
                 value:
                   kvlistValue:
                     values:
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
                       - key: SERVER_SOFTWARE
                         value:
                           stringValue: nginx
                       - key: GATEWAY_INTERFACE
                         value:
                           stringValue: CGI/1.1
-                      - key: SOME_NUMERIC_VALUE
-                        value:
-                          doubleValue: 123
               - key: http.request.cookies
                 value:
                   kvlistValue:
@@ -671,9 +671,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
-        - key: host.hostname
-          value:
-            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -785,6 +782,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -848,9 +848,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
-        - key: host.hostname
-          value:
-            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -962,6 +959,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -989,7 +989,8 @@ resourceLogs:
                             - key: message
                               value:
                                 stringValue: Cannot read property 'baz' no defined
-            body: {}
+            body:
+              stringValue: Cannot read property 'baz' no defined
             timeUnixNano: "1533826745999000000"
         scope: {}
   - resource:
@@ -1015,9 +1016,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
-        - key: host.hostname
-          value:
-            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -1129,6 +1127,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -1159,7 +1160,8 @@ resourceLogs:
                             - key: type
                               value:
                                 stringValue: DbError
-            body: {}
+            body:
+              stringValue: ""
             timeUnixNano: "1547070053000000000"
             traceId: 0123456789abcdeffedcba0123456789
         scope: {}
@@ -1186,9 +1188,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: node-abc
-        - key: host.hostname
-          value:
-            stringValue: myhostname
         - key: host.name
           value:
             stringValue: prod.example
@@ -1300,6 +1299,9 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: myhostname
         - key: user.domain
           value:
             stringValue: ldap://abc

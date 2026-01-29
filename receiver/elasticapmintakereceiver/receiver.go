@@ -511,8 +511,18 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 	// All fields associated with the log should also be set.
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 
-	if event.Error != nil && event.Error.Log != nil {
-		l.Body().SetStr(event.Error.Log.Message)
+	// the modelprocessor.SetErrorMessage sets the correct event.Message based on the available error details
+	l.Body().SetStr(event.Message)
+
+	r.setLogSeverity(event, l)
+}
+
+func (r *elasticAPMIntakeReceiver) setLogSeverity(event *modelpb.APMEvent, l plog.LogRecord) {
+	if event.Log != nil {
+		l.SetSeverityText(event.Log.Level)
+	}
+	if event.Event != nil {
+		l.SetSeverityNumber(plog.SeverityNumber(event.Event.Severity))
 	}
 }
 
@@ -527,12 +537,7 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 
 	l.Body().SetStr(event.Message)
 
-	if event.Log != nil {
-		l.SetSeverityText(event.Log.Level)
-	}
-	if event.Event != nil {
-		l.SetSeverityNumber(plog.SeverityNumber(event.Event.Severity))
-	}
+	r.setLogSeverity(event, l)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestampNanos uint64) ptrace.Span {
