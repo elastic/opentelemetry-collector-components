@@ -1,0 +1,3 @@
+java.lang.IllegalArgumentException: The arg 'ghi' is not valid
+	at org.example.SomeClass.someMethod(SomeClass.kt:9)
+	at org.example.Main.main(Main.kt:19)

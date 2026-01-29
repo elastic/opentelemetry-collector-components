@@ -1,0 +1,1 @@
+java.lang.RuntimeExceptionatorg.example.SomeClass.callingOtherMethod(SomeClass.kt)atorg.example.Main.main(Main.kt)Causedby:java.lang.IllegalArgumentExceptionatorg.example.SomeOtherClass.someOtherMethod(SomeOtherClass.kt)atorg.example.SomeClass.callingOtherMethod(SomeClass.kt)...1more

@@ -17,7 +17,7 @@
 
 package elasticapmprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
 
-import "github.com/elastic/opentelemetry-lib/enrichments/config"
+import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 
 type Config struct {
 	config.Config `mapstructure:",squash"`

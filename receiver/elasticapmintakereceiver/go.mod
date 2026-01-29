@@ -6,6 +6,7 @@ require (
 	github.com/cespare/xxhash v1.1.0
 	github.com/elastic/apm-data v1.19.5
 	github.com/elastic/go-elasticsearch/v8 v8.19.1
+	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.30.0
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9
 	github.com/elastic/opentelemetry-lib v0.30.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.144.0
@@ -130,3 +131,5 @@ require (
 	google.golang.org/grpc v1.78.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/elastic/opentelemetry-collector-components/internal/elasticattr => ../../internal/elasticattr
