@@ -7,7 +7,7 @@ require (
 	github.com/elastic/apm-data v1.19.5
 	github.com/elastic/go-elasticsearch/v8 v8.19.1
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9
-	github.com/elastic/opentelemetry-lib v0.30.0
+	github.com/elastic/opentelemetry-lib v0.31.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.144.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.144.0
 	github.com/stretchr/testify v1.11.1
