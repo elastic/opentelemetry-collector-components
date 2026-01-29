@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package config
+package config // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 
 // Config configures the enrichment attributes produced.
 type Config struct {

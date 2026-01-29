@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package attribute
+package attribute // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 
 import (
 	"go.opentelemetry.io/collector/pdata/pcommon"

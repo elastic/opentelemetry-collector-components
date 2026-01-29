@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package mobile
+package mobile // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/mobile"
 
 import (
 	"errors"

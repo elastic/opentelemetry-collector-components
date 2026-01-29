@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elasticattr
+package elasticattr // import "github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 
 const (
 	// resource s
