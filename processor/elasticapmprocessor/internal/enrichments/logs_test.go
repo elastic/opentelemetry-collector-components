@@ -103,7 +103,7 @@ func TestEnrichResourceLog(t *testing.T) {
 		}
 
 		for k, v := range existingAttrs {
-			logRecord.Attributes().PutEmpty(k).FromRaw(v)
+			_ = logRecord.Attributes().PutEmpty(k).FromRaw(v)
 		}
 
 		// Store original attributes

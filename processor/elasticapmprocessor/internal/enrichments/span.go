@@ -707,9 +707,9 @@ func (s *spanEventEnrichmentContext) enrich(
 		hash := md5.New()
 		// ignoring errors in hashing
 		if s.exceptionType != "" {
-			io.WriteString(hash, s.exceptionType)
+			_, _ = io.WriteString(hash, s.exceptionType)
 		} else if s.exceptionMessage != "" {
-			io.WriteString(hash, s.exceptionMessage)
+			_, _ = io.WriteString(hash, s.exceptionMessage)
 		}
 		attribute.PutStr(se.Attributes(), elasticattr.ErrorGroupingKey, hex.EncodeToString(hash.Sum(nil)))
 	}

@@ -661,7 +661,7 @@ func TestElasticTransactionEnrich(t *testing.T) {
 
 			// Merge with the expected attributes and override the span links.
 			for k, v := range tc.enrichedAttrs {
-				expectedSpan.Attributes().PutEmpty(k).FromRaw(v)
+				_ = expectedSpan.Attributes().PutEmpty(k).FromRaw(v)
 			}
 			// Remove messaging attributes if RemoveMessaging is enabled
 			if tc.config.RemoveMessaging.Enabled {
@@ -1001,7 +1001,7 @@ func TestRootSpanAsDependencyEnrich(t *testing.T) {
 
 			// Merge with the expected attributes and override the span links.
 			for k, v := range tc.enrichedAttrs {
-				expectedSpan.Attributes().PutEmpty(k).FromRaw(v)
+				_ = expectedSpan.Attributes().PutEmpty(k).FromRaw(v)
 			}
 			// Remove messaging attributes if RemoveMessaging is enabled
 			if tc.config.Transaction.RemoveMessaging.Enabled || tc.config.Span.RemoveMessaging.Enabled {
@@ -1941,7 +1941,7 @@ func TestElasticSpanEnrich(t *testing.T) {
 
 			// Merge with the expected attributes and override the span links.
 			for k, v := range tc.enrichedAttrs {
-				expectedSpan.Attributes().PutEmpty(k).FromRaw(v)
+				_ = expectedSpan.Attributes().PutEmpty(k).FromRaw(v)
 			}
 			enrichConfig := config.Config{
 				Span: tc.config,

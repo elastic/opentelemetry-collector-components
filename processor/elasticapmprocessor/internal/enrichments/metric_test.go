@@ -76,7 +76,7 @@ func TestEnrichMetric(t *testing.T) {
 
 			// Merge with the expected attributes
 			for k, v := range tc.expectedAttrs {
-				expectedResourceMetrics.Resource().Attributes().PutEmpty(k).FromRaw(v)
+				_ = expectedResourceMetrics.Resource().Attributes().PutEmpty(k).FromRaw(v)
 			}
 
 			// Enrich the metric
