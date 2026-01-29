@@ -25,8 +25,8 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-lib/enrichments/config"
 )
 
 // NewFactory returns a processor.Factory that constructs elastic

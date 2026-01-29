@@ -30,8 +30,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
-	"github.com/elastic/opentelemetry-lib/enrichments"
 )
 
 var _ processor.Traces = (*TraceProcessor)(nil)

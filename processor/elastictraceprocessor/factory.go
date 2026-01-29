@@ -21,12 +21,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/elastic/opentelemetry-lib/enrichments/config"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor/internal/metadata"
 )
 
