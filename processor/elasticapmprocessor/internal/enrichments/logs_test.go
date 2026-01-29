@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elastic
+package enrichments
 
 import (
 	"path/filepath"
@@ -29,7 +29,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
 
@@ -43,7 +42,7 @@ func TestEnrichResourceLog(t *testing.T) {
 	// This is needed because the yaml unmarshalling is not yet aware of this new field
 	logRecords.At(2).SetEventName("field.name")
 
-	enricher := enrichments.NewEnricher(config.Enabled())
+	enricher := NewEnricher(config.Enabled())
 	enricher.EnrichLogs(logs)
 
 	t.Run("resource_enrichment", func(t *testing.T) {
@@ -111,7 +110,7 @@ func TestEnrichResourceLog(t *testing.T) {
 		originalAttrs := logRecord.Attributes().AsRaw()
 
 		// Enrich the log
-		enricher := enrichments.NewEnricher(config.Enabled())
+		enricher := NewEnricher(config.Enabled())
 		enricher.EnrichLogs(logs)
 
 		// Verify existing attributes are preserved

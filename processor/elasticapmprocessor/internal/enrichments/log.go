@@ -15,13 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elastic
+package enrichments
 
 import (
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/internal/attribute"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/internal/elastic/mobile"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/mobile"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 

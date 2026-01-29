@@ -26,7 +26,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/internal/attribute"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 )
 
 // EventContext contains contextual information for log event enrichment

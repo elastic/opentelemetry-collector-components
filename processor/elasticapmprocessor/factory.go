@@ -34,14 +34,15 @@ import (
 func NewFactory() processor.Factory {
 	return processor.NewFactory(
 		metadata.Type,
-		createDefaultConfig,
+		NewDefaultConfig,
 		processor.WithTraces(createTraces, metadata.TracesStability),
 		processor.WithLogs(createLogs, metadata.TracesStability),
 		processor.WithMetrics(createMetrics, metadata.TracesStability),
 	)
 }
 
-func createDefaultConfig() component.Config {
+// NewDefaultConfig creates the default configuration for the processor.
+func NewDefaultConfig() component.Config {
 	return &Config{
 		Config: config.Enabled(),
 	}

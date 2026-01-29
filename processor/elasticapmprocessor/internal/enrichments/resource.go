@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elastic
+package enrichments
 
 import (
 	"fmt"
@@ -25,8 +25,8 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/internal/attribute"
 )
 
 // EnrichResource derives and adds Elastic specific resource attributes.

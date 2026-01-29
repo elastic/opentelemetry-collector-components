@@ -15,17 +15,22 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package elastic
+package enrichments
 
 import (
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/internal/attribute"
-	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
-func EnrichMetric(metric pmetric.ResourceMetrics, cfg config.Config) {
-	if cfg.Metric.ProcessorEvent.Enabled {
-		attribute.PutStr(metric.Resource().Attributes(), elasticattr.ProcessorEvent, "metric")
+// EnrichScope derives and adds Elastic specific scope attributes.
+func EnrichScope(scope pcommon.InstrumentationScope, cfg config.Config) {
+	attrs := scope.Attributes()
+	if cfg.Scope.ServiceFrameworkName.Enabled {
+		if name := scope.Name(); name != "" {
+			attribute.PutStr(attrs, elasticattr.ServiceFrameworkName, name)
+			attribute.PutStr(attrs, elasticattr.ServiceFrameworkVersion, scope.Version())
+		}
 	}
 }

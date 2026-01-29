@@ -24,7 +24,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/internal/elastic"
 )
 
 // Enricher enriches the OTel traces with attributes required to power
@@ -46,14 +45,14 @@ func (e *Enricher) EnrichTraces(pt ptrace.Traces) {
 	resSpans := pt.ResourceSpans()
 	for i := 0; i < resSpans.Len(); i++ {
 		resSpan := resSpans.At(i)
-		elastic.EnrichResource(resSpan.Resource(), e.Config.Resource)
+		EnrichResource(resSpan.Resource(), e.Config.Resource)
 		scopeSpans := resSpan.ScopeSpans()
 		for j := 0; j < scopeSpans.Len(); j++ {
 			scopeSpan := scopeSpans.At(j)
-			elastic.EnrichScope(scopeSpan.Scope(), e.Config)
+			EnrichScope(scopeSpan.Scope(), e.Config)
 			spans := scopeSpan.Spans()
 			for k := 0; k < spans.Len(); k++ {
-				elastic.EnrichSpan(spans.At(k), e.Config, e.userAgentParser)
+				EnrichSpan(spans.At(k), e.Config, e.userAgentParser)
 			}
 		}
 	}
@@ -67,15 +66,15 @@ func (e *Enricher) EnrichLogs(pl plog.Logs) {
 	for i := 0; i < resLogs.Len(); i++ {
 		resLog := resLogs.At(i)
 		resource := resLog.Resource()
-		elastic.EnrichResource(resource, e.Config.Resource)
+		EnrichResource(resource, e.Config.Resource)
 		resourceAttrs := resource.Attributes().AsRaw()
 		scopeLogs := resLog.ScopeLogs()
 		for j := 0; j < scopeLogs.Len(); j++ {
 			scopeSpan := scopeLogs.At(j)
-			elastic.EnrichScope(scopeSpan.Scope(), e.Config)
+			EnrichScope(scopeSpan.Scope(), e.Config)
 			logRecords := scopeSpan.LogRecords()
 			for k := 0; k < logRecords.Len(); k++ {
-				elastic.EnrichLog(resourceAttrs, logRecords.At(k), e.Config)
+				EnrichLog(resourceAttrs, logRecords.At(k), e.Config)
 			}
 		}
 	}
@@ -88,12 +87,12 @@ func (e *Enricher) EnrichMetrics(pl pmetric.Metrics) {
 	resMetrics := pl.ResourceMetrics()
 	for i := 0; i < resMetrics.Len(); i++ {
 		resMetric := resMetrics.At(i)
-		elastic.EnrichMetric(resMetric, e.Config)
-		elastic.EnrichResource(resMetric.Resource(), e.Config.Resource)
+		EnrichMetric(resMetric, e.Config)
+		EnrichResource(resMetric.Resource(), e.Config.Resource)
 		scopeMetics := resMetric.ScopeMetrics()
 		for j := 0; j < scopeMetics.Len(); j++ {
 			scopeMetric := scopeMetics.At(j)
-			elastic.EnrichScope(scopeMetric.Scope(), e.Config)
+			EnrichScope(scopeMetric.Scope(), e.Config)
 		}
 	}
 }
