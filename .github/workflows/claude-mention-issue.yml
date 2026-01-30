@@ -17,8 +17,7 @@ jobs:
   respond:
     if: >-
       contains(github.event.comment.body, '@claude') &&
-      github.event.issue.pull_request == null &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      github.event.issue.pull_request == null
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

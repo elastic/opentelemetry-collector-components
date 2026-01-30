@@ -17,10 +17,9 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR head branch
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Run Claude PR Review
