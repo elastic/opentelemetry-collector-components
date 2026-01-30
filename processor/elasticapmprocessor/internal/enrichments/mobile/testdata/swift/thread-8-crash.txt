@@ -1,0 +1,259 @@
+Incident Identifier: F8222EAC-3E63-48A3-8C40-CF22FEA7D952
+Hardware Model:      arm64
+Process:         opbeans-swift [11220]
+Path:            /Users/brycebuchanan/Library/Developer/CoreSimulator/Devices/5F5E45F7-760E-4589-9F48-B7264D35395A/data/Containers/Bundle/Application/06BCE84E-9AB0-42C0-8D74-72B8945645BC/opbeans-swift.app/opbeans-swift
+Identifier:      co.elastic.opbeans-swift
+Version:         4.0.0 (01042024)
+Code Type:       ARM-64
+Parent Process:  launchd_sim [63657]
+
+Date/Time:       2025-06-05 15:46:48 +0000
+OS Version:      Mac OS X 18.4 (24F74)
+Report Version:  104
+
+Exception Type:  SIGTRAP
+Exception Codes: TRAP_BRKPT at 0x195712d2c
+Crashed Thread:  8
+
+Thread 0:
+0   libsystem_kernel.dylib              0x00000001047b0b70 0x1047b0000 + 2928
+1   libsystem_kernel.dylib              0x00000001047b8c28 0x1047b0000 + 35880
+2   libsystem_kernel.dylib              0x00000001047b0ed8 0x1047b0000 + 3800
+3   CoreFoundation                      0x0000000180427d14 0x180395000 + 601364
+4   CoreFoundation                      0x00000001804226f4 0x180395000 + 579316
+5   CoreFoundation                      0x0000000180421e3c 0x180395000 + 577084
+6   GraphicsServices                    0x0000000190f62d00 0x190f60000 + 11520
+7   UIKitCore                           0x0000000185bcec98 0x184d72000 + 15060120
+8   UIKitCore                           0x0000000185bd3064 0x184d72000 + 15077476
+9   SwiftUI                             0x00000001d3953aa8 0x1d30fe000 + 8739496
+10  SwiftUI                             0x00000001d39537d0 0x1d30fe000 + 8738768
+11  SwiftUI                             0x00000001d36e09e0 0x1d30fe000 + 6171104
+12  opbeans-swift.debug.dylib           0x000000010707bb5c 0x107050000 + 179036
+13  opbeans-swift.debug.dylib           0x000000010707bc08 0x107050000 + 179208
+14  ???                                 0x00000001046f93d8 0x0 + 0
+15  ???                                 0x00000001045ceb98 0x0 + 0
+
+Thread 1:
+0   libsystem_kernel.dylib              0x00000001047b2680 0x1047b0000 + 9856
+1   libsystem_pthread.dylib             0x00000001043dd98c 0x1043dc000 + 6540
+
+Thread 2:
+0   libsystem_kernel.dylib              0x00000001047b2680 0x1047b0000 + 9856
+1   libsystem_pthread.dylib             0x00000001043dd98c 0x1043dc000 + 6540
+
+Thread 3:
+0   libsystem_kernel.dylib              0x00000001047b2680 0x1047b0000 + 9856
+1   libsystem_pthread.dylib             0x00000001043dd98c 0x1043dc000 + 6540
+
+Thread 4:
+0   libsystem_kernel.dylib              0x00000001047b0b70 0x1047b0000 + 2928
+1   libsystem_kernel.dylib              0x00000001047b8c28 0x1047b0000 + 35880
+2   libsystem_kernel.dylib              0x00000001047b0ed8 0x1047b0000 + 3800
+3   CoreFoundation                      0x0000000180427d14 0x180395000 + 601364
+4   CoreFoundation                      0x00000001804226f4 0x180395000 + 579316
+5   CoreFoundation                      0x0000000180421e3c 0x180395000 + 577084
+6   Foundation                          0x0000000180f22ddc 0x18082c000 + 7302620
+7   Foundation                          0x0000000180f22ffc 0x18082c000 + 7303164
+8   UIKitCore                           0x0000000185c7c724 0x184d72000 + 15771428
+9   Foundation                          0x0000000180f49b98 0x18082c000 + 7461784
+10  libsystem_pthread.dylib             0x00000001043e25f0 0x1043dc000 + 26096
+11  libsystem_pthread.dylib             0x00000001043dd998 0x1043dc000 + 6552
+
+Thread 5:
+0   libsystem_kernel.dylib              0x00000001047b2680 0x1047b0000 + 9856
+1   libsystem_pthread.dylib             0x00000001043dd98c 0x1043dc000 + 6540
+
+Thread 6:
+0   libsystem_kernel.dylib              0x00000001047b3e44 0x1047b0000 + 15940
+1   libsystem_c.dylib                   0x000000018016ed28 0x1800fe000 + 462120
+2   opbeans-swift.debug.dylib           0x0000000107079e30 0x107050000 + 171568
+3   opbeans-swift.debug.dylib           0x0000000107072814 0x107050000 + 141332
+4   libdispatch.dylib                   0x000000018017c788 0x18017b000 + 6024
+5   libdispatch.dylib                   0x0000000180197278 0x18017b000 + 115320
+6   libdispatch.dylib                   0x00000001801b2350 0x18017b000 + 226128
+7   libdispatch.dylib                   0x000000018018fc10 0x18017b000 + 85008
+8   libdispatch.dylib                   0x00000001801903b4 0x18017b000 + 86964
+9   libsystem_pthread.dylib             0x00000001043deb90 0x1043dc000 + 11152
+10  libsystem_pthread.dylib             0x00000001043dd98c 0x1043dc000 + 6540
+
+Thread 7:
+0   libsystem_kernel.dylib              0x00000001047b2680 0x1047b0000 + 9856
+1   libsystem_pthread.dylib             0x00000001043dd98c 0x1043dc000 + 6540
+
+Thread 8 Crashed:
+0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404
+1   opbeans-swift.debug.dylib           0x0000000107077048 0x107050000 + 159816
+2   opbeans-swift.debug.dylib           0x0000000107072814 0x107050000 + 141332
+3   libdispatch.dylib                   0x000000018017c788 0x18017b000 + 6024
+4   libdispatch.dylib                   0x0000000180197278 0x18017b000 + 115320
+5   libdispatch.dylib                   0x00000001801b2350 0x18017b000 + 226128
+6   libdispatch.dylib                   0x000000018018fc10 0x18017b000 + 85008
+7   libdispatch.dylib                   0x00000001801903b4 0x18017b000 + 86964
+8   libsystem_pthread.dylib             0x00000001043deb90 0x1043dc000 + 11152
+9   libsystem_pthread.dylib             0x00000001043dd98c 0x1043dc000 + 6540
+
+Thread 9:
+0   libsystem_kernel.dylib              0x00000001047b2680 0x1047b0000 + 9856
+1   libsystem_pthread.dylib             0x00000001043dd98c 0x1043dc000 + 6540
+
+Thread 10:
+0   libsystem_kernel.dylib              0x00000001047b6670 0x1047b0000 + 26224
+1   opbeans-swift.debug.dylib           0x0000000107970b18 0x107050000 + 9571096
+2   opbeans-swift.debug.dylib           0x0000000107970b60 0x107050000 + 9571168
+3   opbeans-swift.debug.dylib           0x00000001079694e8 0x107050000 + 9540840
+4   opbeans-swift.debug.dylib           0x0000000107970a38 0x107050000 + 9570872
+5   opbeans-swift.debug.dylib           0x0000000107952df8 0x107050000 + 9448952
+6   opbeans-swift.debug.dylib           0x00000001079540c8 0x107050000 + 9453768
+7   opbeans-swift.debug.dylib           0x0000000107948d70 0x107050000 + 9407856
+8   opbeans-swift.debug.dylib           0x0000000107951e8c 0x107050000 + 9445004
+9   opbeans-swift.debug.dylib           0x000000010794cca8 0x107050000 + 9424040
+10  opbeans-swift.debug.dylib           0x000000010794122c 0x107050000 + 9376300
+11  opbeans-swift.debug.dylib           0x0000000107942284 0x107050000 + 9380484
+12  opbeans-swift.debug.dylib           0x0000000107946178 0x107050000 + 9396600
+13  opbeans-swift.debug.dylib           0x000000010793a6f0 0x107050000 + 9348848
+14  opbeans-swift.debug.dylib           0x00000001079455e8 0x107050000 + 9393640
+15  opbeans-swift.debug.dylib           0x000000010793a7b8 0x107050000 + 9349048
+16  opbeans-swift.debug.dylib           0x000000010793a688 0x107050000 + 9348744
+17  opbeans-swift.debug.dylib           0x0000000107941638 0x107050000 + 9377336
+18  opbeans-swift.debug.dylib           0x00000001078f2294 0x107050000 + 9052820
+19  opbeans-swift.debug.dylib           0x00000001078f2888 0x107050000 + 9054344
+20  opbeans-swift.debug.dylib           0x00000001078f706c 0x107050000 + 9072748
+21  opbeans-swift.debug.dylib           0x0000000107971adc 0x107050000 + 9575132
+22  opbeans-swift.debug.dylib           0x00000001079741d4 0x107050000 + 9585108
+23  opbeans-swift.debug.dylib           0x000000010797428c 0x107050000 + 9585292
+24  libsystem_pthread.dylib             0x00000001043e25f0 0x1043dc000 + 26096
+25  libsystem_pthread.dylib             0x00000001043dd998 0x1043dc000 + 6552
+
+Thread 11:
+0   libsystem_kernel.dylib              0x00000001047b4014 0x1047b0000 + 16404
+1   Foundation                          0x0000000180ecb4ec 0x18082c000 + 6943980
+2   opbeans-swift.debug.dylib           0x00000001072151b8 0x107050000 + 1855928
+3   opbeans-swift.debug.dylib           0x0000000107215b5c 0x107050000 + 1858396
+4   opbeans-swift.debug.dylib           0x00000001071440c0 0x107050000 + 999616
+5   opbeans-swift.debug.dylib           0x0000000107214f84 0x107050000 + 1855364
+6   opbeans-swift.debug.dylib           0x0000000107215458 0x107050000 + 1856600
+7   Foundation                          0x0000000180f49b98 0x18082c000 + 7461784
+8   libsystem_pthread.dylib             0x00000001043e25f0 0x1043dc000 + 26096
+9   libsystem_pthread.dylib             0x00000001043dd998 0x1043dc000 + 6552
+
+Thread 12:
+0   libsystem_kernel.dylib              0x00000001047b4014 0x1047b0000 + 16404
+1   Foundation                          0x0000000180ecb4ec 0x18082c000 + 6943980
+2   opbeans-swift.debug.dylib           0x0000000107143dc8 0x107050000 + 998856
+3   opbeans-swift.debug.dylib           0x0000000107144530 0x107050000 + 1000752
+4   opbeans-swift.debug.dylib           0x00000001071440c0 0x107050000 + 999616
+5   opbeans-swift.debug.dylib           0x0000000107143b90 0x107050000 + 998288
+6   opbeans-swift.debug.dylib           0x000000010714414c 0x107050000 + 999756
+7   Foundation                          0x0000000180f49b98 0x18082c000 + 7461784
+8   libsystem_pthread.dylib             0x00000001043e25f0 0x1043dc000 + 26096
+9   libsystem_pthread.dylib             0x00000001043dd998 0x1043dc000 + 6552
+
+Thread 13:
+0   libsystem_kernel.dylib              0x00000001047b4014 0x1047b0000 + 16404
+1   Foundation                          0x0000000180ecb4ec 0x18082c000 + 6943980
+2   opbeans-swift.debug.dylib           0x0000000107143dc8 0x107050000 + 998856
+3   opbeans-swift.debug.dylib           0x0000000107144530 0x107050000 + 1000752
+4   opbeans-swift.debug.dylib           0x00000001071440c0 0x107050000 + 999616
+5   opbeans-swift.debug.dylib           0x0000000107143b90 0x107050000 + 998288
+6   opbeans-swift.debug.dylib           0x000000010714414c 0x107050000 + 999756
+7   Foundation                          0x0000000180f49b98 0x18082c000 + 7461784
+8   libsystem_pthread.dylib             0x00000001043e25f0 0x1043dc000 + 26096
+9   libsystem_pthread.dylib             0x00000001043dd998 0x1043dc000 + 6552
+
+Thread 14:
+0   opbeans-swift.debug.dylib           0x0000000107ebe9b0 0x107050000 + 15133104
+1   opbeans-swift.debug.dylib           0x0000000107eb4414 0x107050000 + 15090708
+2   libsystem_pthread.dylib             0x00000001043e25f0 0x1043dc000 + 26096
+3   libsystem_pthread.dylib             0x00000001043dd998 0x1043dc000 + 6552
+
+Thread 15:
+0   libsystem_kernel.dylib              0x00000001047baf98 0x1047b0000 + 44952
+1   libsystem_pthread.dylib             0x00000001043e25f0 0x1043dc000 + 26096
+2   libsystem_pthread.dylib             0x00000001043dd998 0x1043dc000 + 6552
+
+Thread 16:
+0   ???                                 0x0000000000000000 0x0 + 0
+
+Thread 8 crashed with ARM-64 Thread State:
+    pc: 0x0000000195712d2c     fp: 0x000000016c0c6e00     sp: 0x000000016c0c6d80     x0: 0xe800000000000000 
+    x1: 0x0000000000000000     x2: 0x0000000000000000     x3: 0x00006000003d9f80     x4: 0x0000000000000008 
+    x5: 0x000000016c0c6c60     x6: 0x2168736172432041     x7: 0x0000000000000000     x8: 0x0000000000000200 
+    x9: 0x00000000c8a8709c    x10: 0x00000000000001ff    x11: 0x0000000000001f60    x12: 0x00000000000007fb 
+   x13: 0x00000000000007fd    x14: 0x00000000c8c878fc    x15: 0x00000000c8a8709c    x16: 0x00000000c8c00000 
+   x17: 0x00000000000000fc    x18: 0x0000000000000000    x19: 0x0000600000c253e0    x20: 0x0000000000000000 
+   x21: 0xffffffffffffffff    x22: 0x0000000000000000    x23: 0x00000000fff0ffff    x24: 0x0000600001720d00 
+   x25: 0x0000000000000000    x26: 0x0000000000000114    x27: 0x0000000000000004    x28: 0x0000000000000000 
+    lr: 0x0000000195712d2c   cpsr: 0x0000000060001000 
+
+Binary Images:
+       0x1043c4000 -        0x1043c7fff +opbeans-swift arm64  <ec50a7a4abd937448742aa78453dbb95> /Users/brycebuchanan/Library/Developer/CoreSimulator/Devices/5F5E45F7-760E-4589-9F48-B7264D35395A/data/Containers/Bundle/Application/06BCE84E-9AB0-42C0-8D74-72B8945645BC/opbeans-swift.app/opbeans-swift
+       0x1043dc000 -        0x1043ebfff  libsystem_pthread.dylib arm64  <e9238785e5813e65bedb179c698d3554> /usr/lib/system/libsystem_pthread.dylib
+       0x10443c000 -        0x104443fff  libsystem_platform.dylib arm64  <93afc0a9eec93f50933909c7757aa50a> /usr/lib/system/libsystem_platform.dylib
+       0x1047b0000 -        0x1047ebfff  libsystem_kernel.dylib arm64  <4068b2eea54f397e882dc5e3a40b789a> /usr/lib/system/libsystem_kernel.dylib
+       0x104848000 -        0x104853fff  libobjc-trampolines.dylib arm64  <22dfc62173863de387b29ed27c8be84d> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libobjc-trampolines.dylib
+       0x107050000 -        0x1080a7fff  opbeans-swift.debug.dylib arm64  <f3b18975db183f1aa2e8725602817991> /Users/brycebuchanan/Library/Developer/CoreSimulator/Devices/5F5E45F7-760E-4589-9F48-B7264D35395A/data/Containers/Bundle/Application/06BCE84E-9AB0-42C0-8D74-72B8945645BC/opbeans-swift.app/opbeans-swift.debug.dylib
+       0x180068000 -        0x1800a491f  libobjc.A.dylib arm64  <3286911c7f923620b8f718ac6061e9d9> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libobjc.A.dylib
+       0x1800a5000 -        0x1800be21f  libsystem_trace.dylib arm64  <6faa12e4083d35cc8347750f34ffd1ec> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libsystem_trace.dylib
+       0x1800bf000 -        0x1800faa9f  libxpc.dylib arm64  <c8560cb4518f37c4915d0554f320b3a0> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libxpc.dylib
+       0x1800fb000 -        0x1800fdda8  libsystem_blocks.dylib arm64  <301e8d00828631bea19935b6d8cf38bf> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libsystem_blocks.dylib
+       0x1800fe000 -        0x18017a79b  libsystem_c.dylib arm64  <bfa3ae4953733d1fa47d724abaf1ee45> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libsystem_c.dylib
+       0x18017b000 -        0x1801bfb5f  libdispatch.dylib arm64  <7bee27fdf519330daebed6ace467df22> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libdispatch.dylib
+       0x1801c0000 -        0x1801ffef7  libsystem_malloc.dylib arm64  <c20f93b5e19131e49bc56e1036885c25> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libsystem_malloc.dylib
+       0x180200000 -        0x18029a64f  libcorecrypto.dylib arm64  <c165ae04a44235fcbb55d00c5b81f6ce> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libcorecrypto.dylib
+       0x18029b000 -        0x1802b6fff  libc++abi.dylib arm64  <3a16c8a1792d38cf967a72505dfb87e4> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libc++abi.dylib
+       0x1802b7000 -        0x1802e1fe2  libdyld.dylib arm64  <4056bff4af5930e787914708c49cffe0> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libdyld.dylib
+       0x1802e2000 -        0x1802ea673  libsystem_darwin.dylib arm64  <f9fe70b2247333da83e69b58b548749e> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libsystem_darwin.dylib
+       0x1802eb000 -        0x18036fffb  libc++.1.dylib arm64  <494bdb39105636e6910ccaf9ec5f81ec> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libc++.1.dylib
+       0x180370000 -        0x18039471f  libsystem_info.dylib arm64  <bd2225621d1e311295cd2abb689f9c16> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libsystem_info.dylib
+       0x180395000 -        0x1807acfff  CoreFoundation arm64  <3d4aa1d503aa3365b767944509b9bbfd> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation
+       0x1807ad000 -        0x18082b8f3  SystemConfiguration arm64  <99a4dd2c4d163a949d01598c00290588> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/SystemConfiguration.framework/SystemConfiguration
+       0x18082c000 -        0x1813f18df  Foundation arm64  <6ec60314780a318f8bdb5d173b13970e> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/Foundation.framework/Foundation
+       0x1813f2000 -        0x18141fc77  libCRFSuite.dylib arm64  <1f512f0900fa39c4989738225a6aa14f> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libCRFSuite.dylib
+       0x181420000 -        0x181638c9f  CoreServices arm64  <1b198a214877379c85f072a271ec1b01> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CoreServices.framework/CoreServices
+       0x181639000 -        0x1816970f7  libSparse.dylib arm64  <0a4389578a323fe8b05ea13f01072a89> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/Accelerate.framework/Frameworks/vecLib.framework/libSparse.dylib
+       0x181698000 -        0x181bf90df  ImageIO arm64  <4674256467fc3ecb915fd8002783c749> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/ImageIO.framework/ImageIO
+       0x181bfe000 -        0x181de1b7f  CoreText arm64  <880e3304e1373f38abf0567290c4381f> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CoreText.framework/CoreText
+       0x181de2000 -        0x181f95b9f  Security arm64  <19a0b76e287e33cbb59c0724e7d2b0a8> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/Security.framework/Security
+       0x181f96000 -        0x18203359f  IOKit arm64  <0771439acb1338c0a90c213036acacbd> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/IOKit.framework/Versions/A/IOKit
+       0x182034000 -        0x1820738ff  libMobileGestalt.dylib arm64  <1bffa8a238ce35ab843550706f48ef22> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libMobileGestalt.dylib
+       0x182074000 -        0x1820ce5e7  libprotobuf.dylib arm64  <991ed98608833f95990c0d8e51f4aec0> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libprotobuf.dylib
+       0x1820cf000 -        0x1820e08cf  libprotobuf-lite.dylib arm64  <55e763046f0c34d4bf931375658f8d29> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libprotobuf-lite.dylib
+       0x1820e1000 -        0x18237800b  libicucore.A.dylib arm64  <4d469ab560b7304cb3fcfa97344d6c8c> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libicucore.A.dylib
+       0x182379000 -        0x1823a8113  CoreServicesInternal arm64  <0202b827fc4f3c28b26de9dbaca54155> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/CoreServicesInternal.framework/CoreServicesInternal
+       0x1823a9000 -        0x1823e403f  WirelessDiagnostics arm64  <543efd2f9ff039c2ba3646787872865e> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/WirelessDiagnostics.framework/WirelessDiagnostics
+       0x1823e5000 -        0x1824157b7  libAWDSupport.dylib arm64  <da02ad6612b5348a89f19b10b3fcd0c4> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libAWDSupport.dylib
+       0x182416000 -        0x18282649f  CoreAudio arm64  <52498879022c3b1f90ab296710191a77> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CoreAudio.framework/CoreAudio
+       0x182827000 -        0x182bb0e9f  CoreImage arm64  <585bedb6c5ce36dca76ddb4ee06386fd> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CoreImage.framework/CoreImage
+       0x182e48000 -        0x182fc2edf  libsqlite3.dylib arm64  <cb34fa8219a83d84be2db30b0dfb4b4f> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libsqlite3.dylib
+       0x182fc3000 -        0x182fcf51e  libsystem_notify.dylib arm64  <239dd2c6bd8c3cfd9500a63b808d4b7f> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libsystem_notify.dylib
+       0x183499000 -        0x1834da47f  AppSupport arm64  <75cb542596413012957045d95cbf4148> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AppSupport.framework/AppSupport
+       0x1834db000 -        0x1834db387  libnetwork.dylib arm64  <60305c56f5f7381fa84bd6a416bfb3c7> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libnetwork.dylib
+       0x1834dc000 -        0x1835ec9df  ManagedConfiguration arm64  <a2a499be8c65303e92d5c450fa25c2c3> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/ManagedConfiguration.framework/ManagedConfiguration
+       0x1835ed000 -        0x183624ebf  CoreServicesStore arm64  <6bb5163cec18358596d353506709a991> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/CoreServicesStore.framework/CoreServicesStore
+       0x183625000 -        0x183641e7f  UserManagement arm64  <c0ba9c7ea27a3535bcc648c5a2790227> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/UserManagement.framework/UserManagement
+       0x183b23000 -        0x183b3b6ff  ProtocolBuffer arm64  <887ce4ece3d23e8681706f52b6e3f504> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/ProtocolBuffer.framework/ProtocolBuffer
+       0x183b3c000 -        0x183b4f9bf  CommonUtilities arm64  <a83b21ab72533265a2695182c429f12c> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/CommonUtilities.framework/CommonUtilities
+       0x183b50000 -        0x183ba9eff  RunningBoardServices arm64  <fbbeae826553394989f63534ec8dc160> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/RunningBoardServices.framework/RunningBoardServices
+       0x183baa000 -        0x183c7795f  BaseBoard arm64  <3299412bf1c13fc28f2f885df7dfee05> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/BaseBoard.framework/BaseBoard
+       0x1845a8000 -        0x1847fbdff  CoreLocation arm64  <d4ec6e8fc6813cb1b0674ab87ac5e73b> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CoreLocation.framework/CoreLocation
+       0x184805000 -        0x1848774df  Accounts arm64  <ff34a8d3bd2339419bc4c60f90a72c9e> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/Accounts.framework/Accounts
+       0x184899000 -        0x184c1a83f  CFNetwork arm64  <4642e7e4b83d3225a892a22fdca4c077> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CFNetwork.framework/CFNetwork
+       0x184c1b000 -        0x184d7105f  UIFoundation arm64  <f13aab0f1d883ed69753237a78d3ae9c> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/UIFoundation.framework/UIFoundation
+       0x184d72000 -        0x186adb8df  UIKitCore arm64  <d4c23b9ac5673e4286ef697aec976159> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore
+       0x186adc000 -        0x186ae89bf  AssertionServices arm64  <b847adac384c35f589ba6810fba3a7af> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AssertionServices.framework/AssertionServices
+       0x186ae9000 -        0x186ce9e3f  CoreTelephony arm64  <3324ab32d1f43ad1950c444cd71ec436> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CoreTelephony.framework/CoreTelephony
+       0x186cea000 -        0x186ceaf9f  AggregateDictionary arm64  <86115f236ca130a98b3949a8e0f4938d> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/AggregateDictionary.framework/AggregateDictionary
+       0x186ceb000 -        0x186d01c0b  libsystem_asl.dylib arm64  <f82fc572583e336ca3b82110f190385f> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/system/libsystem_asl.dylib
+       0x186d02000 -        0x186dc783f  CloudDocs arm64  <9c28961eeb07396ab773714e63201a91> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/CloudDocs.framework/CloudDocs
+       0x186dc8000 -        0x1871a7edf  CoreData arm64  <7bf1e626f000323eb3a6f9faae15b48a> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CoreData.framework/CoreData
+       0x1876ba000 -        0x18771d6df  BoardServices arm64  <5c560e9f2a9f3c55a2064168a4009432> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/BoardServices.framework/BoardServices
+       0x18771e000 -        0x1877e44ff  libboringssl.dylib arm64  <0463a94630f33854b4ae368a9287e4a0> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libboringssl.dylib
+       0x1877e5000 -        0x18781269f  CoreAnalytics arm64  <69494a450b2d3d82bdc99860d46f2699> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/CoreAnalytics.framework/CoreAnalytics
+       0x187813000 -        0x187b4bf9f  CloudKit arm64  <cfac6173dc443beaa53032cfe85706c5> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/CloudKit.framework/CloudKit
+       0x187b4c000 -        0x187bebc3f  SpringBoardServices arm64  <be26489211ee3f7f93993440322546c3> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices
+       0x187bec000 -        0x187cab3df  FrontBoardServices arm64  <fd5fcf2cbbed3086ac106df96be66614> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/FrontBoardServices.framework/FrontBoardServices
+       0x187cac000 -        0x188b2cf5f  Network arm64  <70ba19ba63ce3b4c9464c95a607990bd> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/Frameworks/Network.framework/Network
+       0x188b2d000 -        0x188b994a3  libusrtcp.dylib arm64  <f5951d2c575432229a5670765d28e209> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/usr/lib/libusrtcp.dylib
+       0x188b9a000 -        0x18a6026ff  GeoServices arm64  <d46ef1e9db8035e6a4ebdc83b4dd6a52> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/GeoServices.framework/GeoServices
+       0x18a603000 -        0x18a618e33  TCC arm64  <00c5cd7d98443e978c555918455a3a97> /Library/Developer/CoreSimulator/Volumes/iOS_22E238/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 18.4.simruntime/Contents/Resources/RuntimeRoot/System/Library/PrivateFrameworks/TCC.framework/TCC
+       0x18a619000 -        0x18a67e5bf  IMFoundation arm64  <2e1611cba49a33959d60584f62766efb> /Library/Developer/Co<>

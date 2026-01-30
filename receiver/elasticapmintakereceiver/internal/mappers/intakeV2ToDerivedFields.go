@@ -27,8 +27,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
 	"github.com/elastic/apm-data/model/modelpb"
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
-	"github.com/elastic/opentelemetry-lib/elasticattr"
 )
 
 // SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input

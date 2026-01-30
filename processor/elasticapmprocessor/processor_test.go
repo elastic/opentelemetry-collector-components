@@ -44,15 +44,15 @@ var update = flag.Bool("update", false, "Flag to generate/updated the expected y
 // TestProcessor does a basic test to check if traces, logs, and metrics
 // are processed correctly.
 func TestProcessor(t *testing.T) {
-	defaultCfg := createDefaultConfig().(*Config)
+	defaultCfg := NewDefaultConfig().(*Config)
 
 	// apmConfig is configuration that mimics APM Server behaviour,
 	// which is expected to be used with ECS mapping mode.
-	apmConfig := createDefaultConfig().(*Config)
+	apmConfig := NewDefaultConfig().(*Config)
 	apmConfig.HostIPEnabled = true
 	apmConfig.ServiceNameInDataStreamDataset = true
 
-	disableHostNameEnrichmentConfig := createDefaultConfig().(*Config)
+	disableHostNameEnrichmentConfig := NewDefaultConfig().(*Config)
 	disableHostNameEnrichmentConfig.Resource.OverrideHostName.Enabled = false
 
 	testCases := map[string]struct {
@@ -275,7 +275,7 @@ func TestSkipEnrichmentLogs(t *testing.T) {
 			settings := processortest.NewNopSettings(metadata.Type)
 			next := &consumertest.LogsSink{}
 
-			cfg := createDefaultConfig().(*Config)
+			cfg := NewDefaultConfig().(*Config)
 			cfg.SkipEnrichment = tc.skipEnrichment
 
 			lp, err := factory.CreateLogs(ctx, settings, cfg, next)
@@ -341,7 +341,7 @@ func TestSkipEnrichmentMetrics(t *testing.T) {
 			settings := processortest.NewNopSettings(metadata.Type)
 			next := &consumertest.MetricsSink{}
 
-			cfg := createDefaultConfig().(*Config)
+			cfg := NewDefaultConfig().(*Config)
 			cfg.SkipEnrichment = tc.skipEnrichment
 
 			mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
@@ -376,7 +376,7 @@ func TestECSErrorRouting(t *testing.T) {
 			input:  "testdata/ecs/elastic_error/logs_input.yaml",
 			output: "testdata/ecs/elastic_error/logs_output.yaml",
 			cfg: func() *Config {
-				cfg := createDefaultConfig().(*Config)
+				cfg := NewDefaultConfig().(*Config)
 				return cfg
 			}(),
 		},
@@ -384,7 +384,7 @@ func TestECSErrorRouting(t *testing.T) {
 			input:  "testdata/ecs/elastic_error/logs_servicename_input.yaml",
 			output: "testdata/ecs/elastic_error/logs_servicename_output.yaml",
 			cfg: func() *Config {
-				cfg := createDefaultConfig().(*Config)
+				cfg := NewDefaultConfig().(*Config)
 				cfg.ServiceNameInDataStreamDataset = true
 				return cfg
 			}(),
@@ -393,7 +393,7 @@ func TestECSErrorRouting(t *testing.T) {
 			input:  "testdata/ecs/elastic_error/logs_otlp_exception_input.yaml",
 			output: "testdata/ecs/elastic_error/logs_otlp_exception_output.yaml",
 			cfg: func() *Config {
-				cfg := createDefaultConfig().(*Config)
+				cfg := NewDefaultConfig().(*Config)
 				return cfg
 			}(),
 		},
@@ -444,7 +444,7 @@ func TestInternalMetricsUnitClearing(t *testing.T) {
 	settings := processortest.NewNopSettings(metadata.Type)
 	next := &consumertest.MetricsSink{}
 
-	cfg := createDefaultConfig().(*Config)
+	cfg := NewDefaultConfig().(*Config)
 	cfg.ServiceNameInDataStreamDataset = true
 	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
 	require.NoError(t, err)
@@ -509,7 +509,7 @@ func TestECSSpanEventErrorRouting(t *testing.T) {
 	settings := processortest.NewNopSettings(metadata.Type)
 	next := &consumertest.TracesSink{}
 
-	cfg := createDefaultConfig().(*Config)
+	cfg := NewDefaultConfig().(*Config)
 	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
 	require.NoError(t, err)
 

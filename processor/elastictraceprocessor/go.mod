@@ -3,8 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/elastictr
 go 1.24.0
 
 require (
-	github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.3.0
-	github.com/elastic/opentelemetry-lib v0.31.0
+	github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.30.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.50.0
 	go.opentelemetry.io/collector/component/componenttest v0.144.0
@@ -21,6 +20,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/elastic/apm-data v1.19.5 // indirect
+	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.30.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
@@ -67,3 +67,5 @@ require (
 )
 
 replace github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor => ../elasticapmprocessor
+
+replace github.com/elastic/opentelemetry-collector-components/internal/elasticattr => ../../internal/elasticattr

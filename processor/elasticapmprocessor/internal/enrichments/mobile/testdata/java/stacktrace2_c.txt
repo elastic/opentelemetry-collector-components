@@ -1,0 +1,7 @@
+java.lang.RuntimeException: java.lang.IllegalArgumentException
+	at org.example.SomeClass.callingOtherMethod(SomeClass.kt:16)
+	at org.example.Main.main(Main.kt:9)
+Caused by: java.lang.IllegalArgumentException
+	at org.example.SomeOtherClass.someOtherMethod(SomeOtherClass.kt:8)
+	at org.example.SomeClass.callingOtherMethod(SomeClass.kt:14)
+	... 1 more
