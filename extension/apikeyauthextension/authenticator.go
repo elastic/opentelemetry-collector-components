@@ -317,7 +317,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			return ctx, detailedErr
 		}
 		if cacheEntry.err != nil {
-			return ctx, status.Error(codes.Unauthenticated, cacheEntry.err.Error())
+			return ctx, cacheEntry.err
 		}
 		return newCtxWithAuthData(ctx, cacheEntry.data), nil
 	}
