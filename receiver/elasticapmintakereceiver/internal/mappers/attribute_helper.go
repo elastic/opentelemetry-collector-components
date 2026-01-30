@@ -18,6 +18,8 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
+	"math"
+
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
@@ -29,19 +31,20 @@ func putNonEmptyStr(attributes pcommon.Map, key, value string) {
 	}
 }
 
-// putPtrUint32 puts an int attribute in the given map
+// putPtrInt puts an int attribute in the given map
 // only if the provided value is not nil.
-func putPtrUint32(attributes pcommon.Map, key string, value *uint32) {
+// Supports signed and unsigned integer pointer types.
+// For uint64 values exceeding int64 max, the value is clamped
+// to math.MaxInt64 to prevent overflow.
+func putPtrInt[T ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~int8 | ~int16 | ~int32 | ~int64](attributes pcommon.Map, key string, value *T) {
 	if value != nil {
-		attributes.PutInt(key, int64(*value))
-	}
-}
-
-// putPtrUint64 puts an int attribute in the given map
-// only if the provided value is not nil.
-func putPtrUint64(attributes pcommon.Map, key string, value *uint64) {
-	if value != nil {
-		attributes.PutInt(key, int64(*value))
+		val := int64(*value)
+		// Check for uint64 overflow: if the original unsigned value was > int64 max,
+		// the cast will produce a negative number. Clamp to max int64.
+		if val < 0 && *value > 0 {
+			val = math.MaxInt64
+		}
+		attributes.PutInt(key, val)
 	}
 }
 

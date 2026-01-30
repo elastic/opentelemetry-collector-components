@@ -57,7 +57,7 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 
 	if event.Span.Db != nil {
 		putNonEmptyStr(attributesMap, attr.SpanDBLink, event.Span.Db.Link)
-		putPtrUint32(attributesMap, attr.SpanDBRowsAffected, event.Span.Db.RowsAffected)
+		putPtrInt(attributesMap, attr.SpanDBRowsAffected, event.Span.Db.RowsAffected)
 		putNonEmptyStr(attributesMap, attr.SpanDBUserName, event.Span.Db.UserName)
 	}
 
@@ -112,8 +112,8 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 
 		putPtrBool(attributesMap, attr.HTTPResponseFinished, http.Response.Finished)
 		putPtrBool(attributesMap, attr.HTTPResponseHeadersSent, http.Response.HeadersSent)
-		putPtrUint64(attributesMap, attr.HTTPResponseDecodedBodySize, http.Response.DecodedBodySize)
-		putPtrUint64(attributesMap, attr.HTTPResponseTransferSize, http.Response.TransferSize)
+		putPtrInt(attributesMap, attr.HTTPResponseDecodedBodySize, http.Response.DecodedBodySize)
+		putPtrInt(attributesMap, attr.HTTPResponseTransferSize, http.Response.TransferSize)
 	}
 }
 
@@ -160,7 +160,7 @@ func setMessage(prefix string, m *modelpb.Message, attributesMap pcommon.Map) {
 	}
 	putNonEmptyStr(attributesMap, fmt.Sprintf("%s.%s", prefix, attr.MessageRoutingKey), m.RoutingKey)
 	putNonEmptyStr(attributesMap, fmt.Sprintf("%s.%s", prefix, attr.MessageBody), m.Body)
-	putPtrUint64(attributesMap, fmt.Sprintf("%s.%s", prefix, attr.MessageAgeMs), m.AgeMillis)
+	putPtrInt(attributesMap, fmt.Sprintf("%s.%s", prefix, attr.MessageAgeMs), m.AgeMillis)
 	for _, header := range m.Headers {
 		headerKey := fmt.Sprintf("%s.%s.%s", prefix, attr.MessageHeadersPrefix, header.Key)
 		headerValues := attributesMap.PutEmptySlice(headerKey)
@@ -185,8 +185,8 @@ func setStackTraceList(key string, attributesMap pcommon.Map, stacktrace []*mode
 
 		setKeyValueMap(attr.SpanStacktraceFrameVars, frameMap, frame.Vars)
 
-		putPtrUint32(frameMap, attr.SpanStacktraceFrameLineNumber, frame.Lineno)
-		putPtrUint32(frameMap, attr.SpanStacktraceFrameLineColumn, frame.Colno)
+		putPtrInt(frameMap, attr.SpanStacktraceFrameLineNumber, frame.Lineno)
+		putPtrInt(frameMap, attr.SpanStacktraceFrameLineColumn, frame.Colno)
 		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameFilename, frame.Filename)
 		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameClassname, frame.Classname)
 		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameLineContext, frame.ContextLine)
@@ -280,8 +280,8 @@ func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesM
 	}
 
 	if event.Transaction.SpanCount != nil {
-		putPtrUint32(attributesMap, attr.TransactionSpanCountStarted, event.Transaction.SpanCount.Started)
-		putPtrUint32(attributesMap, attr.TransactionSpanCountDropped, event.Transaction.SpanCount.Dropped)
+		putPtrInt(attributesMap, attr.TransactionSpanCountStarted, event.Transaction.SpanCount.Started)
+		putPtrInt(attributesMap, attr.TransactionSpanCountDropped, event.Transaction.SpanCount.Dropped)
 	}
 
 	if event.Transaction.UserExperience != nil {
