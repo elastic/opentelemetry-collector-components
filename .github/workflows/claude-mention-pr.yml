@@ -31,7 +31,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: gh pr checkout ${{ github.event.issue.number }}
 
-      - uses: elastic/ai-github-actions/workflows/mention-in-pr/rwx@v1
+      - uses: elastic/ai-github-actions/workflows/mention-in-pr/rwx@v0
         with:
           claude-oauth-token: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
           github-token: ${{ github.token }}

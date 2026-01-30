@@ -26,7 +26,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: elastic/ai-github-actions/workflows/mention-in-issue/rwx@v1
+      - uses: elastic/ai-github-actions/workflows/mention-in-issue/rwx@v0
         with:
           claude-oauth-token: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
           github-token: ${{ github.token }}

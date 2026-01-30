@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Claude PR Review
-        uses: elastic/ai-github-actions/workflows/pr-review/rwx@v1
+        uses: elastic/ai-github-actions/workflows/pr-review/rwx@v0
         with:
           claude-oauth-token: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
           github-token: ${{ github.token }}
