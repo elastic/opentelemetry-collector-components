@@ -22,16 +22,6 @@ telemetry:
       sum:
         value_type: int
         monotonic: false
-    ratelimit.dynamic.escalations:
-      enabled: true
-      description: Total number of dynamic rate escalations (dynamic > static)
-      unit: "{count}"
-      stability:
-        level: development
-      sum:
-        value_type: int
-        monotonic: true
-      attributes: ["class", "source_kind", "result"]
     ratelimit.request_duration:
       enabled: true
       description: Time(in seconds) taken to process a rate limit request
@@ -93,32 +83,10 @@ telemetry:
         value_type: int
         monotonic: true
       attributes: ["decision", "reason"]
-    ratelimit.resolver.failures:
-      enabled: true
-      description: Total number of class resolver failures
-      unit: "{count}"
-      stability:
-        level: development
-      sum:
-        value_type: int
-        monotonic: true
-      attributes: ["unique_key"] # high cardinality
 attributes:
-  class:
-    description: rate limit class used
-    type: string
   decision:
     description: rate limit decision
     type: string
   reason:
     description: rate limit reason
-    type: string
-  result:
-    description: result of the rate limit request
-    type: string
-  source_kind:
-    description: precedence source used to resolve the rate limit settings
-    type: string
-  unique_key:
-    description: unique key for the request used in class resolution
     type: string
