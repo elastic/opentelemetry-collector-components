@@ -17,7 +17,8 @@ jobs:
   respond:
     if: >-
       contains(github.event.comment.body, '@claude') &&
-      github.event.issue.pull_request == null
+      github.event.issue.pull_request == null &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -27,5 +28,8 @@ jobs:
 
       - uses: elastic/ai-github-actions/workflows/mention-in-issue/rwx@v0
         with:
-          claude-oauth-token: ${{ secrets.CLAUDE_OAUTH_TOKEN }}
+          claude-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github-token: ${{ github.token }}
+
+
+          
