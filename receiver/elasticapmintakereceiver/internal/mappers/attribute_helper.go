@@ -28,3 +28,27 @@ func putNonEmptyStr(attributes pcommon.Map, key, value string) {
 		attributes.PutStr(key, value)
 	}
 }
+
+// putPtrUint32 puts an int attribute in the given map
+// only if the provided value is not nil.
+func putPtrUint32(attributes pcommon.Map, key string, value *uint32) {
+	if value != nil {
+		attributes.PutInt(key, int64(*value))
+	}
+}
+
+// putPtrUint64 puts an int attribute in the given map
+// only if the provided value is not nil.
+func putPtrUint64(attributes pcommon.Map, key string, value *uint64) {
+	if value != nil {
+		attributes.PutInt(key, int64(*value))
+	}
+}
+
+// putPtrBool puts a bool attribute in the given map
+// only if the provided value is not nil.
+func putPtrBool(attributes pcommon.Map, key string, value *bool) {
+	if value != nil {
+		attributes.PutBool(key, *value)
+	}
+}

@@ -79,9 +79,7 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	putNonEmptyStr(attributes, elasticattr.SpanSubtype, event.Span.Subtype)
 	putNonEmptyStr(attributes, "span.action", event.Span.Action)
 
-	if event.Span.Sync != nil {
-		attributes.PutBool("span.sync", *event.Span.Sync)
-	}
+	putPtrBool(attributes, "span.sync", event.Span.Sync)
 
 	if event.Span.DestinationService != nil {
 		putNonEmptyStr(attributes, elasticattr.SpanDestinationServiceResource, event.Span.DestinationService.Resource)
@@ -97,12 +95,8 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 
 	if event.Service != nil {
 		if event.Service.Language != nil {
-			if event.Service.Language.Name != "" {
-				attributes.PutStr(attr.ServiceLanguageName, event.Service.Language.Name)
-			}
-			if event.Service.Language.Version != "" {
-				attributes.PutStr(attr.ServiceLanguageVersion, event.Service.Language.Version)
-			}
+			putNonEmptyStr(attributes, attr.ServiceLanguageName, event.Service.Language.Name)
+			putNonEmptyStr(attributes, attr.ServiceLanguageVersion, event.Service.Language.Version)
 		}
 	}
 }
@@ -136,33 +130,19 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 		return
 	}
 
-	if event.Error.Id != "" {
-		attributes.PutStr(elasticattr.ErrorID, event.Error.Id)
-	}
-	if event.ParentId != "" {
-		attributes.PutStr(elasticattr.ParentID, event.ParentId)
-	}
+	putNonEmptyStr(attributes, elasticattr.ErrorID, event.Error.Id)
+	putNonEmptyStr(attributes, elasticattr.ParentID, event.ParentId)
 
-	if event.Error.Type != "" {
-		attributes.PutStr("error.type", event.Error.Type)
-	}
-	if event.Error.Message != "" {
-		attributes.PutStr("message", event.Error.Message)
-	}
+	putNonEmptyStr(attributes, "error.type", event.Error.Type)
+	putNonEmptyStr(attributes, "message", event.Error.Message)
 	attributes.PutStr(elasticattr.ErrorGroupingKey, event.Error.GroupingKey)
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
 
-	if event.Error.Culprit != "" {
-		attributes.PutStr("error.culprit", event.Error.Culprit)
-	}
+	putNonEmptyStr(attributes, "error.culprit", event.Error.Culprit)
 
 	if event.Error.Exception != nil {
-		if event.Error.Exception.Type != "" {
-			attributes.PutStr("exception.type", event.Error.Exception.Type)
-		}
-		if event.Error.Exception.Message != "" {
-			attributes.PutStr("exception.message", event.Error.Exception.Message)
-		}
+		putNonEmptyStr(attributes, "exception.type", event.Error.Exception.Type)
+		putNonEmptyStr(attributes, "exception.message", event.Error.Exception.Message)
 
 		if event.Error.Exception.Stacktrace != nil {
 			str := ""
@@ -182,15 +162,9 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 			attributes.PutStr("exception.stacktrace", str)
 		}
 
-		if event.Error.Exception.Module != "" {
-			attributes.PutStr("error.exception.module", event.Error.Exception.Module)
-		}
-		if event.Error.Exception.Handled != nil {
-			attributes.PutBool("error.exception.handled", *event.Error.Exception.Handled)
-		}
-		if event.Error.Exception.Code != "" {
-			attributes.PutStr("error.exception.code", event.Error.Exception.Code)
-		}
+		putNonEmptyStr(attributes, "error.exception.module", event.Error.Exception.Module)
+		putPtrBool(attributes, "error.exception.handled", event.Error.Exception.Handled)
+		putNonEmptyStr(attributes, "error.exception.code", event.Error.Exception.Code)
 	}
 }
 
