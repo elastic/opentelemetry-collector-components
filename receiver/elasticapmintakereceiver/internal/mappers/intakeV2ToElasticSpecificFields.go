@@ -185,8 +185,8 @@ func setStackTraceList(key string, attributesMap pcommon.Map, stacktrace []*mode
 
 		setKeyValueMap(attr.SpanStacktraceFrameVars, frameMap, frame.Vars)
 
-		putPtrUint32(attributesMap, attr.SpanStacktraceFrameLineNumber, frame.Lineno)
-		putPtrUint32(attributesMap, attr.SpanStacktraceFrameLineColumn, frame.Colno)
+		putPtrUint32(frameMap, attr.SpanStacktraceFrameLineNumber, frame.Lineno)
+		putPtrUint32(frameMap, attr.SpanStacktraceFrameLineColumn, frame.Colno)
 		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameFilename, frame.Filename)
 		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameClassname, frame.Classname)
 		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameLineContext, frame.ContextLine)
