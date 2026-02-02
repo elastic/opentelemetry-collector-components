@@ -48,8 +48,8 @@ github.com/elastic/go-elasticsearch/v8 v8.19.1 h1:0iEGt5/Ds9MNVxEp3hqLsXdbe6Sjle
 github.com/elastic/go-elasticsearch/v8 v8.19.1/go.mod h1:tHJQdInFa6abmDbDCEH2LJja07l/SIpaGpJcm13nt7s=
 github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9 h1:/Ju7knos+GwQymH3l8aizpSgKRJVRdknWnK5kJ5sEsE=
 github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9/go.mod h1:kyvhWUk2Cdca9s2psYT7YoyQhMPSGpIt/nd05cs69rg=
-github.com/elastic/opentelemetry-lib v0.30.0 h1:uqNHV9nHFldLicHU1kO4OSgmYNSFHSHa2LwJzrCSkMA=
-github.com/elastic/opentelemetry-lib v0.30.0/go.mod h1:axTrLdeCICbBxah8vCPPyLeIUETT0t7dgu/oR2w7Tcw=
+github.com/elastic/opentelemetry-lib v0.31.0 h1:9luppqoGrWat8M4D/hz2Af5TrQ9Uanu3+oNoFvE20O0=
+github.com/elastic/opentelemetry-lib v0.31.0/go.mod h1:axTrLdeCICbBxah8vCPPyLeIUETT0t7dgu/oR2w7Tcw=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
 github.com/felixge/httpsnoop v1.0.4/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/foxboron/go-tpm-keyfiles v0.0.0-20251226215517-609e4778396f h1:RJ+BDPLSHQO7cSjKBqjPJSbi1qfk9WcsjQDtZiw3dZw=
