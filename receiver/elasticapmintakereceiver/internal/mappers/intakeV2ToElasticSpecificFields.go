@@ -56,16 +56,9 @@ func SetElasticSpecificFieldsForSpan(event *modelpb.APMEvent, attributesMap pcom
 	}
 
 	if event.Span.Db != nil {
-		if event.Span.Db.Link != "" {
-			attributesMap.PutStr(attr.SpanDBLink, event.Span.Db.Link)
-		}
-		if event.Span.Db.RowsAffected != nil {
-			// SemConv db.response.returned_rows is similar, but not the same
-			attributesMap.PutInt(attr.SpanDBRowsAffected, int64(*event.Span.Db.RowsAffected))
-		}
-		if event.Span.Db.UserName != "" {
-			attributesMap.PutStr(attr.SpanDBUserName, event.Span.Db.UserName)
-		}
+		putNonEmptyStr(attributesMap, attr.SpanDBLink, event.Span.Db.Link)
+		putPtrInt(attributesMap, attr.SpanDBRowsAffected, event.Span.Db.RowsAffected)
+		putNonEmptyStr(attributesMap, attr.SpanDBUserName, event.Span.Db.UserName)
 	}
 
 	setMessage("span", event.Span.Message, attributesMap)
@@ -97,9 +90,7 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 		return
 	}
 
-	if http.Version != "" {
-		attributesMap.PutStr(attr.HTTPVersion, http.Version)
-	}
+	putNonEmptyStr(attributesMap, attr.HTTPVersion, http.Version)
 
 	if http.Request != nil {
 		setHTTPHeadersMap(attr.HTTPRequestHeaders, attributesMap, http.Request.Headers)
@@ -112,32 +103,17 @@ func setHTTP(http *modelpb.HTTP, attributesMap pcommon.Map) {
 			bodyValue := attributesMap.PutEmpty(attr.HTTPRequestBodyOriginal)
 			insertValue(bodyValue, http.Request.Body)
 		}
-		if http.Request.Id != "" {
-			attributesMap.PutStr(attr.HTTPRequestID, http.Request.Id)
-		}
-		if http.Request.Referrer != "" {
-			attributesMap.PutStr(attr.HTTPRequestReferrer, http.Request.Referrer)
-		}
+		putNonEmptyStr(attributesMap, attr.HTTPRequestID, http.Request.Id)
+		putNonEmptyStr(attributesMap, attr.HTTPRequestReferrer, http.Request.Referrer)
 	}
 
 	if http.Response != nil {
 		setHTTPHeadersMap(attr.HTTPResponseHeaders, attributesMap, http.Response.Headers)
 
-		if http.Response.Finished != nil {
-			attributesMap.PutBool(attr.HTTPResponseFinished, *http.Response.Finished)
-		}
-
-		if http.Response.HeadersSent != nil {
-			attributesMap.PutBool(attr.HTTPResponseHeadersSent, *http.Response.HeadersSent)
-		}
-
-		if http.Response.DecodedBodySize != nil {
-			attributesMap.PutInt(attr.HTTPResponseDecodedBodySize, int64(*http.Response.DecodedBodySize))
-		}
-
-		if http.Response.TransferSize != nil {
-			attributesMap.PutInt(attr.HTTPResponseTransferSize, int64(*http.Response.TransferSize))
-		}
+		putPtrBool(attributesMap, attr.HTTPResponseFinished, http.Response.Finished)
+		putPtrBool(attributesMap, attr.HTTPResponseHeadersSent, http.Response.HeadersSent)
+		putPtrInt(attributesMap, attr.HTTPResponseDecodedBodySize, http.Response.DecodedBodySize)
+		putPtrInt(attributesMap, attr.HTTPResponseTransferSize, http.Response.TransferSize)
 	}
 }
 
@@ -182,15 +158,9 @@ func setMessage(prefix string, m *modelpb.Message, attributesMap pcommon.Map) {
 	if m == nil {
 		return
 	}
-	if m.RoutingKey != "" {
-		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageRoutingKey), m.RoutingKey)
-	}
-	if m.Body != "" {
-		attributesMap.PutStr(fmt.Sprintf("%s.%s", prefix, attr.MessageBody), m.Body)
-	}
-	if m.AgeMillis != nil {
-		attributesMap.PutInt(fmt.Sprintf("%s.%s", prefix, attr.MessageAgeMs), int64(*m.AgeMillis))
-	}
+	putNonEmptyStr(attributesMap, fmt.Sprintf("%s.%s", prefix, attr.MessageRoutingKey), m.RoutingKey)
+	putNonEmptyStr(attributesMap, fmt.Sprintf("%s.%s", prefix, attr.MessageBody), m.Body)
+	putPtrInt(attributesMap, fmt.Sprintf("%s.%s", prefix, attr.MessageAgeMs), m.AgeMillis)
 	for _, header := range m.Headers {
 		headerKey := fmt.Sprintf("%s.%s.%s", prefix, attr.MessageHeadersPrefix, header.Key)
 		headerValues := attributesMap.PutEmptySlice(headerKey)
@@ -215,30 +185,14 @@ func setStackTraceList(key string, attributesMap pcommon.Map, stacktrace []*mode
 
 		setKeyValueMap(attr.SpanStacktraceFrameVars, frameMap, frame.Vars)
 
-		if frame.Lineno != nil {
-			frameMap.PutInt(attr.SpanStacktraceFrameLineNumber, int64(*frame.Lineno))
-		}
-		if frame.Colno != nil {
-			frameMap.PutInt(attr.SpanStacktraceFrameLineColumn, int64(*frame.Colno))
-		}
-		if frame.Filename != "" {
-			frameMap.PutStr(attr.SpanStacktraceFrameFilename, frame.Filename)
-		}
-		if frame.Classname != "" {
-			frameMap.PutStr(attr.SpanStacktraceFrameClassname, frame.Classname)
-		}
-		if frame.ContextLine != "" {
-			frameMap.PutStr(attr.SpanStacktraceFrameLineContext, frame.ContextLine)
-		}
-		if frame.Module != "" {
-			frameMap.PutStr(attr.SpanStacktraceFrameModule, frame.Module)
-		}
-		if frame.Function != "" {
-			frameMap.PutStr(attr.SpanStacktraceFrameFunction, frame.Function)
-		}
-		if frame.AbsPath != "" {
-			frameMap.PutStr(attr.SpanStacktraceFrameAbsPath, frame.AbsPath)
-		}
+		putPtrInt(frameMap, attr.SpanStacktraceFrameLineNumber, frame.Lineno)
+		putPtrInt(frameMap, attr.SpanStacktraceFrameLineColumn, frame.Colno)
+		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameFilename, frame.Filename)
+		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameClassname, frame.Classname)
+		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameLineContext, frame.ContextLine)
+		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameModule, frame.Module)
+		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameFunction, frame.Function)
+		putNonEmptyStr(frameMap, attr.SpanStacktraceFrameAbsPath, frame.AbsPath)
 
 		if len(frame.PreContext) > 0 {
 			preSlice := frameMap.PutEmptySlice(attr.SpanStacktraceFrameContextPre)
@@ -326,12 +280,8 @@ func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesM
 	}
 
 	if event.Transaction.SpanCount != nil {
-		if event.Transaction.SpanCount.Started != nil {
-			attributesMap.PutInt(attr.TransactionSpanCountStarted, int64(*event.Transaction.SpanCount.Started))
-		}
-		if event.Transaction.SpanCount.Dropped != nil {
-			attributesMap.PutInt(attr.TransactionSpanCountDropped, int64(*event.Transaction.SpanCount.Dropped))
-		}
+		putPtrInt(attributesMap, attr.TransactionSpanCountStarted, event.Transaction.SpanCount.Started)
+		putPtrInt(attributesMap, attr.TransactionSpanCountDropped, event.Transaction.SpanCount.Dropped)
 	}
 
 	if event.Transaction.UserExperience != nil {
@@ -361,9 +311,7 @@ func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesM
 
 	// add session attributes which hold optional transaction session information for RUM
 	if event.Session != nil {
-		if event.Session.Id != "" {
-			attributesMap.PutStr(attr.SessionID, event.Session.Id)
-		}
+		putNonEmptyStr(attributesMap, attr.SessionID, event.Session.Id)
 		if event.Session.Sequence != 0 {
 			attributesMap.PutInt(attr.SessionSequence, int64(event.Session.Sequence))
 		}
@@ -395,12 +343,8 @@ func setDroppedSpansStatsList(stats []*modelpb.DroppedSpanStats, attributesMap p
 		}
 
 		statMap := statsSlice.AppendEmpty().SetEmptyMap()
-		if stat.DestinationServiceResource != "" {
-			statMap.PutStr(attr.TransactionDroppedSpansStatsDestinationServiceResource, stat.DestinationServiceResource)
-		}
-		if stat.Outcome != "" {
-			statMap.PutStr(attr.TransactionDroppedSpansStatsOutcome, stat.Outcome)
-		}
+		putNonEmptyStr(statMap, attr.TransactionDroppedSpansStatsDestinationServiceResource, stat.DestinationServiceResource)
+		putNonEmptyStr(statMap, attr.TransactionDroppedSpansStatsOutcome, stat.Outcome)
 		if stat.Duration != nil {
 			statMap.PutInt(attr.TransactionDroppedSpansStatsDurationCount, int64(stat.Duration.Count))
 			statMap.PutInt(attr.TransactionDroppedSpansStatsDurationSumUs, int64(stat.Duration.Sum))
@@ -441,111 +385,61 @@ func setTransactionMarks(marks map[string]*modelpb.TransactionMark, attributesMa
 func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
 		if event.Cloud.Origin != nil {
-			if event.Cloud.Origin.AccountId != "" {
-				attributesMap.PutStr(attr.CloudOriginAccountID, event.Cloud.Origin.AccountId)
-			}
-			if event.Cloud.Origin.Provider != "" {
-				attributesMap.PutStr(attr.CloudOriginProvider, event.Cloud.Origin.Provider)
-			}
-			if event.Cloud.Origin.Region != "" {
-				attributesMap.PutStr(attr.CloudOriginRegion, event.Cloud.Origin.Region)
-			}
-			if event.Cloud.Origin.ServiceName != "" {
-				attributesMap.PutStr(attr.CloudOriginServiceName, event.Cloud.Origin.ServiceName)
-			}
+			putNonEmptyStr(attributesMap, attr.CloudOriginAccountID, event.Cloud.Origin.AccountId)
+			putNonEmptyStr(attributesMap, attr.CloudOriginProvider, event.Cloud.Origin.Provider)
+			putNonEmptyStr(attributesMap, attr.CloudOriginRegion, event.Cloud.Origin.Region)
+			putNonEmptyStr(attributesMap, attr.CloudOriginServiceName, event.Cloud.Origin.ServiceName)
 		}
-		if event.Cloud.AccountName != "" {
-			attributesMap.PutStr(attr.CloudAccountName, event.Cloud.AccountName)
-		}
-		if event.Cloud.InstanceId != "" {
-			attributesMap.PutStr(attr.CloudInstanceID, event.Cloud.InstanceId)
-		}
-		if event.Cloud.InstanceName != "" {
-			attributesMap.PutStr(attr.CloudInstanceName, event.Cloud.InstanceName)
-		}
-		if event.Cloud.MachineType != "" {
-			attributesMap.PutStr(attr.CloudMachineType, event.Cloud.MachineType)
-		}
-		if event.Cloud.ProjectId != "" {
-			attributesMap.PutStr(attr.CloudProjectID, event.Cloud.ProjectId)
-		}
-		if event.Cloud.ProjectName != "" {
-			attributesMap.PutStr(attr.CloudProjectName, event.Cloud.ProjectName)
-		}
+		putNonEmptyStr(attributesMap, attr.CloudAccountName, event.Cloud.AccountName)
+		putNonEmptyStr(attributesMap, attr.CloudInstanceID, event.Cloud.InstanceId)
+		putNonEmptyStr(attributesMap, attr.CloudInstanceName, event.Cloud.InstanceName)
+		putNonEmptyStr(attributesMap, attr.CloudMachineType, event.Cloud.MachineType)
+		putNonEmptyStr(attributesMap, attr.CloudProjectID, event.Cloud.ProjectId)
+		putNonEmptyStr(attributesMap, attr.CloudProjectName, event.Cloud.ProjectName)
 	}
 
 	if event.Faas != nil {
-		if event.Faas.TriggerRequestId != "" {
-			attributesMap.PutStr(attr.FaaSTriggerRequestID, event.Faas.TriggerRequestId)
-		}
-		if event.Faas.Execution != "" {
-			attributesMap.PutStr(attr.FaaSExecution, event.Faas.Execution)
-		}
+		putNonEmptyStr(attributesMap, attr.FaaSTriggerRequestID, event.Faas.TriggerRequestId)
+		putNonEmptyStr(attributesMap, attr.FaaSExecution, event.Faas.Execution)
 	}
 
 	if event.Agent != nil {
-		if event.Agent.EphemeralId != "" {
-			attributesMap.PutStr(attr.AgentEphemeralID, event.Agent.EphemeralId)
-		}
-		if event.Agent.ActivationMethod != "" {
-			attributesMap.PutStr(attr.AgentActivationMethod, event.Agent.ActivationMethod)
-		}
+		putNonEmptyStr(attributesMap, attr.AgentEphemeralID, event.Agent.EphemeralId)
+		putNonEmptyStr(attributesMap, attr.AgentActivationMethod, event.Agent.ActivationMethod)
 	}
 
 	if event.Service != nil {
 		if event.Service.Framework != nil {
-			if event.Service.Framework.Name != "" {
-				attributesMap.PutStr(attr.ServiceFrameworkName, event.Service.Framework.Name)
-			}
-			if event.Service.Framework.Version != "" {
-				attributesMap.PutStr(attr.ServiceFrameworkVersion, event.Service.Framework.Version)
-			}
+			putNonEmptyStr(attributesMap, attr.ServiceFrameworkName, event.Service.Framework.Name)
+			putNonEmptyStr(attributesMap, attr.ServiceFrameworkVersion, event.Service.Framework.Version)
 		}
 		if event.Service.Runtime != nil {
-			if event.Service.Runtime.Name != "" {
-				attributesMap.PutStr(attr.ServiceRuntimeName, event.Service.Runtime.Name)
-			}
-			if event.Service.Runtime.Version != "" {
-				attributesMap.PutStr(attr.ServiceRuntimeVersion, event.Service.Runtime.Version)
-			}
+			putNonEmptyStr(attributesMap, attr.ServiceRuntimeName, event.Service.Runtime.Name)
+			putNonEmptyStr(attributesMap, attr.ServiceRuntimeVersion, event.Service.Runtime.Version)
 		}
 		if event.Service.Origin != nil {
-			if event.Service.Origin.Id != "" {
-				attributesMap.PutStr(attr.ServiceOriginID, event.Service.Origin.Id)
-			}
-			if event.Service.Origin.Name != "" {
-				attributesMap.PutStr(attr.ServiceOriginName, event.Service.Origin.Name)
-			}
-			if event.Service.Origin.Version != "" {
-				attributesMap.PutStr(attr.ServiceOriginVersion, event.Service.Origin.Version)
-			}
+			putNonEmptyStr(attributesMap, attr.ServiceOriginID, event.Service.Origin.Id)
+			putNonEmptyStr(attributesMap, attr.ServiceOriginName, event.Service.Origin.Name)
+			putNonEmptyStr(attributesMap, attr.ServiceOriginVersion, event.Service.Origin.Version)
 		}
 	}
 
 	if event.Host != nil {
 		if event.Host.Os != nil {
-			if event.Host.Os.Platform != "" {
-				attributesMap.PutStr(attr.HostOSPlatform, event.Host.Os.Platform)
-			}
+			putNonEmptyStr(attributesMap, attr.HostOSPlatform, event.Host.Os.Platform)
 		}
-		if event.Host.Hostname != "" {
-			attributesMap.PutStr(attr.HostHostname, event.Host.Hostname)
-		}
+		putNonEmptyStr(attributesMap, attr.HostHostname, event.Host.Hostname)
 	}
 
 	if event.Source != nil {
 		if event.Source.Nat != nil && event.Source.Nat.Ip != nil {
 			ip := modelpb.IP2Addr(event.Source.Nat.Ip)
-			if ip.String() != "" {
-				attributesMap.PutStr(attr.SourceNatIP, ip.String())
-			}
+			putNonEmptyStr(attributesMap, attr.SourceNatIP, ip.String())
 		}
 	}
 
 	if event.User != nil {
-		if event.User.Domain != "" {
-			attributesMap.PutStr(attr.UserDomain, event.User.Domain)
-		}
+		putNonEmptyStr(attributesMap, attr.UserDomain, event.User.Domain)
 	}
 
 	if event.Destination != nil {
@@ -598,38 +492,24 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 
 	// processor.event is not set for logs
 	if event.Log != nil {
-		if event.Log.Logger != "" {
-			attributesMap.PutStr(attr.LogLogger, event.Log.Logger)
-		}
+		putNonEmptyStr(attributesMap, attr.LogLogger, event.Log.Logger)
 
 		if event.Log.Origin != nil {
-			if event.Log.Origin.FunctionName != "" {
-				attributesMap.PutStr(attr.LogOriginFunction, event.Log.Origin.FunctionName)
-			}
+			putNonEmptyStr(attributesMap, attr.LogOriginFunction, event.Log.Origin.FunctionName)
 			if event.Log.Origin.File != nil {
 				if event.Log.Origin.File.Line != 0 {
 					attributesMap.PutInt(attr.LogOriginFileLine, int64(event.Log.Origin.File.Line))
 				}
-				if event.Log.Origin.File.Name != "" {
-					attributesMap.PutStr(attr.LogOriginFileName, event.Log.Origin.File.Name)
-				}
+				putNonEmptyStr(attributesMap, attr.LogOriginFileName, event.Log.Origin.File.Name)
 			}
 		}
 	}
 
 	if event.Event != nil {
-		if event.Event.Action != "" {
-			attributesMap.PutStr(attr.EventAction, event.Event.Action)
-		}
-		if event.Event.Dataset != "" {
-			attributesMap.PutStr(attr.EventDataset, event.Event.Dataset)
-		}
-		if event.Event.Category != "" {
-			attributesMap.PutStr(attr.EventCategory, event.Event.Category)
-		}
-		if event.Event.Type != "" {
-			attributesMap.PutStr(attr.EventType, event.Event.Type)
-		}
+		putNonEmptyStr(attributesMap, attr.EventAction, event.Event.Action)
+		putNonEmptyStr(attributesMap, attr.EventDataset, event.Event.Dataset)
+		putNonEmptyStr(attributesMap, attr.EventCategory, event.Event.Category)
+		putNonEmptyStr(attributesMap, attr.EventType, event.Event.Type)
 	}
 
 	if event.Error == nil {
@@ -639,9 +519,7 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 	if event.Process != nil {
 		if event.Process.Thread != nil {
 			// only the process thread name is available at the log level
-			if event.Process.Thread.Name != "" {
-				attributesMap.PutStr(attr.ProcessThreadName, event.Process.Thread.Name)
-			}
+			putNonEmptyStr(attributesMap, attr.ProcessThreadName, event.Process.Thread.Name)
 		}
 	}
 
@@ -649,18 +527,10 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 		setKeyValueMap(attr.ErrorCustom, attributesMap, event.Error.Custom)
 
 		if event.Error.Log != nil {
-			if event.Error.Log.Message != "" {
-				attributesMap.PutStr(attr.ErrorLogMessage, event.Error.Log.Message)
-			}
-			if event.Error.Log.Level != "" {
-				attributesMap.PutStr(attr.ErrorLogLevel, event.Error.Log.Level)
-			}
-			if event.Error.Log.ParamMessage != "" {
-				attributesMap.PutStr(attr.ErrorLogParamMessage, event.Error.Log.ParamMessage)
-			}
-			if event.Error.Log.LoggerName != "" {
-				attributesMap.PutStr(attr.ErrorLogLoggerName, event.Error.Log.LoggerName)
-			}
+			putNonEmptyStr(attributesMap, attr.ErrorLogMessage, event.Error.Log.Message)
+			putNonEmptyStr(attributesMap, attr.ErrorLogLevel, event.Error.Log.Level)
+			putNonEmptyStr(attributesMap, attr.ErrorLogParamMessage, event.Error.Log.ParamMessage)
+			putNonEmptyStr(attributesMap, attr.ErrorLogLoggerName, event.Error.Log.LoggerName)
 			setStackTraceList(attr.ErrorLogStackTrace, attributesMap, event.Error.Log.Stacktrace)
 		}
 	}
