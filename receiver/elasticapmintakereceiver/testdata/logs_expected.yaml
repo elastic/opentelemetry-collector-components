@@ -1210,12 +1210,6 @@ resourceLogs:
               - key: transaction.id
                 value:
                   stringValue: txn-id
-              - key: error.type
-                value:
-                  stringValue: ioexception
-              - key: message
-                value:
-                  stringValue: This is a test error message
               - key: error.grouping_key
                 value:
                   stringValue: ef46db3751d8e999
@@ -1240,6 +1234,17 @@ resourceLogs:
               - key: process.thread.name
                 value:
                   stringValue: testThread
-            body: {}
+              - key: error.message
+                value:
+                  stringValue: This is a test error message
+              - key: error.type
+                value:
+                  stringValue: ioexception
+              - key: error.stack_trace
+                value:
+                  stringValue: com.example.Test.main(TestFile.java:456)
+            body:
+              stringValue: Log contains error fields. This will be treated as an apm error
+            severityText: info
             timeUnixNano: "1662616049000000000"
         scope: {}
