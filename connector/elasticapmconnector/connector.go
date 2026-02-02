@@ -94,20 +94,21 @@ func (c *elasticapmConnector) newTracesToMetrics(ctx context.Context) (consumer.
 	if err != nil {
 		return nil, err
 	}
-	// Wrap the base consumer to enrich spans with transaction.root attribute
-	return &transactionRootEnricher{next: baseConsumer}, nil
+	// Wrap the base consumer to enrich spans
+	return &spanEnricher{next: baseConsumer}, nil
 }
 
-// transactionRootEnricher wraps a traces consumer to add the 'transaction.root'
-// boolean attribute which is true when the span has an empty ParentSpanID.
-type transactionRootEnricher struct {
+// spanEnricher wraps a traces consumer to add the
+// 'transaction.root' and `span.name` attributes.
+// These attributes are needed for transaction and span destination metrics.
+type spanEnricher struct {
 	next consumer.Traces
 }
 
-// ConsumeTraces iterates through all spans and sets the 'transaction.root'
-// attribute to true if the span has no parent (ParentSpanID is empty).
+// ConsumeTraces iterates through all spans to set attributes
+// required to correctly generate metrics.
 // Forwards the traces to the next consumer.
-func (e *transactionRootEnricher) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+func (e *spanEnricher) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	for i := 0; i < td.ResourceSpans().Len(); i++ {
 		rs := td.ResourceSpans().At(i)
 		for j := 0; j < rs.ScopeSpans().Len(); j++ {
@@ -115,13 +116,14 @@ func (e *transactionRootEnricher) ConsumeTraces(ctx context.Context, td ptrace.T
 			for k := 0; k < ss.Spans().Len(); k++ {
 				span := ss.Spans().At(k)
 				span.Attributes().PutBool("transaction.root", span.ParentSpanID().IsEmpty())
+				span.Attributes().PutStr("span.name", span.Name())
 			}
 		}
 	}
 	return e.next.ConsumeTraces(ctx, td)
 }
 
-func (e *transactionRootEnricher) Capabilities() consumer.Capabilities {
+func (e *spanEnricher) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: true}
 }
 

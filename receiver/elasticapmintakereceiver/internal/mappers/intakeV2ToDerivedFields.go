@@ -26,8 +26,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
 	"github.com/elastic/apm-data/model/modelpb"
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
-	"github.com/elastic/opentelemetry-lib/elasticattr"
 )
 
 // SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
@@ -78,9 +78,7 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	putNonEmptyStr(attributes, elasticattr.SpanSubtype, event.Span.Subtype)
 	putNonEmptyStr(attributes, "span.action", event.Span.Action)
 
-	if event.Span.Sync != nil {
-		attributes.PutBool("span.sync", *event.Span.Sync)
-	}
+	putPtrBool(attributes, "span.sync", event.Span.Sync)
 
 	if event.Span.DestinationService != nil {
 		putNonEmptyStr(attributes, elasticattr.SpanDestinationServiceResource, event.Span.DestinationService.Resource)
@@ -96,12 +94,8 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 
 	if event.Service != nil {
 		if event.Service.Language != nil {
-			if event.Service.Language.Name != "" {
-				attributes.PutStr(attr.ServiceLanguageName, event.Service.Language.Name)
-			}
-			if event.Service.Language.Version != "" {
-				attributes.PutStr(attr.ServiceLanguageVersion, event.Service.Language.Version)
-			}
+			putNonEmptyStr(attributes, attr.ServiceLanguageName, event.Service.Language.Name)
+			putNonEmptyStr(attributes, attr.ServiceLanguageVersion, event.Service.Language.Version)
 		}
 	}
 }
@@ -135,12 +129,8 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 		return
 	}
 
-	if event.Error.Id != "" {
-		attributes.PutStr(elasticattr.ErrorID, event.Error.Id)
-	}
-	if event.ParentId != "" {
-		attributes.PutStr(elasticattr.ParentID, event.ParentId)
-	}
+	putNonEmptyStr(attributes, elasticattr.ErrorID, event.Error.Id)
+	putNonEmptyStr(attributes, elasticattr.ParentID, event.ParentId)
 
 	attributes.PutStr(elasticattr.ErrorGroupingKey, event.Error.GroupingKey)
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))

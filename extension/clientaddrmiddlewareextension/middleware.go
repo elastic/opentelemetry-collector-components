@@ -64,8 +64,14 @@ func ctxWithClientAddr(ctx context.Context, headers map[string][]string) context
 // using request headers.
 func (c *clientAddrMiddleware) GetHTTPHandler(base http.Handler) (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		original := r
 		ctx := ctxWithClientAddr(r.Context(), r.Header)
 		base.ServeHTTP(w, r.WithContext(ctx))
+		// Propagate the Pattern back to the original request for otelhttp instrumentation.
+		// See https://github.com/open-telemetry/opentelemetry-collector/issues/14508
+		if r.Pattern != "" {
+			original.Pattern = r.Pattern
+		}
 	}), nil
 }
 

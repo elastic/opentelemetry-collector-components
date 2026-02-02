@@ -14,22 +14,6 @@ Number of in-flight requests at any given time [Development]
 | ---- | ----------- | ---------- | --------- | --------- |
 | {requests} | Sum | Int | false | Development |
 
-### otelcol_ratelimit.dynamic.escalations
-
-Total number of dynamic rate escalations (dynamic > static) [Development]
-
-| Unit | Metric Type | Value Type | Monotonic | Stability |
-| ---- | ----------- | ---------- | --------- | --------- |
-| {count} | Sum | Int | true | Development |
-
-#### Attributes
-
-| Name | Description | Values |
-| ---- | ----------- | ------ |
-| class | rate limit class used | Any Str |
-| source_kind | precedence source used to resolve the rate limit settings | Any Str |
-| result | result of the rate limit request | Any Str |
-
 ### otelcol_ratelimit.request_duration
 
 Time(in seconds) taken to process a rate limit request [Development]
@@ -60,17 +44,3 @@ Number of rate-limiting requests [Development]
 | ---- | ----------- | ------ |
 | decision | rate limit decision | Any Str |
 | reason | rate limit reason | Any Str |
-
-### otelcol_ratelimit.resolver.failures
-
-Total number of class resolver failures [Development]
-
-| Unit | Metric Type | Value Type | Monotonic | Stability |
-| ---- | ----------- | ---------- | --------- | --------- |
-| {count} | Sum | Int | true | Development |
-
-#### Attributes
-
-| Name | Description | Values |
-| ---- | ----------- | ------ |
-| unique_key | unique key for the request used in class resolution | Any Str |

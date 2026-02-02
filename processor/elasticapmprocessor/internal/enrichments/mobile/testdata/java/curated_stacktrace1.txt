@@ -1,0 +1,1 @@
+java.lang.IllegalArgumentExceptionatorg.example.SomeClass.someMethod(SomeClass.kt)atorg.example.Main.main(Main.kt)

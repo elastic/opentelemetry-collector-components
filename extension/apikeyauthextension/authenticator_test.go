@@ -200,6 +200,37 @@ func TestAuthenticator_Caching(t *testing.T) {
 	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = API Key "id2" unauthorized`)
 }
 
+func TestAuthenticator_CachingPreservesErrorCode(t *testing.T) {
+	calls := 0
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		h := newCannedHasPrivilegesHandler(hasprivileges.Response{
+			Username:        user,
+			HasAllRequested: false,
+		})
+		h.ServeHTTP(w, r)
+	})
+	testAuth := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+
+	_, err := testAuth.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret1"))},
+	})
+	require.Error(t, err)
+	st, ok := status.FromError(err)
+	require.True(t, ok)
+	assert.Equal(t, codes.PermissionDenied, st.Code())
+	require.Equal(t, 1, calls)
+
+	_, err = testAuth.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id1:secret1"))},
+	})
+	require.Error(t, err)
+	st, ok = status.FromError(err)
+	require.True(t, ok)
+	assert.Equal(t, codes.PermissionDenied, st.Code())
+	assert.Equal(t, 1, calls) // cache hit, no additional calls
+}
+
 func TestAuthenticator_UserAgent(t *testing.T) {
 	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
 		wantPrefix := "OpenTelemetry Collector/latest ("
