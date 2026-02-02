@@ -134,10 +134,7 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr(elasticattr.ErrorGroupingKey, event.Error.GroupingKey)
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
-
-	if event.Error.Culprit != "" {
-		attributes.PutStr(attr.ErrorCulprit, event.Error.Culprit)
-	}
+	putNonEmptyStr(attributes, attr.ErrorCulprit, event.Error.Culprit)
 
 	if event.Error.Exception != nil {
 		// Create error.exception as an array of exception objects, following the apm-data JSON schema
@@ -205,21 +202,11 @@ func setExceptionObject(e *modelpb.Exception, exceptionMap pcommon.Map, index in
 		exceptionMap.PutInt(attr.ErrorExceptionParent, int64(parentIdx))
 	}
 
-	if e.Code != "" {
-		exceptionMap.PutStr(attr.ErrorExceptionCode, e.Code)
-	}
-	if e.Message != "" {
-		exceptionMap.PutStr(attr.ErrorExceptionMessage, e.Message)
-	}
-	if e.Type != "" {
-		exceptionMap.PutStr(attr.ErrorExceptionType, e.Type)
-	}
-	if e.Module != "" {
-		exceptionMap.PutStr(attr.ErrorExceptionModule, e.Module)
-	}
-	if e.Handled != nil {
-		exceptionMap.PutBool(attr.ErrorExceptionHandled, *e.Handled)
-	}
+	putNonEmptyStr(exceptionMap, attr.ErrorExceptionCode, e.Code)
+	putNonEmptyStr(exceptionMap, attr.ErrorExceptionMessage, e.Message)
+	putNonEmptyStr(exceptionMap, attr.ErrorExceptionType, e.Type)
+	putNonEmptyStr(exceptionMap, attr.ErrorExceptionModule, e.Module)
+	putPtrBool(exceptionMap, attr.ErrorExceptionHandled, e.Handled)
 
 	// Set attributes if present
 	if len(e.Attributes) > 0 {
@@ -250,36 +237,21 @@ func setExceptionStacktrace(exceptionMap pcommon.Map, frames []*modelpb.Stacktra
 		// so we always set it to match the existing behavior.
 		frameMap.PutBool(attr.ErrorExceptionStacktraceExcludeFromGrouping, frame.ExcludeFromGrouping)
 
-		if frame.AbsPath != "" {
-			frameMap.PutStr(attr.ErrorExceptionStacktraceAbsPath, frame.AbsPath)
-		}
-		if frame.Filename != "" {
-			frameMap.PutStr(attr.ErrorExceptionStacktraceFilename, frame.Filename)
-		}
-		if frame.Classname != "" {
-			frameMap.PutStr(attr.ErrorExceptionStacktraceClassname, frame.Classname)
-		}
-		if frame.Function != "" {
-			frameMap.PutStr(attr.ErrorExceptionStacktraceFunction, frame.Function)
-		}
-		if frame.Module != "" {
-			frameMap.PutStr(attr.ErrorExceptionStacktraceModule, frame.Module)
-		}
+		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceAbsPath, frame.AbsPath)
+		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceFilename, frame.Filename)
+		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceClassname, frame.Classname)
+		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceFunction, frame.Function)
+		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceModule, frame.Module)
+
 		if frame.LibraryFrame {
 			frameMap.PutBool(attr.ErrorExceptionStacktraceLibraryFrame, frame.LibraryFrame)
 		}
 
 		// Set line info as nested object
 		if frame.Lineno != nil || frame.Colno != nil || frame.ContextLine != "" {
-			if frame.Lineno != nil {
-				frameMap.PutInt(attr.ErrorExceptionStacktraceLineNumber, int64(*frame.Lineno))
-			}
-			if frame.Colno != nil {
-				frameMap.PutInt(attr.ErrorExceptionStacktraceLineColumn, int64(*frame.Colno))
-			}
-			if frame.ContextLine != "" {
-				frameMap.PutStr(attr.ErrorExceptionStacktraceLineContext, frame.ContextLine)
-			}
+			putPtrInt(frameMap, attr.ErrorExceptionStacktraceLineNumber, frame.Lineno)
+			putPtrInt(frameMap, attr.ErrorExceptionStacktraceLineColumn, frame.Colno)
+			putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceLineContext, frame.ContextLine)
 		}
 
 		// Set context pre/post
