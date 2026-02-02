@@ -196,12 +196,12 @@ func (s *spanEnrichmentContext) Enrich(
 			s.isRPC = true
 			s.rpcService = v.Str()
 		case string(semconv25.DBStatementKey),
-			string(semconv25.DBUserKey):
+			string(semconv25.DBUserKey), string(semconv27.DBQueryTextKey):
 			s.isDB = true
-		case string(semconv25.DBNameKey):
+		case string(semconv25.DBNameKey), string(semconv37.DBNamespaceKey):
 			s.isDB = true
 			s.dbName = v.Str()
-		case string(semconv25.DBSystemKey):
+		case string(semconv25.DBSystemKey), string(semconv37.DBSystemNameKey):
 			s.isDB = true
 			s.dbSystem = v.Str()
 		case string(semconv27.GenAISystemKey), string(semconv37.GenAIProviderNameKey):
