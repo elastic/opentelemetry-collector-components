@@ -46,6 +46,7 @@ import (
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/apm-data/model/modelprocessor"
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
@@ -481,15 +482,15 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 
 	attr := dp.Attributes()
 	if event.Transaction != nil {
-		attr.PutStr("transaction.name", event.Transaction.Name)
-		attr.PutStr("transaction.type", event.Transaction.Type)
+		attr.PutStr(elasticattr.TransactionName, event.Transaction.Name)
+		attr.PutStr(elasticattr.TransactionType, event.Transaction.Type)
 	}
 	if event.Span != nil {
-		attr.PutStr("span.type", event.Span.Type)
-		attr.PutStr("span.subtype", event.Span.Subtype)
+		attr.PutStr(elasticattr.SpanType, event.Span.Type)
+		attr.PutStr(elasticattr.SpanSubtype, event.Span.Subtype)
 	}
 
-	attr.PutStr("processor.event", "metric")
+	attr.PutStr(elasticattr.ProcessorEvent, "metric")
 
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 

@@ -28,7 +28,6 @@ import (
 
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
 )
 
 // SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
@@ -95,8 +94,8 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 
 	if event.Service != nil {
 		if event.Service.Language != nil {
-			putNonEmptyStr(attributes, attr.ServiceLanguageName, event.Service.Language.Name)
-			putNonEmptyStr(attributes, attr.ServiceLanguageVersion, event.Service.Language.Version)
+			putNonEmptyStr(attributes, elasticattr.ServiceLanguageName, event.Service.Language.Name)
+			putNonEmptyStr(attributes, elasticattr.ServiceLanguageVersion, event.Service.Language.Version)
 		}
 	}
 }
