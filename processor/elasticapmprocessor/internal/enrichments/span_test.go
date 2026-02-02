@@ -1934,6 +1934,51 @@ func TestElasticSpanEnrich(t *testing.T) {
 				elasticattr.SuccessCount:                   int64(99),
 			},
 		},
+		{
+			name: "db_span_after_db_stabilization_with_db_system_name",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("select users")
+				span.Attributes().PutStr(string(semconv37.DBSystemNameKey), "mysql")
+				span.Attributes().PutStr(string(semconv37.DBNamespaceKey), "users")
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.SpanDestinationServiceResource: "mysql",
+				elasticattr.SpanType:                       "db",
+				elasticattr.SpanSubtype:                    "mysql",
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.EventOutcome:                   "success",
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.ServiceTargetType:              "mysql",
+				elasticattr.ServiceTargetName:              "users",
+			},
+		},
+		{
+			name: "db_span_after_db_stabilization_with_db_query_text",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("select users")
+				span.Attributes().PutStr(string(semconv37.DBQueryTextKey), "selet * from users")
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.SpanType:                "db",
+				elasticattr.TimestampUs:             startTs.AsTime().UnixMicro(),
+				elasticattr.SpanDurationUs:          expectedDuration.Microseconds(),
+				elasticattr.ProcessorEvent:          "span",
+				elasticattr.EventOutcome:            "success",
+				elasticattr.SuccessCount:            int64(1),
+				elasticattr.SpanRepresentativeCount: float64(1),
+				elasticattr.ServiceTargetType:       "db",
+				elasticattr.ServiceTargetName:       "",
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			expectedSpan := ptrace.NewSpan()
