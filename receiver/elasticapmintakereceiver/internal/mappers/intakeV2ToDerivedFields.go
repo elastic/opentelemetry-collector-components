@@ -27,7 +27,6 @@ import (
 
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
 )
 
 // SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
@@ -94,8 +93,8 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 
 	if event.Service != nil {
 		if event.Service.Language != nil {
-			putNonEmptyStr(attributes, attr.ServiceLanguageName, event.Service.Language.Name)
-			putNonEmptyStr(attributes, attr.ServiceLanguageVersion, event.Service.Language.Version)
+			putNonEmptyStr(attributes, elasticattr.ServiceLanguageName, event.Service.Language.Name)
+			putNonEmptyStr(attributes, elasticattr.ServiceLanguageVersion, event.Service.Language.Version)
 		}
 	}
 }
@@ -134,7 +133,7 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 
 	attributes.PutStr(elasticattr.ErrorGroupingKey, event.Error.GroupingKey)
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
-	putNonEmptyStr(attributes, attr.ErrorCulprit, event.Error.Culprit)
+	putNonEmptyStr(attributes, elasticattr.ErrorCulprit, event.Error.Culprit)
 
 	if event.Error.Exception != nil {
 		// Create error.exception as an array of exception objects, following the apm-data JSON schema
@@ -163,7 +162,7 @@ func setExceptionObjectArray(exc *modelpb.Exception, attributes pcommon.Map) {
 		return
 	}
 
-	exceptionSlice := attributes.PutEmptySlice(attr.ErrorException)
+	exceptionSlice := attributes.PutEmptySlice(elasticattr.ErrorException)
 	exceptionSlice.EnsureCapacity(len(exceptions))
 
 	for _, e := range exceptions {
@@ -199,18 +198,18 @@ func setExceptionObject(e *modelpb.Exception, exceptionMap pcommon.Map, index in
 	// If the exception directly follows its parent, the implicit rule is that
 	// the preceding exception is the parent.
 	if index > parentIdx+1 {
-		exceptionMap.PutInt(attr.ErrorExceptionParent, int64(parentIdx))
+		exceptionMap.PutInt(elasticattr.ErrorExceptionParent, int64(parentIdx))
 	}
 
-	putNonEmptyStr(exceptionMap, attr.ErrorExceptionCode, e.Code)
-	putNonEmptyStr(exceptionMap, attr.ErrorExceptionMessage, e.Message)
-	putNonEmptyStr(exceptionMap, attr.ErrorExceptionType, e.Type)
-	putNonEmptyStr(exceptionMap, attr.ErrorExceptionModule, e.Module)
-	putPtrBool(exceptionMap, attr.ErrorExceptionHandled, e.Handled)
+	putNonEmptyStr(exceptionMap, elasticattr.ErrorExceptionCode, e.Code)
+	putNonEmptyStr(exceptionMap, elasticattr.ErrorExceptionMessage, e.Message)
+	putNonEmptyStr(exceptionMap, elasticattr.ErrorExceptionType, e.Type)
+	putNonEmptyStr(exceptionMap, elasticattr.ErrorExceptionModule, e.Module)
+	putPtrBool(exceptionMap, elasticattr.ErrorExceptionHandledField, e.Handled)
 
 	// Set attributes if present
 	if len(e.Attributes) > 0 {
-		attrMap := exceptionMap.PutEmptyMap(attr.ErrorExceptionAttributes)
+		attrMap := exceptionMap.PutEmptyMap(elasticattr.ErrorExceptionAttributes)
 		attrMap.EnsureCapacity(len(e.Attributes))
 		for _, kv := range e.Attributes {
 			if kv.Key != "" && kv.Value != nil {
@@ -227,7 +226,7 @@ func setExceptionObject(e *modelpb.Exception, exceptionMap pcommon.Map, index in
 
 // setExceptionStacktrace creates the stacktrace array of frame objects for an exception
 func setExceptionStacktrace(exceptionMap pcommon.Map, frames []*modelpb.StacktraceFrame) {
-	stacktraceSlice := exceptionMap.PutEmptySlice(attr.ErrorExceptionStacktrace)
+	stacktraceSlice := exceptionMap.PutEmptySlice(elasticattr.ErrorExceptionStacktrace)
 	stacktraceSlice.EnsureCapacity(len(frames))
 
 	for _, frame := range frames {
@@ -235,35 +234,35 @@ func setExceptionStacktrace(exceptionMap pcommon.Map, frames []*modelpb.Stacktra
 
 		// Note: ExcludeFromGrouping does not have an 'omitempty' json tag in the apm-data model
 		// so we always set it to match the existing behavior.
-		frameMap.PutBool(attr.ErrorExceptionStacktraceExcludeFromGrouping, frame.ExcludeFromGrouping)
+		frameMap.PutBool(elasticattr.ErrorExceptionStacktraceExcludeFromGrouping, frame.ExcludeFromGrouping)
 
-		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceAbsPath, frame.AbsPath)
-		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceFilename, frame.Filename)
-		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceClassname, frame.Classname)
-		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceFunction, frame.Function)
-		putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceModule, frame.Module)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceAbsPath, frame.AbsPath)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceFilename, frame.Filename)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceClassname, frame.Classname)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceFunction, frame.Function)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceModule, frame.Module)
 
 		if frame.LibraryFrame {
-			frameMap.PutBool(attr.ErrorExceptionStacktraceLibraryFrame, frame.LibraryFrame)
+			frameMap.PutBool(elasticattr.ErrorExceptionStacktraceLibraryFrame, frame.LibraryFrame)
 		}
 
 		// Set line info as nested object
 		if frame.Lineno != nil || frame.Colno != nil || frame.ContextLine != "" {
-			putPtrInt(frameMap, attr.ErrorExceptionStacktraceLineNumber, frame.Lineno)
-			putPtrInt(frameMap, attr.ErrorExceptionStacktraceLineColumn, frame.Colno)
-			putNonEmptyStr(frameMap, attr.ErrorExceptionStacktraceLineContext, frame.ContextLine)
+			putPtrInt(frameMap, elasticattr.ErrorExceptionStacktraceLineNumber, frame.Lineno)
+			putPtrInt(frameMap, elasticattr.ErrorExceptionStacktraceLineColumn, frame.Colno)
+			putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceLineContext, frame.ContextLine)
 		}
 
 		// Set context pre/post
 		if len(frame.PreContext) > 0 {
-			preSlice := frameMap.PutEmptySlice(attr.ErrorExceptionStacktraceContextPre)
+			preSlice := frameMap.PutEmptySlice(elasticattr.ErrorExceptionStacktraceContextPre)
 			preSlice.EnsureCapacity(len(frame.PreContext))
 			for _, pre := range frame.PreContext {
 				preSlice.AppendEmpty().SetStr(pre)
 			}
 		}
 		if len(frame.PostContext) > 0 {
-			postSlice := frameMap.PutEmptySlice(attr.ErrorExceptionStacktraceContextPost)
+			postSlice := frameMap.PutEmptySlice(elasticattr.ErrorExceptionStacktraceContextPost)
 			postSlice.EnsureCapacity(len(frame.PostContext))
 			for _, post := range frame.PostContext {
 				postSlice.AppendEmpty().SetStr(post)
@@ -272,7 +271,7 @@ func setExceptionStacktrace(exceptionMap pcommon.Map, frames []*modelpb.Stacktra
 
 		// Set vars if present
 		if len(frame.Vars) > 0 {
-			varsMap := frameMap.PutEmptyMap(attr.ErrorExceptionStacktraceVars)
+			varsMap := frameMap.PutEmptyMap(elasticattr.ErrorExceptionStacktraceVars)
 			varsMap.EnsureCapacity(len(frame.Vars))
 			for _, kv := range frame.Vars {
 				if kv.Key != "" && kv.Value != nil {
