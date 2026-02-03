@@ -229,13 +229,16 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	md := pmetric.NewMetrics()
 	td := ptrace.NewTraces()
 
-	gk := modelprocessor.SetGroupingKey{
-		NewHash: func() hash.Hash {
-			return xxhash.New()
+	processors := modelprocessor.Chained{
+		modelprocessor.SetGroupingKey{
+			NewHash: func() hash.Hash {
+				return xxhash.New()
+			},
 		},
+		modelprocessor.SetErrorMessage{},
 	}
 
-	if err := gk.ProcessBatch(ctx, batch); err != nil {
+	if err := processors.ProcessBatch(ctx, batch); err != nil {
 		r.settings.Logger.Error("failed to process batch", zap.Error(err))
 	}
 
@@ -509,8 +512,18 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 	// All fields associated with the log should also be set.
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 
-	if event.Error != nil && event.Error.Log != nil {
-		l.Body().SetStr(event.Error.Log.Message)
+	// the modelprocessor.SetErrorMessage sets the correct event.Message based on the available error details
+	l.Body().SetStr(event.Message)
+
+	r.setLogSeverity(event, l)
+}
+
+func (r *elasticAPMIntakeReceiver) setLogSeverity(event *modelpb.APMEvent, l plog.LogRecord) {
+	if event.Log != nil {
+		l.SetSeverityText(event.Log.Level)
+	}
+	if event.Event != nil {
+		l.SetSeverityNumber(plog.SeverityNumber(event.Event.Severity))
 	}
 }
 
@@ -525,12 +538,7 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 
 	l.Body().SetStr(event.Message)
 
-	if event.Log != nil {
-		l.SetSeverityText(event.Log.Level)
-	}
-	if event.Event != nil {
-		l.SetSeverityNumber(plog.SeverityNumber(event.Event.Severity))
-	}
+	r.setLogSeverity(event, l)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestampNanos uint64) ptrace.Span {

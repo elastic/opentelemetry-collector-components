@@ -526,6 +526,10 @@ func SetElasticSpecificFieldsForLog(event *modelpb.APMEvent, attributesMap pcomm
 	if event.Error != nil {
 		setKeyValueMap(elasticattr.ErrorCustom, attributesMap, event.Error.Custom)
 
+		putNonEmptyStr(attributesMap, elasticattr.ErrorMessage, event.Error.Message)
+		putNonEmptyStr(attributesMap, elasticattr.ErrorType, event.Error.Type)
+		putNonEmptyStr(attributesMap, elasticattr.ErrorStackTrace, event.Error.StackTrace)
+
 		if event.Error.Log != nil {
 			putNonEmptyStr(attributesMap, elasticattr.ErrorLogMessage, event.Error.Log.Message)
 			putNonEmptyStr(attributesMap, elasticattr.ErrorLogLevel, event.Error.Log.Level)

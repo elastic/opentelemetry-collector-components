@@ -137,11 +137,41 @@ const (
 	ErrorGroupingName     = "error.grouping_name"
 	ErrorType             = "error.type"
 	ErrorCustom           = "error.custom"
+	ErrorMessage          = "error.message"
+	ErrorStackTrace       = "error.stack_trace"
+	ErrorCulprit          = "error.culprit"
 	ErrorLogMessage       = "error.log.message"
 	ErrorLogLevel         = "error.log.level"
 	ErrorLogParamMessage  = "error.log.param_message"
 	ErrorLogLoggerName    = "error.log.logger_name"
 	ErrorLogStackTrace    = "error.log.stacktrace"
+
+	// Error exception attributes
+	ErrorException                              = "error.exception"
+	ErrorExceptionCode                          = "code"
+	ErrorExceptionMessage                       = "message"
+	ErrorExceptionType                          = "type"
+	ErrorExceptionModule                        = "module"
+	ErrorExceptionAttributes                    = "attributes"
+	ErrorExceptionStacktrace                    = "stacktrace"
+	ErrorExceptionParent                        = "parent"
+	ErrorExceptionStacktraceAbsPath             = "abs_path"
+	ErrorExceptionStacktraceFilename            = "filename"
+	ErrorExceptionStacktraceClassname           = "classname"
+	ErrorExceptionStacktraceFunction            = "function"
+	ErrorExceptionStacktraceModule              = "module"
+	ErrorExceptionStacktraceLineNumber          = "line.number"
+	ErrorExceptionStacktraceLineColumn          = "line.column"
+	ErrorExceptionStacktraceLineContext         = "line.context"
+	ErrorExceptionStacktraceContextPre          = "context.pre"
+	ErrorExceptionStacktraceContextPost         = "context.post"
+	ErrorExceptionStacktraceLibraryFrame        = "library_frame"
+	ErrorExceptionStacktraceExcludeFromGrouping = "exclude_from_grouping"
+	ErrorExceptionStacktraceVars                = "vars"
+
+	// ErrorExceptionHandled is used within exception objects (value: "handled")
+	// For top-level error.exception.handled, use the constant above (value: "error.exception.handled")
+	ErrorExceptionHandledField = "handled"
 
 	// HTTP attributes
 	HTTPVersion                 = "http.version"
