@@ -66,7 +66,8 @@ func (c *clientAddrMiddleware) GetHTTPHandler(base http.Handler) (http.Handler, 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		original := r
 		ctx := ctxWithClientAddr(r.Context(), r.Header)
-		base.ServeHTTP(w, r.WithContext(ctx))
+		r = r.WithContext(ctx)
+		base.ServeHTTP(w, r)
 		// Propagate the Pattern back to the original request for otelhttp instrumentation.
 		// See https://github.com/open-telemetry/opentelemetry-collector/issues/14508
 		if r.Pattern != "" {
