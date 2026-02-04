@@ -42,7 +42,6 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 
 	setTransactionAttributes(event, attributes)
 	putNonEmptyStr(attributes, elasticattr.TransactionResult, event.Transaction.Result)
-	attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
 }
 
 // setCommonDerivedRecordAttributes sets common attributes which are shared at the record
