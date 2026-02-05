@@ -217,7 +217,11 @@ func getHeader(headers map[string][]string, titlecase, lowercase string) (string
 }
 
 // hasPrivileges checks if the API Key is valid and has the required privileges.
-func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue string) (bool, string, error) {
+func (a *authenticator) hasPrivileges(
+	ctx context.Context,
+	authHeaderValue string,
+	headers map[string][]string,
+) (bool, string, error) {
 	clientMetadata := client.FromContext(ctx).Metadata
 	applications := make([]types.ApplicationPrivilegesCheck, len(a.config.ApplicationPrivileges))
 	for i, app := range a.config.ApplicationPrivileges {
@@ -246,6 +250,14 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	}
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
+
+	// Forward configured headers to Elasticsearch.
+	for _, headerName := range a.config.ForwardHeaders {
+		if value, ok := getHeader(headers, headerName, strings.ToLower(headerName)); ok {
+			req.Header(headerName, value)
+		}
+	}
+
 	req.Request(&hasprivileges.Request{Application: applications})
 	resp, err := req.Do(ctx)
 	if err != nil {
@@ -322,7 +334,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 		return newCtxWithAuthData(ctx, cacheEntry.data), nil
 	}
 
-	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
+	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue, headers)
 	if err != nil {
 		var elasticsearchErr *types.ElasticsearchError
 		if errors.As(err, &elasticsearchErr) {

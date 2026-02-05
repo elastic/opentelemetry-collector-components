@@ -4,6 +4,8 @@ apikeyauth/application_privileges:
     - application: my_app
       privileges: [read, write]
       resources: ['*']
+apikeyauth/forward_headers:
+  forward_headers: ["X-Elastic-App-Auth"]
 apikeyauth/invalid_cache_capacity:
   cache:
     capacity: 0

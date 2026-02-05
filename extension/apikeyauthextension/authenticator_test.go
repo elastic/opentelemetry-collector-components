@@ -642,6 +642,70 @@ func TestAuthenticator_DynamicResourcesMissingMetadataInHasPrivileges(t *testing
 	assert.Equal(t, st.Message(), `missing client metadata "X-Resource-Name" required for dynamic resource`)
 }
 
+func TestAuthenticator_ForwardHeaders_Table(t *testing.T) {
+	tests := []struct {
+		name            string
+		forwardConfig   []string            // headers from config
+		incomingHeaders map[string][]string // headers from incoming request
+		expectedHeaders map[string]string   // final headers in the request
+	}{
+		{
+			name:          "forward all configured headers",
+			forwardConfig: []string{"X-Elastic-App-Auth", "X-Custom-Header"},
+			incomingHeaders: map[string][]string{
+				"Authorization":      {"ApiKey dXNlcjpwYXNz"},
+				"X-Elastic-App-Auth": {"test-bypass-token"},
+				"X-Custom-Header":    {"custom-value"},
+			},
+			expectedHeaders: map[string]string{
+				"X-Elastic-App-Auth": "test-bypass-token",
+				"X-Custom-Header":    "custom-value",
+			},
+		},
+		{
+			name:          "skip missing optional headers",
+			forwardConfig: []string{"X-Elastic-App-Auth", "X-Missing-Header"},
+			incomingHeaders: map[string][]string{
+				"Authorization":      {"ApiKey dXNlcjpwYXNz"},
+				"X-Elastic-App-Auth": {"test-bypass-token"},
+			},
+			expectedHeaders: map[string]string{
+				"X-Elastic-App-Auth": "test-bypass-token",
+				"X-Missing-Header":   "", // Should be empty
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				for key, expectedVal := range tt.expectedHeaders {
+					assert.Equal(t, expectedVal, r.Header.Get(key))
+				}
+				w.Header().Set("X-Elastic-Product", "Elasticsearch")
+				_ = json.NewEncoder(w).Encode(successfulResponse)
+			}))
+			defer srv.Close()
+
+			config := createDefaultConfig().(*Config)
+			config.ForwardHeaders = tt.forwardConfig
+			config.Endpoint = srv.URL
+
+			auth, err := newAuthenticator(config, extensiontest.NewNopSettings(metadata.Type))
+			require.NoError(t, err)
+
+			err = auth.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				assert.NoError(t, auth.Shutdown(context.Background()))
+			})
+
+			_, err = auth.Authenticate(context.Background(), tt.incomingHeaders)
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func BenchmarkAuthenticator(b *testing.B) {
 	for _, iters := range []int{1, 10, 100, 1000} {
 		b.Run(fmt.Sprintf("iters_%d", iters), func(b *testing.B) {

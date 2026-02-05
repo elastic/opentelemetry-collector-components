@@ -105,6 +105,14 @@ func TestLoadConfig(t *testing.T) {
 			id:                 component.NewIDWithName(metadata.Type, "dynamic_resources_empty_metadata"),
 			expectedErrMessage: `application_privileges::0::dynamic_resources::0: metadata must be non-empty`,
 		},
+		{
+			id: component.NewIDWithName(metadata.Type, "forward_headers"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.ForwardHeaders = []string{"X-Elastic-App-Auth"}
+				return config
+			}(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.id.String(), func(t *testing.T) {
@@ -128,5 +136,4 @@ func TestLoadConfig(t *testing.T) {
 			assert.Equal(t, tt.expected, cfg)
 		})
 	}
-
 }

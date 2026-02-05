@@ -37,6 +37,10 @@ type Config struct {
 	// Cache holds configuration related to caching
 	// API Key verification results.
 	Cache CacheConfig `mapstructure:"cache"`
+
+	// ForwardHeaders specifies which headers from the incoming request should
+	// be forwarded to Elasticsearch when checking privileges.
+	ForwardHeaders []string `mapstructure:"forward_headers,omitempty"`
 }
 
 type ApplicationPrivilegesConfig struct {
