@@ -40,7 +40,7 @@ func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.Stats) (o
 
 	// Receivers
 	factories.Receivers, err = otelcol.MakeFactoryMap[receiver.Factory](
-		loadgenreceiver.NewFactoryWithDone(logsDone, metricsDone, tracesDone),
+		loadgenreceiver.NewFactoryWithDone(logsDone, metricsDone, tracesDone, nil),
 		nopreceiver.NewFactory(),
 	)
 	if err != nil {

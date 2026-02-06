@@ -19,16 +19,16 @@ package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-co
 
 import (
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/receiver"
+	"go.opentelemetry.io/collector/receiver/xreceiver"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/metadata"
 )
 
-func NewFactory() receiver.Factory {
-	return NewFactoryWithDone(nil, nil, nil)
+func NewFactory() xreceiver.Factory {
+	return NewFactoryWithDone(nil, nil, nil, nil)
 }
 
-func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) component.Config {
+func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone, profilesDone chan Stats) component.Config {
 	return &Config{
 		Logs: LogsConfig{
 			SignalConfig: SignalConfig{
@@ -49,18 +49,25 @@ func createDefaultReceiverConfig(logsDone, metricsDone, tracesDone chan Stats) c
 				MaxBufferSize: maxScannerBufSize,
 			},
 		},
+		Profiles: ProfilesConfig{
+			SignalConfig: SignalConfig{
+				doneCh:        profilesDone,
+				MaxBufferSize: maxScannerBufSize,
+			},
+		},
 		Concurrency: 1,
 	}
 }
 
-func NewFactoryWithDone(logsDone, metricsDone, tracesDone chan Stats) receiver.Factory {
-	return receiver.NewFactory(
+func NewFactoryWithDone(logsDone, metricsDone, tracesDone, profilesDone chan Stats) xreceiver.Factory {
+	return xreceiver.NewFactory(
 		metadata.Type,
 		func() component.Config {
-			return createDefaultReceiverConfig(logsDone, metricsDone, tracesDone)
+			return createDefaultReceiverConfig(logsDone, metricsDone, tracesDone, profilesDone)
 		},
-		receiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
-		receiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
-		receiver.WithLogs(createLogsReceiver, component.StabilityLevelDevelopment),
+		xreceiver.WithMetrics(createMetricsReceiver, component.StabilityLevelDevelopment),
+		xreceiver.WithTraces(createTracesReceiver, component.StabilityLevelDevelopment),
+		xreceiver.WithLogs(createLogsReceiver, component.StabilityLevelDevelopment),
+		xreceiver.WithProfiles(createProfilesReceiver, component.StabilityLevelDevelopment),
 	)
 }
