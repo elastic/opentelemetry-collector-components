@@ -176,6 +176,9 @@ resourceMetrics:
         - key: labels.my_value
           value:
             stringValue: foo
+        - key: labels.other_value
+          value:
+            stringValue: foo
         - key: labels.unsupported_key
           value:
             stringValue: foo
@@ -200,6 +203,9 @@ resourceMetrics:
         - key: numeric_labels.foo
           value:
             doubleValue: 42
+        - key: numeric_labels.http_status_code
+          value:
+            doubleValue: 200
         - key: opencensus.exporterversion
           value:
             stringValue: 1.0.0

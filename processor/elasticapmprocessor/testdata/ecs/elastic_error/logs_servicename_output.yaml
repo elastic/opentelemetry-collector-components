@@ -4,6 +4,18 @@ resourceLogs:
         - key: service.name
           value:
             stringValue: my-app
+        - key: labels.my_value
+          value:
+            stringValue: foo
+        - key: labels.other_value
+          value:
+            stringValue: foo
+        - key: numeric_labels.foo
+          value:
+            doubleValue: 42
+        - key: numeric_labels.http_status_code
+          value:
+            doubleValue: 200
         - key: data_stream.type
           value:
             stringValue: logs

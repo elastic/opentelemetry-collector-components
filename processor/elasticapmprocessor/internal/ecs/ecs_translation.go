@@ -68,21 +68,58 @@ const (
 	ecsHostHostname                  = "host.hostname"
 )
 
+// TranslateResourceMetadata normalizes resource attributes.
+// Sanitizes existing labels and numeric_labels keys.
+// Moves unsupported attributes to labels with a "labels." prefix (key sanitized),
+// and leaves supported ECS attributes unchanged.
 func TranslateResourceMetadata(resource pcommon.Resource) {
 	attributes := resource.Attributes()
 
 	attributes.Range(func(k string, v pcommon.Value) bool {
-		if !isSupportedAttribute(k) && !isLabelAttribute(k) {
+		if isLabelAttribute(k) {
+			sanitized := sanitizeLabelAttributeKey(k)
+			if sanitized != k {
+				v.CopyTo(attributes.PutEmpty(sanitized))
+				attributes.Remove(k)
+			}
+		} else if !isSupportedAttribute(k) {
 			// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
-			attributes.PutStr("labels."+replaceDots(k), v.AsString())
+			attributes.PutStr("labels."+sanitizeLabelKey(k), v.AsString())
 			attributes.Remove(k)
 		}
 		return true
 	})
 }
 
-func replaceDots(key string) string {
-	return strings.ReplaceAll(key, ".", "_")
+// sanitizeLabelAttributeKey sanitizes the key portion of a label attribute,
+// preserving the "labels." or "numeric_labels." prefix.
+func sanitizeLabelAttributeKey(attr string) string {
+	if strings.HasPrefix(attr, "labels.") {
+		return "labels." + sanitizeLabelKey(strings.TrimPrefix(attr, "labels."))
+	}
+	if strings.HasPrefix(attr, "numeric_labels.") {
+		return "numeric_labels." + sanitizeLabelKey(strings.TrimPrefix(attr, "numeric_labels."))
+	}
+	return attr
+}
+
+// sanitizeLabelKey sanitizes a label key, replacing the reserved characters
+// '.', '*' and '"' with '_'. This matches the apm-server behavior.
+// This matches the logic in the apm-data library here:
+// https://github.com/elastic/apm-data/blob/e3e170b/model/modeljson/labels.go.
+func sanitizeLabelKey(k string) string {
+	if strings.ContainsAny(k, ".*\"") {
+		return strings.Map(replaceReservedLabelKeyRune, k)
+	}
+	return k
+}
+
+func replaceReservedLabelKeyRune(r rune) rune {
+	switch r {
+	case '.', '*', '"':
+		return '_'
+	}
+	return r
 }
 
 // isLabelAttribute returns true if the resource attribute is already a prefixed label.
