@@ -40,10 +40,8 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 		return
 	}
 
-	putNonEmptyStr(attributes, elasticattr.TransactionName, event.Transaction.Name)
-	putNonEmptyStr(attributes, elasticattr.TransactionType, event.Transaction.Type)
+	setTransactionAttributes(event, attributes)
 	putNonEmptyStr(attributes, elasticattr.TransactionResult, event.Transaction.Result)
-	attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
 }
 
 // setCommonDerivedRecordAttributes sets common attributes which are shared at the record
@@ -56,6 +54,19 @@ func setCommonDerivedRecordAttributes(event *modelpb.APMEvent, attributes pcommo
 	if event.Service != nil && event.Service.Target != nil {
 		attributes.PutStr(elasticattr.ServiceTargetType, event.Service.Target.Type)
 		attributes.PutStr(elasticattr.ServiceTargetName, event.Service.Target.Name)
+	}
+}
+
+// setTransactionAttributes sets transaction-related attributes that are shared across
+// transaction and error events.
+func setTransactionAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Transaction == nil {
+		return
+	}
+	putNonEmptyStr(attributes, elasticattr.TransactionName, event.Transaction.Name)
+	putNonEmptyStr(attributes, elasticattr.TransactionType, event.Transaction.Type)
+	if event.Transaction.Sampled {
+		attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
 	}
 }
 
@@ -123,6 +134,7 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "error")
 
 	setCommonDerivedRecordAttributes(event, attributes)
+	setTransactionAttributes(event, attributes)
 
 	if event.Error == nil {
 		return

@@ -158,12 +158,12 @@ resourceSpans:
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: Success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: Success
               - key: transaction.span_count.started
                 value:
                   intValue: "43"
@@ -362,12 +362,12 @@ resourceSpans:
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: success
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -1161,12 +1161,12 @@ resourceSpans:
               - key: transaction.type
                 value:
                   stringValue: lambda
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: success
               - key: transaction.span_count.started
                 value:
                   intValue: "0"
