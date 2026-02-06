@@ -31,9 +31,10 @@ type (
 
 // Config defines configuration for loadgen receiver.
 type Config struct {
-	Metrics MetricsConfig `mapstructure:"metrics"`
-	Logs    LogsConfig    `mapstructure:"logs"`
-	Traces  TracesConfig  `mapstructure:"traces"`
+	Metrics  MetricsConfig  `mapstructure:"metrics"`
+	Logs     LogsConfig     `mapstructure:"logs"`
+	Traces   TracesConfig   `mapstructure:"traces"`
+	Profiles ProfilesConfig `mapstructure:"profiles"`
 
 	// Concurrency is the amount of concurrency when sending to next consumer.
 	// The concurrent workers share the amount of workload, instead of multiplying the amount of workload,
@@ -92,6 +93,14 @@ type TracesConfig struct {
 	SignalConfig `mapstructure:",squash"`
 }
 
+type ProfilesConfig struct {
+	// JsonlFile is an optional configuration option to specify the path to
+	// get the base generated signals from.
+	JsonlFile `mapstructure:"jsonl_file"`
+
+	SignalConfig `mapstructure:",squash"`
+}
+
 var _ component.Config = (*Config)(nil)
 
 // Validate checks the receiver configuration is valid
@@ -105,6 +114,9 @@ func (cfg *Config) Validate() error {
 	if cfg.Traces.MaxReplay < 0 {
 		return fmt.Errorf("traces::max_replay must be >= 0")
 	}
+	if cfg.Profiles.MaxReplay < 0 {
+		return fmt.Errorf("profiles::max_replay must be >= 0")
+	}
 	if cfg.Logs.MaxBufferSize < 0 {
 		return fmt.Errorf("logs::max_buffer_size must be >= 0")
 	}
@@ -113,6 +125,9 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.Traces.MaxBufferSize < 0 {
 		return fmt.Errorf("traces::max_buffer_size must be >= 0")
+	}
+	if cfg.Profiles.MaxBufferSize < 0 {
+		return fmt.Errorf("profiles::max_buffer_size must be >= 0")
 	}
 	return nil
 }

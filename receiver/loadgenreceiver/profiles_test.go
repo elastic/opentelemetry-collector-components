@@ -36,16 +36,16 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestLogsGenerator_doneCh(t *testing.T) {
+func TestProfilesGenerator_doneCh(t *testing.T) {
 	const maxReplay = 2
 	for _, concurrency := range []int{1, 2} {
 		t.Run(fmt.Sprintf("concurrency=%d", concurrency), func(t *testing.T) {
 			doneCh := make(chan Stats)
-			sink := &consumertest.LogsSink{}
-			cfg := createDefaultReceiverConfig(doneCh, nil, nil, nil)
-			cfg.(*Config).Logs.MaxReplay = maxReplay
+			sink := &consumertest.ProfilesSink{}
+			cfg := createDefaultReceiverConfig(nil, nil, nil, doneCh)
+			cfg.(*Config).Profiles.MaxReplay = maxReplay
 			cfg.(*Config).Concurrency = concurrency
-			r, _ := createLogsReceiver(context.Background(), receiver.Settings{
+			r, _ := createProfilesReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
 				TelemetrySettings: component.TelemetrySettings{
 					Logger: zap.NewNop(),
@@ -58,29 +58,29 @@ func TestLogsGenerator_doneCh(t *testing.T) {
 				assert.NoError(t, r.Shutdown(context.Background()))
 			}()
 			stats := <-doneCh
-			want := maxReplay * bytes.Count(demoLogs, []byte("\n"))
+			want := maxReplay * bytes.Count(demoProfiles, []byte("\n"))
 			assert.Equal(t, want, stats.Requests)
-			assert.Equal(t, want, len(sink.AllLogs()))
-			assert.Equal(t, sink.LogRecordCount(), stats.LogRecords)
+			assert.Equal(t, want, len(sink.AllProfiles()))
+			assert.Equal(t, sink.SampleCount(), stats.Samples)
 		})
 	}
 }
 
-func TestLogsGenerator_MaxBufferSizeAttr(t *testing.T) {
-	dummyData := `{"resourceLogs":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"my.service"}}]},"scopeLogs":[{"logRecords":[{"timeUnixNano":"1727411470107912000","body":{"stringValue":"Example log record"}}]}]}]}`
+func TestProfilesGenerator_MaxBufferSizeAttr(t *testing.T) {
+	dummyData := `{"resourceProfiles":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"my.service"}}]},"scopeProfiles":[{"scope":{},"profiles":[{"sampleType":{},"samples":[{"values":["4"]}],"timeUnixNano":"1727784000000000000","durationNano":"1000000000","periodType":{},"profileId":"0102030405060708090a0b0c0d0e0f10"}]}]}],"dictionary":{}}`
 	for _, maxBufferSize := range []int{0, 10} {
 		t.Run(fmt.Sprintf("max_buffer_size=%d", maxBufferSize), func(t *testing.T) {
 			dir := t.TempDir()
 			filePath := filepath.Join(dir, strings.ReplaceAll(t.Name(), "/", "_")+".jsonl")
 			content := []byte(dummyData)
-			require.NoError(t, os.WriteFile(filePath, content, 0o644))
+			require.NoError(t, os.WriteFile(filePath, content, 0644))
 
 			doneCh := make(chan Stats)
-			cfg := createDefaultReceiverConfig(doneCh, nil, nil, nil)
-			cfg.(*Config).Logs.MaxBufferSize = maxBufferSize
-			cfg.(*Config).Logs.JsonlFile = JsonlFile(filePath)
+			cfg := createDefaultReceiverConfig(nil, nil, nil, doneCh)
+			cfg.(*Config).Profiles.MaxBufferSize = maxBufferSize
+			cfg.(*Config).Profiles.JsonlFile = JsonlFile(filePath)
 
-			_, err := createLogsReceiver(context.Background(), receiver.Settings{
+			_, err := createProfilesReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
 				TelemetrySettings: component.TelemetrySettings{
 					Logger: zap.NewNop(),

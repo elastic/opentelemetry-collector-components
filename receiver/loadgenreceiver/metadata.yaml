@@ -4,7 +4,7 @@ github_project: elastic/opentelemetry-collector-components
 status:
   class: receiver
   stability:
-    development: [metrics, logs, traces]
+    development: [metrics, logs, traces, profiles]
   distributions: []
 #  codeowners:
 #    active: []
