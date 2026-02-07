@@ -316,6 +316,10 @@ func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, even
 
 func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) error {
 	metricset := event.GetMetricset()
+
+	// the apm-data library defaults this value to `app` and sets to `span_breakdown` internal span metrics.
+	rm.Resource().Attributes().PutStr(elasticattr.MetricsetName, metricset.Name)
+
 	// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
 	if metricset.Name == "span_breakdown" {
 		r.translateBreakdownMetricsToOtel(rm, event, timestampNanos)

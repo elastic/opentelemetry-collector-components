@@ -13,6 +13,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: numeric_labels.tag2
           value:
             doubleValue: 2
@@ -90,6 +93,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: numeric_labels.tag2
           value:
             doubleValue: 2
@@ -257,6 +263,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: numeric_labels.tag2
           value:
             doubleValue: 2
@@ -334,6 +343,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: span_breakdown
         - key: numeric_labels.code
           value:
             doubleValue: 200
@@ -449,6 +461,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: numeric_labels.tag2
           value:
             doubleValue: 2
