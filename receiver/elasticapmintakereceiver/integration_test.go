@@ -41,6 +41,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 )
@@ -231,7 +232,10 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 		rcvrFactory := NewFactory()
 		cfg := &Config{
 			ServerConfig: confighttp.ServerConfig{
-				Endpoint: testEndpoint,
+				NetAddr: confignet.AddrConfig{
+					Endpoint:  testEndpoint,
+					Transport: confignet.TransportTypeTCP,
+				},
 			},
 			AgentConfig: AgentConfig{
 				Enabled: true,

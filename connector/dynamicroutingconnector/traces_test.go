@@ -136,7 +136,7 @@ func TestTracesRouting(t *testing.T) {
 
 			cfg.EvaluationInterval = tc.evaluationInterval
 			connectorSet := connectortest.NewNopSettings(metadata.Type)
-			connectorSet.TelemetrySettings.Logger = zaptest.NewLogger(t)
+			connectorSet.Logger = zaptest.NewLogger(t)
 			connector, err := NewFactory().CreateTracesToTraces(
 				t.Context(),
 				connectorSet,

@@ -24,6 +24,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/extension"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension/apmconfig"
@@ -53,7 +54,10 @@ var defaultCacheConfig = CacheConfig{
 func createDefaultConfig() component.Config {
 	defaultElasticSearchClient := configelasticsearch.NewDefaultClientConfig()
 	httpCfg := confighttp.NewDefaultServerConfig()
-	httpCfg.Endpoint = "localhost:4320"
+	httpCfg.NetAddr = confignet.AddrConfig{
+		Endpoint:  "localhost:4320",
+		Transport: confignet.TransportTypeTCP,
+	}
 
 	return &Config{
 		Source: SourceConfig{
@@ -75,7 +79,7 @@ func createDefaultConfig() component.Config {
 func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
 	extCfg := cfg.(*Config)
 	elasticsearchRemoteConfig := func(ctx context.Context, host component.Host, telemetry component.TelemetrySettings) (apmconfig.RemoteConfigClient, error) {
-		esClient, err := extCfg.Source.Elasticsearch.ClientConfig.ToClient(ctx, host.GetExtensions(), telemetry)
+		esClient, err := extCfg.Source.Elasticsearch.ToClient(ctx, host.GetExtensions(), telemetry)
 		if err != nil {
 			return nil, err
 		}

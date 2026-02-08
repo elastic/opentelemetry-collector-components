@@ -99,7 +99,7 @@ func (cfg *ElasticsearchFetcher) Validate() error {
 
 // Validate checks the receiver configuration is valid
 func (cfg *Config) Validate() error {
-	if cfg.OpAMP.Protocols.ServerConfig == nil {
+	if cfg.OpAMP.ServerConfig == nil {
 		return errors.New("must specify at least one protocol when using the apmconfig extension")
 	}
 	return nil
@@ -114,7 +114,7 @@ func (cfg *Config) Unmarshal(conf *confmap.Conf) error {
 	}
 
 	if !conf.IsSet(protoHTTP) {
-		cfg.OpAMP.Protocols.ServerConfig = nil
+		cfg.OpAMP.ServerConfig = nil
 	}
 
 	return nil

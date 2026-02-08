@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/elastic/apm-data/model/modelprocessor"
-	"github.com/elastic/opentelemetry-lib/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
 )

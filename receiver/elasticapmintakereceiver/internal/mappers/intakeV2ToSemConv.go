@@ -32,12 +32,8 @@ import (
 // TranslateToOtelResourceAttributes translates resource attributes from the Elastic APM model to SemConv resource attributes
 func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Service != nil {
-		if event.Service.Name != "" {
-			attributes.PutStr(string(semconv.ServiceNameKey), event.Service.Name)
-		}
-		if event.Service.Version != "" {
-			attributes.PutStr(string(semconv.ServiceVersionKey), event.Service.Version)
-		}
+		putNonEmptyStr(attributes, string(semconv.ServiceNameKey), event.Service.Name)
+		putNonEmptyStr(attributes, string(semconv.ServiceVersionKey), event.Service.Version)
 		if event.Service.Language != nil && event.Service.Language.Name != "" {
 			attributes.PutStr(string(semconv.TelemetrySDKLanguageKey), translateElasticServiceLanguageToOtelSdkLanguage(event.Service.Language.Name))
 		}
@@ -47,25 +43,17 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 			attributes.PutStr(string(semconv22.DeploymentEnvironmentKey), event.Service.Environment)
 			attributes.PutStr(string(semconv.DeploymentEnvironmentNameKey), event.Service.Environment)
 		}
-		if event.Service.Node != nil && event.Service.Node.Name != "" {
-			attributes.PutStr(string(semconv.ServiceInstanceIDKey), event.Service.Node.Name)
+		if event.Service.Node != nil {
+			putNonEmptyStr(attributes, string(semconv.ServiceInstanceIDKey), event.Service.Node.Name)
 		}
 	}
 	if event.Host != nil {
-		if event.Host.Name != "" {
-			attributes.PutStr(string(semconv.HostNameKey), event.Host.Name)
-		}
-		if event.Host.Id != "" {
-			attributes.PutStr(string(semconv.HostIDKey), event.Host.Id)
-		}
-		if event.Host.Architecture != "" {
-			attributes.PutStr(string(semconv.HostArchKey), event.Host.Architecture)
-		}
-		if event.Host.Os != nil && event.Host.Os.Name != "" {
-			attributes.PutStr(string(semconv.OSNameKey), event.Host.Os.Name)
-			if event.Host.Os.Version != "" {
-				attributes.PutStr(string(semconv.OSVersionKey), event.Host.Os.Version)
-			}
+		putNonEmptyStr(attributes, string(semconv.HostNameKey), event.Host.Name)
+		putNonEmptyStr(attributes, string(semconv.HostIDKey), event.Host.Id)
+		putNonEmptyStr(attributes, string(semconv.HostArchKey), event.Host.Architecture)
+		if event.Host.Os != nil {
+			putNonEmptyStr(attributes, string(semconv.OSNameKey), event.Host.Os.Name)
+			putNonEmptyStr(attributes, string(semconv.OSVersionKey), event.Host.Os.Version)
 		}
 	}
 
@@ -73,9 +61,7 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 	// Translating here since fields should be present at the resource level.
 	// https://opentelemetry.io/docs/specs/semconv/registry/attributes/user-agent
 	if event.UserAgent != nil {
-		if event.UserAgent.Original != "" {
-			attributes.PutStr(string(semconv.UserAgentOriginalKey), event.UserAgent.Original)
-		}
+		putNonEmptyStr(attributes, string(semconv.UserAgentOriginalKey), event.UserAgent.Original)
 	}
 
 	translateCloudAttributes(event, attributes)
@@ -153,58 +139,30 @@ func TranslateIntakeV2LogToOTelAttributes(event *modelpb.APMEvent, attributes pc
 
 func translateCloudAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Cloud != nil {
-		if event.Cloud.Provider != "" {
-			attributes.PutStr(string(semconv.CloudProviderKey), event.Cloud.Provider)
-		}
-		if event.Cloud.Region != "" {
-			attributes.PutStr(string(semconv.CloudRegionKey), event.Cloud.Region)
-		}
-		if event.Cloud.AvailabilityZone != "" {
-			attributes.PutStr(string(semconv.CloudAvailabilityZoneKey), event.Cloud.AvailabilityZone)
-		}
-		if event.Cloud.AccountId != "" {
-			attributes.PutStr(string(semconv.CloudAccountIDKey), event.Cloud.AccountId)
-		}
-		if event.Cloud.ServiceName != "" {
-			attributes.PutStr(string(semconv.CloudPlatformKey), event.Cloud.ServiceName)
-		}
+		putNonEmptyStr(attributes, string(semconv.CloudProviderKey), event.Cloud.Provider)
+		putNonEmptyStr(attributes, string(semconv.CloudRegionKey), event.Cloud.Region)
+		putNonEmptyStr(attributes, string(semconv.CloudAvailabilityZoneKey), event.Cloud.AvailabilityZone)
+		putNonEmptyStr(attributes, string(semconv.CloudAccountIDKey), event.Cloud.AccountId)
+		putNonEmptyStr(attributes, string(semconv.CloudPlatformKey), event.Cloud.ServiceName)
 	}
 }
 
 func translateContainerAndKubernetesAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	// Container fields
 	if event.Container != nil {
-		if event.Container.Id != "" {
-			attributes.PutStr(string(semconv.ContainerIDKey), event.Container.Id)
-		}
-		if event.Container.Name != "" {
-			attributes.PutStr(string(semconv.ContainerNameKey), event.Container.Name)
-		}
-		if event.Container.Runtime != "" {
-			attributes.PutStr(string(semconv.ContainerRuntimeKey), event.Container.Runtime)
-		}
-		if event.Container.ImageName != "" {
-			attributes.PutStr(string(semconv.ContainerImageNameKey), event.Container.ImageName)
-		}
-		if event.Container.ImageTag != "" {
-			attributes.PutStr(string(semconv.ContainerImageTagsKey), event.Container.ImageTag)
-		}
+		putNonEmptyStr(attributes, string(semconv.ContainerIDKey), event.Container.Id)
+		putNonEmptyStr(attributes, string(semconv.ContainerNameKey), event.Container.Name)
+		putNonEmptyStr(attributes, string(semconv.ContainerRuntimeKey), event.Container.Runtime)
+		putNonEmptyStr(attributes, string(semconv.ContainerImageNameKey), event.Container.ImageName)
+		putNonEmptyStr(attributes, string(semconv.ContainerImageTagsKey), event.Container.ImageTag)
 	}
 
 	// Kubernetes fields
 	if event.Kubernetes != nil {
-		if event.Kubernetes.Namespace != "" {
-			attributes.PutStr(string(semconv.K8SNamespaceNameKey), event.Kubernetes.Namespace)
-		}
-		if event.Kubernetes.NodeName != "" {
-			attributes.PutStr(string(semconv.K8SNodeNameKey), event.Kubernetes.NodeName)
-		}
-		if event.Kubernetes.PodName != "" {
-			attributes.PutStr(string(semconv.K8SPodNameKey), event.Kubernetes.PodName)
-		}
-		if event.Kubernetes.PodUid != "" {
-			attributes.PutStr(string(semconv.K8SPodUIDKey), event.Kubernetes.PodUid)
-		}
+		putNonEmptyStr(attributes, string(semconv.K8SNamespaceNameKey), event.Kubernetes.Namespace)
+		putNonEmptyStr(attributes, string(semconv.K8SNodeNameKey), event.Kubernetes.NodeName)
+		putNonEmptyStr(attributes, string(semconv.K8SPodNameKey), event.Kubernetes.PodName)
+		putNonEmptyStr(attributes, string(semconv.K8SPodUIDKey), event.Kubernetes.PodUid)
 	}
 }
 
@@ -217,10 +175,7 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 		if event.Process.Ppid != 0 {
 			attributes.PutInt(string(semconv.ProcessParentPIDKey), int64(event.Process.Ppid))
 		}
-		if event.Process.Title != "" {
-			// Title is the process title. It can be the same as process name.
-			attributes.PutStr(string(semconv.ProcessExecutableNameKey), event.Process.Title)
-		}
+		putNonEmptyStr(attributes, string(semconv.ProcessExecutableNameKey), event.Process.Title)
 		if len(event.Process.Argv) > 0 {
 			commandLineArgs := attributes.PutEmptySlice(string(semconv.ProcessCommandLineKey))
 			commandLineArgs.EnsureCapacity(len(event.Process.Argv))
@@ -228,47 +183,27 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 				commandLineArgs.AppendEmpty().SetStr(arg)
 			}
 		}
-		if event.Process.Executable != "" {
-			attributes.PutStr(string(semconv.ProcessExecutablePathKey), event.Process.Executable)
-		}
+		putNonEmptyStr(attributes, string(semconv.ProcessExecutablePathKey), event.Process.Executable)
 	}
 
 	// translate user fields defined here: https://opentelemetry.io/docs/specs/semconv/registry/attributes/user
 	if event.User != nil {
-		if event.User.Id != "" {
-			attributes.PutStr(string(semconv.UserIDKey), event.User.Id)
-		}
-		if event.User.Email != "" {
-			attributes.PutStr(string(semconv.UserEmailKey), event.User.Email)
-		}
-		if event.User.Name != "" {
-			attributes.PutStr(string(semconv.UserNameKey), event.User.Name)
-		}
+		putNonEmptyStr(attributes, string(semconv.UserIDKey), event.User.Id)
+		putNonEmptyStr(attributes, string(semconv.UserEmailKey), event.User.Email)
+		putNonEmptyStr(attributes, string(semconv.UserNameKey), event.User.Name)
 	}
 
 	// translate network fields defined here: https://opentelemetry.io/docs/specs/semconv/registry/attributes/network
 	if event.Network != nil {
 		if event.Network.Connection != nil {
-			if event.Network.Connection.Type != "" {
-				attributes.PutStr(string(semconv.NetworkConnectionTypeKey), event.Network.Connection.Type)
-			}
-			if event.Network.Connection.Subtype != "" {
-				attributes.PutStr(string(semconv.NetworkConnectionSubtypeKey), event.Network.Connection.Subtype)
-			}
+			putNonEmptyStr(attributes, string(semconv.NetworkConnectionTypeKey), event.Network.Connection.Type)
+			putNonEmptyStr(attributes, string(semconv.NetworkConnectionSubtypeKey), event.Network.Connection.Subtype)
 		}
 		if event.Network.Carrier != nil {
-			if event.Network.Carrier.Name != "" {
-				attributes.PutStr(string(semconv.NetworkCarrierNameKey), event.Network.Carrier.Name)
-			}
-			if event.Network.Carrier.Mcc != "" {
-				attributes.PutStr(string(semconv.NetworkCarrierMccKey), event.Network.Carrier.Mcc)
-			}
-			if event.Network.Carrier.Mnc != "" {
-				attributes.PutStr(string(semconv.NetworkCarrierMncKey), event.Network.Carrier.Mnc)
-			}
-			if event.Network.Carrier.Icc != "" {
-				attributes.PutStr(string(semconv.NetworkCarrierIccKey), event.Network.Carrier.Icc)
-			}
+			putNonEmptyStr(attributes, string(semconv.NetworkCarrierNameKey), event.Network.Carrier.Name)
+			putNonEmptyStr(attributes, string(semconv.NetworkCarrierMccKey), event.Network.Carrier.Mcc)
+			putNonEmptyStr(attributes, string(semconv.NetworkCarrierMncKey), event.Network.Carrier.Mnc)
+			putNonEmptyStr(attributes, string(semconv.NetworkCarrierIccKey), event.Network.Carrier.Icc)
 		}
 	}
 
@@ -290,29 +225,17 @@ func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes p
 func translateIPAddress(key string, ip *modelpb.IP, attributes pcommon.Map) {
 	if ip != nil {
 		ipAddr := modelpb.IP2Addr(ip)
-		if ipAddr.String() != "" {
-			attributes.PutStr(key, ipAddr.String())
-		}
+		putNonEmptyStr(attributes, key, ipAddr.String())
 	}
 }
 
 func translateFaasAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Faas != nil {
-		if event.Faas.Id != "" {
-			attributes.PutStr(string(semconv.FaaSInstanceKey), event.Faas.Id)
-		}
-		if event.Faas.Name != "" {
-			attributes.PutStr(string(semconv.FaaSNameKey), event.Faas.Name)
-		}
-		if event.Faas.Version != "" {
-			attributes.PutStr(string(semconv.FaaSVersionKey), event.Faas.Version)
-		}
-		if event.Faas.TriggerType != "" {
-			attributes.PutStr(string(semconv.FaaSTriggerKey), event.Faas.TriggerType)
-		}
-		if event.Faas.ColdStart != nil {
-			attributes.PutBool(string(semconv.FaaSColdstartKey), *event.Faas.ColdStart)
-		}
+		putNonEmptyStr(attributes, string(semconv.FaaSInstanceKey), event.Faas.Id)
+		putNonEmptyStr(attributes, string(semconv.FaaSNameKey), event.Faas.Name)
+		putNonEmptyStr(attributes, string(semconv.FaaSVersionKey), event.Faas.Version)
+		putNonEmptyStr(attributes, string(semconv.FaaSTriggerKey), event.Faas.TriggerType)
+		putPtrBool(attributes, string(semconv.FaaSColdstartKey), event.Faas.ColdStart)
 	}
 }
 
@@ -325,9 +248,7 @@ func translateHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 			if event.Http.Response.StatusCode != 0 {
 				attributes.PutInt(string(semconv.HTTPResponseStatusCodeKey), int64(event.Http.Response.StatusCode))
 			}
-			if event.Http.Response.EncodedBodySize != nil {
-				attributes.PutInt(string(semconv.HTTPResponseBodySizeKey), int64(*event.Http.Response.EncodedBodySize))
-			}
+			putPtrInt(attributes, string(semconv.HTTPResponseBodySizeKey), event.Http.Response.EncodedBodySize)
 		}
 	}
 }
@@ -338,27 +259,13 @@ func translateUrlAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	if event.Url == nil {
 		return
 	}
-	if event.Url.Original != "" {
-		attributes.PutStr(string(semconv.URLOriginalKey), event.Url.Original)
-	}
-	if event.Url.Scheme != "" {
-		attributes.PutStr(string(semconv.URLSchemeKey), event.Url.Scheme)
-	}
-	if event.Url.Full != "" {
-		attributes.PutStr(string(semconv.URLFullKey), event.Url.Full)
-	}
-	if event.Url.Domain != "" {
-		attributes.PutStr(string(semconv.URLDomainKey), event.Url.Domain)
-	}
-	if event.Url.Path != "" {
-		attributes.PutStr(string(semconv.URLPathKey), event.Url.Path)
-	}
-	if event.Url.Query != "" {
-		attributes.PutStr(string(semconv.URLQueryKey), event.Url.Query)
-	}
-	if event.Url.Fragment != "" {
-		attributes.PutStr(string(semconv.URLFragmentKey), event.Url.Fragment)
-	}
+	putNonEmptyStr(attributes, string(semconv.URLOriginalKey), event.Url.Original)
+	putNonEmptyStr(attributes, string(semconv.URLSchemeKey), event.Url.Scheme)
+	putNonEmptyStr(attributes, string(semconv.URLFullKey), event.Url.Full)
+	putNonEmptyStr(attributes, string(semconv.URLDomainKey), event.Url.Domain)
+	putNonEmptyStr(attributes, string(semconv.URLPathKey), event.Url.Path)
+	putNonEmptyStr(attributes, string(semconv.URLQueryKey), event.Url.Query)
+	putNonEmptyStr(attributes, string(semconv.URLFragmentKey), event.Url.Fragment)
 	if event.Url.Port != 0 {
 		attributes.PutInt(string(semconv.URLPortKey), int64(event.Url.Port))
 	}

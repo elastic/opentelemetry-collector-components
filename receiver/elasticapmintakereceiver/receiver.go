@@ -46,6 +46,7 @@ import (
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/apm-data/model/modelprocessor"
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
@@ -124,10 +125,10 @@ func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host com
 		return err
 	}
 
-	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.ServerConfig.Endpoint))
+	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.NetAddr.Endpoint))
 
 	var hln net.Listener
-	if hln, err = r.cfg.ServerConfig.ToListener(ctx); err != nil {
+	if hln, err = r.cfg.ToListener(ctx); err != nil {
 		return err
 	}
 
@@ -228,13 +229,16 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	md := pmetric.NewMetrics()
 	td := ptrace.NewTraces()
 
-	gk := modelprocessor.SetGroupingKey{
-		NewHash: func() hash.Hash {
-			return xxhash.New()
+	processors := modelprocessor.Chained{
+		modelprocessor.SetGroupingKey{
+			NewHash: func() hash.Hash {
+				return xxhash.New()
+			},
 		},
+		modelprocessor.SetErrorMessage{},
 	}
 
-	if err := gk.ProcessBatch(ctx, batch); err != nil {
+	if err := processors.ProcessBatch(ctx, batch); err != nil {
 		r.settings.Logger.Error("failed to process batch", zap.Error(err))
 	}
 
@@ -481,15 +485,15 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 
 	attr := dp.Attributes()
 	if event.Transaction != nil {
-		attr.PutStr("transaction.name", event.Transaction.Name)
-		attr.PutStr("transaction.type", event.Transaction.Type)
+		attr.PutStr(elasticattr.TransactionName, event.Transaction.Name)
+		attr.PutStr(elasticattr.TransactionType, event.Transaction.Type)
 	}
 	if event.Span != nil {
-		attr.PutStr("span.type", event.Span.Type)
-		attr.PutStr("span.subtype", event.Span.Subtype)
+		attr.PutStr(elasticattr.SpanType, event.Span.Type)
+		attr.PutStr(elasticattr.SpanSubtype, event.Span.Subtype)
 	}
 
-	attr.PutStr("processor.event", "metric")
+	attr.PutStr(elasticattr.ProcessorEvent, "metric")
 
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 
@@ -508,8 +512,18 @@ func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.Resource
 	// All fields associated with the log should also be set.
 	mappers.SetElasticSpecificFieldsForLog(event, l.Attributes())
 
-	if event.Error != nil && event.Error.Log != nil {
-		l.Body().SetStr(event.Error.Log.Message)
+	// the modelprocessor.SetErrorMessage sets the correct event.Message based on the available error details
+	l.Body().SetStr(event.Message)
+
+	r.setLogSeverity(event, l)
+}
+
+func (r *elasticAPMIntakeReceiver) setLogSeverity(event *modelpb.APMEvent, l plog.LogRecord) {
+	if event.Log != nil {
+		l.SetSeverityText(event.Log.Level)
+	}
+	if event.Event != nil {
+		l.SetSeverityNumber(plog.SeverityNumber(event.Event.Severity))
 	}
 }
 
@@ -524,12 +538,7 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 
 	l.Body().SetStr(event.Message)
 
-	if event.Log != nil {
-		l.SetSeverityText(event.Log.Level)
-	}
-	if event.Event != nil {
-		l.SetSeverityNumber(plog.SeverityNumber(event.Event.Severity))
-	}
+	r.setLogSeverity(event, l)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestampNanos uint64) ptrace.Span {
@@ -539,6 +548,7 @@ func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	mappers.SetTopLevelFieldsSpan(event, timestampNanos, s, r.settings.Logger)
 	mappers.SetDerivedFieldsCommon(event, s.Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
+	s.SetKind(mapSpanKind(event.GetSpan().GetKind()))
 	return s
 }
 
@@ -570,17 +580,6 @@ func (r *elasticAPMIntakeReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, 
 	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
 	mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForTransaction(event, s.Attributes())
-
-	spanKind := mapSpanKind(event.GetSpan().GetKind())
-	if spanKind == ptrace.SpanKindUnspecified {
-		// derive span kind
-		if event.Http != nil && event.Http.Request != nil {
-			spanKind = ptrace.SpanKindServer
-		} else if event.Message != "" { // this check is TBD
-			spanKind = ptrace.SpanKindConsumer
-		}
-	}
-	s.SetKind(spanKind)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *modelpb.APMEvent) {
@@ -590,14 +589,6 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
-
-	spanKind := mapSpanKind(event.GetSpan().GetKind())
-	if spanKind == ptrace.SpanKindUnspecified {
-		if event.Http != nil || event.Message != "" {
-			spanKind = ptrace.SpanKindClient
-		}
-	}
-	s.SetKind(spanKind)
 }
 
 func mapSpanKind(kind string) ptrace.SpanKind {

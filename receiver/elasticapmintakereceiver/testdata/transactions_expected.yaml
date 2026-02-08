@@ -25,9 +25,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -130,6 +127,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -155,18 +155,15 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.root
-                value:
-                  boolValue: false
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: Success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: Success
               - key: transaction.span_count.started
                 value:
                   intValue: "43"
@@ -211,9 +208,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: user_agent.original
           value:
             stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36, Mozilla Chrome Edge
@@ -322,6 +316,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
@@ -359,21 +356,18 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 4340a8e0df1906ecbfa9
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: success
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -536,7 +530,6 @@ resourceSpans:
                         value:
                           stringValue: not a valid regex and that is fine
             endTimeUnixNano: "1496170407186592981"
-            kind: 2
             name: GET /api/types
             spanId: 4340a8e0df1906ec
             startTimeUnixNano: "1496170407154000000"
@@ -569,9 +562,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -677,6 +667,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -702,9 +695,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: cdef4340a8e0df19
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.type
                 value:
                   stringValue: request
@@ -763,7 +753,6 @@ resourceSpans:
                                 value:
                                   doubleValue: 10
             endTimeUnixNano: "1532976822294980558"
-            kind: 2
             spanId: cdef4340a8e0df19
             startTimeUnixNano: "1532976822281000000"
             status: {}
@@ -794,9 +783,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -899,6 +885,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -924,9 +913,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 00xxxxFFaaaa1234
-              - key: transaction.root
-                value:
-                  boolValue: false
               - key: transaction.name
                 value:
                   stringValue: amqp receive
@@ -1000,9 +986,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1144,6 +1127,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -1169,21 +1155,18 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 142e61450efb8574
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: july-2021-delete-after-july-31
               - key: transaction.type
                 value:
                   stringValue: lambda
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: success
               - key: transaction.span_count.started
                 value:
                   intValue: "0"

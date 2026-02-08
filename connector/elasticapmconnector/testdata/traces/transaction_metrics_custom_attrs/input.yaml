@@ -44,9 +44,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: ""
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: "http-span"
@@ -97,9 +94,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: ""
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: "http-span"

@@ -330,9 +330,6 @@ resourceSpans:
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
-              - key: span.name
-                value:
-                  stringValue: span-elastic-db
               - key: span.representative_count
                 value:
                   doubleValue: 1
@@ -397,5 +394,7 @@ resourceSpans:
                 timeUnixNano: "1581452773000000123"
             name: span-elastic-db
             parentSpanId: bcff497b5a47310f
+            spanId: abcdef0123456700
             startTimeUnixNano: "1581452772000000321"
             status: {}
+            traceId: fdedef0123456789abcdef9876543210

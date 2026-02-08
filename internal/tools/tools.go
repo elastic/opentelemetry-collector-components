@@ -27,7 +27,7 @@ package tools // import "github.com/elastic/opentelemetry-collector-components/i
 import (
 	_ "github.com/client9/misspell/cmd/misspell"
 	_ "github.com/elastic/go-licenser"
-	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
+	_ "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
 	_ "github.com/jcchavezs/porto/cmd/porto"
 	_ "go.opentelemetry.io/build-tools/chloggen"
 	_ "go.opentelemetry.io/build-tools/multimod"

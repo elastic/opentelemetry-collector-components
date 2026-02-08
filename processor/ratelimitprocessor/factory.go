@@ -29,7 +29,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/xprocessor"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
@@ -56,13 +55,8 @@ func NewFactory() xprocessor.Factory {
 func getRateLimiter(
 	config *Config,
 	set processor.Settings,
-	telemetryBuilder *metadata.TelemetryBuilder,
-	tracerProvider trace.TracerProvider,
 ) (*sharedcomponent.Component[rateLimiterComponent], error) {
 	return rateLimiters.LoadOrStore(config, func() (rateLimiterComponent, error) {
-		if config.Type == GubernatorRateLimiter {
-			return newGubernatorRateLimiter(config, set.Logger, telemetryBuilder, tracerProvider)
-		}
 		return newLocalRateLimiter(config, set)
 	})
 }
@@ -78,13 +72,13 @@ func createLogsProcessor(
 	if err != nil {
 		return nil, err
 	}
-	rateLimiter, err := getRateLimiter(config, set, tb, set.TracerProvider)
+	rateLimiter, err := getRateLimiter(config, set)
 	if err != nil {
 		return nil, err
 	}
 	return NewLogsRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings.Logger,
+		set.Logger,
 		tb,
 		set.TracerProvider,
 		config.Strategy,
@@ -106,13 +100,13 @@ func createMetricsProcessor(
 	if err != nil {
 		return nil, err
 	}
-	rateLimiter, err := getRateLimiter(config, set, tb, set.TracerProvider)
+	rateLimiter, err := getRateLimiter(config, set)
 	if err != nil {
 		return nil, err
 	}
 	return NewMetricsRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings.Logger,
+		set.Logger,
 		tb,
 		set.TracerProvider,
 		config.Strategy,
@@ -134,13 +128,13 @@ func createTracesProcessor(
 	if err != nil {
 		return nil, err
 	}
-	rateLimiter, err := getRateLimiter(config, set, tb, set.TracerProvider)
+	rateLimiter, err := getRateLimiter(config, set)
 	if err != nil {
 		return nil, err
 	}
 	return NewTracesRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings.Logger,
+		set.Logger,
 		tb,
 		set.TracerProvider,
 		config.Strategy,
@@ -162,13 +156,13 @@ func createProfilesProcessor(
 	if err != nil {
 		return nil, err
 	}
-	rateLimiter, err := getRateLimiter(config, set, tb, set.TracerProvider)
+	rateLimiter, err := getRateLimiter(config, set)
 	if err != nil {
 		return nil, err
 	}
 	return NewProfilesRateLimiterProcessor(
 		rateLimiter,
-		set.TelemetrySettings.Logger,
+		set.Logger,
 		tb,
 		set.TracerProvider,
 		config.Strategy,

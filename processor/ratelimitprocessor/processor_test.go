@@ -130,7 +130,6 @@ func TestGetCountFunc_Profiles(t *testing.T) {
 
 func TestConsume_Logs(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
 			Rate:             1,
 			Burst:            1,
@@ -206,7 +205,6 @@ func TestConsume_Logs(t *testing.T) {
 
 func TestConsume_Metrics(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
 			Rate:             1,
 			Burst:            1,
@@ -282,7 +280,6 @@ func TestConsume_Metrics(t *testing.T) {
 
 func TestConsume_Traces(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
 			Rate:             1,
 			Burst:            1,
@@ -358,7 +355,6 @@ func TestConsume_Traces(t *testing.T) {
 
 func TestConsume_Profiles(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
 			Rate:             1,
 			Burst:            1,
@@ -435,7 +431,6 @@ func TestConsume_Profiles(t *testing.T) {
 
 func TestConcurrentRequestsTelemetry(t *testing.T) {
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
 			Rate:             10,
 			Burst:            10,

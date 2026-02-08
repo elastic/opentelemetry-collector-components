@@ -82,7 +82,7 @@ func (op *apmConfigExtension) Start(ctx context.Context, host component.Host) er
 	}
 	op.serverHTTP.ConnContext = conContext
 
-	op.telemetrySettings.Logger.Info("Starting HTTP server", zap.String("endpoint", op.extensionConfig.OpAMP.ServerConfig.Endpoint))
+	op.telemetrySettings.Logger.Info("Starting HTTP server", zap.String("endpoint", op.extensionConfig.OpAMP.ServerConfig.NetAddr.Endpoint))
 	var hln net.Listener
 	if hln, err = op.extensionConfig.OpAMP.ServerConfig.ToListener(ctx); err != nil {
 		return err
