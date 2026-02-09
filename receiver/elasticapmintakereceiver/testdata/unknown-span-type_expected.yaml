@@ -119,12 +119,12 @@ resourceSpans:
               - key: transaction.type
                 value:
                   stringValue: unknown
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: success
               - key: http.request.method
                 value:
                   stringValue: POST
