@@ -40,19 +40,21 @@ var Config struct {
 	Headers             map[string]string
 	CollectorConfigPath string
 
-	Logs    bool
-	Metrics bool
-	Traces  bool
-	Mixed   bool
+	Logs     bool
+	Metrics  bool
+	Traces   bool
+	Profiles bool
+	Mixed    bool
 
 	ExporterOTLP     bool
 	ExporterOTLPHTTP bool
 
-	ConcurrencyList []int
-	Shuffle         bool
-	TracesDataPath  string
-	MetricsDataPath string
-	LogsDataPath    string
+	ConcurrencyList  []int
+	Shuffle          bool
+	TracesDataPath   string
+	MetricsDataPath  string
+	LogsDataPath     string
+	ProfilesDataPath string
 
 	Telemetry TelemetryConfig
 }
@@ -136,11 +138,13 @@ func Init() error {
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
-	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics and traces at the same time")
+	flag.BoolVar(&Config.Profiles, "profiles", false, "benchmark profiles")
+	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics, traces and profiles at the same time")
 
 	flag.StringVar(&Config.TracesDataPath, "traces-data-path", "", "path to traces data file (e.g. traces.json). If empty, embedded data will be used.")
 	flag.StringVar(&Config.MetricsDataPath, "metrics-data-path", "", "path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.")
 	flag.StringVar(&Config.LogsDataPath, "logs-data-path", "", "path to logs data file (e.g. logs.json). If empty, embedded data will be used.")
+	flag.StringVar(&Config.ProfilesDataPath, "profiles-data-path", "", "path to profiles data file (e.g. profiles.json). If empty, embedded data will be used.")
 
 	flag.BoolVar(&Config.Shuffle, "shuffle", false, "shuffle the order of benchmarks. This is useful for concurrent runs.")
 
@@ -295,6 +299,7 @@ func ExporterConfigs(exporter string) (configFiles []string) {
 	configSets = append(configSets, fmt.Sprintf("service.pipelines.logs.exporters=[%s]", exporter))
 	configSets = append(configSets, fmt.Sprintf("service.pipelines.metrics.exporters=[%s]", exporter))
 	configSets = append(configSets, fmt.Sprintf("service.pipelines.traces.exporters=[%s]", exporter))
+	configSets = append(configSets, fmt.Sprintf("service.pipelines.profiles.exporters=[%s]", exporter))
 
 	if Config.ServerURLOTLP != nil {
 		configSets = append(configSets, fmt.Sprintf("exporters.otlp.endpoint=%s", Config.ServerURLOTLP))
@@ -335,6 +340,7 @@ func SetIterations(iterations int) (configFiles []string) {
 		fmt.Sprintf("receivers.loadgen.logs.max_replay=%d", iterations),
 		fmt.Sprintf("receivers.loadgen.metrics.max_replay=%d", iterations),
 		fmt.Sprintf("receivers.loadgen.traces.max_replay=%d", iterations),
+		fmt.Sprintf("receivers.loadgen.profiles.max_replay=%d", iterations),
 	})
 }
 
@@ -347,7 +353,7 @@ func SetConcurrency(concurrency int) (configFiles []string) {
 // SetDataPaths returns a config override to set the data paths for loadgenreceiver.
 // Configuration options for `traces_data_path`, `metrics_data_path`, and `logs_data_path` will update
 // the existing 'jsonl_file' option for each signal.
-func SetDataPaths(tracesPath, metricsPath, logsPath string) []string {
+func SetDataPaths(tracesPath, metricsPath, logsPath, profilesPath string) []string {
 	var sets []string
 	if tracesPath != "" {
 		sets = append(sets, fmt.Sprintf("receivers.loadgen.traces.jsonl_file=%q", tracesPath))
@@ -357,6 +363,9 @@ func SetDataPaths(tracesPath, metricsPath, logsPath string) []string {
 	}
 	if logsPath != "" {
 		sets = append(sets, fmt.Sprintf("receivers.loadgen.logs.jsonl_file=%q", logsPath))
+	}
+	if profilesPath != "" {
+		sets = append(sets, fmt.Sprintf("receivers.loadgen.profiles.jsonl_file=%q", profilesPath))
 	}
 	return setsToConfigs(sets)
 }
