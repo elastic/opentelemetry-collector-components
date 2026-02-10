@@ -351,8 +351,9 @@ func SetConcurrency(concurrency int) (configFiles []string) {
 }
 
 // SetDataPaths returns a config override to set the data paths for loadgenreceiver.
-// Configuration options for `traces_data_path`, `metrics_data_path`, and `logs_data_path` will update
-// the existing 'jsonl_file' option for each signal.
+// Configuration options for `traces_data_path`, `metrics_data_path`,
+// `logs_data_path` and `profiles_data_path` will update the existing
+// 'jsonl_file' option for each signal.
 func SetDataPaths(tracesPath, metricsPath, logsPath, profilesPath string) []string {
 	var sets []string
 	if tracesPath != "" {
