@@ -73,7 +73,7 @@ func TestProfilesGenerator_MaxBufferSizeAttr(t *testing.T) {
 			dir := t.TempDir()
 			filePath := filepath.Join(dir, strings.ReplaceAll(t.Name(), "/", "_")+".jsonl")
 			content := []byte(dummyData)
-			require.NoError(t, os.WriteFile(filePath, content, 0644))
+			require.NoError(t, os.WriteFile(filePath, content, 0o644))
 
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(nil, nil, nil, doneCh)
