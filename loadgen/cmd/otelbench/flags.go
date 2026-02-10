@@ -139,7 +139,7 @@ func Init() error {
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
 	flag.BoolVar(&Config.Profiles, "profiles", false, "benchmark profiles")
-	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics, traces and profiles at the same time")
+	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics, traces and profiles (only of -profiles flag enabled) at the same time")
 
 	flag.StringVar(&Config.TracesDataPath, "traces-data-path", "", "path to traces data file (e.g. traces.json). If empty, embedded data will be used.")
 	flag.StringVar(&Config.MetricsDataPath, "metrics-data-path", "", "path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.")

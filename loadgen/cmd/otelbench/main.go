@@ -100,6 +100,7 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 		metricsDone := make(chan loadgenreceiver.Stats)
 		tracesDone := make(chan loadgenreceiver.Stats)
 		profilesDone := make(chan loadgenreceiver.Stats)
+
 		// if we do not expect that signal, don't wait for it
 		if signal != "mixed" {
 			if signal != "logs" {
@@ -114,6 +115,10 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 			if signal != "profiles" {
 				close(profilesDone)
 			}
+		} else if !Config.Profiles {
+			// TODO: enable profiles for "mixed" signal on
+			// endpoint stabilization
+			close(profilesDone)
 		}
 		stop := make(chan struct{}) // close channel to stop the loadgen collector
 		done := make(chan struct{}) // close channel to exit benchmark after stats were reported
@@ -307,6 +312,9 @@ func configs(exporter, signal string, iterations, concurrency int) (configFiles 
 				configFiles = append(configFiles, DisableSignal(s)...)
 			}
 		}
+	} else if !Config.Profiles {
+		// TODO: enable profiles for "mixed" on OTLP endpoint stabilization
+		configFiles = append(configFiles, DisableSignal("profiles")...)
 	}
 	return
 }
