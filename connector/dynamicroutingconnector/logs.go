@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.uber.org/zap"
 )
 
@@ -46,7 +47,7 @@ func newLogsConnector(
 		return nil, errors.New("expected connector to be a router and consumer")
 	}
 
-	router, err := newRouter(cfg, set.TelemetrySettings, lr.Consumer)
+	router, err := newRouter(cfg, set.TelemetrySettings, lr.Consumer, pipeline.SignalLogs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
