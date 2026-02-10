@@ -37,7 +37,7 @@ Usage of ./otelbench:
   -metrics-data-path string
         path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.
   -profiles
-        benchmark profiles (default true)
+        benchmark profiles (default false)
   -profiles-data-path string
         path to profiles data file (e.g. profiles.json). If empty, embedded data will be used.
   -mixed
