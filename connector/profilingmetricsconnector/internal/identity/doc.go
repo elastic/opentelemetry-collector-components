@@ -17,6 +17,6 @@
 
 // Package identity provides hash-based identifiers for OpenTelemetry
 // resources, instrumentation scopes, metrics, and metric streams.
-// These identities are used to uniquely and correlate profiling
+// These identities are used to uniquely identify and correlate profiling
 // metrics across resource, scope, and attribute dimensions.
 package identity // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/identity"
