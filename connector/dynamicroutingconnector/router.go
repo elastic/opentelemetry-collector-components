@@ -20,7 +20,9 @@ package dynamicroutingconnector // import "github.com/elastic/opentelemetry-coll
 import (
 	"context"
 	"fmt"
+	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -30,10 +32,16 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
+
+	"github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector/internal/metadata"
 )
 
 var _ component.Component = (*router[any])(nil)
+
+const defaultCardinalityBucket = "default"
 
 // consumerProvider is a function with a type parameter C (expected to be one
 // of consumer.Traces, consumer.Metrics, or Consumer.Logs). returns a
@@ -47,7 +55,9 @@ type router[C any] struct {
 	defaultConsumer    C
 	consumers          []ct[C]
 
-	logger *zap.Logger
+	logger           *zap.Logger
+	signal           pipeline.Signal
+	telemetryBuilder *metadata.TelemetryBuilder
 
 	mu      sync.Mutex
 	m       map[string]*hyperloglog.Sketch
@@ -59,24 +69,32 @@ type router[C any] struct {
 }
 
 type ct[C any] struct {
-	consumer C
-	maxCount float64
+	consumer          C
+	maxCount          float64
+	cardinalityBucket string
 }
 
 func newRouter[C any](
 	cfg *Config,
 	settings component.TelemetrySettings,
 	provider consumerProvider[C],
+	signal pipeline.Signal,
 ) (*router[C], error) {
 	sortedMetadataKeys := slices.Clone(cfg.RoutingKeys.MeasureBy)
 	slices.Sort(sortedMetadataKeys)
 	consumers := make([]ct[C], 0, len(cfg.RoutingPipelines))
+	var prevMax float64
 	for i, p := range cfg.RoutingPipelines {
 		c, err := provider(p.Pipelines...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create consumer from provided pipelines at idx %d: %w", i, err)
 		}
-		consumers = append(consumers, ct[C]{consumer: c, maxCount: p.MaxCardinality})
+		consumers = append(consumers, ct[C]{
+			consumer:          c,
+			maxCount:          p.MaxCardinality,
+			cardinalityBucket: formatCardinalityBucket(prevMax, p.MaxCardinality),
+		})
+		prevMax = p.MaxCardinality
 	}
 
 	var (
@@ -89,6 +107,11 @@ func newRouter[C any](
 			return nil, fmt.Errorf("failed to create consumer from default pipelines: %w", err)
 		}
 	}
+
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(settings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
+	}
 	return &router[C]{
 		evaluationInterval: cfg.EvaluationInterval,
 		partitionKeys:      cfg.RoutingKeys.PartitionBy,
@@ -96,6 +119,8 @@ func newRouter[C any](
 		defaultConsumer:    defaultConsumer,
 		consumers:          consumers,
 		logger:             settings.Logger,
+		signal:             signal,
+		telemetryBuilder:   telemetryBuilder,
 		stop:               make(chan struct{}),
 		decision:           make(map[string]ct[C]),
 		m:                  make(map[string]*hyperloglog.Sketch),
@@ -166,11 +191,17 @@ func (r *router[C]) Shutdown(ctx context.Context) error {
 			// wait for evaluation goroutine to stop
 		}
 	}
+	if r.telemetryBuilder != nil {
+		r.telemetryBuilder.Shutdown()
+	}
 	return nil
 }
 
 func (r *router[C]) Process(ctx context.Context) C {
-	return r.getNextConsumer(r.estimateCardinality(ctx))
+	pk := r.estimateCardinality(ctx)
+	next, bucket := r.getNextConsumer(pk)
+	r.recordRoutedMetric(ctx, pk, bucket)
+	return next
 }
 
 func (r *router[C]) estimateCardinality(ctx context.Context) string {
@@ -259,13 +290,13 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 	return pk
 }
 
-func (r *router[C]) getNextConsumer(pk string) C {
+func (r *router[C]) getNextConsumer(pk string) (C, string) {
 	if pk == "" {
 		r.logger.Debug(
 			"returning default consumer due to empty primary key",
 			zap.String("primary_key", pk),
 		)
-		return r.defaultConsumer
+		return r.defaultConsumer, defaultCardinalityBucket
 	}
 
 	r.dmu.RLock()
@@ -277,14 +308,14 @@ func (r *router[C]) getNextConsumer(pk string) C {
 			"returning default consumer due to missing decision",
 			zap.String("primary_key", pk),
 		)
-		return r.defaultConsumer
+		return r.defaultConsumer, defaultCardinalityBucket
 	}
 	r.logger.Debug(
 		"returning non-default consumer",
 		zap.String("primary_key", pk),
 		zap.Float64("max_count", next.maxCount),
 	)
-	return next.consumer
+	return next.consumer, next.cardinalityBucket
 }
 
 // updateDecisions updates the current cache to be used for decisions, discarding
@@ -309,4 +340,33 @@ func (r *router[C]) updateDecisions() {
 	r.dmu.Lock()
 	defer r.dmu.Unlock()
 	r.decision = newDecision
+}
+
+func (r *router[C]) recordRoutedMetric(ctx context.Context, pk string, bucket string) {
+	if r.telemetryBuilder == nil {
+		return
+	}
+	r.telemetryBuilder.DynamicroutingRouted.Add(
+		ctx,
+		1,
+		metric.WithAttributes(
+			attribute.String("cardinality_bucket", bucket),
+			attribute.String("partition_key", pk),
+			attribute.String("signal", fmt.Sprint(r.signal)),
+		),
+	)
+}
+
+func formatCardinalityBucket(prevMax float64, max float64) string {
+	return formatCardinality(prevMax) + "_" + formatCardinality(max)
+}
+
+func formatCardinality(value float64) string {
+	switch {
+	case math.IsInf(value, 1):
+		return "inf"
+	case math.IsInf(value, -1):
+		return "-inf"
+	}
+	return strconv.FormatFloat(value, 'f', -1, 64)
 }

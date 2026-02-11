@@ -11,5 +11,30 @@ status:
       - traces_to_traces
   distributions: []
 
+attributes:
+  cardinality_bucket:
+    description: Cardinality bucket identifier derived from routing_pipelines.
+    type: string
+  partition_key:
+    description: Composite partition key built from routing_keys.partition_by values.
+    type: string
+  signal:
+    description: Telemetry signal routed by the connector.
+    type: string
+
+telemetry:
+  metrics:
+    dynamicrouting.routed:
+      enabled: true
+      description: Number of telemetry batches routed by the connector.
+      unit: "1"
+      stability:
+        level: development
+      sum:
+        value_type: int
+        aggregation_temporality: delta
+        monotonic: true
+      attributes: [cardinality_bucket, partition_key, signal]
+
 tests:
   config:
