@@ -19,6 +19,7 @@ package profilingmetricsconnector // import "github.com/elastic/opentelemetry-co
 
 import (
 	"context"
+	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
 	"go.opentelemetry.io/collector/component"
@@ -38,6 +39,7 @@ func NewFactory() connector.Factory {
 func createDefaultConfig() component.Config {
 	return &Config{
 		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+		FlushInterval:        30 * time.Second,
 	}
 }
 

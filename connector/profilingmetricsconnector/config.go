@@ -41,8 +41,8 @@ type Config struct {
 	// in memory before sending them to the next pipeline consumer.
 	//
 	// If set to a value greater than 0s, metrics are buffered and flushed
-	// collectively at the end of each interval.
-	// If set to 0s (default), aggregation is disabled and metrics are forwarded after
+	// collectively at the end of each interval (30s default).
+	// If set to 0s, aggregation is disabled and metrics are forwarded after
 	// a Profile is received.
 	FlushInterval time.Duration `mapstructure:"flush_interval"`
 }
