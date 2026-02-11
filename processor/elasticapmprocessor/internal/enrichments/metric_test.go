@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -48,6 +49,7 @@ func TestEnrichMetric(t *testing.T) {
 		input         pmetric.ResourceMetrics
 		config        config.Config
 		expectedAttrs map[string]any
+		checkResult   func(t *testing.T, rm pmetric.ResourceMetrics)
 	}{
 		{
 			name: "existing_attributes_not_overridden",
@@ -69,25 +71,75 @@ func TestEnrichMetric(t *testing.T) {
 				elasticattr.AgentVersion:   "existing-agent-version",
 			},
 		},
+		{
+			name: "metricset_name_enabled_sets_app_on_resource",
+			input: func() pmetric.ResourceMetrics {
+				rm := getMetric()
+				rm.ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().AppendEmpty().SetDoubleValue(2.0)
+				return rm
+			}(),
+			config: config.Enabled(),
+			checkResult: func(t *testing.T, rm pmetric.ResourceMetrics) {
+				v, ok := rm.Resource().Attributes().Get(elasticattr.MetricsetName)
+				require.True(t, ok, "metricset.name should be set on resource")
+				assert.Equal(t, "app", v.Str())
+			},
+		},
+		{
+			name: "metricset_name_existing_not_overridden",
+			input: func() pmetric.ResourceMetrics {
+				resourceMetrics := getMetric()
+				resourceMetrics.Resource().Attributes().PutStr(elasticattr.MetricsetName, "custom")
+				return resourceMetrics
+			}(),
+			config: config.Enabled(),
+			checkResult: func(t *testing.T, rm pmetric.ResourceMetrics) {
+				v, ok := rm.Resource().Attributes().Get(elasticattr.MetricsetName)
+				require.True(t, ok)
+				assert.Equal(t, "custom", v.Str(), "existing metricset.name must not be overridden")
+			},
+		},
+		{
+			name:  "metricset_name_disabled_not_set",
+			input: getMetric(),
+			config: func() config.Config {
+				cfg := config.Enabled()
+				cfg.Metric.MetricsetName.Enabled = false
+				return cfg
+			}(),
+			checkResult: func(t *testing.T, rm pmetric.ResourceMetrics) {
+				_, ok := rm.Resource().Attributes().Get(elasticattr.MetricsetName)
+				assert.False(t, ok, "metricset.name must not be set on resource when disabled")
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			expectedResourceMetrics := pmetric.NewResourceMetrics()
 			tc.input.Resource().CopyTo(expectedResourceMetrics.Resource())
 
-			// Merge with the expected attributes
-			for k, v := range tc.expectedAttrs {
-				_ = expectedResourceMetrics.Resource().Attributes().PutEmpty(k).FromRaw(v)
+			// Merge with the expected attributes. Only run when the test case
+			// defines expectedAttrs; cases that use checkResult alone skip this.
+			if len(tc.expectedAttrs) > 0 {
+				for k, v := range tc.expectedAttrs {
+					_ = expectedResourceMetrics.Resource().Attributes().PutEmpty(k).FromRaw(v)
+				}
 			}
 
 			// Enrich the metric
 			EnrichMetric(tc.input, tc.config)
 			EnrichResource(tc.input.Resource(), tc.config.Resource)
 
-			// Verify attributes match expected
-			actualAttrs := tc.input.Resource().Attributes().AsRaw()
-			expectedAttrs := expectedResourceMetrics.Resource().Attributes().AsRaw()
-
-			assert.Equal(t, expectedAttrs, actualAttrs, "resource attributes should match expected")
+			// Verify resource attributes match expected (only when test provides expectedAttrs).
+			// Ensures enrichment did not override existing attributes and added only what was expected.
+			if len(tc.expectedAttrs) > 0 {
+				actualAttrs := tc.input.Resource().Attributes().AsRaw()
+				expectedAttrs := expectedResourceMetrics.Resource().Attributes().AsRaw()
+				assert.Equal(t, expectedAttrs, actualAttrs, "resource attributes should match expected")
+			}
+			// Optional case-specific checks (e.g. metricset.name present/absent/unchanged).
+			if tc.checkResult != nil {
+				tc.checkResult(t, tc.input)
+			}
 		})
 	}
 }
