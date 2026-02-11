@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: oldstable
+          go-version: stable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: oldstable
+          go-version: stable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -107,7 +107,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: oldstable
+          go-version: stable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -130,7 +130,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: oldstable
+          go-version: stable
           cache: false
       - name: Cache Go
         id: go-cache
@@ -169,7 +169,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [oldstable, stable]
+        go-version: [stable]
         runner: [ubuntu-latest]
         group:
           - all
@@ -242,7 +242,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
         with:
-          go-version: oldstable
+          go-version: stable
           cache: false
       - name: Cache Go
         id: go-cache

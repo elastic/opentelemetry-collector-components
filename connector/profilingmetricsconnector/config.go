@@ -17,7 +17,11 @@
 
 package profilingmetricsconnector // import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector"
 
-import "github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+import (
+	"time"
+
+	"github.com/elastic/opentelemetry-collector-components/connector/profilingmetricsconnector/internal/metadata"
+)
 
 // Aggregation applies Match as a regular expression on function strings
 // and generates a metric with Label if it matches.
@@ -32,4 +36,13 @@ type Config struct {
 
 	// CustomAggregations allows to generate custom metrics.
 	CustomAggregations []Aggregation `mapstructure:"aggregations"`
+
+	// FlushInterval determines the time window for aggregating delta metrics
+	// in memory before sending them to the next pipeline consumer.
+	//
+	// If set to a value greater than 0s, metrics are buffered and flushed
+	// collectively at the end of each interval (30s default).
+	// If set to 0s, aggregation is disabled and metrics are forwarded after
+	// a Profile is received.
+	FlushInterval time.Duration `mapstructure:"flush_interval"`
 }
