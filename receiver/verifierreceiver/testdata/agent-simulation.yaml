@@ -30,11 +30,13 @@ receivers:
           - integration_id: "int-cloudtrail-001"
             integration_type: "aws_cloudtrail"
             integration_name: "AWS CloudTrail"
+            integration_version: "2.17.0"
             config:
               region: "us-east-1"
           - integration_id: "int-guardduty-001"
             integration_type: "aws_guardduty"
             integration_name: "AWS GuardDuty"
+            integration_version: "1.5.0"
             config:
               region: "us-east-1"
       
@@ -44,11 +46,13 @@ receivers:
           - integration_id: "int-s3-001"
             integration_type: "aws_s3"
             integration_name: "AWS S3 Logs"
+            integration_version: "1.0.0"
             config:
               region: "us-west-2"
           - integration_id: "int-ec2-001"
             integration_type: "aws_ec2"
             integration_name: "AWS EC2 Metrics"
+            integration_version: "2.0.0"
             config:
               region: "us-east-1"
 

@@ -22,6 +22,7 @@ receivers:
           - integration_id: "int-cloudtrail-001"
             integration_type: "aws_cloudtrail"
             integration_name: "AWS CloudTrail"
+            integration_version: "2.17.0"
             config:
               region: "us-east-1"
 

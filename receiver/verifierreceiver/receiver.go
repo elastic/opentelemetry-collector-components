@@ -266,12 +266,13 @@ func (r *verifierReceiver) verifyPermissions(ctx context.Context) error {
 				zap.String("integration_id", integration.IntegrationID),
 				zap.String("integration_type", integration.IntegrationType),
 				zap.String("integration_name", integration.IntegrationName),
+				zap.String("integration_version", integration.IntegrationVersion),
 			)
 
-			// Look up required permissions from registry
-			integrationPerms := r.permissionRegistry.GetPermissions(integration.IntegrationType)
+			// Look up required permissions from registry (version-aware)
+			integrationPerms := r.permissionRegistry.GetPermissions(integration.IntegrationType, integration.IntegrationVersion)
 			if integrationPerms == nil {
-				// Unknown integration type - emit a warning log
+				// Unknown integration type or unsupported version - emit a warning log
 				r.emitUnsupportedIntegrationLog(
 					scopeLogs,
 					timestamp,
@@ -439,6 +440,11 @@ func (r *verifierReceiver) emitPermissionCheckLog(
 		attrs.PutStr("integration.name", integration.IntegrationName)
 	}
 	attrs.PutStr("integration.type", integration.IntegrationType)
+	if integration.IntegrationVersion != "" {
+		attrs.PutStr("integration.version", integration.IntegrationVersion)
+	} else {
+		attrs.PutStr("integration.version", "unspecified")
+	}
 
 	// Provider context
 	attrs.PutStr("provider.type", string(provider))
@@ -500,7 +506,19 @@ func (r *verifierReceiver) emitUnsupportedIntegrationLog(
 	logRecord.SetSeverityNumber(plog.SeverityNumberWarn)
 	logRecord.SetSeverityText("WARN")
 
-	body := fmt.Sprintf("Unsupported integration type: %s - skipping permission verification", integration.IntegrationType)
+	// Distinguish between unsupported type and unsupported version
+	var body string
+	var errorCode string
+	if r.permissionRegistry.IsSupported(integration.IntegrationType) {
+		// Type is known but version doesn't match any constraint
+		body = fmt.Sprintf("Unsupported integration version: %s@%s - skipping permission verification",
+			integration.IntegrationType, integration.IntegrationVersion)
+		errorCode = "UnsupportedVersion"
+	} else {
+		body = fmt.Sprintf("Unsupported integration type: %s - skipping permission verification",
+			integration.IntegrationType)
+		errorCode = "UnsupportedIntegration"
+	}
 	logRecord.Body().SetStr(body)
 
 	attrs := logRecord.Attributes()
@@ -515,10 +533,18 @@ func (r *verifierReceiver) emitUnsupportedIntegrationLog(
 		attrs.PutStr("integration.name", integration.IntegrationName)
 	}
 	attrs.PutStr("integration.type", integration.IntegrationType)
+	if integration.IntegrationVersion != "" {
+		attrs.PutStr("integration.version", integration.IntegrationVersion)
+	} else {
+		attrs.PutStr("integration.version", "unspecified")
+	}
 	attrs.PutStr("permission.status", string(StatusSkipped))
+	attrs.PutStr("permission.error_code", errorCode)
 
-	r.logger.Warn("Unsupported integration type",
+	r.logger.Warn("Unsupported integration",
 		zap.String("integration_type", integration.IntegrationType),
+		zap.String("integration_version", integration.IntegrationVersion),
+		zap.String("error_code", errorCode),
 		zap.String("policy_id", policy.PolicyID),
 	)
 }

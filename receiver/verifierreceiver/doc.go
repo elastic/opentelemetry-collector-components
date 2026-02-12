@@ -32,7 +32,9 @@
 // # Architecture
 //
 // The receiver consists of two main registries:
-//   - Permission Registry: Maps integration types to required permissions
+//   - Permission Registry: Maps integration types and versions to required permissions.
+//     Each integration type can have multiple versioned permission sets matched via
+//     semver constraints (e.g., ">=2.0.0", ">=1.0.0,<2.0.0").
 //   - Verifier Registry: Manages provider-specific verifiers (AWS, Azure, etc.)
 //
 // Each verifier implements the Verifier interface and is responsible for
@@ -44,7 +46,8 @@
 //   - Cloud Connector identification (ID, name)
 //   - Verification session (ID, type)
 //   - Provider credentials (AWS, Azure, GCP, Okta)
-//   - Policies containing integrations to verify
+//   - Policies containing integrations to verify, each with an optional
+//     integration_version for version-aware permission lookup
 //
 // Example:
 //
@@ -61,6 +64,7 @@
 //	      - policy_id: "policy-1"
 //	        integrations:
 //	          - integration_type: "aws_cloudtrail"
+//	            integration_version: "2.17.0"
 //
 // # Output
 //

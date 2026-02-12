@@ -51,6 +51,9 @@ resourceLogs:
               - key: integration.type
                 value:
                   stringValue: aws_cloudtrail
+              - key: integration.version
+                value:
+                  stringValue: "2.17.0"
               - key: provider.type
                 value:
                   stringValue: aws
@@ -100,6 +103,9 @@ resourceLogs:
               - key: integration.type
                 value:
                   stringValue: aws_guardduty
+              - key: integration.version
+                value:
+                  stringValue: "1.5.0"
               - key: provider.type
                 value:
                   stringValue: aws
@@ -155,6 +161,9 @@ resourceLogs:
               - key: integration.type
                 value:
                   stringValue: aws_cloudtrail
+              - key: integration.version
+                value:
+                  stringValue: "2.17.0"
               - key: provider.type
                 value:
                   stringValue: aws

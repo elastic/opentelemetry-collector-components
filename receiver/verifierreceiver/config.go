@@ -302,6 +302,11 @@ type IntegrationConfig struct {
 	// IntegrationName is the human-readable name of the integration.
 	IntegrationName string `mapstructure:"integration_name"`
 
+	// IntegrationVersion is the semantic version of the integration package (e.g., "2.17.0").
+	// Different versions may require different permissions. When empty, the latest
+	// registered permission set is used.
+	IntegrationVersion string `mapstructure:"integration_version"`
+
 	// Config contains provider-specific configuration.
 	// For AWS: may include regions, account_id, etc.
 	Config map[string]interface{} `mapstructure:"config"`

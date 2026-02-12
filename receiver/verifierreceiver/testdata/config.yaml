@@ -22,12 +22,14 @@ receivers:
           - integration_id: "int-cloudtrail-001"
             integration_type: "aws_cloudtrail"
             integration_name: "AWS CloudTrail"
+            integration_version: "2.17.0"
             config:
               account_id: "123456789012"
               region: "us-east-1"
           - integration_id: "int-guardduty-001"
             integration_type: "aws_guardduty"
             integration_name: "AWS GuardDuty"
+            integration_version: "1.5.0"
             config:
               account_id: "123456789012"
               region: "us-east-1"
@@ -37,6 +39,7 @@ receivers:
           - integration_id: "int-ec2-001"
             integration_type: "aws_ec2"
             integration_name: "AWS EC2 Metrics"
+            # No integration_version - will use latest permission set
             config:
               account_id: "123456789012"
               region: "us-west-2"

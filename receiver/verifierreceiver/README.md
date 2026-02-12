@@ -74,12 +74,14 @@ receivers:
           - integration_id: "int-cloudtrail-001"
             integration_type: "aws_cloudtrail"
             integration_name: "AWS CloudTrail"
+            integration_version: "2.17.0"  # Version-aware permissions
             config:
               account_id: "123456789012"
               region: "us-east-1"
           - integration_id: "int-guardduty-001"
             integration_type: "aws_guardduty"
             integration_name: "AWS GuardDuty"
+            integration_version: "1.5.0"
             config:
               account_id: "123456789012"
               region: "us-east-1"
@@ -90,6 +92,7 @@ receivers:
           - integration_id: "int-ec2-001"
             integration_type: "aws_ec2"
             integration_name: "AWS EC2 Metrics"
+            # No integration_version - uses latest permission set
             config:
               account_id: "123456789012"
 ```
@@ -161,6 +164,7 @@ receivers:
 | `integration_id` | `string` | No | Unique identifier for the integration instance |
 | `integration_type` | `string` | Yes | Package/integration type (e.g., `aws_cloudtrail`) |
 | `integration_name` | `string` | No | Human-readable name of the integration |
+| `integration_version` | `string` | No | Semantic version of the integration package (e.g., `2.17.0`). Different versions may require different permissions. When empty, the latest registered permission set is used. |
 | `config` | `map[string]interface{}` | No | Provider-specific configuration |
 
 ## Supported Integration Types
@@ -235,6 +239,7 @@ The receiver emits OTEL logs following the RFC structure. Each log record repres
 | `integration.id` | Integration instance identifier |
 | `integration.name` | Integration name |
 | `integration.type` | Integration type (e.g., `aws_cloudtrail`) |
+| `integration.version` | Integration package version (e.g., `2.17.0`) or `unspecified` |
 | `provider.type` | Provider type (`aws`, `azure`, `gcp`, `okta`) |
 | `provider.account` | Account identifier (if available) |
 | `provider.region` | Region (if available) |
@@ -247,6 +252,24 @@ The receiver emits OTEL logs following the RFC structure. Each log record repres
 | `verification.method` | Method used (`api_call`, `dry_run`, `http_probe`) |
 | `verification.endpoint` | API endpoint called for verification |
 | `verification.duration_ms` | Time taken for verification in milliseconds |
+
+## Version-Aware Permissions
+
+The permission registry supports versioned permission sets per integration type. Different versions of an integration package may require different permissions (for example, a new version might add a required SQS permission for queue-based ingestion).
+
+### How It Works
+
+- Each integration type is registered with one or more semver constraints (e.g., `>=2.0.0`, `>=1.0.0,<2.0.0`)
+- When `integration_version` is provided, the registry matches it against the constraints and returns the appropriate permission set
+- When `integration_version` is omitted, the latest (first registered) permission set is used
+- If the version does not match any constraint, a warning log with `permission.error_code: UnsupportedVersion` is emitted
+
+### Example: AWS CloudTrail Version Differences
+
+| Version Range | Change |
+|---------------|--------|
+| `>=2.0.0` | `sqs:ReceiveMessage` and `sqs:DeleteMessage` became **required** (queue-based ingestion is the default) |
+| `>=1.0.0,<2.0.0` | `sqs:ReceiveMessage` and `sqs:DeleteMessage` are **optional** (direct S3 polling was the default) |
 
 ## Architecture
 
@@ -333,6 +356,7 @@ receivers:
           - integration_id: "int-cloudtrail-001"
             integration_type: "aws_cloudtrail"
             integration_name: "AWS CloudTrail"
+            integration_version: "2.17.0"
             config:
               region: "us-east-1"
 

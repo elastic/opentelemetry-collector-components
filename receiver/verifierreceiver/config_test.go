@@ -65,6 +65,25 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: "",
 		},
 		{
+			name: "valid config with integration version",
+			config: Config{
+				CloudConnectorID: "cc-12345",
+				VerificationID:   "verify-abc123",
+				Policies: []PolicyConfig{
+					{
+						PolicyID: "policy-1",
+						Integrations: []IntegrationConfig{
+							{
+								IntegrationType:    "aws_cloudtrail",
+								IntegrationVersion: "2.17.0",
+							},
+						},
+					},
+				},
+			},
+			wantErr: "",
+		},
+		{
 			name: "valid config without AWS credentials (non-AWS integrations)",
 			config: Config{
 				CloudConnectorID: "cc-12345",

@@ -142,8 +142,10 @@ receivers:
         integrations:
           - integration_type: "aws_cloudtrail"
             integration_name: "CloudTrail"
+            integration_version: "2.17.0"
           - integration_type: "azure_activitylogs"
             integration_name: "Azure Activity"
+            integration_version: "1.0.0"
           - integration_type: "gcp_audit"
             integration_name: "GCP Audit"
           - integration_type: "okta_system"
@@ -282,7 +284,44 @@ curl -X GET "localhost:9200/logs-cloud_connector.permission_verification-default
 }'
 ```
 
-## 10. Quick Smoke Test
+## 10. Version-Aware Permission Testing
+
+The permission registry supports versioned permission sets. Different integration versions may require different permissions.
+
+### Test with a specific version:
+
+```yaml
+policies:
+  - policy_id: "version-test"
+    policy_name: "Version Test"
+    integrations:
+      - integration_type: "aws_cloudtrail"
+        integration_version: "2.17.0"  # v2+ requires SQS permissions
+      - integration_type: "aws_cloudtrail"
+        integration_version: "1.5.0"   # v1.x has SQS as optional
+```
+
+### Expected behavior:
+- `aws_cloudtrail` v2.17.0: `sqs:ReceiveMessage` and `sqs:DeleteMessage` are **required**
+- `aws_cloudtrail` v1.5.0: `sqs:ReceiveMessage` and `sqs:DeleteMessage` are **optional**
+- No version specified: uses the latest (v2+) permission set
+- Invalid version string: falls back to the latest permission set
+- Version that matches no constraint: emits a warning with `permission.error_code: UnsupportedVersion`
+
+### Unit tests for versioning:
+
+```bash
+go test ./... -run TestPermissionRegistry -v
+```
+
+This runs all version-aware test cases including:
+- `cloudtrail_v2_-_SQS_permissions_required`
+- `cloudtrail_v1_-_SQS_permissions_optional`
+- `cloudtrail_no_version_-_defaults_to_latest`
+- `cloudtrail_invalid_version_-_falls_back_to_latest`
+- `version_constraints_are_returned`
+
+## 11. Quick Smoke Test
 
 For a quick verification that everything compiles:
 

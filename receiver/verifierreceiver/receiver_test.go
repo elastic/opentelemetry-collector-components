@@ -324,8 +324,8 @@ func TestReceiver_MultipleIntegrations(t *testing.T) {
 func TestPermissionRegistry(t *testing.T) {
 	registry := NewPermissionRegistry()
 
-	t.Run("supported integration", func(t *testing.T) {
-		perms := registry.GetPermissions("aws_cloudtrail")
+	t.Run("supported integration - no version (latest)", func(t *testing.T) {
+		perms := registry.GetPermissions("aws_cloudtrail", "")
 		require.NotNil(t, perms)
 		assert.Equal(t, verifier.ProviderAWS, perms.Provider)
 		assert.NotEmpty(t, perms.Permissions)
@@ -343,7 +343,7 @@ func TestPermissionRegistry(t *testing.T) {
 	})
 
 	t.Run("unsupported integration", func(t *testing.T) {
-		perms := registry.GetPermissions("unknown_integration")
+		perms := registry.GetPermissions("unknown_integration", "")
 		assert.Nil(t, perms)
 		assert.False(t, registry.IsSupported("unknown_integration"))
 	})
@@ -364,7 +364,7 @@ func TestPermissionRegistry(t *testing.T) {
 
 		for _, integration := range awsIntegrations {
 			assert.True(t, registry.IsSupported(integration), "expected %s to be supported", integration)
-			perms := registry.GetPermissions(integration)
+			perms := registry.GetPermissions(integration, "")
 			require.NotNil(t, perms, "expected permissions for %s", integration)
 			assert.Equal(t, verifier.ProviderAWS, perms.Provider, "expected AWS provider for %s", integration)
 		}
@@ -379,7 +379,7 @@ func TestPermissionRegistry(t *testing.T) {
 
 		for _, integration := range azureIntegrations {
 			assert.True(t, registry.IsSupported(integration), "expected %s to be supported", integration)
-			perms := registry.GetPermissions(integration)
+			perms := registry.GetPermissions(integration, "")
 			require.NotNil(t, perms, "expected permissions for %s", integration)
 			assert.Equal(t, verifier.ProviderAzure, perms.Provider, "expected Azure provider for %s", integration)
 		}
@@ -394,7 +394,7 @@ func TestPermissionRegistry(t *testing.T) {
 
 		for _, integration := range gcpIntegrations {
 			assert.True(t, registry.IsSupported(integration), "expected %s to be supported", integration)
-			perms := registry.GetPermissions(integration)
+			perms := registry.GetPermissions(integration, "")
 			require.NotNil(t, perms, "expected permissions for %s", integration)
 			assert.Equal(t, verifier.ProviderGCP, perms.Provider, "expected GCP provider for %s", integration)
 		}
@@ -408,7 +408,7 @@ func TestPermissionRegistry(t *testing.T) {
 
 		for _, integration := range oktaIntegrations {
 			assert.True(t, registry.IsSupported(integration), "expected %s to be supported", integration)
-			perms := registry.GetPermissions(integration)
+			perms := registry.GetPermissions(integration, "")
 			require.NotNil(t, perms, "expected permissions for %s", integration)
 			assert.Equal(t, verifier.ProviderOkta, perms.Provider, "expected Okta provider for %s", integration)
 		}
@@ -420,5 +420,80 @@ func TestPermissionRegistry(t *testing.T) {
 		assert.NotEmpty(t, byProvider[verifier.ProviderAzure])
 		assert.NotEmpty(t, byProvider[verifier.ProviderGCP])
 		assert.NotEmpty(t, byProvider[verifier.ProviderOkta])
+	})
+
+	// Version-aware permission lookup tests
+	t.Run("cloudtrail v2 - SQS permissions required", func(t *testing.T) {
+		perms := registry.GetPermissions("aws_cloudtrail", "2.17.0")
+		require.NotNil(t, perms)
+		assert.Equal(t, verifier.ProviderAWS, perms.Provider)
+
+		// In v2+, sqs:ReceiveMessage and sqs:DeleteMessage should be required
+		for _, p := range perms.Permissions {
+			if p.Action == "sqs:ReceiveMessage" {
+				assert.True(t, p.Required, "sqs:ReceiveMessage should be required in v2+")
+			}
+			if p.Action == "sqs:DeleteMessage" {
+				assert.True(t, p.Required, "sqs:DeleteMessage should be required in v2+")
+			}
+		}
+	})
+
+	t.Run("cloudtrail v1 - SQS permissions optional", func(t *testing.T) {
+		perms := registry.GetPermissions("aws_cloudtrail", "1.5.0")
+		require.NotNil(t, perms)
+		assert.Equal(t, verifier.ProviderAWS, perms.Provider)
+
+		// In v1.x, sqs:ReceiveMessage and sqs:DeleteMessage should be optional
+		for _, p := range perms.Permissions {
+			if p.Action == "sqs:ReceiveMessage" {
+				assert.False(t, p.Required, "sqs:ReceiveMessage should be optional in v1.x")
+			}
+			if p.Action == "sqs:DeleteMessage" {
+				assert.False(t, p.Required, "sqs:DeleteMessage should be optional in v1.x")
+			}
+		}
+	})
+
+	t.Run("cloudtrail no version - defaults to latest (v2+)", func(t *testing.T) {
+		perms := registry.GetPermissions("aws_cloudtrail", "")
+		require.NotNil(t, perms)
+
+		// Should get v2+ permissions (latest)
+		for _, p := range perms.Permissions {
+			if p.Action == "sqs:ReceiveMessage" {
+				assert.True(t, p.Required, "default (latest) should have sqs:ReceiveMessage required")
+			}
+		}
+	})
+
+	t.Run("cloudtrail invalid version - falls back to latest", func(t *testing.T) {
+		perms := registry.GetPermissions("aws_cloudtrail", "not-a-version")
+		require.NotNil(t, perms)
+		// Should fall back to the first (latest) entry
+		for _, p := range perms.Permissions {
+			if p.Action == "sqs:ReceiveMessage" {
+				assert.True(t, p.Required, "invalid version should fall back to latest")
+			}
+		}
+	})
+
+	t.Run("guardduty with version - matches >=0.0.0", func(t *testing.T) {
+		perms := registry.GetPermissions("aws_guardduty", "3.0.0")
+		require.NotNil(t, perms)
+		assert.Equal(t, verifier.ProviderAWS, perms.Provider)
+	})
+
+	t.Run("version constraints are returned", func(t *testing.T) {
+		constraints := registry.GetVersionConstraints("aws_cloudtrail")
+		require.NotNil(t, constraints)
+		assert.Len(t, constraints, 2)
+		assert.Equal(t, ">=2.0.0", constraints[0])
+		assert.Equal(t, ">=1.0.0,<2.0.0", constraints[1])
+	})
+
+	t.Run("version constraints for unknown integration", func(t *testing.T) {
+		constraints := registry.GetVersionConstraints("unknown_integration")
+		assert.Nil(t, constraints)
 	})
 }
