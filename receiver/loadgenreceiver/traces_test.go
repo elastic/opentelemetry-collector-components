@@ -42,7 +42,7 @@ func TestTracesGenerator_doneCh(t *testing.T) {
 		t.Run(fmt.Sprintf("concurrency=%d", concurrency), func(t *testing.T) {
 			doneCh := make(chan Stats)
 			sink := &consumertest.TracesSink{}
-			cfg := createDefaultReceiverConfig(nil, nil, doneCh)
+			cfg := createDefaultReceiverConfig(nil, nil, doneCh, nil)
 			cfg.(*Config).Traces.MaxReplay = maxReplay
 			cfg.(*Config).Concurrency = concurrency
 			r, _ := createTracesReceiver(context.Background(), receiver.Settings{
@@ -73,10 +73,10 @@ func TestTracesGenerator_MaxBufferSizeAttr(t *testing.T) {
 			dir := t.TempDir()
 			filePath := filepath.Join(dir, strings.ReplaceAll(t.Name(), "/", "_")+".jsonl")
 			content := []byte(dummyData)
-			require.NoError(t, os.WriteFile(filePath, content, 0644))
+			require.NoError(t, os.WriteFile(filePath, content, 0o644))
 
 			doneCh := make(chan Stats)
-			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+			cfg := createDefaultReceiverConfig(nil, nil, doneCh, nil)
 			cfg.(*Config).Traces.MaxBufferSize = maxBufferSize
 			cfg.(*Config).Traces.JsonlFile = JsonlFile(filePath)
 
