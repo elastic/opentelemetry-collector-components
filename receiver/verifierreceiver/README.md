@@ -1,0 +1,366 @@
+# Verifier Receiver
+
+## Overview
+
+The Verifier Receiver is a custom EDOT (Elastic Distribution of OpenTelemetry) collector component that verifies permissions for cloud connector based integrations and reports results as OTEL logs to Elasticsearch.
+
+## Features
+
+- **Multi-Provider Architecture**: Extensible design supporting AWS, Azure, GCP, Okta, and other providers
+- **Permission Registry**: Internal mapping of integration types to their required permissions
+- **Active Verification**: Makes actual API calls to verify permissions (granted/denied)
+- **On-demand verification**: Proactively check all permissions for attached integrations
+- **Structured reporting**: Output OTEL logs with full policy/integration context to Elasticsearch
+- **Policy-aware**: Results are grouped by Cloud Connector, policy, and integration for clear remediation
+- **Verification Methods**: Supports `api_call` (minimal API calls) and `dry_run` (EC2-style DryRun parameter)
+
+## Supported Providers
+
+| Provider | Status | Integrations |
+|----------|--------|--------------|
+| **AWS** | Active | CloudTrail, GuardDuty, Security Hub, S3, EC2, VPC Flow Logs, WAF, Route53, ELB, CloudFront |
+| **Azure** | Planned | Activity Logs, Audit Logs, Blob Storage |
+| **GCP** | Planned | Audit Logs, Cloud Storage, Pub/Sub |
+| **Okta** | Planned | System Logs, User Events |
+
+## Configuration
+
+The receiver configuration follows the RFC structure for Cloud Connector Permission Verification:
+
+```yaml
+receivers:
+  verifier:
+    # Cloud Connector identification
+    cloud_connector_id: "cc-12345"
+    cloud_connector_name: "Production Connector"
+    
+    # Verification session
+    verification_id: "verify-abc123"
+    verification_type: "on_demand"  # or "scheduled"
+    
+    # Provider credentials
+    providers:
+      # AWS Authentication - Cloud Connector STS AssumeRole
+      aws:
+        credentials:
+          role_arn: "arn:aws:iam::123456789012:role/ElasticAgentRole"
+          external_id: "elastic-external-id-from-setup"
+          default_region: "us-east-1"
+      
+      # Azure Authentication (future)
+      # azure:
+      #   credentials:
+      #     tenant_id: "your-tenant-id"
+      #     client_id: "your-client-id"
+      #     client_secret: "your-client-secret"
+      
+      # GCP Authentication (future)
+      # gcp:
+      #   credentials:
+      #     project_id: "your-project-id"
+      #     use_default_credentials: true
+      
+      # Okta Authentication (future)
+      # okta:
+      #   credentials:
+      #     domain: "dev-123456.okta.com"
+      #     api_token: "your-api-token"
+    
+    # Policy context from Fleet API (no permissions specified!)
+    policies:
+      - policy_id: "policy-1"
+        policy_name: "AWS Security Monitoring"
+        integrations:
+          - integration_id: "int-cloudtrail-001"
+            integration_type: "aws_cloudtrail"
+            integration_name: "AWS CloudTrail"
+            config:
+              account_id: "123456789012"
+              region: "us-east-1"
+          - integration_id: "int-guardduty-001"
+            integration_type: "aws_guardduty"
+            integration_name: "AWS GuardDuty"
+            config:
+              account_id: "123456789012"
+              region: "us-east-1"
+      
+      - policy_id: "policy-2"
+        policy_name: "AWS Infrastructure"
+        integrations:
+          - integration_id: "int-ec2-001"
+            integration_type: "aws_ec2"
+            integration_name: "AWS EC2 Metrics"
+            config:
+              account_id: "123456789012"
+```
+
+### Configuration Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `cloud_connector_id` | `string` | Yes | - | Unique identifier for the Cloud Connector |
+| `cloud_connector_name` | `string` | No | - | Human-readable name of the Cloud Connector |
+| `verification_id` | `string` | Yes | - | Unique identifier for this verification session |
+| `verification_type` | `string` | No | `on_demand` | Type of verification (`on_demand` or `scheduled`) |
+| `providers` | `ProvidersConfig` | No | - | Provider credentials for AWS, Azure, GCP, Okta |
+| `policies` | `[]PolicyConfig` | Yes | - | List of policies to verify |
+
+### Provider Credentials
+
+#### AWS (`providers.aws.credentials`)
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `role_arn` | `string` | Yes* | - | ARN of the IAM role to assume |
+| `external_id` | `string` | Yes* | - | External ID for confused deputy protection |
+| `default_region` | `string` | No | `us-east-1` | Default AWS region for API calls |
+| `use_default_credentials` | `bool` | No | `false` | Use AWS SDK default credential chain (for testing) |
+
+*Required when using Cloud Connector authentication. Not required if `use_default_credentials` is `true`.
+
+#### Azure (`providers.azure.credentials`) - Future
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `tenant_id` | `string` | Yes* | Azure AD tenant ID |
+| `client_id` | `string` | Yes* | Azure AD application client ID |
+| `client_secret` | `string` | Yes* | Azure AD application secret |
+| `subscription_id` | `string` | No | Azure subscription ID |
+| `use_managed_identity` | `bool` | No | Use Azure Managed Identity |
+
+#### GCP (`providers.gcp.credentials`) - Future
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `project_id` | `string` | No | GCP project ID |
+| `service_account_key` | `string` | No | Service account JSON key |
+| `use_default_credentials` | `bool` | No | Use application default credentials |
+| `impersonate_service_account` | `string` | No | Service account to impersonate |
+
+#### Okta (`providers.okta.credentials`) - Future
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `domain` | `string` | Yes | Okta domain (e.g., `dev-123456.okta.com`) |
+| `api_token` | `string` | Yes* | Okta API token |
+| `client_id` | `string` | No | OAuth 2.0 client ID |
+| `private_key` | `string` | No | Private key for OAuth authentication |
+
+### PolicyConfig
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `policy_id` | `string` | Yes | Unique identifier for the policy |
+| `policy_name` | `string` | No | Human-readable name of the policy |
+| `integrations` | `[]IntegrationConfig` | Yes | List of integrations within this policy |
+
+### IntegrationConfig
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `integration_id` | `string` | No | Unique identifier for the integration instance |
+| `integration_type` | `string` | Yes | Package/integration type (e.g., `aws_cloudtrail`) |
+| `integration_name` | `string` | No | Human-readable name of the integration |
+| `config` | `map[string]interface{}` | No | Provider-specific configuration |
+
+## Supported Integration Types
+
+### AWS Integrations
+
+| Integration Type | Permissions Verified |
+|-----------------|---------------------|
+| `aws_cloudtrail` | `cloudtrail:LookupEvents`, `cloudtrail:DescribeTrails`, `s3:GetObject`, `s3:ListBucket`, `sqs:ReceiveMessage` |
+| `aws_guardduty` | `guardduty:ListDetectors`, `guardduty:GetFindings`, `guardduty:ListFindings` |
+| `aws_securityhub` | `securityhub:GetFindings`, `securityhub:DescribeHub` |
+| `aws_s3` | `s3:ListBucket`, `s3:GetObject`, `s3:GetBucketLocation` |
+| `aws_ec2` | `ec2:DescribeInstances`, `ec2:DescribeRegions`, `cloudwatch:GetMetricData` |
+| `aws_vpcflow` | `logs:FilterLogEvents`, `logs:DescribeLogGroups`, `ec2:DescribeFlowLogs` |
+| `aws_waf` | `wafv2:GetWebACL`, `wafv2:ListWebACLs`, `s3:GetObject` |
+| `aws_route53` | `logs:FilterLogEvents`, `logs:DescribeLogGroups`, `route53:ListHostedZones` |
+| `aws_elb` | `s3:GetObject`, `s3:ListBucket`, `elasticloadbalancing:DescribeLoadBalancers` |
+| `aws_cloudfront` | `s3:GetObject`, `s3:ListBucket`, `cloudfront:ListDistributions` |
+
+### Azure Integrations (Planned)
+
+| Integration Type | Permissions Verified |
+|-----------------|---------------------|
+| `azure_activitylogs` | `Microsoft.Insights/eventtypes/values/Read` |
+| `azure_auditlogs` | `Microsoft.Insights/eventtypes/values/Read` |
+| `azure_blob_storage` | `Microsoft.Storage/storageAccounts/blobServices/containers/read` |
+
+### GCP Integrations (Planned)
+
+| Integration Type | Permissions Verified |
+|-----------------|---------------------|
+| `gcp_audit` | `logging.logEntries.list` |
+| `gcp_storage` | `storage.objects.get`, `storage.objects.list` |
+| `gcp_pubsub` | `pubsub.subscriptions.consume` |
+
+### Okta Integrations (Planned)
+
+| Integration Type | Permissions Verified |
+|-----------------|---------------------|
+| `okta_system` | `okta.logs.read` |
+| `okta_users` | `okta.users.read` |
+
+## Output
+
+The receiver emits OTEL logs following the RFC structure. Each log record represents a single permission verification result.
+
+### Resource Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `cloud_connector.id` | Cloud Connector identifier |
+| `cloud_connector.name` | Cloud Connector name |
+| `verification.id` | Verification session ID |
+| `verification.timestamp` | When verification started |
+| `verification.type` | `on_demand` or `scheduled` |
+| `service.name` | Always `permission-verifier` |
+| `service.version` | Receiver version |
+
+### Scope
+
+| Attribute | Value |
+|-----------|-------|
+| `name` | `elastic.permission_verification` |
+| `version` | `0.0.0` |
+
+### Log Record Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `policy.id` | Policy identifier |
+| `policy.name` | Policy name |
+| `integration.id` | Integration instance identifier |
+| `integration.name` | Integration name |
+| `integration.type` | Integration type (e.g., `aws_cloudtrail`) |
+| `provider.type` | Provider type (`aws`, `azure`, `gcp`, `okta`) |
+| `provider.account` | Account identifier (if available) |
+| `provider.region` | Region (if available) |
+| `permission.action` | Permission being checked (e.g., `cloudtrail:LookupEvents`) |
+| `permission.category` | Category (`data_access`, `management`) |
+| `permission.status` | Result (`granted`, `denied`, `error`, `skipped`) |
+| `permission.required` | Whether this permission is required |
+| `permission.error_code` | Error code from provider (if status is `denied` or `error`) |
+| `permission.error_message` | Error message from provider (if status is `denied` or `error`) |
+| `verification.method` | Method used (`api_call`, `dry_run`, `http_probe`) |
+| `verification.endpoint` | API endpoint called for verification |
+| `verification.duration_ms` | Time taken for verification in milliseconds |
+
+## Architecture
+
+The receiver uses a registry-based architecture for extensibility:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Verifier Receiver                          │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌───────────────────┐     ┌───────────────────────────────┐   │
+│  │ Permission        │     │ Verifier Registry             │   │
+│  │ Registry          │     │                               │   │
+│  │                   │     │  ┌─────────────────────────┐  │   │
+│  │ aws_cloudtrail    │     │  │ AWS Verifier (active)   │  │   │
+│  │ aws_guardduty     │     │  └─────────────────────────┘  │   │
+│  │ azure_activitylogs│     │  ┌─────────────────────────┐  │   │
+│  │ gcp_audit         │     │  │ Azure Verifier (future) │  │   │
+│  │ okta_system       │     │  └─────────────────────────┘  │   │
+│  │ ...               │     │  ┌─────────────────────────┐  │   │
+│  └───────────────────┘     │  │ GCP Verifier (future)   │  │   │
+│                            │  └─────────────────────────┘  │   │
+│                            │  ┌─────────────────────────┐  │   │
+│                            │  │ Okta Verifier (future)  │  │   │
+│                            │  └─────────────────────────┘  │   │
+│                            └───────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Adding a New Provider
+
+1. Create a verifier in `internal/verifier/` implementing the `Verifier` interface
+2. Create a factory function (e.g., `NewAzureVerifierFactory()`)
+3. Register the factory in `receiver.go`
+4. Add integration mappings in `registry.go`
+
+## AWS Authentication
+
+### Cloud Connector Authentication (Recommended)
+
+When deploying as part of a Cloud Connector, the receiver uses STS AssumeRole with an external ID:
+
+```yaml
+providers:
+  aws:
+    credentials:
+      role_arn: "arn:aws:iam::123456789012:role/ElasticAgentRole"
+      external_id: "elastic-unique-external-id"
+      default_region: "us-east-1"
+```
+
+### Local Development
+
+For local testing, use the default credential chain:
+
+```yaml
+providers:
+  aws:
+    credentials:
+      use_default_credentials: true
+      default_region: "us-east-1"
+```
+
+Run with: `AWS_PROFILE=your-profile ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-csp-profile.yaml`
+
+## Example Pipeline
+
+```yaml
+receivers:
+  verifier:
+    cloud_connector_id: "${CLOUD_CONNECTOR_ID}"
+    verification_id: "${VERIFICATION_ID}"
+    
+    providers:
+      aws:
+        credentials:
+          role_arn: "${AWS_ROLE_ARN}"
+          external_id: "${AWS_EXTERNAL_ID}"
+          default_region: "us-east-1"
+    
+    policies:
+      - policy_id: "policy-1"
+        policy_name: "AWS Security Monitoring"
+        integrations:
+          - integration_id: "int-cloudtrail-001"
+            integration_type: "aws_cloudtrail"
+            integration_name: "AWS CloudTrail"
+            config:
+              region: "us-east-1"
+
+exporters:
+  elasticsearch:
+    endpoints: ["${ES_ENDPOINT}"]
+    api_key: "${ES_API_KEY}"
+    logs_index: "logs-cloud_connector.permission_verification-default"
+
+service:
+  pipelines:
+    logs:
+      receivers: [verifier]
+      exporters: [elasticsearch]
+```
+
+## Development Status
+
+This receiver is currently in **development** stability level.
+
+### Planned
+- [ ] Azure verifier implementation
+- [ ] GCP verifier implementation
+- [ ] Okta verifier implementation
+- [ ] Fleet API integration for triggering verification
+
+## Related
+
+- [RFC: OTEL Permission Verifier Receiver](https://docs.google.com/document/d/...)
+- [GitHub Issue #15628](https://github.com/elastic/security-team/issues/15628)
+- [Integration Package](https://github.com/elastic/integrations/tree/main/packages/verifier_otel)
