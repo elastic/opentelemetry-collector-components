@@ -18,7 +18,7 @@
 // Package verifier provides permission verification for cloud providers.
 // It defines interfaces and types for verifying permissions across different
 // cloud providers (AWS, Azure, GCP) and identity providers (Okta, etc.).
-package verifier
+package verifier // import "github.com/elastic/opentelemetry-collector-components/receiver/verifierreceiver/internal/verifier"
 
 import (
 	"context"
