@@ -18,6 +18,7 @@
 package ecs // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 
 import (
+	"strconv"
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -73,12 +74,64 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if !isSupportedAttribute(k) && !isLabelAttribute(k) {
-			// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
-			attributes.PutStr("labels."+replaceDots(k), v.AsString())
+			// Other attributes that are not supported by ECS are moved to labels.
+			setLabelAttribute(attributes, replaceDots(k), v)
 			attributes.Remove(k)
 		}
 		return true
 	})
+}
+
+func setLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
+	switch value.Type() {
+	case pcommon.ValueTypeStr:
+		attributes.PutStr("labels."+key, value.Str())
+	case pcommon.ValueTypeBool:
+		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
+	case pcommon.ValueTypeInt:
+		attributes.PutDouble("numeric_labels."+key, float64(value.Int()))
+	case pcommon.ValueTypeDouble:
+		attributes.PutDouble("numeric_labels."+key, value.Double())
+	case pcommon.ValueTypeSlice:
+		slice := value.Slice()
+		if slice.Len() == 0 {
+			return
+		}
+		switch slice.At(0).Type() {
+		case pcommon.ValueTypeStr:
+			target := attributes.PutEmptySlice("labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeStr {
+					target.AppendEmpty().SetStr(item.Str())
+				}
+			}
+		case pcommon.ValueTypeBool:
+			target := attributes.PutEmptySlice("labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeBool {
+					target.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
+				}
+			}
+		case pcommon.ValueTypeDouble:
+			target := attributes.PutEmptySlice("numeric_labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeDouble {
+					target.AppendEmpty().SetDouble(item.Double())
+				}
+			}
+		case pcommon.ValueTypeInt:
+			target := attributes.PutEmptySlice("numeric_labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeInt {
+					target.AppendEmpty().SetDouble(float64(item.Int()))
+				}
+			}
+		}
+	}
 }
 
 func replaceDots(key string) string {
@@ -267,7 +320,7 @@ func ApplyResourceConventions(resource pcommon.Resource) {
 	setHostnameFromKubernetes(resource)
 }
 
-// setHostnameFromKubernetes sets the host.hostname attribute based on kubernetes attributes for backwards compatibility with MIS and APM Server.
+// setHostnameFromKubernetes sets host.hostname from kubernetes attributes for APM ingestion compatibility.
 func setHostnameFromKubernetes(resource pcommon.Resource) {
 	attrs := resource.Attributes()
 

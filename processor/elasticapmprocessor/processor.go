@@ -281,7 +281,7 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			resource := resourceLog.Resource()
 			ecs.TranslateResourceMetadata(resource)
 			ecs.ApplyResourceConventions(resource)
-			ecs.ApplyMISLogConventions(resource)
+			ecs.ApplyLogConventions(resource)
 			routing.EncodeDataStream(resource, routing.DataStreamTypeLogs, p.cfg.ServiceNameInDataStreamDataset)
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
@@ -300,7 +300,8 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 					}
 
 					if _, fromElasticAPMIntake := logRecord.Attributes().Get("processor.event"); !fromElasticAPMIntake {
-						ecs.TranslateOTLPLogAttributesForMIS(logRecord.Attributes())
+						ecs.ApplyOTLPLogBodyConventions(logRecord)
+						ecs.ApplyOTLPLogAttributeConventions(logRecord.Attributes())
 					}
 				}
 			}

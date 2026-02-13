@@ -33,8 +33,8 @@ const (
 
 var serviceNameInvalidRegexp = regexp.MustCompile("[^a-zA-Z0-9 _-]")
 
-// ApplyMISLogConventions applies MIS-compatible defaults and sanitization for OTLP logs.
-func ApplyMISLogConventions(resource pcommon.Resource) {
+// ApplyLogConventions applies defaults and sanitization for ECS log data flow.
+func ApplyLogConventions(resource pcommon.Resource) {
 	attrs := resource.Attributes()
 	normalizeServiceName(attrs)
 	setServiceLanguage(attrs)

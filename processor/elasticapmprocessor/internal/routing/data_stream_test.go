@@ -18,6 +18,7 @@
 package routing_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
@@ -63,6 +64,21 @@ func TestDataStreamEncoderWithServiceName(t *testing.T) {
 	dataStreamNamespace, ok := attributes.Get("data_stream.namespace")
 	assert.True(t, ok)
 	assert.Equal(t, "default", dataStreamNamespace.Str())
+}
+
+func TestDataStreamEncoderWithServiceNameSanitizesAndTruncates(t *testing.T) {
+	resource := pcommon.NewResource()
+	attributes := resource.Attributes()
+	attributes.PutStr("service.name", strings.Repeat("A-", 80))
+
+	routing.EncodeDataStream(resource, "logs", true)
+
+	dataStreamDataset, ok := attributes.Get("data_stream.dataset")
+	assert.True(t, ok)
+	assert.Len(t, dataStreamDataset.Str(), routing.MaxDataStreamBytes)
+	assert.True(t, strings.HasPrefix(dataStreamDataset.Str(), "apm.app."))
+	assert.False(t, strings.Contains(dataStreamDataset.Str(), "-"))
+	assert.Equal(t, strings.ToLower(dataStreamDataset.Str()), dataStreamDataset.Str())
 }
 
 func TestIsErrorEvent(t *testing.T) {
@@ -281,4 +297,20 @@ func TestRouteMetricDataPoint(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRouteMetricDataPointSanitizesAndTruncatesDataset(t *testing.T) {
+	attrs := pcommon.NewMap()
+	attrs.PutStr("transaction.id", "abc123")
+	attrs.PutStr("metricset.name", strings.Repeat("Very-Long-Metric-Set-", 20))
+	attrs.PutStr("metricset.interval", "1m")
+
+	isInternal := routing.EncodeDataStreamMetricDataPoint(attrs, "transaction.duration", true)
+	assert.True(t, isInternal)
+
+	dataStreamDataset, ok := attrs.Get("data_stream.dataset")
+	assert.True(t, ok)
+	assert.Len(t, dataStreamDataset.Str(), routing.MaxDataStreamBytes)
+	assert.False(t, strings.Contains(dataStreamDataset.Str(), "-"))
+	assert.Equal(t, strings.ToLower(dataStreamDataset.Str()), dataStreamDataset.Str())
 }

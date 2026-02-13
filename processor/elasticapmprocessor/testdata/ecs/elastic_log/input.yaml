@@ -343,3 +343,26 @@ resourceLogs:
               stringValue: test log message
             timeUnixNano: "1581452772000000321"
         scope: {}
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: my.service.logs
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: HTTP request processed successfully
+            attributes:
+              - key: http.method
+                value:
+                  stringValue: GET
+              - key: http.url
+                value:
+                  stringValue: https://api.example.com/users
+              - key: http.status_code
+                value:
+                  intValue: "200"
+              - key: http.response_content_length
+                value:
+                  intValue: "1024"
+        scope: {}

@@ -20,6 +20,7 @@ package ecs
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
 )
@@ -111,4 +112,49 @@ func TestApplyResourceConventions(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestTranslateResourceMetadata_UnsupportedTypeConversions(t *testing.T) {
+	resource := pcommon.NewResource()
+	attrs := resource.Attributes()
+	attrs.PutStr("unsupported.string", "foo")
+	attrs.PutBool("unsupported.bool", true)
+	attrs.PutInt("unsupported.int", 42)
+	attrs.PutDouble("unsupported.double", 1.25)
+
+	stringSlice := attrs.PutEmptySlice("unsupported.string.slice")
+	stringSlice.AppendEmpty().SetStr("a")
+	stringSlice.AppendEmpty().SetStr("b")
+
+	intSlice := attrs.PutEmptySlice("unsupported.int.slice")
+	intSlice.AppendEmpty().SetInt(10)
+	intSlice.AppendEmpty().SetInt(20)
+
+	mapValue := attrs.PutEmptyMap("unsupported.map")
+	mapValue.PutStr("k", "v")
+
+	TranslateResourceMetadata(resource)
+
+	stringLabel, _ := attrs.Get("labels.unsupported_string")
+	assert.Equal(t, "foo", stringLabel.Str())
+	boolLabel, _ := attrs.Get("labels.unsupported_bool")
+	assert.Equal(t, "true", boolLabel.Str())
+
+	intLabel, _ := attrs.Get("numeric_labels.unsupported_int")
+	assert.Equal(t, float64(42), intLabel.Double())
+	doubleLabel, _ := attrs.Get("numeric_labels.unsupported_double")
+	assert.Equal(t, 1.25, doubleLabel.Double())
+
+	stringSliceLabel, _ := attrs.Get("labels.unsupported_string_slice")
+	assert.Equal(t, []any{"a", "b"}, stringSliceLabel.Slice().AsRaw())
+	intSliceLabel, _ := attrs.Get("numeric_labels.unsupported_int_slice")
+	assert.Equal(t, []any{float64(10), float64(20)}, intSliceLabel.Slice().AsRaw())
+
+	_, hasMapLabel := attrs.Get("labels.unsupported_map")
+	assert.False(t, hasMapLabel)
+
+	_, hasSourceString := attrs.Get("unsupported.string")
+	assert.False(t, hasSourceString)
+	_, hasSourceMap := attrs.Get("unsupported.map")
+	assert.False(t, hasSourceMap)
 }

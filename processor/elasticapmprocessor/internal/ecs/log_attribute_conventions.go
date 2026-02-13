@@ -28,9 +28,9 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 )
 
-// TranslateOTLPLogAttributesForMIS applies MIS-compatible OTLP log attribute handling.
+// ApplyOTLPLogAttributeConventions applies OTLP log attribute handling used in ECS flow.
 // Unsupported OTLP log attributes are moved into labels.* / numeric_labels.* with de-dotted keys.
-func TranslateOTLPLogAttributesForMIS(attributes pcommon.Map) {
+func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
 	keys := make([]string, 0, attributes.Len())
 	attributes.Range(func(k string, _ pcommon.Value) bool {
 		keys = append(keys, k)

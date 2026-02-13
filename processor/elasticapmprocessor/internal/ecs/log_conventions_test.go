@@ -26,12 +26,12 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
-func TestApplyMISLogConventions(t *testing.T) {
+func TestApplyLogConventions(t *testing.T) {
 	t.Run("sets defaults and sanitizes service name", func(t *testing.T) {
 		resource := pcommon.NewResource()
 		resource.Attributes().PutStr(string(semconv.ServiceNameKey), "my.service.logs")
 
-		ApplyMISLogConventions(resource)
+		ApplyLogConventions(resource)
 
 		serviceName, _ := resource.Attributes().Get(string(semconv.ServiceNameKey))
 		assert.Equal(t, "my_service_logs", serviceName.Str())
@@ -54,7 +54,7 @@ func TestApplyMISLogConventions(t *testing.T) {
 		attrs.PutStr(string(semconv.DeploymentEnvironmentNameKey), "prod")
 		attrs.PutStr("agent.version", "1.2.3")
 
-		ApplyMISLogConventions(resource)
+		ApplyLogConventions(resource)
 
 		serviceName, _ := attrs.Get(string(semconv.ServiceNameKey))
 		assert.Equal(t, "unknown", serviceName.Str())

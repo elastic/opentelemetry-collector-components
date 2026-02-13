@@ -24,7 +24,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
-func TestTranslateOTLPLogAttributesForMIS(t *testing.T) {
+func TestApplyOTLPLogAttributeConventions(t *testing.T) {
 	attrs := pcommon.NewMap()
 	attrs.PutStr("http.method", "GET")
 	attrs.PutInt("http.status_code", 200)
@@ -43,7 +43,7 @@ func TestTranslateOTLPLogAttributesForMIS(t *testing.T) {
 	intSlice.AppendEmpty().SetInt(200)
 	intSlice.AppendEmpty().SetInt(201)
 
-	TranslateOTLPLogAttributesForMIS(attrs)
+	ApplyOTLPLogAttributeConventions(attrs)
 
 	httpMethod, _ := attrs.Get("labels.http_method")
 	assert.Equal(t, "GET", httpMethod.Str())
