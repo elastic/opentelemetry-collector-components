@@ -269,7 +269,8 @@ func (s *spanEnrichmentContext) enrichTransaction(
 		attribute.PutBool(span.Attributes(), elasticattr.TransactionRoot, isTraceRoot(span))
 	}
 	if cfg.Name.Enabled {
-		attribute.PutStr(span.Attributes(), elasticattr.TransactionName, span.Name())
+		// do not set transaction name to an empty str to match prior apm data behavior
+		attribute.PutNonEmptyStr(span.Attributes(), elasticattr.TransactionName, span.Name())
 		if cfg.ClearSpanName.Enabled {
 			span.SetName("")
 		}
