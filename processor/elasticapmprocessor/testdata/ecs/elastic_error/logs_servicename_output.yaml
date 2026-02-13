@@ -16,6 +16,15 @@ resourceLogs:
         - key: agent.name
           value:
             stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
+        - key: service.language.name
+          value:
+            stringValue: unknown
     scopeLogs:
       - logRecords:
           - attributes:
@@ -41,7 +50,7 @@ resourceLogs:
               stringValue: Error occurred
             timeUnixNano: "1000000000"
           - attributes:
-              - key: log.level
+              - key: labels.log_level
                 value:
                   stringValue: info
             body:

@@ -1,0 +1,48 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: my_service_logs
+        - key: service.language.name
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: data_stream.type
+          value:
+            stringValue: logs
+        - key: data_stream.dataset
+          value:
+            stringValue: apm.app.my_service_logs
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
+        - key: agent.name
+          value:
+            stringValue: otlp
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: HTTP request processed successfully
+            attributes:
+              - key: labels.http_method
+                value:
+                  stringValue: GET
+              - key: labels.http_url
+                value:
+                  stringValue: https://api.example.com/users
+              - key: numeric_labels.http_status_code
+                value:
+                  doubleValue: 200
+              - key: numeric_labels.http_response_content_length
+                value:
+                  doubleValue: 1024
+        scope: {}

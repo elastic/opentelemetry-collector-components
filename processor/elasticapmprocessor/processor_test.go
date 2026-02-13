@@ -112,6 +112,13 @@ func TestProcessor(t *testing.T) {
 			testType:    "logs",
 			cfg:         apmConfig,
 		},
+		"ecs_log_mis_parity": {
+			input:       "testdata/ecs/mis_parity_log/input.yaml",
+			output:      "testdata/ecs/mis_parity_log/output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
 		"ecs_metrics": {
 			input:       "testdata/ecs/elastic_metric/input.yaml",
 			output:      "testdata/ecs/elastic_metric/output.yaml",

@@ -16,6 +16,15 @@ resourceLogs:
         - key: agent.name
           value:
             stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
+        - key: service.language.name
+          value:
+            stringValue: unknown
     scopeLogs:
       - logRecords:
           - body:
