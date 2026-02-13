@@ -56,7 +56,6 @@ type router[C any] struct {
 	consumers          []ct[C]
 
 	logger           *zap.Logger
-	signal           pipeline.Signal
 	telemetryBuilder *metadata.TelemetryBuilder
 
 	mu      sync.Mutex
@@ -78,7 +77,6 @@ func newRouter[C any](
 	cfg *Config,
 	settings component.TelemetrySettings,
 	provider consumerProvider[C],
-	signal pipeline.Signal,
 ) (*router[C], error) {
 	sortedMetadataKeys := slices.Clone(cfg.RoutingKeys.MeasureBy)
 	slices.Sort(sortedMetadataKeys)
@@ -119,7 +117,6 @@ func newRouter[C any](
 		defaultConsumer:    defaultConsumer,
 		consumers:          consumers,
 		logger:             settings.Logger,
-		signal:             signal,
 		telemetryBuilder:   telemetryBuilder,
 		stop:               make(chan struct{}),
 		decision:           make(map[string]ct[C]),
@@ -352,7 +349,6 @@ func (r *router[C]) recordRoutedMetric(ctx context.Context, pk string, bucket st
 		metric.WithAttributes(
 			attribute.String("cardinality_bucket", bucket),
 			attribute.String("partition_key", pk),
-			attribute.String("signal", fmt.Sprint(r.signal)),
 		),
 	)
 }
