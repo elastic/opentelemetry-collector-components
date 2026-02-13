@@ -53,6 +53,9 @@ func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *T
 	enricherConfig := cfg.Config
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
+	// disable the transaction result enrichment to avoid deriving a value
+	// when the provided result is empty to match existing apm-data logic
+	ecsEnricherConfig.Transaction.Result.Enabled = false
 	return &TraceProcessor{
 		next:        next,
 		logger:      logger,
