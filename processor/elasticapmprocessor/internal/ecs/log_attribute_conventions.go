@@ -18,7 +18,6 @@
 package ecs // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 
 import (
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -94,58 +93,6 @@ func shouldKeepLogAttribute(attr string) bool {
 	}
 
 	return false
-}
-
-func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
-	switch value.Type() {
-	case pcommon.ValueTypeStr:
-		attributes.PutStr("labels."+key, truncate(value.Str()))
-	case pcommon.ValueTypeBool:
-		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
-	case pcommon.ValueTypeInt:
-		attributes.PutDouble("numeric_labels."+key, float64(value.Int()))
-	case pcommon.ValueTypeDouble:
-		attributes.PutDouble("numeric_labels."+key, value.Double())
-	case pcommon.ValueTypeSlice:
-		slice := value.Slice()
-		if slice.Len() == 0 {
-			return
-		}
-		switch slice.At(0).Type() {
-		case pcommon.ValueTypeStr:
-			target := attributes.PutEmptySlice("labels." + key)
-			for i := 0; i < slice.Len(); i++ {
-				item := slice.At(i)
-				if item.Type() == pcommon.ValueTypeStr {
-					target.AppendEmpty().SetStr(truncate(item.Str()))
-				}
-			}
-		case pcommon.ValueTypeBool:
-			target := attributes.PutEmptySlice("labels." + key)
-			for i := 0; i < slice.Len(); i++ {
-				item := slice.At(i)
-				if item.Type() == pcommon.ValueTypeBool {
-					target.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
-				}
-			}
-		case pcommon.ValueTypeDouble:
-			target := attributes.PutEmptySlice("numeric_labels." + key)
-			for i := 0; i < slice.Len(); i++ {
-				item := slice.At(i)
-				if item.Type() == pcommon.ValueTypeDouble {
-					target.AppendEmpty().SetDouble(item.Double())
-				}
-			}
-		case pcommon.ValueTypeInt:
-			target := attributes.PutEmptySlice("numeric_labels." + key)
-			for i := 0; i < slice.Len(); i++ {
-				item := slice.At(i)
-				if item.Type() == pcommon.ValueTypeInt {
-					target.AppendEmpty().SetDouble(float64(item.Int()))
-				}
-			}
-		}
-	}
 }
 
 // ApplyScopeDataStreamConventions applies scope-level data_stream dataset/namespace values

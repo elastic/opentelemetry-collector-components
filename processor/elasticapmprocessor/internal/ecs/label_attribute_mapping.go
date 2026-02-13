@@ -1,0 +1,77 @@
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+package ecs
+
+import (
+	"strconv"
+
+	"go.opentelemetry.io/collector/pdata/pcommon"
+)
+
+// setLabelAttributeValue maps unsupported values into labels.* / numeric_labels.*.
+func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
+	switch value.Type() {
+	case pcommon.ValueTypeStr:
+		attributes.PutStr("labels."+key, truncate(value.Str()))
+	case pcommon.ValueTypeBool:
+		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
+	case pcommon.ValueTypeInt:
+		attributes.PutDouble("numeric_labels."+key, float64(value.Int()))
+	case pcommon.ValueTypeDouble:
+		attributes.PutDouble("numeric_labels."+key, value.Double())
+	case pcommon.ValueTypeSlice:
+		slice := value.Slice()
+		if slice.Len() == 0 {
+			return
+		}
+		switch slice.At(0).Type() {
+		case pcommon.ValueTypeStr:
+			target := attributes.PutEmptySlice("labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeStr {
+					target.AppendEmpty().SetStr(truncate(item.Str()))
+				}
+			}
+		case pcommon.ValueTypeBool:
+			target := attributes.PutEmptySlice("labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeBool {
+					target.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
+				}
+			}
+		case pcommon.ValueTypeDouble:
+			target := attributes.PutEmptySlice("numeric_labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeDouble {
+					target.AppendEmpty().SetDouble(item.Double())
+				}
+			}
+		case pcommon.ValueTypeInt:
+			target := attributes.PutEmptySlice("numeric_labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeInt {
+					target.AppendEmpty().SetDouble(float64(item.Int()))
+				}
+			}
+		}
+	}
+}
