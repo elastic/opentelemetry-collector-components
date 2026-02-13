@@ -19,19 +19,13 @@ package ecs // import "github.com/elastic/opentelemetry-collector-components/pro
 
 import (
 	"strings"
-	"unicode"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/datastream"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-)
-
-const (
-	maxDataStreamBytes       = 100
-	disallowedNamespaceRunes = "\\/*?\"<>| ,#:"
-	disallowedDatasetRunes   = "-\\/*?\"<>| ,#:"
 )
 
 // ApplyOTLPLogAttributeConventions applies OTLP log attribute handling used in ECS flow.
@@ -51,12 +45,12 @@ func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
 		switch key {
 		case "data_stream.dataset":
 			if value.Type() == pcommon.ValueTypeStr {
-				attributes.PutStr(key, sanitizeDataStreamDataset(value.Str()))
+				attributes.PutStr(key, datastream.SanitizeDataset(value.Str()))
 			}
 			continue
 		case "data_stream.namespace":
 			if value.Type() == pcommon.ValueTypeStr {
-				attributes.PutStr(key, sanitizeDataStreamNamespace(value.Str()))
+				attributes.PutStr(key, datastream.SanitizeNamespace(value.Str()))
 			}
 			continue
 		}
@@ -100,37 +94,12 @@ func shouldKeepLogAttribute(attr string) bool {
 func ApplyScopeDataStreamConventions(scopeAttributes, logAttributes pcommon.Map) {
 	if _, exists := logAttributes.Get("data_stream.dataset"); !exists {
 		if dataset, ok := scopeAttributes.Get("data_stream.dataset"); ok && dataset.Type() == pcommon.ValueTypeStr {
-			logAttributes.PutStr("data_stream.dataset", sanitizeDataStreamDataset(dataset.Str()))
+			logAttributes.PutStr("data_stream.dataset", datastream.SanitizeDataset(dataset.Str()))
 		}
 	}
 	if _, exists := logAttributes.Get("data_stream.namespace"); !exists {
 		if namespace, ok := scopeAttributes.Get("data_stream.namespace"); ok && namespace.Type() == pcommon.ValueTypeStr {
-			logAttributes.PutStr("data_stream.namespace", sanitizeDataStreamNamespace(namespace.Str()))
+			logAttributes.PutStr("data_stream.namespace", datastream.SanitizeNamespace(namespace.Str()))
 		}
-	}
-}
-
-func sanitizeDataStreamDataset(field string) string {
-	field = strings.Map(replaceReservedRune(disallowedDatasetRunes), field)
-	if len(field) > maxDataStreamBytes {
-		return field[:maxDataStreamBytes]
-	}
-	return field
-}
-
-func sanitizeDataStreamNamespace(field string) string {
-	field = strings.Map(replaceReservedRune(disallowedNamespaceRunes), field)
-	if len(field) > maxDataStreamBytes {
-		return field[:maxDataStreamBytes]
-	}
-	return field
-}
-
-func replaceReservedRune(disallowedRunes string) func(r rune) rune {
-	return func(r rune) rune {
-		if strings.ContainsRune(disallowedRunes, r) {
-			return '_'
-		}
-		return unicode.ToLower(r)
 	}
 }

@@ -20,10 +20,10 @@ package routing // import "github.com/elastic/opentelemetry-collector-components
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	"github.com/elastic/apm-data/model/modelprocessor"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/datastream"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
 )
@@ -40,8 +40,8 @@ const (
 
 	ServiceNameUnknownAttributeUnknonw = "unknown"
 
-	MaxDataStreamBytes     = 100
-	DisallowedDatasetRunes = "-\\/*?\"<>| ,#:"
+	MaxDataStreamBytes     = datastream.MaxDataStreamBytes
+	DisallowedDatasetRunes = datastream.DisallowedDatasetRunes
 )
 
 func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceNameInDataset bool) {
@@ -69,7 +69,7 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 	}
 
 	attributes.PutStr("data_stream.type", dataStreamType)
-	attributes.PutStr("data_stream.dataset", sanitizeDataStreamDataset("apm.app."+normalizeServiceName(serviceName.Str())))
+	attributes.PutStr("data_stream.dataset", datastream.SanitizeDataset("apm.app."+normalizeServiceName(serviceName.Str())))
 	attributes.PutStr("data_stream.namespace", NamespaceDefault)
 }
 
@@ -190,25 +190,8 @@ func internalMetricDataStream(attributes pcommon.Map, dataStreamType string) {
 // Data stream formatted as: apm.${metricset.name}.${metricset.interval}
 func internalIntervalMetricDataStream(attributes pcommon.Map, dataStreamType, metricsetName, interval string) {
 	attributes.PutStr("data_stream.type", dataStreamType)
-	attributes.PutStr("data_stream.dataset", sanitizeDataStreamDataset(fmt.Sprintf("apm.%s.%s", metricsetName, interval)))
+	attributes.PutStr("data_stream.dataset", datastream.SanitizeDataset(fmt.Sprintf("apm.%s.%s", metricsetName, interval)))
 	attributes.PutStr("data_stream.namespace", NamespaceDefault)
-}
-
-func sanitizeDataStreamDataset(field string) string {
-	field = strings.Map(replaceDisallowedRune(DisallowedDatasetRunes), field)
-	if len(field) > MaxDataStreamBytes {
-		return field[:MaxDataStreamBytes]
-	}
-	return field
-}
-
-func replaceDisallowedRune(disallowedRunes string) func(r rune) rune {
-	return func(r rune) rune {
-		if strings.ContainsRune(disallowedRunes, r) {
-			return '_'
-		}
-		return unicode.ToLower(r)
-	}
 }
 
 // EncodeDataStreamMetricDataPoint determines if the metric represents an internal metric
