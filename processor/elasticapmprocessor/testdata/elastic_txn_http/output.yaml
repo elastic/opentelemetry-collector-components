@@ -64,10 +64,7 @@ resourceSpans:
                   stringValue: HTTP 2xx
               - key: event.outcome
                 value:
-                  stringValue: success
-              - key: event.success_count
-                value:
-                  intValue: "1"
+                  stringValue: unknown
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:

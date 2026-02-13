@@ -43,10 +43,7 @@ resourceSpans:
                   stringValue: unknown
               - key: event.outcome
                 value:
-                  stringValue: success
-              - key: event.success_count
-                value:
-                  intValue: "1"
+                  stringValue: unknown
               - key: span.duration.us
                 value:
                   intValue: "1000000"

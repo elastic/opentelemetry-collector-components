@@ -41,6 +41,8 @@ resourceSpans:
                 timeUnixNano: "1581452773000000123"
             name: span-elastic-db
             parentSpanId: "bcff497b5a47310f"
+            status:
+              code: 2
             startTimeUnixNano: "1581452772000000321"
             spanId: abcdef0123456700
             traceId: fdedef0123456789abcdef9876543210

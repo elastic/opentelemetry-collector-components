@@ -49,6 +49,12 @@ import (
 // to assume sampling all spans.
 const defaultRepresentativeCount = 1.0
 
+const (
+	outcomeSuccess = "success"
+	outcomeFailure = "failure"
+	outcomeUnknown = "unknown"
+)
+
 // EnrichSpan adds Elastic specific attributes to the OTel span.
 // These attributes are derived from the base attributes and appended to
 // the span attributes. The enrichment logic is performed by categorizing
@@ -429,25 +435,30 @@ func (s *spanEnrichmentContext) setTxnResult(span ptrace.Span) {
 	attribute.PutStr(span.Attributes(), elasticattr.TransactionResult, result)
 }
 
+// setEventOutcome derives event.outcome from span status and HTTP status.
+// It defaults to unknown and sets event.success_count only for success or failure outcomes.
+// This matches the logic in the apm Elasticsearch ingest pipeline:
+// https://github.com/elastic/elasticsearch/blob/171a3b9/x-pack/plugin/apm-data/src/main/resources/ingest-pipelines/traces-apm@pipeline.yaml#L33-L40
 func (s *spanEnrichmentContext) setEventOutcome(span ptrace.Span) {
-	// default to success outcome
-	outcome := "success"
-	successCount := getRepresentativeCount(span.TraceState().AsRaw())
+	outcome := outcomeUnknown
+	var successCount float64
+
 	switch {
 	case s.spanStatusCode == ptrace.StatusCodeError:
-		outcome = "failure"
-		successCount = 0
+		outcome = outcomeFailure
 	case s.spanStatusCode == ptrace.StatusCodeOk:
-		// keep the default success outcome
+		outcome = outcomeSuccess
+		successCount = getRepresentativeCount(span.TraceState().AsRaw())
 	case s.httpStatusCode >= http.StatusInternalServerError:
 		// TODO (lahsivjar): Handle GRPC status code? - not handled in apm-data
 		// TODO (lahsivjar): Move to HTTPResponseStatusCode? Backward compatibility?
-		outcome = "failure"
-		successCount = 0
+		outcome = outcomeFailure
 	}
 
 	attribute.PutStr(span.Attributes(), elasticattr.EventOutcome, outcome)
-	attribute.PutInt(span.Attributes(), elasticattr.SuccessCount, int64(successCount))
+	if outcome == outcomeSuccess || outcome == outcomeFailure {
+		attribute.PutInt(span.Attributes(), elasticattr.SuccessCount, int64(successCount))
+	}
 }
 
 func (s *spanEnrichmentContext) setSpanAction(span ptrace.Span) {
