@@ -6,7 +6,7 @@
 
 The following telemetry is emitted by this component.
 
-### otelcol_dynamicrouting.routed
+### otelcol.dynamicrouting.routed
 
 Number of telemetry batches routed by the connector. [Development]
 
@@ -20,4 +20,3 @@ Number of telemetry batches routed by the connector. [Development]
 | ---- | ----------- | ------ |
 | cardinality_bucket | Cardinality bucket identifier derived from routing_pipelines. | Any Str |
 | partition_key | Composite partition key built from routing_keys.partition_by values. | Any Str |
-| signal | Telemetry signal routed by the connector. | Any Str |
