@@ -1,0 +1,19 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: my.service
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: processor.event
+                value:
+                  stringValue: "error"
+              - key: http.method
+                value:
+                  stringValue: "GET"
+            body:
+              stringValue: "processor event log"
+            timeUnixNano: "1000000000"
+        scope: {}

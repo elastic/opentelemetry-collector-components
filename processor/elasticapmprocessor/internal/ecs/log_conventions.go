@@ -52,7 +52,7 @@ func normalizeServiceName(attrs pcommon.Map) {
 }
 
 func cleanServiceName(name string) string {
-	return serviceNameInvalidRegexp.ReplaceAllString(name, "_")
+	return serviceNameInvalidRegexp.ReplaceAllString(truncate(name), "_")
 }
 
 func setServiceLanguage(attrs pcommon.Map) {
@@ -82,6 +82,14 @@ func setDefaultServiceEnvironment(attrs pcommon.Map) {
 func setDefaultAgentVersion(attrs pcommon.Map) {
 	agentVersion, ok := attrs.Get(ecsAttrAgentVersion)
 	if ok && agentVersion.Str() != "" {
+		return
+	}
+	// Leave agent.version unset when SDK/distro metadata is present so enrichment
+	// can derive the effective value (SDK or distro specific).
+	if distroName, ok := attrs.Get(string(semconv.TelemetryDistroNameKey)); ok && distroName.Str() != "" {
+		return
+	}
+	if sdkVersion, ok := attrs.Get(string(semconv.TelemetrySDKVersionKey)); ok && sdkVersion.Str() != "" {
 		return
 	}
 	attrs.PutStr(ecsAttrAgentVersion, defaultUnknownAgentVersion)

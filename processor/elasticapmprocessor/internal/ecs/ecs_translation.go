@@ -85,7 +85,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 func setLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		attributes.PutStr("labels."+key, value.Str())
+		attributes.PutStr("labels."+key, truncate(value.Str()))
 	case pcommon.ValueTypeBool:
 		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
 	case pcommon.ValueTypeInt:
@@ -103,7 +103,7 @@ func setLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) 
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeStr {
-					target.AppendEmpty().SetStr(item.Str())
+					target.AppendEmpty().SetStr(truncate(item.Str()))
 				}
 			}
 		case pcommon.ValueTypeBool:
@@ -179,7 +179,9 @@ func isSupportedAttribute(attr string) bool {
 	// telemetry.sdk.*
 	case string(semconv.TelemetrySDKNameKey),
 		string(semconv.TelemetrySDKVersionKey),
-		string(semconv.TelemetrySDKLanguageKey):
+		string(semconv.TelemetrySDKLanguageKey),
+		string(semconv.TelemetryDistroNameKey),
+		string(semconv.TelemetryDistroVersionKey):
 		return true
 
 	// cloud.*

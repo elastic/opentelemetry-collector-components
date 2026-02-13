@@ -20,12 +20,19 @@ package ecs // import "github.com/elastic/opentelemetry-collector-components/pro
 import (
 	"strconv"
 	"strings"
+	"unicode"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+)
+
+const (
+	maxDataStreamBytes       = 100
+	disallowedNamespaceRunes = "\\/*?\"<>| ,#:"
+	disallowedDatasetRunes   = "-\\/*?\"<>| ,#:"
 )
 
 // ApplyOTLPLogAttributeConventions applies OTLP log attribute handling used in ECS flow.
@@ -38,11 +45,23 @@ func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
 	})
 
 	for _, key := range keys {
-		if shouldKeepLogAttribute(key) {
-			continue
-		}
 		value, ok := attributes.Get(key)
 		if !ok {
+			continue
+		}
+		switch key {
+		case "data_stream.dataset":
+			if value.Type() == pcommon.ValueTypeStr {
+				attributes.PutStr(key, sanitizeDataStreamDataset(value.Str()))
+			}
+			continue
+		case "data_stream.namespace":
+			if value.Type() == pcommon.ValueTypeStr {
+				attributes.PutStr(key, sanitizeDataStreamNamespace(value.Str()))
+			}
+			continue
+		}
+		if shouldKeepLogAttribute(key) {
 			continue
 		}
 		setLabelAttributeValue(attributes, replaceDots(key), value)
@@ -80,7 +99,7 @@ func shouldKeepLogAttribute(attr string) bool {
 func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		attributes.PutStr("labels."+key, value.Str())
+		attributes.PutStr("labels."+key, truncate(value.Str()))
 	case pcommon.ValueTypeBool:
 		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
 	case pcommon.ValueTypeInt:
@@ -98,7 +117,7 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeStr {
-					target.AppendEmpty().SetStr(item.Str())
+					target.AppendEmpty().SetStr(truncate(item.Str()))
 				}
 			}
 		case pcommon.ValueTypeBool:
@@ -126,5 +145,45 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 				}
 			}
 		}
+	}
+}
+
+// ApplyScopeDataStreamConventions applies scope-level data_stream dataset/namespace values
+// when they are not present on individual log records.
+func ApplyScopeDataStreamConventions(scopeAttributes, logAttributes pcommon.Map) {
+	if _, exists := logAttributes.Get("data_stream.dataset"); !exists {
+		if dataset, ok := scopeAttributes.Get("data_stream.dataset"); ok && dataset.Type() == pcommon.ValueTypeStr {
+			logAttributes.PutStr("data_stream.dataset", sanitizeDataStreamDataset(dataset.Str()))
+		}
+	}
+	if _, exists := logAttributes.Get("data_stream.namespace"); !exists {
+		if namespace, ok := scopeAttributes.Get("data_stream.namespace"); ok && namespace.Type() == pcommon.ValueTypeStr {
+			logAttributes.PutStr("data_stream.namespace", sanitizeDataStreamNamespace(namespace.Str()))
+		}
+	}
+}
+
+func sanitizeDataStreamDataset(field string) string {
+	field = strings.Map(replaceReservedRune(disallowedDatasetRunes), field)
+	if len(field) > maxDataStreamBytes {
+		return field[:maxDataStreamBytes]
+	}
+	return field
+}
+
+func sanitizeDataStreamNamespace(field string) string {
+	field = strings.Map(replaceReservedRune(disallowedNamespaceRunes), field)
+	if len(field) > maxDataStreamBytes {
+		return field[:maxDataStreamBytes]
+	}
+	return field
+}
+
+func replaceReservedRune(disallowedRunes string) func(r rune) rune {
+	return func(r rune) rune {
+		if strings.ContainsRune(disallowedRunes, r) {
+			return '_'
+		}
+		return unicode.ToLower(r)
 	}
 }

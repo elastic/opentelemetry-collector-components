@@ -22,6 +22,7 @@ import (
 	"flag"
 	"net"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
@@ -32,6 +33,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processortest"
@@ -112,6 +115,20 @@ func TestProcessor(t *testing.T) {
 			testType:    "logs",
 			cfg:         apmConfig,
 		},
+		"ecs_log_processor_event_skip": {
+			input:       "testdata/ecs/elastic_log_processor_event_skip/input.yaml",
+			output:      "testdata/ecs/elastic_log_processor_event_skip/output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
+		"ecs_log_distro_metadata": {
+			input:       "testdata/ecs/elastic_log_distro_metadata/input.yaml",
+			output:      "testdata/ecs/elastic_log_distro_metadata/output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
 		"ecs_metrics": {
 			input:       "testdata/ecs/elastic_metric/input.yaml",
 			output:      "testdata/ecs/elastic_metric/output.yaml",
@@ -173,6 +190,281 @@ func TestProcessor(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestLogBodyNonStringConvertedToString(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-mapping-mode": {"ecs"},
+		}),
+	})
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	rl := logs.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", "edge-service")
+	records := rl.ScopeLogs().AppendEmpty().LogRecords()
+	intRecord := records.AppendEmpty()
+	intRecord.Body().SetInt(42)
+	boolRecord := records.AppendEmpty()
+	boolRecord.Body().SetBool(true)
+	sliceRecord := records.AppendEmpty()
+	s := sliceRecord.Body().SetEmptySlice()
+	s.AppendEmpty().SetStr("x")
+	s.AppendEmpty().SetInt(1)
+
+	expected := []string{
+		intRecord.Body().AsString(),
+		boolRecord.Body().AsString(),
+		sliceRecord.Body().AsString(),
+	}
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	outRecords := next.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+	require.Equal(t, 3, outRecords.Len())
+
+	for i := 0; i < outRecords.Len(); i++ {
+		body := outRecords.At(i).Body()
+		assert.Equal(t, pcommon.ValueTypeStr, body.Type())
+		assert.Equal(t, expected[i], body.Str())
+	}
+}
+
+func TestProcessorEventSkipsOTLPLogConventions(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-mapping-mode": {"ecs"},
+		}),
+	})
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	rl := logs.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", "edge-service")
+	record := rl.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+	record.Attributes().PutStr("processor.event", "error")
+	record.Attributes().PutStr("http.method", "GET")
+	bodyMap := record.Body().SetEmptyMap()
+	bodyMap.PutStr("http.method", "POST")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	outRecord := next.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+
+	// processor.event indicates intake-origin logs, OTLP body/attribute conventions must be skipped.
+	httpMethod, ok := outRecord.Attributes().Get("http.method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", httpMethod.Str())
+	_, hasLabel := outRecord.Attributes().Get("labels.http_method")
+	assert.False(t, hasLabel)
+	assert.Equal(t, pcommon.ValueTypeMap, outRecord.Body().Type())
+}
+
+func TestMapBodyAttributeCollisionAttributeWins(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-mapping-mode": {"ecs"},
+		}),
+	})
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	rl := logs.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", "edge-service")
+	record := rl.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+	record.Attributes().PutStr("http.method", "GET")
+	record.Body().SetEmptyMap().PutStr("http.method", "POST")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	outRecord := next.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	_, hasSource := outRecord.Attributes().Get("http.method")
+	assert.False(t, hasSource)
+	method, ok := outRecord.Attributes().Get("labels.http_method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", method.Str())
+}
+
+func TestMixedAndEmptySliceHandling(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-mapping-mode": {"ecs"},
+		}),
+	})
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	rl := logs.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", "edge-service")
+	record := rl.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+
+	mixed := record.Attributes().PutEmptySlice("mixed.values")
+	mixed.AppendEmpty().SetStr("s1")
+	mixed.AppendEmpty().SetInt(1)
+	record.Attributes().PutEmptySlice("empty.values")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	outRecord := next.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+
+	values, ok := outRecord.Attributes().Get("labels.mixed_values")
+	require.True(t, ok)
+	assert.Equal(t, []any{"s1"}, values.Slice().AsRaw())
+	_, hasMixedSource := outRecord.Attributes().Get("mixed.values")
+	assert.False(t, hasMixedSource)
+	_, hasEmptyLabel := outRecord.Attributes().Get("labels.empty_values")
+	assert.False(t, hasEmptyLabel)
+	_, hasEmptySource := outRecord.Attributes().Get("empty.values")
+	assert.False(t, hasEmptySource)
+}
+
+func TestLongLabelValuesAreTruncated(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-mapping-mode": {"ecs"},
+		}),
+	})
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	rl := logs.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", "edge-service")
+	record := rl.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+	record.Attributes().PutStr("custom.long", strings.Repeat("x", 1300))
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	outRecord := next.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+	label, ok := outRecord.Attributes().Get("labels.custom_long")
+	require.True(t, ok)
+	assert.Len(t, label.Str(), 1024)
+}
+
+func TestServiceNameIsTruncatedAndSanitized(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-mapping-mode": {"ecs"},
+		}),
+	})
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	rl := logs.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", strings.Repeat("a", 1300)+".service")
+	rl.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty().Body().SetStr("msg")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	resourceAttrs := next.AllLogs()[0].ResourceLogs().At(0).Resource().Attributes()
+	serviceName, ok := resourceAttrs.Get("service.name")
+	require.True(t, ok)
+	assert.LessOrEqual(t, len(serviceName.Str()), 1024)
+	assert.False(t, strings.Contains(serviceName.Str(), "."))
+}
+
+func TestDataStreamAttrsFromLogAreSanitizedAndTruncated(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-mapping-mode": {"ecs"},
+		}),
+	})
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	rl := logs.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", "edge-service")
+	record := rl.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+	record.Body().SetStr("msg")
+	record.Attributes().PutStr("data_stream.dataset", "Apm.App-My Service#Logs/"+strings.Repeat("x", 120))
+	record.Attributes().PutStr("data_stream.namespace", "NaMe Space#"+strings.Repeat("y", 120))
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	outRecord := next.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+
+	dataset, ok := outRecord.Attributes().Get("data_stream.dataset")
+	require.True(t, ok)
+	assert.LessOrEqual(t, len(dataset.Str()), 100)
+	assert.Equal(t, dataset.Str(), strings.ToLower(dataset.Str()))
+	assert.False(t, strings.Contains(dataset.Str(), "-"))
+	assert.False(t, strings.Contains(dataset.Str(), " "))
+	assert.False(t, strings.Contains(dataset.Str(), "#"))
+
+	namespace, ok := outRecord.Attributes().Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.LessOrEqual(t, len(namespace.Str()), 100)
+	assert.Equal(t, namespace.Str(), strings.ToLower(namespace.Str()))
+	assert.False(t, strings.Contains(namespace.Str(), " "))
+	assert.False(t, strings.Contains(namespace.Str(), "#"))
+}
+
+func TestDataStreamScopeAttributesAffectLogRecordWhenMissingOnRecord(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-mapping-mode": {"ecs"},
+		}),
+	})
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	rl := logs.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", "edge-service")
+	sl := rl.ScopeLogs().AppendEmpty()
+	sl.Scope().Attributes().PutStr("data_stream.dataset", "scope.ds")
+	sl.Scope().Attributes().PutStr("data_stream.namespace", "scope.ns")
+	sl.LogRecords().AppendEmpty().Body().SetStr("msg")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	outRecord := next.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+
+	dataset, ok := outRecord.Attributes().Get("data_stream.dataset")
+	require.True(t, ok)
+	assert.Equal(t, "scope.ds", dataset.Str())
+	namespace, ok := outRecord.Attributes().Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "scope.ns", namespace.Str())
 }
 
 func testTraces(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config, inputFile, outputFile string) {

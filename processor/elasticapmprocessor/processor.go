@@ -134,7 +134,6 @@ func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogPr
 	enricherConfig := cfg.Config
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
-	ecsEnricherConfig.Resource.AgentVersion.Enabled = false
 	return &LogProcessor{
 		next:        next,
 		logger:      logger,
@@ -291,9 +290,12 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			// This follows the same logic as apm-data to detect error events
 			scopeLogs := resourceLog.ScopeLogs()
 			for j := 0; j < scopeLogs.Len(); j++ {
-				logRecords := scopeLogs.At(j).LogRecords()
+				scopeLog := scopeLogs.At(j)
+				scopeAttributes := scopeLog.Scope().Attributes()
+				logRecords := scopeLog.LogRecords()
 				for k := 0; k < logRecords.Len(); k++ {
 					logRecord := logRecords.At(k)
+					ecs.ApplyScopeDataStreamConventions(scopeAttributes, logRecord.Attributes())
 					if routing.IsErrorEvent(logRecord.Attributes()) {
 						// Override the resource-level data stream for error logs
 						routing.EncodeErrorDataStream(logRecord.Attributes(), routing.DataStreamTypeLogs)
@@ -311,6 +313,12 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
 	if !p.cfg.SkipEnrichment || ecsMode {
 		enricher.EnrichLogs(ld)
+	}
+	if ecsMode {
+		resourceLogs := ld.ResourceLogs()
+		for i := 0; i < resourceLogs.Len(); i++ {
+			ecs.CleanupTransientResourceMetadata(resourceLogs.At(i).Resource())
+		}
 	}
 	return p.next.ConsumeLogs(ctx, ld)
 }

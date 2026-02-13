@@ -22,19 +22,23 @@ import (
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
-// ApplyOTLPLogBodyConventions applies map body handling for OTLP logs in ECS flow.
-// For map bodies, entries are moved to labels.* / numeric_labels.* and the body is converted
-// to its string representation so ECS encoding can emit it as message.
+// ApplyOTLPLogBodyConventions applies OTLP body handling for ECS log flow.
+// Non-empty non-string bodies are converted to their string representation so ECS encoding
+// can emit message. For map bodies, entries are also moved to labels.* / numeric_labels.*.
 func ApplyOTLPLogBodyConventions(logRecord plog.LogRecord) {
 	body := logRecord.Body()
-	if body.Type() != pcommon.ValueTypeMap {
+	if body.Type() == pcommon.ValueTypeEmpty {
 		return
 	}
 
 	message := body.AsString()
-	body.Map().Range(func(k string, v pcommon.Value) bool {
-		setLabelAttributeValue(logRecord.Attributes(), replaceDots(k), v)
-		return true
-	})
-	logRecord.Body().SetStr(message)
+	if body.Type() == pcommon.ValueTypeMap {
+		body.Map().Range(func(k string, v pcommon.Value) bool {
+			setLabelAttributeValue(logRecord.Attributes(), replaceDots(k), v)
+			return true
+		})
+	}
+	if body.Type() != pcommon.ValueTypeStr {
+		logRecord.Body().SetStr(message)
+	}
 }

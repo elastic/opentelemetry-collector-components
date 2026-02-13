@@ -1,0 +1,18 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: distro.service
+        - key: telemetry.distro.name
+          value:
+            stringValue: elastic
+        - key: telemetry.distro.version
+          value:
+            stringValue: 9.1.2
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: distro log message
+            timeUnixNano: "1000000000"
+        scope: {}
