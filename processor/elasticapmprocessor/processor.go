@@ -135,6 +135,9 @@ func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogPr
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	ecsEnricherConfig.Resource.AgentVersion.Enabled = false
+	// disable the transaction result enrichment to avoid deriving a value
+	// when the provided result is empty to match existing apm-data logic
+	ecsEnricherConfig.Transaction.Result.Enabled = false
 	return &LogProcessor{
 		next:        next,
 		logger:      logger,
