@@ -23,32 +23,37 @@ import (
 )
 
 const (
-	MaxDataStreamBytes       = 100
-	DisallowedNamespaceRunes = "\\/*?\"<>| ,#:"
-	DisallowedDatasetRunes   = "-\\/*?\"<>| ,#:"
+	MaxDataStreamBytes = 100
 )
 
 func SanitizeDataset(field string) string {
-	return sanitize(field, DisallowedDatasetRunes)
+	return sanitize(field, replaceDisallowedDatasetRune)
 }
 
 func SanitizeNamespace(field string) string {
-	return sanitize(field, DisallowedNamespaceRunes)
+	return sanitize(field, replaceDisallowedNamespaceRune)
 }
 
-func sanitize(field, disallowedRunes string) string {
-	field = strings.Map(replaceDisallowedRune(disallowedRunes), field)
+func sanitize(field string, replaceFn func(r rune) rune) string {
+	field = strings.Map(replaceFn, field)
 	if len(field) > MaxDataStreamBytes {
 		return field[:MaxDataStreamBytes]
 	}
 	return field
 }
 
-func replaceDisallowedRune(disallowedRunes string) func(r rune) rune {
-	return func(r rune) rune {
-		if strings.ContainsRune(disallowedRunes, r) {
-			return '_'
-		}
-		return unicode.ToLower(r)
+func replaceDisallowedDatasetRune(r rune) rune {
+	switch r {
+	case '-', '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':':
+		return '_'
 	}
+	return unicode.ToLower(r)
+}
+
+func replaceDisallowedNamespaceRune(r rune) rune {
+	switch r {
+	case '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':':
+		return '_'
+	}
+	return unicode.ToLower(r)
 }

@@ -19,7 +19,6 @@ package routing // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/elastic/apm-data/model/modelprocessor"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -39,9 +38,6 @@ const (
 	NamespaceDefault = "default" //TODO: make this configurable
 
 	ServiceNameUnknownAttributeUnknonw = "unknown"
-
-	MaxDataStreamBytes     = datastream.MaxDataStreamBytes
-	DisallowedDatasetRunes = datastream.DisallowedDatasetRunes
 )
 
 func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceNameInDataset bool) {
@@ -69,36 +65,8 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 	}
 
 	attributes.PutStr("data_stream.type", dataStreamType)
-	attributes.PutStr("data_stream.dataset", datastream.SanitizeDataset("apm.app."+normalizeServiceName(serviceName.Str())))
+	attributes.PutStr("data_stream.dataset", datastream.SanitizeDataset("apm.app."+serviceName.Str()))
 	attributes.PutStr("data_stream.namespace", NamespaceDefault)
-}
-
-// The follwing is Copied from apm-data
-// https://github.com/elastic/apm-data/blob/46a81347bdbb81a7a308e8d2f58f39c0b1137a77/model/modelprocessor/datastream.go#L186C1-L209C2
-
-// normalizeServiceName translates serviceName into a string suitable
-// for inclusion in a data stream name.
-//
-// Concretely, this function will lowercase the string and replace any
-// reserved characters with "_".
-func normalizeServiceName(s string) string {
-	s = strings.ToLower(s)
-	s = strings.Map(replaceReservedRune, s)
-	return s
-}
-
-func replaceReservedRune(r rune) rune {
-	switch r {
-	case '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':':
-		// These characters are not permitted in data stream names
-		// by Elasticsearch.
-		return '_'
-	case '-':
-		// Hyphens are used to separate the data stream type, dataset,
-		// and namespace.
-		return '_'
-	}
-	return r
 }
 
 // IsErrorEvent checks if a log record or span event represents an APM error event.

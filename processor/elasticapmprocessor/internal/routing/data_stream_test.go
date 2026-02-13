@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/datastream"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -75,7 +76,7 @@ func TestDataStreamEncoderWithServiceNameSanitizesAndTruncates(t *testing.T) {
 
 	dataStreamDataset, ok := attributes.Get("data_stream.dataset")
 	assert.True(t, ok)
-	assert.Len(t, dataStreamDataset.Str(), routing.MaxDataStreamBytes)
+	assert.Len(t, dataStreamDataset.Str(), datastream.MaxDataStreamBytes)
 	assert.True(t, strings.HasPrefix(dataStreamDataset.Str(), "apm.app."))
 	assert.False(t, strings.Contains(dataStreamDataset.Str(), "-"))
 	assert.Equal(t, strings.ToLower(dataStreamDataset.Str()), dataStreamDataset.Str())
@@ -310,7 +311,7 @@ func TestRouteMetricDataPointSanitizesAndTruncatesDataset(t *testing.T) {
 
 	dataStreamDataset, ok := attrs.Get("data_stream.dataset")
 	assert.True(t, ok)
-	assert.Len(t, dataStreamDataset.Str(), routing.MaxDataStreamBytes)
+	assert.Len(t, dataStreamDataset.Str(), datastream.MaxDataStreamBytes)
 	assert.False(t, strings.Contains(dataStreamDataset.Str(), "-"))
 	assert.Equal(t, strings.ToLower(dataStreamDataset.Str()), dataStreamDataset.Str())
 }
