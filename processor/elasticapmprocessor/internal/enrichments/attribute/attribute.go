@@ -29,6 +29,13 @@ func PutStr(attrs pcommon.Map, key string, value string) {
 	}
 }
 
+// PutNonEmptyStr wrapper around PutStr that only inserts non-empty string values.
+func PutNonEmptyStr(attrs pcommon.Map, key string, value string) {
+	if value != "" {
+		PutStr(attrs, key, value)
+	}
+}
+
 // PutInt wrapper around the attribute map `PutInt` method
 // that only inserts the entry if no key-value exists
 func PutInt(attrs pcommon.Map, key string, value int64) {

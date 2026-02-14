@@ -95,5 +95,6 @@ resourceSpans:
             parentSpanId: bcff497b5a47310f
             spanId: abcdef0123456700
             startTimeUnixNano: "1581452772000000321"
-            status: {}
+            status:
+              code: 1
             traceId: fdedef0123456789abcdef9876543210
