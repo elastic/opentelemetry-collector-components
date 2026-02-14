@@ -18,8 +18,6 @@ runtimes:
 steps:
   - name: Install system dependencies
     run: sudo apt-get update && sudo apt-get install -y libpcap-dev librpm-dev
-  - name: Install Mage
-    run: make mage
 tools:
   github:
     toolsets: [repos, pull_requests]

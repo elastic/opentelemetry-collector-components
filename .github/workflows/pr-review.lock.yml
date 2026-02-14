@@ -22,7 +22,7 @@
 # For more information: https://github.github.com/gh-aw/introduction/overview/
 #
 #
-# frontmatter-hash: 5dac6014b4e100185a85f285fc998fc5ee0c26a73af237af94c12072458d8365
+# frontmatter-hash: 91fa6fdca249d0d4c2590eee0cdf3b4559ad2aba5403ac6f1bf52db3d68c4bee
 
 name: "PR Review Agent"
 "on":
@@ -108,8 +108,6 @@ jobs:
         run: bash /opt/gh-aw/actions/create_gh_aw_tmp_dir.sh
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libpcap-dev librpm-dev
-      - name: Install Mage
-        run: make mage
 
       - name: Configure Git credentials
         env:
