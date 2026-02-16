@@ -40,6 +40,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
@@ -66,7 +67,10 @@ func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 		return nil, nil
 	}, &Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint: testEndpoint,
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 	}, receivertest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
@@ -131,7 +135,10 @@ func TestAgentCfgHandlerInvalidFetcher(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	rcvr, err := newElasticAPMIntakeReceiver(invalidFetcher, &Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint: testEndpoint,
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 	}, receivertest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
@@ -305,7 +312,10 @@ func TestAgentCfgHandler(t *testing.T) {
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			rcvr, err := newElasticAPMIntakeReceiver(tt.fetcher, &Config{
 				ServerConfig: confighttp.ServerConfig{
-					Endpoint: testEndpoint,
+					NetAddr: confignet.AddrConfig{
+						Endpoint:  testEndpoint,
+						Transport: confignet.TransportTypeTCP,
+					},
 				},
 				AgentConfig: AgentConfig{
 					CacheDuration: 1 * time.Second,
@@ -360,7 +370,10 @@ func TestInvalidInput(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := &Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint: testEndpoint,
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 	}
 
@@ -389,7 +402,9 @@ func TestInvalidInput(t *testing.T) {
 				t.Fatalf("failed to send HTTP request: %v", err)
 			}
 
-			defer resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 
 			bodyBytes, err := io.ReadAll(resp.Body)
 			if err != nil {
@@ -425,7 +440,10 @@ func TestErrors(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := &Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint: testEndpoint,
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 	}
 
@@ -450,7 +468,7 @@ func TestErrors(t *testing.T) {
 }
 
 func TestMetrics(t *testing.T) {
-	var inputFiles_error = []struct {
+	inputFiles_error := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
 	}{
@@ -461,7 +479,10 @@ func TestMetrics(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := &Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint: testEndpoint,
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 	}
 
@@ -486,7 +507,7 @@ func TestMetrics(t *testing.T) {
 }
 
 func TestLogs(t *testing.T) {
-	var inputFiles = []struct {
+	inputFiles := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
 	}{
@@ -496,7 +517,10 @@ func TestLogs(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := &Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint: testEndpoint,
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 	}
 
@@ -539,7 +563,10 @@ func TestTransactionsAndSpans(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := &Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint: testEndpoint,
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 	}
 
@@ -587,7 +614,10 @@ func TestMetadataPropagation(t *testing.T) {
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			cfg := &Config{
 				ServerConfig: confighttp.ServerConfig{
-					Endpoint:        testEndpoint,
+					NetAddr: confignet.AddrConfig{
+						Endpoint:  testEndpoint,
+						Transport: confignet.TransportTypeTCP,
+					},
 					IncludeMetadata: tcase.includeMetadata,
 				},
 			}
@@ -632,7 +662,9 @@ func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
 		t.Fatalf("failed to send HTTP request: %v", err)
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusAccepted {
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -678,7 +710,6 @@ func runComparisonForLogs(t *testing.T, inputJsonFileName string, expectedYamlFi
 func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
 	nextMetric *consumertest.MetricsSink, testEndpoint string,
 ) {
-
 	nextMetric.Reset()
 	sendInput(t, inputJsonFileName, testEndpoint)
 	actualMetrics := nextMetric.AllMetrics()[0]

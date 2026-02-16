@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
@@ -38,7 +39,10 @@ func TestLoadConfig(t *testing.T) {
 	expectedDefaultConfig := func() *Config {
 		return &Config{
 			ServerConfig: confighttp.ServerConfig{
-				Endpoint: defaultEndpoint,
+				NetAddr: confignet.AddrConfig{
+					Endpoint:  defaultEndpoint,
+					Transport: confignet.TransportTypeTCP,
+				},
 			},
 			AgentConfig: AgentConfig{
 				Enabled:       false,
@@ -68,7 +72,7 @@ func TestLoadConfig(t *testing.T) {
 				cfg := expectedDefaultConfig()
 				cfg.AgentConfig.Enabled = true
 				cfg.AgentConfig.CacheDuration = 10 * time.Second
-				cfg.AgentConfig.Elasticsearch.ClientConfig.Endpoint = "http://localhost:8200"
+				cfg.AgentConfig.Elasticsearch.Endpoint = "http://localhost:8200"
 				return cfg
 			}(),
 		},

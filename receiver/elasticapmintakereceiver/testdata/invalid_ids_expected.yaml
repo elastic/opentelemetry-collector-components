@@ -152,9 +152,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: foobarInvalid
-              - key: transaction.root
-                value:
-                  boolValue: false
               - key: transaction.type
                 value:
                   stringValue: request

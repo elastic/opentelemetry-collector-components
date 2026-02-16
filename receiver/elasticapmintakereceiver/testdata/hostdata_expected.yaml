@@ -68,18 +68,15 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.root
-                value:
-                  boolValue: false
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: Success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: Success
               - key: transaction.span_count.started
                 value:
                   intValue: "43"

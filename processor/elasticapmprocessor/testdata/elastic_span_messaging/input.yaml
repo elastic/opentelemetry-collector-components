@@ -42,3 +42,5 @@ resourceSpans:
             name: span-elastic-msg
             parentSpanId: "bcff497b5a47310f"
             startTimeUnixNano: "1581452772000000321"
+            spanId: abcdef0123456700
+            traceId: fdedef0123456789abcdef9876543210

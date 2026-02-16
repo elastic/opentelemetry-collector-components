@@ -44,7 +44,7 @@ func TestMetricsGenerator_doneCh(t *testing.T) {
 		t.Run(fmt.Sprintf("concurrency=%d", concurrency), func(t *testing.T) {
 			doneCh := make(chan Stats)
 			sink := &consumertest.MetricsSink{}
-			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+			cfg := createDefaultReceiverConfig(nil, doneCh, nil, nil)
 			cfg.(*Config).Metrics.MaxReplay = maxReplay
 			cfg.(*Config).Concurrency = concurrency
 			r, _ := createMetricsReceiver(context.Background(), receiver.Settings{
@@ -91,7 +91,7 @@ func TestMetricsGenerator_addCounterAttr(t *testing.T) {
 			})
 			sink, err := consumer.NewMetrics(consume)
 			require.NoError(t, err)
-			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+			cfg := createDefaultReceiverConfig(nil, doneCh, nil, nil)
 			cfg.(*Config).Metrics.MaxReplay = 1
 			cfg.(*Config).Concurrency = 1
 			cfg.(*Config).Metrics.AddCounterAttr = addCounterAttr
@@ -123,7 +123,7 @@ func TestMetricsGenerator_MaxBufferSizeAttr(t *testing.T) {
 			require.NoError(t, os.WriteFile(filePath, content, 0644))
 
 			doneCh := make(chan Stats)
-			cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+			cfg := createDefaultReceiverConfig(nil, doneCh, nil, nil)
 			cfg.(*Config).Metrics.MaxBufferSize = maxBufferSize
 			cfg.(*Config).Metrics.JsonlFile = JsonlFile(filePath)
 

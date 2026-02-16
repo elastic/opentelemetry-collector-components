@@ -25,10 +25,12 @@ type Stats struct {
 	LogRecords       int
 	MetricDataPoints int
 	Spans            int
+	Samples          int
 
 	FailedLogRecords       int
 	FailedMetricDataPoints int
 	FailedSpans            int
+	FailedSamples          int
 }
 
 func (s Stats) Add(other Stats) Stats {
@@ -37,8 +39,10 @@ func (s Stats) Add(other Stats) Stats {
 	s.LogRecords += other.LogRecords
 	s.MetricDataPoints += other.MetricDataPoints
 	s.Spans += other.Spans
+	s.Samples += other.Samples
 	s.FailedLogRecords += other.FailedLogRecords
 	s.FailedMetricDataPoints += other.FailedMetricDataPoints
 	s.FailedSpans += other.FailedSpans
+	s.FailedSamples += other.FailedSamples
 	return s
 }

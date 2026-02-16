@@ -22,9 +22,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: user_agent.original
           value:
             stringValue: Mozilla Chrome Edge
@@ -94,6 +91,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.organization_uuid
           value:
             stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
@@ -122,21 +122,18 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 945254c567a5417e
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: success
               - key: http.request.method
                 value:
                   stringValue: POST
@@ -316,7 +313,6 @@ resourceSpans:
                                 value:
                                   doubleValue: 10
             endTimeUnixNano: "1496170407186592981"
-            kind: 2
             name: GET /api/types
             spanId: 945254c567a5417e
             startTimeUnixNano: "1496170407154000000"
@@ -346,9 +342,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -412,6 +405,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: labels.span_tag
           value:
             stringValue: something
@@ -541,7 +537,6 @@ resourceSpans:
                               value:
                                 boolValue: false
             endTimeUnixNano: "1496170407157781912"
-            kind: 3
             name: SELECT FROM product_types
             parentSpanId: 945254c567a5417e
             spanId: 0aaaaaaaaaaaaaaa
@@ -572,9 +567,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -638,6 +630,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
     scopeSpans:
       - scope: {}
         spans:
@@ -702,9 +697,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -768,6 +760,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
     scopeSpans:
       - scope: {}
         spans:
@@ -835,9 +830,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -901,6 +893,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
     scopeSpans:
       - scope: {}
         spans:
@@ -967,9 +962,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -1033,6 +1025,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
     scopeSpans:
       - scope: {}
         spans:
@@ -1052,21 +1047,18 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4340
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: failure
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: failure
               - key: transaction.span_count.started
                 value:
                   intValue: "0"
@@ -1099,9 +1091,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -1165,6 +1154,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
     scopeSpans:
       - scope: {}
         spans:
@@ -1184,9 +1176,6 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4341
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
@@ -1196,9 +1185,6 @@ resourceSpans:
               - key: transaction.result
                 value:
                   stringValue: "200"
-              - key: transaction.sampled
-                value:
-                  boolValue: false
               - key: transaction.span_count.started
                 value:
                   intValue: "0"
@@ -1231,9 +1217,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -1297,6 +1280,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
     scopeSpans:
       - scope: {}
         spans:
@@ -1316,21 +1302,18 @@ resourceSpans:
               - key: transaction.id
                 value:
                   stringValue: 85925e55b43f4342
-              - key: transaction.root
-                value:
-                  boolValue: true
               - key: transaction.name
                 value:
                   stringValue: GET /api/types
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: "200"
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: "200"
               - key: transaction.span_count.started
                 value:
                   intValue: "1"
@@ -1363,9 +1346,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -1429,6 +1409,9 @@ resourceSpans:
         - key: host.os.platform
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: destination.ip
           value:
             stringValue: ::1

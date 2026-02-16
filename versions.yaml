@@ -1,6 +1,6 @@
 module-sets:
   edot-base:
-    version: v0.24.0
+    version: v0.30.0
     modules:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
@@ -15,6 +15,7 @@ module-sets:
       - github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
       - github.com/elastic/opentelemetry-collector-components/extension/clientaddrmiddlewareextension
       - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
+      - github.com/elastic/opentelemetry-collector-components/internal/elasticattr
 
 excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/internal/tools

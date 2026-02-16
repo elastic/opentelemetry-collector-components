@@ -23,6 +23,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 
@@ -53,7 +54,10 @@ func createDefaultConfig() component.Config {
 	// this enables https
 	// defaultServerConfig := confighttp.NewDefaultServerConfig()
 	defaultServerConfig := confighttp.ServerConfig{}
-	defaultServerConfig.Endpoint = defaultEndpoint
+	defaultServerConfig.NetAddr = confignet.AddrConfig{
+		Endpoint:  defaultEndpoint,
+		Transport: confignet.TransportTypeTCP,
+	}
 	defaultESClientConfig := configelasticsearch.NewDefaultClientConfig()
 	defaultESClientConfig.Endpoint = defaultESEndpoint
 

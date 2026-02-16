@@ -31,7 +31,7 @@ import (
 
 func BenchmarkMetricsGenerator(b *testing.B) {
 	doneCh := make(chan Stats)
-	cfg := createDefaultReceiverConfig(nil, doneCh, nil)
+	cfg := createDefaultReceiverConfig(nil, doneCh, nil, nil)
 	cfg.(*Config).Metrics.MaxReplay = b.N
 	r, _ := createMetricsReceiver(context.Background(), receiver.Settings{
 		ID: component.ID{},

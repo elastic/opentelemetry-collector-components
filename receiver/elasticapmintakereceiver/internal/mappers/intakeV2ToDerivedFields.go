@@ -21,14 +21,12 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
-	"fmt"
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 
 	"github.com/elastic/apm-data/model/modelpb"
-	attr "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal"
-	"github.com/elastic/opentelemetry-lib/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 )
 
 // SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
@@ -38,17 +36,12 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 
 	setCommonDerivedRecordAttributes(event, attributes)
 
-	// from whatever reason Transaction.Root is always false. That seems to be a derived field already - I don't see that fields directly on IntakeV2 - there is only ParentId
-	attributes.PutBool(elasticattr.TransactionRoot, event.ParentId == "")
-
 	if event.Transaction == nil {
 		return
 	}
 
-	putNonEmptyStr(attributes, elasticattr.TransactionName, event.Transaction.Name)
-	putNonEmptyStr(attributes, elasticattr.TransactionType, event.Transaction.Type)
+	setTransactionAttributes(event, attributes)
 	putNonEmptyStr(attributes, elasticattr.TransactionResult, event.Transaction.Result)
-	attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
 }
 
 // setCommonDerivedRecordAttributes sets common attributes which are shared at the record
@@ -61,6 +54,19 @@ func setCommonDerivedRecordAttributes(event *modelpb.APMEvent, attributes pcommo
 	if event.Service != nil && event.Service.Target != nil {
 		attributes.PutStr(elasticattr.ServiceTargetType, event.Service.Target.Type)
 		attributes.PutStr(elasticattr.ServiceTargetName, event.Service.Target.Name)
+	}
+}
+
+// setTransactionAttributes sets transaction-related attributes that are shared across
+// transaction and error events.
+func setTransactionAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Transaction == nil {
+		return
+	}
+	putNonEmptyStr(attributes, elasticattr.TransactionName, event.Transaction.Name)
+	putNonEmptyStr(attributes, elasticattr.TransactionType, event.Transaction.Type)
+	if event.Transaction.Sampled {
+		attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
 	}
 }
 
@@ -82,9 +88,7 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	putNonEmptyStr(attributes, elasticattr.SpanSubtype, event.Span.Subtype)
 	putNonEmptyStr(attributes, "span.action", event.Span.Action)
 
-	if event.Span.Sync != nil {
-		attributes.PutBool("span.sync", *event.Span.Sync)
-	}
+	putPtrBool(attributes, "span.sync", event.Span.Sync)
 
 	if event.Span.DestinationService != nil {
 		putNonEmptyStr(attributes, elasticattr.SpanDestinationServiceResource, event.Span.DestinationService.Resource)
@@ -100,12 +104,8 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 
 	if event.Service != nil {
 		if event.Service.Language != nil {
-			if event.Service.Language.Name != "" {
-				attributes.PutStr(attr.ServiceLanguageName, event.Service.Language.Name)
-			}
-			if event.Service.Language.Version != "" {
-				attributes.PutStr(attr.ServiceLanguageVersion, event.Service.Language.Version)
-			}
+			putNonEmptyStr(attributes, elasticattr.ServiceLanguageName, event.Service.Language.Name)
+			putNonEmptyStr(attributes, elasticattr.ServiceLanguageVersion, event.Service.Language.Version)
 		}
 	}
 }
@@ -134,65 +134,162 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "error")
 
 	setCommonDerivedRecordAttributes(event, attributes)
+	setTransactionAttributes(event, attributes)
 
 	if event.Error == nil {
 		return
 	}
 
-	if event.Error.Id != "" {
-		attributes.PutStr(elasticattr.ErrorID, event.Error.Id)
-	}
-	if event.ParentId != "" {
-		attributes.PutStr(elasticattr.ParentID, event.ParentId)
-	}
+	putNonEmptyStr(attributes, elasticattr.ErrorID, event.Error.Id)
+	putNonEmptyStr(attributes, elasticattr.ParentID, event.ParentId)
 
-	if event.Error.Type != "" {
-		attributes.PutStr("error.type", event.Error.Type)
-	}
-	if event.Error.Message != "" {
-		attributes.PutStr("message", event.Error.Message)
-	}
 	attributes.PutStr(elasticattr.ErrorGroupingKey, event.Error.GroupingKey)
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
-
-	if event.Error.Culprit != "" {
-		attributes.PutStr("error.culprit", event.Error.Culprit)
-	}
+	putNonEmptyStr(attributes, elasticattr.ErrorCulprit, event.Error.Culprit)
 
 	if event.Error.Exception != nil {
-		if event.Error.Exception.Type != "" {
-			attributes.PutStr("exception.type", event.Error.Exception.Type)
+		// Create error.exception as an array of exception objects, following the apm-data JSON schema
+		// in https://github.com/elastic/apm-data/blob/main/model/modeljson/internal/error.go
+		setExceptionObjectArray(event.Error.Exception, attributes)
+	}
+}
+
+// exceptionWithParent holds an exception, its index, and its parent index in the flattened array.
+// A parentIdx of -1 indicates no parent (root exception).
+type exceptionWithParent struct {
+	exception *modelpb.Exception
+	index     int
+	parentIdx int
+}
+
+// setExceptionObjectArray creates `error.exception` as an array of exception objects,
+// following the apm-data JSON schema. Each exception is a structured object.
+// The exception tree is flattened depth-first with root exception first, followed by nested causes.
+func setExceptionObjectArray(exc *modelpb.Exception, attributes pcommon.Map) {
+	// Collect all exceptions (root + causes) into a flat list with parent indices
+	// Root exception has parentIdx=-1 (no parent) and startIdx=0
+	exceptions := collectExceptions(exc, -1, 0)
+
+	if len(exceptions) == 0 {
+		return
+	}
+
+	exceptionSlice := attributes.PutEmptySlice(elasticattr.ErrorException)
+	exceptionSlice.EnsureCapacity(len(exceptions))
+
+	for _, e := range exceptions {
+		exceptionMap := exceptionSlice.AppendEmpty().SetEmptyMap()
+		setExceptionObject(e.exception, exceptionMap, e.index, e.parentIdx)
+	}
+}
+
+// collectExceptions recursively collects all exceptions from the tree into a flat list.
+// The root exception is collected first, followed by nested causes (depth-first).
+// Each exception is paired with its own index and parent's index in the resulting array.
+// startIdx is the index that the current exception will have in the final flattened array.
+func collectExceptions(e *modelpb.Exception, parentIdx int, startIdx int) []exceptionWithParent {
+	result := []exceptionWithParent{{exception: e, index: startIdx, parentIdx: parentIdx}}
+	myIdx := startIdx       // This exception's index in the flattened array
+	nextIdx := startIdx + 1 // Next available index for children
+
+	for _, cause := range e.Cause {
+		children := collectExceptions(cause, myIdx, nextIdx)
+		nextIdx += len(children) // Update next available index
+		result = append(result, children...)
+	}
+	return result
+}
+
+// setExceptionObject populates a single exception object map with all its fields.
+// index is the exception's position in the flattened array.
+// parentIdx is the index of the parent exception in the flattened array, or -1 for root.
+func setExceptionObject(e *modelpb.Exception, exceptionMap pcommon.Map, index int, parentIdx int) {
+	// Set parent index for chained exceptions only when necessary.
+	// Following apm-data logic: the parent field is only set when the exception
+	// is NOT immediately after its parent in the array (index > parentIdx + 1).
+	// If the exception directly follows its parent, the implicit rule is that
+	// the preceding exception is the parent.
+	if index > parentIdx+1 {
+		exceptionMap.PutInt(elasticattr.ErrorExceptionParent, int64(parentIdx))
+	}
+
+	putNonEmptyStr(exceptionMap, elasticattr.ErrorExceptionCode, e.Code)
+	putNonEmptyStr(exceptionMap, elasticattr.ErrorExceptionMessage, e.Message)
+	putNonEmptyStr(exceptionMap, elasticattr.ErrorExceptionType, e.Type)
+	putNonEmptyStr(exceptionMap, elasticattr.ErrorExceptionModule, e.Module)
+	putPtrBool(exceptionMap, elasticattr.ErrorExceptionHandledField, e.Handled)
+
+	// Set attributes if present
+	if len(e.Attributes) > 0 {
+		attrMap := exceptionMap.PutEmptyMap(elasticattr.ErrorExceptionAttributes)
+		attrMap.EnsureCapacity(len(e.Attributes))
+		for _, kv := range e.Attributes {
+			if kv.Key != "" && kv.Value != nil {
+				insertValue(attrMap.PutEmpty(kv.Key), kv.Value)
+			}
 		}
-		if event.Error.Exception.Message != "" {
-			attributes.PutStr("exception.message", event.Error.Exception.Message)
+	}
+
+	// Set stacktrace as array of frame objects
+	if len(e.Stacktrace) > 0 {
+		setExceptionStacktrace(exceptionMap, e.Stacktrace)
+	}
+}
+
+// setExceptionStacktrace creates the stacktrace array of frame objects for an exception
+func setExceptionStacktrace(exceptionMap pcommon.Map, frames []*modelpb.StacktraceFrame) {
+	stacktraceSlice := exceptionMap.PutEmptySlice(elasticattr.ErrorExceptionStacktrace)
+	stacktraceSlice.EnsureCapacity(len(frames))
+
+	for _, frame := range frames {
+		frameMap := stacktraceSlice.AppendEmpty().SetEmptyMap()
+
+		// Note: ExcludeFromGrouping does not have an 'omitempty' json tag in the apm-data model
+		// so we always set it to match the existing behavior.
+		frameMap.PutBool(elasticattr.ErrorExceptionStacktraceExcludeFromGrouping, frame.ExcludeFromGrouping)
+
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceAbsPath, frame.AbsPath)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceFilename, frame.Filename)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceClassname, frame.Classname)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceFunction, frame.Function)
+		putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceModule, frame.Module)
+
+		if frame.LibraryFrame {
+			frameMap.PutBool(elasticattr.ErrorExceptionStacktraceLibraryFrame, frame.LibraryFrame)
 		}
 
-		if event.Error.Exception.Stacktrace != nil {
-			str := ""
-			for _, frame := range event.Error.Exception.Stacktrace {
-				f := frame.GetFunction()
-				l := frame.GetLineno()
-				if f != "" {
-					str += fmt.Sprintf("%s:%d %s \n", frame.GetFilename(), l, f)
-				} else {
-					c := frame.GetClassname()
-					if c != "" && l != 0 {
-						str += fmt.Sprintf("%s:%d \n", c, l)
-					}
+		// Set line info as nested object
+		if frame.Lineno != nil || frame.Colno != nil || frame.ContextLine != "" {
+			putPtrInt(frameMap, elasticattr.ErrorExceptionStacktraceLineNumber, frame.Lineno)
+			putPtrInt(frameMap, elasticattr.ErrorExceptionStacktraceLineColumn, frame.Colno)
+			putNonEmptyStr(frameMap, elasticattr.ErrorExceptionStacktraceLineContext, frame.ContextLine)
+		}
+
+		// Set context pre/post
+		if len(frame.PreContext) > 0 {
+			preSlice := frameMap.PutEmptySlice(elasticattr.ErrorExceptionStacktraceContextPre)
+			preSlice.EnsureCapacity(len(frame.PreContext))
+			for _, pre := range frame.PreContext {
+				preSlice.AppendEmpty().SetStr(pre)
+			}
+		}
+		if len(frame.PostContext) > 0 {
+			postSlice := frameMap.PutEmptySlice(elasticattr.ErrorExceptionStacktraceContextPost)
+			postSlice.EnsureCapacity(len(frame.PostContext))
+			for _, post := range frame.PostContext {
+				postSlice.AppendEmpty().SetStr(post)
+			}
+		}
+
+		// Set vars if present
+		if len(frame.Vars) > 0 {
+			varsMap := frameMap.PutEmptyMap(elasticattr.ErrorExceptionStacktraceVars)
+			varsMap.EnsureCapacity(len(frame.Vars))
+			for _, kv := range frame.Vars {
+				if kv.Key != "" && kv.Value != nil {
+					insertValue(varsMap.PutEmpty(kv.Key), kv.Value)
 				}
 			}
-
-			attributes.PutStr("exception.stacktrace", str)
-		}
-
-		if event.Error.Exception.Module != "" {
-			attributes.PutStr("error.exception.module", event.Error.Exception.Module)
-		}
-		if event.Error.Exception.Handled != nil {
-			attributes.PutBool("error.exception.handled", *event.Error.Exception.Handled)
-		}
-		if event.Error.Exception.Code != "" {
-			attributes.PutStr("error.exception.code", event.Error.Exception.Code)
 		}
 	}
 }

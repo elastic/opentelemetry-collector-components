@@ -38,8 +38,6 @@ func newTestLocalRateLimiter(t *testing.T, cfg *Config) *localRateLimiter {
 	if cfg == nil {
 		cfg = createDefaultConfig().(*Config)
 	}
-	require.Equal(t, LocalRateLimiter, cfg.Type)
-
 	rl, err := newLocalRateLimiter(cfg, processortest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -64,7 +62,6 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 		t.Run(string(behavior), func(t *testing.T) {
 			burst := 2
 			rateLimiter := newTestLocalRateLimiter(t, &Config{
-				Type: LocalRateLimiter,
 				RateLimitSettings: RateLimitSettings{
 					Rate: 10, Burst: burst, ThrottleBehavior: behavior,
 				},
@@ -98,7 +95,6 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 func TestLocalRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	burst := 2
 	rateLimiter := newTestLocalRateLimiter(t, &Config{
-		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
 			Rate:             1,
 			Burst:            burst,
@@ -132,7 +128,6 @@ func TestLocalRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 func TestLocalRateLimiter_MultipleRequests_Delay(t *testing.T) {
 	throttleInterval := 100 * time.Millisecond
 	rl := newTestLocalRateLimiter(t, &Config{
-		Type: LocalRateLimiter,
 		RateLimitSettings: RateLimitSettings{
 			Rate:             1, // request per second
 			Burst:            1, // capacity only for one

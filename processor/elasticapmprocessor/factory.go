@@ -25,8 +25,8 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/processor"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
-	"github.com/elastic/opentelemetry-lib/enrichments/config"
 )
 
 // NewFactory returns a processor.Factory that constructs elastic
@@ -34,14 +34,15 @@ import (
 func NewFactory() processor.Factory {
 	return processor.NewFactory(
 		metadata.Type,
-		createDefaultConfig,
+		NewDefaultConfig,
 		processor.WithTraces(createTraces, metadata.TracesStability),
 		processor.WithLogs(createLogs, metadata.TracesStability),
 		processor.WithMetrics(createMetrics, metadata.TracesStability),
 	)
 }
 
-func createDefaultConfig() component.Config {
+// NewDefaultConfig creates the default configuration for the processor.
+func NewDefaultConfig() component.Config {
 	return &Config{
 		Config: config.Enabled(),
 	}

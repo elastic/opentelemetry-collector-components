@@ -24,7 +24,7 @@ import (
 	"github.com/open-telemetry/opamp-go/protobufs"
 )
 
-var UnidentifiedAgent = errors.New("agent could not be identified")
+var UnidentifiedAgent = errors.New("agent could not be identified") // nolint:staticcheck // keeping missnamed variable to avoid breaking changes
 
 type (
 	// A unique identifier for the specific agent instance.
