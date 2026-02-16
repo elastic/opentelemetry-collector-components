@@ -29,18 +29,19 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/nopreceiver"
+	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
-func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.Stats) (otelcol.Factories, error) {
+func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenreceiver.Stats) (otelcol.Factories, error) {
 	var err error
 	factories := otelcol.Factories{}
 
 	// Receivers
 	factories.Receivers, err = otelcol.MakeFactoryMap[receiver.Factory](
-		loadgenreceiver.NewFactoryWithDone(logsDone, metricsDone, tracesDone),
+		loadgenreceiver.NewFactoryWithDone(logsDone, metricsDone, tracesDone, profilesDone),
 		nopreceiver.NewFactory(),
 	)
 	if err != nil {
@@ -76,6 +77,9 @@ func components(logsDone, metricsDone, tracesDone chan loadgenreceiver.Stats) (o
 	if err != nil {
 		return otelcol.Factories{}, err
 	}
+
+	// Telemetry
+	factories.Telemetry = otelconftelemetry.NewFactory()
 
 	return factories, err
 }

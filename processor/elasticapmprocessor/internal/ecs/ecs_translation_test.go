@@ -24,6 +24,121 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
 )
 
+func TestTranslateResourceMetadata(t *testing.T) {
+	cases := []struct {
+		name       string
+		inputKey   string
+		inputVal   string
+		wantKey    string
+		wantAbsent string // if non-empty, assert this attribute key is removed after translation (e.g. sanitized key)
+	}{
+		{
+			name:     "labels no reserved chars",
+			inputKey: "labels.my_value",
+			inputVal: "bar",
+			wantKey:  "labels.my_value",
+		},
+		{
+			name:       "labels dot replaced",
+			inputKey:   "labels.other.value",
+			inputVal:   "foo",
+			wantKey:    "labels.other_value",
+			wantAbsent: "labels.other.value",
+		},
+		{
+			name:       "labels asterisk replaced",
+			inputKey:   "labels.key*name",
+			inputVal:   "baz",
+			wantKey:    "labels.key_name",
+			wantAbsent: "labels.key*name",
+		},
+		{
+			name:       "labels double quote replaced",
+			inputKey:   `labels.key"name`,
+			inputVal:   "qux",
+			wantKey:    "labels.key_name",
+			wantAbsent: `labels.key"name`,
+		},
+		{
+			name:       "labels mixed reserved chars",
+			inputKey:   `labels.a.b*c"d`,
+			inputVal:   "mix",
+			wantKey:    "labels.a_b_c_d",
+			wantAbsent: `labels.a.b*c"d`,
+		},
+		{
+			name:     "numeric_labels no reserved chars",
+			inputKey: "numeric_labels.clean",
+			inputVal: "42",
+			wantKey:  "numeric_labels.clean",
+		},
+		{
+			name:       "numeric_labels multiple dots replaced",
+			inputKey:   "numeric_labels.http.status.code",
+			inputVal:   "200",
+			wantKey:    "numeric_labels.http_status_code",
+			wantAbsent: "numeric_labels.http.status.code",
+		},
+		{
+			name:       "unsupported dotted key",
+			inputKey:   "unsupported.key",
+			inputVal:   "foo",
+			wantKey:    "labels.unsupported_key",
+			wantAbsent: "unsupported.key",
+		},
+		{
+			name:       "unsupported flat key",
+			inputKey:   "custom",
+			inputVal:   "val",
+			wantKey:    "labels.custom",
+			wantAbsent: "custom",
+		},
+		{
+			name:       "unsupported asterisk key",
+			inputKey:   "some*attr",
+			inputVal:   "star",
+			wantKey:    "labels.some_attr",
+			wantAbsent: "some*attr",
+		},
+		{
+			name:       "unsupported double quote key",
+			inputKey:   `some"attr`,
+			inputVal:   "quote",
+			wantKey:    "labels.some_attr",
+			wantAbsent: `some"attr`,
+		},
+		{
+			name:       "unsupported mixed reserved chars",
+			inputKey:   `x.y*z"w`,
+			inputVal:   "mix",
+			wantKey:    "labels.x_y_z_w",
+			wantAbsent: `x.y*z"w`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resource := pcommon.NewResource()
+			attrs := resource.Attributes()
+			attrs.PutStr(tc.inputKey, tc.inputVal)
+
+			TranslateResourceMetadata(resource)
+
+			v, ok := attrs.Get(tc.wantKey)
+			if !ok {
+				t.Fatalf("expected attribute %q to be present", tc.wantKey)
+			}
+			if v.AsString() != tc.inputVal {
+				t.Errorf("attribute %q value = %q, want %q", tc.wantKey, v.AsString(), tc.inputVal)
+			}
+			if tc.wantAbsent != "" {
+				if _, ok := attrs.Get(tc.wantAbsent); ok {
+					t.Errorf("expected attribute %q to be absent after sanitization", tc.wantAbsent)
+				}
+			}
+		})
+	}
+}
+
 func TestApplyResourceConventions(t *testing.T) {
 	testdata := map[string]struct {
 		inputAttrs    map[string]string
