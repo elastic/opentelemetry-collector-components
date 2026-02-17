@@ -1,3 +1,7 @@
+# Scenario: log records with processor.event originate from the Elastic APM
+# intake receiver (elasticapmintakereceiver). OTLP log attribute conventions
+# (move-to-labels) and body conventions must NOT be applied to these records,
+# because their attributes follow the Elastic APM schema, not OTel conventions.
 resourceLogs:
   - resource:
       attributes:
@@ -12,7 +16,7 @@ resourceLogs:
                   stringValue: "error"
               - key: http.method
                 value:
-                  stringValue: "GET"
+                  stringValue: "GET" # must stay as-is, not moved to labels.http_method
             body:
               stringValue: "processor event log"
             timeUnixNano: "1000000000"

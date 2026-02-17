@@ -1,18 +1,21 @@
+# Expected: telemetry.distro.name/version are consumed to produce agent.name
+# ("otlp/unknown/elastic") and agent.version ("9.1.2"), then removed.
+# service.name dots are sanitized. Default log conventions are applied.
 resourceLogs:
   - resource:
       attributes:
         - key: service.name
           value:
-            stringValue: distro_service
+            stringValue: distro_service # dots sanitized to underscores
         - key: service.language.name
           value:
-            stringValue: unknown
+            stringValue: unknown # default: no telemetry.sdk.language
         - key: deployment.environment
           value:
-            stringValue: unset
+            stringValue: unset # default: no deployment.environment(.name)
         - key: agent.version
           value:
-            stringValue: 9.1.2
+            stringValue: 9.1.2 # derived from telemetry.distro.version
         - key: data_stream.type
           value:
             stringValue: logs
@@ -27,7 +30,8 @@ resourceLogs:
             stringValue: 1.2.3.4
         - key: agent.name
           value:
-            stringValue: otlp/unknown/elastic
+            stringValue: otlp/unknown/elastic # derived from sdk+distro
+        # telemetry.distro.name and telemetry.distro.version are removed
     scopeLogs:
       - logRecords:
           - body:

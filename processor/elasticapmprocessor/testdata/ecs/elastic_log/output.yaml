@@ -1,6 +1,11 @@
+# Comprehensive golden file: verifies that all supported resource attributes
+# pass through, unsupported ones are moved to labels, and log record
+# attributes are processed by OTLP conventions.
 resourceLogs:
+  # --- First resourceLog: exhaustive allowlist validation ---
   - resource:
       attributes:
+        # unsupported.key → moved to labels (de-dotted)
         - key: labels.unsupported_key
           value:
             stringValue: foo
@@ -10,6 +15,7 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.0.0
+        # Already label-prefixed — kept as-is
         - key: labels.my_value
           value:
             stringValue: foo
@@ -23,6 +29,7 @@ resourceLogs:
                 - stringValue: foo
                 - stringValue: bar
                 - stringValue: foo
+        # service.* — all supported, pass through unchanged
         - key: service.name
           value:
             stringValue: test-service
@@ -68,12 +75,14 @@ resourceLogs:
         - key: service.target.type
           value:
             stringValue: container
+        # deployment.* — supported
         - key: deployment.environment
           value:
             stringValue: prod
         - key: deployment.environment.name
           value:
             stringValue: production
+        # telemetry.sdk.* — supported
         - key: telemetry.sdk.name
           value:
             stringValue: opentelemetry
@@ -83,6 +92,7 @@ resourceLogs:
         - key: telemetry.sdk.language
           value:
             stringValue: go
+        # cloud.* — supported
         - key: cloud.provider
           value:
             stringValue: aws
@@ -128,6 +138,7 @@ resourceLogs:
         - key: cloud.project.name
           value:
             stringValue: my-project
+        # container.* — supported
         - key: container.name
           value:
             stringValue: my-container
@@ -146,6 +157,7 @@ resourceLogs:
         - key: container.image.tag
           value:
             stringValue: latest
+        # k8s.* — supported
         - key: k8s.namespace.name
           value:
             stringValue: default
@@ -158,6 +170,7 @@ resourceLogs:
         - key: k8s.pod.uid
           value:
             stringValue: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        # host.* — supported; host.name preserved from input
         - key: host.name
           value:
             stringValue: node-1
@@ -173,6 +186,7 @@ resourceLogs:
         - key: host.os.platform
           value:
             stringValue: linux
+        # process.* — supported
         - key: process.pid
           value:
             intValue: "12345"
@@ -197,6 +211,7 @@ resourceLogs:
         - key: process.runtime.version
           value:
             stringValue: "17"
+        # os.* — supported
         - key: os.type
           value:
             stringValue: linux
@@ -209,6 +224,7 @@ resourceLogs:
         - key: os.version
           value:
             stringValue: "22.04"
+        # device.* — supported
         - key: device.id
           value:
             stringValue: device-123
@@ -221,6 +237,7 @@ resourceLogs:
         - key: device.manufacturer
           value:
             stringValue: Apple
+        # user.* — supported
         - key: user.id
           value:
             stringValue: user-1234
@@ -236,6 +253,7 @@ resourceLogs:
         - key: user_agent.original
           value:
             stringValue: Mozilla/5.0
+        # network.* — supported
         - key: network.connection.type
           value:
             stringValue: wifi
@@ -254,6 +272,7 @@ resourceLogs:
         - key: network.carrier.icc
           value:
             stringValue: US
+        # client.* / source.* / destination.* — supported
         - key: client.address
           value:
             stringValue: 192.168.1.100
@@ -272,6 +291,8 @@ resourceLogs:
         - key: destination.ip
           value:
             stringValue: 172.16.0.1
+        # faas.* — supported; faas.trigger.request.id is NOT in the allowlist
+        # so it moves to labels (de-dotted to faas_trigger_request_id)
         - key: faas.instance
           value:
             stringValue: faas-instance-1
@@ -293,12 +314,14 @@ resourceLogs:
         - key: faas.execution
           value:
             stringValue: exec-456
+        # data_stream.* — set by EncodeDataStream with service name in dataset
         - key: data_stream.dataset
           value:
             stringValue: apm.app.test_service
         - key: data_stream.namespace
           value:
             stringValue: default
+        # Legacy / APM agent attributes — supported
         - key: opencensus.exporterversion
           value:
             stringValue: 1.0.0
@@ -308,9 +331,11 @@ resourceLogs:
         - key: agent.activation_method
           value:
             stringValue: automatic
+        # host.hostname derived from k8s.node.name by ApplyResourceConventions
         - key: host.hostname
           value:
             stringValue: node-1
+        # Added by processor
         - key: data_stream.type
           value:
             stringValue: logs
@@ -323,11 +348,13 @@ resourceLogs:
               stringValue: test log message
             timeUnixNano: "1581452772000000321"
         scope: {}
+  # --- Second resourceLog: minimal resource, OTLP log attribute conventions ---
   - resource:
       attributes:
         - key: service.name
           value:
-            stringValue: my_service_logs
+            stringValue: my_service_logs # dots sanitized from "my.service.logs"
+        # Defaults filled by ApplyLogConventions
         - key: service.language.name
           value:
             stringValue: unknown
@@ -356,17 +383,18 @@ resourceLogs:
       - logRecords:
           - body:
               stringValue: HTTP request processed successfully
+            # OTLP log attribute conventions: custom attrs moved to labels
             attributes:
               - key: labels.http_method
                 value:
-                  stringValue: GET
+                  stringValue: GET # was http.method
               - key: labels.http_url
                 value:
-                  stringValue: https://api.example.com/users
+                  stringValue: https://api.example.com/users # was http.url
               - key: numeric_labels.http_status_code
                 value:
-                  doubleValue: 200
+                  doubleValue: 200 # was http.status_code (int)
               - key: numeric_labels.http_response_content_length
                 value:
-                  doubleValue: 1024
+                  doubleValue: 1024 # was http.response_content_length (int)
         scope: {}

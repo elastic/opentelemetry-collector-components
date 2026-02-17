@@ -1,9 +1,13 @@
+# Expected: processor.event=error record keeps http.method as-is (no move to
+# labels.http_method) because OTLP conventions are skipped for intake-origin
+# records. The record is routed to the apm.error data stream because
+# processor.event="error" triggers IsErrorEvent.
 resourceLogs:
   - resource:
       attributes:
         - key: service.name
           value:
-            stringValue: my_service
+            stringValue: my_service # dots sanitized
         - key: service.language.name
           value:
             stringValue: unknown
@@ -36,13 +40,13 @@ resourceLogs:
                   stringValue: error
               - key: http.method
                 value:
-                  stringValue: GET
+                  stringValue: GET # preserved: OTLP conventions skipped
               - key: data_stream.type
                 value:
                   stringValue: logs
               - key: data_stream.dataset
                 value:
-                  stringValue: apm.error
+                  stringValue: apm.error # routed to error data stream
               - key: data_stream.namespace
                 value:
                   stringValue: default
