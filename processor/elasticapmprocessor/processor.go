@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
@@ -270,55 +271,59 @@ func routeMetricsToDataStream(scopeMetrics pmetric.ScopeMetricsSlice, hasService
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	enricher := p.enricher
-	ecsMode := isECS(ctx)
-	if ecsMode {
-		enricher = p.ecsEnricher
-		resourceLogs := ld.ResourceLogs()
-		for i := 0; i < resourceLogs.Len(); i++ {
-			resourceLog := resourceLogs.At(i)
-			resource := resourceLog.Resource()
-			ecs.TranslateResourceMetadata(resource)
-			ecs.ApplyResourceConventions(resource)
-			ecs.ApplyLogConventions(resource)
-			routing.EncodeDataStream(resource, routing.DataStreamTypeLogs, p.cfg.ServiceNameInDataStreamDataset)
-			if p.cfg.HostIPEnabled {
-				ecs.SetHostIP(ctx, resource.Attributes())
-			}
+	if isECS(ctx) {
+		return p.consumeECSLogs(ctx, ld)
+	}
+	if !p.cfg.SkipEnrichment {
+		p.enricher.EnrichLogs(ld)
+	}
+	return p.next.ConsumeLogs(ctx, ld)
+}
 
-			// Check each log record for error events and route to apm.error dataset
-			// This follows the same logic as apm-data to detect error events
-			scopeLogs := resourceLog.ScopeLogs()
-			for j := 0; j < scopeLogs.Len(); j++ {
-				scopeLog := scopeLogs.At(j)
-				scopeAttributes := scopeLog.Scope().Attributes()
-				logRecords := scopeLog.LogRecords()
-				for k := 0; k < logRecords.Len(); k++ {
-					logRecord := logRecords.At(k)
-					ecs.ApplyScopeDataStreamConventions(scopeAttributes, logRecord.Attributes())
-					if routing.IsErrorEvent(logRecord.Attributes()) {
-						// Override the resource-level data stream for error logs
-						routing.EncodeErrorDataStream(logRecord.Attributes(), routing.DataStreamTypeLogs)
-					}
+func (p *LogProcessor) consumeECSLogs(ctx context.Context, ld plog.Logs) error {
+	resourceLogs := ld.ResourceLogs()
+	for i := 0; i < resourceLogs.Len(); i++ {
+		resourceLog := resourceLogs.At(i)
+		resource := resourceLog.Resource()
+		ecs.TranslateResourceMetadata(resource)
+		ecs.ApplyResourceConventions(resource)
+		ecs.ApplyLogConventions(resource)
+		routing.EncodeDataStream(resource, routing.DataStreamTypeLogs, p.cfg.ServiceNameInDataStreamDataset)
+		if p.cfg.HostIPEnabled {
+			ecs.SetHostIP(ctx, resource.Attributes())
+		}
 
-					if _, fromElasticAPMIntake := logRecord.Attributes().Get("processor.event"); !fromElasticAPMIntake {
-						ecs.ApplyOTLPLogBodyConventions(logRecord)
-						ecs.ApplyOTLPLogAttributeConventions(logRecord.Attributes())
-					}
+		scopeLogs := resourceLog.ScopeLogs()
+		for j := 0; j < scopeLogs.Len(); j++ {
+			scopeLog := scopeLogs.At(j)
+			scopeAttributes := scopeLog.Scope().Attributes()
+			logRecords := scopeLog.LogRecords()
+			for k := 0; k < logRecords.Len(); k++ {
+				logRecord := logRecords.At(k)
+				ecs.ApplyScopeDataStreamConventions(scopeAttributes, logRecord.Attributes())
+				if routing.IsErrorEvent(logRecord.Attributes()) {
+					routing.EncodeErrorDataStream(logRecord.Attributes(), routing.DataStreamTypeLogs)
+				}
+				if !isFromElasticAPMIntake(logRecord) {
+					ecs.ApplyOTLPLogBodyConventions(logRecord)
+					ecs.ApplyOTLPLogAttributeConventions(logRecord.Attributes())
 				}
 			}
 		}
 	}
-	// When skipEnrichment is true, only enrich when mapping mode is ecs
-	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.cfg.SkipEnrichment || ecsMode {
-		enricher.EnrichLogs(ld)
-	}
-	if ecsMode {
-		resourceLogs := ld.ResourceLogs()
-		for i := 0; i < resourceLogs.Len(); i++ {
-			ecs.CleanupTransientResourceMetadata(resourceLogs.At(i).Resource())
-		}
+
+	p.ecsEnricher.EnrichLogs(ld)
+
+	for i := 0; i < resourceLogs.Len(); i++ {
+		ecs.CleanupTransientResourceMetadata(resourceLogs.At(i).Resource())
 	}
 	return p.next.ConsumeLogs(ctx, ld)
+}
+
+// isFromElasticAPMIntake reports whether the log record originated from the
+// elasticapmintakereceiver. The intake receiver sets processor.event on all
+// event types it produces; OTLP log records never carry this attribute.
+func isFromElasticAPMIntake(logRecord plog.LogRecord) bool {
+	_, ok := logRecord.Attributes().Get(elasticattr.ProcessorEvent)
+	return ok
 }
