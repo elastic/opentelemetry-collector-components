@@ -1,0 +1,113 @@
+{
+  "culprit": "culprit",
+  "exception": [
+    {
+      "message": "ex_message",
+      "type": "ex_type",
+      "module": "ex_module",
+      "code": "ex_code",
+      "handled": true,
+      "attributes": {
+        "TestErrorToModelJSON.key.Ndwhb": "TestErrorToModelJSON.value.mScFP"
+      },
+      "stacktrace": [
+        {
+          "exclude_from_grouping": false,
+          "abs_path": "/home/user/project/exception_file1.go",
+          "context": {
+            "post": [
+              "// next line 1",
+              "// next line 2"
+            ],
+            "pre": [
+              "// previous line 1",
+              "// previous line 2"
+            ]
+          },
+          "filename": "exception_file1.go",
+          "function": "exceptionFunc1",
+          "line": {
+            "column": 5,
+            "context": "err := doSomething()",
+            "number": 10
+          },
+          "module": "github.com/example/pkg1"
+        },
+        {
+          "exclude_from_grouping": false,
+          "abs_path": "/home/user/project/exception_file2.go",
+          "filename": "exception_file2.go",
+          "function": "exceptionFunc2",
+          "library_frame": true,
+          "line": {
+            "column": 12,
+            "context": "return fmt.Errorf(\"error\")",
+            "number": 25
+          },
+          "module": "github.com/example/pkg2"
+        },
+        {
+          "exclude_from_grouping": false,
+          "abs_path": "/home/user/project/main.go",
+          "filename": "exception_file3.go",
+          "function": "main",
+          "line": {
+            "number": 100
+          },
+          "module": "main"
+        }
+      ]
+    },
+    {
+      "message": "ex1_message",
+      "type": "ex_type",
+      "module": "ex1_module",
+      "code": "ex1_code",
+      "stacktrace": [
+        {
+          "exclude_from_grouping": false,
+          "filename": "cause_file1.go",
+          "function": "causeFunc1",
+          "line": {
+            "number": 50
+          },
+          "module": "github.com/example/cause"
+        }
+      ]
+    }
+  ],
+  "grouping_key": "groupingkey",
+  "id": "id",
+  "log": {
+    "level": "log_level",
+    "logger_name": "log_loggername",
+    "message": "log_message",
+    "param_message": "log_parammessage",
+    "stacktrace": [
+      {
+        "exclude_from_grouping": false,
+        "abs_path": "/home/user/project/log_file1.go",
+        "filename": "log_file1.go",
+        "function": "logFunc1",
+        "line": {
+          "column": 8,
+          "context": "logger.Error(msg)",
+          "number": 200
+        },
+        "module": "github.com/example/logging"
+      },
+      {
+        "exclude_from_grouping": true,
+        "filename": "log_file2.go",
+        "function": "logFunc2",
+        "line": {
+          "number": 150
+        },
+        "module": "github.com/example/logging"
+      }
+    ]
+  },
+  "message": "message",
+  "stack_trace": "stacktrace",
+  "type": "type"
+}
