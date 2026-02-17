@@ -42,17 +42,19 @@ func sanitize(field string, replaceFn func(r rune) rune) string {
 	return field
 }
 
+// Shared disallowed characters for data stream fields.
+// Dataset additionally disallows '-'.
+const sharedDisallowed = `\/*?"<>| ,#:`
+
 func replaceDisallowedDatasetRune(r rune) rune {
-	switch r {
-	case '-', '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':':
+	if r == '-' || strings.ContainsRune(sharedDisallowed, r) {
 		return '_'
 	}
 	return unicode.ToLower(r)
 }
 
 func replaceDisallowedNamespaceRune(r rune) rune {
-	switch r {
-	case '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':':
+	if strings.ContainsRune(sharedDisallowed, r) {
 		return '_'
 	}
 	return unicode.ToLower(r)

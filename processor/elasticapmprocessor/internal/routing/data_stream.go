@@ -37,7 +37,7 @@ const (
 
 	NamespaceDefault = "default" //TODO: make this configurable
 
-	ServiceNameUnknownAttributeUnknonw = "unknown"
+	ServiceNameUnknownAttribute = "unknown"
 )
 
 func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceNameInDataset bool) {
@@ -61,7 +61,7 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 
 	serviceName, ok := attributes.Get(ServiceNameAttributeKey)
 	if !ok || serviceName.Str() == "" {
-		serviceName = pcommon.NewValueStr(ServiceNameUnknownAttributeUnknonw)
+		serviceName = pcommon.NewValueStr(ServiceNameUnknownAttribute)
 	}
 
 	attributes.PutStr("data_stream.type", dataStreamType)
