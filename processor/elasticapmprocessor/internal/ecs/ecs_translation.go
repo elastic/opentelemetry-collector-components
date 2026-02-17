@@ -69,19 +69,8 @@ const (
 )
 
 func TranslateResourceMetadata(resource pcommon.Resource) {
-	attributes := resource.Attributes()
-
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if !isSupportedAttribute(k) && !isInfraAttribute(k) {
-			// Unsupported resource attributes are moved to labels when
-			// their type is representable (str, bool, int, double, slice).
-			// Types that cannot be stored as labels (Map, Bytes, Empty)
-			// are intentionally dropped, matching apm-data behaviour
-			// (see input/otlp/traces.go case pcommon.ValueTypeMap).
-			setLabelAttributeValue(attributes, replaceDots(k), v)
-			attributes.Remove(k)
-		}
-		return true
+	moveUnsupportedToLabels(resource.Attributes(), func(k string) bool {
+		return isSupportedAttribute(k) || isInfraAttribute(k)
 	})
 }
 

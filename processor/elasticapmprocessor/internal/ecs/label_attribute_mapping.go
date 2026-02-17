@@ -23,6 +23,29 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
+// moveUnsupportedToLabels moves attributes that don't pass the keep
+// predicate into labels.* / numeric_labels.* with sanitized keys.
+// Attributes whose value type is not representable as a label (Map,
+// Bytes, Empty) are removed without replacement.
+func moveUnsupportedToLabels(attributes pcommon.Map, keep func(string) bool) {
+	type entry struct {
+		key   string
+		value pcommon.Value
+	}
+	snapshot := make([]entry, 0, attributes.Len())
+	attributes.Range(func(k string, v pcommon.Value) bool {
+		snapshot = append(snapshot, entry{k, v})
+		return true
+	})
+	for _, e := range snapshot {
+		if keep(e.key) {
+			continue
+		}
+		setLabelAttributeValue(attributes, replaceDots(e.key), e.value)
+		attributes.Remove(e.key)
+	}
+}
+
 // setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
 // It returns true if the value was stored, false if the type is not
 // representable as a label. Elasticsearch label mappings only support

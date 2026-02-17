@@ -31,23 +31,7 @@ import (
 // (Map, Bytes, Empty) are removed without replacement, matching the behaviour of
 // apm-data's setLabel (input/otlp/metadata.go).
 func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
-	type entry struct {
-		key   string
-		value pcommon.Value
-	}
-	snapshot := make([]entry, 0, attributes.Len())
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		snapshot = append(snapshot, entry{k, v})
-		return true
-	})
-
-	for _, e := range snapshot {
-		if shouldKeepLogAttribute(e.key) {
-			continue
-		}
-		setLabelAttributeValue(attributes, replaceDots(e.key), e.value)
-		attributes.Remove(e.key)
-	}
+	moveUnsupportedToLabels(attributes, shouldKeepLogAttribute)
 }
 
 func shouldKeepLogAttribute(attr string) bool {
