@@ -44,6 +44,22 @@ import (
 
 var update = flag.Bool("update", false, "Flag to generate/updated the expected yaml files")
 
+// newTestECSLogProcessor creates a log processor configured for ECS mapping
+// mode with the default config. It returns the processor, consumer sink, and
+// a context carrying the ECS client metadata.
+func newTestECSLogProcessor(t *testing.T) (processor.Logs, *consumertest.LogsSink, context.Context) {
+	t.Helper()
+	ctx := client.NewContext(context.Background(), client.Info{
+		Addr:     &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+	lp, err := NewFactory().CreateLogs(ctx, processortest.NewNopSettings(metadata.Type), cfg, next)
+	require.NoError(t, err)
+	return lp, next, ctx
+}
+
 // TestProcessor does a basic test to check if traces, logs, and metrics
 // are processed correctly.
 func TestProcessor(t *testing.T) {
@@ -193,18 +209,7 @@ func TestProcessor(t *testing.T) {
 }
 
 func TestLogBodyNonStringConvertedToString(t *testing.T) {
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
-		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-mapping-mode": {"ecs"},
-		}),
-	})
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	next := &consumertest.LogsSink{}
-	cfg := NewDefaultConfig().(*Config)
-	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
-	require.NoError(t, err)
+	lp, next, ctx := newTestECSLogProcessor(t)
 
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
@@ -237,18 +242,7 @@ func TestLogBodyNonStringConvertedToString(t *testing.T) {
 }
 
 func TestProcessorEventSkipsOTLPLogConventions(t *testing.T) {
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
-		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-mapping-mode": {"ecs"},
-		}),
-	})
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	next := &consumertest.LogsSink{}
-	cfg := NewDefaultConfig().(*Config)
-	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
-	require.NoError(t, err)
+	lp, next, ctx := newTestECSLogProcessor(t)
 
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
@@ -272,18 +266,7 @@ func TestProcessorEventSkipsOTLPLogConventions(t *testing.T) {
 }
 
 func TestMapBodyAttributeCollisionAttributeWins(t *testing.T) {
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
-		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-mapping-mode": {"ecs"},
-		}),
-	})
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	next := &consumertest.LogsSink{}
-	cfg := NewDefaultConfig().(*Config)
-	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
-	require.NoError(t, err)
+	lp, next, ctx := newTestECSLogProcessor(t)
 
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
@@ -302,18 +285,7 @@ func TestMapBodyAttributeCollisionAttributeWins(t *testing.T) {
 }
 
 func TestMixedAndEmptySliceHandling(t *testing.T) {
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
-		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-mapping-mode": {"ecs"},
-		}),
-	})
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	next := &consumertest.LogsSink{}
-	cfg := NewDefaultConfig().(*Config)
-	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
-	require.NoError(t, err)
+	lp, next, ctx := newTestECSLogProcessor(t)
 
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
@@ -340,18 +312,7 @@ func TestMixedAndEmptySliceHandling(t *testing.T) {
 }
 
 func TestLongLabelValuesAreTruncated(t *testing.T) {
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
-		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-mapping-mode": {"ecs"},
-		}),
-	})
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	next := &consumertest.LogsSink{}
-	cfg := NewDefaultConfig().(*Config)
-	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
-	require.NoError(t, err)
+	lp, next, ctx := newTestECSLogProcessor(t)
 
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
@@ -367,18 +328,7 @@ func TestLongLabelValuesAreTruncated(t *testing.T) {
 }
 
 func TestServiceNameIsTruncatedAndSanitized(t *testing.T) {
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
-		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-mapping-mode": {"ecs"},
-		}),
-	})
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	next := &consumertest.LogsSink{}
-	cfg := NewDefaultConfig().(*Config)
-	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
-	require.NoError(t, err)
+	lp, next, ctx := newTestECSLogProcessor(t)
 
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
@@ -394,18 +344,7 @@ func TestServiceNameIsTruncatedAndSanitized(t *testing.T) {
 }
 
 func TestDataStreamAttrsFromLogAreSanitizedAndTruncated(t *testing.T) {
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
-		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-mapping-mode": {"ecs"},
-		}),
-	})
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	next := &consumertest.LogsSink{}
-	cfg := NewDefaultConfig().(*Config)
-	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
-	require.NoError(t, err)
+	lp, next, ctx := newTestECSLogProcessor(t)
 
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
@@ -435,18 +374,7 @@ func TestDataStreamAttrsFromLogAreSanitizedAndTruncated(t *testing.T) {
 }
 
 func TestDataStreamScopeAttributesAffectLogRecordWhenMissingOnRecord(t *testing.T) {
-	ctx := client.NewContext(context.Background(), client.Info{
-		Addr: &net.IPAddr{IP: net.IPv4(1, 2, 3, 4)},
-		Metadata: client.NewMetadata(map[string][]string{
-			"x-elastic-mapping-mode": {"ecs"},
-		}),
-	})
-	factory := NewFactory()
-	settings := processortest.NewNopSettings(metadata.Type)
-	next := &consumertest.LogsSink{}
-	cfg := NewDefaultConfig().(*Config)
-	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
-	require.NoError(t, err)
+	lp, next, ctx := newTestECSLogProcessor(t)
 
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
