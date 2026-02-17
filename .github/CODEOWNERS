@@ -4,6 +4,7 @@
 # Per-component owners
 loadgen                                @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 receiver/loadgenreceiver               @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+receiver/certscannerreceiver           @elastic/otel-devs
 receiver/elasticapmintakereceiver      @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations
 processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data

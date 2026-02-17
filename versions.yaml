@@ -3,6 +3,7 @@ module-sets:
     version: v0.30.0
     modules:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
+      - github.com/elastic/opentelemetry-collector-components/receiver/certscannerreceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
       - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor

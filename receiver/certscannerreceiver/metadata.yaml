@@ -1,0 +1,11 @@
+type: certscanner
+scope_name: github.com/elastic/opentelemetry-collector-components/receiver/certscannerreceiver
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: receiver
+  stability:
+    development: [logs, metrics]
+  distributions: []
+#  codeowners:
+#    active: []

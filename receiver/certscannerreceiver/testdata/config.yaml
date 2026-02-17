@@ -1,0 +1,43 @@
+# Example OpenTelemetry Collector configuration for certscanner receiver
+
+receivers:
+  certscanner:
+    # How often to scan for certificates (minimum: 1m)
+    interval: 5m
+
+    # Connection timeout per port
+    timeout: 3s
+
+    # Port filtering configuration
+    ports:
+      # Explicit list of ports to scan (when scan_all is false)
+      include: [443, 8443, 636, 9200, 6443]
+      # Ports to always exclude
+      exclude: [22]
+      # If true, scan all listening ports not in exclude list
+      # If false (default), only scan ports in include list
+      scan_all: false
+
+    # Emit metrics in addition to logs
+    emit_metrics: true
+
+processors:
+  batch:
+    timeout: 10s
+    send_batch_size: 100
+
+exporters:
+  # Debug exporter for testing
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    logs:
+      receivers: [certscanner]
+      processors: [batch]
+      exporters: [debug]
+    metrics:
+      receivers: [certscanner]
+      processors: [batch]
+      exporters: [debug]
