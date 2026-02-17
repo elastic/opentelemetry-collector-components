@@ -39,27 +39,38 @@ var _ processor.Traces = (*TraceProcessor)(nil)
 var _ processor.Metrics = (*MetricProcessor)(nil)
 var _ processor.Logs = (*LogProcessor)(nil)
 
-type TraceProcessor struct {
+// baseProcessor holds fields shared by all signal-specific processors.
+type baseProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next        consumer.Traces
 	enricher    *enrichments.Enricher
 	ecsEnricher *enrichments.Enricher
 	logger      *zap.Logger
 	cfg         *Config
 }
 
-func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
+func newBaseProcessor(cfg *Config, logger *zap.Logger) baseProcessor {
 	enricherConfig := cfg.Config
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
-	return &TraceProcessor{
-		next:        next,
+	return baseProcessor{
 		logger:      logger,
 		enricher:    enrichments.NewEnricher(enricherConfig),
 		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
 		cfg:         cfg,
+	}
+}
+
+type TraceProcessor struct {
+	baseProcessor
+	next consumer.Traces
+}
+
+func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
+	return &TraceProcessor{
+		baseProcessor: newBaseProcessor(cfg, logger),
+		next:          next,
 	}
 }
 
@@ -121,26 +132,14 @@ func getMetadataValue(info client.Info) string {
 }
 
 type LogProcessor struct {
-	component.StartFunc
-	component.ShutdownFunc
-
-	next        consumer.Logs
-	enricher    *enrichments.Enricher
-	ecsEnricher *enrichments.Enricher
-	logger      *zap.Logger
-	cfg         *Config
+	baseProcessor
+	next consumer.Logs
 }
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
-	enricherConfig := cfg.Config
-	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	return &LogProcessor{
-		next:        next,
-		logger:      logger,
-		enricher:    enrichments.NewEnricher(enricherConfig),
-		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
-		cfg:         cfg,
+		baseProcessor: newBaseProcessor(cfg, logger),
+		next:          next,
 	}
 }
 
@@ -149,26 +148,14 @@ func (p *LogProcessor) Capabilities() consumer.Capabilities {
 }
 
 type MetricProcessor struct {
-	component.StartFunc
-	component.ShutdownFunc
-
-	next        consumer.Metrics
-	enricher    *enrichments.Enricher
-	ecsEnricher *enrichments.Enricher
-	logger      *zap.Logger
-	cfg         *Config
+	baseProcessor
+	next consumer.Metrics
 }
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
-	enricherConfig := cfg.Config
-	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	return &MetricProcessor{
-		next:        next,
-		logger:      logger,
-		enricher:    enrichments.NewEnricher(enricherConfig),
-		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
-		cfg:         cfg,
+		baseProcessor: newBaseProcessor(cfg, logger),
+		next:          next,
 	}
 }
 
