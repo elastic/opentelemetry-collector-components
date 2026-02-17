@@ -73,7 +73,11 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if !isSupportedAttribute(k) && !isLabelAttribute(k) {
-			// Other attributes that are not supported by ECS are moved to labels.
+			// Unsupported resource attributes are moved to labels when
+			// their type is representable (str, bool, int, double, slice).
+			// Types that cannot be stored as labels (Map, Bytes, Empty)
+			// are intentionally dropped, matching apm-data behaviour
+			// (see input/otlp/traces.go case pcommon.ValueTypeMap).
 			setLabelAttributeValue(attributes, replaceDots(k), v)
 			attributes.Remove(k)
 		}

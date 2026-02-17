@@ -24,7 +24,11 @@ import (
 
 // ApplyOTLPLogBodyConventions applies OTLP body handling for ECS log flow.
 // Non-empty non-string bodies are converted to their string representation so ECS encoding
-// can emit message. For map bodies, entries are also moved to labels.* / numeric_labels.*.
+// can emit message. For map bodies, scalar-typed entries are extracted to
+// labels.* / numeric_labels.*; nested map or bytes entries within the body
+// are intentionally not stored as labels (they have no flat representation)
+// and are only preserved in the stringified body message. This matches
+// apm-data behaviour (input/otlp/logs.go).
 func ApplyOTLPLogBodyConventions(logRecord plog.LogRecord) {
 	body := logRecord.Body()
 	if body.Type() == pcommon.ValueTypeEmpty {

@@ -23,8 +23,14 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
-// setLabelAttributeValue maps unsupported values into labels.* / numeric_labels.*.
-func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
+// setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
+// It returns true if the value was stored, false if the type is not
+// representable as a label. Elasticsearch label mappings only support
+// flat scalar values and homogeneous arrays thereof; Map, Bytes, and
+// Empty types cannot be stored and are intentionally dropped. This
+// matches the behaviour of apm-data's setLabel (input/otlp/metadata.go)
+// which also silently ignores these types.
+func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) bool {
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
 		attributes.PutStr("labels."+key, truncate(value.Str()))
@@ -37,7 +43,7 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 	case pcommon.ValueTypeSlice:
 		slice := value.Slice()
 		if slice.Len() == 0 {
-			return
+			return false
 		}
 		switch slice.At(0).Type() {
 		case pcommon.ValueTypeStr:
@@ -72,6 +78,13 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 					target.AppendEmpty().SetDouble(float64(item.Int()))
 				}
 			}
+		default:
+			return false
 		}
+	case pcommon.ValueTypeMap, pcommon.ValueTypeBytes, pcommon.ValueTypeEmpty:
+		return false
+	default:
+		return false
 	}
+	return true
 }

@@ -29,7 +29,10 @@ import (
 )
 
 // ApplyOTLPLogAttributeConventions applies OTLP log attribute handling used in ECS flow.
-// Unsupported OTLP log attributes are moved into labels.* / numeric_labels.* with de-dotted keys.
+// Unsupported OTLP log attributes are moved into labels.* / numeric_labels.* with
+// de-dotted keys. Attributes whose value type cannot be represented as a label
+// (Map, Bytes, Empty) are removed without replacement, matching the behaviour of
+// apm-data's setLabel (input/otlp/metadata.go).
 func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
 	keys := make([]string, 0, attributes.Len())
 	attributes.Range(func(k string, _ pcommon.Value) bool {
