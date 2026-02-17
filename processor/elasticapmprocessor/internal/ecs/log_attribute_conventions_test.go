@@ -21,62 +21,121 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
 func TestApplyOTLPLogAttributeConventions(t *testing.T) {
-	attrs := pcommon.NewMap()
-	attrs.PutStr("http.method", "GET")
-	attrs.PutInt("http.status_code", 200)
-	attrs.PutInt("http.response_content_length", 1024)
-	attrs.PutBool("request.succeeded", true)
-	attrs.PutStr("event.name", "device.crash")
-	attrs.PutStr("exception.message", "something failed")
-	attrs.PutStr("labels.existing_label", "existing")
-	attrs.PutDouble("numeric_labels.existing_numeric", 42)
-	attrs.PutStr("data_stream.dataset", "apm.app.my_service_logs")
+	t.Run("moves custom attributes to labels", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			setup     func(pcommon.Map)
+			sourceKey string // original key — should be removed after the call
+			wantKey   string // expected destination key
+			wantRaw   any    // expected value: string, float64, or []any
+		}{
+			{
+				name:      "string to labels",
+				setup:     func(m pcommon.Map) { m.PutStr("http.method", "GET") },
+				sourceKey: "http.method",
+				wantKey:   "labels.http_method",
+				wantRaw:   "GET",
+			},
+			{
+				name:      "int to numeric_labels",
+				setup:     func(m pcommon.Map) { m.PutInt("http.status_code", 200) },
+				sourceKey: "http.status_code",
+				wantKey:   "numeric_labels.http_status_code",
+				wantRaw:   float64(200),
+			},
+			{
+				name:      "second int to numeric_labels",
+				setup:     func(m pcommon.Map) { m.PutInt("http.response_content_length", 1024) },
+				sourceKey: "http.response_content_length",
+				wantKey:   "numeric_labels.http_response_content_length",
+				wantRaw:   float64(1024),
+			},
+			{
+				name:      "bool to labels as string",
+				setup:     func(m pcommon.Map) { m.PutBool("request.succeeded", true) },
+				sourceKey: "request.succeeded",
+				wantKey:   "labels.request_succeeded",
+				wantRaw:   "true",
+			},
+			{
+				name: "int slice to numeric_labels",
+				setup: func(m pcommon.Map) {
+					s := m.PutEmptySlice("http.codes")
+					s.AppendEmpty().SetInt(200)
+					s.AppendEmpty().SetInt(201)
+				},
+				sourceKey: "http.codes",
+				wantKey:   "numeric_labels.http_codes",
+				wantRaw:   []any{float64(200), float64(201)},
+			},
+		}
 
-	mapValue := attrs.PutEmptyMap("http.request")
-	mapValue.PutStr("id", "req-1")
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				attrs := pcommon.NewMap()
+				tc.setup(attrs)
 
-	intSlice := attrs.PutEmptySlice("http.codes")
-	intSlice.AppendEmpty().SetInt(200)
-	intSlice.AppendEmpty().SetInt(201)
+				ApplyOTLPLogAttributeConventions(attrs)
 
-	ApplyOTLPLogAttributeConventions(attrs)
+				got, ok := attrs.Get(tc.wantKey)
+				require.True(t, ok, "expected %s to exist", tc.wantKey)
 
-	httpMethod, _ := attrs.Get("labels.http_method")
-	assert.Equal(t, "GET", httpMethod.Str())
-	httpStatusCode, _ := attrs.Get("numeric_labels.http_status_code")
-	assert.Equal(t, float64(200), httpStatusCode.Double())
-	httpResponseLength, _ := attrs.Get("numeric_labels.http_response_content_length")
-	assert.Equal(t, float64(1024), httpResponseLength.Double())
-	requestSucceeded, _ := attrs.Get("labels.request_succeeded")
-	assert.Equal(t, "true", requestSucceeded.Str())
+				switch want := tc.wantRaw.(type) {
+				case string:
+					assert.Equal(t, want, got.Str())
+				case float64:
+					assert.InDelta(t, want, got.Double(), 1e-9)
+				case []any:
+					assert.Equal(t, want, got.Slice().AsRaw())
+				}
 
-	codes, _ := attrs.Get("numeric_labels.http_codes")
-	assert.Equal(t, []any{float64(200), float64(201)}, codes.Slice().AsRaw())
+				_, exists := attrs.Get(tc.sourceKey)
+				assert.False(t, exists, "source key %s should be removed", tc.sourceKey)
+			})
+		}
+	})
 
-	_, hasHTTPMethod := attrs.Get("http.method")
-	assert.False(t, hasHTTPMethod)
-	_, hasHTTPStatusCode := attrs.Get("http.status_code")
-	assert.False(t, hasHTTPStatusCode)
-	_, hasHTTPResponseLength := attrs.Get("http.response_content_length")
-	assert.False(t, hasHTTPResponseLength)
+	t.Run("keeps allowlisted attributes in place", func(t *testing.T) {
+		keys := []string{
+			"event.name",
+			"exception.message",
+			"labels.existing_label",
+			"numeric_labels.existing_numeric",
+			"data_stream.dataset",
+			"data_stream.namespace",
+			"data_stream.type",
+			"elasticsearch.index",
+		}
 
-	_, hasMapAttribute := attrs.Get("http.request")
-	assert.False(t, hasMapAttribute)
+		for _, key := range keys {
+			t.Run(key, func(t *testing.T) {
+				attrs := pcommon.NewMap()
+				attrs.PutStr(key, "sentinel")
 
-	eventName, _ := attrs.Get("event.name")
-	assert.Equal(t, "device.crash", eventName.Str())
-	exceptionMessage, _ := attrs.Get("exception.message")
-	assert.Equal(t, "something failed", exceptionMessage.Str())
+				ApplyOTLPLogAttributeConventions(attrs)
 
-	existingLabel, _ := attrs.Get("labels.existing_label")
-	assert.Equal(t, "existing", existingLabel.Str())
-	existingNumeric, _ := attrs.Get("numeric_labels.existing_numeric")
-	assert.Equal(t, float64(42), existingNumeric.Double())
+				got, ok := attrs.Get(key)
+				require.True(t, ok, "allowlisted key %s should be kept", key)
+				assert.Equal(t, "sentinel", got.Str())
+			})
+		}
+	})
 
-	dataStreamDataset, _ := attrs.Get("data_stream.dataset")
-	assert.Equal(t, "apm.app.my_service_logs", dataStreamDataset.Str())
+	t.Run("removes unsupported map type without creating label", func(t *testing.T) {
+		attrs := pcommon.NewMap()
+		m := attrs.PutEmptyMap("http.request")
+		m.PutStr("id", "req-1")
+
+		ApplyOTLPLogAttributeConventions(attrs)
+
+		_, exists := attrs.Get("http.request")
+		assert.False(t, exists, "map attribute should be removed")
+		_, exists = attrs.Get("labels.http_request")
+		assert.False(t, exists, "map should not produce a label")
+	})
 }

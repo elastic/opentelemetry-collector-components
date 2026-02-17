@@ -21,116 +21,180 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 )
 
-func TestSetLabelAttributeValue_ScalarTypes(t *testing.T) {
-	attrs := pcommon.NewMap()
+// TestSetLabelAttributeValue verifies that setLabelAttributeValue stores
+// supported value types under the correct labels.* / numeric_labels.* prefix
+// and rejects unsupported types (Map, Bytes, Empty). This matches
+// apm-data's setLabel behaviour (input/otlp/metadata.go).
+func TestSetLabelAttributeValue(t *testing.T) {
+	tests := []struct {
+		name    string
+		key     string
+		value   func() pcommon.Value
+		wantOK  bool
+		wantKey string // expected destination key; empty when wantOK is false
+		wantRaw any    // expected value: string, float64, or []any
+	}{
+		// --- Scalar types ---
+		{
+			name:    "string",
+			key:     "str_key",
+			value:   func() pcommon.Value { return pcommon.NewValueStr("hello") },
+			wantOK:  true,
+			wantKey: "labels.str_key",
+			wantRaw: "hello",
+		},
+		{
+			name:    "bool",
+			key:     "bool_key",
+			value:   func() pcommon.Value { return pcommon.NewValueBool(true) },
+			wantOK:  true,
+			wantKey: "labels.bool_key",
+			wantRaw: "true",
+		},
+		{
+			name:    "int",
+			key:     "int_key",
+			value:   func() pcommon.Value { return pcommon.NewValueInt(42) },
+			wantOK:  true,
+			wantKey: "numeric_labels.int_key",
+			wantRaw: float64(42),
+		},
+		{
+			name:    "double",
+			key:     "double_key",
+			value:   func() pcommon.Value { return pcommon.NewValueDouble(3.14) },
+			wantOK:  true,
+			wantKey: "numeric_labels.double_key",
+			wantRaw: 3.14,
+		},
 
-	v := pcommon.NewValueStr("hello")
-	assert.True(t, setLabelAttributeValue(attrs, "str_key", v))
-	got, ok := attrs.Get("labels.str_key")
-	assert.True(t, ok)
-	assert.Equal(t, "hello", got.Str())
+		// --- Homogeneous slice types ---
+		{
+			name: "string slice",
+			key:  "str_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetStr("a")
+				v.Slice().AppendEmpty().SetStr("b")
+				return v
+			},
+			wantOK:  true,
+			wantKey: "labels.str_slice",
+			wantRaw: []any{"a", "b"},
+		},
+		{
+			name: "int slice",
+			key:  "int_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetInt(1)
+				v.Slice().AppendEmpty().SetInt(2)
+				return v
+			},
+			wantOK:  true,
+			wantKey: "numeric_labels.int_slice",
+			wantRaw: []any{float64(1), float64(2)},
+		},
+		{
+			name: "double slice",
+			key:  "double_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetDouble(1.1)
+				v.Slice().AppendEmpty().SetDouble(2.2)
+				return v
+			},
+			wantOK:  true,
+			wantKey: "numeric_labels.double_slice",
+			wantRaw: []any{1.1, 2.2},
+		},
+		{
+			name: "bool slice",
+			key:  "bool_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetBool(true)
+				v.Slice().AppendEmpty().SetBool(false)
+				return v
+			},
+			wantOK:  true,
+			wantKey: "labels.bool_slice",
+			wantRaw: []any{"true", "false"},
+		},
 
-	v = pcommon.NewValueBool(true)
-	assert.True(t, setLabelAttributeValue(attrs, "bool_key", v))
-	got, ok = attrs.Get("labels.bool_key")
-	assert.True(t, ok)
-	assert.Equal(t, "true", got.Str())
+		// --- Unsupported types (should NOT be stored) ---
+		{
+			name:   "empty slice",
+			key:    "empty",
+			value:  func() pcommon.Value { return pcommon.NewValueSlice() },
+			wantOK: false,
+		},
+		{
+			name: "map",
+			key:  "map_key",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueMap()
+				v.Map().PutStr("nested", "value")
+				return v
+			},
+			wantOK: false,
+		},
+		{
+			name: "bytes",
+			key:  "bytes_key",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueBytes()
+				v.Bytes().Append(0x01, 0x02)
+				return v
+			},
+			wantOK: false,
+		},
+		{
+			name:   "empty value",
+			key:    "empty_key",
+			value:  func() pcommon.Value { return pcommon.NewValueEmpty() },
+			wantOK: false,
+		},
+		{
+			name: "slice with map element",
+			key:  "map_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetEmptyMap().PutStr("a", "b")
+				return v
+			},
+			wantOK: false,
+		},
+	}
 
-	v = pcommon.NewValueInt(42)
-	assert.True(t, setLabelAttributeValue(attrs, "int_key", v))
-	got, ok = attrs.Get("numeric_labels.int_key")
-	assert.True(t, ok)
-	assert.Equal(t, float64(42), got.Double())
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			ok := setLabelAttributeValue(attrs, tc.key, tc.value())
+			assert.Equal(t, tc.wantOK, ok)
 
-	v = pcommon.NewValueDouble(3.14)
-	assert.True(t, setLabelAttributeValue(attrs, "double_key", v))
-	got, ok = attrs.Get("numeric_labels.double_key")
-	assert.True(t, ok)
-	assert.Equal(t, 3.14, got.Double())
-}
+			if !tc.wantOK {
+				assert.Equal(t, 0, attrs.Len(), "unsupported type should not add attributes")
+				return
+			}
 
-func TestSetLabelAttributeValue_SliceTypes(t *testing.T) {
-	attrs := pcommon.NewMap()
+			got, exists := attrs.Get(tc.wantKey)
+			require.True(t, exists, "expected %s to be set", tc.wantKey)
 
-	strSlice := pcommon.NewValueSlice()
-	strSlice.Slice().AppendEmpty().SetStr("a")
-	strSlice.Slice().AppendEmpty().SetStr("b")
-	assert.True(t, setLabelAttributeValue(attrs, "str_slice", strSlice))
-	got, ok := attrs.Get("labels.str_slice")
-	assert.True(t, ok)
-	assert.Equal(t, []any{"a", "b"}, got.Slice().AsRaw())
-
-	intSlice := pcommon.NewValueSlice()
-	intSlice.Slice().AppendEmpty().SetInt(1)
-	intSlice.Slice().AppendEmpty().SetInt(2)
-	assert.True(t, setLabelAttributeValue(attrs, "int_slice", intSlice))
-	got, ok = attrs.Get("numeric_labels.int_slice")
-	assert.True(t, ok)
-	assert.Equal(t, []any{float64(1), float64(2)}, got.Slice().AsRaw())
-
-	doubleSlice := pcommon.NewValueSlice()
-	doubleSlice.Slice().AppendEmpty().SetDouble(1.1)
-	doubleSlice.Slice().AppendEmpty().SetDouble(2.2)
-	assert.True(t, setLabelAttributeValue(attrs, "double_slice", doubleSlice))
-	got, ok = attrs.Get("numeric_labels.double_slice")
-	assert.True(t, ok)
-	assert.Equal(t, []any{1.1, 2.2}, got.Slice().AsRaw())
-
-	boolSlice := pcommon.NewValueSlice()
-	boolSlice.Slice().AppendEmpty().SetBool(true)
-	boolSlice.Slice().AppendEmpty().SetBool(false)
-	assert.True(t, setLabelAttributeValue(attrs, "bool_slice", boolSlice))
-	got, ok = attrs.Get("labels.bool_slice")
-	assert.True(t, ok)
-	assert.Equal(t, []any{"true", "false"}, got.Slice().AsRaw())
-}
-
-func TestSetLabelAttributeValue_EmptySlice(t *testing.T) {
-	attrs := pcommon.NewMap()
-	emptySlice := pcommon.NewValueSlice()
-	assert.False(t, setLabelAttributeValue(attrs, "empty", emptySlice))
-	assert.Equal(t, 0, attrs.Len())
-}
-
-// TestSetLabelAttributeValue_UnsupportedTypes verifies that Map, Bytes,
-// and Empty value types are not stored as labels and return false.
-// This matches apm-data's setLabel behaviour (input/otlp/metadata.go)
-// where these types are intentionally ignored — Elasticsearch label
-// mappings only support flat scalar values and homogeneous arrays.
-func TestSetLabelAttributeValue_UnsupportedTypes(t *testing.T) {
-	attrs := pcommon.NewMap()
-
-	mapVal := pcommon.NewValueMap()
-	mapVal.Map().PutStr("nested", "value")
-	assert.False(t, setLabelAttributeValue(attrs, "map_key", mapVal))
-	_, ok := attrs.Get("labels.map_key")
-	assert.False(t, ok)
-
-	bytesVal := pcommon.NewValueBytes()
-	bytesVal.Bytes().Append(0x01, 0x02)
-	assert.False(t, setLabelAttributeValue(attrs, "bytes_key", bytesVal))
-	_, ok = attrs.Get("labels.bytes_key")
-	assert.False(t, ok)
-
-	emptyVal := pcommon.NewValueEmpty()
-	assert.False(t, setLabelAttributeValue(attrs, "empty_key", emptyVal))
-	_, ok = attrs.Get("labels.empty_key")
-	assert.False(t, ok)
-
-	assert.Equal(t, 0, attrs.Len())
-}
-
-// TestSetLabelAttributeValue_SliceWithUnsupportedElementType verifies that
-// slices whose first element is a Map (or other unsupported type) are not
-// stored as labels and return false.
-func TestSetLabelAttributeValue_SliceWithUnsupportedElementType(t *testing.T) {
-	attrs := pcommon.NewMap()
-
-	mapSlice := pcommon.NewValueSlice()
-	mapSlice.Slice().AppendEmpty().SetEmptyMap().PutStr("a", "b")
-	assert.False(t, setLabelAttributeValue(attrs, "map_slice", mapSlice))
-	assert.Equal(t, 0, attrs.Len())
+			switch want := tc.wantRaw.(type) {
+			case string:
+				assert.Equal(t, want, got.Str())
+			case float64:
+				assert.InDelta(t, want, got.Double(), 1e-9)
+			case []any:
+				assert.Equal(t, want, got.Slice().AsRaw())
+			default:
+				t.Fatalf("unsupported wantRaw type %T", tc.wantRaw)
+			}
+		})
+	}
 }

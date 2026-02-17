@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
 )
@@ -114,47 +115,98 @@ func TestApplyResourceConventions(t *testing.T) {
 	}
 }
 
-func TestTranslateResourceMetadata_UnsupportedTypeConversions(t *testing.T) {
-	resource := pcommon.NewResource()
-	attrs := resource.Attributes()
-	attrs.PutStr("unsupported.string", "foo")
-	attrs.PutBool("unsupported.bool", true)
-	attrs.PutInt("unsupported.int", 42)
-	attrs.PutDouble("unsupported.double", 1.25)
+func TestTranslateResourceMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(pcommon.Map)
+		wantKey  string // expected label destination; empty when dropped
+		wantRaw  any    // expected value: string, float64, or []any
+		goneKeys []string
+	}{
+		{
+			name:     "string to labels",
+			setup:    func(m pcommon.Map) { m.PutStr("unsupported.string", "foo") },
+			wantKey:  "labels.unsupported_string",
+			wantRaw:  "foo",
+			goneKeys: []string{"unsupported.string"},
+		},
+		{
+			name:     "bool to labels",
+			setup:    func(m pcommon.Map) { m.PutBool("unsupported.bool", true) },
+			wantKey:  "labels.unsupported_bool",
+			wantRaw:  "true",
+			goneKeys: []string{"unsupported.bool"},
+		},
+		{
+			name:     "int to numeric_labels",
+			setup:    func(m pcommon.Map) { m.PutInt("unsupported.int", 42) },
+			wantKey:  "numeric_labels.unsupported_int",
+			wantRaw:  float64(42),
+			goneKeys: []string{"unsupported.int"},
+		},
+		{
+			name:     "double to numeric_labels",
+			setup:    func(m pcommon.Map) { m.PutDouble("unsupported.double", 1.25) },
+			wantKey:  "numeric_labels.unsupported_double",
+			wantRaw:  1.25,
+			goneKeys: []string{"unsupported.double"},
+		},
+		{
+			name: "string slice to labels",
+			setup: func(m pcommon.Map) {
+				s := m.PutEmptySlice("unsupported.string.slice")
+				s.AppendEmpty().SetStr("a")
+				s.AppendEmpty().SetStr("b")
+			},
+			wantKey:  "labels.unsupported_string_slice",
+			wantRaw:  []any{"a", "b"},
+			goneKeys: []string{"unsupported.string.slice"},
+		},
+		{
+			name: "int slice to numeric_labels",
+			setup: func(m pcommon.Map) {
+				s := m.PutEmptySlice("unsupported.int.slice")
+				s.AppendEmpty().SetInt(10)
+				s.AppendEmpty().SetInt(20)
+			},
+			wantKey:  "numeric_labels.unsupported_int_slice",
+			wantRaw:  []any{float64(10), float64(20)},
+			goneKeys: []string{"unsupported.int.slice"},
+		},
+		{
+			name: "map dropped without label",
+			setup: func(m pcommon.Map) {
+				m.PutEmptyMap("unsupported.map").PutStr("k", "v")
+			},
+			goneKeys: []string{"unsupported.map", "labels.unsupported_map"},
+		},
+	}
 
-	stringSlice := attrs.PutEmptySlice("unsupported.string.slice")
-	stringSlice.AppendEmpty().SetStr("a")
-	stringSlice.AppendEmpty().SetStr("b")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resource := pcommon.NewResource()
+			tc.setup(resource.Attributes())
 
-	intSlice := attrs.PutEmptySlice("unsupported.int.slice")
-	intSlice.AppendEmpty().SetInt(10)
-	intSlice.AppendEmpty().SetInt(20)
+			TranslateResourceMetadata(resource)
 
-	mapValue := attrs.PutEmptyMap("unsupported.map")
-	mapValue.PutStr("k", "v")
+			attrs := resource.Attributes()
+			if tc.wantKey != "" {
+				got, ok := attrs.Get(tc.wantKey)
+				require.True(t, ok, "expected %s to exist", tc.wantKey)
 
-	TranslateResourceMetadata(resource)
-
-	stringLabel, _ := attrs.Get("labels.unsupported_string")
-	assert.Equal(t, "foo", stringLabel.Str())
-	boolLabel, _ := attrs.Get("labels.unsupported_bool")
-	assert.Equal(t, "true", boolLabel.Str())
-
-	intLabel, _ := attrs.Get("numeric_labels.unsupported_int")
-	assert.Equal(t, float64(42), intLabel.Double())
-	doubleLabel, _ := attrs.Get("numeric_labels.unsupported_double")
-	assert.Equal(t, 1.25, doubleLabel.Double())
-
-	stringSliceLabel, _ := attrs.Get("labels.unsupported_string_slice")
-	assert.Equal(t, []any{"a", "b"}, stringSliceLabel.Slice().AsRaw())
-	intSliceLabel, _ := attrs.Get("numeric_labels.unsupported_int_slice")
-	assert.Equal(t, []any{float64(10), float64(20)}, intSliceLabel.Slice().AsRaw())
-
-	_, hasMapLabel := attrs.Get("labels.unsupported_map")
-	assert.False(t, hasMapLabel)
-
-	_, hasSourceString := attrs.Get("unsupported.string")
-	assert.False(t, hasSourceString)
-	_, hasSourceMap := attrs.Get("unsupported.map")
-	assert.False(t, hasSourceMap)
+				switch want := tc.wantRaw.(type) {
+				case string:
+					assert.Equal(t, want, got.Str())
+				case float64:
+					assert.InDelta(t, want, got.Double(), 1e-9)
+				case []any:
+					assert.Equal(t, want, got.Slice().AsRaw())
+				}
+			}
+			for _, key := range tc.goneKeys {
+				_, exists := attrs.Get(key)
+				assert.False(t, exists, "key %s should have been removed", key)
+			}
+		})
+	}
 }
