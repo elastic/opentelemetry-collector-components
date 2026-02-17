@@ -18,14 +18,11 @@
 package ecs // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 
 import (
-	"strings"
-
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/datastream"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
-
-	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 )
 
 // ApplyOTLPLogAttributeConventions applies OTLP log attribute handling used in ECS flow.
@@ -54,10 +51,7 @@ func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
 }
 
 func shouldKeepLogAttribute(attr string) bool {
-	if strings.HasPrefix(attr, "labels.") || strings.HasPrefix(attr, "numeric_labels.") {
-		return true
-	}
-	if strings.HasPrefix(attr, "elasticsearch.") {
+	if isInfraAttribute(attr) {
 		return true
 	}
 
