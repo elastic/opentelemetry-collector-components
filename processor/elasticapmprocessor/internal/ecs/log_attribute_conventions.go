@@ -45,18 +45,6 @@ func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
 	})
 
 	for _, e := range snapshot {
-		switch e.key {
-		case "data_stream.dataset":
-			if e.value.Type() == pcommon.ValueTypeStr {
-				attributes.PutStr(e.key, datastream.SanitizeDataset(e.value.Str()))
-			}
-			continue
-		case "data_stream.namespace":
-			if e.value.Type() == pcommon.ValueTypeStr {
-				attributes.PutStr(e.key, datastream.SanitizeNamespace(e.value.Str()))
-			}
-			continue
-		}
 		if shouldKeepLogAttribute(e.key) {
 			continue
 		}
@@ -92,17 +80,25 @@ func shouldKeepLogAttribute(attr string) bool {
 	return false
 }
 
-// ApplyScopeDataStreamConventions applies scope-level data_stream dataset/namespace values
-// when they are not present on individual log records.
+// ApplyScopeDataStreamConventions sanitizes data_stream dataset/namespace on
+// log record attributes. If a value is already present on the record it is
+// sanitized in place; otherwise a sanitized copy is taken from the scope.
+// This is the single sanitization point for user-provided data_stream values
+// — downstream routing functions (EncodeErrorDataStream, etc.) only set
+// known-safe hardcoded values.
 func ApplyScopeDataStreamConventions(scopeAttributes, logAttributes pcommon.Map) {
-	if _, exists := logAttributes.Get("data_stream.dataset"); !exists {
-		if dataset, ok := scopeAttributes.Get("data_stream.dataset"); ok && dataset.Type() == pcommon.ValueTypeStr {
+	if dataset, exists := logAttributes.Get("data_stream.dataset"); exists {
+		if dataset.Type() == pcommon.ValueTypeStr {
 			logAttributes.PutStr("data_stream.dataset", datastream.SanitizeDataset(dataset.Str()))
 		}
+	} else if dataset, ok := scopeAttributes.Get("data_stream.dataset"); ok && dataset.Type() == pcommon.ValueTypeStr {
+		logAttributes.PutStr("data_stream.dataset", datastream.SanitizeDataset(dataset.Str()))
 	}
-	if _, exists := logAttributes.Get("data_stream.namespace"); !exists {
-		if namespace, ok := scopeAttributes.Get("data_stream.namespace"); ok && namespace.Type() == pcommon.ValueTypeStr {
+	if namespace, exists := logAttributes.Get("data_stream.namespace"); exists {
+		if namespace.Type() == pcommon.ValueTypeStr {
 			logAttributes.PutStr("data_stream.namespace", datastream.SanitizeNamespace(namespace.Str()))
 		}
+	} else if namespace, ok := scopeAttributes.Get("data_stream.namespace"); ok && namespace.Type() == pcommon.ValueTypeStr {
+		logAttributes.PutStr("data_stream.namespace", datastream.SanitizeNamespace(namespace.Str()))
 	}
 }
