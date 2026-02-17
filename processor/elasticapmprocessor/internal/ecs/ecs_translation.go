@@ -85,8 +85,22 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 	})
 }
 
+// sanitizeLabelKey replaces reserved characters in label keys with '_'.
+// This matches apm-data's sanitizeLabelKey (model/modeljson/labels.go)
+// which reserves '.', '*', and '"'.
 func replaceDots(key string) string {
-	return strings.ReplaceAll(key, ".", "_")
+	if strings.ContainsAny(key, ".*\"") {
+		return strings.Map(replaceReservedLabelKeyRune, key)
+	}
+	return key
+}
+
+func replaceReservedLabelKeyRune(r rune) rune {
+	switch r {
+	case '.', '*', '"':
+		return '_'
+	}
+	return r
 }
 
 // isLabelAttribute returns true if the resource attribute is already a prefixed label.
