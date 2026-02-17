@@ -34,34 +34,34 @@ import (
 // (Map, Bytes, Empty) are removed without replacement, matching the behaviour of
 // apm-data's setLabel (input/otlp/metadata.go).
 func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
-	keys := make([]string, 0, attributes.Len())
-	attributes.Range(func(k string, _ pcommon.Value) bool {
-		keys = append(keys, k)
+	type entry struct {
+		key   string
+		value pcommon.Value
+	}
+	snapshot := make([]entry, 0, attributes.Len())
+	attributes.Range(func(k string, v pcommon.Value) bool {
+		snapshot = append(snapshot, entry{k, v})
 		return true
 	})
 
-	for _, key := range keys {
-		value, ok := attributes.Get(key)
-		if !ok {
-			continue
-		}
-		switch key {
+	for _, e := range snapshot {
+		switch e.key {
 		case "data_stream.dataset":
-			if value.Type() == pcommon.ValueTypeStr {
-				attributes.PutStr(key, datastream.SanitizeDataset(value.Str()))
+			if e.value.Type() == pcommon.ValueTypeStr {
+				attributes.PutStr(e.key, datastream.SanitizeDataset(e.value.Str()))
 			}
 			continue
 		case "data_stream.namespace":
-			if value.Type() == pcommon.ValueTypeStr {
-				attributes.PutStr(key, datastream.SanitizeNamespace(value.Str()))
+			if e.value.Type() == pcommon.ValueTypeStr {
+				attributes.PutStr(e.key, datastream.SanitizeNamespace(e.value.Str()))
 			}
 			continue
 		}
-		if shouldKeepLogAttribute(key) {
+		if shouldKeepLogAttribute(e.key) {
 			continue
 		}
-		setLabelAttributeValue(attributes, replaceDots(key), value)
-		attributes.Remove(key)
+		setLabelAttributeValue(attributes, replaceDots(e.key), e.value)
+		attributes.Remove(e.key)
 	}
 }
 
