@@ -20,6 +20,7 @@ package verifier // import "github.com/elastic/opentelemetry-collector-component
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
@@ -50,6 +51,7 @@ type AWSVerifier struct {
 	configured    bool
 	authConfig    AWSAuthConfig
 	defaultRegion string
+	httpClient    *http.Client
 }
 
 // Ensure AWSVerifier implements Verifier interface.
@@ -70,10 +72,19 @@ func NewAWSVerifierFactory() VerifierFactory {
 // NewAWSVerifier creates a new AWS verifier with Cloud Connector authentication.
 // It uses STS AssumeRole with the provided role ARN and external ID.
 func NewAWSVerifier(ctx context.Context, logger *zap.Logger, authConfig AWSAuthConfig) (*AWSVerifier, error) {
+	// Create a dedicated HTTP client so we can close idle connections on shutdown,
+	// preventing goroutine leaks from persistent HTTP connections.
+	httpClient := &http.Client{
+		Transport: http.DefaultTransport.(*http.Transport).Clone(),
+	}
+
 	// Start with loading default config (for base credentials from IRSA, instance profile, etc.)
-	baseCfg, err := config.LoadDefaultConfig(ctx)
+	baseCfg, err := config.LoadDefaultConfig(ctx,
+		config.WithHTTPClient(httpClient),
+	)
 	if err != nil {
 		logger.Warn("Failed to load default AWS config", zap.Error(err))
+		httpClient.CloseIdleConnections()
 		return &AWSVerifier{
 			logger:     logger,
 			configured: false,
@@ -134,6 +145,7 @@ func NewAWSVerifier(ctx context.Context, logger *zap.Logger, authConfig AWSAuthC
 		configured:    true,
 		authConfig:    authConfig,
 		defaultRegion: authConfig.DefaultRegion,
+		httpClient:    httpClient,
 	}, nil
 }
 
@@ -142,8 +154,11 @@ func (v *AWSVerifier) ProviderType() ProviderType {
 	return ProviderAWS
 }
 
-// Close releases resources.
+// Close releases resources, including closing idle HTTP connections.
 func (v *AWSVerifier) Close() error {
+	if v.httpClient != nil {
+		v.httpClient.CloseIdleConnections()
+	}
 	return nil
 }
 
