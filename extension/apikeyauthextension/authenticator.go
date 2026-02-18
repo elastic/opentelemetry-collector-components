@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	mathrand "math/rand/v2"
 	"net/http"
 	"runtime"
 	"strings"
@@ -173,23 +174,21 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	return nil
 }
 
-// retryBackoff returns a backoff function compatible with go-elasticsearch's
-// RetryBackoff field. Each attempt doubles the InitialInterval (exponential
-// backoff), capped at MaxInterval. Returns nil when retries are disabled,
-// which tells the ES client to skip backoff delays.
+// retryBackoff returns an exponential backoff with equal jitter
+// compatible with go-elasticsearch's RetryBackoff field.
+// Returns nil when retries are disabled, which tells the ES client to skip backoff delays.
 func retryBackoff(cfg RetryConfig) func(int) time.Duration {
 	if !cfg.Enabled {
 		return nil
 	}
-	return func(attempt int) time.Duration {
-		d := cfg.InitialInterval
-		for i := 1; i < attempt; i++ {
-			d *= 2
+
+	return func(attempts int) time.Duration {
+		next := cfg.InitialInterval << (attempts - 1) // cfg.InitialInterval * 2 ^ (attempts - 1)
+		if next <= 0 || next > cfg.MaxInterval {      // guard against overflow
+			next = cfg.MaxInterval
 		}
-		if d > cfg.MaxInterval {
-			d = cfg.MaxInterval
-		}
-		return d
+		nextWithJitter := next/2 + time.Duration(mathrand.Float64()*float64(next/2))
+		return nextWithJitter
 	}
 }
 

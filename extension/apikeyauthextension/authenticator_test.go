@@ -668,61 +668,67 @@ func TestAuthenticator_DynamicResourcesMissingMetadataInHasPrivileges(t *testing
 }
 
 func TestRetryBackoff(t *testing.T) {
-	cases := []struct {
-		name     string
+	for name, tc := range map[string]struct {
 		cfg      RetryConfig
-		attempts []int
-		expected []time.Duration
+		attempts []struct {
+			n   int
+			min time.Duration
+			max time.Duration
+		}
+		expectNil bool
 	}{
-		{
-			name: "exponential_doubling",
+		"exponential_with_jitter": {
 			cfg: RetryConfig{
 				Enabled:         true,
 				InitialInterval: 100 * time.Millisecond,
 				MaxInterval:     5 * time.Second,
 			},
-			attempts: []int{1, 2, 3, 4, 5},
-			expected: []time.Duration{
-				100 * time.Millisecond,
-				200 * time.Millisecond,
-				400 * time.Millisecond,
-				800 * time.Millisecond,
-				1600 * time.Millisecond,
+			// Base doubles each attempt; equal jitter yields [base/2, base).
+			attempts: []struct {
+				n   int
+				min time.Duration
+				max time.Duration
+			}{
+				{1, 50 * time.Millisecond, 100 * time.Millisecond},
+				{2, 100 * time.Millisecond, 200 * time.Millisecond},
+				{3, 200 * time.Millisecond, 400 * time.Millisecond},
+				{4, 400 * time.Millisecond, 800 * time.Millisecond},
+				{5, 800 * time.Millisecond, 1600 * time.Millisecond},
 			},
 		},
-		{
-			name: "capped_at_max_interval",
+		"capped_at_max_interval": {
 			cfg: RetryConfig{
 				Enabled:         true,
 				InitialInterval: 1 * time.Second,
 				MaxInterval:     2 * time.Second,
 			},
-			attempts: []int{1, 2, 3, 4},
-			expected: []time.Duration{
-				1 * time.Second,
-				2 * time.Second,
-				2 * time.Second,
-				2 * time.Second,
+			attempts: []struct {
+				n   int
+				min time.Duration
+				max time.Duration
+			}{
+				{1, 500 * time.Millisecond, 1 * time.Second},
+				{2, 1 * time.Second, 2 * time.Second},
+				{3, 1 * time.Second, 2 * time.Second},
+				{4, 1 * time.Second, 2 * time.Second},
 			},
 		},
-		{
-			name: "disabled_returns_nil",
-			cfg: RetryConfig{
-				Enabled: false,
-			},
+		"disabled_returns_nil": {
+			cfg:       RetryConfig{Enabled: false},
+			expectNil: true,
 		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+	} {
+		t.Run(name, func(t *testing.T) {
 			fn := retryBackoff(tc.cfg)
-			if !tc.cfg.Enabled {
+			if tc.expectNil {
 				require.Nil(t, fn)
 				return
 			}
 			require.NotNil(t, fn)
-			for i, attempt := range tc.attempts {
-				require.Equal(t, tc.expected[i], fn(attempt))
+			for _, a := range tc.attempts {
+				d := fn(a.n)
+				assert.GreaterOrEqual(t, d, a.min, "attempt %d", a.n)
+				assert.Less(t, d, a.max, "attempt %d", a.n)
 			}
 		})
 	}
