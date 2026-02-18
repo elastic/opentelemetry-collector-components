@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
+	"time"
 
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
@@ -152,6 +153,15 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 			"User-Agent": {a.userAgent},
 		},
 		Transport: httpClient.Transport,
+		RetryOnStatus: []int{
+			http.StatusBadGateway,
+			http.StatusServiceUnavailable,
+			http.StatusGatewayTimeout,
+			http.StatusTooManyRequests,
+		},
+		MaxRetries:   a.config.Retry.MaxRetries,
+		DisableRetry: !a.config.Retry.Enabled,
+		RetryBackoff: retryBackoff(a.config.Retry),
 		Instrumentation: elasticsearch.NewOpenTelemetryInstrumentation(
 			a.telemetrySettings.TracerProvider, false,
 		),
@@ -161,6 +171,26 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	}
 	a.esClient = esClient
 	return nil
+}
+
+// retryBackoff returns a backoff function compatible with go-elasticsearch's
+// RetryBackoff field. Each attempt doubles the InitialInterval (exponential
+// backoff), capped at MaxInterval. Returns nil when retries are disabled,
+// which tells the ES client to skip backoff delays.
+func retryBackoff(cfg RetryConfig) func(int) time.Duration {
+	if !cfg.Enabled {
+		return nil
+	}
+	return func(attempt int) time.Duration {
+		d := cfg.InitialInterval
+		for i := 1; i < attempt; i++ {
+			d *= 2
+		}
+		if d > cfg.MaxInterval {
+			d = cfg.MaxInterval
+		}
+		return d
+	}
 }
 
 func (a *authenticator) Shutdown(ctx context.Context) error {
@@ -326,11 +356,17 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 	if err != nil {
 		var elasticsearchErr *types.ElasticsearchError
 		if errors.As(err, &elasticsearchErr) {
-			switch elasticsearchErr.Status {
-			case http.StatusUnauthorized, http.StatusForbidden:
+			switch {
+			case elasticsearchErr.Status == http.StatusUnauthorized ||
+				elasticsearchErr.Status == http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			case elasticsearchErr.Status >= 500:
+				return ctx, errorWithDetails(codes.Unavailable,
+					fmt.Sprintf("retryable server error for API Key %q: %v", id, err),
+					map[string]string{"component": "apikeyauthextension", "api_key": id})
 			default:
-				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
+				return ctx, status.Errorf(codes.Internal,
+					"error checking privileges for API Key %q: %v", id, err)
 			}
 		}
 		// Check if this is a metadata validation error (client error)
