@@ -301,9 +301,6 @@ func (p *LogProcessor) consumeECSLogs(ctx context.Context, ld plog.Logs) error {
 
 	p.ecsEnricher.EnrichLogs(ld)
 
-	for i := 0; i < resourceLogs.Len(); i++ {
-		ecs.CleanupTransientResourceMetadata(resourceLogs.At(i).Resource())
-	}
 	return p.next.ConsumeLogs(ctx, ld)
 }
 

@@ -35,7 +35,7 @@ func ApplyOTLPLogAttributeConventions(attributes pcommon.Map) {
 }
 
 func shouldKeepLogAttribute(attr string) bool {
-	if isInfraAttribute(attr) {
+	if isLabelAttribute(attr) {
 		return true
 	}
 
@@ -44,14 +44,14 @@ func shouldKeepLogAttribute(attr string) bool {
 		string(semconv.ExceptionMessageKey),
 		string(semconv.ExceptionStacktraceKey),
 		string(semconv.ExceptionTypeKey),
-		string(semconv26.ExceptionEscapedKey),
-		"event.name",
-		"event.domain",
-		"session.id",
 		string(semconv.NetworkConnectionTypeKey),
-		"data_stream.type",
-		"data_stream.dataset",
-		"data_stream.namespace":
+		string(semconv26.ExceptionEscapedKey),
+		string(semconv26.EventNameKey),
+		string(semconv26.SessionIDKey),
+		elasticattr.EventDomain,
+		elasticattr.DataStreamDataset,
+		elasticattr.DataStreamNamespace,
+		elasticattr.DataStreamType:
 		return true
 	}
 
@@ -65,18 +65,18 @@ func shouldKeepLogAttribute(attr string) bool {
 // — downstream routing functions (EncodeErrorDataStream, etc.) only set
 // known-safe hardcoded values.
 func ApplyScopeDataStreamConventions(scopeAttributes, logAttributes pcommon.Map) {
-	if dataset, exists := logAttributes.Get("data_stream.dataset"); exists {
+	if dataset, exists := logAttributes.Get(elasticattr.DataStreamDataset); exists {
 		if dataset.Type() == pcommon.ValueTypeStr {
-			logAttributes.PutStr("data_stream.dataset", datastream.SanitizeDataset(dataset.Str()))
+			logAttributes.PutStr(elasticattr.DataStreamDataset, datastream.SanitizeDataset(dataset.Str()))
 		}
-	} else if dataset, ok := scopeAttributes.Get("data_stream.dataset"); ok && dataset.Type() == pcommon.ValueTypeStr {
-		logAttributes.PutStr("data_stream.dataset", datastream.SanitizeDataset(dataset.Str()))
+	} else if dataset, ok := scopeAttributes.Get(elasticattr.DataStreamDataset); ok && dataset.Type() == pcommon.ValueTypeStr {
+		logAttributes.PutStr(elasticattr.DataStreamDataset, datastream.SanitizeDataset(dataset.Str()))
 	}
-	if namespace, exists := logAttributes.Get("data_stream.namespace"); exists {
+	if namespace, exists := logAttributes.Get(elasticattr.DataStreamNamespace); exists {
 		if namespace.Type() == pcommon.ValueTypeStr {
-			logAttributes.PutStr("data_stream.namespace", datastream.SanitizeNamespace(namespace.Str()))
+			logAttributes.PutStr(elasticattr.DataStreamNamespace, datastream.SanitizeNamespace(namespace.Str()))
 		}
-	} else if namespace, ok := scopeAttributes.Get("data_stream.namespace"); ok && namespace.Type() == pcommon.ValueTypeStr {
-		logAttributes.PutStr("data_stream.namespace", datastream.SanitizeNamespace(namespace.Str()))
+	} else if namespace, ok := scopeAttributes.Get(elasticattr.DataStreamNamespace); ok && namespace.Type() == pcommon.ValueTypeStr {
+		logAttributes.PutStr(elasticattr.DataStreamNamespace, datastream.SanitizeNamespace(namespace.Str()))
 	}
 }

@@ -70,7 +70,7 @@ const (
 
 func TranslateResourceMetadata(resource pcommon.Resource) {
 	moveUnsupportedToLabels(resource.Attributes(), func(k string) bool {
-		return isSupportedAttribute(k) || isInfraAttribute(k)
+		return isSupportedAttribute(k) || isLabelAttribute(k)
 	})
 }
 
@@ -92,12 +92,11 @@ func replaceReservedLabelKeyRune(r rune) rune {
 	return r
 }
 
-// isInfraAttribute returns true for attribute keys that should never be
-// moved to labels by any signal processor. These are "infrastructure"
-// prefixes shared between resource-level and log-level allowlists:
+// isLabelAttribute returns true for attribute keys that are already a prefixed
+// label or should never be moved to labels by any signal processor.
 //   - labels.* / numeric_labels.* — already label-prefixed by the intake receiver
 //   - elasticsearch.* — pass-through for direct indexing hints
-func isInfraAttribute(attr string) bool {
+func isLabelAttribute(attr string) bool {
 	return strings.HasPrefix(attr, "labels.") ||
 		strings.HasPrefix(attr, "numeric_labels.") ||
 		strings.HasPrefix(attr, "elasticsearch.")

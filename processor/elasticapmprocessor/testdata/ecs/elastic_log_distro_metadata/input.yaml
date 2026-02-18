@@ -1,6 +1,5 @@
-# Scenario: telemetry.distro.name/version are transient inputs used to derive
-# agent.name and agent.version. After ECS enrichment they must be removed from
-# the resource attributes (CleanupTransientResourceMetadata).
+# Scenario: telemetry.distro.name/version are used to derive agent.name and
+# agent.version during ECS enrichment. They are kept as supported attributes.
 resourceLogs:
   - resource:
       attributes:
