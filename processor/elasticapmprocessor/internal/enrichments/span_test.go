@@ -33,6 +33,7 @@ import (
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv39 "go.opentelemetry.io/otel/semconv/v1.39.0"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc/codes"
 
@@ -369,6 +370,64 @@ func TestElasticTransactionEnrich(t *testing.T) {
 				elasticattr.EventOutcome:                   "success",
 				elasticattr.SuccessCount:                   int64(1),
 				elasticattr.TransactionResult:              "Internal",
+				elasticattr.TransactionType:                "request",
+			},
+		},
+		{
+			name: "grpc_status_from_rpc_response_status_code_key",
+			input: func() ptrace.Span {
+				span := getElasticTxn()
+				span.SetName("testtxn")
+				span.SetSpanID([8]byte{1})
+				span.Status().SetCode(ptrace.StatusCodeOk)
+				span.Attributes().PutStr(
+					string(semconv39.RPCResponseStatusCodeKey),
+					"OK",
+				)
+				return span
+			}(),
+			config: config.Enabled().Transaction,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.TransactionSampled:             true,
+				elasticattr.TransactionRoot:                true,
+				elasticattr.TransactionID:                  "0100000000000000",
+				elasticattr.TransactionName:                "testtxn",
+				elasticattr.ProcessorEvent:                 "transaction",
+				elasticattr.TransactionRepresentativeCount: float64(1),
+				elasticattr.TransactionDurationUs:          expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   "success",
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.TransactionResult:              "OK",
+				elasticattr.TransactionType:                "request",
+			},
+		},
+		{
+			name: "rpc_system_from_rpc_system_name_key",
+			input: func() ptrace.Span {
+				span := getElasticTxn()
+				span.SetName("testtxn")
+				span.SetSpanID([8]byte{1})
+				span.Attributes().PutStr(string(semconv39.RPCSystemNameKey), "grpc")
+				span.Attributes().PutStr(
+					string(semconv39.RPCResponseStatusCodeKey),
+					"OK",
+				)
+				return span
+			}(),
+			config: config.Enabled().Transaction,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.TransactionSampled:             true,
+				elasticattr.TransactionRoot:                true,
+				elasticattr.TransactionID:                  "0100000000000000",
+				elasticattr.TransactionName:                "testtxn",
+				elasticattr.ProcessorEvent:                 "transaction",
+				elasticattr.TransactionRepresentativeCount: float64(1),
+				elasticattr.TransactionDurationUs:          expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   "success",
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.TransactionResult:              "OK",
 				elasticattr.TransactionType:                "request",
 			},
 		},
@@ -1345,6 +1404,89 @@ func TestElasticSpanEnrich(t *testing.T) {
 				elasticattr.ServiceTargetType:              "xmlrpc",
 				elasticattr.ServiceTargetName:              "testsvc",
 				elasticattr.SpanDestinationServiceResource: "testsvc",
+			},
+		},
+		{
+			name: "rpc_span_grpc_via_rpc_response_status_code_key",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Attributes().PutStr(string(semconv39.ServerAddressKey), "example.com")
+				span.Attributes().PutInt(string(semconv39.ServerPortKey), 8080)
+				span.Attributes().PutStr(
+					string(semconv39.RPCResponseStatusCodeKey),
+					"OK",
+				)
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "external",
+				elasticattr.SpanSubtype:                    "grpc",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   "success",
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.ServiceTargetType:              "grpc",
+				elasticattr.ServiceTargetName:              "", // RPC sets targetName only from rpc.service/rpc.method
+				elasticattr.SpanDestinationServiceResource: "example.com:8080",
+			},
+		},
+		{
+			name: "rpc_span_system_via_rpc_system_name_key",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Attributes().PutStr(string(semconv39.ServerAddressKey), "example.com")
+				span.Attributes().PutInt(string(semconv39.ServerPortKey), 8080)
+				span.Attributes().PutStr(string(semconv39.RPCSystemNameKey), "grpc")
+				span.Attributes().PutStr(
+					string(semconv39.RPCResponseStatusCodeKey),
+					"OK",
+				)
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "external",
+				elasticattr.SpanSubtype:                    "grpc",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   "success",
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.ServiceTargetType:              "grpc",
+				elasticattr.ServiceTargetName:              "", // RPC sets targetName only from rpc.service/rpc.method
+				elasticattr.SpanDestinationServiceResource: "example.com:8080",
+			},
+		},
+		{
+			name: "rpc_span_service_via_rpc_method_key",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Attributes().PutStr(string(semconv39.ServerAddressKey), "example.com")
+				span.Attributes().PutInt(string(semconv39.ServerPortKey), 8080)
+				span.Attributes().PutStr(string(semconv39.RPCSystemNameKey), "grpc")
+				span.Attributes().PutStr(string(semconv39.RPCMethodKey), "EchoService/Echo")
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "external",
+				elasticattr.SpanSubtype:                    "grpc",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   "success",
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.ServiceTargetType:              "grpc",
+				elasticattr.ServiceTargetName:              "EchoService/Echo",
+				elasticattr.SpanDestinationServiceResource: "example.com:8080",
 			},
 		},
 		{

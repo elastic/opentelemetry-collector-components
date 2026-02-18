@@ -40,7 +40,7 @@ func NewSettings(tt *componenttest.Telemetry) connector.Settings {
 
 func AssertEqualDynamicroutingRouted(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
-		Name:        "otelcol_dynamicrouting.routed",
+		Name:        "otelcol.dynamicrouting.routed",
 		Description: "Number of telemetry batches routed by the connector. [Development]",
 		Unit:        "1",
 		Data: metricdata.Sum[int64]{
@@ -49,7 +49,7 @@ func AssertEqualDynamicroutingRouted(t *testing.T, tt *componenttest.Telemetry, 
 			DataPoints:  dps,
 		},
 	}
-	got, err := tt.GetMetric("otelcol_dynamicrouting.routed")
+	got, err := tt.GetMetric("otelcol.dynamicrouting.routed")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
