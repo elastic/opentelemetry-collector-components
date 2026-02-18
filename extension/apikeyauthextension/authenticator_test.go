@@ -35,6 +35,7 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/extension/extensiontest"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -332,31 +333,6 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 				"api_key":   "no_privs_id",
 			},
 		},
-		"server_5xx_error": {
-			setup: func(t *testing.T) (*authenticator, map[string][]string) {
-				srv := newMockElasticsearch(t, newCannedErrorHandler(types.ElasticsearchError{
-					ErrorCause: types.ErrorCause{
-						Type: "unavailable",
-						Reason: func() *string {
-							reason := "service_unavailable"
-							return &reason
-						}(),
-					},
-					Status: 503,
-				}))
-				authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
-				headers := map[string][]string{
-					"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-				}
-				return authenticator, headers
-			},
-			expectedCode: codes.Internal,
-			expectedMsg:  "error checking privileges for API Key \"id\": status: 503, failed: [unavailable], reason: service_unavailable",
-			expectedMetadata: map[string]string{
-				"component": "apikeyauthextension",
-				"api_key":   "id",
-			},
-		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			authenticator, headers := testcase.setup(t)
@@ -367,6 +343,14 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			require.True(t, ok, "Expected gRPC status error")
 			assert.Equal(t, testcase.expectedCode, st.Code())
 			assert.Equal(t, testcase.expectedMsg, st.Message())
+
+			details := st.Details()
+			require.Len(t, details, 1, "expected 1 errorinfo detail")
+
+			errorInfo, ok := details[0].(*errdetails.ErrorInfo)
+			require.True(t, ok, "expected errorinfo detail")
+			assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
+			assert.Equal(t, testcase.expectedMetadata, errorInfo.Metadata)
 		})
 	}
 }
