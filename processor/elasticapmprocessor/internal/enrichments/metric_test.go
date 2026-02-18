@@ -116,7 +116,7 @@ func TestEnrichMetric(t *testing.T) {
 			expectedResourceMetrics := pmetric.NewResourceMetrics()
 			tc.input.Resource().CopyTo(expectedResourceMetrics.Resource())
 
-			// Merge with the expected attributes.
+			// Merge with the expected attributes
 			for k, v := range tc.expectedAttrs {
 				_ = expectedResourceMetrics.Resource().Attributes().PutEmpty(k).FromRaw(v)
 			}

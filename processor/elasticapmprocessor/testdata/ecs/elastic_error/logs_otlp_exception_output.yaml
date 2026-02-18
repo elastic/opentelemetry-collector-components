@@ -4,9 +4,6 @@ resourceLogs:
         - key: service.name
           value:
             stringValue: test-service
-        - key: agent.name
-          value:
-            stringValue: otlp
         - key: data_stream.type
           value:
             stringValue: logs
@@ -16,18 +13,21 @@ resourceLogs:
         - key: data_stream.namespace
           value:
             stringValue: default
+        - key: agent.name
+          value:
+            stringValue: otlp
     scopeLogs:
       - logRecords:
           - attributes:
               - key: exception.message
                 value:
-                  stringValue: "Null pointer exception"
+                  stringValue: Null pointer exception
               - key: exception.type
                 value:
-                  stringValue: "java.lang.NullPointerException"
+                  stringValue: java.lang.NullPointerException
               - key: exception.stacktrace
                 value:
-                  stringValue: "at com.example.MyClass.method(MyClass.java:42)"
+                  stringValue: at com.example.MyClass.method(MyClass.java:42)
               - key: data_stream.type
                 value:
                   stringValue: logs
@@ -38,12 +38,13 @@ resourceLogs:
                 value:
                   stringValue: default
             body:
-              stringValue: "Application error occurred"
+              stringValue: Application error occurred
             timeUnixNano: "1000000000"
           - attributes:
               - key: log.level
                 value:
-                  stringValue: "info"
+                  stringValue: info
             body:
-              stringValue: "Regular log message"
+              stringValue: Regular log message
             timeUnixNano: "1000000000"
+        scope: {}
