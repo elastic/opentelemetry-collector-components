@@ -35,9 +35,6 @@ resourceSpans:
               - key: db.system
                 value:
                   stringValue: mysql
-              - key: processor.event
-                value:
-                  stringValue: transaction
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
@@ -53,6 +50,9 @@ resourceSpans:
               - key: transaction.name
                 value:
                   stringValue: db-elastic-txn
+              - key: processor.event
+                value:
+                  stringValue: transaction
               - key: transaction.representative_count
                 value:
                   doubleValue: 1
@@ -62,6 +62,9 @@ resourceSpans:
               - key: transaction.type
                 value:
                   stringValue: unknown
+              - key: transaction.result
+                value:
+                  stringValue: Success
               - key: event.outcome
                 value:
                   stringValue: unknown

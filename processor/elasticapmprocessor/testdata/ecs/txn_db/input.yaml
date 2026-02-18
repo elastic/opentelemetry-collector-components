@@ -17,10 +17,8 @@ resourceSpans:
               - key: db.system
                 value:
                   stringValue: mysql
-              # processor.event pre-set by elasticapmintakereceiver; signals intake origin.
-              - key: processor.event
-                value:
-                  stringValue: transaction
+              # processor.event is absent: signals non-intake ECS origin.
+              # transaction.root enrichment should be applied by the ecsEnricher.
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
