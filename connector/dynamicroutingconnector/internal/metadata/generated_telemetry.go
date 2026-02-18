@@ -76,7 +76,7 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	builder.meter = Meter(settings)
 	var err, errs error
 	builder.DynamicroutingRouted, err = builder.meter.Int64Counter(
-		"otelcol_dynamicrouting.routed",
+		"otelcol.dynamicrouting.routed",
 		metric.WithDescription("Number of telemetry batches routed by the connector. [Development]"),
 		metric.WithUnit("1"),
 	)
