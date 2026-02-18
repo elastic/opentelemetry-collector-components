@@ -35,7 +35,6 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/extension/extensiontest"
-	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -107,7 +106,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 503,
 			}),
-			expectedErr: `rpc error: code = Unavailable desc = retryable server error for API Key "id": status: 503, failed: [unavailable], reason: service_unavailable`,
+			expectedErr: "rpc error: code = Internal desc = error checking privileges for API Key \"id\": status: 503, failed: [unavailable], reason: service_unavailable",
 		},
 		"server_500_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -120,13 +119,13 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 500,
 			}),
-			expectedErr: `rpc error: code = Unavailable desc = retryable server error for API Key "id": status: 500, failed: [internal_server_error], reason: something broke`,
+			expectedErr: "rpc error: code = Internal desc = error checking privileges for API Key \"id\": status: 500, failed: [internal_server_error], reason: something broke",
 		},
 		"proxy_502_error": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadGateway)
 			},
-			expectedErr: `rpc error: code = Unavailable desc = retryable server error for API Key "id": EOF`,
+			expectedErr: "rpc error: code = Unavailable desc = retryable server error for API Key \"id\": EOF",
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
@@ -351,8 +350,8 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 				}
 				return authenticator, headers
 			},
-			expectedCode: codes.Unavailable,
-			expectedMsg:  `retryable server error for API Key "id": status: 503, failed: [unavailable], reason: service_unavailable`,
+			expectedCode: codes.Internal,
+			expectedMsg:  "error checking privileges for API Key \"id\": status: 503, failed: [unavailable], reason: service_unavailable",
 			expectedMetadata: map[string]string{
 				"component": "apikeyauthextension",
 				"api_key":   "id",
@@ -368,14 +367,6 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			require.True(t, ok, "Expected gRPC status error")
 			assert.Equal(t, testcase.expectedCode, st.Code())
 			assert.Equal(t, testcase.expectedMsg, st.Message())
-
-			details := st.Details()
-			require.Len(t, details, 1, "expected 1 errorinfo detail")
-
-			errorInfo, ok := details[0].(*errdetails.ErrorInfo)
-			require.True(t, ok, "expected errorinfo detail")
-			assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
-			assert.Equal(t, testcase.expectedMetadata, errorInfo.Metadata)
 		})
 	}
 }
@@ -806,7 +797,7 @@ func TestAuthenticator_RetryDisabled(t *testing.T) {
 
 	st, ok := status.FromError(err)
 	require.True(t, ok)
-	assert.Equal(t, codes.Unavailable, st.Code())
+	assert.Equal(t, codes.Internal, st.Code())
 	require.Equal(t, 1, calls)
 }
 

@@ -356,17 +356,11 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 	if err != nil {
 		var elasticsearchErr *types.ElasticsearchError
 		if errors.As(err, &elasticsearchErr) {
-			switch {
-			case elasticsearchErr.Status == http.StatusUnauthorized ||
-				elasticsearchErr.Status == http.StatusForbidden:
+			switch elasticsearchErr.Status {
+			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
-			case elasticsearchErr.Status >= 500:
-				return ctx, errorWithDetails(codes.Unavailable,
-					fmt.Sprintf("retryable server error for API Key %q: %v", id, err),
-					map[string]string{"component": "apikeyauthextension", "api_key": id})
 			default:
-				return ctx, status.Errorf(codes.Internal,
-					"error checking privileges for API Key %q: %v", id, err)
+				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
 			}
 		}
 		// Check if this is a metadata validation error (client error)
