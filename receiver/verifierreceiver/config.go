@@ -20,6 +20,7 @@ package verifierreceiver // import "github.com/elastic/opentelemetry-collector-c
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/verifierreceiver/internal/verifier"
 )
@@ -317,6 +318,9 @@ func (cfg *Config) Validate() error {
 	if cfg.CloudConnectorID == "" {
 		return errors.New("cloud_connector_id must be specified")
 	}
+	if cfg.VerificationID == "" {
+		return errors.New("verification_id must be specified")
+	}
 	if len(cfg.Policies) == 0 {
 		return errors.New("at least one policy must be specified")
 	}
@@ -343,22 +347,17 @@ func (cfg *Config) Validate() error {
 
 // GetProviderForIntegration returns the provider type for a given integration type.
 func GetProviderForIntegration(integrationType string) verifier.ProviderType {
-	// AWS integrations start with "aws_"
-	if len(integrationType) > 4 && integrationType[:4] == "aws_" {
+	if strings.HasPrefix(integrationType, "aws_") {
 		return verifier.ProviderAWS
 	}
-	// Azure integrations start with "azure_"
-	if len(integrationType) > 6 && integrationType[:6] == "azure_" {
+	if strings.HasPrefix(integrationType, "azure_") {
 		return verifier.ProviderAzure
 	}
-	// GCP integrations start with "gcp_"
-	if len(integrationType) > 4 && integrationType[:4] == "gcp_" {
+	if strings.HasPrefix(integrationType, "gcp_") {
 		return verifier.ProviderGCP
 	}
-	// Okta integrations
-	if len(integrationType) >= 4 && integrationType[:4] == "okta" {
+	if strings.HasPrefix(integrationType, "okta_") {
 		return verifier.ProviderOkta
 	}
-	// Unknown provider
 	return ""
 }

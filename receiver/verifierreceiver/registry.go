@@ -25,28 +25,26 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/verifierreceiver/internal/verifier"
 )
 
-// VerificationMethod indicates how a permission should be verified.
-type VerificationMethod string
+// Type aliases for verifier package types to avoid duplication.
+// The canonical definitions live in the internal/verifier package.
+type VerificationMethod = verifier.VerificationMethod
 
-const (
-	// MethodAPICall makes an actual API call with minimal scope.
-	MethodAPICall VerificationMethod = "api_call"
-	// MethodDryRun uses provider's DryRun parameter where supported (e.g., AWS EC2).
-	MethodDryRun VerificationMethod = "dry_run"
-	// MethodHTTPProbe uses HTTP HEAD/GET request to check connectivity.
-	MethodHTTPProbe VerificationMethod = "http_probe"
-	// MethodGraphQL uses GraphQL introspection or minimal query.
-	MethodGraphQL VerificationMethod = "graphql_query"
+// Re-export verification method constants for use by registry callers.
+var (
+	MethodAPICall   = verifier.MethodAPICall
+	MethodDryRun    = verifier.MethodDryRun
+	MethodHTTPProbe = verifier.MethodHTTPProbe
+	MethodGraphQL   = verifier.MethodGraphQL
 )
 
 // PermissionStatus represents the result of a permission verification.
 type PermissionStatus string
 
 const (
-	StatusGranted PermissionStatus = "granted"
-	StatusDenied  PermissionStatus = "denied"
-	StatusError   PermissionStatus = "error"
-	StatusSkipped PermissionStatus = "skipped"
+	StatusGranted PermissionStatus = PermissionStatus(verifier.StatusGranted)
+	StatusDenied  PermissionStatus = PermissionStatus(verifier.StatusDenied)
+	StatusError   PermissionStatus = PermissionStatus(verifier.StatusError)
+	StatusSkipped PermissionStatus = PermissionStatus(verifier.StatusSkipped)
 	StatusPending PermissionStatus = "pending"
 )
 

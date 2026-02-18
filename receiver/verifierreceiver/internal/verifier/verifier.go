@@ -74,6 +74,7 @@ const (
 	MethodAPICall   VerificationMethod = "api_call"
 	MethodDryRun    VerificationMethod = "dry_run"
 	MethodHTTPProbe VerificationMethod = "http_probe"
+	MethodGraphQL   VerificationMethod = "graphql_query"
 )
 
 // Permission represents a permission to verify.

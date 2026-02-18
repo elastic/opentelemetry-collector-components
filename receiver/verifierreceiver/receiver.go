@@ -54,6 +54,9 @@ type verifierReceiver struct {
 
 	cancelFn context.CancelFunc
 	wg       sync.WaitGroup
+
+	// done is closed when verification completes (used for testing)
+	done chan struct{}
 }
 
 // newVerifierReceiver creates a new verifier receiver.
@@ -80,6 +83,7 @@ func newVerifierReceiver(
 		logger:             params.Logger,
 		permissionRegistry: NewPermissionRegistry(),
 		verifierRegistry:   verifierRegistry,
+		done:               make(chan struct{}),
 	}
 }
 
@@ -94,7 +98,9 @@ func (r *verifierReceiver) Start(ctx context.Context, _ component.Host) error {
 	// Initialize verifiers for configured providers
 	r.initializeVerifiers(ctx)
 
-	startCtx, cancelFn := context.WithCancel(ctx)
+	// Use context.Background() as parent because the Start() ctx is startup-scoped
+	// and may be cancelled after Start returns, which would abort verification.
+	startCtx, cancelFn := context.WithCancel(context.Background())
 	r.cancelFn = cancelFn
 
 	// Run verification
@@ -211,6 +217,7 @@ func (r *verifierReceiver) Shutdown(ctx context.Context) error {
 
 // runVerification runs the permission verification for all configured policies.
 func (r *verifierReceiver) runVerification(ctx context.Context) {
+	defer close(r.done)
 	if err := r.verifyPermissions(ctx); err != nil {
 		r.logger.Error("Failed to verify permissions", zap.Error(err))
 	}

@@ -132,6 +132,21 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: "cloud_connector_id must be specified",
 		},
 		{
+			name: "invalid config - missing verification_id",
+			config: Config{
+				CloudConnectorID: "cc-12345",
+				Policies: []PolicyConfig{
+					{
+						PolicyID: "policy-1",
+						Integrations: []IntegrationConfig{
+							{IntegrationType: "aws_cloudtrail"},
+						},
+					},
+				},
+			},
+			wantErr: "verification_id must be specified",
+		},
+		{
 			name: "invalid config - no policies",
 			config: Config{
 				CloudConnectorID: "cc-12345",
@@ -342,6 +357,11 @@ func TestGetProviderForIntegration(t *testing.T) {
 			name:            "Okta System",
 			integrationType: "okta_system",
 			want:            verifier.ProviderOkta,
+		},
+		{
+			name:            "Okta bare prefix does not match",
+			integrationType: "okta",
+			want:            "",
 		},
 		{
 			name:            "Unknown",

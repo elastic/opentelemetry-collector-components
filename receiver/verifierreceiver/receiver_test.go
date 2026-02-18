@@ -20,7 +20,6 @@ package verifierreceiver
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -74,14 +73,12 @@ func TestReceiver_StartShutdown(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Start the receiver
 	err := receiver.Start(ctx, nil)
 	require.NoError(t, err)
 
-	// Give it time to run the verification
-	time.Sleep(100 * time.Millisecond)
+	// Wait for verification to complete
+	<-receiver.done
 
-	// Shutdown the receiver
 	err = receiver.Shutdown(ctx)
 	require.NoError(t, err)
 
@@ -173,7 +170,7 @@ func TestReceiver_WithoutAWSCredentials(t *testing.T) {
 	err := receiver.Start(ctx, nil)
 	require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
+	<-receiver.done
 
 	err = receiver.Shutdown(ctx)
 	require.NoError(t, err)
@@ -225,7 +222,7 @@ func TestReceiver_UnsupportedIntegration(t *testing.T) {
 	err := receiver.Start(ctx, nil)
 	require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
+	<-receiver.done
 
 	err = receiver.Shutdown(ctx)
 	require.NoError(t, err)
@@ -289,7 +286,7 @@ func TestReceiver_MultipleIntegrations(t *testing.T) {
 	err := receiver.Start(ctx, nil)
 	require.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
+	<-receiver.done
 
 	err = receiver.Shutdown(ctx)
 	require.NoError(t, err)

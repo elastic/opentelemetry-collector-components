@@ -27,14 +27,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/guardduty"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/securityhub"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/wafv2"
+	wafv2types "github.com/aws/aws-sdk-go-v2/service/wafv2/types"
 	"github.com/aws/smithy-go"
 	"go.uber.org/zap"
 )
@@ -220,6 +226,14 @@ func (v *AWSVerifier) Verify(ctx context.Context, permission Permission, provide
 		result = v.verifySQS(ctx, cfg, operation)
 	case "logs":
 		result = v.verifyCloudWatchLogs(ctx, cfg, operation)
+	case "wafv2":
+		result = v.verifyWAFv2(ctx, cfg, operation)
+	case "route53":
+		result = v.verifyRoute53(ctx, cfg, operation)
+	case "elasticloadbalancing":
+		result = v.verifyELB(ctx, cfg, operation)
+	case "cloudfront":
+		result = v.verifyCloudFront(ctx, cfg, operation)
 	default:
 		result = Result{
 			Status:       StatusSkipped,
@@ -283,34 +297,46 @@ func (v *AWSVerifier) verifyGuardDuty(ctx context.Context, cfg aws.Config, opera
 		})
 		return v.handleAWSError(err, "guardduty:ListDetectors")
 
-	case "GetFindings", "ListFindings":
-		// First get a detector ID
+	case "GetFindings":
 		detectors, err := client.ListDetectors(ctx, &guardduty.ListDetectorsInput{
 			MaxResults: aws.Int32(1),
 		})
 		if err != nil {
-			return v.handleAWSError(err, "guardduty:"+operation)
+			return v.handleAWSError(err, "guardduty:GetFindings")
 		}
 		if len(detectors.DetectorIds) == 0 {
 			return Result{
 				Status:   StatusGranted,
-				Endpoint: "guardduty:" + operation + " (no detectors configured)",
+				Endpoint: "guardduty:GetFindings (no detectors configured)",
 			}
 		}
+		// Call GetFindings with an empty finding IDs list. This exercises the
+		// guardduty:GetFindings IAM permission and returns an empty result set
+		// rather than an error.
+		_, err = client.GetFindings(ctx, &guardduty.GetFindingsInput{
+			DetectorId: aws.String(detectors.DetectorIds[0]),
+			FindingIds: []string{},
+		})
+		return v.handleAWSError(err, "guardduty:GetFindings")
 
-		if operation == "ListFindings" {
-			_, err = client.ListFindings(ctx, &guardduty.ListFindingsInput{
-				DetectorId: aws.String(detectors.DetectorIds[0]),
-				MaxResults: aws.Int32(1),
-			})
-		} else {
-			// GetFindings requires finding IDs, so we'll use ListFindings as proxy
-			_, err = client.ListFindings(ctx, &guardduty.ListFindingsInput{
-				DetectorId: aws.String(detectors.DetectorIds[0]),
-				MaxResults: aws.Int32(1),
-			})
+	case "ListFindings":
+		detectors, err := client.ListDetectors(ctx, &guardduty.ListDetectorsInput{
+			MaxResults: aws.Int32(1),
+		})
+		if err != nil {
+			return v.handleAWSError(err, "guardduty:ListFindings")
 		}
-		return v.handleAWSError(err, "guardduty:"+operation)
+		if len(detectors.DetectorIds) == 0 {
+			return Result{
+				Status:   StatusGranted,
+				Endpoint: "guardduty:ListFindings (no detectors configured)",
+			}
+		}
+		_, err = client.ListFindings(ctx, &guardduty.ListFindingsInput{
+			DetectorId: aws.String(detectors.DetectorIds[0]),
+			MaxResults: aws.Int32(1),
+		})
+		return v.handleAWSError(err, "guardduty:ListFindings")
 
 	default:
 		return Result{
@@ -356,21 +382,47 @@ func (v *AWSVerifier) verifyS3(ctx context.Context, cfg aws.Config, operation st
 
 	switch operation {
 	case "ListBucket":
-		// ListBuckets is a simpler permission check
-		_, err := client.ListBuckets(ctx, &s3.ListBucketsInput{})
+		// Use HeadBucket on a known bucket to verify s3:ListBucket.
+		// ListBuckets checks s3:ListAllMyBuckets which is a different permission.
+		// If no specific bucket is available, fall back to ListBuckets as a basic connectivity check.
+		buckets, err := client.ListBuckets(ctx, &s3.ListBucketsInput{})
+		if err != nil {
+			return v.handleAWSError(err, "s3:ListBucket")
+		}
+		if len(buckets.Buckets) == 0 {
+			return Result{
+				Status:   StatusGranted,
+				Endpoint: "s3:ListBucket (no buckets to check, ListBuckets succeeded)",
+			}
+		}
+		_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{
+			Bucket: buckets.Buckets[0].Name,
+		})
 		return v.handleAWSError(err, "s3:ListBucket")
 
 	case "GetObject":
-		// GetObject requires a bucket and key - use ListBuckets as proxy
-		_, err := client.ListBuckets(ctx, &s3.ListBucketsInput{})
+		// s3:GetObject is bucket/key-specific and cannot be fully verified without
+		// a target object. Use HeadBucket as a proxy to confirm the role has some
+		// level of S3 access to the account's buckets.
+		buckets, err := client.ListBuckets(ctx, &s3.ListBucketsInput{})
 		if err != nil {
 			return v.handleAWSError(err, "s3:GetObject")
 		}
-		// If we can list buckets, we have basic S3 access
-		// The actual GetObject permission is bucket-specific
+		if len(buckets.Buckets) == 0 {
+			return Result{
+				Status:   StatusSkipped,
+				Endpoint: "s3:GetObject (no buckets available for verification)",
+			}
+		}
+		_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{
+			Bucket: buckets.Buckets[0].Name,
+		})
+		if err != nil {
+			return v.handleAWSError(err, "s3:GetObject")
+		}
 		return Result{
 			Status:   StatusGranted,
-			Endpoint: "s3:GetObject (verified via ListBuckets)",
+			Endpoint: "s3:GetObject (verified via HeadBucket - full verification requires bucket/key)",
 		}
 
 	case "GetBucketLocation":
@@ -474,11 +526,158 @@ func (v *AWSVerifier) verifySQS(ctx context.Context, cfg aws.Config, operation s
 
 // verifyCloudWatchLogs verifies CloudWatch Logs permissions.
 func (v *AWSVerifier) verifyCloudWatchLogs(ctx context.Context, cfg aws.Config, operation string) Result {
-	// CloudWatch Logs uses the same SDK client pattern
-	// For now, skip - would need to add cloudwatchlogs client
-	return Result{
-		Status:       StatusSkipped,
-		ErrorMessage: "CloudWatch Logs verification not yet implemented",
+	client := cloudwatchlogs.NewFromConfig(cfg)
+
+	switch operation {
+	case "FilterLogEvents":
+		// FilterLogEvents requires a log group; use DescribeLogGroups to find one.
+		groups, err := client.DescribeLogGroups(ctx, &cloudwatchlogs.DescribeLogGroupsInput{
+			Limit: aws.Int32(1),
+		})
+		if err != nil {
+			return v.handleAWSError(err, "logs:FilterLogEvents")
+		}
+		if len(groups.LogGroups) == 0 {
+			return Result{
+				Status:   StatusGranted,
+				Endpoint: "logs:FilterLogEvents (no log groups to check)",
+			}
+		}
+		_, err = client.FilterLogEvents(ctx, &cloudwatchlogs.FilterLogEventsInput{
+			LogGroupName: groups.LogGroups[0].LogGroupName,
+			Limit:        aws.Int32(1),
+		})
+		return v.handleAWSError(err, "logs:FilterLogEvents")
+
+	case "DescribeLogGroups":
+		_, err := client.DescribeLogGroups(ctx, &cloudwatchlogs.DescribeLogGroupsInput{
+			Limit: aws.Int32(1),
+		})
+		return v.handleAWSError(err, "logs:DescribeLogGroups")
+
+	case "DescribeLogStreams":
+		groups, err := client.DescribeLogGroups(ctx, &cloudwatchlogs.DescribeLogGroupsInput{
+			Limit: aws.Int32(1),
+		})
+		if err != nil {
+			return v.handleAWSError(err, "logs:DescribeLogStreams")
+		}
+		if len(groups.LogGroups) == 0 {
+			return Result{
+				Status:   StatusGranted,
+				Endpoint: "logs:DescribeLogStreams (no log groups to check)",
+			}
+		}
+		_, err = client.DescribeLogStreams(ctx, &cloudwatchlogs.DescribeLogStreamsInput{
+			LogGroupName: groups.LogGroups[0].LogGroupName,
+			Limit:        aws.Int32(1),
+		})
+		return v.handleAWSError(err, "logs:DescribeLogStreams")
+
+	default:
+		return Result{
+			Status:       StatusSkipped,
+			ErrorMessage: "Unsupported CloudWatch Logs operation: " + operation,
+		}
+	}
+}
+
+// verifyWAFv2 verifies WAFv2 permissions.
+func (v *AWSVerifier) verifyWAFv2(ctx context.Context, cfg aws.Config, operation string) Result {
+	client := wafv2.NewFromConfig(cfg)
+
+	switch operation {
+	case "ListWebACLs":
+		_, err := client.ListWebACLs(ctx, &wafv2.ListWebACLsInput{
+			Scope: wafv2types.ScopeRegional,
+			Limit: aws.Int32(1),
+		})
+		return v.handleAWSError(err, "wafv2:ListWebACLs")
+
+	case "GetWebACL":
+		// GetWebACL requires a WebACL ID; list first to find one.
+		acls, err := client.ListWebACLs(ctx, &wafv2.ListWebACLsInput{
+			Scope: wafv2types.ScopeRegional,
+			Limit: aws.Int32(1),
+		})
+		if err != nil {
+			return v.handleAWSError(err, "wafv2:GetWebACL")
+		}
+		if len(acls.WebACLs) == 0 {
+			return Result{
+				Status:   StatusGranted,
+				Endpoint: "wafv2:GetWebACL (no WebACLs to check)",
+			}
+		}
+		_, err = client.GetWebACL(ctx, &wafv2.GetWebACLInput{
+			Name:  acls.WebACLs[0].Name,
+			Id:    acls.WebACLs[0].Id,
+			Scope: wafv2types.ScopeRegional,
+		})
+		return v.handleAWSError(err, "wafv2:GetWebACL")
+
+	default:
+		return Result{
+			Status:       StatusSkipped,
+			ErrorMessage: "Unsupported WAFv2 operation: " + operation,
+		}
+	}
+}
+
+// verifyRoute53 verifies Route 53 permissions.
+func (v *AWSVerifier) verifyRoute53(ctx context.Context, cfg aws.Config, operation string) Result {
+	client := route53.NewFromConfig(cfg)
+
+	switch operation {
+	case "ListHostedZones":
+		_, err := client.ListHostedZones(ctx, &route53.ListHostedZonesInput{
+			MaxItems: aws.Int32(1),
+		})
+		return v.handleAWSError(err, "route53:ListHostedZones")
+
+	default:
+		return Result{
+			Status:       StatusSkipped,
+			ErrorMessage: "Unsupported Route53 operation: " + operation,
+		}
+	}
+}
+
+// verifyELB verifies Elastic Load Balancing permissions.
+func (v *AWSVerifier) verifyELB(ctx context.Context, cfg aws.Config, operation string) Result {
+	client := elasticloadbalancingv2.NewFromConfig(cfg)
+
+	switch operation {
+	case "DescribeLoadBalancers":
+		_, err := client.DescribeLoadBalancers(ctx, &elasticloadbalancingv2.DescribeLoadBalancersInput{
+			PageSize: aws.Int32(1),
+		})
+		return v.handleAWSError(err, "elasticloadbalancing:DescribeLoadBalancers")
+
+	default:
+		return Result{
+			Status:       StatusSkipped,
+			ErrorMessage: "Unsupported ELB operation: " + operation,
+		}
+	}
+}
+
+// verifyCloudFront verifies CloudFront permissions.
+func (v *AWSVerifier) verifyCloudFront(ctx context.Context, cfg aws.Config, operation string) Result {
+	client := cloudfront.NewFromConfig(cfg)
+
+	switch operation {
+	case "ListDistributions":
+		_, err := client.ListDistributions(ctx, &cloudfront.ListDistributionsInput{
+			MaxItems: aws.Int32(1),
+		})
+		return v.handleAWSError(err, "cloudfront:ListDistributions")
+
+	default:
+		return Result{
+			Status:       StatusSkipped,
+			ErrorMessage: "Unsupported CloudFront operation: " + operation,
+		}
 	}
 }
 
