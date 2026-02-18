@@ -131,7 +131,6 @@ func TestDynamicroutingRoutedTelemetry(t *testing.T) {
 				func(...pipeline.ID) (consumer.Metrics, error) {
 					return consumertest.NewNop(), nil
 				},
-				pipeline.SignalMetrics,
 			)
 			require.NoError(t, err)
 			t.Cleanup(func() {
@@ -152,7 +151,6 @@ func TestDynamicroutingRoutedTelemetry(t *testing.T) {
 					Attributes: attribute.NewSet(
 						attribute.String("cardinality_bucket", tt.wantBucket),
 						attribute.String("partition_key", pk),
-						attribute.String("signal", pipeline.SignalMetrics.String()),
 					),
 				})
 			}

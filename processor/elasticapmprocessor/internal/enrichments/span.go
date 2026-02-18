@@ -36,6 +36,7 @@ import (
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv39 "go.opentelemetry.io/otel/semconv/v1.39.0"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc/codes"
 
@@ -195,10 +196,16 @@ func (s *spanEnrichmentContext) Enrich(
 		case string(semconv25.RPCGRPCStatusCodeKey):
 			s.isRPC = true
 			s.grpcStatus = codes.Code(v.Int()).String()
-		case string(semconv25.RPCSystemKey):
+		case string(semconv39.RPCResponseStatusCodeKey):
+			s.isRPC = true
+			s.grpcStatus = v.Str()
+		case string(semconv25.RPCSystemKey), string(semconv39.RPCSystemNameKey):
 			s.isRPC = true
 			s.rpcSystem = v.Str()
 		case string(semconv25.RPCServiceKey):
+			s.isRPC = true
+			s.rpcService = v.Str()
+		case string(semconv39.RPCMethodKey):
 			s.isRPC = true
 			s.rpcService = v.Str()
 		case string(semconv25.DBStatementKey),
