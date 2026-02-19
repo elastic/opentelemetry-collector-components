@@ -37,7 +37,10 @@ resourceSpans:
                   stringValue: kafka
               - key: event.outcome
                 value:
-                  stringValue: unknown
+                  stringValue: success
+              - key: event.success_count
+                value:
+                  intValue: "1"
               - key: span.duration.us
                 value:
                   intValue: "1000000"

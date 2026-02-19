@@ -55,7 +55,10 @@ resourceSpans:
                   stringValue: Success
               - key: event.outcome
                 value:
-                  stringValue: unknown
+                  stringValue: success
+              - key: event.success_count
+                value:
+                  intValue: "1"
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:

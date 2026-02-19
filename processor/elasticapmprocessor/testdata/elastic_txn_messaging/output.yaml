@@ -20,9 +20,9 @@ resourceSpans:
               - key: transaction.message.queue.name
                 value:
                   stringValue: TestTopic
-              - key: event.outcome
+              - key: event.success_count
                 value:
-                  stringValue: unknown
+                  intValue: "1"
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
@@ -53,6 +53,9 @@ resourceSpans:
               - key: transaction.result
                 value:
                   stringValue: Success
+              - key: event.outcome
+                value:
+                  stringValue: success
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
