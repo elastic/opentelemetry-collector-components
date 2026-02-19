@@ -31,7 +31,7 @@ import (
 
 func BenchmarkLogsGenerator(b *testing.B) {
 	doneCh := make(chan Stats)
-	cfg := createDefaultReceiverConfig(doneCh, nil, nil)
+	cfg := createDefaultReceiverConfig(doneCh, nil, nil, nil)
 	cfg.(*Config).Logs.MaxReplay = b.N
 	r, _ := createLogsReceiver(context.Background(), receiver.Settings{
 		ID: component.ID{},

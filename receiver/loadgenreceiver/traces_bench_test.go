@@ -31,7 +31,7 @@ import (
 
 func BenchmarkTracesGenerator(b *testing.B) {
 	doneCh := make(chan Stats)
-	cfg := createDefaultReceiverConfig(nil, nil, doneCh)
+	cfg := createDefaultReceiverConfig(nil, nil, doneCh, nil)
 	cfg.(*Config).Traces.MaxReplay = b.N
 	r, _ := createTracesReceiver(context.Background(), receiver.Settings{
 		ID: component.ID{},

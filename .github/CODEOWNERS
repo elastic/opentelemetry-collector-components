@@ -2,16 +2,16 @@
 * @elastic/otel-devs
 
 # Per-component owners
-loadgen                                @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
-receiver/loadgenreceiver               @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+loadgen                                @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
+receiver/loadgenreceiver               @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 receiver/elasticapmintakereceiver      @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations
+processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations @elastic/ingest-otel-data
 processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
-processor/lsmintervalprocessor         @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
-processor/ratelimitprocessor           @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+processor/lsmintervalprocessor         @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
+processor/ratelimitprocessor           @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 processor/integrationprocessor         @elastic/ecosystem @elastic/ingest-otel-data
-connector/elasticapmconnector          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
-extension/apikeyauthextension          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+connector/elasticapmconnector          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
+extension/apikeyauthextension          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 extension/apmconfigextension           @elastic/ingest-otel-data
 extension/fileintegrationextension     @elastic/ecosystem @elastic/ingest-otel-data
 pkg/integrations                       @elastic/ecosystem @elastic/ingest-otel-data

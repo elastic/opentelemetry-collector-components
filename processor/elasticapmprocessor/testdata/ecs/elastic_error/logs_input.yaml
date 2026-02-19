@@ -4,6 +4,18 @@ resourceLogs:
         - key: service.name
           value:
             stringValue: test-service
+        - key: labels.my_value
+          value:
+            stringValue: foo
+        - key: labels.other.value
+          value:
+            stringValue: foo
+        - key: numeric_labels.foo
+          value:
+            doubleValue: 42.0
+        - key: numeric_labels.http.status.code
+          value:
+            doubleValue: 200
     scopeLogs:
       - logRecords:
           - attributes:

@@ -33,6 +33,8 @@ import (
 	"testing"
 	"time"
 
+	"go.opentelemetry.io/collector/featuregate"
+
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
 
@@ -46,6 +48,9 @@ func getSignals() (signals []string) {
 	}
 	if Config.Traces {
 		signals = append(signals, "traces")
+	}
+	if Config.Profiles {
+		signals = append(signals, "profiles")
 	}
 	if Config.Mixed {
 		signals = append(signals, "mixed")
@@ -73,6 +78,8 @@ func getDataPathForSignal(signal string) string {
 		return Config.MetricsDataPath
 	case "traces":
 		return Config.TracesDataPath
+	case "profiles":
+		return Config.ProfilesDataPath
 	}
 	return ""
 }
@@ -92,6 +99,8 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 		logsDone := make(chan loadgenreceiver.Stats)
 		metricsDone := make(chan loadgenreceiver.Stats)
 		tracesDone := make(chan loadgenreceiver.Stats)
+		profilesDone := make(chan loadgenreceiver.Stats)
+
 		// if we do not expect that signal, don't wait for it
 		if signal != "mixed" {
 			if signal != "logs" {
@@ -103,6 +112,13 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 			if signal != "traces" {
 				close(tracesDone)
 			}
+			if signal != "profiles" {
+				close(profilesDone)
+			}
+		} else if !Config.Profiles {
+			// TODO: enable profiles for "mixed" signal on
+			// endpoint stabilization
+			close(profilesDone)
 		}
 		stop := make(chan struct{}) // close channel to stop the loadgen collector
 		done := make(chan struct{}) // close channel to exit benchmark after stats were reported
@@ -111,25 +127,28 @@ func runBench(ctx context.Context, signal, exporter string, concurrency int, rep
 			logsStats := <-logsDone
 			metricsStats := <-metricsDone
 			tracesStats := <-tracesDone
+			profilesStats := <-profilesDone
 			b.StopTimer()
 
-			stats := logsStats.Add(metricsStats).Add(tracesStats)
+			stats := logsStats.Add(metricsStats).Add(tracesStats).Add(profilesStats)
 			elapsedSeconds := b.Elapsed().Seconds()
 			close(stop)
 
 			b.ReportMetric(float64(stats.LogRecords)/elapsedSeconds, "logs/s")
 			b.ReportMetric(float64(stats.MetricDataPoints)/elapsedSeconds, "metric_points/s")
 			b.ReportMetric(float64(stats.Spans)/elapsedSeconds, "spans/s")
+			b.ReportMetric(float64(stats.Samples)/elapsedSeconds, "samples/s")
 			b.ReportMetric(float64(stats.Requests)/elapsedSeconds, "requests/s")
 			b.ReportMetric(float64(stats.FailedLogRecords)/elapsedSeconds, "failed_logs/s")
 			b.ReportMetric(float64(stats.FailedMetricDataPoints)/elapsedSeconds, "failed_metric_points/s")
 			b.ReportMetric(float64(stats.FailedSpans)/elapsedSeconds, "failed_spans/s")
+			b.ReportMetric(float64(stats.FailedSamples)/elapsedSeconds, "failed_samples/s")
 			b.ReportMetric(float64(stats.FailedRequests)/elapsedSeconds, "failed_requests/s")
 			reporter(b)
 			close(done)
 		}()
 
-		err := RunCollector(ctx, stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone)
+		err := RunCollector(ctx, stop, configs(exporter, signal, b.N, concurrency), logsDone, metricsDone, tracesDone, profilesDone)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			b.Fatal(err)
@@ -177,6 +196,12 @@ func getBenchCount() int {
 }
 
 func main() {
+	// Enable profiles support feature gate required for profiles pipelines.
+	if err := featuregate.GlobalRegistry().Set("service.profilesSupport", true); err != nil {
+		fmt.Fprintln(os.Stderr, fmt.Errorf("error enabling profiles support feature gate: %w", err))
+		os.Exit(2)
+	}
+
 	testing.Init()
 	if err := Init(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -279,14 +304,17 @@ func configs(exporter, signal string, iterations, concurrency int) (configFiles 
 	configFiles = append(configFiles, ExporterConfigs(exporter)...)
 	configFiles = append(configFiles, SetIterations(iterations)...)
 	configFiles = append(configFiles, SetConcurrency(concurrency)...)
-	configFiles = append(configFiles, SetDataPaths(Config.TracesDataPath, Config.MetricsDataPath, Config.LogsDataPath)...)
+	configFiles = append(configFiles, SetDataPaths(Config.TracesDataPath, Config.MetricsDataPath, Config.LogsDataPath, Config.ProfilesDataPath)...)
 	if signal != "mixed" {
-		for _, s := range []string{"logs", "metrics", "traces"} {
+		for _, s := range []string{"logs", "metrics", "traces", "profiles"} {
 			// Disable pipelines not relevant to the benchmark by overriding receiver and exporter to nop
 			if signal != s {
 				configFiles = append(configFiles, DisableSignal(s)...)
 			}
 		}
+	} else if !Config.Profiles {
+		// TODO: enable profiles for "mixed" on OTLP endpoint stabilization
+		configFiles = append(configFiles, DisableSignal("profiles")...)
 	}
 	return
 }

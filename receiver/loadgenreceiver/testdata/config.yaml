@@ -23,3 +23,11 @@ loadgen/metrics_invalid_max_buffer_size:
 loadgen/traces_invalid_max_buffer_size:
   traces:
     max_buffer_size: -1
+
+loadgen/profiles_invalid_max_replay:
+  profiles:
+    max_replay: -1
+
+loadgen/profiles_invalid_max_buffer_size:
+  profiles:
+    max_buffer_size: -1

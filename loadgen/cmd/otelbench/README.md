@@ -36,8 +36,12 @@ Usage of ./otelbench:
         benchmark metrics (default true)
   -metrics-data-path string
         path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.
+  -profiles
+        benchmark profiles (default false)
+  -profiles-data-path string
+        path to profiles data file (e.g. profiles.json). If empty, embedded data will be used.
   -mixed
-        benchmark mixed signals, i.e. logs, metrics and traces at the same time (default true)
+        benchmark mixed signals, i.e. logs, metrics, traces and profiles at the same time (default true)
   -secret-token string
         secret token for target server
   -shuffle
