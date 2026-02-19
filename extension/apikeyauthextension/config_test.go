@@ -20,6 +20,7 @@ package apikeyauthextension
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,6 +105,43 @@ func TestLoadConfig(t *testing.T) {
 		{
 			id:                 component.NewIDWithName(metadata.Type, "dynamic_resources_empty_metadata"),
 			expectedErrMessage: `application_privileges::0::dynamic_resources::0: metadata must be non-empty`,
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_retry"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.Retry = RetryConfig{
+					Enabled:         true,
+					MaxRetries:      5,
+					InitialInterval: 200 * time.Millisecond,
+					MaxInterval:     10 * time.Second,
+				}
+				return config
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "retry_disabled"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.Retry.Enabled = false
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_max_retries"),
+			expectedErrMessage: `retry: invalid max_retries: -1, must be non-negative`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_initial_interval"),
+			expectedErrMessage: `retry: invalid initial_interval: 0s, must be greater than 0`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_max_interval"),
+			expectedErrMessage: `retry: invalid max_interval: 0s, must be greater than 0`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_interval_order"),
+			expectedErrMessage: `retry: max_interval (1s) must be greater than or equal to initial_interval (10s)`,
 		},
 	}
 	for _, tt := range tests {

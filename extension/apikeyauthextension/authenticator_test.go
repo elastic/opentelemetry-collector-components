@@ -96,12 +96,37 @@ func TestAuthenticator(t *testing.T) {
 			}),
 			expectedErr: `rpc error: code = Unauthenticated desc = status: 401, failed: [auth_reason], reason: auth_reason`,
 		},
+		"server_503_error": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "unavailable",
+					Reason: func() *string {
+						reason := "service_unavailable"
+						return &reason
+					}(),
+				},
+				Status: 503,
+			}),
+			expectedErr: "rpc error: code = Internal desc = error checking privileges for API Key \"id\": status: 503, failed: [unavailable], reason: service_unavailable",
+		},
+		"server_500_error": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "internal_server_error",
+					Reason: func() *string {
+						reason := "something broke"
+						return &reason
+					}(),
+				},
+				Status: 500,
+			}),
+			expectedErr: "rpc error: code = Internal desc = error checking privileges for API Key \"id\": status: 500, failed: [internal_server_error], reason: something broke",
+		},
 		"proxy_502_error": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
-				// Simulate proxy returning 502 when ES is unreachable - empty response body
 				w.WriteHeader(http.StatusBadGateway)
 			},
-			expectedErr: `rpc error: code = Unavailable desc = retryable server error for API Key "id": EOF`,
+			expectedErr: "rpc error: code = Unavailable desc = retryable server error for API Key \"id\": EOF",
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
@@ -640,6 +665,130 @@ func TestAuthenticator_DynamicResourcesMissingMetadataInHasPrivileges(t *testing
 	require.True(t, ok, "Expected gRPC status error")
 	assert.Equal(t, codes.InvalidArgument, st.Code())
 	assert.Equal(t, st.Message(), `missing client metadata "X-Resource-Name" required for dynamic resource`)
+}
+
+func TestRetryBackoff(t *testing.T) {
+	for name, tc := range map[string]struct {
+		cfg      RetryConfig
+		attempts []struct {
+			n   int
+			min time.Duration
+			max time.Duration
+		}
+		expectNil bool
+	}{
+		"exponential_with_jitter": {
+			cfg: RetryConfig{
+				Enabled:         true,
+				InitialInterval: 100 * time.Millisecond,
+				MaxInterval:     5 * time.Second,
+			},
+			// Base doubles each attempt; equal jitter yields [base/2, base).
+			attempts: []struct {
+				n   int
+				min time.Duration
+				max time.Duration
+			}{
+				{1, 50 * time.Millisecond, 100 * time.Millisecond},
+				{2, 100 * time.Millisecond, 200 * time.Millisecond},
+				{3, 200 * time.Millisecond, 400 * time.Millisecond},
+				{4, 400 * time.Millisecond, 800 * time.Millisecond},
+				{5, 800 * time.Millisecond, 1600 * time.Millisecond},
+			},
+		},
+		"capped_at_max_interval": {
+			cfg: RetryConfig{
+				Enabled:         true,
+				InitialInterval: 1 * time.Second,
+				MaxInterval:     2 * time.Second,
+			},
+			attempts: []struct {
+				n   int
+				min time.Duration
+				max time.Duration
+			}{
+				{1, 500 * time.Millisecond, 1 * time.Second},
+				{2, 1 * time.Second, 2 * time.Second},
+				{3, 1 * time.Second, 2 * time.Second},
+				{4, 1 * time.Second, 2 * time.Second},
+			},
+		},
+		"disabled_returns_nil": {
+			cfg:       RetryConfig{Enabled: false},
+			expectNil: true,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fn := retryBackoff(tc.cfg)
+			if tc.expectNil {
+				require.Nil(t, fn)
+				return
+			}
+			require.NotNil(t, fn)
+			for _, a := range tc.attempts {
+				d := fn(a.n)
+				assert.GreaterOrEqual(t, d, a.min, "attempt %d", a.n)
+				assert.Less(t, d, a.max, "attempt %d", a.n)
+			}
+		})
+	}
+}
+
+func TestAuthenticator_RetryOnTransientError(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls <= 2 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{Type: "unavailable"},
+				Status:     503,
+			})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(successfulResponse)
+	})
+
+	config := createDefaultConfig().(*Config)
+	config.Retry.InitialInterval = time.Millisecond
+	config.Retry.MaxInterval = 10 * time.Millisecond
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	ctx, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 3, calls)
+
+	clientInfo := client.FromContext(ctx)
+	require.NotNil(t, clientInfo.Auth)
+	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+}
+
+func TestAuthenticator_RetryDisabled(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
+			ErrorCause: types.ErrorCause{Type: "unavailable"},
+			Status:     503,
+		})
+	})
+
+	config := createDefaultConfig().(*Config)
+	config.Retry.Enabled = false
+	authenticator := newTestAuthenticator(t, srv, config)
+
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	require.Error(t, err)
+
+	st, ok := status.FromError(err)
+	require.True(t, ok)
+	assert.Equal(t, codes.Internal, st.Code())
+	require.Equal(t, 1, calls)
 }
 
 func BenchmarkAuthenticator(b *testing.B) {
