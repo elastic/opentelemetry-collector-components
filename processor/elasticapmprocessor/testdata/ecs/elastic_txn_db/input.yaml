@@ -17,6 +17,10 @@ resourceSpans:
               - key: db.system
                 value:
                   stringValue: mysql
+              # processor.event pre-set by elasticapmintakereceiver; signals intake origin.
+              - key: processor.event
+                value:
+                  stringValue: transaction
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
@@ -39,11 +43,8 @@ resourceSpans:
                 timeUnixNano: "1581452773000000123"
               - name: event-with-no-attrs
                 timeUnixNano: "1581452773000000123"
-            name: span-elastic-db
-            parentSpanId: "bcff497b5a47310f"
-            status:
-              code: 2
+            name: db-elastic-txn
+            parentSpanId: ""
             startTimeUnixNano: "1581452772000000321"
             spanId: abcdef0123456700
             traceId: fdedef0123456789abcdef9876543210
-

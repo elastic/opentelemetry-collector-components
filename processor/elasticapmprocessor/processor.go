@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.uber.org/zap"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
@@ -45,20 +46,31 @@ type TraceProcessor struct {
 	next        consumer.Traces
 	enricher    *enrichments.Enricher
 	ecsEnricher *enrichments.Enricher
-	logger      *zap.Logger
-	cfg         *Config
+	// intakeECSEnricher applies ECS enrichment for traces ingested by the
+	// elasticapmintakereceiver. It extends ecsEnricher with intake-specific overrides.
+	intakeECSEnricher *enrichments.Enricher
+	logger            *zap.Logger
+	cfg               *Config
 }
 
 func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
 	enricherConfig := cfg.Config
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
+
+	intakeECSEnricherConfig := ecsEnricherConfig
+	// The intake receiver already sets transaction.root; skip re-deriving it
+	// to avoid overwriting the intake-supplied value or avoid deriving a value
+	// when the provided transaction.result is empty to match existing apm-data logic.
+	intakeECSEnricherConfig.Transaction.Result.Enabled = false
+
 	return &TraceProcessor{
-		next:        next,
-		logger:      logger,
-		enricher:    enrichments.NewEnricher(enricherConfig),
-		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
-		cfg:         cfg,
+		next:              next,
+		logger:            logger,
+		enricher:          enrichments.NewEnricher(enricherConfig),
+		ecsEnricher:       enrichments.NewEnricher(ecsEnricherConfig),
+		intakeECSEnricher: enrichments.NewEnricher(intakeECSEnricherConfig),
+		cfg:               cfg,
 	}
 }
 
@@ -70,6 +82,10 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 	enricher := p.enricher
 	if isECS(ctx) {
 		enricher = p.ecsEnricher
+		if isTraceIntakeECS(td) {
+			enricher = p.intakeECSEnricher
+		}
+
 		resourceSpans := td.ResourceSpans()
 		for i := 0; i < resourceSpans.Len(); i++ {
 			resourceSpan := resourceSpans.At(i)
@@ -112,6 +128,28 @@ func isECS(ctx context.Context) bool {
 	return mappingMode == "ecs"
 }
 
+// isTraceIntakeECS reports whether the traces originated from the elasticapmintakereceiver
+// by checking for a pre-existing processor.event on the first span.
+//
+// The intake receiver unconditionally sets processor.event on every transaction,
+// span, and error event it maps.
+func isTraceIntakeECS(td ptrace.Traces) bool {
+	rs := td.ResourceSpans()
+	if rs.Len() == 0 {
+		return false
+	}
+	ss := rs.At(0).ScopeSpans()
+	if ss.Len() == 0 {
+		return false
+	}
+	spans := ss.At(0).Spans()
+	if spans.Len() == 0 {
+		return false
+	}
+	_, ok := spans.At(0).Attributes().Get(elasticattr.ProcessorEvent)
+	return ok
+}
+
 func getMetadataValue(info client.Info) string {
 	if values := info.Metadata.Get("x-elastic-mapping-mode"); len(values) > 0 {
 		return values[0]
@@ -135,6 +173,9 @@ func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogPr
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	ecsEnricherConfig.Resource.AgentVersion.Enabled = false
+	// disable the transaction result enrichment to avoid deriving a value
+	// when the provided result is empty to match existing apm-data logic
+	ecsEnricherConfig.Transaction.Result.Enabled = false
 	return &LogProcessor{
 		next:        next,
 		logger:      logger,

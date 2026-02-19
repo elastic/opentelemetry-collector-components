@@ -105,6 +105,20 @@ func TestProcessor(t *testing.T) {
 			testType:    "traces",
 			cfg:         apmConfig,
 		},
+		"ecs_txn_db": {
+			input:       "testdata/ecs/elastic_txn_db/input.yaml",
+			output:      "testdata/ecs/elastic_txn_db/output.yaml",
+			mappingMode: "ecs",
+			testType:    "traces",
+			cfg:         apmConfig,
+		},
+		"ecs_txn_db_non_intake": {
+			input:       "testdata/ecs/txn_db/input.yaml",
+			output:      "testdata/ecs/txn_db/output.yaml",
+			mappingMode: "ecs",
+			testType:    "traces",
+			cfg:         apmConfig,
+		},
 		"ecs_log": {
 			input:       "testdata/ecs/elastic_log/input.yaml",
 			output:      "testdata/ecs/elastic_log/output.yaml",

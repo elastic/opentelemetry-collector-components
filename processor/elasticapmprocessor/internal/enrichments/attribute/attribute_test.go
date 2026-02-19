@@ -114,3 +114,60 @@ func TestPut(t *testing.T) {
 		})
 	}
 }
+
+func TestPutNonEmptyStr(t *testing.T) {
+	key := "test_key"
+
+	cases := []struct {
+		name      string
+		value     string
+		existing  string
+		wantExist bool
+		expected  string
+	}{
+		{
+			name:      "non_empty_value_no_existing",
+			value:     "hello",
+			wantExist: true,
+			expected:  "hello",
+		},
+		{
+			name:      "empty_value_no_existing",
+			value:     "",
+			wantExist: false,
+		},
+		{
+			name:      "empty_value_with_existing",
+			value:     "",
+			existing:  "existing",
+			wantExist: true,
+			expected:  "existing",
+		},
+		{
+			name:      "non_empty_value_with_existing",
+			value:     "new",
+			existing:  "existing",
+			wantExist: true,
+			expected:  "existing",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			if tc.existing != "" {
+				attrs.PutStr(key, tc.existing)
+			}
+
+			PutNonEmptyStr(attrs, key, tc.value)
+
+			val, exists := attrs.Get(key)
+			if exists != tc.wantExist {
+				t.Fatalf("exists = %v, want %v", exists, tc.wantExist)
+			}
+			if exists && val.Str() != tc.expected {
+				t.Errorf("value = %q, expected %q", val.Str(), tc.expected)
+			}
+		})
+	}
+}
