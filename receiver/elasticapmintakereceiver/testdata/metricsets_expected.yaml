@@ -371,7 +371,7 @@ resourceMetrics:
       - metrics:
           - gauge:
               dataPoints:
-                - asInt: "633288"
+                - asInt: "633"
                   attributes:
                     - key: processor.event
                       value:
