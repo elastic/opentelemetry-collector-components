@@ -356,8 +356,6 @@ resourceSpans:
               - key: db.system
                 value:
                   stringValue: mysql
-              # transaction.result intentionally omitted for ECS traces:
-              # this fixture asserts that transaction result enrichment is skipped.
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
