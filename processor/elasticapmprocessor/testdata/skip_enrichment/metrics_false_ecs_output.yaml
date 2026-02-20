@@ -16,6 +16,9 @@ resourceMetrics:
         - key: data_stream.type
           value:
             stringValue: metrics
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: service.name
           value:
             stringValue: test-service

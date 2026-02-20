@@ -343,6 +343,10 @@ resourceMetrics:
         - key: agent.activation_method
           value:
             stringValue: automatic
+        # Metric
+        - key: metricset.name
+          value:
+            stringValue: app
     scopeMetrics:
       - metrics:
           - name: test_metric

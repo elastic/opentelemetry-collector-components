@@ -7,6 +7,9 @@ resourceMetrics:
         - key: agent.version
           value:
             stringValue: unknown
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: service.name
           value:
             stringValue: test-service

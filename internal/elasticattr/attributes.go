@@ -53,6 +53,7 @@ const (
 	ServiceOriginName      = "service.origin.name"
 	ServiceOriginVersion   = "service.origin.version"
 	UserDomain             = "user.domain"
+	MetricsetName          = "metricset.name"
 
 	// scope s
 	ServiceFrameworkName    = "service.framework.name"

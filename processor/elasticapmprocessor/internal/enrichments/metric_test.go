@@ -67,6 +67,48 @@ func TestEnrichMetric(t *testing.T) {
 				elasticattr.ProcessorEvent: "existing-processor-event",
 				elasticattr.AgentName:      "existing-agent-name",
 				elasticattr.AgentVersion:   "existing-agent-version",
+				elasticattr.MetricsetName:  "app",
+			},
+		},
+		{
+			name: "metricset_name_enabled_sets_app_on_resource",
+			input: func() pmetric.ResourceMetrics {
+				rm := getMetric()
+				rm.ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().AppendEmpty().SetDoubleValue(2.0)
+				return rm
+			}(),
+			config: config.Enabled(),
+			expectedAttrs: map[string]any{
+				elasticattr.AgentName:     "otlp",
+				elasticattr.AgentVersion:  "unknown",
+				elasticattr.MetricsetName: "app",
+			},
+		},
+		{
+			name: "metricset_name_existing_not_overridden",
+			input: func() pmetric.ResourceMetrics {
+				resourceMetrics := getMetric()
+				resourceMetrics.Resource().Attributes().PutStr(elasticattr.MetricsetName, "custom")
+				return resourceMetrics
+			}(),
+			config: config.Enabled(),
+			expectedAttrs: map[string]any{
+				elasticattr.AgentName:     "otlp",
+				elasticattr.AgentVersion:  "unknown",
+				elasticattr.MetricsetName: "custom",
+			},
+		},
+		{
+			name:  "metricset_name_disabled_not_set",
+			input: getMetric(),
+			config: func() config.Config {
+				cfg := config.Enabled()
+				cfg.Metric.MetricsetName.Enabled = false
+				return cfg
+			}(),
+			expectedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
 			},
 		},
 	} {
@@ -86,7 +128,6 @@ func TestEnrichMetric(t *testing.T) {
 			// Verify attributes match expected
 			actualAttrs := tc.input.Resource().Attributes().AsRaw()
 			expectedAttrs := expectedResourceMetrics.Resource().Attributes().AsRaw()
-
 			assert.Equal(t, expectedAttrs, actualAttrs, "resource attributes should match expected")
 		})
 	}

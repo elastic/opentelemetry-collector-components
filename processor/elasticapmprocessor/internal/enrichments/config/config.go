@@ -122,6 +122,7 @@ type ElasticLogConfig struct {
 // ElasticMetricConfig configures the enrichment attributes for metrics
 type ElasticMetricConfig struct {
 	ProcessorEvent AttributeConfig `mapstructure:"processor_event"`
+	MetricsetName  AttributeConfig `mapstructure:"metricset_name"`
 }
 
 // AttributeConfig is the configuration options for each attribute.
@@ -184,6 +185,9 @@ func Enabled() Config {
 			ErrorExceptionHandled: AttributeConfig{Enabled: true},
 			ErrorGroupingKey:      AttributeConfig{Enabled: true},
 			ErrorGroupingName:     AttributeConfig{Enabled: true},
+		},
+		Metric: ElasticMetricConfig{
+			MetricsetName: AttributeConfig{Enabled: true},
 		},
 	}
 }

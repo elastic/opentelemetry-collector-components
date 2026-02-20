@@ -182,6 +182,9 @@ resourceMetrics:
         - key: labels.unsupported_key
           value:
             stringValue: foo
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: network.carrier.icc
           value:
             stringValue: US
