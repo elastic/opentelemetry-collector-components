@@ -29,6 +29,10 @@ import (
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
+	"go.opentelemetry.io/collector/connector/xconnector"
+	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 var typ = component.MustNewType("profilingmetrics")
@@ -47,7 +51,16 @@ func TestComponentLifecycle(t *testing.T) {
 	tests := []struct {
 		createFn func(ctx context.Context, set connector.Settings, cfg component.Config) (component.Component, error)
 		name     string
-	}{}
+	}{
+
+		{
+			name: "profiles_to_metrics",
+			createFn: func(ctx context.Context, set connector.Settings, cfg component.Config) (component.Component, error) {
+				router := connector.NewMetricsRouter(map[pipeline.ID]consumer.Metrics{pipeline.NewID(pipeline.SignalMetrics): consumertest.NewNop()})
+				return factory.(xconnector.Factory).CreateProfilesToMetrics(ctx, set, cfg, router)
+			},
+		},
+	}
 
 	cm, err := confmaptest.LoadConf("metadata.yaml")
 	require.NoError(t, err)
