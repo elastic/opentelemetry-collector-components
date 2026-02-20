@@ -208,10 +208,10 @@ go.opentelemetry.io/collector/pipeline/xpipeline v0.146.1 h1:BG+d2LjF87d6wnJg0d9
 go.opentelemetry.io/collector/pipeline/xpipeline v0.146.1/go.mod h1:Jl+uZvYAtBVF+VyHXVy65eqDqqrslNiWLRDikrnF7Jk=
 go.opentelemetry.io/collector/processor v1.52.0 h1:u9xenI6FfM6uYRI1d3r6ZRXqtGf7i6AT05qyrjmbYRE=
 go.opentelemetry.io/collector/processor v1.52.0/go.mod h1:1u59uoSbalsIxzwIkxlyqjJlNtAu10aoXoKxrga/crU=
-go.opentelemetry.io/collector/processor/processortest v0.145.0 h1:RDGBmyZnHk7XVK/EdLt/8iPWj+QLStbbVi1nFTNR01s=
-go.opentelemetry.io/collector/processor/processortest v0.145.0/go.mod h1:WAvxAzSojkdoZB915Z1lsVHCPDJBb2fepjJBjenrzjg=
-go.opentelemetry.io/collector/processor/xprocessor v0.145.0 h1:DaIE7MxRlg0OL1o2P0GQZtmZeExAmVso3qWv8S0RLps=
-go.opentelemetry.io/collector/processor/xprocessor v0.145.0/go.mod h1:kUwRyKBU/kjCmXodd+0z7CpvcP0A9G9/QL+MaJt4U2o=
+go.opentelemetry.io/collector/processor/processortest v0.146.1 h1:stVYMS7wGAPDTuFYeuvWQJGAoO6p21THB+XSKUC+sfQ=
+go.opentelemetry.io/collector/processor/processortest v0.146.1/go.mod h1:M1d3uHwU9I0p2apwWsQv57NyHt0ytsWfg31HfA9RXJE=
+go.opentelemetry.io/collector/processor/xprocessor v0.146.1 h1:5w8BVZv6jrOviQ2cdrdSwZm1lqOn8215OqD5tE+c1Z4=
+go.opentelemetry.io/collector/processor/xprocessor v0.146.1/go.mod h1:1zTeAGtpb+v6Eit6t4JY8fAML9Elb0yN6TXFoG9Ldnw=
 go.opentelemetry.io/otel v1.40.0 h1:oA5YeOcpRTXq6NN7frwmwFR0Cn3RhTVZvXsP4duvCms=
 go.opentelemetry.io/otel v1.40.0/go.mod h1:IMb+uXZUKkMXdPddhwAHm6UfOwJyh4ct1ybIlV14J0g=
 go.opentelemetry.io/otel/metric v1.40.0 h1:rcZe317KPftE2rstWIBitCdVp89A2HqjkxR3c11+p9g=
