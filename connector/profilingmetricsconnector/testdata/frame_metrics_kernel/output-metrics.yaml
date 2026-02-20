@@ -7,11 +7,20 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asInt: "1"
+                - asInt: "21"
                   attributes:
                     - key: kernel_area
                       value:
                         stringValue: synchronization
+                  startTimeUnixNano: "1000000"
+                - asInt: "10"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: synchronization
+                    - key: syscall_name
+                      value:
+                        stringValue: futex
                   startTimeUnixNano: "1000000"
                 - asInt: "1"
                   attributes:
@@ -132,6 +141,20 @@ resourceMetrics:
                     - key: kernel_proto
                       value:
                         stringValue: udp
+                    - key: syscall_name
+                      value:
+                        stringValue: write
+                - asInt: "5"
+                  attributes:
+                    - key: kernel_area
+                      value:
+                        stringValue: network
+                    - key: kernel_io
+                      value:
+                        stringValue: write
+                    - key: kernel_proto
+                      value:
+                        stringValue: tcp
                     - key: syscall_name
                       value:
                         stringValue: write

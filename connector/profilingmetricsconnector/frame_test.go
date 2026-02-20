@@ -307,6 +307,14 @@ func TestConsumeProfiles_FrameMetricsKernel(t *testing.T) {
 		"sock_read_iter", "pipe_read")...)
 	tp.addSample(t, prof, 0, kstackToFrames(
 		"foo__schedule", "bar", "baz")...)
+	tp.addSample(t, prof, 20, kstackToFrames(
+		"futex", "bar", "baz")...)
+	tp.addSample(t, prof, 10, kstackToFrames(
+		"futex", "bar", "baz", "__x64_sys_futex")...)
+	tp.addSample(t, prof, 5, kstackToFrames(
+		"tcp_rcv_established", "tcp_v4_do_rcv", "tcp_v4_rcv",
+		"ip_output", "__ip_queue_xmit", "__tcp_transmit_skb",
+		"tcp_sendmsg_locked", "tcp_sendmsg", "ksys_write")...)
 	tp.addSample(t, prof, 6, kstackToFrames(
 		"generic_file_read_iter", "wake_up", "futex_", "sock_recvmsg")...)
 	tp.addSample(t, prof, 0, kstackToFrames(
