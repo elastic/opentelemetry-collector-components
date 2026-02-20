@@ -22,6 +22,9 @@ resourceMetrics:
         - key: host.name
           value:
             stringValue: hostname-1
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: service.instance.id
           value:
             stringValue: hostname-1

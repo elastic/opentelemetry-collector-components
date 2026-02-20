@@ -19,6 +19,9 @@ resourceMetrics:
         - key: host.ip
           value:
             stringValue: 1.2.3.4
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: service.name
           value:
             stringValue: my-service
