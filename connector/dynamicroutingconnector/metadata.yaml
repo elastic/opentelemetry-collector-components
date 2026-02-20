@@ -26,8 +26,7 @@ telemetry:
       enabled: true
       description: Number of telemetry batches routed by the connector.
       unit: "1"
-      stability:
-        level: development
+      stability: development
       sum:
         value_type: int
         aggregation_temporality: delta
