@@ -167,7 +167,7 @@ var (
 		},
 		{
 			name: "synchronization",
-			rx:   regexp.MustCompile(`futex_|^schedule|__schedule|^wake_up_|^wake_q_`),
+			rx:   regexp.MustCompile(`futex|^schedule|__schedule|^wake_up_|^wake_q_`),
 		},
 	}
 )
