@@ -24,15 +24,9 @@ resourceMetrics:
           - histogram:
               dataPoints:
                 - attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1757462026684385"
                   bucketCounts:
                     - "1"
                     - "3"
@@ -71,15 +65,9 @@ resourceMetrics:
           - histogram:
               dataPoints:
                 - attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1757462026684385"
                   bucketCounts:
                     - "2"
                     - "4"
@@ -122,15 +110,9 @@ resourceMetrics:
           - histogram:
               dataPoints:
                 - attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1757462026684385"
                   timeUnixNano: "1757462026684385000"
             name: value_count_mismatch_histogram_metric
             unit: ms

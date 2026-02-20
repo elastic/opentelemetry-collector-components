@@ -379,7 +379,6 @@ type otelDataPoint interface {
 
 func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestampNanos uint64) {
 	dp.SetTimestamp(pcommon.Timestamp(timestampNanos))
-	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 }
 
