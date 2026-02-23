@@ -20,6 +20,7 @@ package ecs
 import (
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
@@ -334,7 +335,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			inputAttrs: map[string]string{
 				string(semconv.K8SNodeNameKey): "node-1",
 				string(semconv.HostNameKey):    "old-host.name",
-				ecsHostHostname:                "old-host.hostname",
+				elasticattr.HostHostName:       "old-host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"k8s.node.name": "node-1",
@@ -346,7 +347,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			inputAttrs: map[string]string{
 				string(semconv.K8SPodUIDKey): "pod-1",
 				string(semconv.HostNameKey):  "old-host.name",
-				ecsHostHostname:              "old-host.hostname",
+				elasticattr.HostHostName:     "old-host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"k8s.pod.uid":   "pod-1",
@@ -358,7 +359,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			inputAttrs: map[string]string{
 				string(semconv.K8SPodNameKey): "pod-name-1",
 				string(semconv.HostNameKey):   "old-host.name",
-				ecsHostHostname:               "old-host.hostname",
+				elasticattr.HostHostName:      "old-host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"k8s.pod.name":  "pod-name-1",
@@ -370,7 +371,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			inputAttrs: map[string]string{
 				string(semconv.K8SNamespaceNameKey): "namespace-1",
 				string(semconv.HostNameKey):         "old-host.name",
-				ecsHostHostname:                     "old-host.hostname",
+				elasticattr.HostHostName:            "old-host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"k8s.namespace.name": "namespace-1",
@@ -380,7 +381,7 @@ func TestApplyResourceConventions(t *testing.T) {
 		},
 		"host.name empty": {
 			inputAttrs: map[string]string{
-				ecsHostHostname: "host.hostname",
+				elasticattr.HostHostName: "host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"host.name":     "host.hostname",
