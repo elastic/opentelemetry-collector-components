@@ -4,6 +4,9 @@ resourceLogs:
         - key: unsupported.key
           value:
             stringValue: foo
+        - key: unsupported.key.numeric
+          value:
+            doubleValue: 1
         - key: agent.name
           value:
             stringValue: ElasticAPM

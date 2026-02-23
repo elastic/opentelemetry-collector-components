@@ -18,6 +18,7 @@
 package ecs // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -85,7 +86,8 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			}
 		} else if !isSupportedAttribute(k) {
 			// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
-			attributes.PutStr("labels."+sanitizeLabelKey(k), v.AsString())
+			//attributes.PutStr("labels."+sanitizeLabelKey(k), v.AsString())
+			setLabelAttributeValue(attributes, sanitizeLabelKey(k), v)
 			attributes.Remove(k)
 		}
 		return true
@@ -131,6 +133,72 @@ func isLabelAttribute(attr string) bool {
 	return strings.HasPrefix(attr, "labels.") || strings.HasPrefix(attr, "numeric_labels.")
 }
 
+// TODO:: implement
+func truncate(s string) string {
+	return s
+}
+
+// setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
+// Elasticsearch label mappings only support flat scalar values and
+// homogeneous arrays thereof; Map, Bytes, and empty types cannot be
+// stored and are intentionally dropped. This matches the behaviour of
+// apm-data's setLabel (input/otlp/metadata.go) which also silently
+// ignores these types.
+func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
+	switch value.Type() {
+	case pcommon.ValueTypeStr:
+		attributes.PutStr("labels."+key, truncate(value.Str()))
+	case pcommon.ValueTypeBool:
+		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
+	case pcommon.ValueTypeInt:
+		attributes.PutDouble("numeric_labels."+key, float64(value.Int()))
+	case pcommon.ValueTypeDouble:
+		attributes.PutDouble("numeric_labels."+key, value.Double())
+	case pcommon.ValueTypeSlice:
+		slice := value.Slice()
+		if slice.Len() == 0 {
+			return
+		}
+		switch slice.At(0).Type() {
+		case pcommon.ValueTypeStr:
+			target := attributes.PutEmptySlice("labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeStr {
+					target.AppendEmpty().SetStr(truncate(item.Str()))
+				}
+			}
+		case pcommon.ValueTypeBool:
+			target := attributes.PutEmptySlice("labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeBool {
+					target.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
+				}
+			}
+		case pcommon.ValueTypeDouble:
+			target := attributes.PutEmptySlice("numeric_labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeDouble {
+					target.AppendEmpty().SetDouble(item.Double())
+				}
+			}
+		case pcommon.ValueTypeInt:
+			target := attributes.PutEmptySlice("numeric_labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeInt {
+					target.AppendEmpty().SetDouble(float64(item.Int()))
+				}
+			}
+		default:
+		}
+	case pcommon.ValueTypeMap, pcommon.ValueTypeBytes, pcommon.ValueTypeEmpty:
+		return
+	}
+}
+
 // isSupportedAttribute returns true if the resource attribute is
 // supported by ECS and can be mapped directly.
 // Supported fields can include OTEL SemConv attributes or ECS specific attributes.
@@ -164,7 +232,9 @@ func isSupportedAttribute(attr string) bool {
 	// telemetry.sdk.*
 	case string(semconv.TelemetrySDKNameKey),
 		string(semconv.TelemetrySDKVersionKey),
-		string(semconv.TelemetrySDKLanguageKey):
+		string(semconv.TelemetrySDKLanguageKey),
+		string(semconv.TelemetryDistroNameKey),
+		string(semconv.TelemetryDistroVersionKey):
 		return true
 
 	// cloud.*
