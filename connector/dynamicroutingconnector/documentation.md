@@ -8,7 +8,7 @@ The following telemetry is emitted by this component.
 
 ### otelcol.dynamicrouting.routed
 
-Number of telemetry batches routed by the connector. [Development]
+Number of telemetry batches routed by the connector.
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |

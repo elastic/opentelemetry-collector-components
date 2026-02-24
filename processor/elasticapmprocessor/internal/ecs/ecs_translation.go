@@ -20,6 +20,7 @@ package ecs // import "github.com/elastic/opentelemetry-collector-components/pro
 import (
 	"strings"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -294,6 +295,10 @@ func isSupportedAttribute(attr string) bool {
 		ecsAttrAgentVersion,
 		ecsAttrAgentEphemeralID,
 		ecsAttrAgentActivationMethod:
+		return true
+
+	// Metrics
+	case elasticattr.MetricsetName:
 		return true
 	}
 

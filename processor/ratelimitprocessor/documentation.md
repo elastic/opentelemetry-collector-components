@@ -8,7 +8,7 @@ The following telemetry is emitted by this component.
 
 ### otelcol_ratelimit.concurrent_requests
 
-Number of in-flight requests at any given time [Development]
+Number of in-flight requests at any given time
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
@@ -16,7 +16,7 @@ Number of in-flight requests at any given time [Development]
 
 ### otelcol_ratelimit.request_duration
 
-Time(in seconds) taken to process a rate limit request [Development]
+Time(in seconds) taken to process a rate limit request
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
@@ -24,7 +24,7 @@ Time(in seconds) taken to process a rate limit request [Development]
 
 ### otelcol_ratelimit.request_size
 
-Number of bytes in received request. Only available if strategy is rate per bytes. [Development]
+Number of bytes in received request. Only available if strategy is rate per bytes.
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
@@ -32,7 +32,7 @@ Number of bytes in received request. Only available if strategy is rate per byte
 
 ### otelcol_ratelimit.requests
 
-Number of rate-limiting requests [Development]
+Number of rate-limiting requests
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
