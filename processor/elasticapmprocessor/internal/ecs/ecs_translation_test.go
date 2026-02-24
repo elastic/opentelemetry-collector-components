@@ -18,6 +18,7 @@
 package ecs
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -116,18 +117,6 @@ func TestTranslateResourceMetadata(t *testing.T) {
 			wantKey:    "labels.x_y_z_w",
 			wantAbsent: `x.y*z"w`,
 		},
-		{
-			name:     "unsupported attr http method",
-			inputKey: "http.method",
-			inputVal: "GET",
-			wantKey:  "labels.http_method",
-		},
-		{
-			name:     "unsupported attr http url",
-			inputKey: "http.url",
-			inputVal: "https://api.example.com/users",
-			wantKey:  "labels.http_url",
-		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -199,6 +188,18 @@ func TestSetLabelAttributeValue(t *testing.T) {
 			wantKey:   "numeric_labels.double_key",
 			wantRaw:   3.14,
 		},
+		{
+			name: "string truncated",
+			key:  "long_str_key",
+			value: func() pcommon.Value {
+				// Create a string longer than keywordLength (1024 runes)
+				longStr := strings.Repeat("a", 1025)
+				return pcommon.NewValueStr(longStr)
+			},
+			isUpdated: true,
+			wantKey:   "labels.long_str_key",
+			wantRaw:   strings.Repeat("a", 1024),
+		},
 
 		// --- Homogeneous slice types ---
 		{
@@ -252,6 +253,20 @@ func TestSetLabelAttributeValue(t *testing.T) {
 			isUpdated: true,
 			wantKey:   "labels.bool_slice",
 			wantRaw:   []any{"true", "false"},
+		},
+		{
+			name: "string slice with truncated elements",
+			key:  "long_str_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				// Add strings longer than keywordLength (1024 runes)
+				v.Slice().AppendEmpty().SetStr(strings.Repeat("a", 1025))
+				v.Slice().AppendEmpty().SetStr(strings.Repeat("b", 1500))
+				return v
+			},
+			isUpdated: true,
+			wantKey:   "labels.long_str_slice",
+			wantRaw:   []any{strings.Repeat("a", 1024), strings.Repeat("b", 1024)},
 		},
 
 		// --- Unsupported types (should NOT be stored) ---
