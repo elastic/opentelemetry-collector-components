@@ -29,6 +29,7 @@ import (
 
 // Supported ECS resource attributes
 const (
+	keywordLength                    = 1024
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
 )
 
@@ -94,8 +95,15 @@ func isLabelAttribute(attr string) bool {
 	return strings.HasPrefix(attr, "labels.") || strings.HasPrefix(attr, "numeric_labels.")
 }
 
-// TODO:: implement
+// truncate returns s truncated at n runes, and the number of runes in the resulting string (<= n).
 func truncate(s string) string {
+	var j int
+	for i := range s {
+		if j == keywordLength {
+			return s[:i]
+		}
+		j++
+	}
 	return s
 }
 
