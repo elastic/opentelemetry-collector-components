@@ -549,7 +549,6 @@ func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	s := ss.Spans().AppendEmpty()
 
 	mappers.SetTopLevelFieldsSpan(event, timestampNanos, s, r.settings.Logger)
-	mappers.SetDerivedFieldsCommon(event, s.Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
 	s.SetKind(mapSpanKind(event.GetSpan().GetKind()))
 	return s
