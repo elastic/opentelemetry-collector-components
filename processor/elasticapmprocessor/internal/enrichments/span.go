@@ -129,7 +129,7 @@ func (s *spanEnrichmentContext) Enrich(
 	// Extract information from span attributes.
 	span.Attributes().Range(func(k string, v pcommon.Value) bool {
 		switch k {
-		case string(semconv25.PeerServiceKey):
+		case string(semconv25.PeerServiceKey), string(semconv39.ServicePeerNameKey):
 			s.peerService = v.Str()
 		case string(semconv25.ServerAddressKey):
 			s.serverAddress = v.Str()
