@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/apikeyaut
 go 1.25.0
 
 require (
-	github.com/elastic/go-elasticsearch/v8 v8.19.0
+	github.com/elastic/go-elasticsearch/v8 v8.19.3
 	github.com/elastic/go-freelru v0.16.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/client v1.52.0
@@ -24,7 +24,7 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/elastic/elastic-transport-go/v8 v8.7.0 // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.8.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/foxboron/go-tpm-keyfiles v0.0.0-20251226215517-609e4778396f // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
