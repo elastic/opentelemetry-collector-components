@@ -7,6 +7,9 @@ resourceMetrics:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: service.name
           value:
             stringValue: my-service
@@ -51,6 +54,9 @@ resourceMetrics:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: service.name
           value:
             stringValue: my-service
@@ -99,6 +105,9 @@ resourceMetrics:
         - key: agent.version
           value:
             stringValue: 3.14.0
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: service.name
           value:
             stringValue: my-service

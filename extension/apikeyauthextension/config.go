@@ -37,6 +37,25 @@ type Config struct {
 	// Cache holds configuration related to caching
 	// API Key verification results.
 	Cache CacheConfig `mapstructure:"cache"`
+
+	// Retry controls the retry behavior for Elasticsearch requests.
+	// Fields map directly to go-elasticsearch's native retry options.
+	Retry RetryConfig `mapstructure:"retry"`
+}
+
+type RetryConfig struct {
+	// Enabled toggles request retries on transient server errors (502, 503, 504).
+	Enabled bool `mapstructure:"enabled"`
+
+	// MaxRetries is the maximum number of retry attempts per request.
+	MaxRetries int `mapstructure:"max_retries"`
+
+	// InitialInterval is the delay before the first retry.
+	// Subsequent retries double this value up to MaxInterval.
+	InitialInterval time.Duration `mapstructure:"initial_interval"`
+
+	// MaxInterval caps the exponential backoff between retries.
+	MaxInterval time.Duration `mapstructure:"max_interval"`
 }
 
 type ApplicationPrivilegesConfig struct {
@@ -106,6 +125,12 @@ func createDefaultConfig() component.Config {
 			PBKDF2Iterations: 1000,
 			TTL:              30 * time.Second,
 		},
+		Retry: RetryConfig{
+			Enabled:         true,
+			MaxRetries:      3,
+			InitialInterval: 100 * time.Millisecond,
+			MaxInterval:     5 * time.Second,
+		},
 	}
 }
 
@@ -118,6 +143,25 @@ func (cfg *CacheConfig) Validate() error {
 	}
 	if cfg.TTL <= 0 {
 		return fmt.Errorf("invalid ttl: %s, must be greater than 0", cfg.TTL)
+	}
+	return nil
+}
+
+func (cfg *RetryConfig) Validate() error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if cfg.MaxRetries < 0 {
+		return fmt.Errorf("invalid max_retries: %d, must be non-negative", cfg.MaxRetries)
+	}
+	if cfg.InitialInterval <= 0 {
+		return fmt.Errorf("invalid initial_interval: %s, must be greater than 0", cfg.InitialInterval)
+	}
+	if cfg.MaxInterval <= 0 {
+		return fmt.Errorf("invalid max_interval: %s, must be greater than 0", cfg.MaxInterval)
+	}
+	if cfg.MaxInterval < cfg.InitialInterval {
+		return fmt.Errorf("max_interval (%s) must be greater than or equal to initial_interval (%s)", cfg.MaxInterval, cfg.InitialInterval)
 	}
 	return nil
 }

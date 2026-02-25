@@ -61,3 +61,25 @@ apikeyauth/dynamic_resources_empty_metadata:
           format: "%s"
   cache:
     key_metadata: [X-Resource-Name]
+apikeyauth/custom_retry:
+  retry:
+    enabled: true
+    max_retries: 5
+    initial_interval: 200ms
+    max_interval: 10s
+apikeyauth/retry_disabled:
+  retry:
+    enabled: false
+apikeyauth/invalid_retry_max_retries:
+  retry:
+    max_retries: -1
+apikeyauth/invalid_retry_initial_interval:
+  retry:
+    initial_interval: 0s
+apikeyauth/invalid_retry_max_interval:
+  retry:
+    max_interval: 0s
+apikeyauth/invalid_retry_interval_order:
+  retry:
+    initial_interval: 10s
+    max_interval: 1s

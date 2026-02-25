@@ -20,6 +20,8 @@ To release a single component:
 All components in the repository can be released together as part of a coordinated release.
 The process for releasing all components is described in the section below.
 
+Once you start creating a release, make sure all the go.mod files contain the version bump for all the upstream components. It's worth skimming through the go.mod files and verifying there are no leftover components to update.
+
 ### (Optional) Updating upstream OTel dependencies
 
 Normally the following steps are not required for releasing the components. The update of otel based on upstream

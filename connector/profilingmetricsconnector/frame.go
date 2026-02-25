@@ -167,7 +167,7 @@ var (
 		},
 		{
 			name: "synchronization",
-			rx:   regexp.MustCompile(`futex_|^schedule|__schedule|^wake_up_|^wake_q_`),
+			rx:   regexp.MustCompile(`futex|^schedule|__schedule|^wake_up_|^wake_q_`),
 		},
 	}
 )
@@ -385,6 +385,15 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 	}
 
 	if hasKernel {
+		// Overrides specific to certain call paths in the kernel.
+
+		// Syscall write may generate tcp_*_rcv calls close to the leaf frame,
+		// which will result in a "network/tcp/read" classification as the
+		// classification logic is iterating frames starting from the leaf.
+		if syscall == "write" && className == "network/tcp/read" {
+			className = "network/tcp/write"
+		}
+
 		kernelCounts[attrInfo{class: className, syscall: syscall}] += multiplier
 	}
 	return err

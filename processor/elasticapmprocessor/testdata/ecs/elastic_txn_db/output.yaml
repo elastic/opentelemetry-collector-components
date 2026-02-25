@@ -1,12 +1,24 @@
 resourceSpans:
   - resource:
       attributes:
-        - key: resource.required
+        - key: labels.resource_required
           value:
             stringValue: foo
-        - key: resource.optional
+        - key: labels.resource_optional
           value:
             stringValue: bar
+        - key: data_stream.type
+          value:
+            stringValue: traces
+        - key: data_stream.dataset
+          value:
+            stringValue: apm
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
         - key: agent.name
           value:
             stringValue: otlp
@@ -17,48 +29,45 @@ resourceSpans:
       - scope: {}
         spans:
           - attributes:
-              - key: http.request.method
+              - key: db.name
                 value:
-                  stringValue: POST
-              - key: url.full
+                  stringValue: main
+              - key: db.system
                 value:
-                  stringValue: https://www.foo.bar/search?q=OpenTelemetry#SemConv
-              - key: http.response.status_code
+                  stringValue: mysql
+              - key: processor.event
                 value:
-                  intValue: "201"
+                  stringValue: transaction
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
-              - key: span.representative_count
+              - key: transaction.sampled
+                value:
+                  boolValue: true
+              - key: transaction.id
+                value:
+                  stringValue: abcdef0123456700
+              - key: transaction.root
+                value:
+                  boolValue: true
+              - key: transaction.name
+                value:
+                  stringValue: db-elastic-txn
+              - key: transaction.representative_count
                 value:
                   doubleValue: 1
-              - key: span.type
+              - key: transaction.duration.us
                 value:
-                  stringValue: external
-              - key: span.subtype
+                  intValue: "1000000"
+              - key: transaction.type
                 value:
-                  stringValue: http
+                  stringValue: unknown
               - key: event.outcome
                 value:
                   stringValue: success
               - key: event.success_count
                 value:
                   intValue: "1"
-              - key: span.duration.us
-                value:
-                  intValue: "1000000"
-              - key: service.target.type
-                value:
-                  stringValue: http
-              - key: service.target.name
-                value:
-                  stringValue: www.foo.bar
-              - key: span.destination.service.resource
-                value:
-                  stringValue: www.foo.bar
-              - key: processor.event
-                value:
-                  stringValue: span
             endTimeUnixNano: "1581452773000000789"
             events:
               - attributes:
@@ -91,10 +100,8 @@ resourceSpans:
                       intValue: "1581452773000000"
                 name: event-with-no-attrs
                 timeUnixNano: "1581452773000000123"
-            name: span-elastic-http
-            parentSpanId: bcff497b5a47310f
+            name: db-elastic-txn
             spanId: abcdef0123456700
             startTimeUnixNano: "1581452772000000321"
-            status:
-              code: 1
+            status: {}
             traceId: fdedef0123456789abcdef9876543210

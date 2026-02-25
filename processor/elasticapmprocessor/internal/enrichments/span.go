@@ -50,6 +50,12 @@ import (
 // to assume sampling all spans.
 const defaultRepresentativeCount = 1.0
 
+const (
+	outcomeSuccess = "success"
+	outcomeFailure = "failure"
+	outcomeUnknown = "unknown"
+)
+
 // EnrichSpan adds Elastic specific attributes to the OTel span.
 // These attributes are derived from the base attributes and appended to
 // the span attributes. The enrichment logic is performed by categorizing
@@ -276,7 +282,8 @@ func (s *spanEnrichmentContext) enrichTransaction(
 		attribute.PutBool(span.Attributes(), elasticattr.TransactionRoot, isTraceRoot(span))
 	}
 	if cfg.Name.Enabled {
-		attribute.PutStr(span.Attributes(), elasticattr.TransactionName, span.Name())
+		// do not set transaction name to an empty str to match prior apm data behavior
+		attribute.PutNonEmptyStr(span.Attributes(), elasticattr.TransactionName, span.Name())
 		if cfg.ClearSpanName.Enabled {
 			span.SetName("")
 		}
@@ -435,20 +442,32 @@ func (s *spanEnrichmentContext) setTxnResult(span ptrace.Span) {
 	attribute.PutStr(span.Attributes(), elasticattr.TransactionResult, result)
 }
 
+// setEventOutcome derives event.outcome from span status and HTTP status,
+// defaulting to success when no explicit error signal is present.
+// It also sets event.success_count to the representative count.
+// This matches the logic in the apm Elasticsearch ingest pipeline:
+// https://github.com/elastic/elasticsearch/blob/171a3b9/x-pack/plugin/apm-data/src/main/resources/ingest-pipelines/traces-apm@pipeline.yaml#L33-L40
 func (s *spanEnrichmentContext) setEventOutcome(span ptrace.Span) {
+	// Exit early when event.outcome is already explicitly set to unknown (e.g. by
+	// the intake receiver). This prevents success_count from being written when
+	// the outcome is unknown.
+	if v, ok := span.Attributes().Get(elasticattr.EventOutcome); ok && v.Str() == outcomeUnknown {
+		return
+	}
+
 	// default to success outcome
-	outcome := "success"
+	outcome := outcomeSuccess
 	successCount := getRepresentativeCount(span.TraceState().AsRaw())
 	switch {
 	case s.spanStatusCode == ptrace.StatusCodeError:
-		outcome = "failure"
+		outcome = outcomeFailure
 		successCount = 0
 	case s.spanStatusCode == ptrace.StatusCodeOk:
 		// keep the default success outcome
 	case s.httpStatusCode >= http.StatusInternalServerError:
 		// TODO (lahsivjar): Handle GRPC status code? - not handled in apm-data
 		// TODO (lahsivjar): Move to HTTPResponseStatusCode? Backward compatibility?
-		outcome = "failure"
+		outcome = outcomeFailure
 		successCount = 0
 	}
 

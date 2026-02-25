@@ -26,9 +26,11 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	mathrand "math/rand/v2"
 	"net/http"
 	"runtime"
 	"strings"
+	"time"
 
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
@@ -152,6 +154,15 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 			"User-Agent": {a.userAgent},
 		},
 		Transport: httpClient.Transport,
+		RetryOnStatus: []int{
+			http.StatusBadGateway,
+			http.StatusServiceUnavailable,
+			http.StatusGatewayTimeout,
+			http.StatusTooManyRequests,
+		},
+		MaxRetries:   a.config.Retry.MaxRetries,
+		DisableRetry: !a.config.Retry.Enabled,
+		RetryBackoff: retryBackoff(a.config.Retry),
 		Instrumentation: elasticsearch.NewOpenTelemetryInstrumentation(
 			a.telemetrySettings.TracerProvider, false,
 		),
@@ -161,6 +172,24 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	}
 	a.esClient = esClient
 	return nil
+}
+
+// retryBackoff returns an exponential backoff with equal jitter
+// compatible with go-elasticsearch's RetryBackoff field.
+// Returns nil when retries are disabled, which tells the ES client to skip backoff delays.
+func retryBackoff(cfg RetryConfig) func(int) time.Duration {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	return func(attempts int) time.Duration {
+		next := cfg.InitialInterval << (attempts - 1) // cfg.InitialInterval * 2 ^ (attempts - 1)
+		if next <= 0 || next > cfg.MaxInterval {      // guard against overflow
+			next = cfg.MaxInterval
+		}
+		nextWithJitter := next/2 + time.Duration(mathrand.Float64()*float64(next/2))
+		return nextWithJitter
+	}
 }
 
 func (a *authenticator) Shutdown(ctx context.Context) error {
