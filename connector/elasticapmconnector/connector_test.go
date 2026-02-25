@@ -282,6 +282,7 @@ func compareAggregatedMetrics(t testing.TB, expectedFile string, allMetrics []pm
 		require.NoError(t, err)
 		assert.NoError(t, pmetrictest.CompareMetrics(expected, allMetrics[0],
 			pmetrictest.IgnoreTimestamp(),
+			pmetrictest.IgnoreResourceMetricsOrder(),
 			pmetrictest.IgnoreMetricDataPointsOrder(),
 			pmetrictest.IgnoreDatapointAttributesOrder(),
 		))
