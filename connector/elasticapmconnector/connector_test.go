@@ -137,6 +137,7 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		{name: "traces/transaction_metrics"},
 		{name: "traces/transaction_metrics_custom_attrs"},
 		{name: "traces/transaction_metrics_no_overflow"},
+		{name: "traces/transaction_metrics_no_result"},
 		{name: "traces/span_metrics"},
 		{name: "traces/span_metrics_custom_attrs"},
 		{name: "traces/span_metrics_no_overflow"},

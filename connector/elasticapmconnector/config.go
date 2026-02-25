@@ -246,7 +246,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		{Key: "transaction.root"},
 		{Key: "transaction.name"},
 		{Key: "transaction.type"},
-		{Key: "transaction.result"},
+		{Key: "transaction.result", Optional: true},
 		{Key: "event.outcome"},
 		{Key: "metricset.name", DefaultValue: "transaction"},
 	}, toSignalToMetricsAttributes(cfg.CustomSpanAttributes)...)
