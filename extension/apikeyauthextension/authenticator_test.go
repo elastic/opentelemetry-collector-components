@@ -107,7 +107,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 503,
 			}),
-			expectedErr: "rpc error: code = Internal desc = error checking privileges for API Key \"id\": status: 503, failed: [unavailable], reason: service_unavailable",
+			expectedErr: `rpc error: code = Unavailable desc = retryable error checking privileges for API Key "id": status: 503, failed: [unavailable], reason: service_unavailable`,
 		},
 		"server_500_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -127,19 +127,6 @@ func TestAuthenticator(t *testing.T) {
 				w.WriteHeader(http.StatusBadGateway)
 			},
 			expectedErr: "rpc error: code = Unavailable desc = retryable server error for API Key \"id\": EOF",
-		},
-		"elasticsearch_503_error": {
-			handler: newCannedErrorHandler(types.ElasticsearchError{
-				ErrorCause: types.ErrorCause{
-					Type: "service_unavailable",
-					Reason: func() *string {
-						reason := "service unavailable"
-						return &reason
-					}(),
-				},
-				Status: 503,
-			}),
-			expectedErr: `rpc error: code = Unavailable desc = retryable error checking privileges for API Key "id": status: 503, failed: [service_unavailable], reason: service unavailable`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
@@ -800,7 +787,7 @@ func TestAuthenticator_RetryDisabled(t *testing.T) {
 
 	st, ok := status.FromError(err)
 	require.True(t, ok)
-	assert.Equal(t, codes.Internal, st.Code())
+	assert.Equal(t, codes.Unavailable, st.Code())
 	require.Equal(t, 1, calls)
 }
 
