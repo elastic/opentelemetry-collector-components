@@ -128,6 +128,19 @@ func TestAuthenticator(t *testing.T) {
 			},
 			expectedErr: "rpc error: code = Unavailable desc = retryable server error for API Key \"id\": EOF",
 		},
+		"elasticsearch_503_error": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "service_unavailable",
+					Reason: func() *string {
+						reason := "service unavailable"
+						return &reason
+					}(),
+				},
+				Status: 503,
+			}),
+			expectedErr: `rpc error: code = Unavailable desc = retryable error checking privileges for API Key "id": status: 503, failed: [service_unavailable], reason: service unavailable`,
+		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
 			expectedErr: `rpc error: code = PermissionDenied desc = API Key "id" unauthorized`,

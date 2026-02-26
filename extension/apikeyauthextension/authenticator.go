@@ -358,6 +358,14 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			switch elasticsearchErr.Status {
 			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+				// Retryable error.
+				return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf(
+					"retryable error checking privileges for API Key %q: %v", id, err,
+				), map[string]string{
+					"component": "apikeyauthextension",
+					"api_key":   id,
+				})
 			default:
 				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
 			}
