@@ -1,0 +1,79 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: telemetry.sdk.name
+          value:
+            stringValue: android
+        - key: telemetry.sdk.language
+          value:
+            stringValue: java
+        - key: data_stream.type
+          value:
+            stringValue: logs
+        - key: data_stream.dataset
+          value:
+            stringValue: apm.app.test_service
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
+        - key: agent.name
+          value:
+            stringValue: android/java
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: event.name
+                value:
+                  stringValue: device.crash
+              - key: exception.message
+                value:
+                  stringValue: Test crash
+              - key: exception.type
+                value:
+                  stringValue: java.lang.RuntimeException
+              - key: exception.stacktrace
+                value:
+                  stringValue: |
+                    Exception in thread "main" java.lang.RuntimeException: Test
+                     at com.example.Main.crash(Main.java:10)
+                     at com.example.Main.main(Main.java:5)
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: apm.error
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+              - key: event.kind
+                value:
+                  stringValue: event
+              - key: event.category
+                value:
+                  stringValue: device
+              - key: processor.event
+                value:
+                  stringValue: error
+              - key: timestamp.us
+                value:
+                  intValue: "1581452772000000"
+              - key: error.id
+                value:
+                  stringValue: "error-id-123"
+              - key: error.grouping_key
+                value:
+                  stringValue: 2ed27cd21c977d5b
+              - key: error.type
+                value:
+                  stringValue: crash
+            body:
+              stringValue: app crash
+            timeUnixNano: "1581452772000000000"
+        scope: {}

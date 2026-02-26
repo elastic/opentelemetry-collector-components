@@ -18,6 +18,8 @@
 package mobile // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/mobile"
 
 import (
+	"strings"
+
 	"go.opentelemetry.io/collector/pdata/plog"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -33,9 +35,30 @@ type EventContext struct {
 func EnrichLogEvent(ctx EventContext, logRecord plog.LogRecord) {
 	attribute.PutStr(logRecord.Attributes(), elasticattr.EventKind, "event")
 
-	if ctx.EventName == "device.crash" {
-		enrichCrashEvent(logRecord, ctx.ResourceAttributes)
+	if isDeviceEvent(logRecord, ctx.EventName) {
+		// TODO: add category to the config and use it here
+		attribute.PutStr(logRecord.Attributes(), elasticattr.EventCategory, "device")
+		action := strings.TrimPrefix(ctx.EventName, "device.")
+		if action == "crash" {
+			enrichCrashEvent(logRecord, ctx.ResourceAttributes)
+		} else {
+			// TODO: add action to the config and use it here
+			attribute.PutStr(logRecord.Attributes(), elasticattr.EventAction, action)
+		}
 	}
+}
+
+func isDeviceEvent(logRecord plog.LogRecord, eventName string) bool {
+	eventDomain := getEventDomain(logRecord)
+	return (eventDomain == "device" && eventName != "") || strings.HasPrefix(eventName, "device.")
+}
+
+func getEventDomain(logRecord plog.LogRecord) string {
+	eventDomain, ok := logRecord.Attributes().Get(elasticattr.EventDomain)
+	if ok {
+		return eventDomain.AsString()
+	}
+	return ""
 }
 
 func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any) {

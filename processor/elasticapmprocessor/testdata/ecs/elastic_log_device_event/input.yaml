@@ -1,0 +1,22 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: telemetry.sdk.name
+          value:
+            stringValue: android
+        - key: telemetry.sdk.language
+          value:
+            stringValue: java
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: device lifecycle event
+            timeUnixNano: "1581452772000000000"
+            attributes:
+              - key: event.name
+                value:
+                  stringValue: device.lifecycle
+        scope: {}

@@ -66,6 +66,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.grouping_key": javaStacktraceHash,
 				"error.type":         "crash",
 				"event.kind":         "event",
+				"event.category":     "device",
 			},
 		},
 		{
@@ -89,6 +90,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.grouping_key": javaStacktraceHash,
 				"error.type":         "crash",
 				"event.kind":         "event",
+				"event.category":     "device",
 			},
 		},
 		{
@@ -111,6 +113,7 @@ func TestEnrichEvents(t *testing.T) {
 				"timestamp.us":    timestamp.AsTime().UnixMicro(),
 				"error.type":      "crash",
 				"event.kind":      "event",
+				"event.category":  "device",
 			},
 		},
 		{
@@ -120,6 +123,64 @@ func TestEnrichEvents(t *testing.T) {
 			input: func() plog.LogRecord {
 				logRecord := plog.NewLogRecord()
 				logRecord.Attributes().PutStr("event.name", "othername")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"event.kind": "event",
+			},
+		},
+		{
+			name:      "device_event_via_domain_and_name_without_prefix",
+			eventName: "lifecycle",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.Attributes().PutStr("event.domain", "device")
+				logRecord.Attributes().PutStr("event.name", "lifecycle")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"event.kind":     "event",
+				"event.category": "device",
+				"event.action":   "lifecycle",
+			},
+		},
+		{
+			name:      "device_event_non_crash_action",
+			eventName: "device.lifecycle",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.Attributes().PutStr("event.name", "device.lifecycle")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"event.kind":     "event",
+				"event.category": "device",
+				"event.action":   "lifecycle",
+			},
+		},
+		{
+			name:      "not_device_event_domain_not_device",
+			eventName: "click",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.Attributes().PutStr("event.domain", "user")
+				logRecord.Attributes().PutStr("event.name", "click")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"event.kind": "event",
+			},
+		},
+		{
+			name:          "device_domain_empty_event_name_not_treated_as_device",
+			eventName:     "",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.Attributes().PutStr("event.domain", "device")
 				return logRecord
 			},
 			expectedAttributes: map[string]any{
@@ -146,6 +207,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.grouping_key": swiftStacktraceHash,
 				"error.type":         "crash",
 				"event.kind":         "event",
+				"event.category":     "device",
 			},
 		},
 		{
@@ -178,6 +240,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.id":           "0123456789abcdef0123456789abcdef",
 				"error.type":         "existing-error-type",
 				"error.grouping_key": "existing-grouping-key",
+				"event.category":     "device",
 			},
 		},
 		{
@@ -207,6 +270,7 @@ func TestEnrichEvents(t *testing.T) {
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
 				"error.type":         "crash",
+				"event.category":     "device",
 			},
 		},
 	} {
