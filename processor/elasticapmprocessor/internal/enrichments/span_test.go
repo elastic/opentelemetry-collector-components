@@ -1220,6 +1220,28 @@ func TestElasticSpanEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "service_peer_name_semconv_v1_39",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Attributes().PutStr(string(semconv39.ServicePeerNameKey), "testsvc")
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "unknown",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.ServiceTargetName:              "testsvc",
+				elasticattr.ServiceTargetType:              "",
+				elasticattr.SpanDestinationServiceResource: "testsvc",
+			},
+		},
+		{
 			name: "http_span_basic",
 			input: func() ptrace.Span {
 				span := getElasticSpan()

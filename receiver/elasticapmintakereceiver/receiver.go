@@ -379,7 +379,6 @@ type otelDataPoint interface {
 
 func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestampNanos uint64) {
 	dp.SetTimestamp(pcommon.Timestamp(timestampNanos))
-	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 }
 
@@ -553,7 +552,6 @@ func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	s := ss.Spans().AppendEmpty()
 
 	mappers.SetTopLevelFieldsSpan(event, timestampNanos, s, r.settings.Logger)
-	mappers.SetDerivedFieldsCommon(event, s.Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
 	s.SetKind(mapSpanKind(event.GetSpan().GetKind()))
 	return s
