@@ -175,6 +175,32 @@ func TestLoadConfig(t *testing.T) {
 			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_interval_order"),
 			expectedErrMessage: `elasticsearch_retry: max_interval (1s) must be greater than or equal to initial_interval (10s)`,
 		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_client_retry"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.ClientRetry = ClientRetryConfig{
+					Enabled:    true,
+					RetryDelay: 3 * time.Second,
+				}
+				return config
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "client_retry_disabled"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.ClientRetry = ClientRetryConfig{
+					Enabled:    false,
+					RetryDelay: 3 * time.Second,
+				}
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "invalid_client_retry_delay"),
+			expectedErrMessage: `client_retry: invalid retry_delay: 0s, must be greater than 0`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.id.String(), func(t *testing.T) {

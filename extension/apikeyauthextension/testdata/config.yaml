@@ -100,3 +100,18 @@ apikeyauth/invalid_retry_interval_order:
   elasticsearch_retry:
     initial_interval: 10s
     max_interval: 1s
+
+apikeyauth/custom_client_retry:
+  client_retry:
+    enabled: true
+    retry_delay: 3s
+
+apikeyauth/client_retry_disabled:
+  client_retry:
+    enabled: false
+    retry_delay: 3s
+
+apikeyauth/invalid_client_retry_delay:
+  client_retry:
+    enabled: true
+    retry_delay: 0s
