@@ -52,16 +52,14 @@ type Config struct {
 	// Fields map directly to go-elasticsearch's native retry options.
 	ElasticsearchRetry RetryConfig `mapstructure:"elasticsearch_retry"`
 
-	// ClientRetry controls the gRPC RetryInfo details returned to callers on
-	// transient server errors (typically codes.Unavailable). This is a retry
-	// hint for retrying the whole request, not the internal Elasticsearch
-	// request retry behavior.
+	// ClientRetry controls gRPC RetryInfo details returned to callers.
+	// This is a hint for retrying the overall request, not Elasticsearch request retries.
 	ClientRetry ClientRetryConfig `mapstructure:"client_retry"`
 }
 
+// effectiveElasticsearchRetry returns the retry config for Elasticsearch
+// requests. elasticsearch_retry takes precedence over the deprecated retry key.
 func (cfg *Config) effectiveElasticsearchRetry() RetryConfig {
-	// Prefer the new key when it is set. Without custom unmarshalling we infer
-	// this by comparing against defaults.
 	legacy := cfg.Retry
 	preferred := cfg.ElasticsearchRetry
 

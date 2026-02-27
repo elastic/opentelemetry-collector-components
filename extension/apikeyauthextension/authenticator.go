@@ -424,9 +424,9 @@ func newCtxWithAuthData(ctx context.Context, authData *authData) context.Context
 	return client.NewContext(ctx, clientInfo)
 }
 
-// errorWithDetails returns a gRPC status error that includes structured details:
-// an ErrorInfo entry identifying this component and the API key ID, plus an
-// optional RetryInfo when retryDelay is positive.
+// errorWithDetails returns a gRPC status error that includes ErrorInfo (always)
+// and RetryInfo (when retryDelay is positive). ErrorInfo metadata includes
+// "component" and "api_key".
 func errorWithDetails(st *status.Status, id string, retryDelay time.Duration) error {
 	var details []protoadapt.MessageV1
 	details = append(details, &errdetails.ErrorInfo{
