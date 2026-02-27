@@ -81,7 +81,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 400,
 			}),
-			expectedErr: `rpc error: code = Internal desc = error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
+			expectedErr: `rpc error: code = Internal desc = error checking privileges: status: 400, failed: [a_type], reason: a_reason`,
 		},
 		"auth_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -107,7 +107,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 503,
 			}),
-			expectedErr: `rpc error: code = Unavailable desc = retryable error checking privileges for API Key "id": status: 503, failed: [unavailable], reason: service_unavailable`,
+			expectedErr: `rpc error: code = Unavailable desc = failed to check privileges`,
 		},
 		"server_500_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -120,17 +120,17 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 500,
 			}),
-			expectedErr: "rpc error: code = Internal desc = error checking privileges for API Key \"id\": status: 500, failed: [internal_server_error], reason: something broke",
+			expectedErr: "rpc error: code = Internal desc = error checking privileges: status: 500, failed: [internal_server_error], reason: something broke",
 		},
 		"proxy_502_error": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadGateway)
 			},
-			expectedErr: "rpc error: code = Unavailable desc = retryable server error for API Key \"id\": EOF",
+			expectedErr: `rpc error: code = Unavailable desc = server error: EOF`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
-			expectedErr: `rpc error: code = PermissionDenied desc = API Key "id" unauthorized`,
+			expectedErr: `rpc error: code = PermissionDenied desc = unauthorized`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -222,7 +222,7 @@ func TestAuthenticator_Caching(t *testing.T) {
 	_, err = authenticator.Authenticate(context.Background(), map[string][]string{
 		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id2:secret2"))},
 	})
-	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = API Key "id2" unauthorized`)
+	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = unauthorized`)
 }
 
 func TestAuthenticator_CachingPreservesErrorCode(t *testing.T) {
@@ -290,7 +290,8 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			expectedCode: codes.Unauthenticated,
 			expectedMsg:  "ApiKey prefix not found, expected ApiKey <value>",
 			expectedMetadata: map[string]string{
-				"component": "apikeyauthextension",
+				"component": metadata.Type.String(),
+				"api_key":   "unknown",
 			},
 		},
 		"api_key_collision": {
@@ -308,9 +309,9 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 				return authenticator, headers
 			},
 			expectedCode: codes.Unauthenticated,
-			expectedMsg:  `API Key "collision_id" unauthorized`,
+			expectedMsg:  "unauthorized",
 			expectedMetadata: map[string]string{
-				"component": "apikeyauthextension",
+				"component": metadata.Type.String(),
 				"api_key":   "collision_id",
 			},
 		},
@@ -327,9 +328,9 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 				return authenticator, headers
 			},
 			expectedCode: codes.PermissionDenied,
-			expectedMsg:  `API Key "no_privs_id" unauthorized`,
+			expectedMsg:  "unauthorized",
 			expectedMetadata: map[string]string{
-				"component": "apikeyauthextension",
+				"component": metadata.Type.String(),
 				"api_key":   "no_privs_id",
 			},
 		},
@@ -735,60 +736,105 @@ func TestRetryBackoff(t *testing.T) {
 }
 
 func TestAuthenticator_RetryOnTransientError(t *testing.T) {
-	var calls int
-	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		if calls <= 2 {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
-				ErrorCause: types.ErrorCause{Type: "unavailable"},
-				Status:     503,
+	tests := []struct {
+		name         string
+		configMutate func(*Config)
+	}{
+		{
+			name: "elasticsearch_retry",
+			configMutate: func(cfg *Config) {
+				cfg.ElasticsearchRetry.InitialInterval = time.Millisecond
+				cfg.ElasticsearchRetry.MaxInterval = 10 * time.Millisecond
+			},
+		},
+		{
+			name: "retry_legacy",
+			configMutate: func(cfg *Config) {
+				cfg.Retry.InitialInterval = time.Millisecond
+				cfg.Retry.MaxInterval = 10 * time.Millisecond
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if calls <= 2 {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
+						ErrorCause: types.ErrorCause{Type: "unavailable"},
+						Status:     503,
+					})
+					return
+				}
+				_ = json.NewEncoder(w).Encode(successfulResponse)
 			})
-			return
-		}
-		_ = json.NewEncoder(w).Encode(successfulResponse)
-	})
 
-	config := createDefaultConfig().(*Config)
-	config.Retry.InitialInterval = time.Millisecond
-	config.Retry.MaxInterval = 10 * time.Millisecond
-	authenticator := newTestAuthenticator(t, srv, config)
+			config := createDefaultConfig().(*Config)
+			tc.configMutate(config)
+			authenticator := newTestAuthenticator(t, srv, config)
 
-	ctx, err := authenticator.Authenticate(context.Background(), map[string][]string{
-		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-	})
-	require.NoError(t, err)
-	require.Equal(t, 3, calls)
+			ctx, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+			})
+			require.NoError(t, err)
+			require.Equal(t, 3, calls)
 
-	clientInfo := client.FromContext(ctx)
-	require.NotNil(t, clientInfo.Auth)
-	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+			clientInfo := client.FromContext(ctx)
+			require.NotNil(t, clientInfo.Auth)
+			assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+		})
+	}
 }
 
 func TestAuthenticator_RetryDisabled(t *testing.T) {
-	var calls int
-	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
-			ErrorCause: types.ErrorCause{Type: "unavailable"},
-			Status:     503,
+	tests := []struct {
+		name         string
+		configMutate func(*Config)
+	}{
+		{
+			name: "elasticsearch_retry",
+			configMutate: func(cfg *Config) {
+				cfg.ElasticsearchRetry.Enabled = false
+			},
+		},
+		{
+			name: "retry_legacy",
+			configMutate: func(cfg *Config) {
+				cfg.Retry.Enabled = false
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
+					ErrorCause: types.ErrorCause{Type: "unavailable"},
+					Status:     503,
+				})
+			})
+
+			config := createDefaultConfig().(*Config)
+			tc.configMutate(config)
+			authenticator := newTestAuthenticator(t, srv, config)
+
+			_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+			})
+			require.Error(t, err)
+
+			st, ok := status.FromError(err)
+			require.True(t, ok)
+			assert.Equal(t, codes.Unavailable, st.Code())
+			require.Equal(t, 1, calls)
 		})
-	})
-
-	config := createDefaultConfig().(*Config)
-	config.Retry.Enabled = false
-	authenticator := newTestAuthenticator(t, srv, config)
-
-	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
-		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-	})
-	require.Error(t, err)
-
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	assert.Equal(t, codes.Unavailable, st.Code())
-	require.Equal(t, 1, calls)
+	}
 }
 
 func BenchmarkAuthenticator(b *testing.B) {
