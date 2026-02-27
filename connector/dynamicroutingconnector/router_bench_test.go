@@ -34,10 +34,10 @@ import (
 )
 
 var benchRoutingKeySets = []struct {
-	name         string
-	partitionBy  []string
-	measureBy    []string
-	metadata     map[string][]string
+	name        string
+	partitionBy []string
+	measureBy   []string
+	metadata    map[string][]string
 }{
 	{
 		name:        "1pk_1mk",
@@ -58,7 +58,7 @@ var benchRoutingKeySets = []struct {
 			"x-region":        {"us-east-1"},
 			"x-forwarded-for": {"10.2.4.2"},
 			"user-agent":      {"otel-0.135.0"},
-			"content-type":   {"application/grpc"},
+			"content-type":    {"application/grpc"},
 		},
 	},
 }
