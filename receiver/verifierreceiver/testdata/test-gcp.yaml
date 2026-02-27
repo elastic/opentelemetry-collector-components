@@ -1,0 +1,63 @@
+# GCP verifier test using application default credentials
+#
+# Prerequisites:
+#   gcloud auth application-default login
+#
+# Run with:
+#   GCP_PROJECT_ID=your-project-id ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-gcp.yaml
+
+receivers:
+  verifier:
+    cloud_connector_id: "cc-test-gcp"
+    cloud_connector_name: "GCP Test"
+    verification_id: "verify-gcp-001"
+    verification_type: "on_demand"
+
+    providers:
+      gcp:
+        credentials:
+          use_default_credentials: true
+          project_id: "${GCP_PROJECT_ID}"
+
+    policies:
+      - policy_id: "policy-gcp-security"
+        policy_name: "GCP Security"
+        integrations:
+          - integration_id: "gcp-audit-001"
+            integration_type: "gcp_audit"
+            integration_name: "GCP Audit Logs"
+            config:
+              project_id: "${GCP_PROJECT_ID}"
+          - integration_id: "gcp-cspm-001"
+            integration_type: "gcp_cspm"
+            integration_name: "GCP CSPM"
+            config:
+              project_id: "${GCP_PROJECT_ID}"
+          - integration_id: "gcp-asset-001"
+            integration_type: "gcp_asset_inventory"
+            integration_name: "GCP Asset Inventory"
+            config:
+              project_id: "${GCP_PROJECT_ID}"
+          - integration_id: "gcp-storage-001"
+            integration_type: "gcp_storage"
+            integration_name: "GCP Storage"
+            config:
+              project_id: "${GCP_PROJECT_ID}"
+          - integration_id: "gcp-pubsub-001"
+            integration_type: "gcp_pubsub"
+            integration_name: "GCP Pub/Sub"
+            config:
+              project_id: "${GCP_PROJECT_ID}"
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    logs:
+      receivers: [verifier]
+      exporters: [debug]

@@ -115,83 +115,107 @@ type AuthConfig interface {
 	IsConfigured() bool
 }
 
-// AWSAuthConfig contains AWS authentication configuration for Cloud Connector.
-// This enables assuming a role in the customer's AWS account using STS AssumeRole.
+// AWSAuthConfig contains AWS authentication configuration.
+//
+// Cloud Connector flow (production):
+//
+//	JWT token file → WebIdentity(GlobalRoleARN) → AssumeRole(RoleARN, ExternalID)
+//
+// Default credentials flow (testing):
+//
+//	Uses the default credential chain (env vars, AWS_PROFILE, instance metadata).
 type AWSAuthConfig struct {
-	// RoleARN is the ARN of the IAM role to assume in the customer's AWS account.
-	RoleARN string
+	// Cloud Connector OIDC fields
+	IDTokenFile     string // Path to the OIDC JWT token file
+	GlobalRoleARN   string // Elastic global IAM role to assume via WebIdentity
+	CloudResourceID string // Resource ID used as SourceIdentity
 
-	// ExternalID is used to prevent confused deputy attacks.
+	// Customer's AWS account (used in cloud connector flow)
+	RoleARN    string
 	ExternalID string
 
-	// SessionName is an optional name for the assumed role session.
-	SessionName string
-
-	// AssumeRoleDuration is the duration for the assumed role credentials.
+	SessionName        string
 	AssumeRoleDuration time.Duration
+	DefaultRegion      string
 
-	// DefaultRegion is the default AWS region to use for API calls.
-	DefaultRegion string
-
-	// UseDefaultCredentials uses default AWS credentials (for testing).
+	// UseDefaultCredentials uses the default AWS credential chain (for testing).
 	UseDefaultCredentials bool
 }
 
-// ProviderType implements AuthConfig.
 func (c AWSAuthConfig) ProviderType() ProviderType { return ProviderAWS }
 
-// IsConfigured implements AuthConfig.
+// IsCloudConnector returns true when configured for the cloud connector OIDC flow.
+func (c AWSAuthConfig) IsCloudConnector() bool {
+	return c.IDTokenFile != "" && c.GlobalRoleARN != "" && c.RoleARN != ""
+}
+
 func (c AWSAuthConfig) IsConfigured() bool {
-	return (c.RoleARN != "" && c.ExternalID != "") || c.UseDefaultCredentials
+	return c.IsCloudConnector() || c.UseDefaultCredentials
 }
 
 // AzureAuthConfig contains Azure authentication configuration.
+//
+// Cloud Connector flow (production):
+//
+//	JWT token file → ClientAssertionCredential(TenantID, ClientID) → Azure Token
+//
+// Default credentials flow (testing):
+//
+//	DefaultAzureCredential chains env vars, workload identity, managed identity,
+//	Azure CLI (az login), and azd CLI.
 type AzureAuthConfig struct {
-	// TenantID is the Azure AD tenant ID.
-	TenantID string
+	// Cloud Connector OIDC field
+	IDTokenFile string // Path to the OIDC JWT token file
 
-	// ClientID is the Azure AD application (client) ID.
-	ClientID string
-
-	// ClientSecret is the Azure AD application secret.
-	ClientSecret string
-
-	// SubscriptionID is the Azure subscription ID.
+	TenantID       string
+	ClientID       string
 	SubscriptionID string
 
-	// UseManagedIdentity uses Azure managed identity for authentication.
-	UseManagedIdentity bool
+	// UseDefaultCredentials uses DefaultAzureCredential (for testing).
+	UseDefaultCredentials bool
 }
 
-// ProviderType implements AuthConfig.
 func (c AzureAuthConfig) ProviderType() ProviderType { return ProviderAzure }
 
-// IsConfigured implements AuthConfig.
+// IsCloudConnector returns true when configured for the cloud connector OIDC flow.
+func (c AzureAuthConfig) IsCloudConnector() bool {
+	return c.IDTokenFile != "" && c.TenantID != "" && c.ClientID != ""
+}
+
 func (c AzureAuthConfig) IsConfigured() bool {
-	return c.UseManagedIdentity || (c.TenantID != "" && c.ClientID != "" && c.ClientSecret != "")
+	return c.IsCloudConnector() || c.UseDefaultCredentials
 }
 
 // GCPAuthConfig contains GCP authentication configuration.
+//
+// Cloud Connector flow (production):
+//
+//	JWT token file → GCP Workload Identity Federation(Audience) → Service Account Impersonation
+//
+// Default credentials flow (testing):
+//
+//	Application Default Credentials (gcloud auth application-default login).
 type GCPAuthConfig struct {
-	// ProjectID is the GCP project ID.
+	// Cloud Connector OIDC fields
+	IDTokenFile              string // Path to the OIDC JWT token file
+	WorkloadIdentityProvider string // Full resource name of the GCP WIF provider (audience)
+	ServiceAccountEmail      string // GCP service account to impersonate via WIF
+
 	ProjectID string
 
-	// ServiceAccountKey is the JSON key for the service account.
-	ServiceAccountKey string
-
-	// UseDefaultCredentials uses application default credentials.
+	// UseDefaultCredentials uses Application Default Credentials (for testing).
 	UseDefaultCredentials bool
-
-	// ImpersonateServiceAccount is the service account to impersonate.
-	ImpersonateServiceAccount string
 }
 
-// ProviderType implements AuthConfig.
 func (c GCPAuthConfig) ProviderType() ProviderType { return ProviderGCP }
 
-// IsConfigured implements AuthConfig.
+// IsCloudConnector returns true when configured for the cloud connector WIF flow.
+func (c GCPAuthConfig) IsCloudConnector() bool {
+	return c.IDTokenFile != "" && c.WorkloadIdentityProvider != ""
+}
+
 func (c GCPAuthConfig) IsConfigured() bool {
-	return c.UseDefaultCredentials || c.ServiceAccountKey != "" || c.ImpersonateServiceAccount != ""
+	return c.IsCloudConnector() || c.UseDefaultCredentials
 }
 
 // OktaAuthConfig contains Okta authentication configuration.

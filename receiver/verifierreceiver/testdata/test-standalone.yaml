@@ -3,7 +3,7 @@
 # Run with:
 #   cd opentelemetry-collector-components
 #   make genelasticcol
-#   ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/standalone-test.yaml
+#   ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-standalone.yaml
 #
 # For AWS Cloud Connector authentication:
 #   1. Set the role_arn to the IAM role ARN in the target AWS account
@@ -23,28 +23,29 @@ receivers:
     verification_type: "on_demand"
     
     # Provider Credentials
-    # Uncomment and configure with real values for production testing
+    # Each CSP supports two auth modes:
+    #   1. Cloud connector (production) - OIDC JWT-based federated credentials
+    #   2. Default credentials (testing) - use_default_credentials: true
     providers:
-      # AWS Authentication - Cloud Connector STS AssumeRole
+      # AWS - use_default_credentials or cloud connector (role_arn + env vars)
       aws:
         credentials:
+          # use_default_credentials: true
           # role_arn: "arn:aws:iam::123456789012:role/ElasticAgentRole"
           # external_id: "your-external-id-from-elastic"
           default_region: "us-east-1"
       
-      # Azure Authentication (future)
+      # Azure - use_default_credentials or cloud connector (tenant_id + client_id + env vars)
       # azure:
       #   credentials:
-      #     tenant_id: "your-tenant-id"
-      #     client_id: "your-client-id"
-      #     client_secret: "your-client-secret"
+      #     use_default_credentials: true
       #     subscription_id: "your-subscription-id"
       
-      # GCP Authentication (future)
+      # GCP - use_default_credentials or cloud connector (workload_identity_provider + env vars)
       # gcp:
       #   credentials:
-      #     project_id: "your-project-id"
       #     use_default_credentials: true
+      #     project_id: "your-project-id"
       
       # Okta Authentication (future)
       # okta:

@@ -283,13 +283,13 @@ The receiver uses a registry-based architecture for extensibility:
 │  │ Permission        │     │ Verifier Registry             │   │
 │  │ Registry          │     │                               │   │
 │  │                   │     │  ┌─────────────────────────┐  │   │
-│  │ aws_cloudtrail    │     │  │ AWS Verifier (active)   │  │   │
+│  │ aws_cloudtrail    │     │  │ AWS Verifier            │  │   │
 │  │ aws_guardduty     │     │  └─────────────────────────┘  │   │
 │  │ azure_activitylogs│     │  ┌─────────────────────────┐  │   │
-│  │ gcp_audit         │     │  │ Azure Verifier (future) │  │   │
+│  │ gcp_audit         │     │  │ Azure Verifier          │  │   │
 │  │ okta_system       │     │  └─────────────────────────┘  │   │
 │  │ ...               │     │  ┌─────────────────────────┐  │   │
-│  └───────────────────┘     │  │ GCP Verifier (future)   │  │   │
+│  └───────────────────┘     │  │ GCP Verifier            │  │   │
 │                            │  └─────────────────────────┘  │   │
 │                            │  ┌─────────────────────────┐  │   │
 │                            │  │ Okta Verifier (future)  │  │   │
@@ -305,34 +305,32 @@ The receiver uses a registry-based architecture for extensibility:
 3. Register the factory in `receiver.go`
 4. Add integration mappings in `registry.go`
 
-## AWS Authentication
+## Authentication
 
-### Cloud Connector Authentication (Recommended)
+Each CSP supports two authentication modes:
 
-When deploying as part of a Cloud Connector, the receiver uses STS AssumeRole with an external ID:
+1. **Cloud Connector** (production) - OIDC JWT-based federated credential exchange
+2. **Default Credentials** (testing) - uses the platform's default credential chain
 
-```yaml
-providers:
-  aws:
-    credentials:
-      role_arn: "arn:aws:iam::123456789012:role/ElasticAgentRole"
-      external_id: "elastic-unique-external-id"
-      default_region: "us-east-1"
+### AWS
+
+```bash
+AWS_PROFILE=your-profile ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-aws.yaml
 ```
 
-### Local Development
+### GCP
 
-For local testing, use the default credential chain:
-
-```yaml
-providers:
-  aws:
-    credentials:
-      use_default_credentials: true
-      default_region: "us-east-1"
+```bash
+gcloud auth application-default login
+GCP_PROJECT_ID=your-project-id ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-gcp.yaml
 ```
 
-Run with: `AWS_PROFILE=your-profile ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-csp-profile.yaml`
+### Azure
+
+```bash
+az login
+AZURE_SUBSCRIPTION_ID=your-subscription-id ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-azure.yaml
+```
 
 ## Example Pipeline
 
@@ -378,8 +376,6 @@ service:
 This receiver is currently in **development** stability level.
 
 ### Planned
-- [ ] Azure verifier implementation
-- [ ] GCP verifier implementation
 - [ ] Okta verifier implementation
 - [ ] Fleet API integration for triggering verification
 

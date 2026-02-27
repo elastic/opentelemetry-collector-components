@@ -68,12 +68,11 @@ func newVerifierReceiver(
 	// Create verifier registry and register available factories
 	verifierRegistry := verifier.NewRegistry(params.Logger)
 
-	// Register AWS verifier factory (always available)
+	// Register verifier factories for all supported providers
 	verifierRegistry.RegisterFactory(verifier.ProviderAWS, verifier.NewAWSVerifierFactory())
-
-	// Future: Register other provider factories here
-	// verifierRegistry.RegisterFactory(verifier.ProviderAzure, verifier.NewAzureVerifierFactory())
-	// verifierRegistry.RegisterFactory(verifier.ProviderGCP, verifier.NewGCPVerifierFactory())
+	verifierRegistry.RegisterFactory(verifier.ProviderAzure, verifier.NewAzureVerifierFactory())
+	verifierRegistry.RegisterFactory(verifier.ProviderGCP, verifier.NewGCPVerifierFactory())
+	// Future: Register Okta verifier factory when implemented
 	// verifierRegistry.RegisterFactory(verifier.ProviderOkta, verifier.NewOktaVerifierFactory())
 
 	return &verifierReceiver{
@@ -115,22 +114,32 @@ func (r *verifierReceiver) Start(ctx context.Context, _ component.Host) error {
 
 // initializeVerifiers initializes verifiers for all configured providers.
 func (r *verifierReceiver) initializeVerifiers(ctx context.Context) {
+	// Populate cloud connector fields from environment variables when not
+	// already set in the config. The agentless controller injects these as
+	// pod env vars (CLOUD_CONNECTORS_ID_TOKEN_FILE, etc.).
+	r.config.Providers.CloudConnector.LoadFromEnv()
+	cc := r.config.Providers.CloudConnector
+
+	if cc.IsConfigured() {
+		r.logger.Info("Cloud connector OIDC configuration detected",
+			zap.String("id_token_file", cc.IDTokenFile),
+			zap.Bool("has_global_role", cc.GlobalRoleARN != ""),
+			zap.Bool("has_resource_id", cc.CloudResourceID != ""),
+		)
+	}
+
 	// Initialize AWS verifier if configured
 	if r.config.Providers.AWS.Credentials.IsConfigured() {
-		creds := r.config.Providers.AWS.Credentials
-		if creds.UseDefaultCredentials {
-			r.logger.Info("Initializing AWS verifier with default credentials (AWS_PROFILE or environment)",
-				zap.String("default_region", creds.DefaultRegion),
+		authCfg := r.config.Providers.AWS.Credentials.ToAuthConfig(cc)
+		if authCfg.IsCloudConnector() {
+			r.logger.Info("Initializing AWS verifier with cloud connector OIDC flow",
+				zap.String("role_arn", authCfg.RoleARN),
 			)
 		} else {
-			r.logger.Info("Initializing AWS verifier with Cloud Connector authentication",
-				zap.String("role_arn", creds.RoleARN),
-				zap.Bool("has_external_id", creds.ExternalID != ""),
-				zap.String("default_region", creds.DefaultRegion),
-			)
+			r.logger.Info("Initializing AWS verifier with default credentials (testing)")
 		}
 
-		if err := r.verifierRegistry.InitializeVerifier(ctx, creds.ToAuthConfig()); err != nil {
+		if err := r.verifierRegistry.InitializeVerifier(ctx, authCfg); err != nil {
 			r.logger.Warn("Failed to initialize AWS verifier", zap.Error(err))
 		} else {
 			r.logger.Info("AWS verifier initialized successfully")
@@ -141,12 +150,16 @@ func (r *verifierReceiver) initializeVerifiers(ctx context.Context) {
 
 	// Initialize Azure verifier if configured
 	if r.config.Providers.Azure.Credentials.IsConfigured() {
-		r.logger.Info("Initializing Azure verifier",
-			zap.String("tenant_id", r.config.Providers.Azure.Credentials.TenantID),
-			zap.Bool("use_managed_identity", r.config.Providers.Azure.Credentials.UseManagedIdentity),
-		)
+		authCfg := r.config.Providers.Azure.Credentials.ToAuthConfig(cc)
+		if authCfg.IsCloudConnector() {
+			r.logger.Info("Initializing Azure verifier with cloud connector OIDC flow",
+				zap.String("tenant_id", authCfg.TenantID),
+			)
+		} else {
+			r.logger.Info("Initializing Azure verifier with default credentials (testing)")
+		}
 
-		if err := r.verifierRegistry.InitializeVerifier(ctx, r.config.Providers.Azure.Credentials.ToAuthConfig()); err != nil {
+		if err := r.verifierRegistry.InitializeVerifier(ctx, authCfg); err != nil {
 			r.logger.Warn("Failed to initialize Azure verifier", zap.Error(err))
 		} else {
 			r.logger.Info("Azure verifier initialized successfully")
@@ -157,12 +170,16 @@ func (r *verifierReceiver) initializeVerifiers(ctx context.Context) {
 
 	// Initialize GCP verifier if configured
 	if r.config.Providers.GCP.Credentials.IsConfigured() {
-		r.logger.Info("Initializing GCP verifier",
-			zap.String("project_id", r.config.Providers.GCP.Credentials.ProjectID),
-			zap.Bool("use_default_credentials", r.config.Providers.GCP.Credentials.UseDefaultCredentials),
-		)
+		authCfg := r.config.Providers.GCP.Credentials.ToAuthConfig(cc)
+		if authCfg.IsCloudConnector() {
+			r.logger.Info("Initializing GCP verifier with cloud connector WIF flow",
+				zap.String("project_id", authCfg.ProjectID),
+			)
+		} else {
+			r.logger.Info("Initializing GCP verifier with default credentials (testing)")
+		}
 
-		if err := r.verifierRegistry.InitializeVerifier(ctx, r.config.Providers.GCP.Credentials.ToAuthConfig()); err != nil {
+		if err := r.verifierRegistry.InitializeVerifier(ctx, authCfg); err != nil {
 			r.logger.Warn("Failed to initialize GCP verifier", zap.Error(err))
 		} else {
 			r.logger.Info("GCP verifier initialized successfully")

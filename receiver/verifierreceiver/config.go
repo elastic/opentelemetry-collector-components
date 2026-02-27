@@ -20,6 +20,7 @@ package verifierreceiver // import "github.com/elastic/opentelemetry-collector-c
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/verifierreceiver/internal/verifier"
@@ -52,17 +53,49 @@ type Config struct {
 
 // ProvidersConfig contains authentication configuration for all supported providers.
 type ProvidersConfig struct {
-	// AWS contains AWS-specific authentication configuration.
-	AWS AWSProviderConfig `mapstructure:"aws"`
+	// CloudConnector contains shared OIDC authentication used by the cloud connector flow.
+	CloudConnector CloudConnectorConfig `mapstructure:"cloud_connector"`
 
-	// Azure contains Azure-specific authentication configuration.
+	AWS   AWSProviderConfig   `mapstructure:"aws"`
 	Azure AzureProviderConfig `mapstructure:"azure"`
+	GCP   GCPProviderConfig   `mapstructure:"gcp"`
+	Okta  OktaProviderConfig  `mapstructure:"okta"`
+}
 
-	// GCP contains GCP-specific authentication configuration.
-	GCP GCPProviderConfig `mapstructure:"gcp"`
+// CloudConnectorConfig contains shared OIDC fields for the cloud connector
+// authentication flow. These are typically injected as environment variables
+// by the agentless controller.
+type CloudConnectorConfig struct {
+	// IDTokenFile is the path to the OIDC JWT token file.
+	// Env fallback: CLOUD_CONNECTORS_ID_TOKEN_FILE
+	IDTokenFile string `mapstructure:"id_token_file"`
 
-	// Okta contains Okta-specific authentication configuration.
-	Okta OktaProviderConfig `mapstructure:"okta"`
+	// GlobalRoleARN is the Elastic global IAM role used in the AWS/GCP auth chains.
+	// Env fallback: CLOUD_CONNECTORS_GLOBAL_ROLE
+	GlobalRoleARN string `mapstructure:"global_role_arn"`
+
+	// CloudResourceID identifies the cloud resource, used as SourceIdentity.
+	// Env fallback: CLOUD_RESOURCE_ID
+	CloudResourceID string `mapstructure:"cloud_resource_id"`
+}
+
+// LoadFromEnv populates empty fields from well-known environment variables
+// set by the agentless controller.
+func (cfg *CloudConnectorConfig) LoadFromEnv() {
+	if cfg.IDTokenFile == "" {
+		cfg.IDTokenFile = os.Getenv("CLOUD_CONNECTORS_ID_TOKEN_FILE")
+	}
+	if cfg.GlobalRoleARN == "" {
+		cfg.GlobalRoleARN = os.Getenv("CLOUD_CONNECTORS_GLOBAL_ROLE")
+	}
+	if cfg.CloudResourceID == "" {
+		cfg.CloudResourceID = os.Getenv("CLOUD_RESOURCE_ID")
+	}
+}
+
+// IsConfigured returns true if the cloud connector OIDC token file is available.
+func (cfg *CloudConnectorConfig) IsConfigured() bool {
+	return cfg.IDTokenFile != ""
 }
 
 // AWSProviderConfig contains AWS authentication configuration.
@@ -88,32 +121,33 @@ type AWSCredentials struct {
 
 // Validate validates the AWS credentials.
 func (cfg *AWSCredentials) Validate() error {
-	// If UseDefaultCredentials is set, no other fields are required
 	if cfg.UseDefaultCredentials {
 		return nil
 	}
-	// If completely empty, that's valid (AWS auth is optional)
 	if cfg.RoleARN == "" && cfg.ExternalID == "" {
-		return nil
+		return nil // Not configured; cloud connector config may supply the rest
 	}
-	// If partially configured, that's an error
 	if cfg.RoleARN == "" {
 		return errors.New("role_arn must be specified when external_id is set")
 	}
-	if cfg.ExternalID == "" {
-		return errors.New("external_id must be specified when role_arn is set")
-	}
+	// external_id is optional in cloud connector mode (only required for direct mode)
 	return nil
 }
 
-// IsConfigured returns true if AWS credentials are configured.
+// IsConfigured returns true if AWS credentials are configured (with or without
+// cloud connector config -- the cloud connector fields are checked separately
+// during verifier initialization).
 func (cfg *AWSCredentials) IsConfigured() bool {
-	return (cfg.RoleARN != "" && cfg.ExternalID != "") || cfg.UseDefaultCredentials
+	return cfg.RoleARN != "" || cfg.UseDefaultCredentials
 }
 
-// ToAuthConfig converts the config to a verifier.AWSAuthConfig.
-func (cfg *AWSCredentials) ToAuthConfig() verifier.AWSAuthConfig {
+// ToAuthConfig converts the config to a verifier.AWSAuthConfig, merging in
+// the shared cloud connector OIDC configuration.
+func (cfg *AWSCredentials) ToAuthConfig(cc CloudConnectorConfig) verifier.AWSAuthConfig {
 	return verifier.AWSAuthConfig{
+		IDTokenFile:           cc.IDTokenFile,
+		GlobalRoleARN:         cc.GlobalRoleARN,
+		CloudResourceID:       cc.CloudResourceID,
 		RoleARN:               cfg.RoleARN,
 		ExternalID:            cfg.ExternalID,
 		DefaultRegion:         cfg.DefaultRegion,
@@ -129,29 +163,22 @@ type AzureProviderConfig struct {
 
 // AzureCredentials contains the Azure credentials.
 type AzureCredentials struct {
-	// TenantID is the Azure AD tenant ID.
-	TenantID string `mapstructure:"tenant_id"`
-
-	// ClientID is the Azure AD application (client) ID.
-	ClientID string `mapstructure:"client_id"`
-
-	// ClientSecret is the Azure AD application secret.
-	ClientSecret string `mapstructure:"client_secret"`
-
-	// SubscriptionID is the Azure subscription ID.
+	TenantID       string `mapstructure:"tenant_id"`
+	ClientID       string `mapstructure:"client_id"`
 	SubscriptionID string `mapstructure:"subscription_id"`
 
-	// UseManagedIdentity uses Azure managed identity for authentication.
-	UseManagedIdentity bool `mapstructure:"use_managed_identity"`
+	// UseDefaultCredentials uses DefaultAzureCredential which chains env vars,
+	// workload identity, managed identity, Azure CLI (az login), and azd CLI.
+	UseDefaultCredentials bool `mapstructure:"use_default_credentials"`
 }
 
 // Validate validates the Azure credentials.
 func (cfg *AzureCredentials) Validate() error {
-	if cfg.UseManagedIdentity {
+	if cfg.UseDefaultCredentials {
 		return nil
 	}
-	if cfg.TenantID == "" && cfg.ClientID == "" && cfg.ClientSecret == "" {
-		return nil // Not configured
+	if cfg.TenantID == "" && cfg.ClientID == "" {
+		return nil // Not configured; cloud connector may provide the JWT
 	}
 	if cfg.TenantID == "" {
 		return errors.New("tenant_id must be specified")
@@ -159,25 +186,23 @@ func (cfg *AzureCredentials) Validate() error {
 	if cfg.ClientID == "" {
 		return errors.New("client_id must be specified")
 	}
-	if cfg.ClientSecret == "" {
-		return errors.New("client_secret must be specified")
-	}
 	return nil
 }
 
 // IsConfigured returns true if Azure credentials are configured.
 func (cfg *AzureCredentials) IsConfigured() bool {
-	return cfg.UseManagedIdentity || (cfg.TenantID != "" && cfg.ClientID != "" && cfg.ClientSecret != "")
+	return cfg.UseDefaultCredentials || (cfg.TenantID != "" && cfg.ClientID != "")
 }
 
-// ToAuthConfig converts the config to a verifier.AzureAuthConfig.
-func (cfg *AzureCredentials) ToAuthConfig() verifier.AzureAuthConfig {
+// ToAuthConfig converts the config to a verifier.AzureAuthConfig, merging in
+// the shared cloud connector OIDC configuration.
+func (cfg *AzureCredentials) ToAuthConfig(cc CloudConnectorConfig) verifier.AzureAuthConfig {
 	return verifier.AzureAuthConfig{
-		TenantID:           cfg.TenantID,
-		ClientID:           cfg.ClientID,
-		ClientSecret:       cfg.ClientSecret,
-		SubscriptionID:     cfg.SubscriptionID,
-		UseManagedIdentity: cfg.UseManagedIdentity,
+		IDTokenFile:           cc.IDTokenFile,
+		TenantID:              cfg.TenantID,
+		ClientID:              cfg.ClientID,
+		SubscriptionID:        cfg.SubscriptionID,
+		UseDefaultCredentials: cfg.UseDefaultCredentials,
 	}
 }
 
@@ -189,40 +214,40 @@ type GCPProviderConfig struct {
 
 // GCPCredentials contains the GCP credentials.
 type GCPCredentials struct {
-	// ProjectID is the GCP project ID.
 	ProjectID string `mapstructure:"project_id"`
 
-	// ServiceAccountKey is the JSON key for the service account.
-	ServiceAccountKey string `mapstructure:"service_account_key"`
+	// Cloud Connector WIF fields
+	// WorkloadIdentityProvider is the full resource name of the GCP WIF provider
+	// used as the audience for STS token exchange.
+	// Example: //iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/providers/provider
+	WorkloadIdentityProvider string `mapstructure:"workload_identity_provider"`
 
-	// UseDefaultCredentials uses application default credentials.
+	// ServiceAccountEmail is the GCP service account to impersonate via WIF.
+	ServiceAccountEmail string `mapstructure:"service_account_email"`
+
+	// UseDefaultCredentials uses Application Default Credentials (for testing).
 	UseDefaultCredentials bool `mapstructure:"use_default_credentials"`
-
-	// ImpersonateServiceAccount is the service account to impersonate.
-	ImpersonateServiceAccount string `mapstructure:"impersonate_service_account"`
 }
 
 // Validate validates the GCP credentials.
 func (cfg *GCPCredentials) Validate() error {
-	if cfg.UseDefaultCredentials || cfg.ServiceAccountKey != "" || cfg.ImpersonateServiceAccount != "" {
-		return nil
-	}
-	// Not configured is valid
 	return nil
 }
 
 // IsConfigured returns true if GCP credentials are configured.
 func (cfg *GCPCredentials) IsConfigured() bool {
-	return cfg.UseDefaultCredentials || cfg.ServiceAccountKey != "" || cfg.ImpersonateServiceAccount != ""
+	return cfg.WorkloadIdentityProvider != "" || cfg.UseDefaultCredentials
 }
 
-// ToAuthConfig converts the config to a verifier.GCPAuthConfig.
-func (cfg *GCPCredentials) ToAuthConfig() verifier.GCPAuthConfig {
+// ToAuthConfig converts the config to a verifier.GCPAuthConfig, merging in
+// the shared cloud connector OIDC configuration.
+func (cfg *GCPCredentials) ToAuthConfig(cc CloudConnectorConfig) verifier.GCPAuthConfig {
 	return verifier.GCPAuthConfig{
-		ProjectID:                 cfg.ProjectID,
-		ServiceAccountKey:         cfg.ServiceAccountKey,
-		UseDefaultCredentials:     cfg.UseDefaultCredentials,
-		ImpersonateServiceAccount: cfg.ImpersonateServiceAccount,
+		IDTokenFile:              cc.IDTokenFile,
+		WorkloadIdentityProvider: cfg.WorkloadIdentityProvider,
+		ServiceAccountEmail:      cfg.ServiceAccountEmail,
+		ProjectID:                cfg.ProjectID,
+		UseDefaultCredentials:    cfg.UseDefaultCredentials,
 	}
 }
 

@@ -1,0 +1,50 @@
+# Azure verifier test using default credentials (az login)
+#
+# Prerequisites:
+#   az login
+#
+# Run with:
+#   AZURE_SUBSCRIPTION_ID=your-subscription-id ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-azure.yaml
+
+receivers:
+  verifier:
+    cloud_connector_id: "cc-test-azure"
+    cloud_connector_name: "Azure Test"
+    verification_id: "verify-azure-001"
+    verification_type: "on_demand"
+
+    providers:
+      azure:
+        credentials:
+          use_default_credentials: true
+          subscription_id: "${AZURE_SUBSCRIPTION_ID}"
+
+    policies:
+      - policy_id: "policy-azure-security"
+        policy_name: "Azure Security"
+        integrations:
+          - integration_id: "azure-activity-001"
+            integration_type: "azure_activitylogs"
+            integration_name: "Azure Activity Logs"
+          - integration_id: "azure-cspm-001"
+            integration_type: "azure_cspm"
+            integration_name: "Azure CSPM"
+          - integration_id: "azure-asset-001"
+            integration_type: "azure_asset_inventory"
+            integration_name: "Azure Asset Inventory"
+          - integration_id: "azure-blob-001"
+            integration_type: "azure_blob_storage"
+            integration_name: "Azure Blob Storage"
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    logs:
+      receivers: [verifier]
+      exporters: [debug]

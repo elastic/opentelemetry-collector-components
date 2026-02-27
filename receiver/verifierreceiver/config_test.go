@@ -250,11 +250,11 @@ func TestAWSCredentials_Validate(t *testing.T) {
 			wantErr: "",
 		},
 		{
-			name: "invalid - role_arn without external_id",
+			name: "valid - role_arn without external_id (cloud connector provides global role)",
 			credentials: AWSCredentials{
 				RoleARN: "arn:aws:iam::123456789012:role/ElasticAgentRole",
 			},
-			wantErr: "external_id must be specified when role_arn is set",
+			wantErr: "",
 		},
 		{
 			name: "invalid - external_id without role_arn",
@@ -285,14 +285,6 @@ func TestAWSCredentials_IsConfigured(t *testing.T) {
 		want        bool
 	}{
 		{
-			name: "fully configured",
-			credentials: AWSCredentials{
-				RoleARN:    "arn:aws:iam::123456789012:role/ElasticAgentRole",
-				ExternalID: "test-external-id",
-			},
-			want: true,
-		},
-		{
 			name: "use_default_credentials",
 			credentials: AWSCredentials{
 				UseDefaultCredentials: true,
@@ -300,14 +292,22 @@ func TestAWSCredentials_IsConfigured(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "missing external_id",
+			name: "role_arn only (cloud connector will supply OIDC chain)",
 			credentials: AWSCredentials{
 				RoleARN: "arn:aws:iam::123456789012:role/ElasticAgentRole",
 			},
-			want: false,
+			want: true,
 		},
 		{
-			name: "missing role_arn",
+			name: "role_arn with external_id (cloud connector mode)",
+			credentials: AWSCredentials{
+				RoleARN:    "arn:aws:iam::123456789012:role/ElasticAgentRole",
+				ExternalID: "test-external-id",
+			},
+			want: true,
+		},
+		{
+			name: "external_id alone is not sufficient",
 			credentials: AWSCredentials{
 				ExternalID: "test-external-id",
 			},

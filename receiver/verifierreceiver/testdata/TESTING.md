@@ -51,7 +51,7 @@ LogsExporter {"logs": {"resourceLogs":[{...}]}}
 
 ## 4. Run Standalone Test with AWS Cloud Connector Auth
 
-Edit `testdata/standalone-test.yaml` and uncomment/set your AWS credentials:
+Edit `testdata/test-standalone.yaml` and uncomment/set your AWS credentials:
 
 ```yaml
 providers:
@@ -65,7 +65,7 @@ providers:
 Then run:
 
 ```bash
-./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/standalone-test.yaml
+./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-standalone.yaml
 ```
 
 Expected output with valid credentials:
@@ -80,26 +80,45 @@ Permission check: aws/cloudtrail:GetEventSelectors - granted
 ...
 ```
 
-## 5. Test with AWS Default Credentials (AWS_PROFILE)
+## 5. Test with AWS Default Credentials
 
-For local testing with an AWS profile, use the test-csp-profile.yaml config:
+For local testing with an AWS profile, use the test-aws.yaml config:
 
 ```bash
-# Replace 'csp' with your AWS profile name
-AWS_PROFILE=csp ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-csp-profile.yaml
+AWS_PROFILE=your-profile ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-aws.yaml
 ```
 
-The config uses `use_default_credentials: true`:
+This verifies CloudTrail, CSPM, and Asset Inventory permissions using the default AWS credential chain.
 
-```yaml
-providers:
-  aws:
-    credentials:
-      use_default_credentials: true
-      default_region: "us-east-1"
+## 6. Test with GCP Default Credentials
+
+For local testing with GCP Application Default Credentials:
+
+```bash
+# Authenticate first
+gcloud auth application-default login
+
+# Run the test (replace with your project ID)
+GCP_PROJECT_ID=your-project-id ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-gcp.yaml
 ```
 
-## 6. Multi-Provider Configuration
+This verifies Audit Logs, CSPM, Asset Inventory, Storage, and Pub/Sub permissions.
+
+## 7. Test with Azure Default Credentials
+
+For local testing with Azure CLI credentials:
+
+```bash
+# Authenticate first
+az login
+
+# Run the test (replace with your subscription ID)
+AZURE_SUBSCRIPTION_ID=your-subscription-id ./_build/elastic-collector-components --config ./receiver/verifierreceiver/testdata/test-azure.yaml
+```
+
+This verifies Activity Logs, CSPM, Asset Inventory, and Blob Storage permissions.
+
+## 8. Multi-Provider Configuration
 
 Configure multiple providers in a single receiver:
 
@@ -110,31 +129,20 @@ receivers:
     verification_id: "verify-multi-001"
     
     providers:
-      # AWS Cloud Connector authentication
       aws:
         credentials:
-          role_arn: "arn:aws:iam::123456789012:role/ElasticAgentRole"
-          external_id: "your-external-id"
+          use_default_credentials: true
           default_region: "us-east-1"
       
-      # Azure (future - not yet implemented)
       azure:
         credentials:
-          tenant_id: "your-tenant-id"
-          client_id: "your-client-id"
-          client_secret: "your-client-secret"
+          use_default_credentials: true
+          subscription_id: "${AZURE_SUBSCRIPTION_ID}"
       
-      # GCP (future - not yet implemented)
       gcp:
         credentials:
-          project_id: "your-project-id"
           use_default_credentials: true
-      
-      # Okta (future - not yet implemented)
-      okta:
-        credentials:
-          domain: "dev-123456.okta.com"
-          api_token: "your-api-token"
+          project_id: "${GCP_PROJECT_ID}"
     
     policies:
       - policy_id: "multi-cloud-policy"
@@ -145,14 +153,11 @@ receivers:
             integration_version: "2.17.0"
           - integration_type: "azure_activitylogs"
             integration_name: "Azure Activity"
-            integration_version: "1.0.0"
           - integration_type: "gcp_audit"
             integration_name: "GCP Audit"
-          - integration_type: "okta_system"
-            integration_name: "Okta System Logs"
 ```
 
-## 7. Test with Elastic Agent
+## 9. Test with Elastic Agent
 
 ### Build elastic-agent with the new receiver:
 
@@ -206,7 +211,7 @@ service:
 ./elastic-agent otel --config otel.yml
 ```
 
-## 8. Test the Fleet Integration Package
+## 10. Test the Fleet Integration Package
 
 ### Validate the integration package:
 
@@ -229,7 +234,7 @@ elastic-package stack up -d
 elastic-package test system --packages verifier_otel
 ```
 
-## 9. End-to-End Test with Elasticsearch
+## 11. End-to-End Test with Elasticsearch
 
 Create a config that exports to Elasticsearch:
 
@@ -284,7 +289,7 @@ curl -X GET "localhost:9200/logs-cloud_connector.permission_verification-default
 }'
 ```
 
-## 10. Version-Aware Permission Testing
+## 12. Version-Aware Permission Testing
 
 The permission registry supports versioned permission sets. Different integration versions may require different permissions.
 
@@ -321,7 +326,7 @@ This runs all version-aware test cases including:
 - `cloudtrail_invalid_version_-_falls_back_to_latest`
 - `version_constraints_are_returned`
 
-## 11. Quick Smoke Test
+## 13. Quick Smoke Test
 
 For a quick verification that everything compiles:
 
@@ -348,13 +353,13 @@ The verifier receiver uses a **registry pattern** for extensibility:
 │  │ Permission        │     │ Verifier Registry             │   │
 │  │ Registry          │     │                               │   │
 │  │                   │     │  ┌─────────────────────────┐  │   │
-│  │ aws_cloudtrail    │     │  │ AWS Verifier (active)   │  │   │
+│  │ aws_cloudtrail    │     │  │ AWS Verifier            │  │   │
 │  │ aws_guardduty     │     │  └─────────────────────────┘  │   │
 │  │ azure_activitylogs│     │  ┌─────────────────────────┐  │   │
-│  │ gcp_audit         │     │  │ Azure Verifier (future) │  │   │
+│  │ gcp_audit         │     │  │ Azure Verifier          │  │   │
 │  │ okta_system       │     │  └─────────────────────────┘  │   │
 │  │ ...               │     │  ┌─────────────────────────┐  │   │
-│  └───────────────────┘     │  │ GCP Verifier (future)   │  │   │
+│  └───────────────────┘     │  │ GCP Verifier            │  │   │
 │                            │  └─────────────────────────┘  │   │
 │                            │  ┌─────────────────────────┐  │   │
 │                            │  │ Okta Verifier (future)  │  │   │

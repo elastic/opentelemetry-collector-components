@@ -31,9 +31,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs"
+	"github.com/aws/aws-sdk-go-v2/service/configservice"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/guardduty"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/securityhub"
@@ -48,6 +51,10 @@ import (
 const (
 	defaultSessionName        = "verifier-receiver"
 	defaultAssumeRoleDuration = 15 * time.Minute
+	// Used by the cloud connector WebIdentity step. The global role session
+	// is short-lived because it is only an intermediate step before assuming
+	// the customer's role.
+	defaultIntermediateDuration = 20 * time.Minute
 )
 
 // AWSVerifier implements permission verification for AWS.
@@ -75,16 +82,18 @@ func NewAWSVerifierFactory() VerifierFactory {
 	}
 }
 
-// NewAWSVerifier creates a new AWS verifier with Cloud Connector authentication.
-// It uses STS AssumeRole with the provided role ARN and external ID.
+// NewAWSVerifier creates a new AWS verifier.
+//
+// Cloud connector mode (IDTokenFile + GlobalRoleARN set):
+//
+//	JWT → WebIdentity(GlobalRoleARN) → AssumeRole(customer RoleARN, ExternalID)
+//
+// Default credentials mode (testing): uses the default AWS credential chain.
 func NewAWSVerifier(ctx context.Context, logger *zap.Logger, authConfig AWSAuthConfig) (*AWSVerifier, error) {
-	// Create a dedicated HTTP client so we can close idle connections on shutdown,
-	// preventing goroutine leaks from persistent HTTP connections.
 	httpClient := &http.Client{
 		Transport: http.DefaultTransport.(*http.Transport).Clone(),
 	}
 
-	// Start with loading default config (for base credentials from IRSA, instance profile, etc.)
 	baseCfg, err := config.LoadDefaultConfig(ctx,
 		config.WithHTTPClient(httpClient),
 	)
@@ -97,52 +106,58 @@ func NewAWSVerifier(ctx context.Context, logger *zap.Logger, authConfig AWSAuthC
 		}, nil
 	}
 
-	// Set default region if specified
 	if authConfig.DefaultRegion != "" {
 		baseCfg.Region = authConfig.DefaultRegion
 	}
 
-	// If role ARN is provided, configure STS AssumeRole with external ID
-	if authConfig.RoleARN != "" {
-		logger.Info("Configuring AWS STS AssumeRole",
-			zap.String("role_arn", authConfig.RoleARN),
-			zap.Bool("has_external_id", authConfig.ExternalID != ""),
+	sessionName := authConfig.SessionName
+	if sessionName == "" {
+		sessionName = defaultSessionName
+	}
+
+	duration := authConfig.AssumeRoleDuration
+	if duration == 0 {
+		duration = defaultAssumeRoleDuration
+	}
+
+	switch {
+	case authConfig.IsCloudConnector():
+		// Cloud connector OIDC flow: two-step credential chain.
+		// Step 1: Assume Elastic Global Role using the OIDC JWT token.
+		webIdentityProvider := stscreds.NewWebIdentityRoleProvider(
+			sts.NewFromConfig(baseCfg),
+			authConfig.GlobalRoleARN,
+			stscreds.IdentityTokenFile(authConfig.IDTokenFile),
+			func(opt *stscreds.WebIdentityRoleOptions) {
+				opt.Duration = defaultIntermediateDuration
+			},
 		)
+		baseCfg.Credentials = aws.NewCredentialsCache(webIdentityProvider)
 
-		// Create STS client using base credentials
-		stsClient := sts.NewFromConfig(baseCfg)
-
-		// Configure assume role options
-		sessionName := authConfig.SessionName
-		if sessionName == "" {
-			sessionName = defaultSessionName
-		}
-
-		duration := authConfig.AssumeRoleDuration
-		if duration == 0 {
-			duration = defaultAssumeRoleDuration
-		}
-
-		// Create assume role provider with external ID
-		assumeRoleProvider := stscreds.NewAssumeRoleProvider(stsClient, authConfig.RoleARN,
-			func(options *stscreds.AssumeRoleOptions) {
-				options.RoleSessionName = sessionName
-				options.Duration = duration
+		// Step 2: Assume the customer's role from the global role session.
+		assumeRoleProvider := stscreds.NewAssumeRoleProvider(
+			sts.NewFromConfig(baseCfg),
+			authConfig.RoleARN,
+			func(aro *stscreds.AssumeRoleOptions) {
+				aro.RoleSessionName = sessionName
+				aro.Duration = duration
 				if authConfig.ExternalID != "" {
-					options.ExternalID = aws.String(authConfig.ExternalID)
+					aro.ExternalID = aws.String(authConfig.ExternalID)
+				}
+				if authConfig.CloudResourceID != "" {
+					aro.SourceIdentity = aws.String(authConfig.CloudResourceID)
 				}
 			},
 		)
-
-		// Wrap with credentials cache for automatic refresh
 		baseCfg.Credentials = aws.NewCredentialsCache(assumeRoleProvider)
 
-		logger.Info("AWS STS AssumeRole configured successfully",
-			zap.String("session_name", sessionName),
-			zap.Duration("duration", duration),
+		logger.Info("AWS cloud connector credential chain configured",
+			zap.String("global_role", authConfig.GlobalRoleARN),
+			zap.String("customer_role", authConfig.RoleARN),
 		)
-	} else {
-		logger.Info("Using default AWS credentials (no role assumption)")
+
+	default:
+		logger.Info("Using default AWS credentials (testing)")
 	}
 
 	return &AWSVerifier{
@@ -234,6 +249,12 @@ func (v *AWSVerifier) Verify(ctx context.Context, permission Permission, provide
 		result = v.verifyELB(ctx, cfg, operation)
 	case "cloudfront":
 		result = v.verifyCloudFront(ctx, cfg, operation)
+	case "iam":
+		result = v.verifyIAM(ctx, cfg, operation)
+	case "config":
+		result = v.verifyConfig(ctx, cfg, operation)
+	case "rds":
+		result = v.verifyRDS(ctx, cfg, operation)
 	default:
 		result = Result{
 			Status:       StatusSkipped,
@@ -441,6 +462,26 @@ func (v *AWSVerifier) verifyS3(ctx context.Context, cfg aws.Config, operation st
 		})
 		return v.handleAWSError(err, "s3:GetBucketLocation")
 
+	case "GetBucketAcl":
+		buckets, err := client.ListBuckets(ctx, &s3.ListBucketsInput{})
+		if err != nil {
+			return v.handleAWSError(err, "s3:GetBucketAcl")
+		}
+		if len(buckets.Buckets) == 0 {
+			return Result{
+				Status:   StatusGranted,
+				Endpoint: "s3:GetBucketAcl (no buckets to check)",
+			}
+		}
+		_, err = client.GetBucketAcl(ctx, &s3.GetBucketAclInput{
+			Bucket: buckets.Buckets[0].Name,
+		})
+		return v.handleAWSError(err, "s3:GetBucketAcl")
+
+	case "ListAllMyBuckets":
+		_, err := client.ListBuckets(ctx, &s3.ListBucketsInput{})
+		return v.handleAWSError(err, "s3:ListAllMyBuckets")
+
 	default:
 		return Result{
 			Status:       StatusSkipped,
@@ -477,6 +518,12 @@ func (v *AWSVerifier) verifyEC2(ctx context.Context, cfg aws.Config, operation s
 			MaxResults: aws.Int32(5),
 		})
 		return v.handleAWSError(err, "ec2:DescribeFlowLogs")
+
+	case "DescribeSecurityGroups":
+		_, err := client.DescribeSecurityGroups(ctx, &ec2.DescribeSecurityGroupsInput{
+			MaxResults: aws.Int32(5),
+		})
+		return v.handleAWSError(err, "ec2:DescribeSecurityGroups")
 
 	default:
 		return Result{
@@ -677,6 +724,69 @@ func (v *AWSVerifier) verifyCloudFront(ctx context.Context, cfg aws.Config, oper
 		return Result{
 			Status:       StatusSkipped,
 			ErrorMessage: "Unsupported CloudFront operation: " + operation,
+		}
+	}
+}
+
+// verifyIAM verifies IAM permissions.
+func (v *AWSVerifier) verifyIAM(ctx context.Context, cfg aws.Config, operation string) Result {
+	client := iam.NewFromConfig(cfg)
+
+	switch operation {
+	case "GetAccountSummary":
+		_, err := client.GetAccountSummary(ctx, &iam.GetAccountSummaryInput{})
+		return v.handleAWSError(err, "iam:GetAccountSummary")
+
+	case "ListUsers":
+		_, err := client.ListUsers(ctx, &iam.ListUsersInput{
+			MaxItems: aws.Int32(1),
+		})
+		return v.handleAWSError(err, "iam:ListUsers")
+
+	default:
+		return Result{
+			Status:       StatusSkipped,
+			ErrorMessage: "Unsupported IAM operation: " + operation,
+		}
+	}
+}
+
+// verifyConfig verifies AWS Config permissions.
+func (v *AWSVerifier) verifyConfig(ctx context.Context, cfg aws.Config, operation string) Result {
+	client := configservice.NewFromConfig(cfg)
+
+	switch operation {
+	case "DescribeComplianceByConfigRule":
+		_, err := client.DescribeComplianceByConfigRule(ctx, &configservice.DescribeComplianceByConfigRuleInput{})
+		return v.handleAWSError(err, "config:DescribeComplianceByConfigRule")
+
+	case "DescribeConfigRules":
+		_, err := client.DescribeConfigRules(ctx, &configservice.DescribeConfigRulesInput{})
+		return v.handleAWSError(err, "config:DescribeConfigRules")
+
+	default:
+		return Result{
+			Status:       StatusSkipped,
+			ErrorMessage: "Unsupported Config operation: " + operation,
+		}
+	}
+}
+
+// verifyRDS verifies RDS permissions.
+func (v *AWSVerifier) verifyRDS(ctx context.Context, cfg aws.Config, operation string) Result {
+	client := rds.NewFromConfig(cfg)
+
+	switch operation {
+	case "DescribeDBInstances":
+		_, err := client.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{
+			MaxRecords: aws.Int32(20),
+		})
+		return v.handleAWSError(err, "rds:DescribeDBInstances")
+
+	default:
+		return Result{
+			Status:       StatusSkipped,
+			ErrorMessage: "Unsupported RDS operation: " + operation,
 		}
 	}
 }

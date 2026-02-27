@@ -543,10 +543,87 @@ func (r *PermissionRegistry) registerAWSIntegrations() {
 			},
 		},
 	})
+
+	// AWS CSPM - Cloud Security Posture Management
+	// Requires the SecurityAudit managed policy. These are representative checks
+	// that confirm the policy is attached.
+	r.register("aws_cspm", ">=0.0.0", IntegrationPermissions{
+		Provider: verifier.ProviderAWS,
+		Permissions: []Permission{
+			{
+				Action:   "iam:GetAccountSummary",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "ec2:DescribeInstances",
+				Required: true,
+				Method:   MethodDryRun,
+				Category: "security_posture",
+			},
+			{
+				Action:   "s3:GetBucketAcl",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "cloudtrail:DescribeTrails",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "config:DescribeComplianceByConfigRule",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+		},
+	})
+
+	// AWS Asset Inventory - Cloud Asset Discovery
+	// Requires the SecurityAudit managed policy. These checks verify access to
+	// the core resource types inventoried by Cloud Asset Discovery.
+	r.register("aws_asset_inventory", ">=0.0.0", IntegrationPermissions{
+		Provider: verifier.ProviderAWS,
+		Permissions: []Permission{
+			{
+				Action:   "ec2:DescribeInstances",
+				Required: true,
+				Method:   MethodDryRun,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "ec2:DescribeSecurityGroups",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "s3:ListAllMyBuckets",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "iam:ListUsers",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "rds:DescribeDBInstances",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+		},
+	})
 }
 
 // registerAzureIntegrations registers all Azure-based integrations.
-// TODO: Implement Azure verifier and add actual permission mappings.
 func (r *PermissionRegistry) registerAzureIntegrations() {
 	// Azure Activity Logs
 	r.register("azure_activitylogs", ">=0.0.0", IntegrationPermissions{
@@ -586,10 +663,73 @@ func (r *PermissionRegistry) registerAzureIntegrations() {
 			},
 		},
 	})
+
+	// Azure CSPM - Cloud Security Posture Management
+	// Requires Reader built-in role + custom role with Microsoft.Web permissions.
+	r.register("azure_cspm", ">=0.0.0", IntegrationPermissions{
+		Provider: verifier.ProviderAzure,
+		Permissions: []Permission{
+			{
+				Action:   "Microsoft.Resources/subscriptions/read",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "Microsoft.Compute/virtualMachines/read",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "Microsoft.Storage/storageAccounts/read",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "Microsoft.Web/sites/config/Read",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+		},
+	})
+
+	// Azure Asset Inventory - Cloud Asset Discovery
+	// Requires Reader built-in role.
+	r.register("azure_asset_inventory", ">=0.0.0", IntegrationPermissions{
+		Provider: verifier.ProviderAzure,
+		Permissions: []Permission{
+			{
+				Action:   "Microsoft.Resources/subscriptions/resources/read",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "Microsoft.Compute/virtualMachines/read",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "Microsoft.Network/networkSecurityGroups/read",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "Microsoft.Storage/storageAccounts/read",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+		},
+	})
 }
 
 // registerGCPIntegrations registers all GCP-based integrations.
-// TODO: Implement GCP verifier and add actual permission mappings.
 func (r *PermissionRegistry) registerGCPIntegrations() {
 	// GCP Audit Logs
 	r.register("gcp_audit", ">=0.0.0", IntegrationPermissions{
@@ -632,6 +772,64 @@ func (r *PermissionRegistry) registerGCPIntegrations() {
 				Required: true,
 				Method:   MethodAPICall,
 				Category: "data_access",
+			},
+		},
+	})
+
+	// GCP CSPM - Cloud Security Posture Management
+	// Requires roles/cloudasset.viewer and roles/browser.
+	r.register("gcp_cspm", ">=0.0.0", IntegrationPermissions{
+		Provider: verifier.ProviderGCP,
+		Permissions: []Permission{
+			{
+				Action:   "cloudasset.assets.searchAllResources",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "resourcemanager.projects.get",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "compute.instances.list",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+			{
+				Action:   "storage.buckets.list",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "security_posture",
+			},
+		},
+	})
+
+	// GCP Asset Inventory - Cloud Asset Discovery
+	// Requires roles/cloudasset.viewer and roles/browser.
+	r.register("gcp_asset_inventory", ">=0.0.0", IntegrationPermissions{
+		Provider: verifier.ProviderGCP,
+		Permissions: []Permission{
+			{
+				Action:   "cloudasset.assets.searchAllResources",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "resourcemanager.projects.get",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
+			},
+			{
+				Action:   "compute.instances.list",
+				Required: true,
+				Method:   MethodAPICall,
+				Category: "asset_inventory",
 			},
 		},
 	})
