@@ -81,7 +81,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 400,
 			}),
-			expectedErr: `rpc error: code = Internal desc = error checking privileges for API Key "id": status: 400, failed: [a_type], reason: a_reason`,
+			expectedErr: `rpc error: code = Internal desc = error checking privileges: status: 400, failed: [a_type], reason: a_reason`,
 		},
 		"auth_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -107,7 +107,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 503,
 			}),
-			expectedErr: "rpc error: code = Internal desc = error checking privileges for API Key \"id\": status: 503, failed: [unavailable], reason: service_unavailable",
+			expectedErr: `rpc error: code = Unavailable desc = failed to check privileges`,
 		},
 		"server_500_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -120,17 +120,17 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 500,
 			}),
-			expectedErr: "rpc error: code = Internal desc = error checking privileges for API Key \"id\": status: 500, failed: [internal_server_error], reason: something broke",
+			expectedErr: "rpc error: code = Internal desc = error checking privileges: status: 500, failed: [internal_server_error], reason: something broke",
 		},
 		"proxy_502_error": {
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadGateway)
 			},
-			expectedErr: "rpc error: code = Unavailable desc = retryable server error for API Key \"id\": EOF",
+			expectedErr: `rpc error: code = Unavailable desc = server error: EOF`,
 		},
 		"missing_privileges": {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
-			expectedErr: `rpc error: code = PermissionDenied desc = API Key "id" unauthorized`,
+			expectedErr: `rpc error: code = PermissionDenied desc = unauthorized`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -222,7 +222,7 @@ func TestAuthenticator_Caching(t *testing.T) {
 	_, err = authenticator.Authenticate(context.Background(), map[string][]string{
 		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id2:secret2"))},
 	})
-	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = API Key "id2" unauthorized`)
+	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = unauthorized`)
 }
 
 func TestAuthenticator_CachingPreservesErrorCode(t *testing.T) {
@@ -272,85 +272,172 @@ func TestAuthenticator_UserAgent(t *testing.T) {
 }
 
 func TestAuthenticator_ErrorWithDetails(t *testing.T) {
-	for name, testcase := range map[string]struct {
-		setup            func(*testing.T) (*authenticator, map[string][]string)
-		expectedCode     codes.Code
-		expectedMsg      string
-		expectedMetadata map[string]string
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		handler      http.HandlerFunc
+		primeAuth    string
+		auth         string
+		wantCode     codes.Code
+		wantMsg      string
+		wantMetadata map[string]string
 	}{
-		"invalid_header": {
-			setup: func(t *testing.T) (*authenticator, map[string][]string) {
-				srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse))
-				authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
-				headers := map[string][]string{
-					"Authorization": {"Bearer invalid"},
-				}
-				return authenticator, headers
-			},
-			expectedCode: codes.Unauthenticated,
-			expectedMsg:  "ApiKey prefix not found, expected ApiKey <value>",
-			expectedMetadata: map[string]string{
-				"component": "apikeyauthextension",
+		{
+			name:     "invalid_header",
+			handler:  newCannedHasPrivilegesHandler(successfulResponse),
+			auth:     "Bearer invalid",
+			wantCode: codes.Unauthenticated,
+			wantMsg:  "ApiKey prefix not found, expected ApiKey <value>",
+			wantMetadata: map[string]string{
+				"component": metadata.Type.String(),
+				"api_key":   "unknown",
 			},
 		},
-		"api_key_collision": {
-			setup: func(t *testing.T) (*authenticator, map[string][]string) {
-				srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(successfulResponse))
-				authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
-				_, err := authenticator.Authenticate(context.Background(), map[string][]string{
-					"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("collision_id:secret1"))},
-				})
-				require.NoError(t, err)
-				// cause collision case
-				headers := map[string][]string{
-					"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("collision_id:secret2"))},
-				}
-				return authenticator, headers
-			},
-			expectedCode: codes.Unauthenticated,
-			expectedMsg:  `API Key "collision_id" unauthorized`,
-			expectedMetadata: map[string]string{
-				"component": "apikeyauthextension",
+		{
+			name:      "api_key_collision",
+			handler:   newCannedHasPrivilegesHandler(successfulResponse),
+			primeAuth: "ApiKey " + base64.StdEncoding.EncodeToString([]byte("collision_id:secret1")),
+			auth:      "ApiKey " + base64.StdEncoding.EncodeToString([]byte("collision_id:secret2")),
+			wantCode:  codes.Unauthenticated,
+			wantMsg:   "unauthorized",
+			wantMetadata: map[string]string{
+				"component": metadata.Type.String(),
 				"api_key":   "collision_id",
 			},
 		},
-		"missing_privileges": {
-			setup: func(t *testing.T) (*authenticator, map[string][]string) {
-				srv := newMockElasticsearch(t, newCannedHasPrivilegesHandler(hasprivileges.Response{
-					Username:        user,
-					HasAllRequested: false,
-				}))
-				authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
-				headers := map[string][]string{
-					"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("no_privs_id:secret"))},
-				}
-				return authenticator, headers
-			},
-			expectedCode: codes.PermissionDenied,
-			expectedMsg:  `API Key "no_privs_id" unauthorized`,
-			expectedMetadata: map[string]string{
-				"component": "apikeyauthextension",
+		{
+			name: "missing_privileges",
+			handler: newCannedHasPrivilegesHandler(hasprivileges.Response{
+				Username:        user,
+				HasAllRequested: false,
+			}),
+			auth:     "ApiKey " + base64.StdEncoding.EncodeToString([]byte("no_privs_id:secret")),
+			wantCode: codes.PermissionDenied,
+			wantMsg:  "unauthorized",
+			wantMetadata: map[string]string{
+				"component": metadata.Type.String(),
 				"api_key":   "no_privs_id",
 			},
 		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			authenticator, headers := testcase.setup(t)
-			_, err := authenticator.Authenticate(context.Background(), headers)
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newMockElasticsearch(t, tc.handler)
+			authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+
+			if tc.primeAuth != "" {
+				_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+					"Authorization": {tc.primeAuth},
+				})
+				require.NoError(t, err)
+			}
+
+			_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {tc.auth},
+			})
 			require.Error(t, err)
 
 			st, ok := status.FromError(err)
-			require.True(t, ok, "Expected gRPC status error")
-			assert.Equal(t, testcase.expectedCode, st.Code())
-			assert.Equal(t, testcase.expectedMsg, st.Message())
+			require.True(t, ok)
+			require.Equal(t, tc.wantCode, st.Code())
+			require.Equal(t, tc.wantMsg, st.Message())
 
 			details := st.Details()
-			require.Len(t, details, 1, "expected 1 errorinfo detail")
+			require.Len(t, details, 1)
 
 			errorInfo, ok := details[0].(*errdetails.ErrorInfo)
-			require.True(t, ok, "expected errorinfo detail")
+			require.True(t, ok)
+			require.Equal(t, "ingest.elastic.co", errorInfo.Domain)
+			require.Equal(t, tc.wantMetadata, errorInfo.Metadata)
+		})
+	}
+}
+
+func TestAuthenticator_RetryInfoDetails(t *testing.T) {
+	t.Parallel()
+
+	retryableHandler := newCannedErrorHandler(types.ElasticsearchError{
+		ErrorCause: types.ErrorCause{
+			Type: "unavailable",
+			Reason: func() *string {
+				reason := "service_unavailable"
+				return &reason
+			}(),
+		},
+		Status: 503,
+	})
+
+	cases := []struct {
+		name           string
+		clientRetry    ClientRetryConfig
+		wantRetryInfo  bool
+		wantRetryDelay time.Duration
+	}{
+		{
+			name: "enabled_includes_retry_info",
+			clientRetry: ClientRetryConfig{
+				Enabled:    true,
+				RetryDelay: 3 * time.Second,
+			},
+			wantRetryInfo:  true,
+			wantRetryDelay: 3 * time.Second,
+		},
+		{
+			name: "disabled_omits_retry_info",
+			clientRetry: ClientRetryConfig{
+				Enabled:    false,
+				RetryDelay: 3 * time.Second,
+			},
+			wantRetryInfo: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newMockElasticsearch(t, retryableHandler)
+
+			cfg := createDefaultConfig().(*Config)
+			cfg.ClientRetry = tc.clientRetry
+			authenticator := newTestAuthenticator(t, srv, cfg)
+
+			_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+			})
+			require.Error(t, err)
+
+			st, ok := status.FromError(err)
+			require.True(t, ok)
+			require.Equal(t, codes.Unavailable, st.Code())
+
+			details := st.Details()
+
+			var (
+				errorInfo *errdetails.ErrorInfo
+				retryInfo *errdetails.RetryInfo
+			)
+			for _, detail := range details {
+				switch v := detail.(type) {
+				case *errdetails.ErrorInfo:
+					errorInfo = v
+				case *errdetails.RetryInfo:
+					retryInfo = v
+				}
+			}
+
+			require.NotNil(t, errorInfo, "expected ErrorInfo details")
 			assert.Equal(t, "ingest.elastic.co", errorInfo.Domain)
-			assert.Equal(t, testcase.expectedMetadata, errorInfo.Metadata)
+			assert.Equal(t, metadata.Type.String(), errorInfo.Metadata["component"])
+			assert.Equal(t, "id", errorInfo.Metadata["api_key"])
+
+			if tc.wantRetryInfo {
+				require.NotNil(t, retryInfo, "expected RetryInfo details")
+				require.NotNil(t, retryInfo.RetryDelay, "expected RetryDelay field")
+				assert.Equal(t, tc.wantRetryDelay, retryInfo.RetryDelay.AsDuration())
+			} else {
+				assert.Nil(t, retryInfo, "did not expect RetryInfo details")
+			}
 		})
 	}
 }
@@ -735,60 +822,105 @@ func TestRetryBackoff(t *testing.T) {
 }
 
 func TestAuthenticator_RetryOnTransientError(t *testing.T) {
-	var calls int
-	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		if calls <= 2 {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
-				ErrorCause: types.ErrorCause{Type: "unavailable"},
-				Status:     503,
+	tests := []struct {
+		name         string
+		configMutate func(*Config)
+	}{
+		{
+			name: "elasticsearch_retry",
+			configMutate: func(cfg *Config) {
+				cfg.ElasticsearchRetry.InitialInterval = time.Millisecond
+				cfg.ElasticsearchRetry.MaxInterval = 10 * time.Millisecond
+			},
+		},
+		{
+			name: "retry_legacy",
+			configMutate: func(cfg *Config) {
+				cfg.Retry.InitialInterval = time.Millisecond
+				cfg.Retry.MaxInterval = 10 * time.Millisecond
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if calls <= 2 {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
+						ErrorCause: types.ErrorCause{Type: "unavailable"},
+						Status:     503,
+					})
+					return
+				}
+				_ = json.NewEncoder(w).Encode(successfulResponse)
 			})
-			return
-		}
-		_ = json.NewEncoder(w).Encode(successfulResponse)
-	})
 
-	config := createDefaultConfig().(*Config)
-	config.Retry.InitialInterval = time.Millisecond
-	config.Retry.MaxInterval = 10 * time.Millisecond
-	authenticator := newTestAuthenticator(t, srv, config)
+			config := createDefaultConfig().(*Config)
+			tc.configMutate(config)
+			authenticator := newTestAuthenticator(t, srv, config)
 
-	ctx, err := authenticator.Authenticate(context.Background(), map[string][]string{
-		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-	})
-	require.NoError(t, err)
-	require.Equal(t, 3, calls)
+			ctx, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+			})
+			require.NoError(t, err)
+			require.Equal(t, 3, calls)
 
-	clientInfo := client.FromContext(ctx)
-	require.NotNil(t, clientInfo.Auth)
-	assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+			clientInfo := client.FromContext(ctx)
+			require.NotNil(t, clientInfo.Auth)
+			assert.Equal(t, user, clientInfo.Auth.GetAttribute("username"))
+		})
+	}
 }
 
 func TestAuthenticator_RetryDisabled(t *testing.T) {
-	var calls int
-	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		w.WriteHeader(http.StatusServiceUnavailable)
-		_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
-			ErrorCause: types.ErrorCause{Type: "unavailable"},
-			Status:     503,
+	tests := []struct {
+		name         string
+		configMutate func(*Config)
+	}{
+		{
+			name: "elasticsearch_retry",
+			configMutate: func(cfg *Config) {
+				cfg.ElasticsearchRetry.Enabled = false
+			},
+		},
+		{
+			name: "retry_legacy",
+			configMutate: func(cfg *Config) {
+				cfg.Retry.Enabled = false
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_ = json.NewEncoder(w).Encode(types.ElasticsearchError{
+					ErrorCause: types.ErrorCause{Type: "unavailable"},
+					Status:     503,
+				})
+			})
+
+			config := createDefaultConfig().(*Config)
+			tc.configMutate(config)
+			authenticator := newTestAuthenticator(t, srv, config)
+
+			_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+			})
+			require.Error(t, err)
+
+			st, ok := status.FromError(err)
+			require.True(t, ok)
+			assert.Equal(t, codes.Unavailable, st.Code())
+			require.Equal(t, 1, calls)
 		})
-	})
-
-	config := createDefaultConfig().(*Config)
-	config.Retry.Enabled = false
-	authenticator := newTestAuthenticator(t, srv, config)
-
-	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
-		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-	})
-	require.Error(t, err)
-
-	st, ok := status.FromError(err)
-	require.True(t, ok)
-	assert.Equal(t, codes.Internal, st.Code())
-	require.Equal(t, 1, calls)
+	}
 }
 
 func BenchmarkAuthenticator(b *testing.B) {
