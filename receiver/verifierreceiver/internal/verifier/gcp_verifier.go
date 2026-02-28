@@ -374,12 +374,19 @@ func (v *GCPVerifier) handleGCPError(err error, endpoint string) Result {
 		}
 	}
 
-	// Check for oauth2 token retrieval errors which indicate auth failure.
 	var tokenErr *oauth2.RetrieveError
 	if errors.As(err, &tokenErr) {
+		if tokenErr.Response != nil && (tokenErr.Response.StatusCode == 401 || tokenErr.Response.StatusCode == 403) {
+			return Result{
+				Status:       StatusDenied,
+				ErrorCode:    "AuthenticationFailed",
+				ErrorMessage: err.Error(),
+				Endpoint:     endpoint,
+			}
+		}
 		return Result{
-			Status:       StatusDenied,
-			ErrorCode:    "AuthenticationFailed",
+			Status:       StatusError,
+			ErrorCode:    "TokenRetrievalError",
 			ErrorMessage: err.Error(),
 			Endpoint:     endpoint,
 		}

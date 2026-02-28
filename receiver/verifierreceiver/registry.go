@@ -835,32 +835,9 @@ func (r *PermissionRegistry) registerGCPIntegrations() {
 	})
 }
 
-// registerOktaIntegrations registers all Okta-based integrations.
-// TODO: Implement Okta verifier and add actual permission mappings.
+// registerOktaIntegrations is a placeholder for Okta-based integrations.
+// Okta entries are intentionally not registered until an Okta verifier
+// factory is implemented and wired in receiver.go. Registering them now
+// would cause VerifierNotInitialized errors at runtime.
 func (r *PermissionRegistry) registerOktaIntegrations() {
-	// Okta System Logs
-	r.register("okta_system", ">=0.0.0", IntegrationPermissions{
-		Provider: verifier.ProviderOkta,
-		Permissions: []Permission{
-			{
-				Action:   "okta.logs.read",
-				Required: true,
-				Method:   MethodAPICall,
-				Category: "data_access",
-			},
-		},
-	})
-
-	// Okta User Events
-	r.register("okta_users", ">=0.0.0", IntegrationPermissions{
-		Provider: verifier.ProviderOkta,
-		Permissions: []Permission{
-			{
-				Action:   "okta.users.read",
-				Required: true,
-				Method:   MethodAPICall,
-				Category: "data_access",
-			},
-		},
-	})
 }

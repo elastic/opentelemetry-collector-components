@@ -18,9 +18,9 @@ The Verifier Receiver is a custom EDOT (Elastic Distribution of OpenTelemetry) c
 
 | Provider | Status | Integrations |
 |----------|--------|--------------|
-| **AWS** | Active | CloudTrail, GuardDuty, Security Hub, S3, EC2, VPC Flow Logs, WAF, Route53, ELB, CloudFront |
-| **Azure** | Planned | Activity Logs, Audit Logs, Blob Storage |
-| **GCP** | Planned | Audit Logs, Cloud Storage, Pub/Sub |
+| **AWS** | Active | CloudTrail, GuardDuty, Security Hub, S3, EC2, VPC Flow Logs, WAF, Route53, ELB, CloudFront, CSPM, Asset Inventory |
+| **Azure** | Active | Activity Logs, Audit Logs, Blob Storage, CSPM, Asset Inventory |
+| **GCP** | Active | Audit Logs, Cloud Storage, Pub/Sub, CSPM, Asset Inventory |
 | **Okta** | Planned | System Logs, User Events |
 
 ## Configuration
@@ -121,7 +121,7 @@ receivers:
 
 *Required when using Cloud Connector authentication. Not required if `use_default_credentials` is `true`.
 
-#### Azure (`providers.azure.credentials`) - Future
+#### Azure (`providers.azure.credentials`)
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
@@ -131,7 +131,7 @@ receivers:
 | `subscription_id` | `string` | No | Azure subscription ID |
 | `use_managed_identity` | `bool` | No | Use Azure Managed Identity |
 
-#### GCP (`providers.gcp.credentials`) - Future
+#### GCP (`providers.gcp.credentials`)
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
@@ -184,7 +184,7 @@ receivers:
 | `aws_elb` | `s3:GetObject`, `s3:ListBucket`, `elasticloadbalancing:DescribeLoadBalancers` |
 | `aws_cloudfront` | `s3:GetObject`, `s3:ListBucket`, `cloudfront:ListDistributions` |
 
-### Azure Integrations (Planned)
+### Azure Integrations
 
 | Integration Type | Permissions Verified |
 |-----------------|---------------------|
@@ -192,7 +192,7 @@ receivers:
 | `azure_auditlogs` | `Microsoft.Insights/eventtypes/values/Read` |
 | `azure_blob_storage` | `Microsoft.Storage/storageAccounts/blobServices/containers/read` |
 
-### GCP Integrations (Planned)
+### GCP Integrations
 
 | Integration Type | Permissions Verified |
 |-----------------|---------------------|

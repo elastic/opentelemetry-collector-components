@@ -25,8 +25,8 @@
 // The receiver uses a registry-based architecture to support multiple
 // cloud and identity providers:
 //   - AWS (active): CloudTrail, GuardDuty, Security Hub, S3, EC2, etc.
-//   - Azure (planned): Activity Logs, Audit Logs, Blob Storage
-//   - GCP (planned): Audit Logs, Cloud Storage, Pub/Sub
+//   - Azure (active): Activity Logs, Audit Logs, Blob Storage, CSPM, Asset Inventory
+//   - GCP (active): Audit Logs, Cloud Storage, Pub/Sub, CSPM, Asset Inventory
 //   - Okta (planned): System Logs, User Events
 //
 // # Architecture

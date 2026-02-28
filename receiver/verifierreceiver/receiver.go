@@ -222,7 +222,17 @@ func (r *verifierReceiver) Shutdown(ctx context.Context) error {
 	if r.cancelFn != nil {
 		r.cancelFn()
 	}
-	r.wg.Wait()
+
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		r.logger.Warn("Shutdown deadline exceeded while waiting for verification to complete")
+	}
 
 	// Close all verifiers
 	if err := r.verifierRegistry.Close(); err != nil {

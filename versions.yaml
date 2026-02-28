@@ -26,4 +26,5 @@ excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension
   - github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor
+  - github.com/elastic/opentelemetry-collector-components/receiver/verifierreceiver
   - github.com/elastic/opentelemetry-collector-components/loadgen

@@ -90,8 +90,12 @@ func NewAWSVerifierFactory() VerifierFactory {
 //
 // Default credentials mode (testing): uses the default AWS credential chain.
 func NewAWSVerifier(ctx context.Context, logger *zap.Logger, authConfig AWSAuthConfig) (*AWSVerifier, error) {
+	transport, _ := http.DefaultTransport.(*http.Transport)
+	if transport == nil {
+		transport = &http.Transport{}
+	}
 	httpClient := &http.Client{
-		Transport: http.DefaultTransport.(*http.Transport).Clone(),
+		Transport: transport.Clone(),
 	}
 
 	baseCfg, err := config.LoadDefaultConfig(ctx,
@@ -539,9 +543,8 @@ func (v *AWSVerifier) verifyCloudWatch(ctx context.Context, cfg aws.Config, oper
 
 	switch operation {
 	case "GetMetricData":
-		// GetMetricData requires metric queries - use ListMetrics as proxy
 		_, err := client.ListMetrics(ctx, &cloudwatch.ListMetricsInput{})
-		return v.handleAWSError(err, "cloudwatch:GetMetricData")
+		return v.handleAWSError(err, "cloudwatch:GetMetricData (verified via ListMetrics - different IAM permission)")
 
 	default:
 		return Result{
@@ -557,11 +560,10 @@ func (v *AWSVerifier) verifySQS(ctx context.Context, cfg aws.Config, operation s
 
 	switch operation {
 	case "ReceiveMessage", "DeleteMessage":
-		// These require a queue URL - use ListQueues as proxy
 		_, err := client.ListQueues(ctx, &sqs.ListQueuesInput{
 			MaxResults: aws.Int32(1),
 		})
-		return v.handleAWSError(err, "sqs:"+operation)
+		return v.handleAWSError(err, "sqs:"+operation+" (verified via ListQueues - different IAM permission)")
 
 	default:
 		return Result{
@@ -891,8 +893,6 @@ func isAccessDeniedError(code string) bool {
 		"Forbidden",
 		"InvalidAccessKeyId",
 		"SignatureDoesNotMatch",
-		"ExpiredToken",
-		"ExpiredTokenException",
 	}
 
 	for _, c := range accessDeniedCodes {

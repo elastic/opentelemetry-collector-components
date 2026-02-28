@@ -397,18 +397,9 @@ func TestPermissionRegistry(t *testing.T) {
 		}
 	})
 
-	t.Run("Okta integrations registered", func(t *testing.T) {
-		oktaIntegrations := []string{
-			"okta_system",
-			"okta_users",
-		}
-
-		for _, integration := range oktaIntegrations {
-			assert.True(t, registry.IsSupported(integration), "expected %s to be supported", integration)
-			perms := registry.GetPermissions(integration, "")
-			require.NotNil(t, perms, "expected permissions for %s", integration)
-			assert.Equal(t, verifier.ProviderOkta, perms.Provider, "expected Okta provider for %s", integration)
-		}
+	t.Run("Okta integrations not registered (no verifier factory yet)", func(t *testing.T) {
+		assert.False(t, registry.IsSupported("okta_system"), "okta_system should not be registered without a verifier factory")
+		assert.False(t, registry.IsSupported("okta_users"), "okta_users should not be registered without a verifier factory")
 	})
 
 	t.Run("supported integrations by provider", func(t *testing.T) {
@@ -416,7 +407,7 @@ func TestPermissionRegistry(t *testing.T) {
 		assert.NotEmpty(t, byProvider[verifier.ProviderAWS])
 		assert.NotEmpty(t, byProvider[verifier.ProviderAzure])
 		assert.NotEmpty(t, byProvider[verifier.ProviderGCP])
-		assert.NotEmpty(t, byProvider[verifier.ProviderOkta])
+		assert.Empty(t, byProvider[verifier.ProviderOkta])
 	})
 
 	// Version-aware permission lookup tests
