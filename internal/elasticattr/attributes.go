@@ -152,31 +152,30 @@ const (
 	ErrorLogStackTrace    = "error.log.stacktrace"
 
 	// Error exception attributes
-	ErrorException                              = "error.exception"
-	ErrorExceptionCodeField                     = "code"
-	ErrorExceptionMessageField                  = "message"
-	ErrorExceptionTypeField                     = "type"
-	ErrorExceptionModuleField                   = "module"
-	ErrorExceptionAttributes                    = "attributes"
-	ErrorExceptionStacktrace                    = "stacktrace"
-	ErrorExceptionParent                        = "parent"
-	ErrorExceptionStacktraceAbsPath             = "abs_path"
-	ErrorExceptionStacktraceFilename            = "filename"
-	ErrorExceptionStacktraceClassname           = "classname"
-	ErrorExceptionStacktraceFunction            = "function"
-	ErrorExceptionStacktraceModule              = "module"
-	ErrorExceptionStacktraceLineNumber          = "line.number"
-	ErrorExceptionStacktraceLineColumn          = "line.column"
-	ErrorExceptionStacktraceLineContext         = "line.context"
-	ErrorExceptionStacktraceContextPre          = "context.pre"
-	ErrorExceptionStacktraceContextPost         = "context.post"
-	ErrorExceptionStacktraceLibraryFrame        = "library_frame"
-	ErrorExceptionStacktraceExcludeFromGrouping = "exclude_from_grouping"
-	ErrorExceptionStacktraceVars                = "vars"
+	ErrorExceptionCodeKey                          = "code"
+	ErrorExceptionMessageKey                       = "message"
+	ErrorExceptionTypeKey                          = "type"
+	ErrorExceptionModuleKey                        = "module"
+	ErrorExceptionAttributesKey                    = "attributes"
+	ErrorExceptionStacktraceKey                    = "stacktrace"
+	ErrorExceptionParentKey                        = "parent"
+	ErrorExceptionStacktraceAbsPathKey             = "abs_path"
+	ErrorExceptionStacktraceFilenameKey            = "filename"
+	ErrorExceptionStacktraceClassnameKey           = "classname"
+	ErrorExceptionStacktraceFunctionKey            = "function"
+	ErrorExceptionStacktraceModuleKey              = "module"
+	ErrorExceptionStacktraceLineNumber             = "line.number"
+	ErrorExceptionStacktraceLineColumnKey          = "line.column"
+	ErrorExceptionStacktraceLineContextKey         = "line.context"
+	ErrorExceptionStacktraceContextPreKey          = "context.pre"
+	ErrorExceptionStacktraceContextPostKey         = "context.post"
+	ErrorExceptionStacktraceLibraryFrameKey        = "library_frame"
+	ErrorExceptionStacktraceExcludeFromGroupingKey = "exclude_from_grouping"
+	ErrorExceptionStacktraceVarsKey                = "vars"
 
-	// ErrorExceptionHandled is used within exception objects (value: "handled")
+	// ErrorExceptionHandledKey is used within exception objects (value: "handled")
 	// For top-level error.exception.handled, use the constant above (value: "error.exception.handled")
-	ErrorExceptionHandledField = "handled"
+	ErrorExceptionHandledKey = "handled"
 
 	// HTTP attributes
 	HTTPVersion                 = "http.version"
@@ -206,6 +205,7 @@ const (
 
 	// Process attributes
 	ProcessThreadName = "process.thread.name"
+	ErrorExceptionKey = "error.exception"
 
 	// Session attributes
 	SessionID       = "session.id"

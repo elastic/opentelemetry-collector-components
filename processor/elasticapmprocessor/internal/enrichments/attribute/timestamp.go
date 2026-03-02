@@ -21,5 +21,5 @@ import "go.opentelemetry.io/collector/pdata/pcommon"
 
 // ToTimestampUS converts a timestamp to microseconds.
 func ToTimestampUS(ts pcommon.Timestamp) int64 {
-	return int64(ts) / 1000
+	return int64(ts / 1000)
 }

@@ -32,7 +32,8 @@ type errorEventContext struct {
 // getErrorEventContext extracts relevant attributes from an error event.
 func getErrorEventContext(attributes pcommon.Map) errorEventContext {
 	ec := errorEventContext{}
-	attributes.Range(func(k string, v pcommon.Value) bool {
+
+	for k, v := range attributes.All() {
 		switch k {
 		case string(semconv.ExceptionTypeKey):
 			ec.exceptionType = v.Str()
@@ -43,7 +44,6 @@ func getErrorEventContext(attributes pcommon.Map) errorEventContext {
 		case string(semconv.ExceptionEscapedKey):
 			ec.exceptionEscaped = v.Bool()
 		}
-		return true
-	})
+	}
 	return ec
 }

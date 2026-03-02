@@ -32,8 +32,8 @@ func NewErrorID() (string, error) {
 	}
 
 	// convert to string
-	buf := make([]byte, 32)
-	hex.Encode(buf, u[:])
+	var buf [32]byte
+	hex.Encode(buf[:], u[:])
 
-	return string(buf), nil
+	return string(buf[:]), nil
 }
