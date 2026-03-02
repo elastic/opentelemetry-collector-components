@@ -18,6 +18,7 @@
 package ecs // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -28,45 +29,8 @@ import (
 
 // Supported ECS resource attributes
 const (
-	ecsAttrServiceLanguageName       = "service.language.name"
-	ecsAttrServiceLanguageVersion    = "service.language.version"
-	ecsAttrServiceFrameworkName      = "service.framework.name"
-	ecsAttrServiceFrameworkVersion   = "service.framework.version"
-	ecsAttrServiceRuntimeName        = "service.runtime.name"
-	ecsAttrServiceRuntimeVersion     = "service.runtime.version"
-	ecsAttrServiceOriginID           = "service.origin.id"
-	ecsAttrServiceOriginName         = "service.origin.name"
-	ecsAttrServiceOriginVersion      = "service.origin.version"
-	ecsAttrServiceTargetName         = "service.target.name"
-	ecsAttrServiceTargetType         = "service.target.type"
-	ecsAttrCloudOriginAccountID      = "cloud.origin.account.id"
-	ecsAttrCloudOriginProvider       = "cloud.origin.provider"
-	ecsAttrCloudOriginRegion         = "cloud.origin.region"
-	ecsAttrCloudOriginServiceName    = "cloud.origin.service.name"
-	ecsAttrCloudAccountName          = "cloud.account.name"
-	ecsAttrCloudInstanceID           = "cloud.instance.id"
-	ecsAttrCloudInstanceName         = "cloud.instance.name"
-	ecsAttrCloudMachineType          = "cloud.machine.type"
-	ecsAttrCloudProjectID            = "cloud.project.id"
-	ecsAttrCloudProjectName          = "cloud.project.name"
-	ecsAttrContainerImageTag         = "container.image.tag"
-	ecsAttrHostOSPlatform            = "host.os.platform"
-	ecsAttrProcessRuntimeName        = "process.runtime.name"
-	ecsAttrProcessRuntimeVersion     = "process.runtime.version"
-	ecsAttrDeviceManufacturer        = "device.manufacturer"
-	ecsAttrDataStreamDataset         = "data_stream.dataset"
-	ecsAttrDataStreamNamespace       = "data_stream.namespace"
-	ecsAttrUserDomain                = "user.domain"
-	ecsAttrSourceNATIP               = "source.nat.ip"
-	ecsAttrDestinationIP             = "destination.ip"
-	ecsAttrFaaSTriggerRequestID      = "faas.trigger.request_id"
-	ecsAttrFaaSExecution             = "faas.execution"
+	keywordLength                    = 1024
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
-	ecsAttrAgentName                 = "agent.name"
-	ecsAttrAgentVersion              = "agent.version"
-	ecsAttrAgentEphemeralID          = "agent.ephemeral_id"
-	ecsAttrAgentActivationMethod     = "agent.activation_method"
-	ecsHostHostname                  = "host.hostname"
 )
 
 // TranslateResourceMetadata normalizes resource attributes.
@@ -85,7 +49,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			}
 		} else if !isSupportedAttribute(k) {
 			// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
-			attributes.PutStr("labels."+sanitizeLabelKey(k), v.AsString())
+			setLabelAttributeValue(attributes, sanitizeLabelKey(k), v)
 			attributes.Remove(k)
 		}
 		return true
@@ -131,6 +95,79 @@ func isLabelAttribute(attr string) bool {
 	return strings.HasPrefix(attr, "labels.") || strings.HasPrefix(attr, "numeric_labels.")
 }
 
+// truncate returns s truncated at n runes, and the number of runes in the resulting string (<= n).
+func truncate(s string) string {
+	var j int
+	for i := range s {
+		if j == keywordLength {
+			return s[:i]
+		}
+		j++
+	}
+	return s
+}
+
+// setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
+// Elasticsearch label mappings only support flat scalar values and
+// homogeneous arrays thereof; Map, Bytes, and empty types cannot be
+// stored and are intentionally dropped. This matches the behaviour of
+// apm-data's setLabel (input/otlp/metadata.go) which also silently
+// ignores these types.
+func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
+	switch value.Type() {
+	case pcommon.ValueTypeStr:
+		attributes.PutStr("labels."+key, truncate(value.Str()))
+	case pcommon.ValueTypeBool:
+		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
+	case pcommon.ValueTypeInt:
+		attributes.PutDouble("numeric_labels."+key, float64(value.Int()))
+	case pcommon.ValueTypeDouble:
+		attributes.PutDouble("numeric_labels."+key, value.Double())
+	case pcommon.ValueTypeSlice:
+		slice := value.Slice()
+		if slice.Len() == 0 {
+			return
+		}
+		switch slice.At(0).Type() {
+		case pcommon.ValueTypeStr:
+			target := attributes.PutEmptySlice("labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeStr {
+					target.AppendEmpty().SetStr(truncate(item.Str()))
+				}
+			}
+		case pcommon.ValueTypeBool:
+			target := attributes.PutEmptySlice("labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeBool {
+					target.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
+				}
+			}
+		case pcommon.ValueTypeDouble:
+			target := attributes.PutEmptySlice("numeric_labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeDouble {
+					target.AppendEmpty().SetDouble(item.Double())
+				}
+			}
+		case pcommon.ValueTypeInt:
+			target := attributes.PutEmptySlice("numeric_labels." + key)
+			for i := 0; i < slice.Len(); i++ {
+				item := slice.At(i)
+				if item.Type() == pcommon.ValueTypeInt {
+					target.AppendEmpty().SetDouble(float64(item.Int()))
+				}
+			}
+		default:
+		}
+	case pcommon.ValueTypeMap, pcommon.ValueTypeBytes, pcommon.ValueTypeEmpty:
+		return
+	}
+}
+
 // isSupportedAttribute returns true if the resource attribute is
 // supported by ECS and can be mapped directly.
 // Supported fields can include OTEL SemConv attributes or ECS specific attributes.
@@ -144,17 +181,17 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ServiceVersionKey),
 		string(semconv.ServiceInstanceIDKey),
 		string(semconv.ServiceNamespaceKey),
-		ecsAttrServiceLanguageName,
-		ecsAttrServiceLanguageVersion,
-		ecsAttrServiceFrameworkName,
-		ecsAttrServiceFrameworkVersion,
-		ecsAttrServiceRuntimeName,
-		ecsAttrServiceRuntimeVersion,
-		ecsAttrServiceOriginID,
-		ecsAttrServiceOriginName,
-		ecsAttrServiceOriginVersion,
-		ecsAttrServiceTargetName,
-		ecsAttrServiceTargetType:
+		elasticattr.ServiceLanguageName,
+		elasticattr.ServiceLanguageVersion,
+		elasticattr.ServiceFrameworkName,
+		elasticattr.ServiceFrameworkVersion,
+		elasticattr.ServiceRuntimeName,
+		elasticattr.ServiceRuntimeVersion,
+		elasticattr.ServiceOriginID,
+		elasticattr.ServiceOriginName,
+		elasticattr.ServiceOriginVersion,
+		elasticattr.ServiceTargetName,
+		elasticattr.ServiceTargetType:
 		return true
 
 	// deployment.*
@@ -164,7 +201,9 @@ func isSupportedAttribute(attr string) bool {
 	// telemetry.sdk.*
 	case string(semconv.TelemetrySDKNameKey),
 		string(semconv.TelemetrySDKVersionKey),
-		string(semconv.TelemetrySDKLanguageKey):
+		string(semconv.TelemetrySDKLanguageKey),
+		string(semconv.TelemetryDistroNameKey),
+		string(semconv.TelemetryDistroVersionKey):
 		return true
 
 	// cloud.*
@@ -173,23 +212,23 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.CloudRegionKey),
 		string(semconv.CloudAvailabilityZoneKey),
 		string(semconv.CloudPlatformKey),
-		ecsAttrCloudOriginAccountID,
-		ecsAttrCloudOriginProvider,
-		ecsAttrCloudOriginRegion,
-		ecsAttrCloudOriginServiceName,
-		ecsAttrCloudAccountName,
-		ecsAttrCloudInstanceID,
-		ecsAttrCloudInstanceName,
-		ecsAttrCloudMachineType,
-		ecsAttrCloudProjectID,
-		ecsAttrCloudProjectName:
+		elasticattr.CloudOriginAccountID,
+		elasticattr.CloudOriginProvider,
+		elasticattr.CloudOriginRegion,
+		elasticattr.CloudOriginServiceName,
+		elasticattr.CloudAccountName,
+		elasticattr.CloudInstanceID,
+		elasticattr.CloudInstanceName,
+		elasticattr.CloudMachineType,
+		elasticattr.CloudProjectID,
+		elasticattr.CloudProjectName:
 		return true
 
 	// container.*
 	case string(semconv.ContainerNameKey),
 		string(semconv.ContainerIDKey),
 		string(semconv.ContainerImageNameKey),
-		ecsAttrContainerImageTag,
+		elasticattr.ContainerImageTag,
 		string(semconv.ContainerImageTagsKey),
 		string(semconv.ContainerRuntimeKey):
 		return true
@@ -203,12 +242,12 @@ func isSupportedAttribute(attr string) bool {
 
 	// host.*
 	case string(semconv.HostNameKey),
-		ecsHostHostname, // legacy hostname key for backwards compatibility
+		elasticattr.HostHostName, // legacy hostname key for backwards compatibility
 		string(semconv.HostIDKey),
 		string(semconv.HostTypeKey),
 		string(semconv.HostArchKey),
 		string(semconv.HostIPKey),
-		ecsAttrHostOSPlatform:
+		elasticattr.HostOSPlatform:
 		return true
 
 	// process.*
@@ -217,8 +256,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ProcessExecutableNameKey),
 		string(semconv.ProcessCommandLineKey),
 		string(semconv.ProcessExecutablePathKey),
-		ecsAttrProcessRuntimeName,
-		ecsAttrProcessRuntimeVersion,
+		elasticattr.ProcessRuntimeName,
+		elasticattr.ProcessRuntimeVersion,
 		string(semconv.ProcessOwnerKey):
 		return true
 
@@ -233,19 +272,19 @@ func isSupportedAttribute(attr string) bool {
 	case string(semconv.DeviceIDKey),
 		string(semconv.DeviceModelIdentifierKey),
 		string(semconv.DeviceModelNameKey),
-		ecsAttrDeviceManufacturer:
+		elasticattr.DeviceManufacturer:
 		return true
 
 	// data_stream.*
-	case ecsAttrDataStreamDataset,
-		ecsAttrDataStreamNamespace:
+	case elasticattr.DataStreamDataset,
+		elasticattr.DataStreamNamespace:
 		return true
 
 	// user.*
 	case string(semconv.UserIDKey),
 		string(semconv.UserEmailKey),
 		string(semconv.UserNameKey),
-		ecsAttrUserDomain:
+		elasticattr.UserDomain:
 		return true
 
 	// user_agent.*
@@ -269,11 +308,11 @@ func isSupportedAttribute(attr string) bool {
 	// source.*
 	case string(semconv.SourceAddressKey),
 		string(semconv.SourcePortKey),
-		ecsAttrSourceNATIP:
+		elasticattr.SourceNATIP:
 		return true
 
 	// destination.*
-	case ecsAttrDestinationIP:
+	case elasticattr.DestinationIP:
 		return true
 
 	// faas.*
@@ -282,8 +321,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.FaaSVersionKey),
 		string(semconv.FaaSTriggerKey),
 		string(semconv.FaaSColdstartKey),
-		ecsAttrFaaSTriggerRequestID,
-		ecsAttrFaaSExecution:
+		elasticattr.FaaSTriggerRequestID,
+		elasticattr.FaaSExecution:
 		return true
 
 	// Legacy OpenCensus attributes
@@ -291,10 +330,10 @@ func isSupportedAttribute(attr string) bool {
 		return true
 
 	// APM Agent enrichment
-	case ecsAttrAgentName,
-		ecsAttrAgentVersion,
-		ecsAttrAgentEphemeralID,
-		ecsAttrAgentActivationMethod:
+	case elasticattr.AgentName,
+		elasticattr.AgentVersion,
+		elasticattr.AgentEphemeralID,
+		elasticattr.AgentActivationMethod:
 		return true
 
 	// Metrics
@@ -321,16 +360,16 @@ func setHostnameFromKubernetes(resource pcommon.Resource) {
 
 	if k8sNodeNameExists && k8sNodeName.Str() != "" {
 		// kubernetes.node.name is set: set host.hostname to its value
-		attrs.PutStr(ecsHostHostname, k8sNodeName.Str())
+		attrs.PutStr(elasticattr.HostHostName, k8sNodeName.Str())
 	} else if (k8sPodNameExists && k8sPodName.Str() != "") ||
 		(k8sPodUIDExists && k8sPodUID.Str() != "") ||
 		(k8sNamespaceExists && k8sNamespace.Str() != "") {
 		// kubernetes.* is set but kubernetes.node.name is not: don't set host.hostname
-		attrs.Remove(ecsHostHostname)
+		attrs.Remove(elasticattr.HostHostName)
 	}
 
 	// If host.name is not set but host.hostname is, use hostname as name
-	hostHostname, hostHostnameExists := attrs.Get(ecsHostHostname)
+	hostHostname, hostHostnameExists := attrs.Get(elasticattr.HostHostName)
 	if (!hostNameExists || hostName.Str() == "") && hostHostnameExists && hostHostname.Str() != "" {
 		attrs.PutStr(string(semconv.HostNameKey), hostHostname.Str())
 	}

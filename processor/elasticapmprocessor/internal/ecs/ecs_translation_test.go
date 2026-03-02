@@ -18,8 +18,11 @@
 package ecs
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
 )
@@ -125,7 +128,7 @@ func TestTranslateResourceMetadata(t *testing.T) {
 
 			v, ok := attrs.Get(tc.wantKey)
 			if !ok {
-				t.Fatalf("expected attribute %q to be present", tc.wantKey)
+				t.Fatalf("expected attribute %q to be present. all attrs %v", tc.wantKey, attrs.AsRaw())
 			}
 			if v.AsString() != tc.inputVal {
 				t.Errorf("attribute %q value = %q, want %q", tc.wantKey, v.AsString(), tc.inputVal)
@@ -139,6 +142,205 @@ func TestTranslateResourceMetadata(t *testing.T) {
 	}
 }
 
+// TestSetLabelAttributeValue verifies that setLabelAttributeValue stores
+// supported value types under the correct labels.* / numeric_labels.* prefix
+// and rejects unsupported types (Map, Bytes, Empty). This matches
+// apm-data's setLabel behaviour (input/otlp/metadata.go).
+func TestSetLabelAttributeValue(t *testing.T) {
+	tests := []struct {
+		name      string
+		key       string
+		value     func() pcommon.Value
+		isUpdated bool
+		wantKey   string // expected destination key; empty when isUpdated is false
+		wantRaw   any    // expected value: string, float64, or []any
+	}{
+		// --- Scalar types ---
+		{
+			name:      "string",
+			key:       "str_key",
+			value:     func() pcommon.Value { return pcommon.NewValueStr("hello") },
+			isUpdated: true,
+			wantKey:   "labels.str_key",
+			wantRaw:   "hello",
+		},
+		{
+			name:      "bool",
+			key:       "bool_key",
+			value:     func() pcommon.Value { return pcommon.NewValueBool(true) },
+			isUpdated: true,
+			wantKey:   "labels.bool_key",
+			wantRaw:   "true",
+		},
+		{
+			name:      "int",
+			key:       "int_key",
+			value:     func() pcommon.Value { return pcommon.NewValueInt(42) },
+			isUpdated: true,
+			wantKey:   "numeric_labels.int_key",
+			wantRaw:   float64(42),
+		},
+		{
+			name:      "double",
+			key:       "double_key",
+			value:     func() pcommon.Value { return pcommon.NewValueDouble(3.14) },
+			isUpdated: true,
+			wantKey:   "numeric_labels.double_key",
+			wantRaw:   3.14,
+		},
+		{
+			name: "string truncated",
+			key:  "long_str_key",
+			value: func() pcommon.Value {
+				// Create a string longer than keywordLength (1024 runes)
+				longStr := strings.Repeat("a", 1025)
+				return pcommon.NewValueStr(longStr)
+			},
+			isUpdated: true,
+			wantKey:   "labels.long_str_key",
+			wantRaw:   strings.Repeat("a", 1024),
+		},
+
+		// --- Homogeneous slice types ---
+		{
+			name: "string slice",
+			key:  "str_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetStr("a")
+				v.Slice().AppendEmpty().SetStr("b")
+				return v
+			},
+			isUpdated: true,
+			wantKey:   "labels.str_slice",
+			wantRaw:   []any{"a", "b"},
+		},
+		{
+			name: "int slice",
+			key:  "int_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetInt(1)
+				v.Slice().AppendEmpty().SetInt(2)
+				return v
+			},
+			isUpdated: true,
+			wantKey:   "numeric_labels.int_slice",
+			wantRaw:   []any{float64(1), float64(2)},
+		},
+		{
+			name: "double slice",
+			key:  "double_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetDouble(1.1)
+				v.Slice().AppendEmpty().SetDouble(2.2)
+				return v
+			},
+			isUpdated: true,
+			wantKey:   "numeric_labels.double_slice",
+			wantRaw:   []any{1.1, 2.2},
+		},
+		{
+			name: "bool slice",
+			key:  "bool_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetBool(true)
+				v.Slice().AppendEmpty().SetBool(false)
+				return v
+			},
+			isUpdated: true,
+			wantKey:   "labels.bool_slice",
+			wantRaw:   []any{"true", "false"},
+		},
+		{
+			name: "string slice with truncated elements",
+			key:  "long_str_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				// Add strings longer than keywordLength (1024 runes)
+				v.Slice().AppendEmpty().SetStr(strings.Repeat("a", 1025))
+				v.Slice().AppendEmpty().SetStr(strings.Repeat("b", 1500))
+				return v
+			},
+			isUpdated: true,
+			wantKey:   "labels.long_str_slice",
+			wantRaw:   []any{strings.Repeat("a", 1024), strings.Repeat("b", 1024)},
+		},
+
+		// --- Unsupported types (should NOT be stored) ---
+		{
+			name:      "empty slice",
+			key:       "empty",
+			value:     func() pcommon.Value { return pcommon.NewValueSlice() },
+			isUpdated: false,
+		},
+		{
+			name: "map",
+			key:  "map_key",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueMap()
+				v.Map().PutStr("nested", "value")
+				return v
+			},
+			isUpdated: false,
+		},
+		{
+			name: "bytes",
+			key:  "bytes_key",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueBytes()
+				v.Bytes().Append(0x01, 0x02)
+				return v
+			},
+			isUpdated: false,
+		},
+		{
+			name:      "empty value",
+			key:       "empty_key",
+			value:     func() pcommon.Value { return pcommon.NewValueEmpty() },
+			isUpdated: false,
+		},
+		{
+			name: "slice with map element",
+			key:  "map_slice",
+			value: func() pcommon.Value {
+				v := pcommon.NewValueSlice()
+				v.Slice().AppendEmpty().SetEmptyMap().PutStr("a", "b")
+				return v
+			},
+			isUpdated: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			setLabelAttributeValue(attrs, tc.key, tc.value())
+
+			if !tc.isUpdated {
+				assert.Equal(t, 0, attrs.Len(), "unsupported type should not add attributes")
+				return
+			}
+			assert.NotEmpty(t, attrs)
+
+			got, exists := attrs.Get(tc.wantKey)
+			assert.True(t, exists, "expected %s to be set", tc.wantKey)
+
+			switch want := tc.wantRaw.(type) {
+			case string:
+				assert.Equal(t, want, got.Str())
+			case float64:
+				assert.InDelta(t, want, got.Double(), 1e-9)
+			case []any:
+				assert.Equal(t, want, got.Slice().AsRaw())
+			default:
+				t.Fatalf("unsupported wantRaw type %T", tc.wantRaw)
+			}
+		})
+	}
+}
 func TestApplyResourceConventions(t *testing.T) {
 	testdata := map[string]struct {
 		inputAttrs    map[string]string
@@ -148,7 +350,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			inputAttrs: map[string]string{
 				string(semconv.K8SNodeNameKey): "node-1",
 				string(semconv.HostNameKey):    "old-host.name",
-				ecsHostHostname:                "old-host.hostname",
+				elasticattr.HostHostName:       "old-host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"k8s.node.name": "node-1",
@@ -160,7 +362,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			inputAttrs: map[string]string{
 				string(semconv.K8SPodUIDKey): "pod-1",
 				string(semconv.HostNameKey):  "old-host.name",
-				ecsHostHostname:              "old-host.hostname",
+				elasticattr.HostHostName:     "old-host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"k8s.pod.uid":   "pod-1",
@@ -172,7 +374,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			inputAttrs: map[string]string{
 				string(semconv.K8SPodNameKey): "pod-name-1",
 				string(semconv.HostNameKey):   "old-host.name",
-				ecsHostHostname:               "old-host.hostname",
+				elasticattr.HostHostName:      "old-host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"k8s.pod.name":  "pod-name-1",
@@ -184,7 +386,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			inputAttrs: map[string]string{
 				string(semconv.K8SNamespaceNameKey): "namespace-1",
 				string(semconv.HostNameKey):         "old-host.name",
-				ecsHostHostname:                     "old-host.hostname",
+				elasticattr.HostHostName:            "old-host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"k8s.namespace.name": "namespace-1",
@@ -194,7 +396,7 @@ func TestApplyResourceConventions(t *testing.T) {
 		},
 		"host.name empty": {
 			inputAttrs: map[string]string{
-				ecsHostHostname: "host.hostname",
+				elasticattr.HostHostName: "host.hostname",
 			},
 			expectedAttrs: map[string]string{
 				"host.name":     "host.hostname",

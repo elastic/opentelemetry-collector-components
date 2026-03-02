@@ -379,7 +379,6 @@ type otelDataPoint interface {
 
 func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestampNanos uint64) {
 	dp.SetTimestamp(pcommon.Timestamp(timestampNanos))
-	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 }
 
@@ -473,7 +472,10 @@ func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.R
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367
 	sum_metric.SetUnit("us")
 	sum_dp := createBreakdownMetricsCommon(sum_metric, event, timestampNanos)
-	sum_dp.SetIntValue(int64(event.GetSpan().GetSelfTime().Sum))
+	// SelfTime.Sum is in nanoseconds. Convert to microseconds to match the metric name (.us)
+	// and apm data logic:
+	// https://github.com/elastic/apm-data/blob/v1.19.5/model/modeljson/internal/metricset.go#L115
+	sum_dp.SetIntValue(int64(event.GetSpan().GetSelfTime().Sum) / 1000)
 
 	count_metric := sm.Metrics().AppendEmpty()
 	count_metric.SetName("span.self_time.count")
@@ -550,7 +552,6 @@ func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	s := ss.Spans().AppendEmpty()
 
 	mappers.SetTopLevelFieldsSpan(event, timestampNanos, s, r.settings.Logger)
-	mappers.SetDerivedFieldsCommon(event, s.Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
 	s.SetKind(mapSpanKind(event.GetSpan().GetKind()))
 	return s
