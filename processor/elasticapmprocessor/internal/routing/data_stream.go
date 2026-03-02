@@ -19,10 +19,12 @@ package routing // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/elastic/apm-data/model/modelprocessor"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
 )
@@ -38,6 +40,12 @@ const (
 	NamespaceDefault = "default" //TODO: make this configurable
 
 	ServiceNameUnknownAttributeUnknonw = "unknown"
+
+	keywordLength = 100
+)
+
+var (
+	serviceNameInvalidRegexp = regexp.MustCompile("[^a-zA-Z0-9_]")
 )
 
 func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceNameInDataset bool) {
@@ -51,9 +59,9 @@ func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceN
 func encodeDataStreamDefault(resource pcommon.Resource, dataStreamType string) {
 	attributes := resource.Attributes()
 
-	attributes.PutStr("data_stream.type", dataStreamType)
-	attributes.PutStr("data_stream.dataset", "apm")
-	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
+	attributes.PutStr(elasticattr.DataStreamDataset, "apm")
+	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
 }
 
 func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType string) {
@@ -64,12 +72,12 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 		serviceName = pcommon.NewValueStr(ServiceNameUnknownAttributeUnknonw)
 	}
 
-	attributes.PutStr("data_stream.type", dataStreamType)
-	attributes.PutStr("data_stream.dataset", "apm.app."+normalizeServiceName(serviceName.Str()))
-	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
+	attributes.PutStr(elasticattr.DataStreamDataset, "apm.app."+normalizeServiceName(serviceName.Str()))
+	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
 }
 
-// The follwing is Copied from apm-data
+// The following is adapted from apm-data
 // https://github.com/elastic/apm-data/blob/46a81347bdbb81a7a308e8d2f58f39c0b1137a77/model/modelprocessor/datastream.go#L186C1-L209C2
 
 // normalizeServiceName translates serviceName into a string suitable
@@ -79,22 +87,14 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 // reserved characters with "_".
 func normalizeServiceName(s string) string {
 	s = strings.ToLower(s)
-	s = strings.Map(replaceReservedRune, s)
+	s = cleanServiceName(s)
 	return s
 }
 
-func replaceReservedRune(r rune) rune {
-	switch r {
-	case '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':':
-		// These characters are not permitted in data stream names
-		// by Elasticsearch.
-		return '_'
-	case '-':
-		// Hyphens are used to separate the data stream type, dataset,
-		// and namespace.
-		return '_'
-	}
-	return r
+// cleanServiceName sanitizes a service name by truncating it to a defined length and replacing invalid characters with "_".
+// see https://github.com/elastic/apm-data/blob/34677210900a68d6204cdb79da4ce0d1ee685d9a/input/otlp/metadata.go#L491
+func cleanServiceName(name string) string {
+	return serviceNameInvalidRegexp.ReplaceAllString(sanitize.Truncate(name, keywordLength), "_")
 }
 
 // IsErrorEvent checks if a log record or span event represents an APM error event.
@@ -123,9 +123,9 @@ func IsErrorEvent(attributes pcommon.Map) bool {
 // Error logs should always be routed to the "apm.error" dataset regardless of service name.
 // Error span events should also be routed to the "apm.error" dataset.
 func EncodeErrorDataStream(attributes pcommon.Map, dataStreamType string) {
-	attributes.PutStr("data_stream.type", dataStreamType)
-	attributes.PutStr("data_stream.dataset", "apm.error")
-	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
+	attributes.PutStr(elasticattr.DataStreamDataset, "apm.error")
+	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
 }
 
 // hasTransactionSpanContext checks if the attributes contain transaction or span context.
@@ -133,21 +133,21 @@ func EncodeErrorDataStream(attributes pcommon.Map, dataStreamType string) {
 // routed to internal metrics data streams.
 func hasTransactionSpanContext(attributes pcommon.Map) bool {
 	// Check for transaction-related attributes
-	if _, ok := attributes.Get("transaction.id"); ok {
+	if _, ok := attributes.Get(elasticattr.TransactionID); ok {
 		return true
 	}
-	if _, ok := attributes.Get("transaction.name"); ok {
+	if _, ok := attributes.Get(elasticattr.TransactionName); ok {
 		return true
 	}
-	if _, ok := attributes.Get("transaction.type"); ok {
+	if _, ok := attributes.Get(elasticattr.TransactionType); ok {
 		return true
 	}
 
 	// Check for span-related attributes
-	if _, ok := attributes.Get("span.id"); ok {
+	if _, ok := attributes.Get(elasticattr.SpanID); ok {
 		return true
 	}
-	if _, ok := attributes.Get("span.name"); ok {
+	if _, ok := attributes.Get(elasticattr.SpanName); ok {
 		return true
 	}
 
@@ -178,16 +178,16 @@ func isServiceSummary(attributes pcommon.Map) bool {
 
 // Using default "apm.internal" data stream
 func internalMetricDataStream(attributes pcommon.Map, dataStreamType string) {
-	attributes.PutStr("data_stream.type", dataStreamType)
-	attributes.PutStr("data_stream.dataset", "apm.internal")
-	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
+	attributes.PutStr(elasticattr.DataStreamDataset, "apm.internal")
+	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
 }
 
 // Data stream formatted as: apm.${metricset.name}.${metricset.interval}
 func internalIntervalMetricDataStream(attributes pcommon.Map, dataStreamType, metricsetName, interval string) {
-	attributes.PutStr("data_stream.type", dataStreamType)
-	attributes.PutStr("data_stream.dataset", fmt.Sprintf("apm.%s.%s", metricsetName, interval))
-	attributes.PutStr("data_stream.namespace", NamespaceDefault)
+	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
+	attributes.PutStr(elasticattr.DataStreamDataset, fmt.Sprintf("apm.%s.%s", metricsetName, interval))
+	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
 }
 
 // EncodeDataStreamMetricDataPoint determines if the metric represents an internal metric

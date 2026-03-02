@@ -35,6 +35,7 @@ const (
 	CloudProjectName       = "cloud.project.name"
 	ContainerImageTag      = "container.image.tag"
 	DeviceManufacturer     = "device.manufacturer"
+	DataStreamType         = "data_stream.type"
 	DataStreamDataset      = "data_stream.dataset"
 	DataStreamNamespace    = "data_stream.namespace"
 	DestinationIP          = "destination.ip"
