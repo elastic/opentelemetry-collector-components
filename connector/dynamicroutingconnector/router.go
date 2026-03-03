@@ -23,7 +23,6 @@ import (
 	"math"
 	"slices"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -42,6 +41,14 @@ import (
 var _ component.Component = (*router[any])(nil)
 
 const defaultCardinalityBucket = "default"
+const maxPkCapacity = 256
+
+// defaultRoutedOpt is a cached MeasurementOption for the default routing path
+// (empty partition key, default bucket) to avoid per-call allocations.
+var defaultRoutedOpt = metric.WithAttributeSet(attribute.NewSet(
+	attribute.String("cardinality_bucket", defaultCardinalityBucket),
+	attribute.String("partition_key", ""),
+))
 
 // consumerProvider is a function with a type parameter C (expected to be one
 // of consumer.Traces, consumer.Metrics, or Consumer.Logs). returns a
@@ -203,37 +210,17 @@ func (r *router[C]) Process(ctx context.Context) C {
 
 func (r *router[C]) estimateCardinality(ctx context.Context) string {
 	clientMeta := client.FromContext(ctx).Metadata
-	var pkb strings.Builder
+	pkb := make([]byte, 0, maxPkCapacity)
 	for _, k := range r.partitionKeys {
 		vs := clientMeta.Get(k)
 		if len(vs) == 0 {
 			continue
 		}
 		for _, v := range vs {
-			if _, err := pkb.WriteString(v); err != nil {
-				r.logger.Error(
-					"unexpected failure on concatenating primary metadata keys",
-					zap.Error(err),
-					zap.String("partition_key", k),
-					zap.String("value", v),
-				)
-			}
-			if err := pkb.WriteByte(':'); err != nil {
-				r.logger.Error(
-					"unexpected failure on concatenating primary metadata keys",
-					zap.Error(err),
-					zap.String("partition_key", k),
-					zap.String("value", v),
-				)
-			}
+			pkb = append(pkb, v...)
+			pkb = append(pkb, ':')
 		}
-		if err := pkb.WriteByte(';'); err != nil {
-			r.logger.Error(
-				"unexpected failure on concatenating primary metadata keys",
-				zap.Error(err),
-				zap.String("partition_key", k),
-			)
-		}
+		pkb = append(pkb, ';')
 	}
 
 	var hash xxhash.Digest
@@ -273,7 +260,8 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 		}
 	}
 
-	pk := pkb.String()
+	pk := string(pkb)
+	hashSum := hash.Sum64()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -283,16 +271,15 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 		hll = hyperloglog.New()
 		r.m[pk] = hll
 	}
-	hll.InsertHash(hash.Sum64())
+	hll.InsertHash(hashSum)
 	return pk
 }
 
 func (r *router[C]) getNextConsumer(pk string) (C, string) {
 	if pk == "" {
-		r.logger.Debug(
-			"returning default consumer due to empty primary key",
-			zap.String("primary_key", pk),
-		)
+		if ce := r.logger.Check(zap.DebugLevel, "returning default consumer due to empty primary key"); ce != nil {
+			ce.Write(zap.String("primary_key", pk))
+		}
 		return r.defaultConsumer, defaultCardinalityBucket
 	}
 
@@ -301,17 +288,14 @@ func (r *router[C]) getNextConsumer(pk string) (C, string) {
 
 	next, ok := r.decision[pk]
 	if !ok {
-		r.logger.Debug(
-			"returning default consumer due to missing decision",
-			zap.String("primary_key", pk),
-		)
+		if ce := r.logger.Check(zap.DebugLevel, "returning default consumer due to missing decision"); ce != nil {
+			ce.Write(zap.String("primary_key", pk))
+		}
 		return r.defaultConsumer, defaultCardinalityBucket
 	}
-	r.logger.Debug(
-		"returning non-default consumer",
-		zap.String("primary_key", pk),
-		zap.Float64("max_count", next.maxCount),
-	)
+	if ce := r.logger.Check(zap.DebugLevel, "returning non-default consumer"); ce != nil {
+		ce.Write(zap.String("primary_key", pk), zap.Float64("max_count", next.maxCount))
+	}
 	return next.consumer, next.cardinalityBucket
 }
 
@@ -341,6 +325,10 @@ func (r *router[C]) updateDecisions() {
 
 func (r *router[C]) recordRoutedMetric(ctx context.Context, pk string, bucket string) {
 	if r.telemetryBuilder == nil {
+		return
+	}
+	if pk == "" && bucket == defaultCardinalityBucket {
+		r.telemetryBuilder.DynamicroutingRouted.Add(ctx, 1, defaultRoutedOpt)
 		return
 	}
 	r.telemetryBuilder.DynamicroutingRouted.Add(
