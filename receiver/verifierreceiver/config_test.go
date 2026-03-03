@@ -39,6 +39,7 @@ func TestConfig_Validate(t *testing.T) {
 				CloudConnectorName: "Production Connector",
 				VerificationID:     "verify-abc123",
 				VerificationType:   "on_demand",
+				AccountType:        "single_account",
 				Providers: ProvidersConfig{
 					AWS: AWSProviderConfig{
 						Credentials: AWSCredentials{
@@ -54,9 +55,10 @@ func TestConfig_Validate(t *testing.T) {
 						PolicyName: "AWS Security Monitoring",
 						Integrations: []IntegrationConfig{
 							{
-								IntegrationID:   "int-cloudtrail-001",
-								IntegrationType: "aws_cloudtrail",
-								IntegrationName: "AWS CloudTrail",
+								PolicyTemplate:  "cloudtrail",
+								PackageName:     "aws",
+								PackagePolicyID: "pp-cloudtrail-001",
+								PackageTitle:    "AWS",
 							},
 						},
 					},
@@ -65,7 +67,7 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: "",
 		},
 		{
-			name: "valid config with integration version",
+			name: "valid config with package version",
 			config: Config{
 				CloudConnectorID: "cc-12345",
 				VerificationID:   "verify-abc123",
@@ -74,8 +76,9 @@ func TestConfig_Validate(t *testing.T) {
 						PolicyID: "policy-1",
 						Integrations: []IntegrationConfig{
 							{
-								IntegrationType:    "aws_cloudtrail",
-								IntegrationVersion: "2.17.0",
+								PolicyTemplate: "cloudtrail",
+								PackageName:    "aws",
+								PackageVersion: "2.17.0",
 							},
 						},
 					},
@@ -92,7 +95,7 @@ func TestConfig_Validate(t *testing.T) {
 					{
 						PolicyID: "policy-1",
 						Integrations: []IntegrationConfig{
-							{IntegrationType: "okta_system"},
+							{PolicyTemplate: "system", PackageName: "okta"},
 						},
 					},
 				},
@@ -108,14 +111,13 @@ func TestConfig_Validate(t *testing.T) {
 					{
 						PolicyID: "policy-1",
 						Integrations: []IntegrationConfig{
-							{IntegrationType: "aws_cloudtrail"},
+							{PolicyTemplate: "cloudtrail", PackageName: "aws"},
 						},
 					},
 				},
 			},
 			wantErr: "",
 		},
-		// Note: Provider credentials validation is handled by their respective Validate() methods.
 		{
 			name: "invalid config - missing cloud_connector_id",
 			config: Config{
@@ -124,7 +126,7 @@ func TestConfig_Validate(t *testing.T) {
 					{
 						PolicyID: "policy-1",
 						Integrations: []IntegrationConfig{
-							{IntegrationType: "aws_cloudtrail"},
+							{PolicyTemplate: "cloudtrail", PackageName: "aws"},
 						},
 					},
 				},
@@ -139,7 +141,7 @@ func TestConfig_Validate(t *testing.T) {
 					{
 						PolicyID: "policy-1",
 						Integrations: []IntegrationConfig{
-							{IntegrationType: "aws_cloudtrail"},
+							{PolicyTemplate: "cloudtrail", PackageName: "aws"},
 						},
 					},
 				},
@@ -163,7 +165,7 @@ func TestConfig_Validate(t *testing.T) {
 				Policies: []PolicyConfig{
 					{
 						Integrations: []IntegrationConfig{
-							{IntegrationType: "aws_cloudtrail"},
+							{PolicyTemplate: "cloudtrail", PackageName: "aws"},
 						},
 					},
 				},
@@ -185,7 +187,7 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: "policies[0]: at least one integration must be specified",
 		},
 		{
-			name: "invalid config - integration without type",
+			name: "invalid config - integration without policy_template",
 			config: Config{
 				CloudConnectorID: "cc-12345",
 				VerificationID:   "verify-abc123",
@@ -193,12 +195,28 @@ func TestConfig_Validate(t *testing.T) {
 					{
 						PolicyID: "policy-1",
 						Integrations: []IntegrationConfig{
-							{IntegrationName: "Some Integration"},
+							{PackageName: "aws"},
 						},
 					},
 				},
 			},
-			wantErr: "policies[0].integrations[0]: integration_type must be specified",
+			wantErr: "policies[0].integrations[0]: policy_template must be specified",
+		},
+		{
+			name: "invalid config - integration without package_name",
+			config: Config{
+				CloudConnectorID: "cc-12345",
+				VerificationID:   "verify-abc123",
+				Policies: []PolicyConfig{
+					{
+						PolicyID: "policy-1",
+						Integrations: []IntegrationConfig{
+							{PolicyTemplate: "cloudtrail"},
+						},
+					},
+				},
+			},
+			wantErr: "policies[0].integrations[0]: package_name must be specified",
 		},
 	}
 
@@ -327,53 +345,73 @@ func TestAWSCredentials_IsConfigured(t *testing.T) {
 	}
 }
 
-func TestGetProviderForIntegration(t *testing.T) {
+func TestGetProviderForPackage(t *testing.T) {
 	tests := []struct {
-		name            string
-		integrationType string
-		want            verifier.ProviderType
+		name        string
+		packageName string
+		want        verifier.ProviderType
 	}{
 		{
-			name:            "AWS CloudTrail",
-			integrationType: "aws_cloudtrail",
-			want:            verifier.ProviderAWS,
+			name:        "AWS",
+			packageName: "aws",
+			want:        verifier.ProviderAWS,
 		},
 		{
-			name:            "AWS GuardDuty",
-			integrationType: "aws_guardduty",
-			want:            verifier.ProviderAWS,
+			name:        "Azure",
+			packageName: "azure",
+			want:        verifier.ProviderAzure,
 		},
 		{
-			name:            "Azure Activity Logs",
-			integrationType: "azure_activitylogs",
-			want:            verifier.ProviderAzure,
+			name:        "GCP",
+			packageName: "gcp",
+			want:        verifier.ProviderGCP,
 		},
 		{
-			name:            "GCP Audit",
-			integrationType: "gcp_audit",
-			want:            verifier.ProviderGCP,
+			name:        "Okta",
+			packageName: "okta",
+			want:        verifier.ProviderOkta,
 		},
 		{
-			name:            "Okta System",
-			integrationType: "okta_system",
-			want:            verifier.ProviderOkta,
-		},
-		{
-			name:            "Okta bare prefix does not match",
-			integrationType: "okta",
-			want:            "",
-		},
-		{
-			name:            "Unknown",
-			integrationType: "unknown_integration",
-			want:            "",
+			name:        "Unknown",
+			packageName: "unknown",
+			want:        "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := GetProviderForIntegration(tt.integrationType)
+			got := GetProviderForPackage(tt.packageName)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestIntegrationConfig_IntegrationType(t *testing.T) {
+	tests := []struct {
+		name           string
+		config         IntegrationConfig
+		wantType       string
+	}{
+		{
+			name:     "AWS CloudTrail",
+			config:   IntegrationConfig{PackageName: "aws", PolicyTemplate: "cloudtrail"},
+			wantType: "aws_cloudtrail",
+		},
+		{
+			name:     "Azure Activity Logs",
+			config:   IntegrationConfig{PackageName: "azure", PolicyTemplate: "activitylogs"},
+			wantType: "azure_activitylogs",
+		},
+		{
+			name:     "GCP Audit",
+			config:   IntegrationConfig{PackageName: "gcp", PolicyTemplate: "audit"},
+			wantType: "gcp_audit",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.wantType, tt.config.IntegrationType())
 		})
 	}
 }

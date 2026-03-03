@@ -52,9 +52,10 @@ func TestReceiver_StartShutdown(t *testing.T) {
 				PolicyName: "AWS Security Monitoring",
 				Integrations: []IntegrationConfig{
 					{
-						IntegrationID:   "int-cloudtrail-001",
-						IntegrationType: "aws_cloudtrail",
-						IntegrationName: "AWS CloudTrail",
+						PolicyTemplate:  "cloudtrail",
+						PackageName:     "aws",
+						PackagePolicyID: "pp-cloudtrail-001",
+						PackageTitle:    "AWS",
 						Config: map[string]interface{}{
 							"account_id": "123456789012",
 							"region":     "us-east-1",
@@ -141,10 +142,14 @@ func TestReceiver_StartShutdown(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "policy-1", policyID.Str())
 
-	// Integration context
-	integrationType, ok := record.Attributes().Get("integration.type")
+	// Integration context (Fleet package metadata)
+	policyTemplate, ok := record.Attributes().Get("policy_template")
 	require.True(t, ok)
-	assert.Equal(t, "aws_cloudtrail", integrationType.Str())
+	assert.Equal(t, "cloudtrail", policyTemplate.Str())
+
+	packageName, ok := record.Attributes().Get("package.name")
+	require.True(t, ok)
+	assert.Equal(t, "aws", packageName.Str())
 
 	// Provider context
 	providerType, ok := record.Attributes().Get("provider.type")
@@ -167,8 +172,9 @@ func TestReceiver_WithoutAWSCredentials(t *testing.T) {
 				PolicyID: "policy-1",
 				Integrations: []IntegrationConfig{
 					{
-						IntegrationType: "aws_cloudtrail",
-						IntegrationName: "CloudTrail",
+						PolicyTemplate: "cloudtrail",
+						PackageName:    "aws",
+						PackageTitle:   "AWS",
 					},
 				},
 			},
@@ -229,8 +235,9 @@ func TestReceiver_UnsupportedIntegration(t *testing.T) {
 				PolicyID: "policy-1",
 				Integrations: []IntegrationConfig{
 					{
-						IntegrationType: "unknown_integration",
-						IntegrationName: "Unknown Integration",
+						PolicyTemplate: "unknown",
+						PackageName:    "unknown",
+						PackageTitle:   "Unknown Integration",
 					},
 				},
 			},
@@ -287,15 +294,15 @@ func TestReceiver_MultipleIntegrations(t *testing.T) {
 				PolicyID:   "policy-1",
 				PolicyName: "AWS Security",
 				Integrations: []IntegrationConfig{
-					{IntegrationType: "aws_cloudtrail"},
-					{IntegrationType: "aws_guardduty"},
+					{PolicyTemplate: "cloudtrail", PackageName: "aws"},
+					{PolicyTemplate: "guardduty", PackageName: "aws"},
 				},
 			},
 			{
 				PolicyID:   "policy-2",
 				PolicyName: "AWS Storage",
 				Integrations: []IntegrationConfig{
-					{IntegrationType: "aws_s3"},
+					{PolicyTemplate: "s3", PackageName: "aws"},
 				},
 			},
 		},
@@ -324,25 +331,391 @@ func TestReceiver_MultipleIntegrations(t *testing.T) {
 	logRecords := logs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
 	assert.GreaterOrEqual(t, logRecords.Len(), 10, "expected log records for all integration permissions")
 
-	// Collect unique policy IDs and integration types
+	// Collect unique policy IDs and policy templates
 	policyIDs := make(map[string]bool)
-	integrationTypes := make(map[string]bool)
+	policyTemplates := make(map[string]bool)
 
 	for i := 0; i < logRecords.Len(); i++ {
 		record := logRecords.At(i)
 		if policyID, ok := record.Attributes().Get("policy.id"); ok {
 			policyIDs[policyID.Str()] = true
 		}
-		if intType, ok := record.Attributes().Get("integration.type"); ok {
-			integrationTypes[intType.Str()] = true
+		if tmpl, ok := record.Attributes().Get("policy_template"); ok {
+			policyTemplates[tmpl.Str()] = true
 		}
 	}
 
 	assert.True(t, policyIDs["policy-1"])
 	assert.True(t, policyIDs["policy-2"])
-	assert.True(t, integrationTypes["aws_cloudtrail"])
-	assert.True(t, integrationTypes["aws_guardduty"])
-	assert.True(t, integrationTypes["aws_s3"])
+	assert.True(t, policyTemplates["cloudtrail"])
+	assert.True(t, policyTemplates["guardduty"])
+	assert.True(t, policyTemplates["s3"])
+}
+
+func TestReceiver_AzureIntegrations(t *testing.T) {
+	config := &Config{
+		CloudConnectorID:   "cc-azure-001",
+		CloudConnectorName: "Azure Connector",
+		Namespace:          "staging",
+		AccountType:        "single_account",
+		VerificationID:     "verify-azure-001",
+		VerificationType:   "on_demand",
+		Providers: ProvidersConfig{
+			Azure: AzureProviderConfig{
+				Credentials: AzureCredentials{
+					TenantID:       "00000000-0000-0000-0000-000000000000",
+					ClientID:       "11111111-1111-1111-1111-111111111111",
+					SubscriptionID: "22222222-2222-2222-2222-222222222222",
+				},
+			},
+		},
+		Policies: []PolicyConfig{
+			{
+				PolicyID:   "policy-azure-1",
+				PolicyName: "Azure Activity Monitoring",
+				Integrations: []IntegrationConfig{
+					{
+						PolicyTemplate:  "activitylogs",
+						PackageName:     "azure",
+						PackagePolicyID: "pp-activitylogs-001",
+						PackageTitle:    "Azure",
+						PackageVersion:  "1.5.0",
+					},
+					{
+						PolicyTemplate: "auditlogs",
+						PackageName:    "azure",
+						PackageTitle:   "Azure",
+					},
+				},
+			},
+		},
+	}
+
+	consumer := &consumertest.LogsSink{}
+	rcvr := newVerifierReceiver(
+		receivertest.NewNopSettings(metadata.Type),
+		config,
+		consumer,
+	)
+
+	ctx := context.Background()
+	err := rcvr.Start(ctx, nil)
+	require.NoError(t, err)
+
+	<-rcvr.done
+
+	err = rcvr.Shutdown(ctx)
+	require.NoError(t, err)
+
+	logs := consumer.AllLogs()
+	require.NotEmpty(t, logs)
+
+	resourceLog := logs[0].ResourceLogs().At(0)
+
+	// Verify resource-level attributes
+	attrs := resourceLog.Resource().Attributes()
+	ccID, ok := attrs.Get("cloud_connector.id")
+	require.True(t, ok)
+	assert.Equal(t, "cc-azure-001", ccID.Str())
+
+	ns, ok := attrs.Get("cloud_connector.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "staging", ns.Str())
+
+	dsNs, ok := attrs.Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "staging", dsNs.Str())
+
+	// Verify log records contain Azure integrations
+	logRecords := resourceLog.ScopeLogs().At(0).LogRecords()
+	assert.GreaterOrEqual(t, logRecords.Len(), 1)
+
+	policyTemplates := make(map[string]bool)
+	for i := 0; i < logRecords.Len(); i++ {
+		record := logRecords.At(i)
+
+		// Every record should have azure as package name
+		pkgName, ok := record.Attributes().Get("package.name")
+		require.True(t, ok)
+		assert.Equal(t, "azure", pkgName.Str())
+
+		// Every record should have provider.type = azure
+		provType, ok := record.Attributes().Get("provider.type")
+		require.True(t, ok)
+		assert.Equal(t, "azure", provType.Str())
+
+		// account_type should be set from top-level config
+		accType, ok := record.Attributes().Get("account_type")
+		require.True(t, ok)
+		assert.Equal(t, "single_account", accType.Str())
+
+		// verification.verified_at should be present
+		_, ok = record.Attributes().Get("verification.verified_at")
+		assert.True(t, ok, "verification.verified_at should be present")
+
+		if tmpl, ok := record.Attributes().Get("policy_template"); ok {
+			policyTemplates[tmpl.Str()] = true
+		}
+	}
+
+	assert.True(t, policyTemplates["activitylogs"], "expected activitylogs policy_template")
+	assert.True(t, policyTemplates["auditlogs"], "expected auditlogs policy_template")
+}
+
+func TestReceiver_GCPIntegrations(t *testing.T) {
+	config := &Config{
+		CloudConnectorID:   "cc-gcp-001",
+		CloudConnectorName: "GCP Connector",
+		Namespace:          "production",
+		AccountType:        "single_account",
+		VerificationID:     "verify-gcp-001",
+		VerificationType:   "scheduled",
+		Providers: ProvidersConfig{
+			GCP: GCPProviderConfig{
+				Credentials: GCPCredentials{
+					ProjectID:                "my-gcp-project-123",
+					WorkloadIdentityProvider: "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/providers/provider",
+					ServiceAccountEmail:      "verifier@my-gcp-project-123.iam.gserviceaccount.com",
+				},
+			},
+		},
+		Policies: []PolicyConfig{
+			{
+				PolicyID:   "policy-gcp-1",
+				PolicyName: "GCP Audit Monitoring",
+				Integrations: []IntegrationConfig{
+					{
+						PolicyTemplate:  "audit",
+						PackageName:     "gcp",
+						PackagePolicyID: "pp-audit-001",
+						PackageTitle:    "GCP",
+						PackageVersion:  "1.2.0",
+					},
+					{
+						PolicyTemplate: "pubsub",
+						PackageName:    "gcp",
+						PackageTitle:   "GCP",
+					},
+					{
+						PolicyTemplate: "storage",
+						PackageName:    "gcp",
+						PackageTitle:   "GCP",
+					},
+				},
+			},
+		},
+	}
+
+	consumer := &consumertest.LogsSink{}
+	rcvr := newVerifierReceiver(
+		receivertest.NewNopSettings(metadata.Type),
+		config,
+		consumer,
+	)
+
+	ctx := context.Background()
+	err := rcvr.Start(ctx, nil)
+	require.NoError(t, err)
+
+	<-rcvr.done
+
+	err = rcvr.Shutdown(ctx)
+	require.NoError(t, err)
+
+	logs := consumer.AllLogs()
+	require.NotEmpty(t, logs)
+
+	resourceLog := logs[0].ResourceLogs().At(0)
+
+	// Verify namespace propagation
+	attrs := resourceLog.Resource().Attributes()
+	ns, ok := attrs.Get("cloud_connector.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "production", ns.Str())
+
+	// Verify verification type
+	vType, ok := attrs.Get("verification.type")
+	require.True(t, ok)
+	assert.Equal(t, "scheduled", vType.Str())
+
+	logRecords := resourceLog.ScopeLogs().At(0).LogRecords()
+	assert.GreaterOrEqual(t, logRecords.Len(), 1)
+
+	policyTemplates := make(map[string]bool)
+	for i := 0; i < logRecords.Len(); i++ {
+		record := logRecords.At(i)
+
+		pkgName, ok := record.Attributes().Get("package.name")
+		require.True(t, ok)
+		assert.Equal(t, "gcp", pkgName.Str())
+
+		provType, ok := record.Attributes().Get("provider.type")
+		require.True(t, ok)
+		assert.Equal(t, "gcp", provType.Str())
+
+		if tmpl, ok := record.Attributes().Get("policy_template"); ok {
+			policyTemplates[tmpl.Str()] = true
+		}
+	}
+
+	assert.True(t, policyTemplates["audit"], "expected audit policy_template")
+	assert.True(t, policyTemplates["pubsub"], "expected pubsub policy_template")
+	assert.True(t, policyTemplates["storage"], "expected storage policy_template")
+}
+
+func TestReceiver_MultiProviderIntegrations(t *testing.T) {
+	config := &Config{
+		CloudConnectorID:   "cc-multi-001",
+		CloudConnectorName: "Multi-Cloud Connector",
+		Namespace:          "default",
+		AccountType:        "organization",
+		VerificationID:     "verify-multi-001",
+		VerificationType:   "on_demand",
+		Providers: ProvidersConfig{
+			AWS: AWSProviderConfig{
+				Credentials: AWSCredentials{
+					RoleARN:       "arn:aws:iam::123456789012:role/ElasticAgentRole",
+					ExternalID:    "elastic-test-external-id",
+					DefaultRegion: "us-east-1",
+				},
+			},
+			Azure: AzureProviderConfig{
+				Credentials: AzureCredentials{
+					TenantID: "tenant-001",
+					ClientID: "client-001",
+				},
+			},
+			GCP: GCPProviderConfig{
+				Credentials: GCPCredentials{
+					ProjectID:                "project-001",
+					WorkloadIdentityProvider: "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/pool/providers/provider",
+				},
+			},
+		},
+		Policies: []PolicyConfig{
+			{
+				PolicyID:   "policy-aws",
+				PolicyName: "AWS Security",
+				Integrations: []IntegrationConfig{
+					{
+						PolicyTemplate:  "cloudtrail",
+						PackageName:     "aws",
+						PackagePolicyID: "pp-ct-001",
+						PackageTitle:    "AWS",
+						PackageVersion:  "2.17.0",
+					},
+				},
+			},
+			{
+				PolicyID:   "policy-azure",
+				PolicyName: "Azure Monitoring",
+				Integrations: []IntegrationConfig{
+					{
+						PolicyTemplate:  "activitylogs",
+						PackageName:     "azure",
+						PackagePolicyID: "pp-al-001",
+						PackageTitle:    "Azure",
+					},
+				},
+			},
+			{
+				PolicyID:   "policy-gcp",
+				PolicyName: "GCP Audit",
+				Integrations: []IntegrationConfig{
+					{
+						PolicyTemplate:  "audit",
+						PackageName:     "gcp",
+						PackagePolicyID: "pp-ga-001",
+						PackageTitle:    "GCP",
+					},
+				},
+			},
+		},
+	}
+
+	consumer := &consumertest.LogsSink{}
+	rcvr := newVerifierReceiver(
+		receivertest.NewNopSettings(metadata.Type),
+		config,
+		consumer,
+	)
+
+	ctx := context.Background()
+	err := rcvr.Start(ctx, nil)
+	require.NoError(t, err)
+
+	<-rcvr.done
+
+	err = rcvr.Shutdown(ctx)
+	require.NoError(t, err)
+
+	logs := consumer.AllLogs()
+	require.NotEmpty(t, logs)
+
+	logRecords := logs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+	assert.GreaterOrEqual(t, logRecords.Len(), 3, "expected at least one record per provider")
+
+	// Collect providers, policy templates, and policy IDs seen across all records
+	providers := make(map[string]bool)
+	policyTemplates := make(map[string]bool)
+	policyIDs := make(map[string]bool)
+	packageNames := make(map[string]bool)
+
+	for i := 0; i < logRecords.Len(); i++ {
+		record := logRecords.At(i)
+
+		if prov, ok := record.Attributes().Get("provider.type"); ok {
+			providers[prov.Str()] = true
+		}
+		if tmpl, ok := record.Attributes().Get("policy_template"); ok {
+			policyTemplates[tmpl.Str()] = true
+		}
+		if pid, ok := record.Attributes().Get("policy.id"); ok {
+			policyIDs[pid.Str()] = true
+		}
+		if pkg, ok := record.Attributes().Get("package.name"); ok {
+			packageNames[pkg.Str()] = true
+		}
+
+		// All records should have account_type = organization
+		accType, ok := record.Attributes().Get("account_type")
+		require.True(t, ok)
+		assert.Equal(t, "organization", accType.Str())
+
+		// All records should have verification.verified_at
+		_, ok = record.Attributes().Get("verification.verified_at")
+		assert.True(t, ok)
+	}
+
+	// Verify all three providers were covered
+	assert.True(t, providers["aws"], "expected aws provider")
+	assert.True(t, providers["azure"], "expected azure provider")
+	assert.True(t, providers["gcp"], "expected gcp provider")
+
+	// Verify all three package names
+	assert.True(t, packageNames["aws"])
+	assert.True(t, packageNames["azure"])
+	assert.True(t, packageNames["gcp"])
+
+	// Verify all three policy templates
+	assert.True(t, policyTemplates["cloudtrail"])
+	assert.True(t, policyTemplates["activitylogs"])
+	assert.True(t, policyTemplates["audit"])
+
+	// Verify all three policies
+	assert.True(t, policyIDs["policy-aws"])
+	assert.True(t, policyIDs["policy-azure"])
+	assert.True(t, policyIDs["policy-gcp"])
+
+	// Verify resource-level attributes
+	resourceAttrs := logs[0].ResourceLogs().At(0).Resource().Attributes()
+	ns, ok := resourceAttrs.Get("cloud_connector.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "default", ns.Str())
+
+	dsNs, ok := resourceAttrs.Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "default", dsNs.Str())
 }
 
 func TestPermissionRegistry(t *testing.T) {

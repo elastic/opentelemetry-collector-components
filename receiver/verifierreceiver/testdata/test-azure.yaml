@@ -10,6 +10,8 @@ receivers:
   verifier:
     cloud_connector_id: "cc-test-azure"
     cloud_connector_name: "Azure Test"
+    namespace: "default"
+    account_type: "single_account"
     verification_id: "verify-azure-001"
     verification_type: "on_demand"
 
@@ -23,18 +25,22 @@ receivers:
       - policy_id: "policy-azure-security"
         policy_name: "Azure Security"
         integrations:
-          - integration_id: "azure-activity-001"
-            integration_type: "azure_activitylogs"
-            integration_name: "Azure Activity Logs"
-          - integration_id: "azure-cspm-001"
-            integration_type: "azure_cspm"
-            integration_name: "Azure CSPM"
-          - integration_id: "azure-asset-001"
-            integration_type: "azure_asset_inventory"
-            integration_name: "Azure Asset Inventory"
-          - integration_id: "azure-blob-001"
-            integration_type: "azure_blob_storage"
-            integration_name: "Azure Blob Storage"
+          - policy_template: "activitylogs"
+            package_name: "azure"
+            package_policy_id: "pp-activitylogs-001"
+            package_title: "Azure"
+          - policy_template: "cspm"
+            package_name: "azure"
+            package_policy_id: "pp-cspm-001"
+            package_title: "Azure"
+          - policy_template: "asset_inventory"
+            package_name: "azure"
+            package_policy_id: "pp-asset-001"
+            package_title: "Azure"
+          - policy_template: "blob_storage"
+            package_name: "azure"
+            package_policy_id: "pp-blob-001"
+            package_title: "Azure"
 
 exporters:
   debug:

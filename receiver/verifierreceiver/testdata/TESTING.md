@@ -148,13 +148,16 @@ receivers:
       - policy_id: "multi-cloud-policy"
         policy_name: "Multi-Cloud Monitoring"
         integrations:
-          - integration_type: "aws_cloudtrail"
-            integration_name: "CloudTrail"
-            integration_version: "2.17.0"
-          - integration_type: "azure_activitylogs"
-            integration_name: "Azure Activity"
-          - integration_type: "gcp_audit"
-            integration_name: "GCP Audit"
+          - policy_template: "cloudtrail"
+            package_name: "aws"
+            package_title: "AWS"
+            package_version: "2.17.0"
+          - policy_template: "activitylogs"
+            package_name: "azure"
+            package_title: "Azure"
+          - policy_template: "audit"
+            package_name: "gcp"
+            package_title: "GCP"
 ```
 
 ## 9. Test with Elastic Agent
@@ -191,8 +194,9 @@ receivers:
       - policy_id: "agent-test-policy"
         policy_name: "Agent Test Policy"
         integrations:
-          - integration_type: "aws_cloudtrail"
-            integration_name: "CloudTrail"
+          - policy_template: "cloudtrail"
+            package_name: "aws"
+            package_title: "AWS"
 
 exporters:
   debug:
@@ -255,8 +259,9 @@ receivers:
       - policy_id: "e2e-test-policy"
         policy_name: "E2E Test Policy"
         integrations:
-          - integration_type: "aws_cloudtrail"
-            integration_name: "CloudTrail E2E"
+          - policy_template: "cloudtrail"
+            package_name: "aws"
+            package_title: "AWS"
 
 processors:
   batch:
@@ -283,7 +288,7 @@ curl -X GET "localhost:9200/logs-cloud_connector.permission_verification-default
 {
   "query": {
     "match": {
-      "integration.type": "aws_cloudtrail"
+      "policy_template": "cloudtrail"
     }
   }
 }'
@@ -300,10 +305,12 @@ policies:
   - policy_id: "version-test"
     policy_name: "Version Test"
     integrations:
-      - integration_type: "aws_cloudtrail"
-        integration_version: "2.17.0"  # v2+ requires SQS permissions
-      - integration_type: "aws_cloudtrail"
-        integration_version: "1.5.0"   # v1.x has SQS as optional
+      - policy_template: "cloudtrail"
+        package_name: "aws"
+        package_version: "2.17.0"  # v2+ requires SQS permissions
+      - policy_template: "cloudtrail"
+        package_name: "aws"
+        package_version: "1.5.0"   # v1.x has SQS as optional
 ```
 
 ### Expected behavior:

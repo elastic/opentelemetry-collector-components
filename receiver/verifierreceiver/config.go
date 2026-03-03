@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/verifierreceiver/internal/verifier"
 )
@@ -41,6 +40,11 @@ type Config struct {
 	// Used as a resource attribute and for data stream routing.
 	// Defaults to "default" when not set.
 	Namespace string `mapstructure:"namespace"`
+
+	// AccountType indicates whether the target is a single account or an
+	// organization (management) account. Affects which permissions are verified.
+	// Valid values: "single_account", "organization".
+	AccountType string `mapstructure:"account_type"`
 
 	// VerificationID is a unique identifier for this verification session.
 	VerificationID string `mapstructure:"verification_id"`
@@ -322,25 +326,37 @@ type PolicyConfig struct {
 }
 
 // IntegrationConfig represents an integration within a policy.
+// Field names align with Fleet's package policy API vocabulary:
+// the composite key is (PolicyTemplate, PackageName).
 type IntegrationConfig struct {
-	// IntegrationID is the unique identifier for the integration instance.
-	IntegrationID string `mapstructure:"integration_id"`
+	// PolicyTemplate is the policy template name from the integration package
+	// (e.g., "cloudtrail", "guardduty", "activitylogs"). Combined with PackageName
+	// to form the registry lookup key.
+	PolicyTemplate string `mapstructure:"policy_template"`
 
-	// IntegrationType is the package/integration type (e.g., "aws_cloudtrail", "okta").
-	// This is used to look up required permissions from the registry.
-	IntegrationType string `mapstructure:"integration_type"`
+	// PackageName is the integration package name (e.g., "aws", "azure", "gcp", "okta").
+	PackageName string `mapstructure:"package_name"`
 
-	// IntegrationName is the human-readable name of the integration.
-	IntegrationName string `mapstructure:"integration_name"`
+	// PackagePolicyID is the unique identifier for the package policy instance.
+	PackagePolicyID string `mapstructure:"package_policy_id"`
 
-	// IntegrationVersion is the semantic version of the integration package (e.g., "2.17.0").
+	// PackageTitle is the human-readable title of the integration package (e.g., "AWS").
+	PackageTitle string `mapstructure:"package_title"`
+
+	// PackageVersion is the semantic version of the integration package (e.g., "2.17.0").
 	// Different versions may require different permissions. When empty, the latest
 	// registered permission set is used.
-	IntegrationVersion string `mapstructure:"integration_version"`
+	PackageVersion string `mapstructure:"package_version"`
 
 	// Config contains provider-specific configuration.
 	// For AWS: may include regions, account_id, etc.
 	Config map[string]interface{} `mapstructure:"config"`
+}
+
+// IntegrationType returns the registry lookup key derived from PackageName and
+// PolicyTemplate (e.g., "aws" + "cloudtrail" -> "aws_cloudtrail").
+func (cfg *IntegrationConfig) IntegrationType() string {
+	return cfg.PackageName + "_" + cfg.PolicyTemplate
 }
 
 // Validate validates the configuration.
@@ -363,8 +379,11 @@ func (cfg *Config) Validate() error {
 			return fmt.Errorf("policies[%d]: at least one integration must be specified", i)
 		}
 		for j, integration := range policy.Integrations {
-			if integration.IntegrationType == "" {
-				return fmt.Errorf("policies[%d].integrations[%d]: integration_type must be specified", i, j)
+			if integration.PolicyTemplate == "" {
+				return fmt.Errorf("policies[%d].integrations[%d]: policy_template must be specified", i, j)
+			}
+			if integration.PackageName == "" {
+				return fmt.Errorf("policies[%d].integrations[%d]: package_name must be specified", i, j)
 			}
 		}
 	}
@@ -375,19 +394,18 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-// GetProviderForIntegration returns the provider type for a given integration type.
-func GetProviderForIntegration(integrationType string) verifier.ProviderType {
-	if strings.HasPrefix(integrationType, "aws_") {
+// GetProviderForPackage returns the provider type for a given package name.
+func GetProviderForPackage(packageName string) verifier.ProviderType {
+	switch packageName {
+	case "aws":
 		return verifier.ProviderAWS
-	}
-	if strings.HasPrefix(integrationType, "azure_") {
+	case "azure":
 		return verifier.ProviderAzure
-	}
-	if strings.HasPrefix(integrationType, "gcp_") {
+	case "gcp":
 		return verifier.ProviderGCP
-	}
-	if strings.HasPrefix(integrationType, "okta_") {
+	case "okta":
 		return verifier.ProviderOkta
+	default:
+		return ""
 	}
-	return ""
 }

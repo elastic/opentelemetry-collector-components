@@ -10,6 +10,8 @@ receivers:
   verifier:
     cloud_connector_id: "cc-test-aws"
     cloud_connector_name: "AWS Test"
+    namespace: "default"
+    account_type: "single_account"
     verification_id: "verify-aws-001"
     verification_type: "on_demand"
 
@@ -23,18 +25,21 @@ receivers:
       - policy_id: "policy-aws-security"
         policy_name: "AWS Security"
         integrations:
-          - integration_id: "aws-cloudtrail-001"
-            integration_type: "aws_cloudtrail"
-            integration_name: "AWS CloudTrail"
-            integration_version: "2.17.0"
+          - policy_template: "cloudtrail"
+            package_name: "aws"
+            package_policy_id: "pp-cloudtrail-001"
+            package_title: "AWS"
+            package_version: "2.17.0"
             config:
               region: "us-east-1"
-          - integration_id: "aws-cspm-001"
-            integration_type: "aws_cspm"
-            integration_name: "AWS CSPM"
-          - integration_id: "aws-asset-001"
-            integration_type: "aws_asset_inventory"
-            integration_name: "AWS Asset Inventory"
+          - policy_template: "cspm"
+            package_name: "aws"
+            package_policy_id: "pp-cspm-001"
+            package_title: "AWS"
+          - policy_template: "asset_inventory"
+            package_name: "aws"
+            package_policy_id: "pp-asset-001"
+            package_title: "AWS"
 
 exporters:
   debug:

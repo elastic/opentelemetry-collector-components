@@ -10,6 +10,8 @@ receivers:
   verifier:
     cloud_connector_id: "cc-test-gcp"
     cloud_connector_name: "GCP Test"
+    namespace: "default"
+    account_type: "single_account"
     verification_id: "verify-gcp-001"
     verification_type: "on_demand"
 
@@ -23,29 +25,34 @@ receivers:
       - policy_id: "policy-gcp-security"
         policy_name: "GCP Security"
         integrations:
-          - integration_id: "gcp-audit-001"
-            integration_type: "gcp_audit"
-            integration_name: "GCP Audit Logs"
+          - policy_template: "audit"
+            package_name: "gcp"
+            package_policy_id: "pp-audit-001"
+            package_title: "GCP"
             config:
               project_id: "${GCP_PROJECT_ID}"
-          - integration_id: "gcp-cspm-001"
-            integration_type: "gcp_cspm"
-            integration_name: "GCP CSPM"
+          - policy_template: "cspm"
+            package_name: "gcp"
+            package_policy_id: "pp-cspm-001"
+            package_title: "GCP"
             config:
               project_id: "${GCP_PROJECT_ID}"
-          - integration_id: "gcp-asset-001"
-            integration_type: "gcp_asset_inventory"
-            integration_name: "GCP Asset Inventory"
+          - policy_template: "asset_inventory"
+            package_name: "gcp"
+            package_policy_id: "pp-asset-001"
+            package_title: "GCP"
             config:
               project_id: "${GCP_PROJECT_ID}"
-          - integration_id: "gcp-storage-001"
-            integration_type: "gcp_storage"
-            integration_name: "GCP Storage"
+          - policy_template: "storage"
+            package_name: "gcp"
+            package_policy_id: "pp-storage-001"
+            package_title: "GCP"
             config:
               project_id: "${GCP_PROJECT_ID}"
-          - integration_id: "gcp-pubsub-001"
-            integration_type: "gcp_pubsub"
-            integration_name: "GCP Pub/Sub"
+          - policy_template: "pubsub"
+            package_name: "gcp"
+            package_policy_id: "pp-pubsub-001"
+            package_title: "GCP"
             config:
               project_id: "${GCP_PROJECT_ID}"
 

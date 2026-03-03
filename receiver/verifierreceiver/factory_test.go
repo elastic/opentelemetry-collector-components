@@ -62,9 +62,10 @@ func TestCreateLogsReceiver(t *testing.T) {
 			PolicyName: "Test Policy",
 			Integrations: []IntegrationConfig{
 				{
-					IntegrationID:   "int-001",
-					IntegrationType: "aws_cloudtrail",
-					IntegrationName: "AWS CloudTrail",
+					PolicyTemplate:  "cloudtrail",
+					PackageName:     "aws",
+					PackagePolicyID: "pp-001",
+					PackageTitle:    "AWS",
 					Config: map[string]interface{}{
 						"account_id": "123456789012",
 						"region":     "us-east-1",
