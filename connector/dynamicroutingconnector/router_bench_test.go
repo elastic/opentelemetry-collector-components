@@ -91,7 +91,8 @@ func makeBenchConfig(signal pipeline.Signal, partitionBy, measureBy []string) Co
 			{Pipelines: []pipeline.ID{pipeline.NewIDWithName(signal, "threshold_2_5")}, MaxCardinality: 5},
 			{Pipelines: []pipeline.ID{pipeline.NewIDWithName(signal, "threshold_5_inf")}, MaxCardinality: math.Inf(1)},
 		},
-		EvaluationInterval: time.Hour,
+		RecordingInterval: time.Hour,
+		TTL:               6 * time.Hour,
 	}
 }
 

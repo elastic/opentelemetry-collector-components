@@ -56,20 +56,20 @@ func TestTracesRouting(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name               string
-		ctx                context.Context
-		evaluationInterval time.Duration
-		initialData        []ptrace.Traces
-		input              ptrace.Traces
-		expectSinkDefault  []ptrace.Traces
-		expectSink_0_2     []ptrace.Traces
-		expectSink_2_5     []ptrace.Traces
-		expectSink_5_inf   []ptrace.Traces
+		name              string
+		ctx               context.Context
+		recordingInterval time.Duration
+		initialData       []ptrace.Traces
+		input             ptrace.Traces
+		expectSinkDefault []ptrace.Traces
+		expectSink_0_2    []ptrace.Traces
+		expectSink_2_5    []ptrace.Traces
+		expectSink_5_inf  []ptrace.Traces
 	}{
 		{
-			name:               "primay_key_missing",
-			ctx:                t.Context(),
-			evaluationInterval: time.Second,
+			name:              "primay_key_missing",
+			ctx:               t.Context(),
+			recordingInterval: time.Second,
 			initialData: []ptrace.Traces{
 				newTestTraces("1", "1", "1", "1"),
 			},
@@ -90,7 +90,7 @@ func TestTracesRouting(t *testing.T) {
 					}),
 				},
 			),
-			evaluationInterval: time.Second,
+			recordingInterval: time.Second,
 			initialData: []ptrace.Traces{
 				newTestTraces("1", "1", "1", "1"),
 			},
@@ -112,7 +112,7 @@ func TestTracesRouting(t *testing.T) {
 					}),
 				},
 			),
-			evaluationInterval: time.Second,
+			recordingInterval: time.Second,
 			initialData: []ptrace.Traces{
 				newTestTraces("1", "1", "1", "1"),
 			},
@@ -134,7 +134,8 @@ func TestTracesRouting(t *testing.T) {
 				pipeline_5_inf:  &sink_5_inf,
 			})
 
-			cfg.EvaluationInterval = tc.evaluationInterval
+			cfg.RecordingInterval = tc.recordingInterval
+			cfg.TTL = 5 * tc.recordingInterval
 			connectorSet := connectortest.NewNopSettings(metadata.Type)
 			connectorSet.Logger = zaptest.NewLogger(t)
 			connector, err := NewFactory().CreateTracesToTraces(
