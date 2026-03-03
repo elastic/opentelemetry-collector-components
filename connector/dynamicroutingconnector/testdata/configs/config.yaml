@@ -5,7 +5,8 @@ dynamicrouting/no-dynamic-pipelines:
     partition_by: ["x-tenant"]
   default_pipelines:
     - logs/default
-  evaluation_interval: 1m
+  recording_interval: 1m
+  ttl: 5m
   routing_pipelines: []
 
 dynamicrouting/invalid-dynamic-pipelines/no-inf:
@@ -13,7 +14,8 @@ dynamicrouting/invalid-dynamic-pipelines/no-inf:
     partition_by: ["x-tenant"]
   default_pipelines:
     - logs/default
-  evaluation_interval: 1m
+  recording_interval: 1m
+  ttl: 5m
   routing_pipelines:
     - pipelines:
         - logs/test2
@@ -27,7 +29,8 @@ dynamicrouting/invalid-dynamic-pipelines/out-of-order:
     partition_by: ["x-tenant"]
   default_pipelines:
     - logs/default
-  evaluation_interval: 1m
+  recording_interval: 1m
+  ttl: 5m
   routing_pipelines:
     - pipelines:
         - logs/test2
@@ -45,7 +48,8 @@ dynamicrouting/invalid-dynamic-pipelines/valid:
     measure_by: ["x-forwarded-for"]
   default_pipelines:
     - logs/default
-  evaluation_interval: 1m
+  recording_interval: 1m
+  ttl: 5m
   routing_pipelines:
     - pipelines:
         - logs/test1
@@ -53,6 +57,42 @@ dynamicrouting/invalid-dynamic-pipelines/valid:
     - pipelines:
         - logs/test2
       max_cardinality: 100
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+
+dynamicrouting/invalid-recording-interval:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  recording_interval: 0s
+  ttl: 5m
+  routing_pipelines:
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+
+dynamicrouting/invalid-ttl:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  recording_interval: 1m
+  ttl: 0s
+  routing_pipelines:
+    - pipelines:
+        - logs/final
+      max_cardinality: .inf
+
+dynamicrouting/invalid-ttl-lt-recording:
+  routing_keys:
+    partition_by: ["x-tenant"]
+  default_pipelines:
+    - logs/default
+  recording_interval: 2m
+  ttl: 1m
+  routing_pipelines:
     - pipelines:
         - logs/final
       max_cardinality: .inf
