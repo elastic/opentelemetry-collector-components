@@ -37,6 +37,11 @@ type Config struct {
 	// CloudConnectorName is the human-readable name of the Cloud Connector.
 	CloudConnectorName string `mapstructure:"cloud_connector_name"`
 
+	// Namespace is the Kibana Space that the Cloud Connector belongs to.
+	// Used as a resource attribute and for data stream routing.
+	// Defaults to "default" when not set.
+	Namespace string `mapstructure:"namespace"`
+
 	// VerificationID is a unique identifier for this verification session.
 	VerificationID string `mapstructure:"verification_id"`
 

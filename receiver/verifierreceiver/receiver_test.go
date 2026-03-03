@@ -34,6 +34,7 @@ func TestReceiver_StartShutdown(t *testing.T) {
 	config := &Config{
 		CloudConnectorID:   "cc-12345",
 		CloudConnectorName: "Test Connector",
+		Namespace:          "production",
 		VerificationID:     "verify-test-001",
 		VerificationType:   "on_demand",
 		Providers: ProvidersConfig{
@@ -101,6 +102,22 @@ func TestReceiver_StartShutdown(t *testing.T) {
 	cloudConnectorID, ok := attrs.Get("cloud_connector.id")
 	require.True(t, ok)
 	assert.Equal(t, "cc-12345", cloudConnectorID.Str())
+
+	cloudConnectorNamespace, ok := attrs.Get("cloud_connector.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "production", cloudConnectorNamespace.Str())
+
+	dsType, ok := attrs.Get("data_stream.type")
+	require.True(t, ok)
+	assert.Equal(t, "logs", dsType.Str())
+
+	dsDataset, ok := attrs.Get("data_stream.dataset")
+	require.True(t, ok)
+	assert.Equal(t, "cloud_connector.permission_verification", dsDataset.Str())
+
+	dsNamespace, ok := attrs.Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "production", dsNamespace.Str())
 
 	verificationID, ok := attrs.Get("verification.id")
 	require.True(t, ok)
@@ -178,6 +195,16 @@ func TestReceiver_WithoutAWSCredentials(t *testing.T) {
 	// Should still emit logs but with error status
 	logs := consumer.AllLogs()
 	require.NotEmpty(t, logs)
+
+	// Verify default namespace when not configured
+	resourceAttrs := logs[0].ResourceLogs().At(0).Resource().Attributes()
+	nsAttr, ok := resourceAttrs.Get("cloud_connector.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "default", nsAttr.Str())
+
+	dsNsAttr, ok := resourceAttrs.Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "default", dsNsAttr.Str())
 
 	logRecords := logs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
 	assert.GreaterOrEqual(t, logRecords.Len(), 1)
