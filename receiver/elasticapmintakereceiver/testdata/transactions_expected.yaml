@@ -10,6 +10,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -85,12 +94,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -118,12 +121,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -193,6 +190,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: "7.0"
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -274,12 +280,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -307,12 +307,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: "7.0"
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -331,12 +325,12 @@ resourceSpans:
         - key: labels.tag4
           value:
             stringValue: "false"
-        - key: numeric_labels.tag3
-          value:
-            doubleValue: 12.45
         - key: numeric_labels.tag2
           value:
             doubleValue: 12
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.45
     scopeSpans:
       - scope: {}
         spans:
@@ -408,6 +402,17 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
+                              - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
                       - key: Cookie
                         value:
                           arrayValue:
@@ -425,17 +430,6 @@ resourceSpans:
                               - stringValue: foo
                               - stringValue: bar
                               - stringValue: baz
-                      - key: User-Agent
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
-                              - stringValue: Mozilla Chrome Edge
-                      - key: Content-Type
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: text/html
               - key: http.request.env
                 value:
                   kvlistValue:
@@ -453,19 +447,22 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: c1
+                        value:
+                          stringValue: v1
                       - key: c2
                         value:
                           stringValue: v2
                       - key: c3
                         value:
                           doubleValue: 3
-                      - key: c1
-                        value:
-                          stringValue: v1
               - key: http.request.body.original
                 value:
                   kvlistValue:
                     values:
+                      - key: str
+                        value:
+                          stringValue: hello world
                       - key: additional
                         value:
                           kvlistValue:
@@ -476,9 +473,6 @@ resourceSpans:
                               - key: req
                                 value:
                                   stringValue: additional information
-                      - key: str
-                        value:
-                          stringValue: hello world
               - key: http.request.referrer
                 value:
                   stringValue: http://localhost:8000/test/e2e/
@@ -547,6 +541,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ruby
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "2.5"
+        - key: process.runtime.name
+          value:
+            stringValue: cruby
+        - key: process.runtime.version
+          value:
+            stringValue: "2.5"
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -622,12 +625,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "2.2"
-        - key: service.language.name
-          value:
-            stringValue: ruby
-        - key: service.language.version
-          value:
-            stringValue: "2.5"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -658,12 +655,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: "5.0"
-        - key: service.runtime.name
-          value:
-            stringValue: cruby
-        - key: service.runtime.version
-          value:
-            stringValue: "2.5"
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -768,6 +759,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -843,12 +843,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -876,12 +870,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
         - key: host.os.platform
           value:
             stringValue: darwin
@@ -971,6 +959,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -1058,12 +1055,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.origin.account.id
           value:
             stringValue: abc123
@@ -1109,12 +1100,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
         - key: service.origin.id
           value:
             stringValue: abc123

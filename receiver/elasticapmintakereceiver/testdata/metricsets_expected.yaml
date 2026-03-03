@@ -25,9 +25,6 @@ resourceMetrics:
         - key: service.instance.id
           value:
             stringValue: node-1
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -93,9 +90,6 @@ resourceMetrics:
         - key: service.instance.id
           value:
             stringValue: node-1
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -116,6 +110,24 @@ resourceMetrics:
             stringValue: logged-in-user
     scopeMetrics:
       - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpu.stats.throttled.ns
+          - gauge:
+              dataPoints:
+                - asDouble: 2048
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1496170421367000000"
+            name: system.process.cgroup.cpuacct.id
           - gauge:
               dataPoints:
                 - asDouble: 2048
@@ -170,24 +182,6 @@ resourceMetrics:
                         stringValue: metric
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.throttled.periods
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpu.stats.throttled.ns
-          - gauge:
-              dataPoints:
-                - asDouble: 2048
-                  attributes:
-                    - key: processor.event
-                      value:
-                        stringValue: metric
-                  timeUnixNano: "1496170421367000000"
-            name: system.process.cgroup.cpuacct.id
         scope: {}
   - resource:
       attributes:
@@ -215,9 +209,6 @@ resourceMetrics:
         - key: service.instance.id
           value:
             stringValue: node-1
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -292,9 +283,6 @@ resourceMetrics:
         - key: service.instance.id
           value:
             stringValue: node-1
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3
@@ -407,9 +395,6 @@ resourceMetrics:
         - key: service.instance.id
           value:
             stringValue: node-1
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
         - key: service.name
           value:
             stringValue: 1234_service-12a3

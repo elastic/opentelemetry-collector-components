@@ -9,7 +9,16 @@ resourceLogs:
             stringValue: 4.3.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -22,12 +31,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -69,12 +72,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
@@ -87,15 +84,12 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: labels.group
           value:
             stringValue: experimental
@@ -124,7 +118,16 @@ resourceLogs:
             stringValue: 4.3.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -137,9 +140,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -181,12 +181,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
@@ -199,21 +193,18 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
-        - key: labels.ab_testing
+        - key: host.hostname
           value:
-            stringValue: "true"
+            stringValue: 8ec7ceb99074
         - key: labels.group
           value:
             stringValue: experimental
+        - key: labels.ab_testing
+          value:
+            stringValue: "true"
         - key: numeric_labels.segment
           value:
             doubleValue: 5
@@ -237,7 +228,16 @@ resourceLogs:
             stringValue: 4.3.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -250,9 +250,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -294,12 +291,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
@@ -312,15 +303,12 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: labels.group
           value:
             stringValue: experimental
@@ -350,7 +338,16 @@ resourceLogs:
             stringValue: 4.3.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -363,9 +360,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -413,12 +407,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
@@ -434,15 +422,12 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: labels.group
           value:
             stringValue: experimental
@@ -472,7 +457,16 @@ resourceLogs:
             stringValue: v1.0.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -485,9 +479,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -535,12 +526,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
@@ -556,30 +541,27 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: labels.str
           value:
             stringValue: str
         - key: labels.bool
           value:
             stringValue: "true"
-        - key: labels.key with spaces
-          value:
-            stringValue: value with spaces
-        - key: labels.group
-          value:
-            stringValue: experimental
         - key: labels.ab_testing
           value:
             stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: labels.key with spaces
+          value:
+            stringValue: value with spaces
         - key: numeric_labels.float
           value:
             doubleValue: 1.1
@@ -631,7 +613,16 @@ resourceLogs:
             stringValue: v1.0.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -644,9 +635,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -694,12 +682,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
@@ -715,18 +697,12 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
-        - key: labels.group
+        - key: host.hostname
           value:
-            stringValue: experimental
+            stringValue: 8ec7ceb99074
         - key: labels.ab_testing
           value:
             stringValue: "true"
@@ -736,15 +712,18 @@ resourceLogs:
         - key: labels.bool
           value:
             stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
         - key: numeric_labels.int
           value:
             doubleValue: 1
         - key: numeric_labels.float
           value:
             doubleValue: 1.1
-        - key: numeric_labels.segment
-          value:
-            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -787,7 +766,16 @@ resourceLogs:
             stringValue: v1.0.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -800,9 +788,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -850,12 +835,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
@@ -871,25 +850,22 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
-        - key: labels.str
+        - key: host.hostname
           value:
-            stringValue: str
-        - key: labels.bool
-          value:
-            stringValue: "true"
+            stringValue: 8ec7ceb99074
         - key: labels.group
           value:
             stringValue: experimental
         - key: labels.ab_testing
+          value:
+            stringValue: "true"
+        - key: labels.str
+          value:
+            stringValue: str
+        - key: labels.bool
           value:
             stringValue: "true"
         - key: numeric_labels.segment
@@ -943,7 +919,16 @@ resourceLogs:
             stringValue: v1.0.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -956,9 +941,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: svc-node-name
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -1009,12 +991,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: faas.trigger.request_id
           value:
             stringValue: request-id-xyz789
@@ -1033,21 +1009,18 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
-        - key: labels.group
+        - key: host.hostname
           value:
-            stringValue: experimental
+            stringValue: 8ec7ceb99074
         - key: labels.ab_testing
           value:
             stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
         - key: numeric_labels.segment
           value:
             doubleValue: 5
@@ -1093,7 +1066,16 @@ resourceLogs:
             stringValue: v1.0.0
         - key: telemetry.sdk.language
           value:
-            stringValue: java
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 10.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: Java
+        - key: process.runtime.version
+          value:
+            stringValue: 10.0.2
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -1106,9 +1088,6 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: svc-node-name
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: host.name
           value:
             stringValue: host1
@@ -1159,12 +1138,6 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: service.language.name
-          value:
-            stringValue: Java
-        - key: service.language.version
-          value:
-            stringValue: 10.0.2
         - key: faas.trigger.request_id
           value:
             stringValue: request-id-xyz789
@@ -1183,15 +1156,12 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: Java
-        - key: service.runtime.version
-          value:
-            stringValue: 10.0.2
         - key: host.os.platform
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: labels.group
           value:
             stringValue: experimental

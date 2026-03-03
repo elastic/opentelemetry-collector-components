@@ -9,7 +9,10 @@ resourceSpans:
             stringValue: 5.1.3
         - key: telemetry.sdk.language
           value:
-            stringValue: dotnet
+            stringValue: C#
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "5"
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -34,12 +37,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: C#
-        - key: service.language.version
-          value:
-            stringValue: "5"
         - key: agent.activation_method
           value:
             stringValue: some_activation_method

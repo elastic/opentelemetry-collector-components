@@ -105,13 +105,6 @@ func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Ma
 		attributes.PutStr(elasticattr.AgentName, event.Agent.Name)
 		attributes.PutStr(elasticattr.AgentVersion, event.Agent.Version)
 	}
-
-	if event.Service != nil {
-		if event.Service.Language != nil {
-			putNonEmptyStr(attributes, elasticattr.ServiceLanguageName, event.Service.Language.Name)
-			putNonEmptyStr(attributes, elasticattr.ServiceLanguageVersion, event.Service.Language.Version)
-		}
-	}
 }
 
 // SetDerivedFieldsForMetrics sets fields that are NOT part of OTel for metrics. These fields are derived by the Enrichment lib in case of OTLP input
