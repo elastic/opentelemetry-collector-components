@@ -27,6 +27,13 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 )
 
+var defaultElasticsearchRetryConfig = RetryConfig{
+	Enabled:         true,
+	MaxRetries:      3,
+	InitialInterval: 100 * time.Millisecond,
+	MaxInterval:     5 * time.Second,
+}
+
 type Config struct {
 	confighttp.ClientConfig `mapstructure:",squash"`
 
@@ -38,9 +45,36 @@ type Config struct {
 	// API Key verification results.
 	Cache CacheConfig `mapstructure:"cache"`
 
-	// Retry controls the retry behavior for Elasticsearch requests.
-	// Fields map directly to go-elasticsearch's native retry options.
+	// Deprecated: retry is now elasticsearch_retry.
 	Retry RetryConfig `mapstructure:"retry"`
+
+	// ElasticsearchRetry controls the retry behavior for Elasticsearch requests.
+	// Fields map directly to go-elasticsearch's native retry options.
+	ElasticsearchRetry RetryConfig `mapstructure:"elasticsearch_retry"`
+
+	// ClientRetry controls gRPC RetryInfo details returned to callers.
+	// This is a hint for retrying the overall request, not Elasticsearch request retries.
+	ClientRetry ClientRetryConfig `mapstructure:"client_retry"`
+}
+
+// effectiveElasticsearchRetry returns the retry config for Elasticsearch
+// requests. elasticsearch_retry takes precedence over the deprecated retry key.
+func (cfg *Config) effectiveElasticsearchRetry() RetryConfig {
+	legacy := cfg.Retry
+	preferred := cfg.ElasticsearchRetry
+
+	legacyUnset := legacy == defaultElasticsearchRetryConfig
+	preferredUnset := preferred == defaultElasticsearchRetryConfig
+
+	switch {
+	case !preferredUnset:
+		return preferred
+	case !legacyUnset:
+		return legacy
+	default:
+		// Both default, just return preferred
+		return preferred
+	}
 }
 
 type RetryConfig struct {
@@ -56,6 +90,14 @@ type RetryConfig struct {
 
 	// MaxInterval caps the exponential backoff between retries.
 	MaxInterval time.Duration `mapstructure:"max_interval"`
+}
+
+type ClientRetryConfig struct {
+	// Enabled controls whether RetryInfo details are attached to returned errors.
+	Enabled bool `mapstructure:"enabled"`
+
+	// RetryDelay is the duration returned in google.rpc.RetryInfo.
+	RetryDelay time.Duration `mapstructure:"retry_delay"`
 }
 
 type ApplicationPrivilegesConfig struct {
@@ -125,11 +167,11 @@ func createDefaultConfig() component.Config {
 			PBKDF2Iterations: 1000,
 			TTL:              30 * time.Second,
 		},
-		Retry: RetryConfig{
-			Enabled:         true,
-			MaxRetries:      3,
-			InitialInterval: 100 * time.Millisecond,
-			MaxInterval:     5 * time.Second,
+		Retry:              defaultElasticsearchRetryConfig,
+		ElasticsearchRetry: defaultElasticsearchRetryConfig,
+		ClientRetry: ClientRetryConfig{
+			Enabled:    true,
+			RetryDelay: time.Second,
 		},
 	}
 }
@@ -162,6 +204,16 @@ func (cfg *RetryConfig) Validate() error {
 	}
 	if cfg.MaxInterval < cfg.InitialInterval {
 		return fmt.Errorf("max_interval (%s) must be greater than or equal to initial_interval (%s)", cfg.MaxInterval, cfg.InitialInterval)
+	}
+	return nil
+}
+
+func (cfg *ClientRetryConfig) Validate() error {
+	if !cfg.Enabled {
+		return nil
+	}
+	if cfg.RetryDelay <= 0 {
+		return fmt.Errorf("invalid retry_delay: %s, must be greater than 0", cfg.RetryDelay)
 	}
 	return nil
 }

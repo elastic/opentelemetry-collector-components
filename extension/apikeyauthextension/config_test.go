@@ -110,7 +110,39 @@ func TestLoadConfig(t *testing.T) {
 			id: component.NewIDWithName(metadata.Type, "custom_retry"),
 			expected: func() *Config {
 				config := createDefaultConfig().(*Config)
+				config.ElasticsearchRetry = RetryConfig{
+					Enabled:         true,
+					MaxRetries:      5,
+					InitialInterval: 200 * time.Millisecond,
+					MaxInterval:     10 * time.Second,
+				}
+				return config
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_retry_legacy"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
 				config.Retry = RetryConfig{
+					Enabled:         true,
+					MaxRetries:      7,
+					InitialInterval: 150 * time.Millisecond,
+					MaxInterval:     9 * time.Second,
+				}
+				return config
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_retry_both_keys_prefer_new"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.Retry = RetryConfig{
+					Enabled:         true,
+					MaxRetries:      7,
+					InitialInterval: 150 * time.Millisecond,
+					MaxInterval:     9 * time.Second,
+				}
+				config.ElasticsearchRetry = RetryConfig{
 					Enabled:         true,
 					MaxRetries:      5,
 					InitialInterval: 200 * time.Millisecond,
@@ -123,25 +155,51 @@ func TestLoadConfig(t *testing.T) {
 			id: component.NewIDWithName(metadata.Type, "retry_disabled"),
 			expected: func() *Config {
 				config := createDefaultConfig().(*Config)
-				config.Retry.Enabled = false
+				config.ElasticsearchRetry.Enabled = false
 				return config
 			}(),
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_max_retries"),
-			expectedErrMessage: `retry: invalid max_retries: -1, must be non-negative`,
+			expectedErrMessage: `elasticsearch_retry: invalid max_retries: -1, must be non-negative`,
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_initial_interval"),
-			expectedErrMessage: `retry: invalid initial_interval: 0s, must be greater than 0`,
+			expectedErrMessage: `elasticsearch_retry: invalid initial_interval: 0s, must be greater than 0`,
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_max_interval"),
-			expectedErrMessage: `retry: invalid max_interval: 0s, must be greater than 0`,
+			expectedErrMessage: `elasticsearch_retry: invalid max_interval: 0s, must be greater than 0`,
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "invalid_retry_interval_order"),
-			expectedErrMessage: `retry: max_interval (1s) must be greater than or equal to initial_interval (10s)`,
+			expectedErrMessage: `elasticsearch_retry: max_interval (1s) must be greater than or equal to initial_interval (10s)`,
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_client_retry"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.ClientRetry = ClientRetryConfig{
+					Enabled:    true,
+					RetryDelay: 3 * time.Second,
+				}
+				return config
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "client_retry_disabled"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.ClientRetry = ClientRetryConfig{
+					Enabled:    false,
+					RetryDelay: 3 * time.Second,
+				}
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "invalid_client_retry_delay"),
+			expectedErrMessage: `client_retry: invalid retry_delay: 0s, must be greater than 0`,
 		},
 	}
 	for _, tt := range tests {
