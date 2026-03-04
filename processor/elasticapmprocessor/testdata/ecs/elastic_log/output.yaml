@@ -44,10 +44,10 @@ resourceLogs:
         - key: service.namespace
           value:
             stringValue: production
-        - key: service.language.name
+        - key: labels.service_language_name
           value:
             stringValue: go
-        - key: service.language.version
+        - key: labels.service_language_version
           value:
             stringValue: 1.21.0
         - key: service.framework.name
@@ -56,10 +56,10 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 1.9.0
-        - key: service.runtime.name
+        - key: labels.service_runtime_name
           value:
             stringValue: go
-        - key: service.runtime.version
+        - key: labels.service_runtime_version
           value:
             stringValue: go1.21.0
         - key: service.origin.id
