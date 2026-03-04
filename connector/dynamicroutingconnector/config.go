@@ -28,10 +28,11 @@ import (
 )
 
 type Config struct {
-	RoutingKeys        RoutingKeys       `mapstructure:"routing_keys"`
-	DefaultPipelines   []pipeline.ID     `mapstructure:"default_pipelines"`
-	EvaluationInterval time.Duration     `mapstructure:"evaluation_interval"`
-	RoutingPipelines   []RoutingPipeline `mapstructure:"routing_pipelines"`
+	RoutingKeys       RoutingKeys       `mapstructure:"routing_keys"`
+	DefaultPipelines  []pipeline.ID     `mapstructure:"default_pipelines"`
+	RecordingInterval time.Duration     `mapstructure:"recording_interval"`
+	TTL               time.Duration     `mapstructure:"ttl"`
+	RoutingPipelines  []RoutingPipeline `mapstructure:"routing_pipelines"`
 }
 
 type RoutingPipeline struct {
@@ -53,6 +54,15 @@ func (c *Config) Validate() error {
 	}
 	if len(c.RoutingPipelines) == 0 {
 		return errors.New("atleast one pipeline needs to be defined")
+	}
+	if c.RecordingInterval <= 0 {
+		return errors.New("recording_interval must be greater than zero")
+	}
+	if c.TTL <= 0 {
+		return errors.New("ttl must be greater than zero")
+	}
+	if c.TTL < c.RecordingInterval {
+		return errors.New("ttl must be greater than or equal to recording_interval")
 	}
 	if !math.IsInf(c.RoutingPipelines[len(c.RoutingPipelines)-1].MaxCardinality, 1) {
 		return errors.New("last dynamic pipeline must have max count set to positive infinity (.inf)")

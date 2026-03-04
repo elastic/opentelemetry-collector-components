@@ -56,20 +56,20 @@ func TestMetricsRouting(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name               string
-		ctx                context.Context
-		evaluationInterval time.Duration
-		initialData        []pmetric.Metrics
-		input              pmetric.Metrics
-		expectSinkDefault  []pmetric.Metrics
-		expectSink_0_2     []pmetric.Metrics
-		expectSink_2_5     []pmetric.Metrics
-		expectSink_5_inf   []pmetric.Metrics
+		name              string
+		ctx               context.Context
+		recordingInterval time.Duration
+		initialData       []pmetric.Metrics
+		input             pmetric.Metrics
+		expectSinkDefault []pmetric.Metrics
+		expectSink_0_2    []pmetric.Metrics
+		expectSink_2_5    []pmetric.Metrics
+		expectSink_5_inf  []pmetric.Metrics
 	}{
 		{
-			name:               "primay_key_missing",
-			ctx:                t.Context(),
-			evaluationInterval: time.Second,
+			name:              "primay_key_missing",
+			ctx:               t.Context(),
+			recordingInterval: time.Second,
 			initialData: []pmetric.Metrics{
 				newTestMetrics("1", "1", "1", "1"),
 			},
@@ -90,7 +90,7 @@ func TestMetricsRouting(t *testing.T) {
 					}),
 				},
 			),
-			evaluationInterval: time.Second,
+			recordingInterval: time.Second,
 			initialData: []pmetric.Metrics{
 				newTestMetrics("1", "1", "1", "1"),
 			},
@@ -112,7 +112,7 @@ func TestMetricsRouting(t *testing.T) {
 					}),
 				},
 			),
-			evaluationInterval: time.Second,
+			recordingInterval: time.Second,
 			initialData: []pmetric.Metrics{
 				newTestMetrics("1", "1", "1", "1"),
 			},
@@ -134,7 +134,8 @@ func TestMetricsRouting(t *testing.T) {
 				pipeline_5_inf:  &sink_5_inf,
 			})
 
-			cfg.EvaluationInterval = tc.evaluationInterval
+			cfg.RecordingInterval = tc.recordingInterval
+			cfg.TTL = 5 * tc.recordingInterval
 			connectorSet := connectortest.NewNopSettings(metadata.Type)
 			connectorSet.Logger = zaptest.NewLogger(t)
 			connector, err := NewFactory().CreateMetricsToMetrics(
