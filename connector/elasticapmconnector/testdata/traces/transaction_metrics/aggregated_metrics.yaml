@@ -457,6 +457,9 @@ resourceMetrics:
         - key: host.name
           value:
             stringValue: camponotus_leonardi
+        - key: os.type
+          value:
+            stringValue: linux
         - key: service.name
           value:
             stringValue: foo

@@ -19,6 +19,9 @@ resourceSpans:
         - key: host.name # only in transaction metrics, not service_transaction
           value:
             stringValue: camponotus_leonardi
+        - key: os.type
+          value:
+            stringValue: linux
         - key: host.hostname
           value:
             stringValue: camponotus_leonardi-host
