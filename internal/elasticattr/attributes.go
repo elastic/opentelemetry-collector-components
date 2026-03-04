@@ -131,15 +131,11 @@ const (
 	ServiceTargetName                                      = "service.target.name"
 
 	// span event s
-	ParentID = "parent.id"
-
-	/// ECS Error attributes
+	ParentID              = "parent.id"
 	ErrorID               = "error.id"
 	ErrorExceptionHandled = "error.exception.handled"
 	ErrorGroupingKey      = "error.grouping_key"
 	ErrorGroupingName     = "error.grouping_name"
-	ErrorExceptionMessage = "error.exception.message"
-	ErrorExceptionType    = "error.exception.type"
 	ErrorType             = "error.type"
 	ErrorCustom           = "error.custom"
 	ErrorMessage          = "error.message"
@@ -152,30 +148,31 @@ const (
 	ErrorLogStackTrace    = "error.log.stacktrace"
 
 	// Error exception attributes
-	ErrorExceptionCodeKey                          = "code"
-	ErrorExceptionMessageKey                       = "message"
-	ErrorExceptionTypeKey                          = "type"
-	ErrorExceptionModuleKey                        = "module"
-	ErrorExceptionAttributesKey                    = "attributes"
-	ErrorExceptionStacktraceKey                    = "stacktrace"
-	ErrorExceptionParentKey                        = "parent"
-	ErrorExceptionStacktraceAbsPathKey             = "abs_path"
-	ErrorExceptionStacktraceFilenameKey            = "filename"
-	ErrorExceptionStacktraceClassnameKey           = "classname"
-	ErrorExceptionStacktraceFunctionKey            = "function"
-	ErrorExceptionStacktraceModuleKey              = "module"
-	ErrorExceptionStacktraceLineNumber             = "line.number"
-	ErrorExceptionStacktraceLineColumnKey          = "line.column"
-	ErrorExceptionStacktraceLineContextKey         = "line.context"
-	ErrorExceptionStacktraceContextPreKey          = "context.pre"
-	ErrorExceptionStacktraceContextPostKey         = "context.post"
-	ErrorExceptionStacktraceLibraryFrameKey        = "library_frame"
-	ErrorExceptionStacktraceExcludeFromGroupingKey = "exclude_from_grouping"
-	ErrorExceptionStacktraceVarsKey                = "vars"
+	ErrorException                              = "error.exception"
+	ErrorExceptionCode                          = "code"
+	ErrorExceptionMessage                       = "message"
+	ErrorExceptionType                          = "type"
+	ErrorExceptionModule                        = "module"
+	ErrorExceptionAttributes                    = "attributes"
+	ErrorExceptionStacktrace                    = "stacktrace"
+	ErrorExceptionParent                        = "parent"
+	ErrorExceptionStacktraceAbsPath             = "abs_path"
+	ErrorExceptionStacktraceFilename            = "filename"
+	ErrorExceptionStacktraceClassname           = "classname"
+	ErrorExceptionStacktraceFunction            = "function"
+	ErrorExceptionStacktraceModule              = "module"
+	ErrorExceptionStacktraceLineNumber          = "line.number"
+	ErrorExceptionStacktraceLineColumn          = "line.column"
+	ErrorExceptionStacktraceLineContext         = "line.context"
+	ErrorExceptionStacktraceContextPre          = "context.pre"
+	ErrorExceptionStacktraceContextPost         = "context.post"
+	ErrorExceptionStacktraceLibraryFrame        = "library_frame"
+	ErrorExceptionStacktraceExcludeFromGrouping = "exclude_from_grouping"
+	ErrorExceptionStacktraceVars                = "vars"
 
-	// ErrorExceptionHandledKey is used within exception objects (value: "handled")
+	// ErrorExceptionHandled is used within exception objects (value: "handled")
 	// For top-level error.exception.handled, use the constant above (value: "error.exception.handled")
-	ErrorExceptionHandledKey = "handled"
+	ErrorExceptionHandledField = "handled"
 
 	// HTTP attributes
 	HTTPVersion                 = "http.version"
@@ -205,7 +202,6 @@ const (
 
 	// Process attributes
 	ProcessThreadName = "process.thread.name"
-	ErrorExceptionKey = "error.exception"
 
 	// Session attributes
 	SessionID       = "session.id"

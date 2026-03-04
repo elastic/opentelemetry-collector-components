@@ -87,10 +87,10 @@ func EnrichLogError(logRecord plog.LogRecord, cfg config.Config) {
 		attribute.PutBool(attributes, elasticattr.ErrorExceptionHandled, !ec.exceptionEscaped)
 	}
 	if cfg.Log.ErrorExceptionConfig.ErrorExceptionMessage.Enabled {
-		attribute.PutStr(attributes, elasticattr.ErrorExceptionMessage, ec.exceptionMessage)
+		attribute.PutStr(attributes, "error.exception.message", ec.exceptionMessage)
 	}
 	if cfg.Log.ErrorExceptionConfig.ErrorExceptionType.Enabled && ec.exceptionType != "" {
-		attribute.PutStr(attributes, elasticattr.ErrorExceptionType, ec.exceptionType)
+		attribute.PutStr(attributes, "error.exception.type", ec.exceptionType)
 	}
 	if cfg.Log.ErrorConfig.ErrorStackTrace.Enabled && ec.exceptionStacktrace != "" {
 		attribute.PutStr(attributes, elasticattr.ErrorStackTrace, ec.exceptionStacktrace)

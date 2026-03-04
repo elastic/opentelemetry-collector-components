@@ -152,7 +152,7 @@ func TestEnrichLogError(t *testing.T) {
 			wantAttributes:  map[string]any{"other": "value"},
 			wantAbsentAttributes: []string{
 				elasticattr.ErrorID,
-				elasticattr.ErrorExceptionMessage,
+				"error.exception.message",
 				elasticattr.ErrorGroupingKey,
 			},
 		},
@@ -160,7 +160,7 @@ func TestEnrichLogError(t *testing.T) {
 			name:           "empty exception message replaced with placeholder",
 			setupConfig:    config.Enabled,
 			exceptionType:  "java.lang.RuntimeException",
-			wantAttributes: map[string]any{elasticattr.ErrorExceptionMessage: emptyExceptionMsg},
+			wantAttributes: map[string]any{"error.exception.message": emptyExceptionMsg},
 		},
 		{
 			name:             "enriches with exception type and message",
@@ -168,8 +168,8 @@ func TestEnrichLogError(t *testing.T) {
 			exceptionType:    "java.lang.NullPointerException",
 			exceptionMessage: "Cannot invoke method on null",
 			wantAttributes: map[string]any{
-				elasticattr.ErrorExceptionType:    "java.lang.NullPointerException",
-				elasticattr.ErrorExceptionMessage: "Cannot invoke method on null",
+				"error.exception.type":    "java.lang.NullPointerException",
+				"error.exception.message": "Cannot invoke method on null",
 			},
 		},
 		{
@@ -200,7 +200,7 @@ func TestEnrichLogError(t *testing.T) {
 			wantAbsentAttributes: []string{
 				elasticattr.ErrorID,
 				elasticattr.ErrorGroupingKey,
-				elasticattr.ErrorExceptionMessage,
+				"error.exception.message",
 			},
 		},
 		// Per-option disabled: ensure each attribute is not set when its config is disabled.
@@ -215,8 +215,8 @@ func TestEnrichLogError(t *testing.T) {
 			exceptionMessage:     "msg",
 			wantAbsentAttributes: []string{elasticattr.ErrorID},
 			wantAttributes: map[string]any{
-				elasticattr.ErrorExceptionType:    "Ex",
-				elasticattr.ErrorExceptionMessage: "msg",
+				"error.exception.type":    "Ex",
+				"error.exception.message": "msg",
 			},
 		},
 		{
@@ -229,7 +229,7 @@ func TestEnrichLogError(t *testing.T) {
 			exceptionMessage:     "err",
 			exceptionEscaped:     true,
 			wantAbsentAttributes: []string{elasticattr.ErrorExceptionHandled},
-			wantAttributes:       map[string]any{elasticattr.ErrorExceptionMessage: "err"},
+			wantAttributes:       map[string]any{"error.exception.message": "err"},
 		},
 		{
 			name: "does not set error exception message when config disabled",
@@ -240,8 +240,8 @@ func TestEnrichLogError(t *testing.T) {
 			},
 			exceptionType:        "Ex",
 			exceptionMessage:     "msg",
-			wantAbsentAttributes: []string{elasticattr.ErrorExceptionMessage},
-			wantAttributes:       map[string]any{elasticattr.ErrorExceptionType: "Ex"},
+			wantAbsentAttributes: []string{"error.exception.message"},
+			wantAttributes:       map[string]any{"error.exception.type": "Ex"},
 		},
 		{
 			name: "does not set error exception type when config disabled",
@@ -252,8 +252,8 @@ func TestEnrichLogError(t *testing.T) {
 			},
 			exceptionType:        "Ex",
 			exceptionMessage:     "msg",
-			wantAbsentAttributes: []string{elasticattr.ErrorExceptionType},
-			wantAttributes:       map[string]any{elasticattr.ErrorExceptionMessage: "msg"},
+			wantAbsentAttributes: []string{"error.exception.type"},
+			wantAttributes:       map[string]any{"error.exception.message": "msg"},
 		},
 		{
 			name: "does not set error stack trace when config disabled",
@@ -265,7 +265,7 @@ func TestEnrichLogError(t *testing.T) {
 			exceptionMessage:     "err",
 			exceptionStacktrace:  "at foo(Bar.java:1)",
 			wantAbsentAttributes: []string{elasticattr.ErrorStackTrace},
-			wantAttributes:       map[string]any{elasticattr.ErrorExceptionMessage: "err"},
+			wantAttributes:       map[string]any{"error.exception.message": "err"},
 		},
 		{
 			name: "does not set error grouping key when config disabled",
@@ -278,8 +278,8 @@ func TestEnrichLogError(t *testing.T) {
 			exceptionMessage:     "msg",
 			wantAbsentAttributes: []string{elasticattr.ErrorGroupingKey},
 			wantAttributes: map[string]any{
-				elasticattr.ErrorExceptionType:    "Ex",
-				elasticattr.ErrorExceptionMessage: "msg",
+				"error.exception.type":    "Ex",
+				"error.exception.message": "msg",
 			},
 		},
 		{
@@ -292,16 +292,16 @@ func TestEnrichLogError(t *testing.T) {
 			otherAttributes: map[string]any{
 				elasticattr.ErrorID:               "existing-error-id",
 				elasticattr.ErrorExceptionHandled: true,
-				elasticattr.ErrorExceptionMessage: "existing message",
-				elasticattr.ErrorExceptionType:    "existing.type",
+				"error.exception.message":         "existing message",
+				"error.exception.type":            "existing.type",
 				elasticattr.ErrorStackTrace:       "existing stack trace",
 				elasticattr.ErrorGroupingKey:      "existing-grouping-key",
 			},
 			wantAttributes: map[string]any{
 				elasticattr.ErrorID:               "existing-error-id",
 				elasticattr.ErrorExceptionHandled: true,
-				elasticattr.ErrorExceptionMessage: "existing message",
-				elasticattr.ErrorExceptionType:    "existing.type",
+				"error.exception.message":         "existing message",
+				"error.exception.type":            "existing.type",
 				elasticattr.ErrorStackTrace:       "existing stack trace",
 				elasticattr.ErrorGroupingKey:      "existing-grouping-key",
 			},
