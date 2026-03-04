@@ -430,30 +430,9 @@ resourceMetrics:
         - key: agent.name
           value:
             stringValue: otlp/go
-        - key: cloud.account.name
-          value:
-            stringValue: acme-account
-        - key: cloud.machine.type
-          value:
-            stringValue: m5.large
-        - key: cloud.project.id
-          value:
-            stringValue: project-123
-        - key: cloud.project.name
-          value:
-            stringValue: checkout
         - key: deployment.environment
           value:
             stringValue: qa
-        - key: faas.coldstart
-          value:
-            boolValue: true
-        - key: faas.trigger
-          value:
-            stringValue: http
-        - key: host.hostname
-          value:
-            stringValue: camponotus_leonardi-host
         - key: host.name
           value:
             stringValue: camponotus_leonardi
