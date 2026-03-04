@@ -21,6 +21,7 @@ import (
 	"context"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -50,6 +51,8 @@ func TestDynamicroutingRoutedTelemetry(t *testing.T) {
 			{Pipelines: []pipeline.ID{pipeline.NewIDWithName(pipeline.SignalMetrics, "bucket_2_5")}, MaxCardinality: 5},
 			{Pipelines: []pipeline.ID{pipeline.NewIDWithName(pipeline.SignalMetrics, "bucket_5_inf")}, MaxCardinality: math.Inf(1)},
 		},
+		RecordingInterval: time.Second,
+		TTL:               5 * time.Second,
 	}
 
 	tests := []struct {
@@ -79,7 +82,8 @@ func TestDynamicroutingRoutedTelemetry(t *testing.T) {
 				),
 			},
 			setup: func(r *router[consumer.Metrics], ctx context.Context) string {
-				pk := r.estimateCardinality(ctx)
+				pk := r.partitionKey(ctx)
+				r.recordCardinality(pk, r.hashSum(ctx))
 				r.updateDecisions()
 				return pk
 			},
@@ -108,7 +112,8 @@ func TestDynamicroutingRoutedTelemetry(t *testing.T) {
 				),
 			},
 			setup: func(r *router[consumer.Metrics], ctx context.Context) string {
-				pk := r.estimateCardinality(ctx)
+				pk := r.partitionKey(ctx)
+				r.recordCardinality(pk, r.hashSum(ctx))
 				r.updateDecisions()
 				return pk
 			},
