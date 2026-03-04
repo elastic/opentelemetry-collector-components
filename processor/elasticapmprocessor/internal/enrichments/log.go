@@ -113,11 +113,11 @@ func EnrichLogError(logRecord plog.LogRecord, cfg config.Config) {
 	}
 
 	if cfg.Log.EventConfig.EventKind.Enabled {
-		attributes.PutStr(elasticattr.EventKind, "event")
+		attribute.PutStr(attributes, elasticattr.EventKind, "event")
 	}
 
 	if cfg.Log.EventConfig.EventType.Enabled {
-		attributes.PutStr(elasticattr.EventType, "error")
+		attribute.PutStr(attributes, elasticattr.EventType, "error")
 	}
 }
 
