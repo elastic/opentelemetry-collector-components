@@ -31,6 +31,9 @@ resourceLogs:
               - key: event.name
                 value:
                   stringValue: device.crash
+              - key: error.id
+                value:
+                  stringValue: error-id-123
               - key: exception.message
                 value:
                   stringValue: Test crash
@@ -58,21 +61,33 @@ resourceLogs:
               - key: event.category
                 value:
                   stringValue: device
-              - key: processor.event
-                value:
-                  stringValue: error
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
-              - key: error.id
-                value:
-                  stringValue: "error-id-123"
               - key: error.grouping_key
                 value:
                   stringValue: 2ed27cd21c977d5b
               - key: error.type
                 value:
                   stringValue: crash
+              - key: error.exception.handled
+                value:
+                  boolValue: true
+              - key: error.exception.message
+                value:
+                  stringValue: Test crash
+              - key: error.exception.type
+                value:
+                  stringValue: java.lang.RuntimeException
+              - key: error.stack_trace
+                value:
+                  stringValue: |
+                    Exception in thread "main" java.lang.RuntimeException: Test
+                     at com.example.Main.crash(Main.java:10)
+                     at com.example.Main.main(Main.java:5)
+              - key: event.type
+                value:
+                  stringValue: error
             body:
               stringValue: app crash
             timeUnixNano: "1581452772000000000"

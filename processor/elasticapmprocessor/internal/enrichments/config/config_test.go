@@ -30,7 +30,7 @@ func TestEnabled(t *testing.T) {
 	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Scope), nil)
 	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Transaction), nil)
 	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Span), nil)
-	assertAttributeConfigDefaults(t, reflect.ValueOf(config.SpanEvent), []string{"ErrorStackTrace", "ErrorExceptionType", "ErrorExceptionMessage"})
+	assertAttributeConfigDefaults(t, reflect.ValueOf(config.SpanEvent), []string{"ErrorStackTrace", "ErrorExceptionType", "ErrorExceptionMessage", "ErrorType"})
 	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Log), []string{"ErrorGroupingName"})
 	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Metric), []string{"ProcessorEvent"})
 }

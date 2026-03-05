@@ -23,6 +23,7 @@ import (
 
 	"maps"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -61,7 +62,6 @@ func TestEnrichEvents(t *testing.T) {
 				return logRecord
 			},
 			expectedAttributes: map[string]any{
-				"processor.event":    "error",
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
 				"error.type":         "crash",
@@ -85,7 +85,6 @@ func TestEnrichEvents(t *testing.T) {
 				return logRecord
 			},
 			expectedAttributes: map[string]any{
-				"processor.event":    "error",
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
 				"error.type":         "crash",
@@ -109,11 +108,10 @@ func TestEnrichEvents(t *testing.T) {
 				return logRecord
 			},
 			expectedAttributes: map[string]any{
-				"processor.event": "error",
-				"timestamp.us":    timestamp.AsTime().UnixMicro(),
-				"error.type":      "crash",
-				"event.kind":      "event",
-				"event.category":  "device",
+				"timestamp.us":   timestamp.AsTime().UnixMicro(),
+				"error.type":     "crash",
+				"event.kind":     "event",
+				"event.category": "device",
 			},
 		},
 		{
@@ -130,8 +128,8 @@ func TestEnrichEvents(t *testing.T) {
 			},
 		},
 		{
-			name:      "device_event_via_domain_and_name_without_prefix",
-			eventName: "lifecycle",
+			name:          "device_event_via_domain_and_name_without_prefix",
+			eventName:     "lifecycle",
 			resourceAttrs: map[string]any{},
 			input: func() plog.LogRecord {
 				logRecord := plog.NewLogRecord()
@@ -146,8 +144,8 @@ func TestEnrichEvents(t *testing.T) {
 			},
 		},
 		{
-			name:      "device_event_non_crash_action",
-			eventName: "device.lifecycle",
+			name:          "device_event_non_crash_action",
+			eventName:     "device.lifecycle",
 			resourceAttrs: map[string]any{},
 			input: func() plog.LogRecord {
 				logRecord := plog.NewLogRecord()
@@ -161,8 +159,8 @@ func TestEnrichEvents(t *testing.T) {
 			},
 		},
 		{
-			name:      "not_device_event_domain_not_device",
-			eventName: "click",
+			name:          "not_device_event_domain_not_device",
+			eventName:     "click",
 			resourceAttrs: map[string]any{},
 			input: func() plog.LogRecord {
 				logRecord := plog.NewLogRecord()
@@ -202,7 +200,6 @@ func TestEnrichEvents(t *testing.T) {
 				return logRecord
 			},
 			expectedAttributes: map[string]any{
-				"processor.event":    "error",
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": swiftStacktraceHash,
 				"error.type":         "crash",
@@ -302,8 +299,8 @@ func TestEnrichEvents(t *testing.T) {
 			},
 		},
 		{
-			name:      "device_event_domain_and_prefix_both_set",
-			eventName: "device.lifecycle",
+			name:          "device_event_domain_and_prefix_both_set",
+			eventName:     "device.lifecycle",
 			resourceAttrs: map[string]any{},
 			input: func() plog.LogRecord {
 				logRecord := plog.NewLogRecord()
@@ -318,8 +315,8 @@ func TestEnrichEvents(t *testing.T) {
 			},
 		},
 		{
-			name:      "device_event_non_device_domain_with_prefix",
-			eventName: "device.lifecycle",
+			name:          "device_event_non_device_domain_with_prefix",
+			eventName:     "device.lifecycle",
 			resourceAttrs: map[string]any{},
 			input: func() plog.LogRecord {
 				logRecord := plog.NewLogRecord()
@@ -347,8 +344,7 @@ func TestEnrichEvents(t *testing.T) {
 				return logRecord
 			},
 			expectedAttributes: map[string]any{
-				"processor.event": "error",
-				"timestamp.us":    timestamp.AsTime().UnixMicro(),
+				"timestamp.us":   timestamp.AsTime().UnixMicro(),
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
@@ -368,16 +364,15 @@ func TestEnrichEvents(t *testing.T) {
 				return logRecord
 			},
 			expectedAttributes: map[string]any{
-				"processor.event": "error",
-				"timestamp.us":    timestamp.AsTime().UnixMicro(),
-				"error.type":      "crash",
-				"event.kind":      "event",
-				"event.category":  "device",
+				"timestamp.us":   timestamp.AsTime().UnixMicro(),
+				"error.type":     "crash",
+				"event.kind":     "event",
+				"event.category": "device",
 			},
 		},
 		{
-			name:      "crash_event_no_language_key",
-			eventName: "device.crash",
+			name:          "crash_event_no_language_key",
+			eventName:     "device.crash",
 			resourceAttrs: map[string]any{},
 			input: func() plog.LogRecord {
 				logRecord := plog.NewLogRecord()
@@ -387,11 +382,10 @@ func TestEnrichEvents(t *testing.T) {
 				return logRecord
 			},
 			expectedAttributes: map[string]any{
-				"processor.event": "error",
-				"timestamp.us":    timestamp.AsTime().UnixMicro(),
-				"error.type":      "crash",
-				"event.kind":      "event",
-				"event.category":  "device",
+				"timestamp.us":   timestamp.AsTime().UnixMicro(),
+				"error.type":     "crash",
+				"event.kind":     "event",
+				"event.category": "device",
 			},
 		},
 	} {
@@ -404,7 +398,7 @@ func TestEnrichEvents(t *testing.T) {
 				ResourceAttributes: tc.resourceAttrs,
 				EventName:          tc.eventName,
 			}
-			EnrichLogEvent(ctx, inputLogRecord)
+			EnrichLogEvent(ctx, inputLogRecord, config.Enabled())
 
 			assert.Empty(t, cmp.Diff(inputLogRecord.Attributes().AsRaw(), tc.expectedAttributes, ignoreMapKey("error.id")))
 			errorId, ok := inputLogRecord.Attributes().Get("error.id")
