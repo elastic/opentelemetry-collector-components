@@ -37,6 +37,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -84,9 +87,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074
@@ -146,6 +146,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -193,9 +196,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074
@@ -256,6 +256,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -303,9 +306,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074
@@ -366,6 +366,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -422,9 +425,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074
@@ -485,6 +485,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -541,9 +544,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074
@@ -641,6 +641,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -697,9 +700,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074
@@ -794,6 +794,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -850,9 +853,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074
@@ -947,6 +947,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -1009,9 +1012,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074
@@ -1094,6 +1094,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: Linux
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -1156,9 +1159,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 5.0.0
-        - key: host.os.platform
-          value:
-            stringValue: Linux
         - key: host.hostname
           value:
             stringValue: 8ec7ceb99074

@@ -179,9 +179,6 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: amd64
-        - key: host.os.platform
-          value:
-            stringValue: linux
         - key: process.pid
           value:
             intValue: "12345"

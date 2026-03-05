@@ -34,6 +34,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: user_agent.original
           value:
             stringValue: Mozilla Chrome Edge
@@ -139,9 +142,6 @@ resourceLogs:
         - key: service.origin.version
           value:
             stringValue: 1.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: myhostname
@@ -683,6 +683,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -773,9 +776,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: myhostname
@@ -857,6 +857,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -947,9 +950,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: myhostname
@@ -1022,6 +1022,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1112,9 +1115,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: "5.0"
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: myhostname
@@ -1191,6 +1191,9 @@ resourceLogs:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1281,9 +1284,6 @@ resourceLogs:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: myhostname

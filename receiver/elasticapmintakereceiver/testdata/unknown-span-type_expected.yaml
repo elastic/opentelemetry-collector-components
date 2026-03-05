@@ -31,6 +31,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: user_agent.original
           value:
             stringValue: Mozilla Chrome Edge
@@ -79,9 +82,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: labels.bool_error
           value:
             stringValue: "false"
@@ -339,6 +339,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: container.id
           value:
             stringValue: container-id
@@ -387,9 +390,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: labels.span_tag
           value:
             stringValue: something

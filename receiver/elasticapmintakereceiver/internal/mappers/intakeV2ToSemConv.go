@@ -56,6 +56,7 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 		putNonEmptyStr(attributes, string(semconv.HostArchKey), event.Host.Architecture)
 		if event.Host.Os != nil {
 			putNonEmptyStr(attributes, string(semconv.OSNameKey), event.Host.Os.Name)
+			putNonEmptyStr(attributes, string(semconv.OSTypeKey), event.Host.Os.Platform)
 			putNonEmptyStr(attributes, string(semconv.OSVersionKey), event.Host.Os.Version)
 		}
 	}

@@ -145,9 +145,6 @@ resourceMetrics:
         - key: host.name
           value:
             stringValue: node-1
-        - key: host.os.platform
-          value:
-            stringValue: linux
         - key: host.type
           value:
             stringValue: t3.medium

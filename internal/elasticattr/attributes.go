@@ -42,7 +42,6 @@ const (
 	FaaSExecution          = "faas.execution"
 	FaaSTriggerRequestID   = "faas.trigger.request_id"
 	HostHostName           = "host.hostname"
-	HostOSPlatform         = "host.os.platform"
 	ServiceOriginID        = "service.origin.id"
 	ServiceOriginName      = "service.origin.name"
 	ServiceOriginVersion   = "service.origin.version"

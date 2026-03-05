@@ -28,6 +28,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: container.id
           value:
             stringValue: container-id
@@ -40,9 +43,6 @@ resourceSpans:
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: host.os.platform
-          value:
-            stringValue: darwin
     scopeSpans:
       - scope: {}
         spans:

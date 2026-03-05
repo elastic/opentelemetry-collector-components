@@ -34,6 +34,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -121,9 +124,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: labels.tag1
           value:
             stringValue: one
@@ -196,6 +196,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -283,9 +286,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: labels.tag1
           value:
             stringValue: one
