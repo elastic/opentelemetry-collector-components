@@ -422,6 +422,112 @@ func ignoreMapKey(k string) cmp.Option {
 	}, cmp.Ignore())
 }
 
+func TestEnrichLogEvent_ConfigDisabled(t *testing.T) {
+	now := time.Unix(3600, 0)
+	timestamp := pcommon.NewTimestampFromTime(now)
+	javaStacktrace := "Exception in thread \"main\" java.lang.RuntimeException: Test\n at com.example.Main.crash(Main.java:10)"
+
+	for _, tc := range []struct {
+		name          string
+		eventName     string
+		setupConfig   func() config.Config
+		inputAttrs    map[string]string
+		resourceAttrs map[string]any
+		wantPresent   []string // attributes that must be set after enrichment
+		wantAbsent    []string // attributes that must NOT be set when config is disabled
+	}{
+		{
+			name:        "event_kind_disabled",
+			eventName:   "device.crash",
+			setupConfig: func() config.Config { c := config.Enabled(); c.Log.EventConfig.EventKind.Enabled = false; return c },
+			inputAttrs:  map[string]string{"event.name": "device.crash"},
+			resourceAttrs: map[string]any{},
+			wantPresent: []string{"event.category", "error.type", "timestamp.us"},
+			wantAbsent:  []string{"event.kind"},
+		},
+		{
+			name:        "event_category_disabled",
+			eventName:   "device.crash",
+			setupConfig: func() config.Config { c := config.Enabled(); c.Log.EventConfig.EventCategory.Enabled = false; return c },
+			inputAttrs:  map[string]string{"event.name": "device.crash"},
+			resourceAttrs: map[string]any{},
+			wantPresent: []string{"event.kind", "error.type", "timestamp.us"},
+			wantAbsent:  []string{"event.category"},
+		},
+		{
+			name:        "event_action_disabled",
+			eventName:   "device.lifecycle",
+			setupConfig: func() config.Config { c := config.Enabled(); c.Log.EventConfig.EventAction.Enabled = false; return c },
+			inputAttrs:  map[string]string{"event.name": "device.lifecycle"},
+			resourceAttrs: map[string]any{},
+			wantPresent: []string{"event.kind", "event.category"},
+			wantAbsent:  []string{"event.action"},
+		},
+		{
+			name:        "error_grouping_key_disabled",
+			eventName:   "device.crash",
+			setupConfig: func() config.Config { c := config.Enabled(); c.Log.ErrorConfig.ErrorGroupingKey.Enabled = false; return c },
+			inputAttrs: map[string]string{
+				"event.name":           "device.crash",
+				"exception.stacktrace": javaStacktrace,
+			},
+			resourceAttrs: map[string]any{"telemetry.sdk.language": "java"},
+			wantPresent:   []string{"event.kind", "event.category", "error.type", "timestamp.us"},
+			wantAbsent:    []string{"error.grouping_key"},
+		},
+		{
+			name:        "error_type_disabled",
+			eventName:   "device.crash",
+			setupConfig: func() config.Config { c := config.Enabled(); c.Log.ErrorConfig.ErrorType.Enabled = false; return c },
+			inputAttrs:  map[string]string{"event.name": "device.crash"},
+			resourceAttrs: map[string]any{},
+			wantPresent: []string{"event.kind", "event.category", "timestamp.us"},
+			wantAbsent:  []string{"error.type"},
+		},
+		{
+			name:      "all_event_and_error_attrs_disabled",
+			eventName: "device.crash",
+			setupConfig: func() config.Config {
+				c := config.Enabled()
+				c.Log.EventConfig.EventKind.Enabled = false
+				c.Log.EventConfig.EventCategory.Enabled = false
+				c.Log.ErrorConfig.ErrorGroupingKey.Enabled = false
+				c.Log.ErrorConfig.ErrorType.Enabled = false
+				return c
+			},
+			inputAttrs: map[string]string{
+				"event.name":           "device.crash",
+				"exception.stacktrace": javaStacktrace,
+			},
+			resourceAttrs: map[string]any{"telemetry.sdk.language": "java"},
+			wantPresent:   []string{"timestamp.us", "error.id"},
+			wantAbsent:    []string{"event.kind", "event.category", "error.type", "error.grouping_key"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logRecord := plog.NewLogRecord()
+			logRecord.SetTimestamp(timestamp)
+			for k, v := range tc.inputAttrs {
+				logRecord.Attributes().PutStr(k, v)
+			}
+			ctx := EventContext{
+				ResourceAttributes: tc.resourceAttrs,
+				EventName:          tc.eventName,
+			}
+			EnrichLogEvent(ctx, logRecord, tc.setupConfig())
+			attrs := logRecord.Attributes().AsRaw()
+			for _, key := range tc.wantPresent {
+				_, ok := attrs[key]
+				assert.True(t, ok, "expected attribute %q to be set", key)
+			}
+			for _, key := range tc.wantAbsent {
+				_, ok := attrs[key]
+				assert.False(t, ok, "expected attribute %q to NOT be set when config disabled", key)
+			}
+		})
+	}
+}
+
 func TestIsDeviceEvent(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
