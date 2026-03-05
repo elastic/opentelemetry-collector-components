@@ -78,7 +78,9 @@ func TestHTTPServerMiddleware(t *testing.T) {
 	})
 
 	// Wrap the handler with middleware
-	finalHandler, err := middleware.GetHTTPHandler(baseHandler)
+	wrapper, err := middleware.GetHTTPHandler(context.Background())
+	require.NoError(t, err)
+	finalHandler, err := wrapper(context.Background(), baseHandler)
 	require.NoError(t, err)
 
 	// Create the server
@@ -174,7 +176,7 @@ func TestGRPCServerMiddleware(t *testing.T) {
 
 	// Get the gRPC server options from the middleware
 	// These options include the unary interceptor that extracts client address from metadata
-	opts, err := middleware.GetGRPCServerOptions()
+	opts, err := middleware.GetGRPCServerOptions(context.Background())
 	require.NoError(t, err)
 
 	// Create a test server with the middleware options
