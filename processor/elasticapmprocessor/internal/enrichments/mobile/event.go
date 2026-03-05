@@ -18,11 +18,6 @@
 package mobile // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/mobile"
 
 import (
-	"crypto/rand"
-	"encoding/hex"
-	"io"
-
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -49,8 +44,8 @@ func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any) {
 		timestamp = logRecord.ObservedTimestamp()
 	}
 	attribute.PutStr(logRecord.Attributes(), elasticattr.ProcessorEvent, "error")
-	attribute.PutInt(logRecord.Attributes(), elasticattr.TimestampUs, getTimestampUs(timestamp))
-	if id, err := newUniqueID(); err == nil {
+	attribute.PutInt(logRecord.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(timestamp))
+	if id, err := attribute.NewErrorID(); err == nil {
 		attribute.PutStr(logRecord.Attributes(), elasticattr.ErrorID, id)
 	}
 	stacktrace, ok := logRecord.Attributes().Get("exception.stacktrace")
@@ -68,21 +63,4 @@ func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any) {
 		}
 	}
 	attribute.PutStr(logRecord.Attributes(), elasticattr.ErrorType, "crash")
-}
-
-func newUniqueID() (string, error) {
-	var u [16]byte
-	if _, err := io.ReadFull(rand.Reader, u[:]); err != nil {
-		return "", err
-	}
-
-	// convert to string
-	buf := make([]byte, 32)
-	hex.Encode(buf, u[:])
-
-	return string(buf), nil
-}
-
-func getTimestampUs(ts pcommon.Timestamp) int64 {
-	return int64(ts) / 1000
 }

@@ -40,6 +40,9 @@ resourceLogs:
               - key: exception.type
                 value:
                   stringValue: RuntimeError
+              - key: error.id
+                value:
+                  stringValue: ac388d6b8a3cd6b9ca32952fb51e85be
               - key: data_stream.type
                 value:
                   stringValue: logs
@@ -49,6 +52,27 @@ resourceLogs:
               - key: data_stream.namespace
                 value:
                   stringValue: default
+              - key: error.exception.handled
+                value:
+                  boolValue: true
+              - key: error.exception.message
+                value:
+                  stringValue: Something went wrong
+              - key: error.exception.type
+                value:
+                  stringValue: RuntimeError
+              - key: error.grouping_key
+                value:
+                  stringValue: 092cbbd898be10d4d3d1843203b177cb
+              - key: timestamp.us
+                value:
+                  intValue: "1000000"
+              - key: event.kind
+                value:
+                  stringValue: event
+              - key: event.type
+                value:
+                  stringValue: error
             body:
               stringValue: Error occurred
             timeUnixNano: "1000000000"

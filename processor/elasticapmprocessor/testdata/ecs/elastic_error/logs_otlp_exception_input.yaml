@@ -28,6 +28,9 @@ resourceLogs:
               - key: exception.stacktrace
                 value:
                   stringValue: "at com.example.MyClass.method(MyClass.java:42)"
+              - key: error.id
+                value:
+                  stringValue: "error-123"
             body:
               stringValue: "Application error occurred"
             timeUnixNano: "1000000000"

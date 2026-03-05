@@ -107,22 +107,40 @@ type SpanEventConfig struct {
 	TransactionType    AttributeConfig `mapstructure:"transaction_type"`
 	ProcessorEvent     AttributeConfig `mapstructure:"processor_event"`
 
-	// For exceptions/errors
-	ErrorID               AttributeConfig `mapstructure:"error_id"`
-	ErrorExceptionHandled AttributeConfig `mapstructure:"error_exception_handled"`
-	ErrorGroupingKey      AttributeConfig `mapstructure:"error_grouping_key"`
-	ErrorGroupingName     AttributeConfig `mapstructure:"error_grouping_name"`
-}
-
-// ElasticLogConfig configures the enrichment attributes for logs
-type ElasticLogConfig struct {
-	ProcessorEvent AttributeConfig `mapstructure:"processor_event"`
+	ErrorExceptionConfig ErrorExceptionConfig `mapstructure:",squash"`
+	ErrorConfig          ErrorConfig          `mapstructure:",squash"`
 }
 
 // ElasticMetricConfig configures the enrichment attributes for metrics
 type ElasticMetricConfig struct {
 	ProcessorEvent AttributeConfig `mapstructure:"processor_event"`
 	MetricsetName  AttributeConfig `mapstructure:"metricset_name"`
+}
+
+// ElasticLogConfig configures the enrichment attributes for logs
+type ElasticLogConfig struct {
+	EventConfig          EventConfig          `mapstructure:",squash"`
+	ErrorConfig          ErrorConfig          `mapstructure:",squash"`
+	ErrorExceptionConfig ErrorExceptionConfig `mapstructure:",squash"`
+}
+
+type EventConfig struct {
+	EventKind AttributeConfig `mapstructure:"event_kind"`
+	EventType AttributeConfig `mapstructure:"event_type"`
+}
+
+type ErrorConfig struct {
+	ErrorID           AttributeConfig `mapstructure:"error_id"`
+	ErrorStackTrace   AttributeConfig `mapstructure:"error_stack_trace"`
+	ErrorGroupingKey  AttributeConfig `mapstructure:"error_grouping_key"`
+	ErrorGroupingName AttributeConfig `mapstructure:"error_grouping_name"`
+	TimestampUs       AttributeConfig `mapstructure:"timestamp_us"`
+}
+
+type ErrorExceptionConfig struct {
+	ErrorExceptionType    AttributeConfig `mapstructure:"error_exception_type"`
+	ErrorExceptionMessage AttributeConfig `mapstructure:"error_exception_message"`
+	ErrorExceptionHandled AttributeConfig `mapstructure:"error_exception_handled"`
 }
 
 // AttributeConfig is the configuration options for each attribute.
@@ -177,17 +195,39 @@ func Enabled() Config {
 			MessageQueueName:    AttributeConfig{Enabled: true},
 		},
 		SpanEvent: SpanEventConfig{
-			TimestampUs:           AttributeConfig{Enabled: true},
-			TransactionSampled:    AttributeConfig{Enabled: true},
-			TransactionType:       AttributeConfig{Enabled: true},
-			ProcessorEvent:        AttributeConfig{Enabled: true},
-			ErrorID:               AttributeConfig{Enabled: true},
-			ErrorExceptionHandled: AttributeConfig{Enabled: true},
-			ErrorGroupingKey:      AttributeConfig{Enabled: true},
-			ErrorGroupingName:     AttributeConfig{Enabled: true},
+			TimestampUs:        AttributeConfig{Enabled: true},
+			TransactionSampled: AttributeConfig{Enabled: true},
+			TransactionType:    AttributeConfig{Enabled: true},
+			ProcessorEvent:     AttributeConfig{Enabled: true},
+			ErrorConfig: ErrorConfig{
+				ErrorID:           AttributeConfig{Enabled: true},
+				ErrorGroupingKey:  AttributeConfig{Enabled: true},
+				ErrorGroupingName: AttributeConfig{Enabled: true},
+				TimestampUs:       AttributeConfig{Enabled: true},
+			},
+			ErrorExceptionConfig: ErrorExceptionConfig{
+				ErrorExceptionHandled: AttributeConfig{Enabled: true},
+			},
 		},
 		Metric: ElasticMetricConfig{
 			MetricsetName: AttributeConfig{Enabled: true},
+		},
+		Log: ElasticLogConfig{
+			EventConfig: EventConfig{
+				EventKind: AttributeConfig{Enabled: true},
+				EventType: AttributeConfig{Enabled: true},
+			},
+			ErrorConfig: ErrorConfig{
+				ErrorID:          AttributeConfig{Enabled: true},
+				ErrorStackTrace:  AttributeConfig{Enabled: true},
+				ErrorGroupingKey: AttributeConfig{Enabled: true},
+				TimestampUs:      AttributeConfig{Enabled: true},
+			},
+			ErrorExceptionConfig: ErrorExceptionConfig{
+				ErrorExceptionType:    AttributeConfig{Enabled: true},
+				ErrorExceptionMessage: AttributeConfig{Enabled: true},
+				ErrorExceptionHandled: AttributeConfig{Enabled: true},
+			},
 		},
 	}
 }
