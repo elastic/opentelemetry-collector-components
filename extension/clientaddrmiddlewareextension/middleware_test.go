@@ -77,15 +77,15 @@ func TestHTTPServerMiddleware(t *testing.T) {
 		capturedCtx = r.Context()
 	})
 
-	// Wrap the handler with middleware
-	wrapper, err := middleware.GetHTTPHandler(context.Background())
+	// HTTP middleware setup is a two-step API: get handlerFunc, then wrap handler.
+	handlerFunc, err := middleware.GetHTTPHandler(context.Background())
 	require.NoError(t, err)
-	finalHandler, err := wrapper(context.Background(), baseHandler)
+	handler, err := handlerFunc(context.Background(), baseHandler)
 	require.NoError(t, err)
 
 	// Create the server
 	srv := &http.Server{
-		Handler: finalHandler,
+		Handler: handler,
 	}
 
 	testCases := []struct {

@@ -61,8 +61,9 @@ func ctxWithClientAddr(ctx context.Context, headers map[string][]string) context
 	return ctx
 }
 
-// GetHTTPHandler HTTP server middleware that returns an HTTP handler that updates the ctx client.Info.Address
-// using request headers.
+// GetHTTPHandler returns a middleware factory.
+// It first returns WrapHTTPHandlerFunc, then that function wraps the base handler
+// to update ctx client.Info.Address using request headers.
 func (c *clientAddrMiddleware) GetHTTPHandler(_ context.Context) (extensionmiddleware.WrapHTTPHandlerFunc, error) {
 	return func(_ context.Context, base http.Handler) (http.Handler, error) {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
