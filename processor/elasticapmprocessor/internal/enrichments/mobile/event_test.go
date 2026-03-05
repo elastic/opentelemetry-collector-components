@@ -273,6 +273,127 @@ func TestEnrichEvents(t *testing.T) {
 				"event.category":     "device",
 			},
 		},
+		{
+			name:          "device_event_missing_domain_non_prefix_name",
+			eventName:     "lifecycle",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.Attributes().PutStr("event.name", "lifecycle")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"event.kind": "event",
+			},
+		},
+		{
+			name:          "device_event_empty_action",
+			eventName:     "device.",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.Attributes().PutStr("event.name", "device.")
+				return logRecord
+			},
+			// apm-data convention: omit event.action when empty (see putNonEmptyStr in intake mapper)
+			expectedAttributes: map[string]any{
+				"event.kind":     "event",
+				"event.category": "device",
+			},
+		},
+		{
+			name:      "device_event_domain_and_prefix_both_set",
+			eventName: "device.lifecycle",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.Attributes().PutStr("event.domain", "device")
+				logRecord.Attributes().PutStr("event.name", "device.lifecycle")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"event.kind":     "event",
+				"event.category": "device",
+				"event.action":   "lifecycle",
+			},
+		},
+		{
+			name:      "device_event_non_device_domain_with_prefix",
+			eventName: "device.lifecycle",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.Attributes().PutStr("event.domain", "user")
+				logRecord.Attributes().PutStr("event.name", "device.lifecycle")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"event.kind":     "event",
+				"event.category": "device",
+				"event.action":   "lifecycle",
+			},
+		},
+		{
+			name:      "crash_event_without_stacktrace",
+			eventName: "device.crash",
+			resourceAttrs: map[string]any{
+				"telemetry.sdk.language": "java",
+			},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.SetTimestamp(timestamp)
+				logRecord.Attributes().PutStr("event.name", "device.crash")
+				logRecord.Attributes().PutStr("exception.message", "Fatal error")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"processor.event": "error",
+				"timestamp.us":    timestamp.AsTime().UnixMicro(),
+				"error.type":     "crash",
+				"event.kind":     "event",
+				"event.category": "device",
+			},
+		},
+		{
+			name:      "crash_event_swift_invalid_stacktrace",
+			eventName: "device.crash",
+			resourceAttrs: map[string]any{
+				"telemetry.sdk.language": "swift",
+			},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.SetTimestamp(timestamp)
+				logRecord.Attributes().PutStr("event.name", "device.crash")
+				logRecord.Attributes().PutStr("exception.stacktrace", "invalid stacktrace without Thread N Crashed:")
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"processor.event": "error",
+				"timestamp.us":    timestamp.AsTime().UnixMicro(),
+				"error.type":      "crash",
+				"event.kind":      "event",
+				"event.category":  "device",
+			},
+		},
+		{
+			name:      "crash_event_no_language_key",
+			eventName: "device.crash",
+			resourceAttrs: map[string]any{},
+			input: func() plog.LogRecord {
+				logRecord := plog.NewLogRecord()
+				logRecord.SetTimestamp(timestamp)
+				logRecord.Attributes().PutStr("event.name", "device.crash")
+				logRecord.Attributes().PutStr("exception.stacktrace", javaStacktrace)
+				return logRecord
+			},
+			expectedAttributes: map[string]any{
+				"processor.event": "error",
+				"timestamp.us":    timestamp.AsTime().UnixMicro(),
+				"error.type":      "crash",
+				"event.kind":      "event",
+				"event.category":  "device",
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			inputLogRecord := tc.input()
@@ -305,4 +426,71 @@ func ignoreMapKey(k string) cmp.Option {
 		}
 		return mapIndex.Key().String() == k
 	}, cmp.Ignore())
+}
+
+func TestIsDeviceEvent(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		eventName  string
+		logAttrs   map[string]string
+		wantDevice bool
+	}{
+		{
+			name:       "domain_device_non_empty_event_name",
+			eventName:  "lifecycle",
+			logAttrs:   map[string]string{"event.domain": "device"},
+			wantDevice: true,
+		},
+		{
+			name:       "domain_device_empty_event_name",
+			eventName:  "",
+			logAttrs:   map[string]string{"event.domain": "device"},
+			wantDevice: false,
+		},
+		{
+			name:       "domain_user_event_name_has_device_prefix",
+			eventName:  "device.lifecycle",
+			logAttrs:   map[string]string{"event.domain": "user"},
+			wantDevice: true,
+		},
+		{
+			name:       "no_domain_event_name_has_device_prefix",
+			eventName:  "device.crash",
+			logAttrs:   map[string]string{},
+			wantDevice: true,
+		},
+		{
+			name:       "no_domain_event_name_no_prefix",
+			eventName:  "lifecycle",
+			logAttrs:   map[string]string{},
+			wantDevice: false,
+		},
+		{
+			name:       "domain_device_event_name_has_prefix",
+			eventName:  "device.lifecycle",
+			logAttrs:   map[string]string{"event.domain": "device"},
+			wantDevice: true,
+		},
+		{
+			name:       "event_name_exactly_device_prefix",
+			eventName:  "device.",
+			logAttrs:   map[string]string{},
+			wantDevice: true,
+		},
+		{
+			name:       "domain_not_device_event_name_no_prefix",
+			eventName:  "click",
+			logAttrs:   map[string]string{"event.domain": "user"},
+			wantDevice: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			logRecord := plog.NewLogRecord()
+			for k, v := range tc.logAttrs {
+				logRecord.Attributes().PutStr(k, v)
+			}
+			got := isDeviceEvent(logRecord, tc.eventName)
+			assert.Equal(t, tc.wantDevice, got)
+		})
+	}
 }

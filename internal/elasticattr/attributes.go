@@ -126,7 +126,6 @@ const (
 	EventDataset                                           = "event.dataset"
 	EventCategory                                          = "event.category"
 	EventType                                              = "event.type"
-	EventDomain                                            = "event.domain"
 	SuccessCount                                           = "event.success_count"
 	ServiceTargetType                                      = "service.target.type"
 	ServiceTargetName                                      = "service.target.name"

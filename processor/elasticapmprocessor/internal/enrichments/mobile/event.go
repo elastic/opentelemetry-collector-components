@@ -41,7 +41,7 @@ func EnrichLogEvent(ctx EventContext, logRecord plog.LogRecord) {
 		action := strings.TrimPrefix(ctx.EventName, "device.")
 		if action == "crash" {
 			enrichCrashEvent(logRecord, ctx.ResourceAttributes)
-		} else {
+		} else if action != "" {
 			// TODO: add action to the config and use it here
 			attribute.PutStr(logRecord.Attributes(), elasticattr.EventAction, action)
 		}
@@ -49,16 +49,12 @@ func EnrichLogEvent(ctx EventContext, logRecord plog.LogRecord) {
 }
 
 func isDeviceEvent(logRecord plog.LogRecord, eventName string) bool {
-	eventDomain := getEventDomain(logRecord)
-	return (eventDomain == "device" && eventName != "") || strings.HasPrefix(eventName, "device.")
-}
-
-func getEventDomain(logRecord plog.LogRecord) string {
-	eventDomain, ok := logRecord.Attributes().Get(elasticattr.EventDomain)
+	domainAttr, ok := logRecord.Attributes().Get("event.domain")
+	eventDomain := ""
 	if ok {
-		return eventDomain.AsString()
+		eventDomain = domainAttr.AsString()
 	}
-	return ""
+	return eventDomain == "device" && eventName != "" || strings.HasPrefix(eventName, "device.")
 }
 
 func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any) {
