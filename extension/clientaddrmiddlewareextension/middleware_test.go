@@ -77,13 +77,15 @@ func TestHTTPServerMiddleware(t *testing.T) {
 		capturedCtx = r.Context()
 	})
 
-	// Wrap the handler with middleware
-	finalHandler, err := middleware.GetHTTPHandler(baseHandler)
+	// HTTP middleware setup is a two-step API: get handlerFunc, then wrap handler.
+	handlerFunc, err := middleware.GetHTTPHandler(context.Background())
+	require.NoError(t, err)
+	handler, err := handlerFunc(context.Background(), baseHandler)
 	require.NoError(t, err)
 
 	// Create the server
 	srv := &http.Server{
-		Handler: finalHandler,
+		Handler: handler,
 	}
 
 	testCases := []struct {
@@ -174,7 +176,7 @@ func TestGRPCServerMiddleware(t *testing.T) {
 
 	// Get the gRPC server options from the middleware
 	// These options include the unary interceptor that extracts client address from metadata
-	opts, err := middleware.GetGRPCServerOptions()
+	opts, err := middleware.GetGRPCServerOptions(context.Background())
 	require.NoError(t, err)
 
 	// Create a test server with the middleware options

@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/extension/extensionmiddleware"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
@@ -60,25 +61,28 @@ func ctxWithClientAddr(ctx context.Context, headers map[string][]string) context
 	return ctx
 }
 
-// GetHTTPHandler HTTP server middleware that returns an HTTP handler that updates the ctx client.Info.Address
-// using request headers.
-func (c *clientAddrMiddleware) GetHTTPHandler(base http.Handler) (http.Handler, error) {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		original := r
-		ctx := ctxWithClientAddr(r.Context(), r.Header)
-		r = r.WithContext(ctx)
-		base.ServeHTTP(w, r)
-		// Propagate the Pattern back to the original request for otelhttp instrumentation.
-		// See https://github.com/open-telemetry/opentelemetry-collector/issues/14508
-		if r.Pattern != "" {
-			original.Pattern = r.Pattern
-		}
-	}), nil
+// GetHTTPHandler returns a middleware factory.
+// It first returns WrapHTTPHandlerFunc, then that function wraps the base handler
+// to update ctx client.Info.Address using request headers.
+func (c *clientAddrMiddleware) GetHTTPHandler(_ context.Context) (extensionmiddleware.WrapHTTPHandlerFunc, error) {
+	return func(_ context.Context, base http.Handler) (http.Handler, error) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			original := r
+			ctx := ctxWithClientAddr(r.Context(), r.Header)
+			r = r.WithContext(ctx)
+			base.ServeHTTP(w, r)
+			// Propagate the Pattern back to the original request for otelhttp instrumentation.
+			// See https://github.com/open-telemetry/opentelemetry-collector/issues/14508
+			if r.Pattern != "" {
+				original.Pattern = r.Pattern
+			}
+		}), nil
+	}, nil
 }
 
 // GetGRPCServerOptions GRPC server middleware that returns gRPC server options that updates the ctx client.Info.Address
 // using request metadata.
-func (c *clientAddrMiddleware) GetGRPCServerOptions() ([]grpc.ServerOption, error) {
+func (c *clientAddrMiddleware) GetGRPCServerOptions(context.Context) ([]grpc.ServerOption, error) {
 	opt := grpc.ChainUnaryInterceptor(
 		func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 			md, ok := metadata.FromIncomingContext(ctx)
