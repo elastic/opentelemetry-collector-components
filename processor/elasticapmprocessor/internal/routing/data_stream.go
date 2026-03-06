@@ -19,8 +19,6 @@ package routing // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/elastic/apm-data/model/modelprocessor"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -40,12 +38,6 @@ const (
 	NamespaceDefault = "default" //TODO: make this configurable
 
 	ServiceNameUnknownAttributeUnknonw = "unknown"
-
-	keywordLength = 100
-)
-
-var (
-	serviceNameInvalidRegexp = regexp.MustCompile("[^a-zA-Z0-9_]")
 )
 
 func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceNameInDataset bool) {
@@ -73,28 +65,8 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 	}
 
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
-	attributes.PutStr(elasticattr.DataStreamDataset, "apm.app."+normalizeServiceName(serviceName.Str()))
+	attributes.PutStr(elasticattr.DataStreamDataset, "apm.app."+sanitize.NormalizeServiceName(serviceName.Str()))
 	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
-}
-
-// The following is adapted from apm-data
-// https://github.com/elastic/apm-data/blob/46a81347bdbb81a7a308e8d2f58f39c0b1137a77/model/modelprocessor/datastream.go#L186C1-L209C2
-
-// normalizeServiceName translates serviceName into a string suitable
-// for inclusion in a data stream name.
-//
-// Concretely, this function will lowercase the string and replace any
-// reserved characters with "_".
-func normalizeServiceName(s string) string {
-	s = strings.ToLower(s)
-	s = cleanServiceName(s)
-	return s
-}
-
-// cleanServiceName sanitizes a service name by truncating it to a defined length and replacing invalid characters with "_".
-// see https://github.com/elastic/apm-data/blob/34677210900a68d6204cdb79da4ce0d1ee685d9a/input/otlp/metadata.go#L491
-func cleanServiceName(name string) string {
-	return serviceNameInvalidRegexp.ReplaceAllString(sanitize.Truncate(name, keywordLength), "_")
 }
 
 // IsErrorEvent checks if a log record or span event represents an APM error event.
