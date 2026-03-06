@@ -40,6 +40,9 @@ resourceLogs:
               - key: exception.stacktrace
                 value:
                   stringValue: at com.example.MyClass.method(MyClass.java:42)
+              - key: error.id
+                value:
+                  stringValue: error-123
               - key: data_stream.type
                 value:
                   stringValue: logs
@@ -49,6 +52,30 @@ resourceLogs:
               - key: data_stream.namespace
                 value:
                   stringValue: default
+              - key: error.exception.handled
+                value:
+                  boolValue: true
+              - key: error.exception.message
+                value:
+                  stringValue: Null pointer exception
+              - key: error.exception.type
+                value:
+                  stringValue: java.lang.NullPointerException
+              - key: error.stack_trace
+                value:
+                  stringValue: at com.example.MyClass.method(MyClass.java:42)
+              - key: error.grouping_key
+                value:
+                  stringValue: 7733ff34674dbdb285a538ffb51bbe60
+              - key: timestamp.us
+                value:
+                  intValue: "1000000"
+              - key: event.kind
+                value:
+                  stringValue: event
+              - key: event.type
+                value:
+                  stringValue: error
             body:
               stringValue: Application error occurred
             timeUnixNano: "1000000000"

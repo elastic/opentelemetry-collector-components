@@ -26,15 +26,22 @@ import (
 
 func TestEnabled(t *testing.T) {
 	config := Enabled()
-	assertAllEnabled(t, reflect.ValueOf(config.Resource))
-	assertAllEnabled(t, reflect.ValueOf(config.Scope))
-	assertAllEnabled(t, reflect.ValueOf(config.Transaction))
-	assertAllEnabled(t, reflect.ValueOf(config.Span))
-	assertAllEnabled(t, reflect.ValueOf(config.SpanEvent))
+	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Resource), nil)
+	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Scope), nil)
+	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Transaction), nil)
+	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Span), nil)
+	assertAttributeConfigDefaults(t, reflect.ValueOf(config.SpanEvent), []string{"ErrorStackTrace", "ErrorExceptionType", "ErrorExceptionMessage"})
+	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Log), []string{"ErrorGroupingName"})
+	assertAttributeConfigDefaults(t, reflect.ValueOf(config.Metric), []string{"ProcessorEvent"})
 }
 
-func assertAllEnabled(t *testing.T, cfg reflect.Value) {
+func assertAttributeConfigDefaults(t *testing.T, cfg reflect.Value, expectDisabled []string) {
 	t.Helper()
+
+	disabled := make(map[string]bool)
+	for _, name := range expectDisabled {
+		disabled[name] = true
+	}
 
 	// Fields that are intentionally disabled by default
 	disabledByDefault := map[string]bool{
@@ -42,12 +49,30 @@ func assertAllEnabled(t *testing.T, cfg reflect.Value) {
 		"ClearSpanName": true,
 	}
 
-	for i := 0; i < cfg.NumField(); i++ {
-		fieldName := cfg.Type().Field(i).Name
-		rAttrCfg := cfg.Field(i).Interface()
-		attrCfg, ok := rAttrCfg.(AttributeConfig)
-		require.True(t, ok, "must be a type of AttributeConfig")
+	assertAttributeConfigDefaultsRecurse(t, cfg, disabled, disabledByDefault)
+}
 
+func assertAttributeConfigDefaultsRecurse(t *testing.T, cfg reflect.Value, disabled, disabledByDefault map[string]bool) {
+	t.Helper()
+
+	for i := 0; i < cfg.NumField(); i++ {
+		field := cfg.Type().Field(i)
+		fieldName := field.Name
+		fieldVal := cfg.Field(i)
+
+		attrCfg, ok := fieldVal.Interface().(AttributeConfig)
+		if !ok {
+			// Nested struct: recurse into it so we can assert on config.Log / config.SpanEvent with a flat disabled list
+			if fieldVal.Kind() == reflect.Struct {
+				assertAttributeConfigDefaultsRecurse(t, fieldVal, disabled, disabledByDefault)
+			}
+			continue
+		}
+
+		if disabled[fieldName] {
+			require.False(t, attrCfg.Enabled, "%s must be disabled", fieldName)
+			continue
+		}
 		if disabledByDefault[fieldName] {
 			require.False(t, attrCfg.Enabled, "%s must be disabled by default", fieldName)
 		} else {
