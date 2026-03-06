@@ -16,6 +16,9 @@ resourceLogs:
         - key: agent.name
           value:
             stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
     scopeLogs:
       - logRecords:
           - body:
