@@ -298,6 +298,62 @@ func TestResourceEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "agent_version_disabled",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.TelemetrySDKVersionKey), "1.2.3")
+				return res
+			}(),
+			config: func() config.ResourceConfig {
+				c := config.Enabled().Resource
+				c.AgentVersion.Enabled = false
+				return c
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName: "otlp",
+			},
+		},
+		{
+			name: "agent_version_enabled_defaults_to_unknown",
+			input: pcommon.NewResource(),
+			config: func() config.ResourceConfig {
+				c := config.Enabled().Resource
+				return c
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+			},
+		},
+		{
+			name: "agent_version_enabled_uses_sdk_version",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.TelemetrySDKVersionKey), "1.2.3")
+				return res
+			}(),
+			config: config.Enabled().Resource,
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "1.2.3",
+			},
+		},
+		{
+			name: "agent_version_enabled_uses_distro_version_over_sdk_version",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.TelemetrySDKVersionKey), "1.2.3")
+				res.Attributes().PutStr(string(semconv.TelemetryDistroNameKey), "elastic")
+				res.Attributes().PutStr(string(semconv.TelemetryDistroVersionKey), "4.5.6")
+				return res
+			}(),
+			config: config.Enabled().Resource,
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp/unknown/elastic",
+				elasticattr.AgentVersion: "4.5.6",
+			},
+		},
+		{
 			name: "all_existing_attributes_preserved",
 			input: func() pcommon.Resource {
 				res := pcommon.NewResource()
