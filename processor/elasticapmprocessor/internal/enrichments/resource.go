@@ -93,12 +93,17 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 	if cfg.OverrideHostName.Enabled {
 		s.overrideHostNameWithK8sNodeName(resource)
 	}
+
 	if cfg.DeploymentEnvironment.Enabled {
 		s.setDeploymentEnvironment(resource)
 	}
 
 	if cfg.ServiceInstanceID.Enabled {
 		s.setServiceInstanceID(resource)
+	}
+
+	if cfg.ServiceEnvironment.Enabled {
+		s.setServiceEnvironment(resource)
 	}
 }
 
@@ -185,4 +190,15 @@ func (s *resourceEnrichmentContext) setServiceInstanceID(resource pcommon.Resour
 		return
 	}
 	attribute.PutStr(resource.Attributes(), string(semconv25.ServiceInstanceIDKey), s.serviceInstanceID)
+}
+
+func (s *resourceEnrichmentContext) setServiceEnvironment(resource pcommon.Resource) {
+	serviceEnvironment := "unset"
+	if s.deploymentEnvironment != "" {
+		serviceEnvironment = s.deploymentEnvironment
+	}
+	if s.deploymentEnvironmentName != "" {
+		serviceEnvironment = s.deploymentEnvironmentName
+	}
+	attribute.PutStr(resource.Attributes(), elasticattr.ServiceEnvironment, serviceEnvironment)
 }

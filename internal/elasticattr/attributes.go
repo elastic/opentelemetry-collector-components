@@ -46,6 +46,7 @@ const (
 	HostOSPlatform         = "host.os.platform"
 	ProcessRuntimeName     = "process.runtime.name"
 	ProcessRuntimeVersion  = "process.runtime.version"
+	ServiceEnvironment     = "service.environment"
 	ServiceLanguageName    = "service.language.name"
 	ServiceLanguageVersion = "service.language.version"
 	ServiceRuntimeName     = "service.runtime.name"
