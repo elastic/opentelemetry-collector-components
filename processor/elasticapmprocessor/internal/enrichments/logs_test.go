@@ -97,6 +97,7 @@ func TestEnrichResourceLog(t *testing.T) {
 		// Set existing attributes that enrichment would normally set
 		existingAttrs := map[string]any{
 			elasticattr.EventKind:        "existing-event-kind",
+			elasticattr.EventCategory:    "existing-event-category",
 			elasticattr.ProcessorEvent:   "existing-processor-event",
 			elasticattr.TimestampUs:      int64(12345),
 			elasticattr.ErrorID:          "existing-error-id",

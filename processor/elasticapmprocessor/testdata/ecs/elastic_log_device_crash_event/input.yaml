@@ -1,0 +1,37 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: telemetry.sdk.name
+          value:
+            stringValue: android
+        - key: telemetry.sdk.language
+          value:
+            stringValue: java
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: app crash
+            timeUnixNano: "1581452772000000000"
+            attributes:
+              - key: event.name
+                value:
+                  stringValue: device.crash
+              - key: error.id
+                value:
+                  stringValue: "error-id-123"
+              - key: exception.message
+                value:
+                  stringValue: Test crash
+              - key: exception.type
+                value:
+                  stringValue: java.lang.RuntimeException
+              - key: exception.stacktrace
+                value:
+                  stringValue: |
+                    Exception in thread "main" java.lang.RuntimeException: Test
+                     at com.example.Main.crash(Main.java:10)
+                     at com.example.Main.main(Main.java:5)
+        scope: {}

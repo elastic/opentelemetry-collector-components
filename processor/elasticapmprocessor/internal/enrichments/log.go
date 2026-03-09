@@ -42,7 +42,7 @@ func EnrichLog(resourceAttrs map[string]any, log plog.LogRecord, cfg config.Conf
 			ResourceAttributes: resourceAttrs,
 			EventName:          eventName,
 		}
-		mobile.EnrichLogEvent(ctx, log)
+		mobile.EnrichLogEvent(ctx, log, cfg)
 	}
 
 	if routing.IsErrorEvent(log.Attributes()) {

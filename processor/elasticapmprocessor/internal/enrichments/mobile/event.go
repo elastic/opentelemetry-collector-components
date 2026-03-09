@@ -18,10 +18,13 @@
 package mobile // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/mobile"
 
 import (
+	"strings"
+
 	"go.opentelemetry.io/collector/pdata/plog"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
 
 // EventContext contains contextual information for log event enrichment
@@ -30,26 +33,45 @@ type EventContext struct {
 	EventName          string
 }
 
-func EnrichLogEvent(ctx EventContext, logRecord plog.LogRecord) {
-	attribute.PutStr(logRecord.Attributes(), elasticattr.EventKind, "event")
+func EnrichLogEvent(ctx EventContext, logRecord plog.LogRecord, cfg config.Config) {
 
-	if ctx.EventName == "device.crash" {
-		enrichCrashEvent(logRecord, ctx.ResourceAttributes)
+	if cfg.Log.EventConfig.EventKind.Enabled {
+		attribute.PutStr(logRecord.Attributes(), elasticattr.EventKind, "event")
+	}
+
+	if isDeviceEvent(logRecord, ctx.EventName) {
+		if cfg.Log.EventConfig.EventCategory.Enabled {
+			attribute.PutStr(logRecord.Attributes(), elasticattr.EventCategory, "device")
+		}
+		action := strings.TrimPrefix(ctx.EventName, "device.")
+		if action == "crash" {
+			enrichCrashEvent(logRecord, ctx.ResourceAttributes, cfg)
+		} else if action != "" && cfg.Log.EventConfig.EventAction.Enabled {
+			attribute.PutStr(logRecord.Attributes(), elasticattr.EventAction, action)
+		}
 	}
 }
 
-func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any) {
+func isDeviceEvent(logRecord plog.LogRecord, eventName string) bool {
+	domainAttr, ok := logRecord.Attributes().Get("event.domain")
+	eventDomain := ""
+	if ok {
+		eventDomain = domainAttr.AsString()
+	}
+	return eventDomain == "device" && eventName != "" || strings.HasPrefix(eventName, "device.")
+}
+
+func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any, cfg config.Config) {
 	timestamp := logRecord.Timestamp()
 	if timestamp == 0 {
 		timestamp = logRecord.ObservedTimestamp()
 	}
-	attribute.PutStr(logRecord.Attributes(), elasticattr.ProcessorEvent, "error")
 	attribute.PutInt(logRecord.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(timestamp))
 	if id, err := attribute.NewErrorID(); err == nil {
 		attribute.PutStr(logRecord.Attributes(), elasticattr.ErrorID, id)
 	}
 	stacktrace, ok := logRecord.Attributes().Get("exception.stacktrace")
-	if ok {
+	if ok && cfg.Log.ErrorConfig.ErrorGroupingKey.Enabled {
 		language, hasLanguage := resourceAttrs["telemetry.sdk.language"]
 		if hasLanguage {
 			switch language {
@@ -62,5 +84,7 @@ func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any) {
 			}
 		}
 	}
-	attribute.PutStr(logRecord.Attributes(), elasticattr.ErrorType, "crash")
+	if cfg.Log.ErrorConfig.ErrorType.Enabled {
+		attribute.PutStr(logRecord.Attributes(), elasticattr.ErrorType, "crash")
+	}
 }
