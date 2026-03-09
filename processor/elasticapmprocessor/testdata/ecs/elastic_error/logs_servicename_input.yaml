@@ -28,6 +28,9 @@ resourceLogs:
               - key: exception.type
                 value:
                   stringValue: "RuntimeError"
+              - key: error.id
+                value:
+                  stringValue: "ac388d6b8a3cd6b9ca32952fb51e85be"
             body:
               stringValue: "Error occurred"
             timeUnixNano: "1000000000"

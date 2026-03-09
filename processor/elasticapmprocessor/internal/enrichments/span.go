@@ -19,7 +19,6 @@ package enrichments // import "github.com/elastic/opentelemetry-collector-compon
 
 import (
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -265,7 +264,7 @@ func (s *spanEnrichmentContext) enrichTransaction(
 	cfg config.ElasticTransactionConfig,
 ) {
 	if cfg.TimestampUs.Enabled {
-		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, getTimestampUs(span.StartTimestamp()))
+		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(span.StartTimestamp()))
 	}
 	if cfg.Sampled.Enabled {
 		attribute.PutBool(span.Attributes(), elasticattr.TransactionSampled, s.getSampled())
@@ -330,7 +329,7 @@ func (s *spanEnrichmentContext) enrichSpan(
 	var spanType, spanSubtype string
 
 	if cfg.TimestampUs.Enabled {
-		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, getTimestampUs(span.StartTimestamp()))
+		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(span.StartTimestamp()))
 	}
 	if cfg.RepresentativeCount.Enabled {
 		repCount := getRepresentativeCount(span.TraceState().AsRaw())
@@ -709,7 +708,7 @@ func (s *spanEventEnrichmentContext) enrich(
 
 	// Enrich span event attributes.
 	if cfg.TimestampUs.Enabled {
-		attribute.PutInt(se.Attributes(), elasticattr.TimestampUs, getTimestampUs(se.Timestamp()))
+		attribute.PutInt(se.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(se.Timestamp()))
 	}
 	if cfg.ProcessorEvent.Enabled && s.exception {
 		attribute.PutStr(se.Attributes(), elasticattr.ProcessorEvent, "error")
@@ -720,15 +719,15 @@ func (s *spanEventEnrichmentContext) enrich(
 	}
 
 	// Span event represents exception
-	if cfg.ErrorID.Enabled {
-		if id, err := newUniqueID(); err == nil {
+	if cfg.ErrorConfig.ErrorID.Enabled {
+		if id, err := attribute.NewErrorID(); err == nil {
 			attribute.PutStr(se.Attributes(), elasticattr.ErrorID, id)
 		}
 	}
-	if cfg.ErrorExceptionHandled.Enabled {
+	if cfg.ErrorExceptionConfig.ErrorExceptionHandled.Enabled {
 		attribute.PutBool(se.Attributes(), elasticattr.ErrorExceptionHandled, !s.exceptionEscaped)
 	}
-	if cfg.ErrorGroupingKey.Enabled {
+	if cfg.ErrorConfig.ErrorGroupingKey.Enabled {
 		// See https://github.com/elastic/apm-data/issues/299
 		hash := md5.New()
 		// ignoring errors in hashing
@@ -739,7 +738,7 @@ func (s *spanEventEnrichmentContext) enrich(
 		}
 		attribute.PutStr(se.Attributes(), elasticattr.ErrorGroupingKey, hex.EncodeToString(hash.Sum(nil)))
 	}
-	if cfg.ErrorGroupingName.Enabled && s.exceptionMessage != "" {
+	if cfg.ErrorConfig.ErrorGroupingName.Enabled && s.exceptionMessage != "" {
 		attribute.PutStr(se.Attributes(), elasticattr.ErrorGroupingName, s.exceptionMessage)
 	}
 
@@ -862,21 +861,4 @@ var standardStatusCodeResults = [...]string{
 	"HTTP 3xx",
 	"HTTP 4xx",
 	"HTTP 5xx",
-}
-
-func newUniqueID() (string, error) {
-	var u [16]byte
-	if _, err := io.ReadFull(rand.Reader, u[:]); err != nil {
-		return "", err
-	}
-
-	// convert to string
-	buf := make([]byte, 32)
-	hex.Encode(buf, u[:])
-
-	return string(buf), nil
-}
-
-func getTimestampUs(ts pcommon.Timestamp) int64 {
-	return int64(ts) / 1000
 }
