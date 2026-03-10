@@ -47,8 +47,9 @@ func TestResourceEnrich(t *testing.T) {
 			input:  pcommon.NewResource(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "otlp",
-				elasticattr.AgentVersion: "unknown",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -60,8 +61,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "customflavor",
-				elasticattr.AgentVersion: "unknown",
+				elasticattr.AgentName:                      "customflavor",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -74,8 +76,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "customflavor/unknown/elastic",
-				elasticattr.AgentVersion: "unknown",
+				elasticattr.AgentName:                      "customflavor/unknown/elastic",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -89,8 +92,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "customflavor/cpp/elastic",
-				elasticattr.AgentVersion: "unknown",
+				elasticattr.AgentName:                      "customflavor/cpp/elastic",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -102,8 +106,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "otlp/cpp",
-				elasticattr.AgentVersion: "unknown",
+				elasticattr.AgentName:                      "otlp/cpp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -116,8 +121,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "customflavor/cpp",
-				elasticattr.AgentVersion: "unknown",
+				elasticattr.AgentName:                      "customflavor/cpp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -130,8 +136,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "customflavor",
-				elasticattr.AgentVersion: "9.999.9",
+				elasticattr.AgentName:                      "customflavor",
+				elasticattr.AgentVersion:                   "9.999.9",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -145,8 +152,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "customflavor/unknown/elastic",
-				elasticattr.AgentVersion: "unknown",
+				elasticattr.AgentName:                      "customflavor/unknown/elastic",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -161,8 +169,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "customflavor/unknown/elastic",
-				elasticattr.AgentVersion: "1.2.3",
+				elasticattr.AgentName:                      "customflavor/unknown/elastic",
+				elasticattr.AgentVersion:                   "1.2.3",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -175,11 +184,12 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				string(semconv.HostNameKey):            "k8s-node",
-				string(semconv.K8SNodeNameKey):         "k8s-node",
-				elasticattr.AgentName:                  "otlp",
-				elasticattr.AgentVersion:               "unknown",
-				string(semconv25.ServiceInstanceIDKey): string("test-host"),
+				string(semconv.HostNameKey):                "k8s-node",
+				string(semconv.K8SNodeNameKey):             "k8s-node",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.ServiceInstanceIDKey):     string("test-host"),
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -191,10 +201,11 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				string(semconv.HostNameKey):    "k8s-node",
-				string(semconv.K8SNodeNameKey): "k8s-node",
-				elasticattr.AgentName:          "otlp",
-				elasticattr.AgentVersion:       "unknown",
+				string(semconv.HostNameKey):                "k8s-node",
+				string(semconv.K8SNodeNameKey):             "k8s-node",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -257,11 +268,12 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				string(semconv25.ServiceInstanceIDKey): "container-id",
-				string(semconv.ContainerIDKey):         "container-id",
-				string(semconv.HostNameKey):            "k8s-node",
-				elasticattr.AgentName:                  "otlp",
-				elasticattr.AgentVersion:               "unknown",
+				string(semconv25.ServiceInstanceIDKey):     "container-id",
+				string(semconv.ContainerIDKey):             "container-id",
+				string(semconv.HostNameKey):                "k8s-node",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -273,10 +285,11 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				string(semconv25.ServiceInstanceIDKey): "k8s-node",
-				string(semconv.HostNameKey):            "k8s-node",
-				elasticattr.AgentName:                  "otlp",
-				elasticattr.AgentVersion:               "unknown",
+				string(semconv25.ServiceInstanceIDKey):     "k8s-node",
+				string(semconv.HostNameKey):                "k8s-node",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -290,11 +303,12 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				string(semconv25.ServiceInstanceIDKey): "node-name",
-				string(semconv.ContainerIDKey):         "container-id",
-				string(semconv.HostNameKey):            "k8s-node",
-				elasticattr.AgentName:                  "otlp",
-				elasticattr.AgentVersion:               "unknown",
+				string(semconv25.ServiceInstanceIDKey):     "node-name",
+				string(semconv.ContainerIDKey):             "container-id",
+				string(semconv.HostNameKey):                "k8s-node",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -310,7 +324,8 @@ func TestResourceEnrich(t *testing.T) {
 				return c
 			}(),
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName: "otlp",
+				elasticattr.AgentName:                      "otlp",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -321,8 +336,9 @@ func TestResourceEnrich(t *testing.T) {
 				return c
 			}(),
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "otlp",
-				elasticattr.AgentVersion: "unknown",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -334,8 +350,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "otlp",
-				elasticattr.AgentVersion: "1.2.3",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "1.2.3",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -349,8 +366,9 @@ func TestResourceEnrich(t *testing.T) {
 			}(),
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:    "otlp/unknown/elastic",
-				elasticattr.AgentVersion: "4.5.6",
+				elasticattr.AgentName:                      "otlp/unknown/elastic",
+				elasticattr.AgentVersion:                   "4.5.6",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -373,10 +391,11 @@ func TestResourceEnrich(t *testing.T) {
 				elasticattr.AgentVersion:               "existing-agent-version",
 				string(semconv25.ServiceInstanceIDKey): "existing-service-instance-id",
 				// source attributes remain unchanged
-				string(semconv.TelemetrySDKNameKey):    "customflavor",
-				string(semconv.TelemetrySDKVersionKey): "9.999.9",
-				string(semconv25.ContainerIDKey):       "container-id",
-				string(semconv.HostNameKey):            "host-name",
+				string(semconv.TelemetrySDKNameKey):        "customflavor",
+				string(semconv.TelemetrySDKVersionKey):     "9.999.9",
+				string(semconv25.ContainerIDKey):           "container-id",
+				string(semconv.HostNameKey):                "host-name",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 	} {

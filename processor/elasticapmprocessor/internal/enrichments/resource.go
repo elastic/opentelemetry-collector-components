@@ -101,24 +101,31 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 	if cfg.ServiceInstanceID.Enabled {
 		s.setServiceInstanceID(resource)
 	}
-
-	if cfg.ServiceEnvironment.Enabled {
-		s.setServiceEnvironment(resource)
-	}
 }
 
 // SemConv v1.27.0 deprecated `deployment.environment` and added `deployment.environment.name` in favor of it.
 // In the `otel-data` ES plugin we alias `service.environment` to `deployment.environment`.
 // ES currently doesn't allow aliases with multiple targets, so if the new field name is used (SemConv v1.27+),
 // we duplicate the value and also send it with the old field name to make the alias work.
+//
+// When neither field is present, we default deployment.environment to "unset"
+// so that the ES alias service.environment always resolves to a value,
+// matching the apm-data/MIS behavior (SetDefaultServiceEnvironment).
 func (s *resourceEnrichmentContext) setDeploymentEnvironment(resource pcommon.Resource) {
-	if s.deploymentEnvironmentName != "" && s.deploymentEnvironment == "" {
-		attribute.PutStr(
-			resource.Attributes(),
-			string(semconv25.DeploymentEnvironmentKey),
-			s.deploymentEnvironmentName,
-		)
+	if s.deploymentEnvironment != "" {
+		return
 	}
+
+	deploymentEnv := "unset"
+	if s.deploymentEnvironmentName != "" {
+		deploymentEnv = s.deploymentEnvironmentName
+	}
+
+	attribute.PutStr(
+		resource.Attributes(),
+		string(semconv25.DeploymentEnvironmentKey),
+		deploymentEnv,
+	)
 }
 
 func (s *resourceEnrichmentContext) setAgentName(resource pcommon.Resource) {
@@ -190,15 +197,4 @@ func (s *resourceEnrichmentContext) setServiceInstanceID(resource pcommon.Resour
 		return
 	}
 	attribute.PutStr(resource.Attributes(), string(semconv25.ServiceInstanceIDKey), s.serviceInstanceID)
-}
-
-func (s *resourceEnrichmentContext) setServiceEnvironment(resource pcommon.Resource) {
-	serviceEnvironment := "unset"
-	if s.deploymentEnvironment != "" {
-		serviceEnvironment = s.deploymentEnvironment
-	}
-	if s.deploymentEnvironmentName != "" {
-		serviceEnvironment = s.deploymentEnvironmentName
-	}
-	attribute.PutStr(resource.Attributes(), elasticattr.ServiceEnvironment, serviceEnvironment)
 }

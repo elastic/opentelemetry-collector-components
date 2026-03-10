@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
@@ -68,6 +69,7 @@ func TestEnrichMetric(t *testing.T) {
 				elasticattr.AgentName:      "existing-agent-name",
 				elasticattr.AgentVersion:   "existing-agent-version",
 				elasticattr.MetricsetName:  "app",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -82,6 +84,7 @@ func TestEnrichMetric(t *testing.T) {
 				elasticattr.AgentName:     "otlp",
 				elasticattr.AgentVersion:  "unknown",
 				elasticattr.MetricsetName: "app",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -96,6 +99,7 @@ func TestEnrichMetric(t *testing.T) {
 				elasticattr.AgentName:     "otlp",
 				elasticattr.AgentVersion:  "unknown",
 				elasticattr.MetricsetName: "custom",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 		{
@@ -109,6 +113,7 @@ func TestEnrichMetric(t *testing.T) {
 			expectedAttrs: map[string]any{
 				elasticattr.AgentName:    "otlp",
 				elasticattr.AgentVersion: "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
 	} {

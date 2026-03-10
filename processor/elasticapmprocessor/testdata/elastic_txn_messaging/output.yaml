@@ -13,6 +13,9 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
     scopeSpans:
       - scope: {}
         spans:
