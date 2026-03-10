@@ -456,9 +456,10 @@ func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric
 	// otherwise the data point is invalid.
 	explicitBounds := dp.ExplicitBounds()
 
-	// explicit bounds are derived from the sample.Histogram.Values, where each value is the upper bound for a bucket.
-	// Except the last bound value which is implied to be +Inf bucket, so it is not set.
-	explicitBounds.FromRaw(apmHistogramValues[:len(apmHistogramValues)-1])
+	// explicit bounds are simply sample.Histogram.Values, where each value is the upper bound for a bucket.
+	// The last bound is kept (this goes againsts the OTel specification) to avoid having to recompute
+	// the bounds at export time.
+	explicitBounds.FromRaw(apmHistogramValues)
 }
 
 func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) {

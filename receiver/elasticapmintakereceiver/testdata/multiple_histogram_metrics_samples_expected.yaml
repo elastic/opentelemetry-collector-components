@@ -35,6 +35,7 @@ resourceMetrics:
                   explicitBounds:
                     - 10
                     - 20
+                    - 30
                   sum: 220
                   timeUnixNano: "1757462026684385000"
             name: valid_histogram_metric_1
@@ -80,6 +81,7 @@ resourceMetrics:
                     - 10
                     - 15
                     - 25
+                    - 50
                   sum: 840
                   timeUnixNano: "1757462026684385000"
             name: valid_histogram_metric_2
