@@ -125,8 +125,10 @@ type ElasticLogConfig struct {
 }
 
 type EventConfig struct {
-	EventKind AttributeConfig `mapstructure:"event_kind"`
-	EventType AttributeConfig `mapstructure:"event_type"`
+	EventKind     AttributeConfig `mapstructure:"event_kind"`
+	EventType     AttributeConfig `mapstructure:"event_type"`
+	EventCategory AttributeConfig `mapstructure:"event_category"`
+	EventAction   AttributeConfig `mapstructure:"event_action"`
 }
 
 type ErrorConfig struct {
@@ -134,6 +136,7 @@ type ErrorConfig struct {
 	ErrorStackTrace   AttributeConfig `mapstructure:"error_stack_trace"`
 	ErrorGroupingKey  AttributeConfig `mapstructure:"error_grouping_key"`
 	ErrorGroupingName AttributeConfig `mapstructure:"error_grouping_name"`
+	ErrorType         AttributeConfig `mapstructure:"error_type"`
 	TimestampUs       AttributeConfig `mapstructure:"timestamp_us"`
 }
 
@@ -214,13 +217,16 @@ func Enabled() Config {
 		},
 		Log: ElasticLogConfig{
 			EventConfig: EventConfig{
-				EventKind: AttributeConfig{Enabled: true},
-				EventType: AttributeConfig{Enabled: true},
+				EventKind:     AttributeConfig{Enabled: true},
+				EventType:     AttributeConfig{Enabled: true},
+				EventCategory: AttributeConfig{Enabled: true},
+				EventAction:   AttributeConfig{Enabled: true},
 			},
 			ErrorConfig: ErrorConfig{
 				ErrorID:          AttributeConfig{Enabled: true},
 				ErrorStackTrace:  AttributeConfig{Enabled: true},
 				ErrorGroupingKey: AttributeConfig{Enabled: true},
+				ErrorType:        AttributeConfig{Enabled: true},
 				TimestampUs:      AttributeConfig{Enabled: true},
 			},
 			ErrorExceptionConfig: ErrorExceptionConfig{

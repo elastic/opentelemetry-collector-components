@@ -1,0 +1,46 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: telemetry.sdk.name
+          value:
+            stringValue: android
+        - key: telemetry.sdk.language
+          value:
+            stringValue: java
+        - key: data_stream.type
+          value:
+            stringValue: logs
+        - key: data_stream.dataset
+          value:
+            stringValue: apm.app.test_service
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
+        - key: agent.name
+          value:
+            stringValue: android/java
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: event.name
+                value:
+                  stringValue: device.lifecycle
+              - key: event.kind
+                value:
+                  stringValue: event
+              - key: event.category
+                value:
+                  stringValue: device
+              - key: event.action
+                value:
+                  stringValue: lifecycle
+            body:
+              stringValue: device lifecycle event
+            timeUnixNano: "1581452772000000000"
+        scope: {}
