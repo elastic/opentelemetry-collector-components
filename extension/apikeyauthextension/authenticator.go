@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -40,6 +41,8 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/protoadapt"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/security/hasprivileges"
@@ -148,6 +151,7 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 	if err != nil {
 		return err
 	}
+	esRetry := a.config.effectiveElasticsearchRetry()
 	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
 		Addresses: []string{a.config.Endpoint},
 		Header: map[string][]string{
@@ -160,9 +164,9 @@ func (a *authenticator) Start(ctx context.Context, host component.Host) error {
 			http.StatusGatewayTimeout,
 			http.StatusTooManyRequests,
 		},
-		MaxRetries:   a.config.Retry.MaxRetries,
-		DisableRetry: !a.config.Retry.Enabled,
-		RetryBackoff: retryBackoff(a.config.Retry),
+		MaxRetries:   esRetry.MaxRetries,
+		DisableRetry: !esRetry.Enabled,
+		RetryBackoff: retryBackoff(esRetry),
 		Instrumentation: elasticsearch.NewOpenTelemetryInstrumentation(
 			a.telemetrySettings.TracerProvider, false,
 		),
@@ -316,10 +320,16 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]string) (context.Context, error) {
 	authHeaderValue, id, err := a.parseAuthorizationHeader(headers)
 	if err != nil {
-		detailedErr := errorWithDetails(codes.Unauthenticated, err.Error(), map[string]string{
-			"component": "apikeyauthextension",
-		})
+		detailedErr := errorWithDetails(status.New(
+			codes.Unauthenticated,
+			err.Error(),
+		), "unknown", 0)
 		return ctx, detailedErr
+	}
+
+	retryDelay := time.Duration(0)
+	if a.config.ClientRetry.Enabled {
+		retryDelay = a.config.ClientRetry.RetryDelay
 	}
 
 	cacheKey, err := a.getCacheKey(ctx, id, headers)
@@ -339,10 +349,10 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			// Client has specified an API Key with a colliding ID,
 			// but whose secret component does not match the one in
 			// the cache.
-			detailedErr := errorWithDetails(codes.Unauthenticated, fmt.Sprintf("API Key %q unauthorized", id), map[string]string{
-				"component": "apikeyauthextension",
-				"api_key":   id,
-			})
+			detailedErr := errorWithDetails(status.New(
+				codes.Unauthenticated,
+				"unauthorized",
+			), id, 0)
 			return ctx, detailedErr
 		}
 		if cacheEntry.err != nil {
@@ -358,31 +368,41 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			switch elasticsearchErr.Status {
 			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+				return ctx, errorWithDetails(
+					status.New(
+						codes.Unavailable,
+						"failed to check privileges",
+					), id, retryDelay)
 			default:
-				return ctx, status.Errorf(codes.Internal, "error checking privileges for API Key %q: %v", id, err)
+				return ctx, status.Errorf(codes.Internal, "error checking privileges: %v", err)
 			}
 		}
 		// Check if this is a metadata validation error (client error)
 		var metadataErr *metadataValidationError
 		if errors.As(err, &metadataErr) {
-			return ctx, errorWithDetails(codes.InvalidArgument, metadataErr.Error(), map[string]string{
-				"component": "apikeyauthextension",
-				"api_key":   id,
-			})
+			return ctx,
+				errorWithDetails(
+					status.New(
+						codes.InvalidArgument,
+						metadataErr.Error(),
+					), id, 0)
 		}
 		// Assume it's a retryable server error
-		return ctx, errorWithDetails(codes.Unavailable, fmt.Sprintf("retryable server error for API Key %q: %v", id, err), map[string]string{
-			"component": "apikeyauthextension",
-			"api_key":   id,
-		})
+		return ctx, errorWithDetails(
+			status.New(
+				codes.Unavailable,
+				fmt.Sprintf("server error: %s", err.Error()),
+			), id, retryDelay)
 	}
 	if !hasPrivileges {
 		cacheEntry := &cacheEntry{
 			key: derivedKey,
-			err: errorWithDetails(codes.PermissionDenied, fmt.Sprintf("API Key %q unauthorized", id), map[string]string{
-				"component": "apikeyauthextension",
-				"api_key":   id,
-			}),
+			err: errorWithDetails(
+				status.New(
+					codes.PermissionDenied,
+					"unauthorized",
+				), id, 0),
 		}
 		a.cache.Add(cacheKey, cacheEntry)
 		return ctx, cacheEntry.err
@@ -404,14 +424,24 @@ func newCtxWithAuthData(ctx context.Context, authData *authData) context.Context
 	return client.NewContext(ctx, clientInfo)
 }
 
-// errorWithDetails provides a user friendly error with additional error details that
-// can be later used to provide more detailed error information to the user.
-func errorWithDetails(code codes.Code, msg string, metadata map[string]string) error {
-	st := status.New(code, msg)
-	if detailedSt, err := st.WithDetails(&errdetails.ErrorInfo{
-		Domain:   "ingest.elastic.co",
-		Metadata: metadata,
-	}); err == nil {
+// errorWithDetails returns a gRPC status error that includes ErrorInfo (always)
+// and RetryInfo (when retryDelay is positive). ErrorInfo metadata includes
+// "component" and "api_key".
+func errorWithDetails(st *status.Status, id string, retryDelay time.Duration) error {
+	var details []protoadapt.MessageV1
+	details = append(details, &errdetails.ErrorInfo{
+		Domain: "ingest.elastic.co",
+		Metadata: map[string]string{
+			"component": metadata.Type.String(),
+			"api_key":   id,
+		},
+	})
+	if retryDelay > 0 {
+		details = append(details, &errdetails.RetryInfo{
+			RetryDelay: durationpb.New(retryDelay),
+		})
+	}
+	if detailedSt, stErr := st.WithDetails(details...); stErr == nil {
 		return detailedSt.Err()
 	}
 	return st.Err()

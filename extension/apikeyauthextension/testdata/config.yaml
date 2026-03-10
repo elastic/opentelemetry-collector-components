@@ -62,24 +62,56 @@ apikeyauth/dynamic_resources_empty_metadata:
   cache:
     key_metadata: [X-Resource-Name]
 apikeyauth/custom_retry:
+  elasticsearch_retry:
+    enabled: true
+    max_retries: 5
+    initial_interval: 200ms
+    max_interval: 10s
+apikeyauth/custom_retry_legacy:
   retry:
+    enabled: true
+    max_retries: 7
+    initial_interval: 150ms
+    max_interval: 9s
+apikeyauth/custom_retry_both_keys_prefer_new:
+  retry:
+    enabled: true
+    max_retries: 7
+    initial_interval: 150ms
+    max_interval: 9s
+  elasticsearch_retry:
     enabled: true
     max_retries: 5
     initial_interval: 200ms
     max_interval: 10s
 apikeyauth/retry_disabled:
-  retry:
+  elasticsearch_retry:
     enabled: false
 apikeyauth/invalid_retry_max_retries:
-  retry:
+  elasticsearch_retry:
     max_retries: -1
 apikeyauth/invalid_retry_initial_interval:
-  retry:
+  elasticsearch_retry:
     initial_interval: 0s
 apikeyauth/invalid_retry_max_interval:
-  retry:
+  elasticsearch_retry:
     max_interval: 0s
 apikeyauth/invalid_retry_interval_order:
-  retry:
+  elasticsearch_retry:
     initial_interval: 10s
     max_interval: 1s
+
+apikeyauth/custom_client_retry:
+  client_retry:
+    enabled: true
+    retry_delay: 3s
+
+apikeyauth/client_retry_disabled:
+  client_retry:
+    enabled: false
+    retry_delay: 3s
+
+apikeyauth/invalid_client_retry_delay:
+  client_retry:
+    enabled: true
+    retry_delay: 0s
