@@ -20,6 +20,7 @@ package enrichments // import "github.com/elastic/opentelemetry-collector-compon
 import (
 	"fmt"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -49,6 +50,7 @@ type resourceEnrichmentContext struct {
 	deploymentEnvironmentName string
 
 	serviceInstanceID string
+	serviceName       string
 	containerID       string
 }
 
@@ -75,6 +77,8 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 			s.deploymentEnvironmentName = v.Str()
 		case string(semconv25.ServiceInstanceIDKey):
 			s.serviceInstanceID = v.Str()
+		case string(semconv.ServiceNameKey):
+			s.serviceName = v.Str()
 		case string(semconv.ContainerIDKey):
 			s.containerID = v.Str()
 		}
@@ -100,6 +104,10 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 
 	if cfg.ServiceInstanceID.Enabled {
 		s.setServiceInstanceID(resource)
+	}
+
+	if cfg.ServiceName.Enabled {
+		s.setServiceName(resource)
 	}
 }
 
@@ -197,4 +205,14 @@ func (s *resourceEnrichmentContext) setServiceInstanceID(resource pcommon.Resour
 		return
 	}
 	attribute.PutStr(resource.Attributes(), string(semconv25.ServiceInstanceIDKey), s.serviceInstanceID)
+}
+
+func (s *resourceEnrichmentContext) setServiceName(resource pcommon.Resource) {
+	if s.serviceName == "" {
+		return
+	}
+	cleaned := sanitize.CleanServiceName(s.serviceName)
+	if cleaned != s.serviceName {
+		resource.Attributes().PutStr(string(semconv.ServiceNameKey), cleaned)
+	}
 }

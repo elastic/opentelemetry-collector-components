@@ -10,7 +10,7 @@ const (
 )
 
 var (
-	serviceNameInvalidRegexp = regexp.MustCompile("[^a-zA-Z0-9_]")
+	serviceNameInvalidRegexp = regexp.MustCompile("[^a-zA-Z0-9 _-]")
 )
 
 // Truncate returns s truncated at n runes, and the number of runes in the resulting string (<= n).
@@ -74,8 +74,22 @@ func IsLabelAttribute(attr string) bool {
 // reserved characters with "_".
 func NormalizeServiceName(s string) string {
 	s = strings.ToLower(s)
-	s = CleanServiceName(s)
+	s = strings.Map(replaceReservedRune, s)
 	return s
+}
+
+func replaceReservedRune(r rune) rune {
+	switch r {
+	case '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':':
+		// These characters are not permitted in data stream names
+		// by Elasticsearch.
+		return '_'
+	case '-':
+		// Hyphens are used to separate the data stream type, dataset,
+		// and namespace.
+		return '_'
+	}
+	return r
 }
 
 // CleanServiceName sanitizes a service name by truncating it to a defined length and replacing invalid characters with "_".
