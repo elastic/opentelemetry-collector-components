@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package sanitize
+package sanitize // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 
 import (
 	"regexp"
