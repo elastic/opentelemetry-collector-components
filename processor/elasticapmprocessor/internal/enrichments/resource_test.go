@@ -329,7 +329,7 @@ func TestResourceEnrich(t *testing.T) {
 			},
 		},
 		{
-			name: "agent_version_enabled_defaults_to_unknown",
+			name:  "agent_version_enabled_defaults_to_unknown",
 			input: pcommon.NewResource(),
 			config: func() config.ResourceConfig {
 				c := config.Enabled().Resource
