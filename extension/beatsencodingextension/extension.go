@@ -27,15 +27,17 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.uber.org/zap"
 )
 
 type beatsEncodingExtension struct {
 	config     *Config
 	unwrapPath *json.Path
+	logger     *zap.Logger
 }
 
-func newBeatsEncodingExtension(config *Config) (*beatsEncodingExtension, error) {
-	ext := &beatsEncodingExtension{config: config}
+func newBeatsEncodingExtension(config *Config, logger *zap.Logger) (*beatsEncodingExtension, error) {
+	ext := &beatsEncodingExtension{config: config, logger: logger}
 
 	if config.Unwrap != "" {
 		path, err := json.CreatePath(config.Unwrap)
@@ -170,7 +172,11 @@ func (e *beatsEncodingExtension) unwrapJSON(buf []byte) ([]string, error) {
 	if len(extracted) == 0 {
 		// JSONPath returned no results —
 		// treat the entire input as a single record.
-		// This handles cases where the wrapper field is missing.
+		// This handles cases where the wrapper field is missing,
+		// but may also indicate a misconfigured unwrap expression.
+		e.logger.Warn("unwrap JSONPath matched no elements, treating entire input as a single record",
+			zap.String("unwrap", e.config.Unwrap),
+		)
 		return []string{string(buf)}, nil
 	}
 
@@ -183,6 +189,9 @@ func (e *beatsEncodingExtension) unwrapJSON(buf []byte) ([]string, error) {
 	}
 
 	if len(records) == 0 {
+		e.logger.Warn("unwrap JSONPath matched only empty elements, treating entire input as a single record",
+			zap.String("unwrap", e.config.Unwrap),
+		)
 		return []string{string(buf)}, nil
 	}
 

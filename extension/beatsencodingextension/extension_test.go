@@ -26,6 +26,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 const testDataDir = "testdata"
@@ -137,7 +138,7 @@ func TestUnmarshalLogs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ext, err := newBeatsEncodingExtension(&tt.config)
+			ext, err := newBeatsEncodingExtension(&tt.config, zap.NewNop())
 			require.NoError(t, err)
 
 			input, err := os.ReadFile(filepath.Join(testDataDir, tt.inputFile))
@@ -184,7 +185,7 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 				Format:      tt.format,
 				TargetField: "message",
 				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
-			})
+			}, zap.NewNop())
 			require.NoError(t, err)
 
 			logs, err := ext.UnmarshalLogs(tt.input)
@@ -200,7 +201,7 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 		Unwrap:      "$.records[*]",
 		TargetField: "message",
 		Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
-	})
+	}, zap.NewNop())
 	require.NoError(t, err)
 
 	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))

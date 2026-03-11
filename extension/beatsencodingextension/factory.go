@@ -46,6 +46,6 @@ func createDefaultConfig() component.Config {
 	}
 }
 
-func createExtension(_ context.Context, _ extension.Settings, cfg component.Config) (extension.Extension, error) {
-	return newBeatsEncodingExtension(cfg.(*Config))
+func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
+	return newBeatsEncodingExtension(cfg.(*Config), set.Logger)
 }
