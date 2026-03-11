@@ -135,8 +135,11 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		name string
 	}{
 		{name: "traces/transaction_metrics"},
+		{name: "traces/transaction_metrics_data_stream_namespace"},
+		{name: "traces/transaction_metrics_without_optional_attrs"},
 		{name: "traces/transaction_metrics_custom_attrs"},
 		{name: "traces/transaction_metrics_no_overflow"},
+		{name: "traces/transaction_metrics_no_result"},
 		{name: "traces/span_metrics"},
 		{name: "traces/span_metrics_custom_attrs"},
 		{name: "traces/span_metrics_no_overflow"},
@@ -281,6 +284,7 @@ func compareAggregatedMetrics(t testing.TB, expectedFile string, allMetrics []pm
 		require.NoError(t, err)
 		assert.NoError(t, pmetrictest.CompareMetrics(expected, allMetrics[0],
 			pmetrictest.IgnoreTimestamp(),
+			pmetrictest.IgnoreResourceMetricsOrder(),
 			pmetrictest.IgnoreMetricDataPointsOrder(),
 			pmetrictest.IgnoreDatapointAttributesOrder(),
 		))

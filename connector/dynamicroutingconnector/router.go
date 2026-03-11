@@ -23,12 +23,12 @@ import (
 	"math"
 	"slices"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/axiomhq/hyperloglog"
 	"github.com/cespare/xxhash/v2"
+	"github.com/jellydator/ttlcache/v3"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -42,6 +42,14 @@ import (
 var _ component.Component = (*router[any])(nil)
 
 const defaultCardinalityBucket = "default"
+const maxPkCapacity = 256
+
+// defaultRoutedOpt is a cached MeasurementOption for the default routing path
+// (empty partition key, default bucket) to avoid per-call allocations.
+var defaultRoutedOpt = metric.WithAttributeSet(attribute.NewSet(
+	attribute.String("cardinality_bucket", defaultCardinalityBucket),
+	attribute.String("partition_key", ""),
+))
 
 // consumerProvider is a function with a type parameter C (expected to be one
 // of consumer.Traces, consumer.Metrics, or Consumer.Logs). returns a
@@ -49,7 +57,8 @@ const defaultCardinalityBucket = "default"
 type consumerProvider[C any] func(...pipeline.ID) (C, error)
 
 type router[C any] struct {
-	evaluationInterval time.Duration
+	recordingInterval  time.Duration
+	ttl                time.Duration
 	partitionKeys      []string
 	sortedMetadataKeys []string
 	defaultConsumer    C
@@ -58,13 +67,11 @@ type router[C any] struct {
 	logger           *zap.Logger
 	telemetryBuilder *metadata.TelemetryBuilder
 
-	mu      sync.Mutex
-	m       map[string]*hyperloglog.Sketch
-	stop    chan struct{}
-	stopped chan struct{}
-
-	dmu      sync.RWMutex
-	decision map[string]ct[C]
+	mu       sync.Mutex
+	m        map[string]*hyperloglog.Sketch
+	stop     chan struct{}
+	stopped  chan struct{}
+	decision *ttlcache.Cache[string, ct[C]]
 }
 
 type ct[C any] struct {
@@ -80,6 +87,10 @@ func newRouter[C any](
 ) (*router[C], error) {
 	sortedMetadataKeys := slices.Clone(cfg.RoutingKeys.MeasureBy)
 	slices.Sort(sortedMetadataKeys)
+	decisionCache := ttlcache.New(
+		ttlcache.WithTTL[string, ct[C]](cfg.TTL),
+		ttlcache.WithDisableTouchOnHit[string, ct[C]](),
+	)
 	consumers := make([]ct[C], 0, len(cfg.RoutingPipelines))
 	var prevMax float64
 	for i, p := range cfg.RoutingPipelines {
@@ -111,7 +122,8 @@ func newRouter[C any](
 		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
 	}
 	return &router[C]{
-		evaluationInterval: cfg.EvaluationInterval,
+		recordingInterval:  cfg.RecordingInterval,
+		ttl:                cfg.TTL,
 		partitionKeys:      cfg.RoutingKeys.PartitionBy,
 		sortedMetadataKeys: sortedMetadataKeys,
 		defaultConsumer:    defaultConsumer,
@@ -119,7 +131,7 @@ func newRouter[C any](
 		logger:             settings.Logger,
 		telemetryBuilder:   telemetryBuilder,
 		stop:               make(chan struct{}),
-		decision:           make(map[string]ct[C]),
+		decision:           decisionCache,
 		m:                  make(map[string]*hyperloglog.Sketch),
 	}, nil
 }
@@ -144,9 +156,9 @@ func (r *router[C]) Start(ctx context.Context, _ component.Host) error {
 
 	go func() {
 		defer close(r.stopped)
-		// Use timers to ensure that decions are always atleast
-		// evaluation interval apart.
-		timer := time.NewTimer(r.evaluationInterval)
+		// Use timers to ensure that decision updates are always at least
+		// recording interval apart.
+		timer := time.NewTimer(r.recordingInterval)
 		defer timer.Stop()
 
 		for {
@@ -160,7 +172,7 @@ func (r *router[C]) Start(ctx context.Context, _ component.Host) error {
 			}
 
 			r.updateDecisions()
-			timer.Reset(r.evaluationInterval)
+			timer.Reset(r.recordingInterval)
 		}
 	}()
 	return nil
@@ -195,47 +207,31 @@ func (r *router[C]) Shutdown(ctx context.Context) error {
 }
 
 func (r *router[C]) Process(ctx context.Context) C {
-	pk := r.estimateCardinality(ctx)
-	next, bucket := r.getNextConsumer(pk)
+	pk := r.partitionKey(ctx)
+	next, bucket := r.getNextConsumerAndMaybeRecord(ctx, pk)
 	r.recordRoutedMetric(ctx, pk, bucket)
 	return next
 }
 
-func (r *router[C]) estimateCardinality(ctx context.Context) string {
+func (r *router[C]) partitionKey(ctx context.Context) string {
 	clientMeta := client.FromContext(ctx).Metadata
-	var pkb strings.Builder
+	pkb := make([]byte, 0, maxPkCapacity)
 	for _, k := range r.partitionKeys {
 		vs := clientMeta.Get(k)
 		if len(vs) == 0 {
 			continue
 		}
 		for _, v := range vs {
-			if _, err := pkb.WriteString(v); err != nil {
-				r.logger.Error(
-					"unexpected failure on concatenating primary metadata keys",
-					zap.Error(err),
-					zap.String("partition_key", k),
-					zap.String("value", v),
-				)
-			}
-			if err := pkb.WriteByte(':'); err != nil {
-				r.logger.Error(
-					"unexpected failure on concatenating primary metadata keys",
-					zap.Error(err),
-					zap.String("partition_key", k),
-					zap.String("value", v),
-				)
-			}
+			pkb = append(pkb, v...)
+			pkb = append(pkb, ':')
 		}
-		if err := pkb.WriteByte(';'); err != nil {
-			r.logger.Error(
-				"unexpected failure on concatenating primary metadata keys",
-				zap.Error(err),
-				zap.String("partition_key", k),
-			)
-		}
+		pkb = append(pkb, ';')
 	}
+	return string(pkb)
+}
 
+func (r *router[C]) hashSum(ctx context.Context) uint64 {
+	clientMeta := client.FromContext(ctx).Metadata
 	var hash xxhash.Digest
 	for _, k := range r.sortedMetadataKeys {
 		vs := clientMeta.Get(k)
@@ -272,9 +268,10 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 			}
 		}
 	}
+	return hash.Sum64()
+}
 
-	pk := pkb.String()
-
+func (r *router[C]) recordCardinality(pk string, hashSum uint64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -283,40 +280,37 @@ func (r *router[C]) estimateCardinality(ctx context.Context) string {
 		hll = hyperloglog.New()
 		r.m[pk] = hll
 	}
-	hll.InsertHash(hash.Sum64())
-	return pk
+	hll.InsertHash(hashSum)
 }
 
-func (r *router[C]) getNextConsumer(pk string) (C, string) {
+func (r *router[C]) getNextConsumerAndMaybeRecord(ctx context.Context, pk string) (C, string) {
 	if pk == "" {
-		r.logger.Debug(
-			"returning default consumer due to empty primary key",
-			zap.String("primary_key", pk),
-		)
+		if ce := r.logger.Check(zap.DebugLevel, "returning default consumer due to empty primary key"); ce != nil {
+			ce.Write(zap.String("primary_key", pk))
+		}
 		return r.defaultConsumer, defaultCardinalityBucket
 	}
 
-	r.dmu.RLock()
-	defer r.dmu.RUnlock()
+	item := r.decision.Get(pk)
+	if item == nil || time.Until(item.ExpiresAt()) <= r.recordingInterval {
+		r.recordCardinality(pk, r.hashSum(ctx))
+	}
 
-	next, ok := r.decision[pk]
-	if !ok {
-		r.logger.Debug(
-			"returning default consumer due to missing decision",
-			zap.String("primary_key", pk),
-		)
+	if item == nil {
+		if ce := r.logger.Check(zap.DebugLevel, "returning default consumer due to missing decision"); ce != nil {
+			ce.Write(zap.String("primary_key", pk))
+		}
 		return r.defaultConsumer, defaultCardinalityBucket
 	}
-	r.logger.Debug(
-		"returning non-default consumer",
-		zap.String("primary_key", pk),
-		zap.Float64("max_count", next.maxCount),
-	)
+	next := item.Value()
+	if ce := r.logger.Check(zap.DebugLevel, "returning non-default consumer"); ce != nil {
+		ce.Write(zap.String("primary_key", pk), zap.Float64("max_count", next.maxCount))
+	}
 	return next.consumer, next.cardinalityBucket
 }
 
-// updateDecisions updates the current cache to be used for decisions, discarding
-// the previous decision map.
+// updateDecisions refreshes decision cache entries from the most recently
+// recorded HLL window.
 func (r *router[C]) updateDecisions() {
 	r.mu.Lock()
 	oldM := r.m
@@ -333,14 +327,18 @@ func (r *router[C]) updateDecisions() {
 			}
 		}
 	}
-
-	r.dmu.Lock()
-	defer r.dmu.Unlock()
-	r.decision = newDecision
+	r.decision.DeleteExpired()
+	for k, c := range newDecision {
+		r.decision.Set(k, c, r.ttl)
+	}
 }
 
 func (r *router[C]) recordRoutedMetric(ctx context.Context, pk string, bucket string) {
 	if r.telemetryBuilder == nil {
+		return
+	}
+	if pk == "" && bucket == defaultCardinalityBucket {
+		r.telemetryBuilder.DynamicroutingRouted.Add(ctx, 1, defaultRoutedOpt)
 		return
 	}
 	r.telemetryBuilder.DynamicroutingRouted.Add(

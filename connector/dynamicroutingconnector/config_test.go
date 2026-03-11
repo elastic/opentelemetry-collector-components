@@ -55,6 +55,18 @@ func TestConfig(t *testing.T) {
 			errMsg: "pipelines must be defined in ascending order of max_cardinality",
 		},
 		{
+			name:   "invalid-recording-interval",
+			errMsg: "recording_interval must be greater than zero",
+		},
+		{
+			name:   "invalid-ttl",
+			errMsg: "ttl must be greater than zero",
+		},
+		{
+			name:   "invalid-ttl-lt-recording",
+			errMsg: "ttl must be greater than or equal to recording_interval",
+		},
+		{
 			name: "invalid-dynamic-pipelines/valid",
 			expected: &Config{
 				RoutingKeys: RoutingKeys{
@@ -64,7 +76,8 @@ func TestConfig(t *testing.T) {
 				DefaultPipelines: []pipeline.ID{
 					pipeline.NewIDWithName(pipeline.SignalLogs, "default"),
 				},
-				EvaluationInterval: time.Minute,
+				RecordingInterval: time.Minute,
+				TTL:               5 * time.Minute,
 				RoutingPipelines: []RoutingPipeline{
 					{
 						Pipelines: []pipeline.ID{
