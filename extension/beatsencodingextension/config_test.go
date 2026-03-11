@@ -90,12 +90,28 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: "invalid unwrap JSONPath expression",
 		},
 		{
+			name: "missing type",
+			config: Config{
+				Format:  FormatJSON,
+				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+			},
+			wantErr: "routing.type is required",
+		},
+		{
 			name: "missing dataset",
 			config: Config{
 				Format:  FormatJSON,
 				Routing: RoutingConfig{Type: "logs", Namespace: "default"},
 			},
 			wantErr: "routing.dataset is required",
+		},
+		{
+			name: "missing namespace",
+			config: Config{
+				Format:  FormatJSON,
+				Routing: RoutingConfig{Type: "logs", Dataset: "test"},
+			},
+			wantErr: "routing.namespace is required",
 		},
 	}
 

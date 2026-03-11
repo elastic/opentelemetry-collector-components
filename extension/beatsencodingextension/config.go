@@ -87,8 +87,16 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	if c.Routing.Type == "" {
+		return fmt.Errorf("routing.type is required")
+	}
+
 	if c.Routing.Dataset == "" {
 		return fmt.Errorf("routing.dataset is required")
+	}
+
+	if c.Routing.Namespace == "" {
+		return fmt.Errorf("routing.namespace is required")
 	}
 
 	return nil

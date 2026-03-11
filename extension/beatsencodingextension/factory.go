@@ -41,6 +41,7 @@ func createDefaultConfig() component.Config {
 		TargetField: "message",
 		Routing: RoutingConfig{
 			Type:      "logs",
+			Dataset:   "generic",
 			Namespace: "default",
 		},
 	}
