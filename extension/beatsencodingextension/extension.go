@@ -173,11 +173,15 @@ func (e *beatsEncodingExtension) extractJSONRecords(buf []byte) ([]string, error
 //   - $.events[*]    (custom wrappers)
 func (e *beatsEncodingExtension) unwrapJSON(buf []byte) ([]string, error) {
 	extracted, err := e.unwrapPath.Extract(buf)
-	if err != nil || len(extracted) == 0 {
-		// JSONPath extraction failed or returned no results —
+	if err != nil {
+		return nil, fmt.Errorf("unwrapping JSON with path %q: %w", e.config.Unwrap, err)
+	}
+	if len(extracted) == 0 {
+		// JSONPath returned no results —
 		// treat the entire input as a single record.
 		// This handles cases where the wrapper field is missing.
 		return []string{string(buf)}, nil
+	}
 	}
 
 	records := make([]string, 0, len(extracted))
