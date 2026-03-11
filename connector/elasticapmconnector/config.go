@@ -225,6 +225,21 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			{Key: "cloud.availability_zone"},
 			{Key: "cloud.platform"}, // cloud.service.name
 			{Key: "cloud.account.id"},
+
+			// Grouped apm-data compatibility attributes.
+			// These attributes are expected for ecs mode events
+			// ingested through receiver/elasticapmintakereceiver
+			// or the otlp receiver.
+			{Key: "faas.trigger", Optional: true}, // faas.trigger.type
+			{Key: "faas.coldstart", Optional: true},
+
+			// The remaining keys below use Elastic naming since no
+			// otel semconv exists
+			{Key: "host.hostname", Optional: true},
+			{Key: "cloud.account.name", Optional: true},
+			{Key: "cloud.machine.type", Optional: true},
+			{Key: "cloud.project.id", Optional: true},
+			{Key: "cloud.project.name", Optional: true},
 		}, commonResourceAttributes...,
 	)
 
