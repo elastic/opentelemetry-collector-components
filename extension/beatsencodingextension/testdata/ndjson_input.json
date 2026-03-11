@@ -1,0 +1,3 @@
+{"level":"info","message":"hello world","timestamp":"2026-01-15T10:30:00Z"}
+{"level":"error","message":"something failed","timestamp":"2026-01-15T10:30:01Z"}
+{"level":"debug","message":"processing complete","timestamp":"2026-01-15T10:30:02Z"}

@@ -1,0 +1,45 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: aws.elb_logs
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: 2026-01-15T10:30:00.000000Z my-elb 172.31.16.139:80 10.0.0.1:80 0.000073 0.001048 0.000057 200 200 0 29 "GET http://my-elb-1234567890.us-east-1.elb.amazonaws.com:80/ HTTP/1.1" "curl/7.46.0" - -
+            observedTimeUnixNano: "1773221756687013000"
+            timeUnixNano: "1773221756687013000"
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: aws.elb_logs
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: 2026-01-15T10:30:01.000000Z my-elb 172.31.16.140:80 10.0.0.2:80 0.000086 0.001152 0.000048 200 200 0 29 "GET http://my-elb-1234567890.us-east-1.elb.amazonaws.com:80/health HTTP/1.1" "ELB-HealthChecker/2.0" - -
+            observedTimeUnixNano: "1773221756687013000"
+            timeUnixNano: "1773221756687013000"
+        scope:
+          attributes:
+            - key: elastic.mapping.mode
+              value:
+                stringValue: bodymap

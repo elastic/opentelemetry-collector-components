@@ -1,0 +1,252 @@
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+package beatsencodingextension
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const testDataDir = "testdata"
+
+// Set to true to regenerate golden files, then set back to false.
+var updateGoldenFiles = false
+
+func TestUnmarshalLogs(t *testing.T) {
+	tests := []struct {
+		name       string
+		config     Config
+		inputFile  string
+		goldenFile string
+		wantLogs   int
+	}{
+		{
+			name: "azure diagnostic settings (json + unwrap)",
+			config: Config{
+				Format:      FormatJSON,
+				Unwrap:      "$.records[*]",
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "azure.events", Namespace: "default"},
+			},
+			inputFile:  "azure_diagnostic_settings.json",
+			goldenFile: "azure_diagnostic_settings_expected.yaml",
+			wantLogs:   2,
+		},
+		{
+			name: "aws cloudtrail (json + unwrap)",
+			config: Config{
+				Format:      FormatJSON,
+				Unwrap:      "$.Records[*]",
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "aws.cloudtrail", Namespace: "default"},
+			},
+			inputFile:  "aws_cloudtrail.json",
+			goldenFile: "aws_cloudtrail_expected.yaml",
+			wantLogs:   2,
+		},
+		{
+			name: "aws vpc flow logs (text)",
+			config: Config{
+				Format:      FormatText,
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "aws.vpcflow", Namespace: "default"},
+			},
+			inputFile:  "aws_vpcflow.txt",
+			goldenFile: "aws_vpcflow_expected.yaml",
+			wantLogs:   3,
+		},
+		{
+			name: "aws elb access logs (text)",
+			config: Config{
+				Format:      FormatText,
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "aws.elb_logs", Namespace: "default"},
+			},
+			inputFile:  "aws_elb.txt",
+			goldenFile: "aws_elb_expected.yaml",
+			wantLogs:   2,
+		},
+		{
+			name: "ndjson input",
+			config: Config{
+				Format:      FormatNDJSON,
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "custom.ndjson", Namespace: "default"},
+			},
+			inputFile:  "ndjson_input.json",
+			goldenFile: "ndjson_expected.yaml",
+			wantLogs:   3,
+		},
+		{
+			name: "json without unwrap (single record)",
+			config: Config{
+				Format:      FormatJSON,
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "generic", Namespace: "default"},
+			},
+			inputFile:  "json_single.json",
+			goldenFile: "json_single_expected.yaml",
+			wantLogs:   1,
+		},
+		{
+			name: "json nested path unwrap",
+			config: Config{
+				Format:      FormatJSON,
+				Unwrap:      "$.data.items[*]",
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "custom.nested", Namespace: "default"},
+			},
+			inputFile:  "json_nested.json",
+			goldenFile: "json_nested_expected.yaml",
+			wantLogs:   3,
+		},
+		{
+			name: "json unwrap field missing (fallback to single record)",
+			config: Config{
+				Format:      FormatJSON,
+				Unwrap:      "$.records[*]",
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "test", Namespace: "default"},
+			},
+			inputFile:  "json_no_records_field.json",
+			goldenFile: "json_no_records_field_expected.yaml",
+			wantLogs:   1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ext, err := newBeatsEncodingExtension(&tt.config)
+			require.NoError(t, err)
+
+			input, err := os.ReadFile(filepath.Join(testDataDir, tt.inputFile))
+			require.NoError(t, err)
+
+			logs, err := ext.UnmarshalLogs(input)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantLogs, logs.LogRecordCount())
+
+			goldenPath := filepath.Join(testDataDir, tt.goldenFile)
+
+			if updateGoldenFiles {
+				require.NoError(t, golden.WriteLogsToFile(goldenPath, logs))
+				t.Log("Golden file written to", goldenPath)
+			}
+
+			expected, err := golden.ReadLogs(goldenPath)
+			require.NoError(t, err)
+
+			require.NoError(t, plogtest.CompareLogs(
+				expected, logs,
+				plogtest.IgnoreObservedTimestamp(),
+				plogtest.IgnoreTimestamp(),
+			))
+		})
+	}
+}
+
+func TestUnmarshalLogs_EmptyInput(t *testing.T) {
+	tests := []struct {
+		name   string
+		format Format
+		input  []byte
+	}{
+		{name: "empty json", format: FormatJSON, input: []byte("")},
+		{name: "whitespace json", format: FormatJSON, input: []byte("   ")},
+		{name: "empty text", format: FormatText, input: []byte("")},
+		{name: "empty ndjson", format: FormatNDJSON, input: []byte("")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ext, err := newBeatsEncodingExtension(&Config{
+				Format:      tt.format,
+				TargetField: "message",
+				Routing:     RoutingConfig{Type: "logs", Dataset: "test", Namespace: "default"},
+			})
+			require.NoError(t, err)
+
+			logs, err := ext.UnmarshalLogs(tt.input)
+			require.NoError(t, err)
+			assert.Equal(t, 0, logs.LogRecordCount())
+		})
+	}
+}
+
+func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
+	ext, err := newBeatsEncodingExtension(&Config{
+		Format:      FormatJSON,
+		Unwrap:      "$.records[*]",
+		TargetField: "message",
+		Routing:     RoutingConfig{Type: "logs", Dataset: "azure.events", Namespace: "default"},
+	})
+	require.NoError(t, err)
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))
+	require.NoError(t, err)
+
+	logs, err := ext.UnmarshalLogs(input)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, logs.ResourceLogs().Len())
+	sl := logs.ResourceLogs().At(0).ScopeLogs()
+	require.Equal(t, 1, sl.Len())
+
+	// Verify scope attribute: elastic.mapping.mode = bodymap
+	scopeAttrs := sl.At(0).Scope().Attributes()
+	mappingMode, ok := scopeAttrs.Get("elastic.mapping.mode")
+	require.True(t, ok)
+	assert.Equal(t, "bodymap", mappingMode.Str())
+
+	// Verify all log records
+	logRecords := sl.At(0).LogRecords()
+	require.Equal(t, 2, logRecords.Len())
+
+	for i := 0; i < logRecords.Len(); i++ {
+		lr := logRecords.At(i)
+
+		// Body is a map with "message" key
+		msgVal, ok := lr.Body().Map().Get("message")
+		require.True(t, ok, "log record %d: body should have 'message' key", i)
+		assert.NotEmpty(t, msgVal.Str(), "log record %d: message should not be empty", i)
+
+		// Timestamps are set
+		assert.NotZero(t, lr.Timestamp())
+		assert.NotZero(t, lr.ObservedTimestamp())
+
+		// Data stream attributes
+		attrs := lr.Attributes()
+		v, ok := attrs.Get("data_stream.type")
+		require.True(t, ok)
+		assert.Equal(t, "logs", v.Str())
+
+		v, ok = attrs.Get("data_stream.dataset")
+		require.True(t, ok)
+		assert.Equal(t, "azure.events", v.Str())
+
+		v, ok = attrs.Get("data_stream.namespace")
+		require.True(t, ok)
+		assert.Equal(t, "default", v.Str())
+	}
+}

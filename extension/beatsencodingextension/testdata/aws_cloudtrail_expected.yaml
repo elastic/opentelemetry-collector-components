@@ -1,0 +1,59 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: aws.cloudtrail
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: |-
+                        {
+                              "eventVersion": "1.08",
+                              "eventSource": "iam.amazonaws.com",
+                              "eventName": "CreateUser",
+                              "awsRegion": "us-east-1",
+                              "eventTime": "2026-01-15T10:30:00Z"
+                            }
+            observedTimeUnixNano: "1773221756684187000"
+            timeUnixNano: "1773221756684187000"
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: aws.cloudtrail
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: |-
+                        {
+                              "eventVersion": "1.08",
+                              "eventSource": "s3.amazonaws.com",
+                              "eventName": "GetObject",
+                              "awsRegion": "us-west-2",
+                              "eventTime": "2026-01-15T10:30:01Z"
+                            }
+            observedTimeUnixNano: "1773221756684187000"
+            timeUnixNano: "1773221756684187000"
+        scope:
+          attributes:
+            - key: elastic.mapping.mode
+              value:
+                stringValue: bodymap

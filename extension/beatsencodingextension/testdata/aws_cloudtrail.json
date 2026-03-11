@@ -1,0 +1,18 @@
+{
+  "Records": [
+    {
+      "eventVersion": "1.08",
+      "eventSource": "iam.amazonaws.com",
+      "eventName": "CreateUser",
+      "awsRegion": "us-east-1",
+      "eventTime": "2026-01-15T10:30:00Z"
+    },
+    {
+      "eventVersion": "1.08",
+      "eventSource": "s3.amazonaws.com",
+      "eventName": "GetObject",
+      "awsRegion": "us-west-2",
+      "eventTime": "2026-01-15T10:30:01Z"
+    }
+  ]
+}

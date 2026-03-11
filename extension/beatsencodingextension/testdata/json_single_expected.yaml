@@ -1,0 +1,27 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: generic
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: '{"key": "value", "number": 42}'
+            observedTimeUnixNano: "1773221756689299000"
+            timeUnixNano: "1773221756689299000"
+        scope:
+          attributes:
+            - key: elastic.mapping.mode
+              value:
+                stringValue: bodymap
