@@ -101,6 +101,9 @@ func replaceReservedRune(r rune) rune {
 		// These characters are not permitted in data stream names
 		// by Elasticsearch.
 		return '_'
+	case '.':
+		// added for parity
+		return '_'
 	case '-':
 		// Hyphens are used to separate the data stream type, dataset,
 		// and namespace.
