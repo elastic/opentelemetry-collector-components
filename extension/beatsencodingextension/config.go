@@ -31,10 +31,6 @@ const (
 	// wrapped records (use Unwrap to extract them).
 	FormatJSON Format = "json"
 
-	// FormatNDJSON indicates the input is newline-delimited JSON (one
-	// JSON object per line). Each line becomes a separate log record.
-	FormatNDJSON Format = "ndjson"
-
 	// FormatText indicates the input is newline-delimited text where
 	// each line becomes a separate log record.
 	FormatText Format = "text"
@@ -48,7 +44,7 @@ type RoutingConfig struct {
 
 // Config defines the configuration for the beats encoding extension.
 type Config struct {
-	// Format of the incoming data: "json", "ndjson", or "text".
+	// Format of the incoming data: "json" or "text".
 	Format Format `mapstructure:"format"`
 
 	// Unwrap is a JSONPath expression to extract individual records from
@@ -71,9 +67,9 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	switch c.Format {
-	case FormatJSON, FormatNDJSON, FormatText:
+	case FormatJSON, FormatText:
 	default:
-		return fmt.Errorf("invalid format %q: must be %q, %q, or %q", c.Format, FormatJSON, FormatNDJSON, FormatText)
+		return fmt.Errorf("invalid format %q: must be %q or %q", c.Format, FormatJSON, FormatText)
 	}
 
 	if c.Unwrap != "" && c.Format != FormatJSON {

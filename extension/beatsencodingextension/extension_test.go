@@ -89,17 +89,6 @@ func TestUnmarshalLogs(t *testing.T) {
 			wantLogs:   2,
 		},
 		{
-			name: "ndjson input",
-			config: Config{
-				Format:      FormatNDJSON,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "custom.ndjson", Namespace: "default"},
-			},
-			inputFile:  "ndjson_input.json",
-			goldenFile: "ndjson_expected.yaml",
-			wantLogs:   3,
-		},
-		{
 			name: "json without unwrap (single record)",
 			config: Config{
 				Format:      FormatJSON,
@@ -176,7 +165,6 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 		{name: "empty json", format: FormatJSON, input: []byte("")},
 		{name: "whitespace json", format: FormatJSON, input: []byte("   ")},
 		{name: "empty text", format: FormatText, input: []byte("")},
-		{name: "empty ndjson", format: FormatNDJSON, input: []byte("")},
 	}
 
 	for _, tt := range tests {

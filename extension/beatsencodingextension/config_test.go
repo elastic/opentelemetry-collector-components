@@ -56,14 +56,6 @@ func TestConfig_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "valid ndjson format",
-			config: Config{
-				Format:      FormatNDJSON,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "custom", Namespace: "default"},
-			},
-		},
-		{
 			name: "invalid format",
 			config: Config{
 				Format:  "xml",

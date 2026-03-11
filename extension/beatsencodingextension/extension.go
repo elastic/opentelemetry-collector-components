@@ -104,8 +104,6 @@ func (e *beatsEncodingExtension) extractRecords(buf []byte) ([]string, error) {
 	switch e.config.Format {
 	case FormatText:
 		return e.extractTextRecords(buf)
-	case FormatNDJSON:
-		return e.extractNDJSONRecords(buf)
 	case FormatJSON:
 		return e.extractJSONRecords(buf)
 	default:
@@ -115,30 +113,20 @@ func (e *beatsEncodingExtension) extractRecords(buf []byte) ([]string, error) {
 
 // extractTextRecords splits newline-delimited text into individual records.
 func (e *beatsEncodingExtension) extractTextRecords(buf []byte) ([]string, error) {
-	var records []string
-	for _, line := range bytes.Split(buf, []byte("\n")) {
-		line = bytes.TrimSpace(line)
-		if len(line) == 0 {
-			continue
-		}
-		records = append(records, string(line))
-	}
-	return records, nil
+	return splitLines(buf), nil
 }
 
-// extractNDJSONRecords splits newline-delimited JSON into individual
-// records. Each non-empty line is treated as a separate JSON object
-// and stored as a raw string (not parsed).
-func (e *beatsEncodingExtension) extractNDJSONRecords(buf []byte) ([]string, error) {
-	var records []string
-	for _, line := range bytes.Split(buf, []byte("\n")) {
+// splitLines splits buf on newlines and returns non-empty trimmed lines.
+func splitLines(buf []byte) []string {
+	var lines []string
+	for line := range bytes.SplitSeq(buf, []byte("\n")) {
 		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
 		}
-		records = append(records, string(line))
+		lines = append(lines, string(line))
 	}
-	return records, nil
+	return lines
 }
 
 // extractJSONRecords extracts records from JSON input. When an unwrap
