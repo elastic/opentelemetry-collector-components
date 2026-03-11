@@ -47,7 +47,7 @@ func TestUnmarshalLogs(t *testing.T) {
 				Format:      FormatJSON,
 				Unwrap:      "$.records[*]",
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "azure.events", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 			inputFile:  "azure_diagnostic_settings.json",
 			goldenFile: "azure_diagnostic_settings_expected.yaml",
@@ -59,7 +59,7 @@ func TestUnmarshalLogs(t *testing.T) {
 				Format:      FormatJSON,
 				Unwrap:      "$.Records[*]",
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "aws.cloudtrail", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
 			},
 			inputFile:  "aws_cloudtrail.json",
 			goldenFile: "aws_cloudtrail_expected.yaml",
@@ -70,7 +70,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			config: Config{
 				Format:      FormatText,
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "aws.vpcflow", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "aws.vpcflow", Namespace: "default"},
 			},
 			inputFile:  "aws_vpcflow.txt",
 			goldenFile: "aws_vpcflow_expected.yaml",
@@ -81,7 +81,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			config: Config{
 				Format:      FormatText,
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "aws.elb_logs", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "aws.elb_logs", Namespace: "default"},
 			},
 			inputFile:  "aws_elb.txt",
 			goldenFile: "aws_elb_expected.yaml",
@@ -92,7 +92,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			config: Config{
 				Format:      FormatNDJSON,
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "custom.ndjson", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "custom.ndjson", Namespace: "default"},
 			},
 			inputFile:  "ndjson_input.json",
 			goldenFile: "ndjson_expected.yaml",
@@ -103,7 +103,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			config: Config{
 				Format:      FormatJSON,
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "generic", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "generic", Namespace: "default"},
 			},
 			inputFile:  "json_single.json",
 			goldenFile: "json_single_expected.yaml",
@@ -115,7 +115,7 @@ func TestUnmarshalLogs(t *testing.T) {
 				Format:      FormatJSON,
 				Unwrap:      "$.data.items[*]",
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "custom.nested", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "custom.nested", Namespace: "default"},
 			},
 			inputFile:  "json_nested.json",
 			goldenFile: "json_nested_expected.yaml",
@@ -127,7 +127,7 @@ func TestUnmarshalLogs(t *testing.T) {
 				Format:      FormatJSON,
 				Unwrap:      "$.records[*]",
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "test", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
 			},
 			inputFile:  "json_no_records_field.json",
 			goldenFile: "json_no_records_field_expected.yaml",
@@ -183,7 +183,7 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 			ext, err := newBeatsEncodingExtension(&Config{
 				Format:      tt.format,
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "test", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
 			})
 			require.NoError(t, err)
 
@@ -199,7 +199,7 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 		Format:      FormatJSON,
 		Unwrap:      "$.records[*]",
 		TargetField: "message",
-		Routing:     RoutingConfig{Type: "logs", Dataset: "azure.events", Namespace: "default"},
+		Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
 	})
 	require.NoError(t, err)
 

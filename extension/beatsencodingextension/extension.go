@@ -88,7 +88,7 @@ func (e *beatsEncodingExtension) UnmarshalLogs(buf []byte) (plog.Logs, error) {
 		lr.Body().SetEmptyMap().PutStr(e.config.TargetField, record)
 
 		attrs := lr.Attributes()
-		attrs.PutStr("data_stream.type", e.config.Routing.Type)
+		attrs.PutStr("data_stream.type", "logs")
 		attrs.PutStr("data_stream.dataset", e.config.Routing.Dataset)
 		attrs.PutStr("data_stream.namespace", e.config.Routing.Namespace)
 	}

@@ -36,7 +36,7 @@ func TestConfig_Validate(t *testing.T) {
 				Format:      FormatJSON,
 				Unwrap:      "$.records[*]",
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "azure.events", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 		},
 		{
@@ -44,7 +44,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:      FormatJSON,
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "azure.events", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 		},
 		{
@@ -52,7 +52,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:      FormatText,
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "aws.vpcflow", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "aws.vpcflow", Namespace: "default"},
 			},
 		},
 		{
@@ -60,14 +60,14 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:      FormatNDJSON,
 				TargetField: "message",
-				Routing:     RoutingConfig{Type: "logs", Dataset: "custom", Namespace: "default"},
+				Routing:     RoutingConfig{Dataset: "custom", Namespace: "default"},
 			},
 		},
 		{
 			name: "invalid format",
 			config: Config{
 				Format:  "xml",
-				Routing: RoutingConfig{Type: "logs", Dataset: "test", Namespace: "default"},
+				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: `invalid format "xml"`,
 		},
@@ -76,7 +76,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:  FormatText,
 				Unwrap:  "$.records[*]",
-				Routing: RoutingConfig{Type: "logs", Dataset: "test", Namespace: "default"},
+				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: `unwrap is only supported when format is "json"`,
 		},
@@ -85,23 +85,15 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:  FormatJSON,
 				Unwrap:  "$[invalid",
-				Routing: RoutingConfig{Type: "logs", Dataset: "test", Namespace: "default"},
-			},
-			wantErr: "invalid unwrap JSONPath expression",
-		},
-		{
-			name: "missing type",
-			config: Config{
-				Format:  FormatJSON,
 				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
 			},
-			wantErr: "routing.type is required",
+			wantErr: "invalid unwrap JSONPath expression",
 		},
 		{
 			name: "missing dataset",
 			config: Config{
 				Format:  FormatJSON,
-				Routing: RoutingConfig{Type: "logs", Namespace: "default"},
+				Routing: RoutingConfig{Namespace: "default"},
 			},
 			wantErr: "routing.dataset is required",
 		},
@@ -109,7 +101,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "missing namespace",
 			config: Config{
 				Format:  FormatJSON,
-				Routing: RoutingConfig{Type: "logs", Dataset: "test"},
+				Routing: RoutingConfig{Dataset: "test"},
 			},
 			wantErr: "routing.namespace is required",
 		},

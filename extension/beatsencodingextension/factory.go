@@ -40,7 +40,6 @@ func createDefaultConfig() component.Config {
 		Format:      FormatJSON,
 		TargetField: "message",
 		Routing: RoutingConfig{
-			Type:      "logs",
 			Dataset:   "generic",
 			Namespace: "default",
 		},

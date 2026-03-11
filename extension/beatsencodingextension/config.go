@@ -42,7 +42,6 @@ const (
 
 // RoutingConfig defines the data stream routing attributes.
 type RoutingConfig struct {
-	Type      string `mapstructure:"type"`
 	Dataset   string `mapstructure:"dataset"`
 	Namespace string `mapstructure:"namespace"`
 }
@@ -85,10 +84,6 @@ func (c *Config) Validate() error {
 		if _, err := json.CreatePath(c.Unwrap); err != nil {
 			return fmt.Errorf("invalid unwrap JSONPath expression %q: %w", c.Unwrap, err)
 		}
-	}
-
-	if c.Routing.Type == "" {
-		return fmt.Errorf("routing.type is required")
 	}
 
 	if c.Routing.Dataset == "" {
