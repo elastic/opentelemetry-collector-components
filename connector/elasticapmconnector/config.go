@@ -184,6 +184,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			{Key: "service.name"},
 			{Key: "deployment.environment"}, // service.environment
 			{Key: "telemetry.sdk.language"}, // service.language.name
+			{Key: "data_stream.namespace", Optional: true},
 
 			// agent.name is set via elasticapmprocessor for traces,
 			// but not for other signals. Default to "unknown" for the
