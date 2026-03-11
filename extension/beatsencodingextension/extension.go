@@ -18,7 +18,6 @@
 package beatsencodingextension // import "github.com/elastic/opentelemetry-collector-components/extension/beatsencodingextension"
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -115,16 +114,12 @@ func (e *beatsEncodingExtension) extractRecords(buf []byte) ([]string, error) {
 // extractTextRecords splits newline-delimited text into individual records.
 func (e *beatsEncodingExtension) extractTextRecords(buf []byte) ([]string, error) {
 	var records []string
-	scanner := bufio.NewScanner(bytes.NewReader(buf))
-	for scanner.Scan() {
-		line := scanner.Text()
+	for _, line := range bytes.Split(buf, []byte("\n")) {
+		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
 		}
-		records = append(records, line)
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("reading text input: %w", err)
+		records = append(records, string(line))
 	}
 	return records, nil
 }
@@ -134,16 +129,12 @@ func (e *beatsEncodingExtension) extractTextRecords(buf []byte) ([]string, error
 // and stored as a raw string (not parsed).
 func (e *beatsEncodingExtension) extractNDJSONRecords(buf []byte) ([]string, error) {
 	var records []string
-	scanner := bufio.NewScanner(bytes.NewReader(buf))
-	for scanner.Scan() {
-		line := bytes.TrimSpace(scanner.Bytes())
+	for _, line := range bytes.Split(buf, []byte("\n")) {
+		line = bytes.TrimSpace(line)
 		if len(line) == 0 {
 			continue
 		}
 		records = append(records, string(line))
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("reading NDJSON input: %w", err)
 	}
 	return records, nil
 }
@@ -181,7 +172,6 @@ func (e *beatsEncodingExtension) unwrapJSON(buf []byte) ([]string, error) {
 		// treat the entire input as a single record.
 		// This handles cases where the wrapper field is missing.
 		return []string{string(buf)}, nil
-	}
 	}
 
 	records := make([]string, 0, len(extracted))

@@ -49,8 +49,8 @@ type RoutingConfig struct {
 
 // Config defines the configuration for the beats encoding extension.
 type Config struct {
-	// Format of the incoming data: "json" or "text".
 	// Format of the incoming data: "json", "ndjson", or "text".
+	Format Format `mapstructure:"format"`
 
 	// Unwrap is a JSONPath expression to extract individual records from
 	// a wrapper structure (e.g. "$.records[*]" for Azure Diagnostic Settings,
