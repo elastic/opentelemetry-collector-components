@@ -348,7 +348,9 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 	lr.SetTimestamp(ts)
 	lr.SetObservedTimestamp(ts)
 
-	lr.Body().SetEmptyMap().PutStr(e.config.TargetField, record)
+	body := lr.Body().SetEmptyMap()
+	body.PutStr(e.config.TargetField, record)
+	body.PutStr("event.created", ts.AsTime().UTC().Format(time.RFC3339Nano))
 
 	attrs := lr.Attributes()
 	attrs.PutStr("data_stream.type", "logs")

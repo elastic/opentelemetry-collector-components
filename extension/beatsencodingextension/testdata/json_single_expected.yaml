@@ -18,8 +18,8 @@ resourceLogs:
                   - key: message
                     value:
                       stringValue: '{"key": "value", "number": 42}'
-            observedTimeUnixNano: "1773221756689299000"
-            timeUnixNano: "1773221756689299000"
+            observedTimeUnixNano: "1773309963486790000"
+            timeUnixNano: "1773309963486790000"
         scope:
           attributes:
             - key: elastic.mapping.mode

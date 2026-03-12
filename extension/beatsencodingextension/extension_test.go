@@ -29,6 +29,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/zap"
 )
 
@@ -130,6 +131,8 @@ func TestUnmarshalLogs(t *testing.T) {
 
 			goldenPath := filepath.Join(testDataDir, tt.goldenFile)
 
+			stripEventCreated(logs)
+
 			if updateGoldenFiles {
 				require.NoError(t, golden.WriteLogsToFile(goldenPath, logs))
 				t.Log("Golden file written to", goldenPath)
@@ -225,6 +228,10 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 		require.True(t, ok, "log record %d: body should have 'message' key", i)
 		assert.NotEmpty(t, msgVal.Str(), "log record %d: message should not be empty", i)
 
+		eventCreated, ok := lr.Body().Map().Get("event.created")
+		require.True(t, ok, "log record %d: body should have 'event.created' key", i)
+		assert.NotEmpty(t, eventCreated.Str(), "log record %d: event.created should not be empty", i)
+
 		assert.NotZero(t, lr.Timestamp())
 		assert.NotZero(t, lr.ObservedTimestamp())
 
@@ -307,4 +314,19 @@ func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
 	}
 
 	assert.Equal(t, 3, totalRecords)
+}
+
+// stripEventCreated removes the "event.created" key from all log record
+// body maps so golden file comparison is not affected by dynamic timestamps.
+func stripEventCreated(logs plog.Logs) {
+	for i := 0; i < logs.ResourceLogs().Len(); i++ {
+		rl := logs.ResourceLogs().At(i)
+		for j := 0; j < rl.ScopeLogs().Len(); j++ {
+			sl := rl.ScopeLogs().At(j)
+			for k := 0; k < sl.LogRecords().Len(); k++ {
+				lr := sl.LogRecords().At(k)
+				lr.Body().Map().Remove("event.created")
+			}
+		}
+	}
 }

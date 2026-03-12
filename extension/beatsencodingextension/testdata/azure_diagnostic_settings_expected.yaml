@@ -27,8 +27,8 @@ resourceLogs:
                               "resultType": "0",
                               "durationMs": 0
                             }
-            observedTimeUnixNano: "1773221756682370000"
-            timeUnixNano: "1773221756682370000"
+            observedTimeUnixNano: "1773309963484563000"
+            timeUnixNano: "1773309963484563000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -52,8 +52,8 @@ resourceLogs:
                               "category": "Administrative",
                               "resultType": "Success"
                             }
-            observedTimeUnixNano: "1773221756682370000"
-            timeUnixNano: "1773221756682370000"
+            observedTimeUnixNano: "1773309963484563000"
+            timeUnixNano: "1773309963484563000"
         scope:
           attributes:
             - key: elastic.mapping.mode

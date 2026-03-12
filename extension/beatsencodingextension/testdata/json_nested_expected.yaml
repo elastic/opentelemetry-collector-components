@@ -18,8 +18,8 @@ resourceLogs:
                   - key: message
                     value:
                       stringValue: '{"id": 1, "name": "first"}'
-            observedTimeUnixNano: "1773221756690104000"
-            timeUnixNano: "1773221756690104000"
+            observedTimeUnixNano: "1773309963487109000"
+            timeUnixNano: "1773309963487109000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -36,8 +36,8 @@ resourceLogs:
                   - key: message
                     value:
                       stringValue: '{"id": 2, "name": "second"}'
-            observedTimeUnixNano: "1773221756690104000"
-            timeUnixNano: "1773221756690104000"
+            observedTimeUnixNano: "1773309963487109000"
+            timeUnixNano: "1773309963487109000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -54,8 +54,8 @@ resourceLogs:
                   - key: message
                     value:
                       stringValue: '{"id": 3, "name": "third"}'
-            observedTimeUnixNano: "1773221756690104000"
-            timeUnixNano: "1773221756690104000"
+            observedTimeUnixNano: "1773309963487109000"
+            timeUnixNano: "1773309963487109000"
         scope:
           attributes:
             - key: elastic.mapping.mode
