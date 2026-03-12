@@ -16,10 +16,14 @@ require (
 	go.opentelemetry.io/collector/confmap/xconfmap v0.147.0
 	go.opentelemetry.io/collector/connector v0.147.0
 	go.opentelemetry.io/collector/connector/connectortest v0.147.0
+	go.opentelemetry.io/collector/connector/xconnector v0.147.0
 	go.opentelemetry.io/collector/consumer v1.53.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.147.0
+	go.opentelemetry.io/collector/consumer/xconsumer v0.147.0
 	go.opentelemetry.io/collector/pdata v1.53.0
+	go.opentelemetry.io/collector/pdata/pprofile v0.147.0
 	go.opentelemetry.io/collector/pipeline v1.53.0
+	go.opentelemetry.io/collector/pipeline/xpipeline v0.147.0
 	go.opentelemetry.io/otel v1.41.0
 	go.opentelemetry.io/otel/metric v1.41.0
 	go.opentelemetry.io/otel/sdk/metric v1.41.0
@@ -49,14 +53,10 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.147.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/collector/connector/xconnector v0.147.0 // indirect
-	go.opentelemetry.io/collector/consumer/xconsumer v0.147.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.53.0 // indirect
 	go.opentelemetry.io/collector/internal/componentalias v0.147.0 // indirect
 	go.opentelemetry.io/collector/internal/fanoutconsumer v0.147.0 // indirect
-	go.opentelemetry.io/collector/pdata/pprofile v0.147.0 // indirect
 	go.opentelemetry.io/collector/pdata/xpdata v0.147.0 // indirect
-	go.opentelemetry.io/collector/pipeline/xpipeline v0.147.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.41.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
