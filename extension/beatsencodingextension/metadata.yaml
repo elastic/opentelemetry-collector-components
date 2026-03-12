@@ -8,3 +8,5 @@ status:
 
 tests:
   config:
+    routing:
+      dataset: "generic"

@@ -33,6 +33,11 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	_ encoding.LogsUnmarshalerExtension = (*beatsEncodingExtension)(nil)
+	_ encoding.LogsDecoderExtension     = (*beatsEncodingExtension)(nil)
+)
+
 type beatsEncodingExtension struct {
 	config     *Config
 	unwrapKeys []string

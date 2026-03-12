@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+//go:generate mdatagen metadata.yaml
+
 // Package beatsencodingextension provides a Beats compatibility encoding
 // extension that converts raw log bytes into OTel log records formatted
 // for consumption by Elastic ingest pipelines (Beats/EA integrations).
