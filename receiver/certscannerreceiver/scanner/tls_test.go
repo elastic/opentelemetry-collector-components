@@ -46,7 +46,7 @@ func TestTLSScanner_ScanPort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create listener: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	// Get the port that was assigned
 	port := listener.Addr().(*net.TCPAddr).Port
@@ -65,7 +65,7 @@ func TestTLSScanner_ScanPort(t *testing.T) {
 			_ = tlsConn.Handshake()
 			// Keep connection open briefly so client can read
 			time.Sleep(100 * time.Millisecond)
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 
@@ -121,7 +121,7 @@ func TestTLSScanner_ScanPort_Timeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create listener: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.Addr().(*net.TCPAddr).Port
 
@@ -131,7 +131,7 @@ func TestTLSScanner_ScanPort_Timeout(t *testing.T) {
 		if conn != nil {
 			// Hold connection open but don't respond
 			time.Sleep(5 * time.Second)
-			conn.Close()
+			_ = conn.Close()
 		}
 	}()
 

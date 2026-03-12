@@ -95,10 +95,10 @@ func (s *TLSScanner) ScanPort(ctx context.Context, addr string, port int) (*Scan
 
 	conn := tls.Client(rawConn, tlsConfig)
 	if err := conn.HandshakeContext(ctx); err != nil {
-		rawConn.Close()
+		_ = rawConn.Close()
 		return nil, fmt.Errorf("TLS handshake failed: %w", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Get connection state
 	state := conn.ConnectionState()
