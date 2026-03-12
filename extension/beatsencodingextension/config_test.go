@@ -58,9 +58,10 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid nested unwrap path",
 			config: Config{
-				Format:  FormatJSON,
-				Unwrap:  "$.data.items[*]",
-				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+				Format:      FormatJSON,
+				Unwrap:      "$.data.items[*]",
+				TargetField: "message",
+				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
 			},
 		},
 		{
@@ -126,18 +127,29 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: "must contain at least one key segment",
 		},
 		{
+			name: "empty target_field",
+			config: Config{
+				Format:      FormatJSON,
+				TargetField: "",
+				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+			},
+			wantErr: "target_field is required",
+		},
+		{
 			name: "missing dataset",
 			config: Config{
-				Format:  FormatJSON,
-				Routing: RoutingConfig{Namespace: "default"},
+				Format:      FormatJSON,
+				TargetField: "message",
+				Routing:     RoutingConfig{Namespace: "default"},
 			},
 			wantErr: "routing.dataset is required",
 		},
 		{
 			name: "missing namespace",
 			config: Config{
-				Format:  FormatJSON,
-				Routing: RoutingConfig{Dataset: "test"},
+				Format:      FormatJSON,
+				TargetField: "message",
+				Routing:     RoutingConfig{Dataset: "test"},
 			},
 			wantErr: "routing.namespace is required",
 		},

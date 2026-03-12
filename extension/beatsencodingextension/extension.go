@@ -175,7 +175,7 @@ func (e *beatsEncodingExtension) newSingleRecordDecoder(reader io.Reader, opts e
 
 	decodeF := func() (plog.Logs, error) {
 		if done {
-			return plog.Logs{}, io.EOF
+			return plog.NewLogs(), io.EOF
 		}
 		done = true
 
@@ -204,7 +204,7 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 
 	decodeF := func() (plog.Logs, error) {
 		if !dec.More() {
-			return plog.Logs{}, io.EOF
+			return plog.NewLogs(), io.EOF
 		}
 
 		logs := plog.NewLogs()

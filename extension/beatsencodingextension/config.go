@@ -82,6 +82,10 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	if c.TargetField == "" {
+		return fmt.Errorf("target_field is required")
+	}
+
 	if c.Routing.Dataset == "" {
 		return fmt.Errorf("routing.dataset is required")
 	}
