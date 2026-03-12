@@ -19,8 +19,7 @@ package beatsencodingextension // import "github.com/elastic/opentelemetry-colle
 
 import (
 	"fmt"
-
-	"github.com/goccy/go-json"
+	"strings"
 )
 
 // Format defines how the incoming raw bytes should be interpreted.
@@ -47,11 +46,12 @@ type Config struct {
 	// Format of the incoming data: "json" or "text".
 	Format Format `mapstructure:"format"`
 
-	// Unwrap is a JSONPath expression to extract individual records from
-	// a wrapper structure (e.g. "$.records[*]" for Azure Diagnostic Settings,
-	// "$.Records[*]" for AWS CloudTrail). Only used when Format is "json".
-	// When empty and Format is "json", the entire input is treated as a
-	// single record.
+	// Unwrap is a path expression to extract individual records from
+	// a wrapper structure. Only the $.key1.key2...[*] pattern is supported
+	// (dot-notation path to an array with wildcard iteration).
+	// Examples: "$.records[*]", "$.Records[*]", "$.data.items[*]".
+	// Only used when Format is "json". When empty, the entire input
+	// is treated as a single record.
 	Unwrap string `mapstructure:"unwrap,omitempty"`
 
 	// TargetField is the body map key where the raw content of each
@@ -77,8 +77,8 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Unwrap != "" {
-		if _, err := json.CreatePath(c.Unwrap); err != nil {
-			return fmt.Errorf("invalid unwrap JSONPath expression %q: %w", c.Unwrap, err)
+		if _, err := parseUnwrapPath(c.Unwrap); err != nil {
+			return fmt.Errorf("invalid unwrap expression %q: %w", c.Unwrap, err)
 		}
 	}
 
@@ -91,4 +91,36 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+// parseUnwrapPath parses a restricted JSONPath expression of the form
+// $.key1.key2...keyN[*] into a slice of key segments.
+//
+// For example:
+//   - "$.records[*]"    → ["records"]
+//   - "$.Records[*]"    → ["Records"]
+//   - "$.data.items[*]" → ["data", "items"]
+func parseUnwrapPath(expr string) ([]string, error) {
+	if !strings.HasPrefix(expr, "$.") {
+		return nil, fmt.Errorf("must start with \"$.\"")
+	}
+
+	if !strings.HasSuffix(expr, "[*]") {
+		return nil, fmt.Errorf("must end with \"[*]\" (wildcard array iteration)")
+	}
+
+	// Strip "$." prefix and "[*]" suffix to get "key1.key2...keyN"
+	inner := expr[2 : len(expr)-3]
+	if inner == "" {
+		return nil, fmt.Errorf("must contain at least one key segment between \"$.\" and \"[*]\"")
+	}
+
+	keys := strings.Split(inner, ".")
+	for _, k := range keys {
+		if k == "" {
+			return nil, fmt.Errorf("empty key segment in path")
+		}
+	}
+
+	return keys, nil
 }

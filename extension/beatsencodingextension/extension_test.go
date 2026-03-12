@@ -18,10 +18,13 @@
 package beatsencodingextension
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/stretchr/testify/assert"
@@ -111,18 +114,6 @@ func TestUnmarshalLogs(t *testing.T) {
 			goldenFile: "json_nested_expected.yaml",
 			wantLogs:   3,
 		},
-		{
-			name: "json unwrap field missing (fallback to single record)",
-			config: Config{
-				Format:      FormatJSON,
-				Unwrap:      "$.records[*]",
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
-			},
-			inputFile:  "json_no_records_field.json",
-			goldenFile: "json_no_records_field_expected.yaml",
-			wantLogs:   1,
-		},
 	}
 
 	for _, tt := range tests {
@@ -183,6 +174,23 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 	}
 }
 
+func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
+	ext, err := newBeatsEncodingExtension(&Config{
+		Format:      FormatJSON,
+		Unwrap:      "$.records[*]",
+		TargetField: "message",
+		Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+	}, zap.NewNop())
+	require.NoError(t, err)
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "json_no_records_field.json"))
+	require.NoError(t, err)
+
+	_, err = ext.UnmarshalLogs(input)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `key "records" not found`)
+}
+
 func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 	ext, err := newBeatsEncodingExtension(&Config{
 		Format:      FormatJSON,
@@ -202,29 +210,24 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 	sl := logs.ResourceLogs().At(0).ScopeLogs()
 	require.Equal(t, 1, sl.Len())
 
-	// Verify scope attribute: elastic.mapping.mode = bodymap
 	scopeAttrs := sl.At(0).Scope().Attributes()
 	mappingMode, ok := scopeAttrs.Get("elastic.mapping.mode")
 	require.True(t, ok)
 	assert.Equal(t, "bodymap", mappingMode.Str())
 
-	// Verify all log records
 	logRecords := sl.At(0).LogRecords()
 	require.Equal(t, 2, logRecords.Len())
 
 	for i := 0; i < logRecords.Len(); i++ {
 		lr := logRecords.At(i)
 
-		// Body is a map with "message" key
 		msgVal, ok := lr.Body().Map().Get("message")
 		require.True(t, ok, "log record %d: body should have 'message' key", i)
 		assert.NotEmpty(t, msgVal.Str(), "log record %d: message should not be empty", i)
 
-		// Timestamps are set
 		assert.NotZero(t, lr.Timestamp())
 		assert.NotZero(t, lr.ObservedTimestamp())
 
-		// Data stream attributes
 		attrs := lr.Attributes()
 		v, ok := attrs.Get("data_stream.type")
 		require.True(t, ok)
@@ -238,4 +241,70 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, "default", v.Str())
 	}
+}
+
+func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
+	ext, err := newBeatsEncodingExtension(&Config{
+		Format:      FormatJSON,
+		Unwrap:      "$.records[*]",
+		TargetField: "message",
+		Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+	}, zap.NewNop())
+	require.NoError(t, err)
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))
+	require.NoError(t, err)
+
+	decoder, err := ext.NewLogsDecoder(
+		bytes.NewReader(input),
+		encoding.WithFlushItems(1),
+	)
+	require.NoError(t, err)
+
+	// First call: should return exactly 1 record (flushed after 1 item)
+	logs1, err := decoder.DecodeLogs()
+	require.NoError(t, err)
+	assert.Equal(t, 1, logs1.LogRecordCount())
+
+	// Second call: should return the remaining 1 record
+	logs2, err := decoder.DecodeLogs()
+	require.NoError(t, err)
+	assert.Equal(t, 1, logs2.LogRecordCount())
+
+	// Third call: should return io.EOF (no more records)
+	_, err = decoder.DecodeLogs()
+	assert.ErrorIs(t, err, io.EOF)
+
+	// Offset should be positive (bytes consumed)
+	assert.Greater(t, decoder.Offset(), int64(0))
+}
+
+func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
+	ext, err := newBeatsEncodingExtension(&Config{
+		Format:      FormatText,
+		TargetField: "message",
+		Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+	}, zap.NewNop())
+	require.NoError(t, err)
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "aws_vpcflow.txt"))
+	require.NoError(t, err)
+
+	decoder, err := ext.NewLogsDecoder(
+		bytes.NewReader(input),
+		encoding.WithFlushItems(1),
+	)
+	require.NoError(t, err)
+
+	var totalRecords int
+	for {
+		logs, err := decoder.DecodeLogs()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		totalRecords += logs.LogRecordCount()
+	}
+
+	assert.Equal(t, 3, totalRecords)
 }
