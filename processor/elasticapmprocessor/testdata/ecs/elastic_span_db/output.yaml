@@ -323,6 +323,9 @@ resourceSpans:
         - key: host.ip
           value:
             stringValue: 1.2.3.4
+        - key: host.os.type
+          value:
+            stringValue: linux
     scopeSpans:
       - scope: {}
         spans:
