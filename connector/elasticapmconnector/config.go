@@ -184,6 +184,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			{Key: "service.name"},
 			{Key: "deployment.environment"}, // service.environment
 			{Key: "telemetry.sdk.language"}, // service.language.name
+			{Key: "data_stream.namespace", Optional: true},
 
 			// agent.name is set via elasticapmprocessor for traces,
 			// but not for other signals. Default to "unknown" for the
@@ -224,6 +225,21 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			{Key: "cloud.availability_zone"},
 			{Key: "cloud.platform"}, // cloud.service.name
 			{Key: "cloud.account.id"},
+
+			// Grouped apm-data compatibility attributes.
+			// These attributes are expected for ecs mode events
+			// ingested through receiver/elasticapmintakereceiver
+			// or the otlp receiver.
+			{Key: "faas.trigger", Optional: true}, // faas.trigger.type
+			{Key: "faas.coldstart", Optional: true},
+
+			// The remaining keys below use Elastic naming since no
+			// otel semconv exists
+			{Key: "host.hostname", Optional: true},
+			{Key: "cloud.account.name", Optional: true},
+			{Key: "cloud.machine.type", Optional: true},
+			{Key: "cloud.project.id", Optional: true},
+			{Key: "cloud.project.name", Optional: true},
 		}, commonResourceAttributes...,
 	)
 
@@ -246,7 +262,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		{Key: "transaction.root"},
 		{Key: "transaction.name"},
 		{Key: "transaction.type"},
-		{Key: "transaction.result"},
+		{Key: "transaction.result", Optional: true},
 		{Key: "event.outcome"},
 		{Key: "metricset.name", DefaultValue: "transaction"},
 	}, toSignalToMetricsAttributes(cfg.CustomSpanAttributes)...)

@@ -19,7 +19,6 @@ package enrichments // import "github.com/elastic/opentelemetry-collector-compon
 
 import (
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -36,6 +35,7 @@ import (
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv39 "go.opentelemetry.io/otel/semconv/v1.39.0"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc/codes"
 
@@ -48,6 +48,12 @@ import (
 // sampled spans when a value could not be found from tracestate. Our default is
 // to assume sampling all spans.
 const defaultRepresentativeCount = 1.0
+
+const (
+	outcomeSuccess = "success"
+	outcomeFailure = "failure"
+	outcomeUnknown = "unknown"
+)
 
 // EnrichSpan adds Elastic specific attributes to the OTel span.
 // These attributes are derived from the base attributes and appended to
@@ -122,7 +128,7 @@ func (s *spanEnrichmentContext) Enrich(
 	// Extract information from span attributes.
 	span.Attributes().Range(func(k string, v pcommon.Value) bool {
 		switch k {
-		case string(semconv25.PeerServiceKey):
+		case string(semconv25.PeerServiceKey), string(semconv39.ServicePeerNameKey):
 			s.peerService = v.Str()
 		case string(semconv25.ServerAddressKey):
 			s.serverAddress = v.Str()
@@ -189,10 +195,16 @@ func (s *spanEnrichmentContext) Enrich(
 		case string(semconv25.RPCGRPCStatusCodeKey):
 			s.isRPC = true
 			s.grpcStatus = codes.Code(v.Int()).String()
-		case string(semconv25.RPCSystemKey):
+		case string(semconv39.RPCResponseStatusCodeKey):
+			s.isRPC = true
+			s.grpcStatus = v.Str()
+		case string(semconv25.RPCSystemKey), string(semconv39.RPCSystemNameKey):
 			s.isRPC = true
 			s.rpcSystem = v.Str()
 		case string(semconv25.RPCServiceKey):
+			s.isRPC = true
+			s.rpcService = v.Str()
+		case string(semconv39.RPCMethodKey):
 			s.isRPC = true
 			s.rpcService = v.Str()
 		case string(semconv25.DBStatementKey),
@@ -252,7 +264,7 @@ func (s *spanEnrichmentContext) enrichTransaction(
 	cfg config.ElasticTransactionConfig,
 ) {
 	if cfg.TimestampUs.Enabled {
-		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, getTimestampUs(span.StartTimestamp()))
+		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(span.StartTimestamp()))
 	}
 	if cfg.Sampled.Enabled {
 		attribute.PutBool(span.Attributes(), elasticattr.TransactionSampled, s.getSampled())
@@ -269,7 +281,8 @@ func (s *spanEnrichmentContext) enrichTransaction(
 		attribute.PutBool(span.Attributes(), elasticattr.TransactionRoot, isTraceRoot(span))
 	}
 	if cfg.Name.Enabled {
-		attribute.PutStr(span.Attributes(), elasticattr.TransactionName, span.Name())
+		// do not set transaction name to an empty str to match prior apm data behavior
+		attribute.PutNonEmptyStr(span.Attributes(), elasticattr.TransactionName, span.Name())
 		if cfg.ClearSpanName.Enabled {
 			span.SetName("")
 		}
@@ -316,7 +329,7 @@ func (s *spanEnrichmentContext) enrichSpan(
 	var spanType, spanSubtype string
 
 	if cfg.TimestampUs.Enabled {
-		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, getTimestampUs(span.StartTimestamp()))
+		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(span.StartTimestamp()))
 	}
 	if cfg.RepresentativeCount.Enabled {
 		repCount := getRepresentativeCount(span.TraceState().AsRaw())
@@ -428,20 +441,32 @@ func (s *spanEnrichmentContext) setTxnResult(span ptrace.Span) {
 	attribute.PutStr(span.Attributes(), elasticattr.TransactionResult, result)
 }
 
+// setEventOutcome derives event.outcome from span status and HTTP status,
+// defaulting to success when no explicit error signal is present.
+// It also sets event.success_count to the representative count.
+// This matches the logic in the apm Elasticsearch ingest pipeline:
+// https://github.com/elastic/elasticsearch/blob/171a3b9/x-pack/plugin/apm-data/src/main/resources/ingest-pipelines/traces-apm@pipeline.yaml#L33-L40
 func (s *spanEnrichmentContext) setEventOutcome(span ptrace.Span) {
+	// Exit early when event.outcome is already explicitly set to unknown (e.g. by
+	// the intake receiver). This prevents success_count from being written when
+	// the outcome is unknown.
+	if v, ok := span.Attributes().Get(elasticattr.EventOutcome); ok && v.Str() == outcomeUnknown {
+		return
+	}
+
 	// default to success outcome
-	outcome := "success"
+	outcome := outcomeSuccess
 	successCount := getRepresentativeCount(span.TraceState().AsRaw())
 	switch {
 	case s.spanStatusCode == ptrace.StatusCodeError:
-		outcome = "failure"
+		outcome = outcomeFailure
 		successCount = 0
 	case s.spanStatusCode == ptrace.StatusCodeOk:
 		// keep the default success outcome
 	case s.httpStatusCode >= http.StatusInternalServerError:
 		// TODO (lahsivjar): Handle GRPC status code? - not handled in apm-data
 		// TODO (lahsivjar): Move to HTTPResponseStatusCode? Backward compatibility?
-		outcome = "failure"
+		outcome = outcomeFailure
 		successCount = 0
 	}
 
@@ -683,7 +708,7 @@ func (s *spanEventEnrichmentContext) enrich(
 
 	// Enrich span event attributes.
 	if cfg.TimestampUs.Enabled {
-		attribute.PutInt(se.Attributes(), elasticattr.TimestampUs, getTimestampUs(se.Timestamp()))
+		attribute.PutInt(se.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(se.Timestamp()))
 	}
 	if cfg.ProcessorEvent.Enabled && s.exception {
 		attribute.PutStr(se.Attributes(), elasticattr.ProcessorEvent, "error")
@@ -694,15 +719,15 @@ func (s *spanEventEnrichmentContext) enrich(
 	}
 
 	// Span event represents exception
-	if cfg.ErrorID.Enabled {
-		if id, err := newUniqueID(); err == nil {
+	if cfg.ErrorConfig.ErrorID.Enabled {
+		if id, err := attribute.NewErrorID(); err == nil {
 			attribute.PutStr(se.Attributes(), elasticattr.ErrorID, id)
 		}
 	}
-	if cfg.ErrorExceptionHandled.Enabled {
+	if cfg.ErrorExceptionConfig.ErrorExceptionHandled.Enabled {
 		attribute.PutBool(se.Attributes(), elasticattr.ErrorExceptionHandled, !s.exceptionEscaped)
 	}
-	if cfg.ErrorGroupingKey.Enabled {
+	if cfg.ErrorConfig.ErrorGroupingKey.Enabled {
 		// See https://github.com/elastic/apm-data/issues/299
 		hash := md5.New()
 		// ignoring errors in hashing
@@ -713,7 +738,7 @@ func (s *spanEventEnrichmentContext) enrich(
 		}
 		attribute.PutStr(se.Attributes(), elasticattr.ErrorGroupingKey, hex.EncodeToString(hash.Sum(nil)))
 	}
-	if cfg.ErrorGroupingName.Enabled && s.exceptionMessage != "" {
+	if cfg.ErrorConfig.ErrorGroupingName.Enabled && s.exceptionMessage != "" {
 		attribute.PutStr(se.Attributes(), elasticattr.ErrorGroupingName, s.exceptionMessage)
 	}
 
@@ -836,21 +861,4 @@ var standardStatusCodeResults = [...]string{
 	"HTTP 3xx",
 	"HTTP 4xx",
 	"HTTP 5xx",
-}
-
-func newUniqueID() (string, error) {
-	var u [16]byte
-	if _, err := io.ReadFull(rand.Reader, u[:]); err != nil {
-		return "", err
-	}
-
-	// convert to string
-	buf := make([]byte, 32)
-	hex.Encode(buf, u[:])
-
-	return string(buf), nil
-}
-
-func getTimestampUs(ts pcommon.Timestamp) int64 {
-	return int64(ts) / 1000
 }

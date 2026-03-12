@@ -7,15 +7,15 @@ resourceMetrics:
         - key: deployment.environment
           value:
             stringValue: qa
+        - key: foo
+          value:
+            stringValue: bar
         - key: service.name
           value:
             stringValue: foo
         - key: telemetry.sdk.language
           value:
             stringValue: go
-        - key: foo
-          value:
-            stringValue: bar
     scopeMetrics:
       - metrics:
           - description: Success count as a metric for service transaction
@@ -40,15 +40,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "2"
                     - "0"
@@ -81,15 +81,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "2"
                     - "0"
@@ -122,15 +122,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "2"
                     - "0"
@@ -220,15 +220,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "2"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -264,15 +264,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "2"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -308,15 +308,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "2"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -352,15 +352,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "2"
@@ -393,15 +393,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "2"
@@ -434,15 +434,15 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.root
                       value:
                         boolValue: true
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "2"
@@ -460,9 +460,33 @@ resourceMetrics:
         - key: agent.name
           value:
             stringValue: otlp/go
+        - key: cloud.account.name
+          value:
+            stringValue: acme-account
+        - key: cloud.machine.type
+          value:
+            stringValue: m5.large
+        - key: cloud.project.id
+          value:
+            stringValue: project-123
+        - key: cloud.project.name
+          value:
+            stringValue: checkout
         - key: deployment.environment
           value:
             stringValue: qa
+        - key: faas.coldstart
+          value:
+            boolValue: true
+        - key: faas.trigger
+          value:
+            stringValue: http
+        - key: foo
+          value:
+            stringValue: bar
+        - key: host.hostname
+          value:
+            stringValue: camponotus_leonardi-host
         - key: host.name
           value:
             stringValue: camponotus_leonardi
@@ -472,9 +496,6 @@ resourceMetrics:
         - key: telemetry.sdk.language
           value:
             stringValue: go
-        - key: foo
-          value:
-            stringValue: bar
     scopeMetrics:
       - metrics:
           - description: APM transaction aggregated metrics as histogram
@@ -502,6 +523,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -514,9 +538,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "1"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -549,6 +570,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -561,9 +585,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "1"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -602,6 +623,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -614,9 +638,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "1"
@@ -646,6 +667,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -658,9 +682,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "1"
@@ -696,6 +717,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -708,9 +732,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "1"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -743,6 +764,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -755,9 +779,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "1"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -796,6 +817,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -808,9 +832,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "1"
@@ -840,6 +861,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -852,9 +876,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "1"
@@ -890,6 +911,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -902,9 +926,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "1"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -937,6 +958,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -949,9 +973,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   count: "1"
                   max: 1.1e+07
                   min: 1.1e+07
@@ -990,6 +1011,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -1002,9 +1026,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "1"
@@ -1034,6 +1055,9 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                    - key: span.foo
+                      value:
+                        stringValue: span.bar
                     - key: transaction.name
                       value:
                         stringValue: http-span
@@ -1046,9 +1070,6 @@ resourceMetrics:
                     - key: transaction.type
                       value:
                         stringValue: request
-                    - key: span.foo
-                      value:
-                        stringValue: span.bar
                   bucketCounts:
                     - "0"
                     - "1"

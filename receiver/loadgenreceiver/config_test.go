@@ -53,6 +53,11 @@ func TestLoadConfig(t *testing.T) {
 						MaxBufferSize: maxScannerBufSize,
 					},
 				},
+				Profiles: ProfilesConfig{
+					SignalConfig: SignalConfig{
+						MaxBufferSize: maxScannerBufSize,
+					},
+				},
 				Concurrency: 1,
 			},
 		},
@@ -79,6 +84,14 @@ func TestLoadConfig(t *testing.T) {
 		{
 			id:                 component.NewIDWithName(metadata.Type, "traces_invalid_max_buffer_size"),
 			expectedErrMessage: "traces::max_buffer_size must be >= 0",
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "profiles_invalid_max_replay"),
+			expectedErrMessage: "profiles::max_replay must be >= 0",
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "profiles_invalid_max_buffer_size"),
+			expectedErrMessage: "profiles::max_buffer_size must be >= 0",
 		},
 	}
 	for _, tt := range tests {

@@ -78,7 +78,8 @@ connectors:
       - pipelines: ["traces/very_high_cardinality"]
         max_cardinality: .inf
     default_pipelines: ["traces/default"]
-    evaluation_interval: 30s
+    recording_interval: 30s
+    ttl: 5m
 ```
 
 ### Composite Partition Keys
@@ -100,7 +101,8 @@ connectors:
       - pipelines: ["traces/high_cardinality"]
         max_cardinality: .inf
     default_pipelines: ["traces/default"]
-    evaluation_interval: 30s
+    recording_interval: 30s
+    ttl: 5m
 ```
 
 In this example, the connector will:
@@ -119,7 +121,8 @@ In this example, the connector will:
 | `routing_keys.measure_by` | []string | Metadata keys used to define unique combinations for cardinality estimation. The connector counts how many unique combinations of these keys exist for each composite value of `partition_by`. The choice of keys determines what type of cardinality is measured (e.g., unique connections, unique pods, unique deployments). | No |
 | `routing_pipelines` | []RoutingPipeline | Array of pipeline configurations, each containing `pipelines` (array of pipeline IDs) and `max_cardinality` (float64). Pipelines must be defined in ascending order of `max_cardinality`, and the last pipeline must have `max_cardinality` set to `.inf` (positive infinity). The connector routes to the first pipeline where the estimated cardinality is less than or equal to `max_cardinality`. | Yes |
 | `default_pipelines` | []pipeline.ID | Pipelines to use when all partition keys are missing from the client context. | Yes |
-| `evaluation_interval` | duration | How often to re-evaluate routing decisions based on new cardinality estimates. Default: 30s | No |
+| `recording_interval` | duration | How often cardinality data is recorded for decision refresh. | Yes |
+| `ttl` | duration | How long a partition key's routing decision is retained before expiring. Must be greater than or equal to `recording_interval`. | Yes |
 
 ### Configuration Rules
 
@@ -181,7 +184,8 @@ connectors:
       - pipelines: ["traces/xlarge_batch"]
         max_cardinality: .inf
     default_pipelines: ["traces/default"]
-    evaluation_interval: 30s
+    recording_interval: 30s
+    ttl: 5m
 
 processors:
   batch/small:
@@ -249,7 +253,7 @@ service:
    - **Tenant C** (150 unique connection combinations) → `traces/large_batch` pipeline with 10s timeout and 2000-item batches
    - **Tenant D** (500 unique connection combinations) → `traces/xlarge_batch` pipeline with 30s timeout and 5000-item batches
 
-4. **Adaptive Behavior**: Every 30 seconds, the connector re-evaluates routing decisions. If Tenant A's cardinality grows to 15, it automatically switches to the `traces/medium_batch` pipeline.
+4. **Adaptive Behavior**: Every `recording_interval`, the connector refreshes routing decisions for keys with recently recorded cardinality. For keys that already have a cached decision, new cardinality is recorded only when `time_to_ttl <= recording_interval`, so routing may remain stable until the key enters the near-expiry window. If Tenant A's cardinality grows to 15, it switches to the `traces/medium_batch` pipeline when fresh recording occurs and the next refresh applies the updated estimate.
 
 **Benefits**:
 - **Optimized Throughput**: High-cardinality tenants benefit from larger batches, reducing overhead
@@ -267,12 +271,16 @@ The connector uses the HyperLogLog probabilistic data structure to estimate card
 - **Accuracy**: Typical error rate of ~1% for cardinality estimation
 - **Performance**: O(1) insertion and estimation operations
 
-### Evaluation Interval
+### Recording Interval and TTL
 
-The `evaluation_interval` determines how frequently routing decisions are updated:
-- **Shorter intervals**: More responsive to changes but higher CPU usage
-- **Longer intervals**: More stable routing but slower adaptation to traffic changes
-- **Recommended**: 30-60 seconds for most use cases
+The connector uses two time controls:
+- **`recording_interval`**: How often decision refresh windows are built.
+- **`ttl`**: How long a partition key's decision is retained.
+
+Recording follows this policy:
+- If a partition key has no cached decision, incoming data is always recorded.
+- If a partition key has a cached decision, data is recorded only when `time_to_ttl <= recording_interval`.
+- If no data arrives before TTL expires, the key naturally ages out.
 
 ## Warnings
 
@@ -300,8 +308,8 @@ This connector maintains state (HyperLogLog sketches) in memory. Important consi
 
 ### Routing Not Updating
 
-- **Check**: Verify `evaluation_interval` is not too long
-- **Solution**: Reduce the interval or manually trigger evaluation (requires collector restart)
+- **Check**: Verify `recording_interval` is not too long
+- **Solution**: Reduce `recording_interval` or increase `ttl` to keep decisions stable longer
 
 ### High Memory Usage
 

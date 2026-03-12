@@ -71,12 +71,12 @@ resourceSpans:
               - key: transaction.type
                 value:
                   stringValue: request
-              - key: transaction.result
-                value:
-                  stringValue: Success
               - key: transaction.sampled
                 value:
                   boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: Success
               - key: transaction.span_count.started
                 value:
                   intValue: "43"

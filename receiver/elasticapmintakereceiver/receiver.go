@@ -316,6 +316,10 @@ func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, even
 
 func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) error {
 	metricset := event.GetMetricset()
+
+	// the apm-data library defaults this value to `app` and sets to `span_breakdown` internal span metrics.
+	rm.Resource().Attributes().PutStr(elasticattr.MetricsetName, metricset.Name)
+
 	// span_breakdown metrics don't have Samples - value is stored directly in event.Span.SelfTime.*
 	if metricset.Name == "span_breakdown" {
 		r.translateBreakdownMetricsToOtel(rm, event, timestampNanos)
@@ -375,7 +379,6 @@ type otelDataPoint interface {
 
 func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, event *modelpb.APMEvent, timestampNanos uint64) {
 	dp.SetTimestamp(pcommon.Timestamp(timestampNanos))
-	mappers.SetDerivedFieldsCommon(event, dp.Attributes())
 	mappers.SetDerivedFieldsForMetrics(dp.Attributes())
 }
 
@@ -469,7 +472,10 @@ func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.R
 	// github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter@v0.124.1/bulkindexer.go:367
 	sum_metric.SetUnit("us")
 	sum_dp := createBreakdownMetricsCommon(sum_metric, event, timestampNanos)
-	sum_dp.SetIntValue(int64(event.GetSpan().GetSelfTime().Sum))
+	// SelfTime.Sum is in nanoseconds. Convert to microseconds to match the metric name (.us)
+	// and apm data logic:
+	// https://github.com/elastic/apm-data/blob/v1.19.5/model/modeljson/internal/metricset.go#L115
+	sum_dp.SetIntValue(int64(event.GetSpan().GetSelfTime().Sum) / 1000)
 
 	count_metric := sm.Metrics().AppendEmpty()
 	count_metric.SetName("span.self_time.count")
@@ -546,7 +552,6 @@ func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpa
 	s := ss.Spans().AppendEmpty()
 
 	mappers.SetTopLevelFieldsSpan(event, timestampNanos, s, r.settings.Logger)
-	mappers.SetDerivedFieldsCommon(event, s.Attributes())
 	r.elasticSpanLinksToOTelSpanLinks(event, s)
 	s.SetKind(mapSpanKind(event.GetSpan().GetKind()))
 	return s

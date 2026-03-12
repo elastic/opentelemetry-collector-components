@@ -31,6 +31,8 @@ import (
 
 // SetDerivedFieldsForTransaction sets fields that are NOT part of OTel for transactions. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.Map) {
+	setCommonDerivedFieldsForSpanAndTransaction(event, attributes)
+
 	attributes.PutStr(elasticattr.ProcessorEvent, "transaction")
 	attributes.PutInt(elasticattr.TransactionDurationUs, int64(event.Event.Duration/1_000))
 
@@ -40,10 +42,8 @@ func SetDerivedFieldsForTransaction(event *modelpb.APMEvent, attributes pcommon.
 		return
 	}
 
-	putNonEmptyStr(attributes, elasticattr.TransactionName, event.Transaction.Name)
-	putNonEmptyStr(attributes, elasticattr.TransactionType, event.Transaction.Type)
+	setTransactionAttributes(event, attributes)
 	putNonEmptyStr(attributes, elasticattr.TransactionResult, event.Transaction.Result)
-	attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
 }
 
 // setCommonDerivedRecordAttributes sets common attributes which are shared at the record
@@ -59,8 +59,23 @@ func setCommonDerivedRecordAttributes(event *modelpb.APMEvent, attributes pcommo
 	}
 }
 
+// setTransactionAttributes sets transaction-related attributes that are shared across
+// transaction and error events.
+func setTransactionAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
+	if event.Transaction == nil {
+		return
+	}
+	putNonEmptyStr(attributes, elasticattr.TransactionName, event.Transaction.Name)
+	putNonEmptyStr(attributes, elasticattr.TransactionType, event.Transaction.Type)
+	if event.Transaction.Sampled {
+		attributes.PutBool(elasticattr.TransactionSampled, event.Transaction.Sampled)
+	}
+}
+
 // SetDerivedFieldsForSpan sets fields that are NOT part of OTel for spans. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
+	setCommonDerivedFieldsForSpanAndTransaction(event, attributes)
+
 	attributes.PutStr(elasticattr.ProcessorEvent, "span")
 	attributes.PutInt(elasticattr.SpanDurationUs, int64(event.Event.Duration/1_000))
 
@@ -104,8 +119,8 @@ func SetDerivedFieldsForMetrics(attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "metric")
 }
 
-// SetDerivedFieldsCommon sets shared fields that are NOT part of OTel for multipe signals. These fields are derived by the Enrichment lib in case of OTLP input
-func SetDerivedFieldsCommon(event *modelpb.APMEvent, attributes pcommon.Map) {
+// setCommonDerivedFieldsForSpanAndTransaction sets shared derived fields for span and transaction events.
+func setCommonDerivedFieldsForSpanAndTransaction(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutInt(elasticattr.TimestampUs, int64(event.Timestamp/1_000))
 
 	outcome := event.GetEvent().GetOutcome()
@@ -123,6 +138,7 @@ func SetDerivedFieldsForError(event *modelpb.APMEvent, attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "error")
 
 	setCommonDerivedRecordAttributes(event, attributes)
+	setTransactionAttributes(event, attributes)
 
 	if event.Error == nil {
 		return

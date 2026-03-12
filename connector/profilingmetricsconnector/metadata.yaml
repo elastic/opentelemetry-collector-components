@@ -51,8 +51,7 @@ metrics:
     enabled: true
     description: Number of samples executing Beam code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -62,8 +61,7 @@ metrics:
     enabled: false
     description: Number of profiling frames by classification
     unit: "1"
-    stability:
-      level: development
+    stability: development
     gauge:
       value_type: int
     attributes: [classification, frame_type, profile.type_unit]
@@ -72,8 +70,7 @@ metrics:
     enabled: true
     description: Number of samples executing Python code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -83,8 +80,7 @@ metrics:
     enabled: true
     description: Number of profiling frames by classification
     unit: "1"
-    stability:
-      level: development
+    stability: development
     gauge:
       value_type: int
     attributes: [frame_type, profile.type_unit]
@@ -93,8 +89,7 @@ metrics:
     enabled: true
     description: Number of samples executing Dotnet code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -104,8 +99,7 @@ metrics:
     enabled: false
     description: Number of profiles frames by frame type
     unit: "1"
-    stability:
-      level: development
+    stability: development
     gauge:
       value_type: int
     attributes: [frame_type, profile.type_unit]
@@ -114,8 +108,7 @@ metrics:
     enabled: true
     description: Number of samples executing Go code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -125,8 +118,7 @@ metrics:
     enabled: true
     description: Number of samples executing HotSpot code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -136,8 +128,7 @@ metrics:
     enabled: true
     description: Number of samples executing kernel code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -148,8 +139,7 @@ metrics:
     enabled: true
     description: Number of samples executing native code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -160,8 +150,7 @@ metrics:
     enabled: true
     description: Number of samples executing Perl code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -171,8 +160,7 @@ metrics:
     enabled: true
     description: Number of samples executing PHP code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -182,8 +170,7 @@ metrics:
     enabled: true
     description: Number of samples executing Ruby code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -193,8 +180,7 @@ metrics:
     enabled: true
     description: Number of samples executing Rust code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -204,8 +190,7 @@ metrics:
     enabled: true
     description: Number of samples executing userspace code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta
@@ -215,8 +200,7 @@ metrics:
     enabled: true
     description: Number of samples executing v8js code (self)
     unit: "1"
-    stability:
-      level: development
+    stability: development
     sum:
       value_type: int
       aggregation_temporality: delta

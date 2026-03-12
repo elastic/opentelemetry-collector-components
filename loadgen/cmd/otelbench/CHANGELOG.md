@@ -4,6 +4,16 @@
 
 <!-- next version -->
 
+## v0.6.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add profiles signal benchmarking support (#998)
+  Add support for benchmarking the profiles signal. This includes a new `-profiles` flag,
+  `-profiles-data-path` flag, a profiles pipeline in the embedded collector config, and
+  reporting of samples/s and failed_samples/s metrics.
+  
+
 ## v0.5.0
 
 ### 💡 Enhancements 💡

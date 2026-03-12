@@ -1314,6 +1314,15 @@ resourceLogs:
               - key: transaction.id
                 value:
                   stringValue: "1234567890987654"
+              - key: transaction.name
+                value:
+                  stringValue: mytx
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.sampled
+                value:
+                  boolValue: true
               - key: error.id
                 value:
                   stringValue: abcdef0123456789

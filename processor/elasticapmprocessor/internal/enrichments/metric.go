@@ -18,14 +18,23 @@
 package enrichments // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 
 import (
+	"go.opentelemetry.io/collector/pdata/pmetric"
+
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
+const metricSetNameApp = "app"
+
 func EnrichMetric(metric pmetric.ResourceMetrics, cfg config.Config) {
+	resAttrs := metric.Resource().Attributes()
 	if cfg.Metric.ProcessorEvent.Enabled {
-		attribute.PutStr(metric.Resource().Attributes(), elasticattr.ProcessorEvent, "metric")
+		attribute.PutStr(resAttrs, elasticattr.ProcessorEvent, "metric")
+	}
+	if cfg.Metric.MetricsetName.Enabled {
+		// Add metricset.name to match apm-data logic
+		// https://github.com/elastic/apm-data/blob/aa6b909/input/otlp/metrics.go#L171
+		attribute.PutStr(resAttrs, elasticattr.MetricsetName, metricSetNameApp)
 	}
 }

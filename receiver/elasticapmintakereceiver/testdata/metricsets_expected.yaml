@@ -13,6 +13,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: numeric_labels.tag2
           value:
             doubleValue: 2
@@ -49,30 +52,18 @@ resourceMetrics:
               dataPoints:
                 - asDouble: 2048
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421366000"
                   timeUnixNano: "1496170421366000000"
             name: system.process.cgroup.memory.mem.limit.bytes
           - gauge:
               dataPoints:
                 - asDouble: 1024
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421366000"
                   timeUnixNano: "1496170421366000000"
             name: system.process.cgroup.memory.mem.usage.bytes
         scope: {}
@@ -90,6 +81,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: numeric_labels.tag2
           value:
             doubleValue: 2
@@ -126,120 +120,72 @@ resourceMetrics:
               dataPoints:
                 - asDouble: 2048
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpuacct.total.ns
           - gauge:
               dataPoints:
                 - asDouble: 1024
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.cfs.period.us
           - gauge:
               dataPoints:
                 - asDouble: 2048
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.id
           - gauge:
               dataPoints:
                 - asDouble: 2048
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.cfs.quota.us
           - gauge:
               dataPoints:
                 - asDouble: 2048
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.periods
           - gauge:
               dataPoints:
                 - asDouble: 2048
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.throttled.periods
           - gauge:
               dataPoints:
                 - asDouble: 2048
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpu.stats.throttled.ns
           - gauge:
               dataPoints:
                 - asDouble: 2048
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421367000"
                   timeUnixNano: "1496170421367000000"
             name: system.process.cgroup.cpuacct.id
         scope: {}
@@ -257,6 +203,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: numeric_labels.tag2
           value:
             doubleValue: 2
@@ -292,15 +241,9 @@ resourceMetrics:
           - histogram:
               dataPoints:
                 - attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421368000"
                   bucketCounts:
                     - "1"
                     - "2"
@@ -334,6 +277,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: span_breakdown
         - key: numeric_labels.code
           value:
             doubleValue: 200
@@ -371,7 +317,7 @@ resourceMetrics:
       - metrics:
           - gauge:
               dataPoints:
-                - asInt: "633288"
+                - asInt: "633"
                   attributes:
                     - key: processor.event
                       value:
@@ -449,6 +395,9 @@ resourceMetrics:
         - key: labels.tag1
           value:
             stringValue: one
+        - key: metricset.name
+          value:
+            stringValue: app
         - key: numeric_labels.tag2
           value:
             doubleValue: 2
@@ -485,15 +434,9 @@ resourceMetrics:
               dataPoints:
                 - asDouble: 6.520832e+06
                   attributes:
-                    - key: event.outcome
-                      value:
-                        stringValue: unknown
                     - key: processor.event
                       value:
                         stringValue: metric
-                    - key: timestamp.us
-                      value:
-                        intValue: "1496170421364000"
                   timeUnixNano: "1496170421364000000"
             name: go.memstats.heap.sys.bytes
         scope: {}
