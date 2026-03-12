@@ -154,9 +154,13 @@ func (r *certScannerReceiver) performScan(ctx context.Context) {
 		result.ProcessExecutable = lp.Executable
 
 		tlsCount++
+		subjectCN := ""
+		if result.LeafCertificate != nil {
+			subjectCN = result.LeafCertificate.SubjectCN
+		}
 		r.logger.Debug("TLS certificate found",
 			zap.Int("port", lp.Port),
-			zap.String("subject_cn", result.LeafCertificate.SubjectCN),
+			zap.String("subject_cn", subjectCN),
 			zap.Int("process_pid", lp.PID),
 			zap.String("process_name", lp.ProcessName))
 

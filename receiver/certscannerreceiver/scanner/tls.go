@@ -24,6 +24,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -75,24 +76,27 @@ func NewTLSScanner(timeout time.Duration) *TLSScanner {
 
 // ScanPort attempts a TLS handshake on the given address:port and extracts certificate info.
 func (s *TLSScanner) ScanPort(ctx context.Context, addr string, port int) (*ScanResult, error) {
-	address := fmt.Sprintf("%s:%d", addr, port)
+	address := net.JoinHostPort(addr, strconv.Itoa(port))
 
-	// Create dialer with timeout
+	// Create dialer with timeout and dial with context for cancellation
 	dialer := &net.Dialer{
 		Timeout: s.timeout,
+	}
+	rawConn, err := dialer.DialContext(ctx, "tcp", address)
+	if err != nil {
+		return nil, fmt.Errorf("TCP dial failed: %w", err)
 	}
 
 	// TLS config - skip verification to get cert even if untrusted
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
-		// Explicitly set MinVersion to allow connecting to older servers
-		MinVersion: tls.VersionTLS10,
+		MinVersion:         tls.VersionTLS10,
 	}
 
-	// Dial with context for cancellation support
-	conn, err := tls.DialWithDialer(dialer, "tcp", address, tlsConfig)
-	if err != nil {
-		return nil, fmt.Errorf("TLS dial failed: %w", err)
+	conn := tls.Client(rawConn, tlsConfig)
+	if err := conn.HandshakeContext(ctx); err != nil {
+		rawConn.Close()
+		return nil, fmt.Errorf("TLS handshake failed: %w", err)
 	}
 	defer conn.Close()
 

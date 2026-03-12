@@ -23,6 +23,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -209,12 +210,28 @@ func parseHexIP(hexIP string) string {
 		// IPv4: stored in little-endian
 		b := make([]byte, 4)
 		for i := 0; i < 4; i++ {
-			val, _ := strconv.ParseUint(hexIP[i*2:i*2+2], 16, 8)
+			val, err := strconv.ParseUint(hexIP[i*2:i*2+2], 16, 8)
+			if err != nil {
+				return "0.0.0.0"
+			}
 			b[3-i] = byte(val)
 		}
 		return fmt.Sprintf("%d.%d.%d.%d", b[0], b[1], b[2], b[3])
 	}
-	// IPv6 or unknown - return as-is for now
+	if len(hexIP) == 32 {
+		// IPv6: stored as 4 groups of 4 bytes, each group in little-endian
+		b := make(net.IP, 16)
+		for i := 0; i < 4; i++ {
+			for j := 0; j < 4; j++ {
+				val, err := strconv.ParseUint(hexIP[(i*8)+(j*2):(i*8)+(j*2)+2], 16, 8)
+				if err != nil {
+					return "[::]"
+				}
+				b[i*4+(3-j)] = byte(val)
+			}
+		}
+		return b.String()
+	}
 	return "[::]"
 }
 
