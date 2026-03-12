@@ -21,9 +21,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/goccy/go-json"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -58,75 +61,152 @@ func (e *beatsEncodingExtension) Shutdown(context.Context) error {
 	return nil
 }
 
-// UnmarshalLogs converts raw bytes into OTel log records formatted for
-// Beats/EA integration compatibility.
-//
-// Each extracted record is stored as a raw string under the configured
-// target field (default: "message") in the log record body map.
-// Data stream routing attributes and elastic.mapping.mode are set
-// so mOTLP routes the document to the correct integration data stream.
+// UnmarshalLogs converts raw bytes into OTel log records by delegating to
+// the streaming decoder with flushing disabled, so all records are returned
+// in a single batch.
 func (e *beatsEncodingExtension) UnmarshalLogs(buf []byte) (plog.Logs, error) {
-	records, err := e.extractRecords(buf)
+	decoder, err := e.NewLogsDecoder(
+		bytes.NewReader(buf),
+		encoding.WithFlushBytes(0),
+		encoding.WithFlushItems(0),
+	)
 	if err != nil {
-		return plog.Logs{}, fmt.Errorf("extracting records: %w", err)
+		return plog.Logs{}, err
 	}
-
-	if len(records) == 0 {
+	logs, err := decoder.DecodeLogs()
+	if err == io.EOF {
 		return plog.NewLogs(), nil
 	}
-
-	logs := plog.NewLogs()
-	sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
-
-	sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
-
-	now := pcommon.NewTimestampFromTime(time.Now())
-
-	for _, record := range records {
-		lr := sl.LogRecords().AppendEmpty()
-		lr.SetTimestamp(now)
-		lr.SetObservedTimestamp(now)
-
-		lr.Body().SetEmptyMap().PutStr(e.config.TargetField, record)
-
-		attrs := lr.Attributes()
-		attrs.PutStr("data_stream.type", "logs")
-		attrs.PutStr("data_stream.dataset", e.config.Routing.Dataset)
-		attrs.PutStr("data_stream.namespace", e.config.Routing.Namespace)
-	}
-
-	return logs, nil
+	return logs, err
 }
 
-// extractRecords extracts individual string records from the raw input
-// bytes based on the configured format and unwrap settings.
-func (e *beatsEncodingExtension) extractRecords(buf []byte) ([]string, error) {
+// NewLogsDecoder creates a streaming decoder for the configured format.
+// For text/ndjson it streams line-by-line; for json it reads the full
+// document (required for JSONPath) and batches extracted records.
+func (e *beatsEncodingExtension) NewLogsDecoder(reader io.Reader, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
 	switch e.config.Format {
 	case FormatText:
-		return e.extractTextRecords(buf)
+		return e.newLineDecoder(reader, options...)
 	case FormatJSON:
-		return e.extractJSONRecords(buf)
+		return e.newJSONDecoder(reader, options...)
 	default:
 		return nil, fmt.Errorf("unsupported format: %q", e.config.Format)
 	}
 }
 
-// extractTextRecords splits newline-delimited text into individual records.
-func (e *beatsEncodingExtension) extractTextRecords(buf []byte) ([]string, error) {
-	return splitLines(buf), nil
+// newLineDecoder returns a streaming decoder that reads newline-delimited
+// records (text or ndjson) using ScannerHelper for offset tracking and
+// batch flushing.
+func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
+	scanner, err := xstreamencoding.NewScannerHelper(reader, options...)
+	if err != nil {
+		return nil, err
+	}
+
+	decodeF := func() (plog.Logs, error) {
+		logs := plog.NewLogs()
+		sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
+		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
+		now := pcommon.NewTimestampFromTime(time.Now())
+
+		for {
+			line, flush, err := scanner.ScanString()
+
+			if line != "" {
+				e.appendLogRecord(sl, now, line)
+			}
+
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return logs, err
+			}
+
+			if flush {
+				return logs, nil
+			}
+		}
+
+		if logs.LogRecordCount() == 0 {
+			return logs, io.EOF
+		}
+		return logs, nil
+	}
+
+	return xstreamencoding.NewLogsDecoderAdapter(decodeF, scanner.Offset), nil
 }
 
-// splitLines splits buf on newlines and returns non-empty trimmed lines.
-func splitLines(buf []byte) []string {
-	var lines []string
-	for line := range bytes.SplitSeq(buf, []byte("\n")) {
-		line = bytes.TrimSpace(line)
-		if len(line) == 0 {
-			continue
+// newJSONDecoder returns a decoder that reads the entire JSON document
+// from the stream (necessary for JSONPath extraction), then batches the
+// extracted records according to flush options.
+func (e *beatsEncodingExtension) newJSONDecoder(reader io.Reader, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
+	opts := encoding.NewDecoderOptions(options...)
+
+	if opts.Offset > 0 {
+		if _, err := io.CopyN(io.Discard, reader, opts.Offset); err != nil {
+			return nil, fmt.Errorf("discarding offset %d: %w", opts.Offset, err)
 		}
-		lines = append(lines, string(line))
 	}
-	return lines
+
+	buf, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("reading JSON input: %w", err)
+	}
+
+	offset := opts.Offset + int64(len(buf))
+
+	records, err := e.extractJSONRecords(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	batchHelper := xstreamencoding.NewBatchHelper(options...)
+	idx := 0
+
+	decodeF := func() (plog.Logs, error) {
+		if idx >= len(records) {
+			return plog.Logs{}, io.EOF
+		}
+
+		logs := plog.NewLogs()
+		sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
+		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
+		now := pcommon.NewTimestampFromTime(time.Now())
+
+		for idx < len(records) {
+			e.appendLogRecord(sl, now, records[idx])
+			batchHelper.IncrementItems(1)
+			batchHelper.IncrementBytes(int64(len(records[idx])))
+			idx++
+
+			if batchHelper.ShouldFlush() {
+				batchHelper.Reset()
+				return logs, nil
+			}
+		}
+
+		return logs, nil
+	}
+
+	offsetF := func() int64 {
+		return offset
+	}
+
+	return xstreamencoding.NewLogsDecoderAdapter(decodeF, offsetF), nil
+}
+
+func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, record string) {
+	lr := sl.LogRecords().AppendEmpty()
+	lr.SetTimestamp(ts)
+	lr.SetObservedTimestamp(ts)
+
+	lr.Body().SetEmptyMap().PutStr(e.config.TargetField, record)
+
+	attrs := lr.Attributes()
+	attrs.PutStr("data_stream.type", "logs")
+	attrs.PutStr("data_stream.dataset", e.config.Routing.Dataset)
+	attrs.PutStr("data_stream.namespace", e.config.Routing.Namespace)
 }
 
 // extractJSONRecords extracts records from JSON input. When an unwrap
@@ -147,24 +227,12 @@ func (e *beatsEncodingExtension) extractJSONRecords(buf []byte) ([]string, error
 
 // unwrapJSON extracts individual records from a JSON structure using
 // the compiled JSONPath expression.
-//
-// It supports any valid JSONPath expression, including:
-//   - $.records[*]   (Azure Diagnostic Settings)
-//   - $.Records[*]   (AWS CloudTrail)
-//   - $.events[*]    (custom wrappers)
 func (e *beatsEncodingExtension) unwrapJSON(buf []byte) ([]string, error) {
 	extracted, err := e.unwrapPath.Extract(buf)
 	if err != nil {
 		return nil, fmt.Errorf("unwrapping JSON with path %q: %w", e.config.Unwrap, err)
 	}
 	if len(extracted) == 0 {
-		// JSONPath returned no results —
-		// treat the entire input as a single record.
-		// This handles cases where the wrapper field is missing,
-		// but may also indicate a misconfigured unwrap expression.
-		e.logger.Warn("unwrap JSONPath matched no elements, treating entire input as a single record",
-			zap.String("unwrap", e.config.Unwrap),
-		)
 		return []string{string(buf)}, nil
 	}
 
@@ -177,9 +245,6 @@ func (e *beatsEncodingExtension) unwrapJSON(buf []byte) ([]string, error) {
 	}
 
 	if len(records) == 0 {
-		e.logger.Warn("unwrap JSONPath matched only empty elements, treating entire input as a single record",
-			zap.String("unwrap", e.config.Unwrap),
-		)
 		return []string{string(buf)}, nil
 	}
 
