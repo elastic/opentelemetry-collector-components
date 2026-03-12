@@ -130,18 +130,10 @@ func TestConvertToLogs(t *testing.T) {
 	assertAttrInt(t, attrs, "tls.server.certificate.chain_depth", 2)
 	assertAttrInt(t, attrs, "tls.server.certificate.days_until_expiry", 365)
 
-	// SANs
+	// SANs - all types merged into a single flat array per ECS
 	sanVal, ok := attrs.Get("tls.server.x509.alternative_names")
 	require.True(t, ok, "expected alternative_names attribute")
-	assert.Equal(t, 2, sanVal.Slice().Len())
-
-	ipVal, ok := attrs.Get("tls.server.x509.alternative_names.ip")
-	require.True(t, ok, "expected alternative_names.ip attribute")
-	assert.Equal(t, 1, ipVal.Slice().Len())
-
-	emailVal, ok := attrs.Get("tls.server.x509.alternative_names.email")
-	require.True(t, ok, "expected alternative_names.email attribute")
-	assert.Equal(t, 1, emailVal.Slice().Len())
+	assert.Equal(t, 4, sanVal.Slice().Len()) // 2 DNS + 1 IP + 1 email
 
 	// Certificate chain (intermediate certs only, index 1+)
 	chainVal, ok := attrs.Get("tls.server.certificate_chain")
