@@ -78,11 +78,12 @@ func NewTLSScanner(timeout time.Duration) *TLSScanner {
 func (s *TLSScanner) ScanPort(ctx context.Context, addr string, port int) (*ScanResult, error) {
 	address := net.JoinHostPort(addr, strconv.Itoa(port))
 
-	// Create dialer with timeout and dial with context for cancellation
-	dialer := &net.Dialer{
-		Timeout: s.timeout,
-	}
-	rawConn, err := dialer.DialContext(ctx, "tcp", address)
+	// Enforce s.timeout for the entire connection setup (TCP dial + TLS handshake)
+	ctxTimeout, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+
+	dialer := &net.Dialer{}
+	rawConn, err := dialer.DialContext(ctxTimeout, "tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("TCP dial failed: %w", err)
 	}
@@ -94,7 +95,7 @@ func (s *TLSScanner) ScanPort(ctx context.Context, addr string, port int) (*Scan
 	}
 
 	conn := tls.Client(rawConn, tlsConfig)
-	if err := conn.HandshakeContext(ctx); err != nil {
+	if err := conn.HandshakeContext(ctxTimeout); err != nil {
 		_ = rawConn.Close()
 		return nil, fmt.Errorf("TLS handshake failed: %w", err)
 	}
