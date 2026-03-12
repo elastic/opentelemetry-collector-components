@@ -34,6 +34,11 @@ import (
 var (
 	lsmintervalFactory     = lsmintervalprocessor.NewFactory()
 	signaltometricsFactory = signaltometricsconnector.NewFactory()
+
+	// dynamicAttributePrefixes are the resource attribute prefixes
+	// managed by the dynamic attribute filter.
+	// The connector is only configured for these two prefixes to match Elastic APM behavior.
+	dynamicAttributePrefixes = []string{"labels.", "numeric_labels."}
 )
 
 type elasticapmConnector struct {
@@ -80,12 +85,26 @@ func (c *elasticapmConnector) Shutdown(ctx context.Context) error {
 
 func (c *elasticapmConnector) newLogsConsumer(ctx context.Context) (consumer.Logs, error) {
 	set := c.signaltometricsSettings()
-	return signaltometricsFactory.CreateLogsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	base, err := signaltometricsFactory.CreateLogsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	if err != nil {
+		return nil, err
+	}
+	if key := c.cfg.dynamicResourceAttributesKey(); key != "" {
+		return &dynamicAttributeLogFilter{metadataKey: key, prefixes: dynamicAttributePrefixes, next: base}, nil
+	}
+	return base, nil
 }
 
 func (c *elasticapmConnector) newMetricsConsumer(ctx context.Context) (consumer.Metrics, error) {
 	set := c.signaltometricsSettings()
-	return signaltometricsFactory.CreateMetricsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	base, err := signaltometricsFactory.CreateMetricsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	if err != nil {
+		return nil, err
+	}
+	if key := c.cfg.dynamicResourceAttributesKey(); key != "" {
+		return &dynamicAttributeMetricFilter{metadataKey: key, prefixes: dynamicAttributePrefixes, next: base}, nil
+	}
+	return base, nil
 }
 
 func (c *elasticapmConnector) newTracesToMetrics(ctx context.Context) (consumer.Traces, error) {
@@ -94,8 +113,11 @@ func (c *elasticapmConnector) newTracesToMetrics(ctx context.Context) (consumer.
 	if err != nil {
 		return nil, err
 	}
-	// Wrap the base consumer to enrich spans
-	return &spanEnricher{next: baseConsumer}, nil
+	var next consumer.Traces = baseConsumer
+	if key := c.cfg.dynamicResourceAttributesKey(); key != "" {
+		next = &dynamicAttributeTraceFilter{metadataKey: key, prefixes: dynamicAttributePrefixes, next: next}
+	}
+	return &spanEnricher{next: next}, nil
 }
 
 // spanEnricher wraps a traces consumer to add the

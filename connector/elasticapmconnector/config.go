@@ -76,6 +76,17 @@ type AggregationConfig struct {
 	// a validation error.
 	MetadataKeys []string `mapstructure:"metadata_keys"`
 
+	// DynamicResourceAttributesKey specifies the client.Metadata key that
+	// contains a comma-separated list of attribute key names to preserve
+	// as dynamic resource attributes in aggregated metrics
+	// (e.g. "team.name,cost_center").
+	//
+	// When set, all labels.* and numeric_labels.* resource attributes
+	// whose base key is NOT in the list are stripped. The matching
+	// attributes are expected to already exist on the resource (set by
+	// elasticapmprocessor or equivalent upstream component).
+	DynamicResourceAttributesKey string `mapstructure:"dynamic_resource_attributes_key"`
+
 	// Intervals holds an optional list of time intervals that the processor
 	// will aggregate over. The interval duration must be in increasing
 	// order and must be a factor of the smallest interval duration.
@@ -195,6 +206,14 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			},
 		}, toSignalToMetricsAttributes(cfg.CustomResourceAttributes)...,
 	)
+
+	if cfg.dynamicResourceAttributesKey() != "" {
+		for _, prefix := range dynamicAttributePrefixes {
+			commonResourceAttributes = append(commonResourceAttributes,
+				signaltometricsconfig.Attribute{Prefix: prefix},
+			)
+		}
+	}
 
 	// serviceSummaryResourceAttributes are resource attributes for service
 	// summary metrics.
@@ -407,6 +426,13 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 		}},
 	}
+}
+
+func (cfg Config) dynamicResourceAttributesKey() string {
+	if cfg.Aggregation == nil {
+		return ""
+	}
+	return cfg.Aggregation.DynamicResourceAttributesKey
 }
 
 // toSignalToMetricsAttributes converts slice to string to signal to metricsa attributes

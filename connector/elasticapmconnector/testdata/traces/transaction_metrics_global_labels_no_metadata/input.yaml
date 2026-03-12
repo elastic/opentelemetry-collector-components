@@ -1,0 +1,49 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: foo
+        - key: deployment.environment
+          value:
+            stringValue: qa
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        - key: agent.name
+          value:
+            stringValue: otlp/go
+        - key: host.name
+          value:
+            stringValue: camponotus_leonardi
+        - key: os.type
+          value:
+            stringValue: linux
+        - key: labels.non_global
+          value:
+            stringValue: should_be_removed
+        - key: numeric_labels.non_global_num
+          value:
+            doubleValue: 999
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: transaction.name
+                value:
+                  stringValue: "GET /api"
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.result
+                value:
+                  stringValue: "HTTP 2xx"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: transaction.representative_count
+                value:
+                  doubleValue: 1.0
+            startTimeUnixNano: "1581452772000000321"
+            endTimeUnixNano: "1581452783000000789"
+            name: "GET /api"

@@ -1,0 +1,33 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: foo
+        - key: deployment.environment
+          value:
+            stringValue: qa
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        # Dynamic attributes — preserved by filter
+        - key: labels.team.name
+          value:
+            stringValue: platform
+        - key: numeric_labels.cost_center
+          value:
+            doubleValue: 42
+        # Non-dynamic attributes — stripped by filter
+        - key: labels.non_global
+          value:
+            stringValue: should_be_removed
+        - key: numeric_labels.non_global_num
+          value:
+            doubleValue: 999
+    scopeMetrics:
+      - scope: {}
+        metrics:
+          - name: foo
+            sum:
+              dataPoints:
+                - asInt: 1

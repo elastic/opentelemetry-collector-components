@@ -1,0 +1,3 @@
+elasticapm:
+  aggregation:
+    dynamic_resource_attributes_key: x-dynamic-resource-attributes

@@ -46,13 +46,18 @@ var update = flag.Bool("update", false, "Update golden files")
 
 func TestConnector_LogsToMetrics(t *testing.T) {
 	testCases := []struct {
-		name string
+		name     string
+		metadata map[string][]string
 	}{
 		{name: "logs/service_summary"},
 		{name: "logs/service_summary_custom_attrs"},
 		{name: "logs/service_summary_no_overflow"},
 		// output should show overflow behavior
 		{name: "logs/service_summary_overflow"},
+		{
+			name:     "logs/service_summary_global_labels",
+			metadata: map[string][]string{"x-dynamic-resource-attributes": {"team.name,cost_center"}},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -73,7 +78,11 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
 
-			err = l2m.ConsumeLogs(context.Background(), input)
+			ctx := context.Background()
+			if tc.metadata != nil {
+				ctx = client.NewContext(ctx, client.Info{Metadata: client.NewMetadata(tc.metadata)})
+			}
+			err = l2m.ConsumeLogs(ctx, input)
 			require.NoError(t, err)
 
 			// Shut down to force metrics publication.
@@ -89,13 +98,18 @@ func TestConnector_LogsToMetrics(t *testing.T) {
 
 func TestConnector_MetricsToMetrics(t *testing.T) {
 	testCases := []struct {
-		name string
+		name     string
+		metadata map[string][]string
 	}{
 		{name: "metrics/service_summary"},
 		{name: "metrics/service_summary_custom_attrs"},
 		{name: "metrics/service_summary_no_overflow"},
 		// output should show overflow
 		{name: "metrics/service_summary_overflow"},
+		{
+			name:     "metrics/service_summary_global_labels",
+			metadata: map[string][]string{"x-dynamic-resource-attributes": {"team.name,cost_center"}},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -116,7 +130,11 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
 
-			err = m2m.ConsumeMetrics(context.Background(), input)
+			ctx := context.Background()
+			if tc.metadata != nil {
+				ctx = client.NewContext(ctx, client.Info{Metadata: client.NewMetadata(tc.metadata)})
+			}
+			err = m2m.ConsumeMetrics(ctx, input)
 			require.NoError(t, err)
 
 			// Shut down force metrics publication.
@@ -132,7 +150,8 @@ func TestConnector_MetricsToMetrics(t *testing.T) {
 
 func TestConnector_TracesToMetrics(t *testing.T) {
 	testCases := []struct {
-		name string
+		name     string
+		metadata map[string][]string
 	}{
 		{name: "traces/transaction_metrics"},
 		{name: "traces/transaction_metrics_data_stream_namespace"},
@@ -145,6 +164,13 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		{name: "traces/span_metrics_no_overflow"},
 		// output should show overflow
 		{name: "traces/span_metrics_overflow"},
+		{
+			name:     "traces/transaction_metrics_global_labels",
+			metadata: map[string][]string{"x-dynamic-resource-attributes": {"team.name,cost_center"}},
+		},
+		{
+			name: "traces/transaction_metrics_global_labels_no_metadata",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -165,7 +191,11 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 			require.NoError(t, err)
 			expectedMetricsFile := filepath.Join(dir, "aggregated_metrics.yaml")
 
-			err = t2m.ConsumeTraces(context.Background(), input)
+			ctx := context.Background()
+			if tc.metadata != nil {
+				ctx = client.NewContext(ctx, client.Info{Metadata: client.NewMetadata(tc.metadata)})
+			}
+			err = t2m.ConsumeTraces(ctx, input)
 			require.NoError(t, err)
 
 			// Shut down to force metrics publication.
