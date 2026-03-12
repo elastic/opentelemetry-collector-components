@@ -152,7 +152,6 @@ func TestNewCertScannerReceiver(t *testing.T) {
 	_ = &Config{
 		Interval:    time.Hour,
 		Timeout:     3 * time.Second,
-		Ports:       PortsConfig{Include: []int{443}},
-		EmitMetrics: true,
+		Ports: PortsConfig{Include: []int{443}},
 	}
 }

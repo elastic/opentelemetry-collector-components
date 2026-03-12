@@ -2,7 +2,7 @@
 
 | Status        |                   |
 |---------------|-------------------|
-| Stability     | [development]: logs, metrics |
+| Stability     | [development]: logs |
 | Distributions | [] |
 
 [development]: https://github.com/open-telemetry/opentelemetry-collector#development
@@ -14,7 +14,6 @@ A receiver that discovers TLS-enabled services listening on the local host, perf
 - **Automatic Port Discovery** - Detects listening TCP ports via `/proc/net/tcp` (Linux) or `netstat` (Windows/macOS)
 - **TLS Certificate Extraction** - Performs TLS handshakes and extracts full certificate chain metadata
 - **ECS-Aligned Output** - Log records follow Elastic Common Schema for seamless Elasticsearch integration
-- **Optional Metrics** - Emits `certscanner_certificate_expiry_days` gauge for alerting
 - **Configurable Filtering** - Include/exclude port lists, scan all mode, configurable intervals
 
 ## Configuration
@@ -37,8 +36,6 @@ receivers:
       # If true, scan all listening ports not in exclude list
       scan_all: false
 
-    # Emit expiry metrics in addition to logs (default: true)
-    emit_metrics: true
 ```
 
 ## Output
@@ -66,16 +63,9 @@ receivers:
     "tls.server.x509.not_after": "2025-01-01T00:00:00Z",
     "tls.server.hash.sha256": "2F:4E:7A:...",
     "tls.server.x509.alternative_names": ["*.example.com", "example.com"],
-    "tls.server.certificate.chain_depth": 3,
-    "tls.server.certificate.days_until_expiry": 351
+    "tls.server.certificate.chain_depth": 3
   }
 }
-```
-
-### Metric
-
-```
-certscanner_certificate_expiry_days{port="443",subject_cn="*.example.com",issuer_cn="DigiCert..."} 351
 ```
 
 ## Platform Support

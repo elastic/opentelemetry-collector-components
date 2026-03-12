@@ -34,7 +34,6 @@ func NewFactory() receiver.Factory {
 		metadata.Type,
 		createDefaultConfig,
 		receiver.WithLogs(createLogsReceiver, metadata.LogsStability),
-		receiver.WithMetrics(createMetricsReceiver, metadata.MetricsStability),
 	)
 }
 
@@ -47,7 +46,6 @@ func createDefaultConfig() component.Config {
 			Exclude: []int{},
 			ScanAll: false,
 		},
-		EmitMetrics: true,
 	}
 }
 
@@ -58,15 +56,5 @@ func createLogsReceiver(
 	consumer consumer.Logs,
 ) (receiver.Logs, error) {
 	rCfg := cfg.(*Config)
-	return newCertScannerReceiver(settings, rCfg, consumer, nil)
-}
-
-func createMetricsReceiver(
-	_ context.Context,
-	settings receiver.Settings,
-	cfg component.Config,
-	consumer consumer.Metrics,
-) (receiver.Metrics, error) {
-	rCfg := cfg.(*Config)
-	return newCertScannerReceiver(settings, rCfg, nil, consumer)
+	return newCertScannerReceiver(settings, rCfg, consumer)
 }

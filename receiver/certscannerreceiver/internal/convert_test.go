@@ -50,9 +50,8 @@ func newTestScanResult() *scanner.ScanResult {
 			IPAddresses:       []string{"1.2.3.4"},
 			EmailAddresses:    []string{"admin@example.com"},
 		},
-		ChainDepth:        2,
-		DaysUntilExpiry:   365,
-		ScanTime:          time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC),
+		ChainDepth: 2,
+		ScanTime:   time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC),
 		ProcessPID:        1234,
 		ProcessName:       "nginx",
 		ProcessExecutable: "/usr/sbin/nginx",
@@ -128,7 +127,6 @@ func TestConvertToLogs(t *testing.T) {
 	assertAttrStr(t, attrs, "tls.server.x509.serial_number", "01:02:03")
 	assertAttrStr(t, attrs, "tls.server.hash.sha256", "AA:BB:CC")
 	assertAttrInt(t, attrs, "tls.server.certificate.chain_depth", 2)
-	assertAttrInt(t, attrs, "tls.server.certificate.days_until_expiry", 365)
 
 	// SANs - all types merged into a single flat array per ECS
 	sanVal, ok := attrs.Get("tls.server.x509.alternative_names")
@@ -158,43 +156,6 @@ func TestConvertToLogs_NoProcess(t *testing.T) {
 	assert.False(t, ok, "process.pid should not be set when PID is 0")
 	_, ok = attrs.Get("process.name")
 	assert.False(t, ok, "process.name should not be set when empty")
-}
-
-func TestConvertToMetrics(t *testing.T) {
-	result := newTestScanResult()
-	metrics := ConvertToMetrics(result, "test-host")
-
-	require.Equal(t, 1, metrics.ResourceMetrics().Len())
-	rm := metrics.ResourceMetrics().At(0)
-
-	// Check resource attributes
-	resAttrs := rm.Resource().Attributes()
-	assertAttrStr(t, resAttrs, "observer.type", "certscanner")
-	assertAttrStr(t, resAttrs, "observer.hostname", "test-host")
-
-	// Check scope
-	require.Equal(t, 1, rm.ScopeMetrics().Len())
-	sm := rm.ScopeMetrics().At(0)
-	assert.Equal(t, "certscanner", sm.Scope().Name())
-
-	// Check metric
-	require.Equal(t, 1, sm.Metrics().Len())
-	m := sm.Metrics().At(0)
-	assert.Equal(t, "certscanner_certificate_expiry_days", m.Name())
-	assert.Equal(t, "d", m.Unit())
-
-	// Check data point
-	require.Equal(t, 1, m.Gauge().DataPoints().Len())
-	dp := m.Gauge().DataPoints().At(0)
-	assert.Equal(t, int64(365), dp.IntValue())
-
-	dpAttrs := dp.Attributes()
-	assertAttrInt(t, dpAttrs, "port", 443)
-	assertAttrStr(t, dpAttrs, "address", "127.0.0.1")
-	assertAttrStr(t, dpAttrs, "subject_cn", "*.example.com")
-	assertAttrStr(t, dpAttrs, "issuer_cn", "DigiCert CA")
-	assertAttrInt(t, dpAttrs, "process.pid", 1234)
-	assertAttrStr(t, dpAttrs, "process.name", "nginx")
 }
 
 // helpers

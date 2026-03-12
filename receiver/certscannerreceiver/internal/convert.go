@@ -22,7 +22,6 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/certscannerreceiver/scanner"
 )
@@ -106,7 +105,6 @@ func ConvertToLogs(result *scanner.ScanResult, hostname string) plog.Logs {
 
 		// Chain info
 		attrs.PutInt("tls.server.certificate.chain_depth", int64(result.ChainDepth))
-		attrs.PutInt("tls.server.certificate.days_until_expiry", int64(result.DaysUntilExpiry))
 
 		// Subject Alternative Names (SANs) - ECS uses a single flat keyword array
 		// for all SAN types (DNS, IP, email) at tls.server.x509.alternative_names.
@@ -145,53 +143,3 @@ func ConvertToLogs(result *scanner.ScanResult, hostname string) plog.Logs {
 	return logs
 }
 
-// ConvertToMetrics creates gauge metrics for certificate expiry.
-func ConvertToMetrics(result *scanner.ScanResult, hostname string) pmetric.Metrics {
-	metrics := pmetric.NewMetrics()
-	resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
-
-	// Set resource attributes
-	resAttrs := resourceMetrics.Resource().Attributes()
-	resAttrs.PutStr("observer.type", "certscanner")
-	resAttrs.PutStr("observer.hostname", hostname)
-
-	// Create scope metrics
-	scopeMetrics := resourceMetrics.ScopeMetrics().AppendEmpty()
-	scopeMetrics.Scope().SetName(scopeName)
-	scopeMetrics.Scope().SetVersion(scopeVersion)
-
-	// Create expiry days gauge metric
-	metric := scopeMetrics.Metrics().AppendEmpty()
-	metric.SetName("certscanner_certificate_expiry_days")
-	metric.SetDescription("Days until certificate expires")
-	metric.SetUnit("d")
-
-	gauge := metric.SetEmptyGauge()
-	dataPoint := gauge.DataPoints().AppendEmpty()
-	dataPoint.SetTimestamp(pcommon.NewTimestampFromTime(result.ScanTime))
-	dataPoint.SetIntValue(int64(result.DaysUntilExpiry))
-
-	// Add attributes/labels
-	dpAttrs := dataPoint.Attributes()
-	dpAttrs.PutInt("port", int64(result.Port))
-	dpAttrs.PutStr("address", result.Address)
-
-	if cert := result.LeafCertificate; cert != nil {
-		dpAttrs.PutStr("subject_cn", cert.SubjectCN)
-		dpAttrs.PutStr("issuer_cn", cert.IssuerCN)
-		dpAttrs.PutStr("serial_number", cert.SerialNumber)
-	}
-
-	// Process fields for correlation with system integration metrics
-	if result.ProcessPID > 0 {
-		dpAttrs.PutInt("process.pid", int64(result.ProcessPID))
-	}
-	if result.ProcessName != "" {
-		dpAttrs.PutStr("process.name", result.ProcessName)
-	}
-	if result.ProcessExecutable != "" {
-		dpAttrs.PutStr("process.executable", result.ProcessExecutable)
-	}
-
-	return metrics
-}

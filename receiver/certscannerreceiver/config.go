@@ -50,9 +50,6 @@ type Config struct {
 
 	// Ports configuration for filtering which ports to scan
 	Ports PortsConfig `mapstructure:"ports"`
-
-	// EmitMetrics enables optional metrics emission in addition to logs
-	EmitMetrics bool `mapstructure:"emit_metrics"`
 }
 
 // Validate checks if the receiver configuration is valid.

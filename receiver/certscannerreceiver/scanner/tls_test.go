@@ -102,11 +102,6 @@ func TestTLSScanner_ScanPort(t *testing.T) {
 	if len(result.LeafCertificate.DNSNames) != 2 {
 		t.Errorf("expected 2 DNS SANs, got %d", len(result.LeafCertificate.DNSNames))
 	}
-
-	// Check days until expiry is reasonable (cert valid for 1 year)
-	if result.DaysUntilExpiry < 360 || result.DaysUntilExpiry > 366 {
-		t.Errorf("expected days until expiry ~365, got %d", result.DaysUntilExpiry)
-	}
 }
 
 func TestTLSScanner_ScanPort_ConnectionRefused(t *testing.T) {

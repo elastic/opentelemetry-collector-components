@@ -24,7 +24,6 @@ import (
 )
 
 var (
-	Type             = component.MustNewType("certscanner")
-	LogsStability    = component.StabilityLevelDevelopment
-	MetricsStability = component.StabilityLevelDevelopment
+	Type          = component.MustNewType("certscanner")
+	LogsStability = component.StabilityLevelDevelopment
 )

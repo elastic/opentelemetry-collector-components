@@ -34,10 +34,9 @@ import (
 )
 
 type certScannerReceiver struct {
-	config          *Config
-	logger          *zap.Logger
-	logsConsumer    consumer.Logs
-	metricsConsumer consumer.Metrics
+	config       *Config
+	logger       *zap.Logger
+	logsConsumer consumer.Logs
 
 	discovery discovery.PortDiscoverer
 	scanner   *scanner.TLSScanner
@@ -50,15 +49,13 @@ func newCertScannerReceiver(
 	settings receiver.Settings,
 	cfg *Config,
 	logsConsumer consumer.Logs,
-	metricsConsumer consumer.Metrics,
 ) (*certScannerReceiver, error) {
 	r := &certScannerReceiver{
-		config:          cfg,
-		logger:          settings.Logger,
-		logsConsumer:    logsConsumer,
-		metricsConsumer: metricsConsumer,
-		scanner:         scanner.NewTLSScanner(cfg.Timeout),
-		discovery:       discovery.NewDiscoverer(),
+		config:       cfg,
+		logger:       settings.Logger,
+		logsConsumer: logsConsumer,
+		scanner:      scanner.NewTLSScanner(cfg.Timeout),
+		discovery:    discovery.NewDiscoverer(),
 	}
 
 	return r, nil
@@ -76,8 +73,7 @@ func (r *certScannerReceiver) Start(ctx context.Context, _ component.Host) error
 
 	r.logger.Info("Certificate scanner receiver started",
 		zap.Duration("interval", r.config.Interval),
-		zap.Duration("timeout", r.config.Timeout),
-		zap.Bool("emit_metrics", r.config.EmitMetrics))
+		zap.Duration("timeout", r.config.Timeout))
 
 	return nil
 }
@@ -161,7 +157,6 @@ func (r *certScannerReceiver) performScan(ctx context.Context) {
 		r.logger.Debug("TLS certificate found",
 			zap.Int("port", lp.Port),
 			zap.String("subject_cn", result.LeafCertificate.SubjectCN),
-			zap.Int("days_until_expiry", result.DaysUntilExpiry),
 			zap.Int("process_pid", lp.PID),
 			zap.String("process_name", lp.ProcessName))
 
@@ -170,14 +165,6 @@ func (r *certScannerReceiver) performScan(ctx context.Context) {
 			logs := internal.ConvertToLogs(result, hostname)
 			if err := r.logsConsumer.ConsumeLogs(ctx, logs); err != nil {
 				r.logger.Error("Failed to emit logs", zap.Error(err))
-			}
-		}
-
-		// Emit metrics if enabled and consumer is available
-		if r.config.EmitMetrics && r.metricsConsumer != nil {
-			metrics := internal.ConvertToMetrics(result, hostname)
-			if err := r.metricsConsumer.ConsumeMetrics(ctx, metrics); err != nil {
-				r.logger.Error("Failed to emit metrics", zap.Error(err))
 			}
 		}
 	}

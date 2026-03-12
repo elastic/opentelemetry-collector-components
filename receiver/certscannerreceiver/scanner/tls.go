@@ -55,8 +55,7 @@ type ScanResult struct {
 	LeafCertificate  *CertificateInfo
 	ChainDepth       int
 	CertificateChain []*CertificateInfo
-	DaysUntilExpiry  int
-	ScanTime         time.Time
+	ScanTime time.Time
 
 	// Process information (populated by caller from port discovery)
 	ProcessPID        int
@@ -119,7 +118,6 @@ func (s *TLSScanner) ScanPort(ctx context.Context, addr string, port int) (*Scan
 	leaf := state.PeerCertificates[0]
 	result.LeafCertificate = extractCertInfo(leaf)
 	result.ChainDepth = len(state.PeerCertificates)
-	result.DaysUntilExpiry = int(time.Until(leaf.NotAfter).Hours() / 24)
 
 	// Extract full certificate chain
 	result.CertificateChain = make([]*CertificateInfo, len(state.PeerCertificates))

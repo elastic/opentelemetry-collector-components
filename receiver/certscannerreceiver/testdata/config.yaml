@@ -18,9 +18,6 @@ receivers:
       # If false (default), only scan ports in include list
       scan_all: false
 
-    # Emit metrics in addition to logs
-    emit_metrics: true
-
 processors:
   batch:
     timeout: 10s
@@ -34,10 +31,6 @@ exporters:
 service:
   pipelines:
     logs:
-      receivers: [certscanner]
-      processors: [batch]
-      exporters: [debug]
-    metrics:
       receivers: [certscanner]
       processors: [batch]
       exporters: [debug]
