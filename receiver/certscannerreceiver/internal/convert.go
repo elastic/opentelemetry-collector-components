@@ -106,18 +106,23 @@ func ConvertToLogs(result *scanner.ScanResult, hostname string) plog.Logs {
 		// Chain info
 		attrs.PutInt("tls.server.certificate.chain_depth", int64(result.ChainDepth))
 
-		// Subject Alternative Names (SANs) - ECS uses a single flat keyword array
-		// for all SAN types (DNS, IP, email) at tls.server.x509.alternative_names.
-		if len(cert.DNSNames) > 0 || len(cert.IPAddresses) > 0 || len(cert.EmailAddresses) > 0 {
-			sanSlice := attrs.PutEmptySlice("tls.server.x509.alternative_names")
-			for _, san := range cert.DNSNames {
-				sanSlice.AppendEmpty().SetStr(san)
+		// Subject Alternative Names (SANs) — stored by X.509 SAN type
+		if len(cert.DNSNames) > 0 {
+			dnsSlice := attrs.PutEmptySlice("tls.server.x509.alternative_names")
+			for _, dns := range cert.DNSNames {
+				dnsSlice.AppendEmpty().SetStr(dns)
 			}
+		}
+		if len(cert.IPAddresses) > 0 {
+			ipSlice := attrs.PutEmptySlice("tls.server.x509.alternative_ip")
 			for _, ip := range cert.IPAddresses {
-				sanSlice.AppendEmpty().SetStr(ip)
+				ipSlice.AppendEmpty().SetStr(ip)
 			}
+		}
+		if len(cert.EmailAddresses) > 0 {
+			emailSlice := attrs.PutEmptySlice("tls.server.x509.alternative_email")
 			for _, email := range cert.EmailAddresses {
-				sanSlice.AppendEmpty().SetStr(email)
+				emailSlice.AppendEmpty().SetStr(email)
 			}
 		}
 	}

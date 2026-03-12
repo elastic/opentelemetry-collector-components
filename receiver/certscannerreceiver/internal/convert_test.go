@@ -128,10 +128,18 @@ func TestConvertToLogs(t *testing.T) {
 	assertAttrStr(t, attrs, "tls.server.hash.sha256", "AA:BB:CC")
 	assertAttrInt(t, attrs, "tls.server.certificate.chain_depth", 2)
 
-	// SANs - all types merged into a single flat array per ECS
-	sanVal, ok := attrs.Get("tls.server.x509.alternative_names")
+	// SANs — stored by X.509 SAN type
+	dnsVal, ok := attrs.Get("tls.server.x509.alternative_names")
 	require.True(t, ok, "expected alternative_names attribute")
-	assert.Equal(t, 4, sanVal.Slice().Len()) // 2 DNS + 1 IP + 1 email
+	assert.Equal(t, 2, dnsVal.Slice().Len()) // 2 DNS names
+
+	ipVal, ok := attrs.Get("tls.server.x509.alternative_ip")
+	require.True(t, ok, "expected alternative_ip attribute")
+	assert.Equal(t, 1, ipVal.Slice().Len())
+
+	emailVal, ok := attrs.Get("tls.server.x509.alternative_email")
+	require.True(t, ok, "expected alternative_email attribute")
+	assert.Equal(t, 1, emailVal.Slice().Len())
 
 	// Certificate chain (intermediate certs only, index 1+)
 	chainVal, ok := attrs.Get("tls.server.certificate_chain")

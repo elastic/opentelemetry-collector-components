@@ -63,6 +63,8 @@ receivers:
     "tls.server.x509.not_after": "2025-01-01T00:00:00Z",
     "tls.server.hash.sha256": "2F:4E:7A:...",
     "tls.server.x509.alternative_names": ["*.example.com", "example.com"],
+    "tls.server.x509.alternative_ip": ["1.2.3.4"],
+    "tls.server.x509.alternative_email": ["admin@example.com"],
     "tls.server.certificate.chain_depth": 3
   }
 }
