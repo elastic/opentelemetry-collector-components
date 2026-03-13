@@ -189,10 +189,6 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: amd64
-        # host.* elastic attributes
-        - key: host.os.platform
-          value:
-            stringValue: linux
         # process.* attributes
         - key: process.pid
           value:

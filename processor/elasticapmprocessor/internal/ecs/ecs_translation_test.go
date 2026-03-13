@@ -117,6 +117,58 @@ func TestTranslateResourceMetadata(t *testing.T) {
 			wantKey:    "labels.x_y_z_w",
 			wantAbsent: `x.y*z"w`,
 		},
+		{
+			name:     "supported telemetry sdk language",
+			inputKey: string(semconv.TelemetrySDKLanguageKey),
+			inputVal: "dotnet",
+			wantKey:  string(semconv.TelemetrySDKLanguageKey),
+		},
+		{
+			name:     "supported telemetry sdk version",
+			inputKey: string(semconv.TelemetrySDKVersionKey),
+			inputVal: "8.0.0",
+			wantKey:  string(semconv.TelemetrySDKVersionKey),
+		},
+		{
+			name:     "supported process runtime name",
+			inputKey: string(semconv.ProcessRuntimeNameKey),
+			inputVal: "node",
+			wantKey:  string(semconv.ProcessRuntimeNameKey),
+		},
+		{
+			name:     "supported process runtime version",
+			inputKey: string(semconv.ProcessRuntimeVersionKey),
+			inputVal: "20.11.1",
+			wantKey:  string(semconv.ProcessRuntimeVersionKey),
+		},
+		{
+			name:       "legacy service language name moved to labels",
+			inputKey:   "service.language.name",
+			inputVal:   "ecmascript",
+			wantKey:    "labels.service_language_name",
+			wantAbsent: "service.language.name",
+		},
+		{
+			name:       "legacy service language version moved to labels",
+			inputKey:   "service.language.version",
+			inputVal:   "20",
+			wantKey:    "labels.service_language_version",
+			wantAbsent: "service.language.version",
+		},
+		{
+			name:       "legacy service runtime name moved to labels",
+			inputKey:   "service.runtime.name",
+			inputVal:   "node",
+			wantKey:    "labels.service_runtime_name",
+			wantAbsent: "service.runtime.name",
+		},
+		{
+			name:       "legacy service runtime version moved to labels",
+			inputKey:   "service.runtime.version",
+			inputVal:   "20.11.1",
+			wantKey:    "labels.service_runtime_version",
+			wantAbsent: "service.runtime.version",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
