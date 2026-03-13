@@ -182,6 +182,18 @@ resourceMetrics:
         - key: labels.other_value
           value:
             stringValue: foo
+        - key: labels.service_language_name
+          value:
+            stringValue: go
+        - key: labels.service_language_version
+          value:
+            stringValue: 1.21.0
+        - key: labels.service_runtime_name
+          value:
+            stringValue: go
+        - key: labels.service_runtime_version
+          value:
+            stringValue: go1.21.0
         - key: labels.unsupported_key
           value:
             stringValue: foo
@@ -260,12 +272,6 @@ resourceMetrics:
         - key: service.instance.id
           value:
             stringValue: instance-123
-        - key: service.language.name
-          value:
-            stringValue: go
-        - key: service.language.version
-          value:
-            stringValue: 1.21.0
         - key: service.name
           value:
             stringValue: test-service
@@ -281,12 +287,6 @@ resourceMetrics:
         - key: service.origin.version
           value:
             stringValue: 2.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: go
-        - key: service.runtime.version
-          value:
-            stringValue: go1.21.0
         - key: service.target.name
           value:
             stringValue: target-service

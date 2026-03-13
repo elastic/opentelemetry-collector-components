@@ -10,6 +10,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -22,6 +31,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -82,12 +94,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -115,15 +121,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -202,6 +199,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node.js
+        - key: process.runtime.version
+          value:
+            stringValue: 1.2.3
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -214,6 +220,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -274,12 +283,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -307,12 +310,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.0.0
-        - key: service.runtime.name
-          value:
-            stringValue: node.js
-        - key: service.runtime.version
-          value:
-            stringValue: 1.2.3
         - key: service.origin.id
           value:
             stringValue: 1234567890abcdef
@@ -322,9 +319,6 @@ resourceSpans:
         - key: service.origin.version
           value:
             stringValue: 1.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -389,6 +383,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -401,6 +404,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -461,12 +467,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -494,15 +494,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -573,6 +564,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -585,6 +585,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -645,12 +648,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -678,15 +675,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -748,6 +736,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -760,6 +757,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -820,12 +820,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "2.2"
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -856,15 +850,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -1076,6 +1061,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -1088,6 +1082,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1148,12 +1145,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "2.2"
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -1184,15 +1175,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -1400,6 +1382,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -1412,6 +1403,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1472,12 +1466,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "2.2"
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -1508,15 +1496,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -1729,6 +1708,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -1741,6 +1729,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1801,12 +1792,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -1834,15 +1819,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -1930,6 +1906,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -1942,6 +1927,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -2002,12 +1990,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -2035,15 +2017,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com
@@ -2151,6 +2124,15 @@ resourceSpans:
         - key: telemetry.sdk.language
           value:
             stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
         - key: telemetry.sdk.name
           value:
             stringValue: ElasticAPM
@@ -2163,6 +2145,9 @@ resourceSpans:
         - key: host.arch
           value:
             stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -2223,12 +2208,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.language.name
-          value:
-            stringValue: ecmascript
-        - key: service.language.version
-          value:
-            stringValue: "8"
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -2256,15 +2235,6 @@ resourceSpans:
         - key: service.framework.version
           value:
             stringValue: 1.2.3
-        - key: service.runtime.name
-          value:
-            stringValue: node
-        - key: service.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: host.os.platform
-          value:
-            stringValue: darwin
         - key: host.hostname
           value:
             stringValue: prod1.example.com

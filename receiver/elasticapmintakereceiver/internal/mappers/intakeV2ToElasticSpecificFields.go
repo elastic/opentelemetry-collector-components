@@ -413,10 +413,6 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 			putNonEmptyStr(attributesMap, elasticattr.ServiceFrameworkName, event.Service.Framework.Name)
 			putNonEmptyStr(attributesMap, elasticattr.ServiceFrameworkVersion, event.Service.Framework.Version)
 		}
-		if event.Service.Runtime != nil {
-			putNonEmptyStr(attributesMap, elasticattr.ServiceRuntimeName, event.Service.Runtime.Name)
-			putNonEmptyStr(attributesMap, elasticattr.ServiceRuntimeVersion, event.Service.Runtime.Version)
-		}
 		if event.Service.Origin != nil {
 			putNonEmptyStr(attributesMap, elasticattr.ServiceOriginID, event.Service.Origin.Id)
 			putNonEmptyStr(attributesMap, elasticattr.ServiceOriginName, event.Service.Origin.Name)
@@ -425,9 +421,6 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 	}
 
 	if event.Host != nil {
-		if event.Host.Os != nil {
-			putNonEmptyStr(attributesMap, elasticattr.HostOSPlatform, event.Host.Os.Platform)
-		}
 		putNonEmptyStr(attributesMap, elasticattr.HostHostName, event.Host.Hostname)
 	}
 
