@@ -120,5 +120,5 @@ replace github.com/elastic/opentelemetry-collector-components/processor/elastict
 
 replace github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor => ../../processor/lsmintervalprocessor
 
-# Update to your specific opentelemetry-collector-contrib path to run unit test
+// Update to your specific opentelemetry-collector-contrib path to run unit test
 replace github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector => ../../../col-contrib/connector/signaltometricsconnector
