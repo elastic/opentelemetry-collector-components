@@ -147,4 +147,3 @@ func ConvertToLogs(result *scanner.ScanResult, hostname string) plog.Logs {
 
 	return logs
 }
-

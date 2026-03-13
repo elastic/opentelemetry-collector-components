@@ -150,8 +150,8 @@ func TestNewCertScannerReceiver(t *testing.T) {
 	// Placeholder - in real tests you'd use receivertest.NewNopSettings()
 	// This test is here to ensure the struct compiles correctly
 	_ = &Config{
-		Interval:    time.Hour,
-		Timeout:     3 * time.Second,
-		Ports: PortsConfig{Include: []int{443}},
+		Interval: time.Hour,
+		Timeout:  3 * time.Second,
+		Ports:    PortsConfig{Include: []int{443}},
 	}
 }

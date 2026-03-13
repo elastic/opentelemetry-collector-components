@@ -56,7 +56,7 @@ type ScanResult struct {
 	LeafCertificate  *CertificateInfo
 	ChainDepth       int
 	CertificateChain []*CertificateInfo
-	ScanTime time.Time
+	ScanTime         time.Time
 
 	// Process information (populated by caller from port discovery)
 	ProcessPID        int
