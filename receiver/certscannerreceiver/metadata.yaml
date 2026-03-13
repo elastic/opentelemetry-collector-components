@@ -9,3 +9,11 @@ status:
   distributions: []
 #  codeowners:
 #    active: []
+
+tests:
+  config:
+    interval: 5m
+    timeout: 3s
+    ports:
+      include: [443, 8443]
+      scan_all: false
