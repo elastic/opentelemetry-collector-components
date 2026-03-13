@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package internal
+package internal // import "github.com/elastic/opentelemetry-collector-components/receiver/certscannerreceiver/internal"
 
 import (
 	"time"

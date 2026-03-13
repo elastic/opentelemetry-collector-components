@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package discovery
+package discovery // import "github.com/elastic/opentelemetry-collector-components/receiver/certscannerreceiver/discovery"
 
 import (
 	"context"

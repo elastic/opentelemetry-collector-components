@@ -17,7 +17,7 @@
 
 //go:build linux
 
-package discovery
+package discovery // import "github.com/elastic/opentelemetry-collector-components/receiver/certscannerreceiver/discovery"
 
 import (
 	"bufio"

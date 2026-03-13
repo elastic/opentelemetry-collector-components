@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package scanner
+package scanner // import "github.com/elastic/opentelemetry-collector-components/receiver/certscannerreceiver/scanner"
 
 import (
 	"context"
