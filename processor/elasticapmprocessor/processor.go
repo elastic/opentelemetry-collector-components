@@ -23,13 +23,14 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"go.uber.org/zap"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
@@ -57,12 +58,15 @@ func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *T
 	enricherConfig := cfg.Config
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
+	ecsEnricherConfig.Resource.HostOSType.Enabled = true
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	// The intake receiver already sets transaction.root; skip re-deriving it
 	// to avoid overwriting the intake-supplied value or avoid deriving a value
 	// when the provided transaction.result is empty to match existing apm-data logic.
 	intakeECSEnricherConfig.Transaction.Result.Enabled = false
+	// The `host.os.type` field should not be added for APM events
+	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
 
 	return &TraceProcessor{
 		next:              next,
@@ -82,11 +86,10 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 	enricher := p.enricher
 	if isECS(ctx) {
 		enricher = p.ecsEnricher
-		if isTraceIntakeECS(td) {
+		resourceSpans := td.ResourceSpans()
+		if resourceSpans.Len() > 0 && isIntakeECS(resourceSpans.At(0).Resource()) {
 			enricher = p.intakeECSEnricher
 		}
-
-		resourceSpans := td.ResourceSpans()
 		for i := 0; i < resourceSpans.Len(); i++ {
 			resourceSpan := resourceSpans.At(i)
 			resource := resourceSpan.Resource()
@@ -128,26 +131,14 @@ func isECS(ctx context.Context) bool {
 	return mappingMode == "ecs"
 }
 
-// isTraceIntakeECS reports whether the traces originated from the elasticapmintakereceiver
-// by checking for a pre-existing processor.event on the first span.
-//
-// The intake receiver unconditionally sets processor.event on every transaction,
-// span, and error event it maps.
-func isTraceIntakeECS(td ptrace.Traces) bool {
-	rs := td.ResourceSpans()
-	if rs.Len() == 0 {
-		return false
+// isIntakeECS reports whether the data originated from the elasticapmintakereceiver
+// by checking telemetry.sdk.name == "ElasticAPM" on the resource attributes.
+// The intake receiver always sets this value; OTLP events use their own SDK name.
+func isIntakeECS(resource pcommon.Resource) bool {
+	if v, ok := resource.Attributes().Get(string(semconv.TelemetrySDKNameKey)); ok {
+		return v.Str() == "ElasticAPM"
 	}
-	ss := rs.At(0).ScopeSpans()
-	if ss.Len() == 0 {
-		return false
-	}
-	spans := ss.At(0).Spans()
-	if spans.Len() == 0 {
-		return false
-	}
-	_, ok := spans.At(0).Attributes().Get(elasticattr.ProcessorEvent)
-	return ok
+	return false
 }
 
 func getMetadataValue(info client.Info) string {
@@ -161,11 +152,12 @@ type LogProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next        consumer.Logs
-	enricher    *enrichments.Enricher
-	ecsEnricher *enrichments.Enricher
-	logger      *zap.Logger
-	cfg         *Config
+	next              consumer.Logs
+	enricher          *enrichments.Enricher
+	ecsEnricher       *enrichments.Enricher
+	intakeECSEnricher *enrichments.Enricher
+	logger            *zap.Logger
+	cfg               *Config
 }
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
@@ -173,15 +165,21 @@ func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogPr
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	ecsEnricherConfig.Resource.AgentVersion.Enabled = false
+	ecsEnricherConfig.Resource.HostOSType.Enabled = true
 	// disable the transaction result enrichment to avoid deriving a value
 	// when the provided result is empty to match existing apm-data logic
 	ecsEnricherConfig.Transaction.Result.Enabled = false
+
+	intakeECSEnricherConfig := ecsEnricherConfig
+	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
+
 	return &LogProcessor{
-		next:        next,
-		logger:      logger,
-		enricher:    enrichments.NewEnricher(enricherConfig),
-		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
-		cfg:         cfg,
+		next:              next,
+		logger:            logger,
+		enricher:          enrichments.NewEnricher(enricherConfig),
+		ecsEnricher:       enrichments.NewEnricher(ecsEnricherConfig),
+		intakeECSEnricher: enrichments.NewEnricher(intakeECSEnricherConfig),
+		cfg:               cfg,
 	}
 }
 
@@ -193,23 +191,30 @@ type MetricProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next        consumer.Metrics
-	enricher    *enrichments.Enricher
-	ecsEnricher *enrichments.Enricher
-	logger      *zap.Logger
-	cfg         *Config
+	next              consumer.Metrics
+	enricher          *enrichments.Enricher
+	ecsEnricher       *enrichments.Enricher
+	intakeECSEnricher *enrichments.Enricher
+	logger            *zap.Logger
+	cfg               *Config
 }
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
 	enricherConfig := cfg.Config
 	ecsEnricherConfig := cfg.Config
 	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
+	ecsEnricherConfig.Resource.HostOSType.Enabled = true
+
+	intakeECSEnricherConfig := ecsEnricherConfig
+	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
+
 	return &MetricProcessor{
-		next:        next,
-		logger:      logger,
-		enricher:    enrichments.NewEnricher(enricherConfig),
-		ecsEnricher: enrichments.NewEnricher(ecsEnricherConfig),
-		cfg:         cfg,
+		next:              next,
+		logger:            logger,
+		enricher:          enrichments.NewEnricher(enricherConfig),
+		ecsEnricher:       enrichments.NewEnricher(ecsEnricherConfig),
+		intakeECSEnricher: enrichments.NewEnricher(intakeECSEnricherConfig),
+		cfg:               cfg,
 	}
 }
 
@@ -223,6 +228,9 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 	if ecsMode {
 		enricher = p.ecsEnricher
 		resourceMetrics := md.ResourceMetrics()
+		if resourceMetrics.Len() > 0 && isIntakeECS(resourceMetrics.At(0).Resource()) {
+			enricher = p.intakeECSEnricher
+		}
 		for i := 0; i < resourceMetrics.Len(); i++ {
 			resourceMetric := resourceMetrics.At(i)
 			resource := resourceMetric.Resource()
@@ -317,6 +325,9 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	if ecsMode {
 		enricher = p.ecsEnricher
 		resourceLogs := ld.ResourceLogs()
+		if resourceLogs.Len() > 0 && isIntakeECS(resourceLogs.At(0).Resource()) {
+			enricher = p.intakeECSEnricher
+		}
 		for i := 0; i < resourceLogs.Len(); i++ {
 			resourceLog := resourceLogs.At(i)
 			resource := resourceLog.Resource()

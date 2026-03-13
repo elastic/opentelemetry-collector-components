@@ -47,6 +47,7 @@ func assertAttributeConfigDefaults(t *testing.T, cfg reflect.Value, expectDisabl
 	disabledByDefault := map[string]bool{
 		"ClearSpanID":   true,
 		"ClearSpanName": true,
+		"HostOSType":    true,
 	}
 
 	assertAttributeConfigDefaultsRecurse(t, cfg, disabled, disabledByDefault)

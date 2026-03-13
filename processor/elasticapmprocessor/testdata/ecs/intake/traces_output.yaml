@@ -1,12 +1,15 @@
 resourceSpans:
   - resource:
       attributes:
-        - key: labels.resource_required
+        - key: service.name
           value:
-            stringValue: foo
-        - key: labels.resource_optional
+            stringValue: test-svc
+        - key: telemetry.sdk.name
           value:
-            stringValue: bar
+            stringValue: ElasticAPM
+        - key: os.type
+          value:
+            stringValue: linux
         - key: data_stream.type
           value:
             stringValue: traces
@@ -21,7 +24,7 @@ resourceSpans:
             stringValue: 1.2.3.4
         - key: agent.name
           value:
-            stringValue: otlp
+            stringValue: ElasticAPM
         - key: agent.version
           value:
             stringValue: unknown
@@ -29,12 +32,6 @@ resourceSpans:
       - scope: {}
         spans:
           - attributes:
-              - key: db.name
-                value:
-                  stringValue: main
-              - key: db.system
-                value:
-                  stringValue: mysql
               - key: processor.event
                 value:
                   stringValue: transaction
@@ -52,7 +49,7 @@ resourceSpans:
                   boolValue: true
               - key: transaction.name
                 value:
-                  stringValue: db-elastic-txn
+                  stringValue: intake-txn
               - key: transaction.representative_count
                 value:
                   doubleValue: 1
@@ -69,38 +66,7 @@ resourceSpans:
                 value:
                   intValue: "1"
             endTimeUnixNano: "1581452773000000789"
-            events:
-              - attributes:
-                  - key: event.attr1
-                    value:
-                      stringValue: foo1
-                  - key: event.attr2
-                    value:
-                      stringValue: bar1
-                  - key: timestamp.us
-                    value:
-                      intValue: "1581452773000000"
-                name: event1
-                timeUnixNano: "1581452773000000123"
-              - attributes:
-                  - key: event.attr1
-                    value:
-                      stringValue: foo2
-                  - key: event.attr2
-                    value:
-                      stringValue: bar2
-                  - key: timestamp.us
-                    value:
-                      intValue: "1581452773000000"
-                name: event2
-                timeUnixNano: "1581452773000000123"
-              - attributes:
-                  - key: timestamp.us
-                    value:
-                      intValue: "1581452773000000"
-                name: event-with-no-attrs
-                timeUnixNano: "1581452773000000123"
-            name: db-elastic-txn
+            name: intake-txn
             spanId: abcdef0123456700
             startTimeUnixNano: "1581452772000000321"
             status: {}

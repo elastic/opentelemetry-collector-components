@@ -243,7 +243,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.HostIDKey),
 		string(semconv.HostTypeKey),
 		string(semconv.HostArchKey),
-		string(semconv.HostIPKey):
+		string(semconv.HostIPKey),
+		elasticattr.HostOSType:
 		return true
 
 	// process.*

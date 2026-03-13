@@ -32,9 +32,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processortest"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
 )
@@ -105,13 +107,6 @@ func TestProcessor(t *testing.T) {
 			testType:    "traces",
 			cfg:         apmConfig,
 		},
-		"ecs_txn_db": {
-			input:       "testdata/ecs/elastic_txn_db/input.yaml",
-			output:      "testdata/ecs/elastic_txn_db/output.yaml",
-			mappingMode: "ecs",
-			testType:    "traces",
-			cfg:         apmConfig,
-		},
 		"ecs_txn_db_non_intake": {
 			input:       "testdata/ecs/txn_db/input.yaml",
 			output:      "testdata/ecs/txn_db/output.yaml",
@@ -171,6 +166,43 @@ func TestProcessor(t *testing.T) {
 		"ecs_internal_metrics": {
 			input:       "testdata/ecs/elastic_internal_metrics/input.yaml",
 			output:      "testdata/ecs/elastic_internal_metrics/output.yaml",
+			mappingMode: "ecs",
+			testType:    "metrics",
+			cfg:         apmConfig,
+		},
+		// ecs_intake test cases are meant to represent apm events ingested by the receiver/elasticapmintake
+		// since there is different logic for otlp events with the ecs mapping mode
+		"ecs_intake_txn_db": {
+			input:       "testdata/ecs/intake/traces_txn_db_input.yaml",
+			output:      "testdata/ecs/intake/traces_txn_db_output.yaml",
+			mappingMode: "ecs",
+			testType:    "traces",
+			cfg:         apmConfig,
+		},
+		"ecs_intake_traces": {
+			input:       "testdata/ecs/intake/traces_input.yaml",
+			output:      "testdata/ecs/intake/traces_output.yaml",
+			mappingMode: "ecs",
+			testType:    "traces",
+			cfg:         apmConfig,
+		},
+		"ecs_intake_logs_error": {
+			input:       "testdata/ecs/intake/logs_error_input.yaml",
+			output:      "testdata/ecs/intake/logs_error_output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
+		"ecs_intake_logs": {
+			input:       "testdata/ecs/intake/logs_input.yaml",
+			output:      "testdata/ecs/intake/logs_output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
+		"ecs_intake_metrics": {
+			input:       "testdata/ecs/intake/metrics_input.yaml",
+			output:      "testdata/ecs/intake/metrics_output.yaml",
 			mappingMode: "ecs",
 			testType:    "metrics",
 			cfg:         apmConfig,
@@ -605,4 +637,44 @@ func TestECSSpanEventErrorRouting(t *testing.T) {
 	infoAttrs := infoEvent.Attributes()
 	_, hasInfoErrorDataStream := infoAttrs.Get("data_stream.dataset")
 	assert.False(t, hasInfoErrorDataStream)
+}
+
+func TestIsIntakeECS(t *testing.T) {
+	sdkKey := string(semconv.TelemetrySDKNameKey)
+
+	cases := []struct {
+		name  string
+		attrs map[string]string
+		want  bool
+	}{
+		{
+			name:  "elastic_apm",
+			attrs: map[string]string{sdkKey: "ElasticAPM"},
+			want:  true,
+		},
+		{
+			name:  "otlp_sdk",
+			attrs: map[string]string{sdkKey: "opentelemetry"},
+			want:  false,
+		},
+		{
+			name:  "no_sdk_attribute",
+			attrs: nil,
+			want:  false,
+		},
+		{
+			name:  "empty_sdk_value",
+			attrs: map[string]string{sdkKey: ""},
+			want:  false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := pcommon.NewResource()
+			for k, v := range tc.attrs {
+				res.Attributes().PutStr(k, v)
+			}
+			require.Equal(t, tc.want, isIntakeECS(res))
+		})
+	}
 }

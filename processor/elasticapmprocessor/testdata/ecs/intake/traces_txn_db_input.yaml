@@ -7,6 +7,9 @@ resourceSpans:
         - key: resource.optional
           value:
             stringValue: bar
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
     scopeSpans:
       - scope: {}
         spans:

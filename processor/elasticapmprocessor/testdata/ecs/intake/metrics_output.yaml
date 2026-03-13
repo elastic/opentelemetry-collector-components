@@ -1,0 +1,45 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: ElasticAPM
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: data_stream.dataset
+          value:
+            stringValue: apm.app.test_svc
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: data_stream.type
+          value:
+            stringValue: metrics
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
+        - key: metricset.name
+          value:
+            stringValue: app
+        - key: os.type
+          value:
+            stringValue: linux
+        - key: service.name
+          value:
+            stringValue: test-svc
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 42
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1000000"
+            name: intake.metric
+        scope: {}
