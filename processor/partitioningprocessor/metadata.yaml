@@ -1,0 +1,7 @@
+type: partitioning
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/partitioningprocessor
+
+status:
+  class: processor
+  stability:
+    development: [logs, metrics, traces, profiles]
