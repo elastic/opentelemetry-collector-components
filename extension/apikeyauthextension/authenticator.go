@@ -32,7 +32,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -43,6 +42,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/protoadapt"
 	"google.golang.org/protobuf/types/known/durationpb"
+
+	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/security/hasprivileges"
@@ -368,6 +369,12 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			switch elasticsearchErr.Status {
 			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			case http.StatusNotFound, http.StatusGone:
+				return ctx, errorWithDetails(
+					status.New(
+						codes.NotFound,
+						fmt.Sprintf("resource not found: %v", err),
+					), id, 0)
 			case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
 				return ctx, errorWithDetails(
 					status.New(
