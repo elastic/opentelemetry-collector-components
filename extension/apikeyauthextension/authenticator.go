@@ -369,12 +369,26 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			switch elasticsearchErr.Status {
 			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
-			case http.StatusNotFound, http.StatusGone:
+			case http.StatusNotFound:
+				// Not cached: a 404 may be transient (e.g. a deployment that is
+				// temporarily unavailable) and could recover.
 				return ctx, errorWithDetails(
 					status.New(
 						codes.NotFound,
 						fmt.Sprintf("resource not found: %v", err),
 					), id, 0)
+			case http.StatusGone:
+				// Cached like PermissionDenied: 410 Gone is permanent — the
+				// deployment has been deleted and will not return. Caching
+				// prevents repeated _has_privileges calls to a gone cluster
+				// while the routing layer's positive cache is still live.
+				goneErr := errorWithDetails(
+					status.New(
+						codes.NotFound,
+						fmt.Sprintf("resource not found: %v", err),
+					), id, 0)
+				a.cache.Add(cacheKey, &cacheEntry{key: derivedKey, err: goneErr})
+				return ctx, goneErr
 			case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
 				return ctx, errorWithDetails(
 					status.New(
