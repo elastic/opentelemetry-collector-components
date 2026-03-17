@@ -37,6 +37,7 @@ type ResourceConfig struct {
 	DefaultDeploymentEnvironment AttributeConfig `mapstructure:"default_deployment_environment"`
 	ServiceInstanceID            AttributeConfig `mapstructure:"service_instance_id"`
 	ServiceName                  AttributeConfig `mapstructure:"service_name"`
+	HostOSType                   AttributeConfig `mapstructure:"host_os_type"`
 }
 
 // ScopeConfig configures the enrichment of scope attributes.

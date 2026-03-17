@@ -44,6 +44,7 @@ const (
 	FaaSTriggerRequestID   = "faas.trigger.request_id"
 	HostHostName           = "host.hostname"
 	HostOSPlatform         = "host.os.platform"
+	HostOSType             = "host.os.type"
 	ProcessRuntimeName     = "process.runtime.name"
 	ProcessRuntimeVersion  = "process.runtime.version"
 	ServiceLanguageName    = "service.language.name"

@@ -30,6 +30,14 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
 
+// ecsResourceConfig returns a ResourceConfig that mirrors the ECS enricher
+// configuration in processor.go: base Enabled() with HostOSType explicitly enabled.
+func ecsResourceConfig() config.ResourceConfig {
+	c := config.Enabled().Resource
+	c.HostOSType.Enabled = true
+	return c
+}
+
 func TestResourceEnrich(t *testing.T) {
 	for _, tc := range []struct {
 		name          string
@@ -443,6 +451,187 @@ func TestResourceEnrich(t *testing.T) {
 				string(semconv25.ContainerIDKey):           "container-id",
 				string(semconv.HostNameKey):                "host-name",
 				string(semconv25.DeploymentEnvironmentKey): "unset",
+			},
+		},
+		{
+			name: "host_os_type_from_os_type_windows",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "windows")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "windows",
+			},
+		},
+		{
+			name: "host_os_type_from_os_type_linux",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "linux")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "linux",
+			},
+		},
+		{
+			name: "host_os_type_from_os_type_darwin",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "darwin")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "macos",
+			},
+		},
+		{
+			name: "host_os_type_from_os_type_aix",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "aix")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "unix",
+			},
+		},
+		{
+			name: "host_os_type_from_os_type_hpux",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "hpux")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "unix",
+			},
+		},
+		{
+			name: "host_os_type_from_os_type_solaris",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "solaris")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "unix",
+			},
+		},
+		{
+			name: "host_os_type_from_os_type_unknown",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "unknown")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+			},
+		},
+		{
+			name: "host_os_type_from_os_name_android",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSNameKey), "Android")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "android",
+			},
+		},
+		{
+			name: "host_os_type_from_os_name_ios",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSNameKey), "iOS")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "ios",
+			},
+		},
+		{
+			name: "host_os_type_os_name_overrides_os_type",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "linux")
+				res.Attributes().PutStr(string(semconv.OSNameKey), "Android")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "android",
+			},
+		},
+		{
+			name: "host_os_type_not_set_when_no_mapping",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSNameKey), "Ubuntu")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+			},
+		},
+		{
+			name: "host_os_type_already_set_preserved",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(elasticattr.HostOSType, "custom")
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "linux")
+				return res
+			}(),
+			config: ecsResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+				elasticattr.HostOSType:   "custom",
+			},
+		},
+		{
+			name: "host_os_type_disabled",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.OSTypeKey), "linux")
+				return res
+			}(),
+			config: config.Enabled().Resource,
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
 			},
 		},
 	} {

@@ -130,12 +130,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ServiceVersionKey),
 		string(semconv.ServiceInstanceIDKey),
 		string(semconv.ServiceNamespaceKey),
-		elasticattr.ServiceLanguageName,
-		elasticattr.ServiceLanguageVersion,
 		elasticattr.ServiceFrameworkName,
 		elasticattr.ServiceFrameworkVersion,
-		elasticattr.ServiceRuntimeName,
-		elasticattr.ServiceRuntimeVersion,
 		elasticattr.ServiceOriginID,
 		elasticattr.ServiceOriginName,
 		elasticattr.ServiceOriginVersion,
@@ -196,7 +192,7 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.HostTypeKey),
 		string(semconv.HostArchKey),
 		string(semconv.HostIPKey),
-		elasticattr.HostOSPlatform:
+		elasticattr.HostOSType:
 		return true
 
 	// process.*
@@ -205,8 +201,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ProcessExecutableNameKey),
 		string(semconv.ProcessCommandLineKey),
 		string(semconv.ProcessExecutablePathKey),
-		elasticattr.ProcessRuntimeName,
-		elasticattr.ProcessRuntimeVersion,
+		string(semconv.ProcessRuntimeNameKey),
+		string(semconv.ProcessRuntimeVersionKey),
 		string(semconv.ProcessOwnerKey):
 		return true
 

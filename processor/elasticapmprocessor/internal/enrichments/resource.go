@@ -52,6 +52,9 @@ type resourceEnrichmentContext struct {
 	serviceInstanceID string
 	serviceName       string
 	containerID       string
+
+	osType string
+	osName string
 }
 
 func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config.ResourceConfig) {
@@ -81,6 +84,10 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 			s.serviceName = v.Str()
 		case string(semconv.ContainerIDKey):
 			s.containerID = v.Str()
+		case string(semconv.OSTypeKey):
+			s.osType = v.Str()
+		case string(semconv.OSNameKey):
+			s.osName = v.Str()
 		}
 		return true
 	})
@@ -109,9 +116,11 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 	if cfg.ServiceInstanceID.Enabled {
 		s.setServiceInstanceID(resource)
 	}
-
 	if cfg.ServiceName.Enabled {
 		s.sanitizeServiceName(resource)
+	}
+	if cfg.HostOSType.Enabled {
+		s.setHostOSType(resource)
 	}
 }
 
@@ -202,6 +211,35 @@ func (s *resourceEnrichmentContext) overrideHostNameWithK8sNodeName(resource pco
 		string(semconv.HostNameKey),
 		s.k8sNodeName,
 	)
+}
+
+// setHostOSType derives host.os.type from os.type and os.name resource
+// attributes following the ECS os.type spec. os.type is checked first;
+// os.name is only used for Android/iOS when os.type yields no mapping.
+// https://www.elastic.co/guide/en/ecs/current/ecs-os.html#field-os-type
+//
+// Based on the apm-data logic that only applies to OTLP events (not APM events):
+// https://github.com/elastic/apm-data/blob/3467721/input/otlp/metadata.go#L345-L363
+func (s *resourceEnrichmentContext) setHostOSType(resource pcommon.Resource) {
+	var ecsHostOSType string
+	switch s.osType {
+	case "windows", "linux":
+		ecsHostOSType = s.osType
+	case "darwin":
+		ecsHostOSType = "macos"
+	case "aix", "hpux", "solaris":
+		ecsHostOSType = "unix"
+	}
+	switch s.osName {
+	case "Android":
+		ecsHostOSType = "android"
+	case "iOS":
+		ecsHostOSType = "ios"
+	}
+	if ecsHostOSType == "" {
+		return
+	}
+	attribute.PutStr(resource.Attributes(), elasticattr.HostOSType, ecsHostOSType)
 }
 
 // setServiceInstanceID sets service.instance.id from container.id or host.name.

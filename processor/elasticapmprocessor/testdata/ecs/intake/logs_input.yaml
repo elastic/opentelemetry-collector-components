@@ -1,0 +1,18 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-svc
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: os.type
+          value:
+            stringValue: linux
+    scopeLogs:
+      - scope: {}
+        logRecords:
+          - body:
+              stringValue: intake log
+            timeUnixNano: "1581452773000000789"
