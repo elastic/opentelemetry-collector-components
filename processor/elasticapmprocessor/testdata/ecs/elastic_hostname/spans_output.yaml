@@ -22,6 +22,9 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
         - key: service.instance.id
           value:
             stringValue: hostname-1

@@ -53,6 +53,19 @@ func TestResourceEnrich(t *testing.T) {
 			},
 		},
 		{
+			name:  "empty_default_deployment_environment_disabled",
+			input: pcommon.NewResource(),
+			config: func() config.ResourceConfig {
+				c := config.Enabled().Resource
+				c.DefaultDeploymentEnvironment.Enabled = false
+				return c
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:    "otlp",
+				elasticattr.AgentVersion: "unknown",
+			},
+		},
+		{
 			name: "sdkname_set",
 			input: func() pcommon.Resource {
 				res := pcommon.NewResource()
@@ -234,6 +247,25 @@ func TestResourceEnrich(t *testing.T) {
 			config: config.Enabled().Resource,
 			enrichedAttrs: map[string]any{
 				// To satisfy aliases defined in ES, we duplicate the value for both fields.
+				string(semconv25.DeploymentEnvironmentKey):   "prod",
+				string(semconv.DeploymentEnvironmentNameKey): "prod",
+				elasticattr.AgentName:                        "otlp",
+				elasticattr.AgentVersion:                     "unknown",
+			},
+		},
+		{
+			name: "deployment_environment_name_set_default_disabled",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.DeploymentEnvironmentNameKey), "prod")
+				return res
+			}(),
+			config: func() config.ResourceConfig {
+				c := config.Enabled().Resource
+				c.DefaultDeploymentEnvironment.Enabled = false
+				return c
+			}(),
+			enrichedAttrs: map[string]any{
 				string(semconv25.DeploymentEnvironmentKey):   "prod",
 				string(semconv.DeploymentEnvironmentNameKey): "prod",
 				elasticattr.AgentName:                        "otlp",

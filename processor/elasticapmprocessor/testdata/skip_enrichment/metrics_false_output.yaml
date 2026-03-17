@@ -7,9 +7,6 @@ resourceMetrics:
         - key: agent.version
           value:
             stringValue: unknown
-        - key: deployment.environment
-          value:
-            stringValue: unset
         - key: metricset.name
           value:
             stringValue: app

@@ -28,6 +28,9 @@ resourceLogs:
         - key: agent.version
           value:
             stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
     scopeLogs:
       - logRecords:
           - attributes:

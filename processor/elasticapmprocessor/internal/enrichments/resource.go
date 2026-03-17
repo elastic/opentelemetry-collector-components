@@ -102,12 +102,16 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 		s.setDeploymentEnvironment(resource)
 	}
 
+	if cfg.DefaultDeploymentEnvironment.Enabled {
+		s.setDefaultDeploymentEnvironment(resource)
+	}
+
 	if cfg.ServiceInstanceID.Enabled {
 		s.setServiceInstanceID(resource)
 	}
 
 	if cfg.ServiceName.Enabled {
-		s.setServiceName(resource)
+		s.sanitizeServiceName(resource)
 	}
 }
 
@@ -115,24 +119,32 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 // In the `otel-data` ES plugin we alias `service.environment` to `deployment.environment`.
 // ES currently doesn't allow aliases with multiple targets, so if the new field name is used (SemConv v1.27+),
 // we duplicate the value and also send it with the old field name to make the alias work.
-//
-// When neither field is present, we default deployment.environment to "unset"
-// so that the ES alias service.environment always resolves to a value,
-// matching the apm-data/MIS behavior (SetDefaultServiceEnvironment).
 func (s *resourceEnrichmentContext) setDeploymentEnvironment(resource pcommon.Resource) {
 	if s.deploymentEnvironment != "" {
 		return
 	}
-
-	deploymentEnv := "unset"
-	if s.deploymentEnvironmentName != "" {
-		deploymentEnv = s.deploymentEnvironmentName
+	if s.deploymentEnvironmentName == "" {
+		return
 	}
 
 	attribute.PutStr(
 		resource.Attributes(),
 		string(semconv25.DeploymentEnvironmentKey),
-		deploymentEnv,
+		s.deploymentEnvironmentName,
+	)
+}
+
+// setDefaultDeploymentEnvironment sets deployment.environment to "unset"
+// when neither deployment environment field is present, matching the
+// apm-data/MIS default only where explicitly configured.
+func (s *resourceEnrichmentContext) setDefaultDeploymentEnvironment(resource pcommon.Resource) {
+	if s.deploymentEnvironment != "" || s.deploymentEnvironmentName != "" {
+		return
+	}
+	attribute.PutStr(
+		resource.Attributes(),
+		string(semconv25.DeploymentEnvironmentKey),
+		"unset",
 	)
 }
 
@@ -207,12 +219,12 @@ func (s *resourceEnrichmentContext) setServiceInstanceID(resource pcommon.Resour
 	attribute.PutStr(resource.Attributes(), string(semconv25.ServiceInstanceIDKey), s.serviceInstanceID)
 }
 
-func (s *resourceEnrichmentContext) setServiceName(resource pcommon.Resource) {
+func (s *resourceEnrichmentContext) sanitizeServiceName(resource pcommon.Resource) {
 	if s.serviceName == "" {
 		return
 	}
 	cleaned := sanitize.CleanServiceName(s.serviceName)
 	if cleaned != s.serviceName {
-		resource.Attributes().PutStr(string(semconv.ServiceNameKey), cleaned)
+		attribute.PutStr(resource.Attributes(), string(semconv.ServiceNameKey), cleaned)
 	}
 }

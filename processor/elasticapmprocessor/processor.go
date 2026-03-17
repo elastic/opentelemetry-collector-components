@@ -55,8 +55,9 @@ type TraceProcessor struct {
 
 func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
 	enricherConfig := cfg.Config
+	enricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = false
+	enricherConfig.Resource.ServiceName.Enabled = false
 	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	// The intake receiver already sets transaction.root; skip re-deriving it
@@ -170,8 +171,9 @@ type LogProcessor struct {
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
 	enricherConfig := cfg.Config
+	enricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = false
+	enricherConfig.Resource.ServiceName.Enabled = false
 	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	// disable the transaction result enrichment to avoid deriving a value
 	// when the provided result is empty to match existing apm-data logic
 	ecsEnricherConfig.Transaction.Result.Enabled = false
@@ -201,8 +203,9 @@ type MetricProcessor struct {
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
 	enricherConfig := cfg.Config
+	enricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = false
+	enricherConfig.Resource.ServiceName.Enabled = false
 	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	return &MetricProcessor{
 		next:        next,
 		logger:      logger,

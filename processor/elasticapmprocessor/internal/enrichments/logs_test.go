@@ -50,7 +50,7 @@ func TestEnrichResourceLog(t *testing.T) {
 	t.Run("resource_enrichment", func(t *testing.T) {
 		resourceAttributes := resourceLogs.Resource().Attributes()
 		expectedResourceAttributes := map[string]any{
-			"service.name":           "my_service",
+			"service.name":           "my.service",
 			"agent.name":             "android/java",
 			"agent.version":          "unknown",
 			"deployment.environment": "unset",
