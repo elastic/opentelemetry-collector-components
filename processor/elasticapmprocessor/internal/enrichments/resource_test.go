@@ -344,6 +344,21 @@ func TestResourceEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "service_name_sanitized_overwrites_existing_value",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.ServiceNameKey), "my/service")
+				return res
+			}(),
+			config: config.Enabled().Resource,
+			enrichedAttrs: map[string]any{
+				string(semconv.ServiceNameKey):             "my_service",
+				elasticattr.AgentName:                      "otlp",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
+			},
+		},
+		{
 			name: "agent_version_disabled",
 			input: func() pcommon.Resource {
 				res := pcommon.NewResource()

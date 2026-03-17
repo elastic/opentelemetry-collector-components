@@ -225,6 +225,6 @@ func (s *resourceEnrichmentContext) sanitizeServiceName(resource pcommon.Resourc
 	}
 	cleaned := sanitize.CleanServiceName(s.serviceName)
 	if cleaned != s.serviceName {
-		attribute.PutStr(resource.Attributes(), string(semconv.ServiceNameKey), cleaned)
+		resource.Attributes().PutStr(string(semconv.ServiceNameKey), cleaned)
 	}
 }
