@@ -28,8 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8/typedapi/security/hasprivileges"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -38,6 +36,9 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/elastic/go-elasticsearch/v8/typedapi/security/hasprivileges"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 )
@@ -318,6 +319,46 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			wantMetadata: map[string]string{
 				"component": metadata.Type.String(),
 				"api_key":   "no_privs_id",
+			},
+		},
+		{
+			name: "deployment_deleted_410_gone",
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "security_exception",
+					Reason: func() *string {
+						reason := "deployment deleted"
+						return &reason
+					}(),
+				},
+				Status: 410,
+			}),
+			auth:     "ApiKey " + base64.StdEncoding.EncodeToString([]byte("gone_id:secret")),
+			wantCode: codes.NotFound,
+			wantMsg:  "resource not found: status: 410, failed: [security_exception], reason: deployment deleted",
+			wantMetadata: map[string]string{
+				"component": metadata.Type.String(),
+				"api_key":   "gone_id",
+			},
+		},
+		{
+			name: "not_found_404",
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "security_exception",
+					Reason: func() *string {
+						reason := "no such resource"
+						return &reason
+					}(),
+				},
+				Status: 404,
+			}),
+			auth:     "ApiKey " + base64.StdEncoding.EncodeToString([]byte("notfound_id:secret")),
+			wantCode: codes.NotFound,
+			wantMsg:  "resource not found: status: 404, failed: [security_exception], reason: no such resource",
+			wantMetadata: map[string]string{
+				"component": metadata.Type.String(),
+				"api_key":   "notfound_id",
 			},
 		},
 	}

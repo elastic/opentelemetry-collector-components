@@ -1,0 +1,24 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-svc
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: os.type
+          value:
+            stringValue: linux
+    scopeMetrics:
+      - scope: {}
+        metrics:
+          - name: intake.metric
+            gauge:
+              dataPoints:
+                - asDouble: 42
+                  timeUnixNano: "1581452773000000789"
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric

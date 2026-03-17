@@ -20,8 +20,6 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
-	"strings"
-
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv22 "go.opentelemetry.io/otel/semconv/v1.22.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -34,8 +32,13 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 	if event.Service != nil {
 		putNonEmptyStr(attributes, string(semconv.ServiceNameKey), event.Service.Name)
 		putNonEmptyStr(attributes, string(semconv.ServiceVersionKey), event.Service.Version)
-		if event.Service.Language != nil && event.Service.Language.Name != "" {
-			attributes.PutStr(string(semconv.TelemetrySDKLanguageKey), translateElasticServiceLanguageToOtelSdkLanguage(event.Service.Language.Name))
+		if event.Service.Language != nil {
+			putNonEmptyStr(attributes, string(semconv.TelemetrySDKLanguageKey), event.Service.Language.Name)
+			putNonEmptyStr(attributes, string(semconv.TelemetrySDKVersionKey), event.Service.Language.Version)
+		}
+		if event.Service.Runtime != nil {
+			putNonEmptyStr(attributes, string(semconv.ProcessRuntimeNameKey), event.Service.Runtime.Name)
+			putNonEmptyStr(attributes, string(semconv.ProcessRuntimeVersionKey), event.Service.Runtime.Version)
 		}
 		attributes.PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
 		if event.Service.Environment != "" {
@@ -53,6 +56,7 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 		putNonEmptyStr(attributes, string(semconv.HostArchKey), event.Host.Architecture)
 		if event.Host.Os != nil {
 			putNonEmptyStr(attributes, string(semconv.OSNameKey), event.Host.Os.Name)
+			putNonEmptyStr(attributes, string(semconv.OSTypeKey), event.Host.Os.Platform)
 			putNonEmptyStr(attributes, string(semconv.OSVersionKey), event.Host.Os.Version)
 		}
 	}
@@ -68,19 +72,6 @@ func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcomm
 	translateContainerAndKubernetesAttributes(event, attributes)
 	translateProcessUserNetworkAttributes(event, attributes)
 	translateFaasAttributes(event, attributes)
-}
-
-// SemConv defines a well known list of values of telemetry.sdk.language: https://opentelemetry.io/docs/specs/semconv/attributes-registry/telemetry/
-// The classic Elastic APM Agents report values that may not be in the SemConv well known list.
-// This method maps those values to the closest SemConv well known value.
-func translateElasticServiceLanguageToOtelSdkLanguage(language string) string {
-	language_lower_case := strings.ToLower(language)
-	switch language_lower_case {
-	case "c#":
-		return "dotnet"
-	default:
-		return language_lower_case
-	}
 }
 
 // TranslateIntakeV2TransactionToOTelAttributes translates transaction attributes from the Elastic APM model to SemConv attributes

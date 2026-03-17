@@ -21,10 +21,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 )
 
 // Supported ECS resource attributes
@@ -181,12 +182,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ServiceVersionKey),
 		string(semconv.ServiceInstanceIDKey),
 		string(semconv.ServiceNamespaceKey),
-		elasticattr.ServiceLanguageName,
-		elasticattr.ServiceLanguageVersion,
 		elasticattr.ServiceFrameworkName,
 		elasticattr.ServiceFrameworkVersion,
-		elasticattr.ServiceRuntimeName,
-		elasticattr.ServiceRuntimeVersion,
 		elasticattr.ServiceOriginID,
 		elasticattr.ServiceOriginName,
 		elasticattr.ServiceOriginVersion,
@@ -247,7 +244,7 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.HostTypeKey),
 		string(semconv.HostArchKey),
 		string(semconv.HostIPKey),
-		elasticattr.HostOSPlatform:
+		elasticattr.HostOSType:
 		return true
 
 	// process.*
@@ -256,8 +253,8 @@ func isSupportedAttribute(attr string) bool {
 		string(semconv.ProcessExecutableNameKey),
 		string(semconv.ProcessCommandLineKey),
 		string(semconv.ProcessExecutablePathKey),
-		elasticattr.ProcessRuntimeName,
-		elasticattr.ProcessRuntimeVersion,
+		string(semconv.ProcessRuntimeNameKey),
+		string(semconv.ProcessRuntimeVersionKey),
 		string(semconv.ProcessOwnerKey):
 		return true
 

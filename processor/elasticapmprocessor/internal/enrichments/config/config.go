@@ -35,6 +35,7 @@ type ResourceConfig struct {
 	OverrideHostName      AttributeConfig `mapstructure:"override_host_name"`
 	DeploymentEnvironment AttributeConfig `mapstructure:"deployment_environment"`
 	ServiceInstanceID     AttributeConfig `mapstructure:"service_instance_id"`
+	HostOSType            AttributeConfig `mapstructure:"host_os_type"`
 }
 
 // ScopeConfig configures the enrichment of scope attributes.
