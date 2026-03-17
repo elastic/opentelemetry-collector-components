@@ -506,6 +506,46 @@ func TestMetrics(t *testing.T) {
 	}
 }
 
+func TestMetricsPreserveAllHistogramBounds(t *testing.T) {
+	cases := []struct {
+		inputNdJsonFileName        string
+		outputExpectedYamlFileName string
+	}{
+		{"metricsets.ndjson", "metricsets_preserve_bounds_expected.yaml"},
+		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_preserve_bounds_expected.yaml"},
+	}
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		PreserveAllHistogramBounds: true,
+		ServerConfig: confighttp.ServerConfig{
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
+		},
+	}
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	nextMetrics := new(consumertest.MetricsSink)
+	receiver, _ := factory.CreateMetrics(context.Background(), set, cfg, nextMetrics)
+
+	if err := receiver.Start(context.Background(), componenttest.NewNopHost()); err != nil {
+		t.Errorf("Starting receiver failed: %v", err)
+	}
+	defer func() {
+		if err := receiver.Shutdown(context.Background()); err != nil {
+			t.Errorf("Shutdown failed: %v", err)
+		}
+	}()
+
+	for _, tt := range cases {
+		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
+			runComparisonForMetrics(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextMetrics, testEndpoint)
+		})
+	}
+}
+
 func TestLogs(t *testing.T) {
 	inputFiles := []struct {
 		inputNdJsonFileName        string

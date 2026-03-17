@@ -20,14 +20,24 @@ package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-col
 import (
 	"time"
 
-	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"go.opentelemetry.io/collector/config/confighttp"
+
+	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 )
 
 // Config defines configuration for the Elastic APM receiver.
 type Config struct {
 	// When using APM agent configuration, information fetched from Elasticsearch will be cached in memory for some time.
 	AgentConfig AgentConfig `mapstructure:"agent_config"`
+
+	// PreserveAllHistogramBounds keeps the last explicit bound (upper boundary)
+	// in histogram data points, producing len(bucket_counts) == len(explicit_bounds).
+	// This deviates from the OTel spec but allows the ES exporter to detect
+	// APM intake histograms by heuristic (requires opentelemetry-collector-contrib#46831).
+	// Default: false (standard OTel format: len(bucket_counts) == len(explicit_bounds) + 1).
+	//
+	// This can be removed once the ES exporter heuristic detection has been released for a few versions.
+	PreserveAllHistogramBounds bool `mapstructure:"preserve_all_histogram_bounds"`
 
 	confighttp.ServerConfig `mapstructure:",squash"`
 }

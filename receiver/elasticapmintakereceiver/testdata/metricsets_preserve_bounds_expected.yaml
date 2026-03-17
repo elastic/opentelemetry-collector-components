@@ -252,6 +252,7 @@ resourceMetrics:
                   explicitBounds:
                     - 1.1
                     - 2.2
+                    - 3.3
                   sum: 15.399999999999999
                   timeUnixNano: "1496170421368000000"
             name: latency_distribution

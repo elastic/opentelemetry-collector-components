@@ -357,7 +357,7 @@ func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.Resou
 		case modelpb.MetricType_METRIC_TYPE_HISTOGRAM:
 			dp := m.SetEmptyHistogram().DataPoints().AppendEmpty()
 			r.populateDataPointCommon(&dp, event, timestampNanos)
-			populateOTelHistogramDataPoint(sample, &dp)
+			populateOTelHistogramDataPoint(sample, &dp, r.cfg.PreserveAllHistogramBounds)
 		case modelpb.MetricType_METRIC_TYPE_SUMMARY:
 			// Note: The apm-data lib will reject a valid summary (contains only a count and sum), so
 			// this apm summaries will not be converted to OTEL.
@@ -388,7 +388,7 @@ func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, eve
 //
 // Sets fields: sum, count, bucket_counts, explicit_bounds. All other optional fields are not set per OTEL metric model:
 //   - https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto
-func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric.HistogramDataPoint) {
+func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric.HistogramDataPoint, preserveAllBounds bool) {
 	histogram := sample.GetHistogram()
 	if histogram == nil {
 		return
@@ -456,10 +456,17 @@ func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric
 	// otherwise the data point is invalid.
 	explicitBounds := dp.ExplicitBounds()
 
-	// explicit bounds are simply sample.Histogram.Values, where each value is the upper bound for a bucket.
-	// The last bound is kept (this goes againsts the OTel specification) to avoid having to recompute
-	// the bounds at export time.
-	explicitBounds.FromRaw(apmHistogramValues)
+	// explicit bounds are derived from sample.Histogram.Values, where each value is the upper bound for a bucket.
+	if preserveAllBounds {
+		// Keep all bounds including the last one, producing len(bucket_counts) == len(explicit_bounds).
+		// This deviates from the OTel spec but allows the ES exporter to detect APM intake histograms
+		// by heuristic (opentelemetry-collector-contrib#46831).
+		explicitBounds.FromRaw(apmHistogramValues)
+	} else {
+		// Drop the last bound (implied +Inf bucket) per OTel spec:
+		// len(bucket_counts) == len(explicit_bounds) + 1
+		explicitBounds.FromRaw(apmHistogramValues[:len(apmHistogramValues)-1])
+	}
 }
 
 func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) {
