@@ -158,13 +158,11 @@ type AttributeConfig struct {
 func Enabled() Config {
 	return Config{
 		Resource: ResourceConfig{
-			AgentName:                    AttributeConfig{Enabled: true},
-			AgentVersion:                 AttributeConfig{Enabled: true},
-			OverrideHostName:             AttributeConfig{Enabled: true},
-			DeploymentEnvironment:        AttributeConfig{Enabled: true},
-			DefaultDeploymentEnvironment: AttributeConfig{Enabled: true},
-			ServiceInstanceID:            AttributeConfig{Enabled: true},
-			ServiceName:                  AttributeConfig{Enabled: true},
+			AgentName:             AttributeConfig{Enabled: true},
+			AgentVersion:          AttributeConfig{Enabled: true},
+			OverrideHostName:      AttributeConfig{Enabled: true},
+			DeploymentEnvironment: AttributeConfig{Enabled: true},
+			ServiceInstanceID:     AttributeConfig{Enabled: true},
 		},
 		Scope: ScopeConfig{
 			ServiceFrameworkName:    AttributeConfig{Enabled: true},
