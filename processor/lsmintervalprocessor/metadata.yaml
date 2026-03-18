@@ -31,7 +31,7 @@ telemetry:
     lsminterval.exported_data_points:
       enabled: true
       description: The count of metric data points exported by the processor.
-      unit: "{count}"
+      unit: "1"
       stability: development
       sum:
         value_type: int
@@ -163,6 +163,42 @@ telemetry:
         async: true
         value_type: int
         monotonic: true
+    lsminterval.overflow_resources:
+      enabled: true
+      description: The estimated count of unique resources that overflowed due to resource cardinality limit.
+      unit: "1"
+      stability: development
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: [interval]
+    lsminterval.overflow_scopes:
+      enabled: true
+      description: The estimated count of unique scopes that overflowed due to scope cardinality limit.
+      unit: "1"
+      stability: development
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: [interval]
+    lsminterval.overflow_metrics:
+      enabled: true
+      description: The estimated count of unique metrics that overflowed due to metric cardinality limit.
+      unit: "1"
+      stability: development
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: [interval]
+    lsminterval.overflow_datapoints:
+      enabled: true
+      description: The estimated count of unique datapoints that overflowed due to datapoint cardinality limit.
+      unit: "1"
+      stability: development
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: [interval]
     lsminterval.processed_bytes:
       enabled: true
       description: The size in bytes of metric data points processed by the processor.
@@ -174,7 +210,7 @@ telemetry:
     lsminterval.processed_data_points:
       enabled: true
       description: The count of metric data points processed by the processor.
-      unit: "{count}"
+      unit: "1"
       stability: development
       sum:
         value_type: int

@@ -58,7 +58,7 @@ func AssertEqualLsmintervalExportedDataPoints(t *testing.T, tt *componenttest.Te
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.exported_data_points",
 		Description: "The count of metric data points exported by the processor. [Development]",
-		Unit:        "{count}",
+		Unit:        "1",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
 			IsMonotonic: true,
@@ -66,6 +66,70 @@ func AssertEqualLsmintervalExportedDataPoints(t *testing.T, tt *componenttest.Te
 		},
 	}
 	got, err := tt.GetMetric("otelcol_lsminterval.exported_data_points")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualLsmintervalOverflowDatapoints(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_lsminterval.overflow_datapoints",
+		Description: "The estimated count of unique datapoints that overflowed due to datapoint cardinality limit. [Development]",
+		Unit:        "1",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_lsminterval.overflow_datapoints")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualLsmintervalOverflowMetrics(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_lsminterval.overflow_metrics",
+		Description: "The estimated count of unique metrics that overflowed due to metric cardinality limit. [Development]",
+		Unit:        "1",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_lsminterval.overflow_metrics")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualLsmintervalOverflowResources(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_lsminterval.overflow_resources",
+		Description: "The estimated count of unique resources that overflowed due to resource cardinality limit. [Development]",
+		Unit:        "1",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_lsminterval.overflow_resources")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualLsmintervalOverflowScopes(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[int64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_lsminterval.overflow_scopes",
+		Description: "The estimated count of unique scopes that overflowed due to scope cardinality limit. [Development]",
+		Unit:        "1",
+		Data: metricdata.Sum[int64]{
+			Temporality: metricdata.CumulativeTemporality,
+			IsMonotonic: true,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_lsminterval.overflow_scopes")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
@@ -298,7 +362,7 @@ func AssertEqualLsmintervalProcessedDataPoints(t *testing.T, tt *componenttest.T
 	want := metricdata.Metrics{
 		Name:        "otelcol_lsminterval.processed_data_points",
 		Description: "The count of metric data points processed by the processor. [Development]",
-		Unit:        "{count}",
+		Unit:        "1",
 		Data: metricdata.Sum[int64]{
 			Temporality: metricdata.CumulativeTemporality,
 			IsMonotonic: true,

@@ -95,12 +95,28 @@ func TestSetupTelemetry(t *testing.T) {
 	}))
 	tb.LsmintervalExportedBytes.Add(context.Background(), 1)
 	tb.LsmintervalExportedDataPoints.Add(context.Background(), 1)
+	tb.LsmintervalOverflowDatapoints.Add(context.Background(), 1)
+	tb.LsmintervalOverflowMetrics.Add(context.Background(), 1)
+	tb.LsmintervalOverflowResources.Add(context.Background(), 1)
+	tb.LsmintervalOverflowScopes.Add(context.Background(), 1)
 	tb.LsmintervalProcessedBytes.Add(context.Background(), 1)
 	tb.LsmintervalProcessedDataPoints.Add(context.Background(), 1)
 	AssertEqualLsmintervalExportedBytes(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualLsmintervalExportedDataPoints(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualLsmintervalOverflowDatapoints(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualLsmintervalOverflowMetrics(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualLsmintervalOverflowResources(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualLsmintervalOverflowScopes(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualLsmintervalPebbleCompactedBytesRead(t, testTel,

@@ -26,7 +26,63 @@ The count of metric data points exported by the processor.
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| {count} | Sum | Int | true | Development |
+| 1 | Sum | Int | true | Development |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| interval | The processing interval. | Any Str |
+
+### otelcol_lsminterval.overflow_datapoints
+
+The estimated count of unique datapoints that overflowed due to datapoint cardinality limit.
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| 1 | Sum | Int | true | Development |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| interval | The processing interval. | Any Str |
+
+### otelcol_lsminterval.overflow_metrics
+
+The estimated count of unique metrics that overflowed due to metric cardinality limit.
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| 1 | Sum | Int | true | Development |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| interval | The processing interval. | Any Str |
+
+### otelcol_lsminterval.overflow_resources
+
+The estimated count of unique resources that overflowed due to resource cardinality limit.
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| 1 | Sum | Int | true | Development |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| interval | The processing interval. | Any Str |
+
+### otelcol_lsminterval.overflow_scopes
+
+The estimated count of unique scopes that overflowed due to scope cardinality limit.
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| 1 | Sum | Int | true | Development |
 
 #### Attributes
 
@@ -160,4 +216,4 @@ The count of metric data points processed by the processor.
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| {count} | Sum | Int | true | Development |
+| 1 | Sum | Int | true | Development |

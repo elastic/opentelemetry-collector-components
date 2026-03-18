@@ -531,7 +531,7 @@ func (p *Processor) exportForInterval(
 			errs = append(errs, fmt.Errorf("failed to decode value from database: %w", err))
 			continue
 		}
-		finalMetrics, err := v.Finalize()
+		finalMetrics, overflowStats, err := v.Finalize()
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to finalize merged metric: %w", err))
 			continue
@@ -599,6 +599,30 @@ func (p *Processor) exportForInterval(
 			ctx = client.NewContext(ctx, info)
 		}
 		attributes = append(attributes, attribute.String("interval", ivl.Duration.String()))
+		if overflowStats.Resources > 0 {
+			p.telemetryBuilder.LsmintervalOverflowResources.Add(
+				ctx, int64(overflowStats.Resources),
+				metric.WithAttributes(attributes...),
+			)
+		}
+		if overflowStats.Scopes > 0 {
+			p.telemetryBuilder.LsmintervalOverflowScopes.Add(
+				ctx, int64(overflowStats.Scopes),
+				metric.WithAttributes(attributes...),
+			)
+		}
+		if overflowStats.Metrics > 0 {
+			p.telemetryBuilder.LsmintervalOverflowMetrics.Add(
+				ctx, int64(overflowStats.Metrics),
+				metric.WithAttributes(attributes...),
+			)
+		}
+		if overflowStats.Datapoints > 0 {
+			p.telemetryBuilder.LsmintervalOverflowDatapoints.Add(
+				ctx, int64(overflowStats.Datapoints),
+				metric.WithAttributes(attributes...),
+			)
+		}
 		if err := p.next.ConsumeMetrics(ctx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
 			continue
