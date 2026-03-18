@@ -66,42 +66,32 @@ elasticapm:
 
 The connector supports selectively preserving dynamic `labels.*` and
 `numeric_labels.*` resource attributes in aggregated metrics. This is useful
-when an upstream component (e.g. `elasticapmprocessor`) produces many prefixed
+when an upstream component (e.g. `elasticapmintakereceiver` or `elasticapmprocessor`) produces many prefixed
 attributes but only a subset should become metric dimensions.
 
 #### How it works
 
-1. An upstream component (e.g. `elasticapmprocessor`) converts resource
-   attributes into `labels.*` and `numeric_labels.*` resource attributes. It
+1. An upstream component (e.g. `elasticapmintakereceiver`) adds resource
+   attributes with prefixesL `labels.*` and `numeric_labels.*`. It
    also stores the names of the keys to preserve as a comma-separated list in
    `client.Metadata` under a configurable key.
-2. On each incoming request the connector reads the comma-separated key list
-   from the metadata context.
-3. Any `labels.*` or `numeric_labels.*` resource attribute whose base key is
-   **not** in the list is stripped. Matching attributes are preserved as-is.
-4. The `signaltometricsconnector` (used internally) includes the surviving
-   attributes via prefix-based resource attribute filtering (`prefix: "labels."`
-   / `prefix: "numeric_labels."`).
+2. Each metric definition carries an OTTL expression
+   (`dynamic_resource_attributes`) that calls this function at runtime. It
+   reads the metadata  key from the request context which represents the allow-list,
+   scans `resource.attributes` for entries matching `labels.*` or
+   `numeric_labels.*`, and returns only those whose base key is in the allow-list.
+3. The returned map is merged into the metric's resource attributes alongside
+   the statically configured include list.
 
-This ensures that **only explicitly designated attributes** appear in aggregated
+This ensures that only explicitly designated attributes appear in aggregated
 metrics, preventing unbounded cardinality from other pipeline stages.
 
 #### Configuration
+No additional configuration is required.
 
-Set `dynamic_resource_attributes_key` under `aggregation` to the metadata key
-that carries the attribute key names to preserve:
-
-```yaml
-elasticapm:
-  aggregation:
-    dynamic_resource_attributes_key: x-dynamic-resource-attributes
-```
-
-When set, the connector automatically adds `labels.*` and `numeric_labels.*`
-prefix entries to all metric resource attribute filters.
-
-When not set (default), no dynamic attribute filtering occurs and the connector
-behaves exactly as before.
+The connector uses the `x-dynamic-resource-attributes` client metadata key by default.
+When the metadata key is present in the request, the connector filters dynamic resource attributes accordingly. 
+When absent, no dynamic attributes are added and the connector behaves as before.
 
 #### Upstream metadata format
 
@@ -129,7 +119,6 @@ receivers:
 connectors:
   elasticapm:
     aggregation:
-      dynamic_resource_attributes_key: x-dynamic-resource-attributes
       directory: /var/lib/otel/aggregation
 
 exporters:
@@ -146,11 +135,15 @@ service:
       exporters: [elasticsearch]
 ```
 
-With this configuration, if a request arrives with the header
-`x-dynamic-resource-attributes: team.name,cost_center` and the resource already
-has `labels.team.name=platform` and `numeric_labels.cost_center=42` (set by
-`elasticapmprocessor`), those attributes will be preserved in every aggregated
-metric while all other `labels.*`/`numeric_labels.*` attributes are stripped.
+With this configuration, if a request arrives with the header `x-dynamic-resource-attributes: team.name,cost_center` 
+and the resource already has `labels.team.name=platform` and `numeric_labels.cost_center=42`, 
+those attributes will be preserved in every aggregated metric while all other `labels.*`/`numeric_labels.*` attributes are excluded.
+
+Internally the connector generates the below OTTL expression per metric using the built-in OTTL function provided by `signaltometricsconnector`. 
+Which filters the resource attributes by an allow-list of keys scoped to one or more prefixes. 
+```
+FilterMapByKeyList(resource.attributes, otelcol.client.metadata["x-dynamic-resource-attributes"], ["labels.", "numeric_labels."])
+```
 
 ### Metrics produced by the connector
 

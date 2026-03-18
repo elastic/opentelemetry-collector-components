@@ -31,6 +31,16 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 )
 
+func TestDynamicResourceAttributesConfig(t *testing.T) {
+	cfg := Config{}
+	got := cfg.dynamicResourceAttributesConfig()
+	require.NotNil(t, got)
+	require.Equal(t,
+		`FilterMapByKeyList(resource.attributes, otelcol.client.metadata["x-dynamic-resource-attributes"], ["labels.", "numeric_labels."])`,
+		got.Statement,
+	)
+}
+
 func TestConfig(t *testing.T) {
 	for _, tc := range []struct {
 		path     string // relative to testdata/configs directory

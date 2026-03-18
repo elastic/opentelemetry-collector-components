@@ -33,6 +33,7 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                  timeUnixNano: "1000000"
           - name: service_summary
             sum:
               aggregationTemporality: 1
@@ -51,6 +52,7 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                  timeUnixNano: "1000000"
           - name: service_summary
             sum:
               aggregationTemporality: 1
@@ -69,5 +71,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                  timeUnixNano: "1000000"
         scope:
           name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector

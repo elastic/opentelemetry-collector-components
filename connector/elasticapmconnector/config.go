@@ -76,17 +76,6 @@ type AggregationConfig struct {
 	// a validation error.
 	MetadataKeys []string `mapstructure:"metadata_keys"`
 
-	// DynamicResourceAttributesKey specifies the client.Metadata key that
-	// contains a comma-separated list of attribute key names to preserve
-	// as dynamic resource attributes in aggregated metrics
-	// (e.g. "team.name,cost_center").
-	//
-	// When set, all labels.* and numeric_labels.* resource attributes
-	// whose base key is NOT in the list are stripped. The matching
-	// attributes are expected to already exist on the resource (set by
-	// elasticapmprocessor or equivalent upstream component).
-	DynamicResourceAttributesKey string `mapstructure:"dynamic_resource_attributes_key"`
-
 	// Intervals holds an optional list of time intervals that the processor
 	// will aggregate over. The interval duration must be in increasing
 	// order and must be a factor of the smallest interval duration.
@@ -207,14 +196,6 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		}, toSignalToMetricsAttributes(cfg.CustomResourceAttributes)...,
 	)
 
-	if cfg.dynamicResourceAttributesKey() != "" {
-		for _, prefix := range dynamicAttributePrefixes {
-			commonResourceAttributes = append(commonResourceAttributes,
-				signaltometricsconfig.Attribute{Prefix: prefix},
-			)
-		}
-	}
-
 	// serviceSummaryResourceAttributes are resource attributes for service
 	// summary metrics.
 	serviceSummaryResourceAttributes := slices.Clone(commonResourceAttributes)
@@ -306,7 +287,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		Value:   "Microseconds(end_time - start_time)",
 	}
 
-	return &signaltometricsconfig.Config{
+	signalToMetricsConfig := &signaltometricsconfig.Config{
 		Logs: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
 			IncludeResourceAttributes: serviceSummaryResourceAttributes,
@@ -426,13 +407,32 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 		}},
 	}
+
+	dynamicResAttrs := cfg.dynamicResourceAttributesConfig()
+	for i := range signalToMetricsConfig.Logs {
+		signalToMetricsConfig.Logs[i].DynamicResourceAttributes = dynamicResAttrs
+	}
+	for i := range signalToMetricsConfig.Datapoints {
+		signalToMetricsConfig.Datapoints[i].DynamicResourceAttributes = dynamicResAttrs
+	}
+	for i := range signalToMetricsConfig.Spans {
+		signalToMetricsConfig.Spans[i].DynamicResourceAttributes = dynamicResAttrs
+	}
+
+	return signalToMetricsConfig
 }
 
-func (cfg Config) dynamicResourceAttributesKey() string {
-	if cfg.Aggregation == nil {
-		return ""
+const defaultDynamicResourceAttributesKey = "x-dynamic-resource-attributes"
+
+// dynamicResourceAttributesConfig returns the DynamicResourceAttributes config
+// for each metric definition, using FilterMapByKeyList with the default key.
+func (cfg Config) dynamicResourceAttributesConfig() *signaltometricsconfig.DynamicResourceAttributes {
+	return &signaltometricsconfig.DynamicResourceAttributes{
+		Statement: fmt.Sprintf(
+			`FilterMapByKeyList(resource.attributes, otelcol.client.metadata[%q], ["labels.", "numeric_labels."])`,
+			defaultDynamicResourceAttributesKey,
+		),
 	}
-	return cfg.Aggregation.DynamicResourceAttributesKey
 }
 
 // toSignalToMetricsAttributes converts slice to string to signal to metricsa attributes
