@@ -651,6 +651,39 @@ func TestMetadataPropagation(t *testing.T) {
 	}
 }
 
+func TestGlobalLabelsMetadataPropagation(t *testing.T) {
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
+		},
+	}
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	nextTrace := new(consumertest.TracesSink)
+	rcv, err := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
+	require.NoError(t, err)
+
+	require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
+	defer func() {
+		require.NoError(t, rcv.Shutdown(context.Background()))
+	}()
+
+	sendInput(t, "transactions.ndjson", testEndpoint)
+
+	ctxs := nextTrace.Contexts()
+	require.GreaterOrEqual(t, len(ctxs), 1)
+	md := client.FromContext(ctxs[0]).Metadata
+
+	got := md.Get("x-dynamic-resource-attributes")
+	require.Len(t, got, 1, "expected exactly one x-dynamic-resource-attributes value")
+	require.Equal(t, "tag1,tag2", got[0])
+}
+
 func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {

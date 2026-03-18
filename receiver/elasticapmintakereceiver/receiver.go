@@ -25,6 +25,7 @@ import (
 	"hash"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 
@@ -242,6 +243,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		r.settings.Logger.Error("failed to process batch", zap.Error(err))
 	}
 
+	globalKeySet := make([]string, 0)
 	for _, event := range *batch {
 		timestampNanos := event.GetTimestamp()
 
@@ -250,7 +252,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()
 
-			r.setResourceAttributes(rm.Resource().Attributes(), event)
+			r.setResourceAttributes(rm.Resource().Attributes(), event, &globalKeySet)
 
 			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestampNanos); err != nil {
 				return err
@@ -258,19 +260,19 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 
-			r.setResourceAttributes(rl.Resource().Attributes(), event)
+			r.setResourceAttributes(rl.Resource().Attributes(), event, &globalKeySet)
 
 			r.elasticErrorToOtelLogRecord(&rl, event, timestampNanos)
 		case modelpb.LogEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 
-			r.setResourceAttributes(rl.Resource().Attributes(), event)
+			r.setResourceAttributes(rl.Resource().Attributes(), event, &globalKeySet)
 
 			r.elasticLogToOtelLogRecord(&rl, event, timestampNanos)
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
 
-			r.setResourceAttributes(rs.Resource().Attributes(), event)
+			r.setResourceAttributes(rs.Resource().Attributes(), event, &globalKeySet)
 
 			s := r.elasticEventToOtelSpan(&rs, event, timestampNanos)
 
@@ -284,6 +286,13 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 			return fmt.Errorf("unhandled event type %q", event.Type())
 		}
 	}
+
+	if len(globalKeySet) > 0 {
+		slices.Sort(globalKeySet)
+		globalKeySet = slices.Compact(globalKeySet)
+		ctx = withDynamicResourceAttributes(ctx, globalKeySet)
+	}
+
 	var errs []error
 	if numRecords := ld.LogRecordCount(); numRecords != 0 && r.nextLogs != nil {
 		ctx := r.obsreport.StartLogsOp(ctx)
@@ -308,10 +317,11 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 
 // setResourceAttributes maps event fields to attributes.
 // Expects the attribute map to be at the resource level e.g. pmetric.ResourceMetrics.Resource().Attributes().
-func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, event *modelpb.APMEvent) {
+// globalKeys accumulates label keys marked as Global during label processing.
+func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, event *modelpb.APMEvent, globalKeys *[]string) {
 	mappers.TranslateToOtelResourceAttributes(event, attrs)
 	mappers.SetDerivedResourceAttributes(event, attrs)
-	mappers.SetElasticSpecificResourceAttributes(event, attrs)
+	mappers.SetElasticSpecificResourceAttributes(event, attrs, globalKeys)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) error {
@@ -630,4 +640,21 @@ func withMappingMode(info client.Info, mode string, includeMetadata bool) client
 		Auth:     info.Auth,
 		Metadata: client.NewMetadata(newMeta),
 	}
+}
+
+// withDynamicResourceAttributes enriches the context with the global label
+// keys as a CSV value under the "x-dynamic-resource-attributes" metadata key.
+// The provided keySet must be sorted and deduplicated by the caller.
+func withDynamicResourceAttributes(ctx context.Context, keySet []string) context.Context {
+	info := client.FromContext(ctx)
+	newMeta := make(map[string][]string)
+	for k := range info.Metadata.Keys() {
+		newMeta[k] = info.Metadata.Get(k)
+	}
+	newMeta["x-dynamic-resource-attributes"] = []string{strings.Join(keySet, ",")}
+	return client.NewContext(ctx, client.Info{
+		Addr:     info.Addr,
+		Auth:     info.Auth,
+		Metadata: client.NewMetadata(newMeta),
+	})
 }

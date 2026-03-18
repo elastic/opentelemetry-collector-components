@@ -382,7 +382,7 @@ func setTransactionMarks(marks map[string]*modelpb.TransactionMark, attributesMa
 // sets the resource attribute.
 // These fields are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
-func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map, globalKeys *[]string) {
 	if event.Cloud != nil {
 		if event.Cloud.Origin != nil {
 			putNonEmptyStr(attributesMap, elasticattr.CloudOriginAccountID, event.Cloud.Origin.AccountId)
@@ -443,7 +443,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 		}
 	}
 
-	setLabels(event, attributesMap)
+	setLabels(event, attributesMap, globalKeys)
 }
 
 // setLabels sets single value label fields from the APMEvent Labels and NumericLabels fields.
@@ -451,29 +451,39 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 // Allows key names with spaces to match existing behavior.
 // Ignored empty keys and values.
 //
+// When globalKeys is non-nil, keys marked as Global are appended to the slice.
+//
 // The apm data library logic will take care of overwriting metadata labels with event labels when decoding
 // the input to modelpb.APMEvent, so we simply copy all labels from the event here.
-func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
+func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map, globalKeys *[]string) {
 	for key, labelValue := range event.Labels {
-		if key != "" && labelValue != nil && labelValue.Value != "" {
-			attrKey := "labels." + key
-			attributesMap.PutStr(attrKey, labelValue.Value)
+		if key == "" || labelValue == nil {
+			continue
 		}
-
-		if key != "" && labelValue != nil && len(labelValue.Values) > 0 {
-			attrKey := "labels." + key
-			labelValues := attributesMap.PutEmptySlice(attrKey)
+		if labelValue.Value != "" {
+			attributesMap.PutStr("labels."+key, labelValue.Value)
+		}
+		if len(labelValue.Values) > 0 {
+			labelValues := attributesMap.PutEmptySlice("labels." + key)
 			labelValues.EnsureCapacity(len(labelValue.Values))
 			for _, v := range labelValue.Values {
 				labelValues.AppendEmpty().SetStr(v)
 			}
 		}
+		if globalKeys != nil && labelValue.Global {
+			*globalKeys = append(*globalKeys, key)
+		}
 	}
 
 	for key, numericLabelValue := range event.NumericLabels {
-		if key != "" && numericLabelValue != nil && numericLabelValue.Value != 0 {
-			attrKey := "numeric_labels." + key
-			attributesMap.PutDouble(attrKey, numericLabelValue.Value)
+		if key == "" || numericLabelValue == nil {
+			continue
+		}
+		if numericLabelValue.Value != 0 {
+			attributesMap.PutDouble("numeric_labels."+key, numericLabelValue.Value)
+		}
+		if globalKeys != nil && numericLabelValue.Global {
+			*globalKeys = append(*globalKeys, key)
 		}
 	}
 }
