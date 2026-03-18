@@ -287,7 +287,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		Value:   "Microseconds(end_time - start_time)",
 	}
 
-	return &signaltometricsconfig.Config{
+	signalToMetricsConfig := &signaltometricsconfig.Config{
 		Logs: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
 			IncludeResourceAttributes: serviceSummaryResourceAttributes,
@@ -406,6 +406,32 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Value:   "Double(0)",
 			}),
 		}},
+	}
+
+	dynamicResAttrs := cfg.dynamicResourceAttributesConfig()
+	for i := range signalToMetricsConfig.Logs {
+		signalToMetricsConfig.Logs[i].DynamicResourceAttributes = dynamicResAttrs
+	}
+	for i := range signalToMetricsConfig.Datapoints {
+		signalToMetricsConfig.Datapoints[i].DynamicResourceAttributes = dynamicResAttrs
+	}
+	for i := range signalToMetricsConfig.Spans {
+		signalToMetricsConfig.Spans[i].DynamicResourceAttributes = dynamicResAttrs
+	}
+
+	return signalToMetricsConfig
+}
+
+const defaultDynamicResourceAttributesKey = "x-dynamic-resource-attributes"
+
+// dynamicResourceAttributesConfig returns the DynamicResourceAttributes config
+// for each metric definition, using FilterMapByKeyList with the default key.
+func (cfg Config) dynamicResourceAttributesConfig() *signaltometricsconfig.DynamicResourceAttributes {
+	return &signaltometricsconfig.DynamicResourceAttributes{
+		Statement: fmt.Sprintf(
+			`FilterMapByKeyList(resource.attributes, otelcol.client.metadata[%q], ["labels.", "numeric_labels."])`,
+			defaultDynamicResourceAttributesKey,
+		),
 	}
 }
 

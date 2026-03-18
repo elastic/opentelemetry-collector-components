@@ -94,7 +94,6 @@ func (c *elasticapmConnector) newTracesToMetrics(ctx context.Context) (consumer.
 	if err != nil {
 		return nil, err
 	}
-	// Wrap the base consumer to enrich spans
 	return &spanEnricher{next: baseConsumer}, nil
 }
 

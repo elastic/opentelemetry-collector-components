@@ -7,15 +7,15 @@ resourceMetrics:
         - key: deployment.environment
           value:
             stringValue: qa
+        - key: foo
+          value:
+            stringValue: bar
         - key: service.name
           value:
             stringValue: foo
         - key: telemetry.sdk.language
           value:
             stringValue: go
-        - key: foo
-          value:
-            stringValue: bar
     scopeMetrics:
       - metrics:
           - name: service_summary
@@ -36,6 +36,7 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                  timeUnixNano: "1000000"
           - name: service_summary
             sum:
               aggregationTemporality: 1
@@ -54,6 +55,7 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                  timeUnixNano: "1000000"
           - name: service_summary
             sum:
               aggregationTemporality: 1
@@ -72,5 +74,6 @@ resourceMetrics:
                     - key: processor.event
                       value:
                         stringValue: metric
+                  timeUnixNano: "1000000"
         scope:
           name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector

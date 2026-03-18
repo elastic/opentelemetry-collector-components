@@ -1,0 +1,29 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: foo
+        - key: deployment.environment
+          value:
+            stringValue: qa
+        - key: telemetry.sdk.language
+          value:
+            stringValue: go
+        # Dynamic attributes — preserved by filter
+        - key: labels.team.name
+          value:
+            stringValue: platform
+        - key: numeric_labels.cost_center
+          value:
+            doubleValue: 42
+        # Non-dynamic attribute — stripped by filter
+        - key: labels.non_global
+          value:
+            stringValue: should_be_removed
+    scopeLogs:
+      - scope: {}
+        logRecords:
+          - body:
+              stringValue: This is a log message
+            timeUnixNano: "1581452773000000789"

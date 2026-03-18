@@ -7,15 +7,15 @@ resourceMetrics:
         - key: deployment.environment
           value:
             stringValue: qa
+        - key: foo
+          value:
+            stringValue: bar
         - key: service.name
           value:
             stringValue: foo
         - key: telemetry.sdk.language
           value:
             stringValue: go
-        - key: foo
-          value:
-            stringValue: bar
     scopeMetrics:
       - metrics:
           - name: service_summary
@@ -106,12 +106,12 @@ resourceMetrics:
                     - key: span.destination.service.resource
                       value:
                         stringValue: mysql
-                    - key: span.name
-                      value:
-                        stringValue: th-value-8
                     - key: span.foo
                       value:
                         stringValue: span.bar
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
                   timeUnixNano: "1000000"
           - description: APM span destination metrics
             name: span.destination.service.response_time.count
@@ -144,12 +144,12 @@ resourceMetrics:
                     - key: span.destination.service.resource
                       value:
                         stringValue: mysql
-                    - key: span.name
-                      value:
-                        stringValue: th-value-8
                     - key: span.foo
                       value:
                         stringValue: span.bar
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
                   timeUnixNano: "1000000"
           - description: APM span destination metrics
             name: span.destination.service.response_time.count
@@ -182,12 +182,12 @@ resourceMetrics:
                     - key: span.destination.service.resource
                       value:
                         stringValue: mysql
-                    - key: span.name
-                      value:
-                        stringValue: th-value-8
                     - key: span.foo
                       value:
                         stringValue: span.bar
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
                   timeUnixNano: "1000000"
           - description: APM span destination metrics
             name: span.destination.service.response_time.sum.us
@@ -220,12 +220,12 @@ resourceMetrics:
                     - key: span.destination.service.resource
                       value:
                         stringValue: mysql
-                    - key: span.name
-                      value:
-                        stringValue: th-value-8
                     - key: span.foo
                       value:
                         stringValue: span.bar
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
                   timeUnixNano: "1000000"
             unit: us
           - description: APM span destination metrics
@@ -259,12 +259,12 @@ resourceMetrics:
                     - key: span.destination.service.resource
                       value:
                         stringValue: mysql
-                    - key: span.name
-                      value:
-                        stringValue: th-value-8
                     - key: span.foo
                       value:
                         stringValue: span.bar
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
                   timeUnixNano: "1000000"
             unit: us
           - description: APM span destination metrics
@@ -298,12 +298,12 @@ resourceMetrics:
                     - key: span.destination.service.resource
                       value:
                         stringValue: mysql
-                    - key: span.name
-                      value:
-                        stringValue: th-value-8
                     - key: span.foo
                       value:
                         stringValue: span.bar
+                    - key: span.name
+                      value:
+                        stringValue: th-value-8
                   timeUnixNano: "1000000"
             unit: us
         scope:

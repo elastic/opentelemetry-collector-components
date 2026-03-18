@@ -1,18 +1,12 @@
 resourceMetrics:
   - resource:
       attributes:
-        - key: deployment.environment
+        - key: overflow
           value:
-            stringValue: qa
+            stringValue: resource
         - key: service.name
           value:
-            stringValue: foo
-        - key: telemetry.sdk.language
-          value:
-            stringValue: go
-        - key: agent.name
-          value:
-            stringValue: unknown
+            stringValue: _other
     scopeMetrics:
       - metrics:
           - name: service_summary
@@ -76,12 +70,18 @@ resourceMetrics:
           name: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector
   - resource:
       attributes:
+        - key: agent.name
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: qa
         - key: service.name
           value:
-            stringValue: "_other"
-        - key: overflow
+            stringValue: foo
+        - key: telemetry.sdk.language
           value:
-            stringValue: resource
+            stringValue: go
     scopeMetrics:
       - metrics:
           - name: service_summary
