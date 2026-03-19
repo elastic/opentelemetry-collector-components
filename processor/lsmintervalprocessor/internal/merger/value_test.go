@@ -35,14 +35,20 @@ const (
 )
 
 func TestMergeMetric(t *testing.T) {
-	for _, tc := range []string{
-		"empty",
-		"single_metric",
-		"all_overflow",
+	for _, tc := range []struct {
+		name              string
+		expectedOverflows OverflowStats
+	}{
+		{name: "empty"},
+		{name: "single_metric"},
+		{
+			name:              "all_overflow",
+			expectedOverflows: OverflowStats{Resources: 1, Scopes: 1, Metrics: 1, Datapoints: 1},
+		},
 	} {
-		t.Run(tc, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			v := getTestValue(t)
-			dir := filepath.Join("../../testdata/merger", tc)
+			dir := filepath.Join("../../testdata/merger", tc.name)
 			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
 			mergeMetrics(t, v, md)
@@ -56,9 +62,10 @@ func TestMergeMetric(t *testing.T) {
 			// Compare the final metric with the expected metric
 			expected, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 			require.NoError(t, err)
-			actual, err := v.Finalize()
+			actual, overflowStats, err := v.Finalize()
 			require.NoError(t, err)
 			assert.NoError(t, pmetrictest.CompareMetrics(expected, actual))
+			assert.Equal(t, tc.expectedOverflows, overflowStats)
 		})
 	}
 }

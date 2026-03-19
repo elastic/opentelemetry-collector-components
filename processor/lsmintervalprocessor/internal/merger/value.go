@@ -103,6 +103,15 @@ type pdataMetric struct {
 	datapointTracker *limits.Tracker
 }
 
+// OverflowStats holds the estimated overflow counts at each level
+// of the cardinality tracking hierarchy.
+type OverflowStats struct {
+	Resources  uint64
+	Scopes     uint64
+	Metrics    uint64
+	Datapoints uint64
+}
+
 // NewValue creates a new instance of the value with the configured limiters.
 func NewValue(
 	resLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig,
@@ -297,46 +306,59 @@ func (v *Value) MergeMetric(
 }
 
 // Finalize finalizes all overflows in the metrics to prepare it for
-// harvest. This method must be called only once for harvest.
-func (s *Value) Finalize() (pmetric.Metrics, error) {
+// harvest. It also returns the estimated overflow counts at each level.
+// This method must be called only once for harvest.
+func (s *Value) Finalize() (pmetric.Metrics, OverflowStats, error) {
 	// At this point we need to assume that the metrics are returned
 	// as a final step in the store, thus, prepare the final metric.
 	// In the final metric we have to add datapoint limits. Also, we
 	// need to ensure that lookup tables, and thus limits, are
 	// initialized.
 	s.initLookupTables()
+
+	var stats OverflowStats
+	if s.trackers != nil {
+		stats.Resources = s.trackers.GetResourceTracker().EstimateOverflow()
+	}
+	for _, rm := range s.resLookup {
+		stats.Scopes += rm.scopeTracker.EstimateOverflow()
+	}
 	for _, sm := range s.scopeLookup {
 		if !sm.metricTracker.HasOverflow() {
 			continue
 		}
+		overflowCount := sm.metricTracker.EstimateOverflow()
+		stats.Metrics += overflowCount
 		// Add overflow metric due to metric limit breached
 		if err := fillOverflowMetric(
 			sm.ScopeMetrics.Metrics().AppendEmpty(),
 			overflowMetricName,
 			overflowMetricDesc,
-			sm.metricTracker.EstimateOverflow(),
+			overflowCount,
 			s.metricLimitCfg.Overflow.Attributes,
 		); err != nil {
-			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
+			return pmetric.Metrics{}, OverflowStats{}, fmt.Errorf("failed to finalize merged metric: %w", err)
 		}
 	}
 	for mID, m := range s.metricLookup {
 		if !m.datapointTracker.HasOverflow() {
 			continue
 		}
+		overflowCount := m.datapointTracker.EstimateOverflow()
+		stats.Datapoints += overflowCount
 		// Add overflow metric due to datapoint limit breached
 		sm := s.scopeLookup[mID.Scope()]
 		if err := fillOverflowMetric(
 			sm.ScopeMetrics.Metrics().AppendEmpty(),
 			overflowDatapointMetricName,
 			overflowDatapointMetricDesc,
-			m.datapointTracker.EstimateOverflow(),
+			overflowCount,
 			s.datapointLimitCfg.Overflow.Attributes,
 		); err != nil {
-			return pmetric.Metrics{}, fmt.Errorf("failed to finalize merged metric: %w", err)
+			return pmetric.Metrics{}, OverflowStats{}, fmt.Errorf("failed to finalize merged metric: %w", err)
 		}
 	}
-	return s.source, nil
+	return s.source, stats, nil
 }
 
 func (s *Value) initLookupTables() {
