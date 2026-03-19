@@ -47,10 +47,7 @@ type TelemetryBuilder struct {
 	registrations                             []metric.Registration
 	LsmintervalExportedBytes                  metric.Int64Counter
 	LsmintervalExportedDataPoints             metric.Int64Counter
-	LsmintervalOverflowDatapoints             metric.Int64Counter
-	LsmintervalOverflowMetrics                metric.Int64Counter
-	LsmintervalOverflowResources              metric.Int64Counter
-	LsmintervalOverflowScopes                 metric.Int64Counter
+	LsmintervalOverflow                       metric.Int64Counter
 	LsmintervalPebbleCompactedBytesRead       metric.Int64ObservableCounter
 	LsmintervalPebbleCompactedBytesWritten    metric.Int64ObservableCounter
 	LsmintervalPebbleCompactions              metric.Int64ObservableCounter
@@ -330,27 +327,9 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
-	builder.LsmintervalOverflowDatapoints, err = builder.meter.Int64Counter(
-		"otelcol_lsminterval.overflow_datapoints",
-		metric.WithDescription("The estimated count of unique datapoints that overflowed due to datapoint cardinality limit. [Development]"),
-		metric.WithUnit("1"),
-	)
-	errs = errors.Join(errs, err)
-	builder.LsmintervalOverflowMetrics, err = builder.meter.Int64Counter(
-		"otelcol_lsminterval.overflow_metrics",
-		metric.WithDescription("The estimated count of unique metrics that overflowed due to metric cardinality limit. [Development]"),
-		metric.WithUnit("1"),
-	)
-	errs = errors.Join(errs, err)
-	builder.LsmintervalOverflowResources, err = builder.meter.Int64Counter(
-		"otelcol_lsminterval.overflow_resources",
-		metric.WithDescription("The estimated count of unique resources that overflowed due to resource cardinality limit. [Development]"),
-		metric.WithUnit("1"),
-	)
-	errs = errors.Join(errs, err)
-	builder.LsmintervalOverflowScopes, err = builder.meter.Int64Counter(
-		"otelcol_lsminterval.overflow_scopes",
-		metric.WithDescription("The estimated count of unique scopes that overflowed due to scope cardinality limit. [Development]"),
+	builder.LsmintervalOverflow, err = builder.meter.Int64Counter(
+		"otelcol_lsminterval.overflow",
+		metric.WithDescription("The estimated count of unique items that overflowed due to cardinality limits. [Development]"),
 		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)

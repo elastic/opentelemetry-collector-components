@@ -34,23 +34,9 @@ The count of metric data points exported by the processor.
 | ---- | ----------- | ------ |
 | interval | The processing interval. | Any Str |
 
-### otelcol_lsminterval.overflow_datapoints
+### otelcol_lsminterval.overflow
 
-The estimated count of unique datapoints that overflowed due to datapoint cardinality limit.
-
-| Unit | Metric Type | Value Type | Monotonic | Stability |
-| ---- | ----------- | ---------- | --------- | --------- |
-| 1 | Sum | Int | true | Development |
-
-#### Attributes
-
-| Name | Description | Values |
-| ---- | ----------- | ------ |
-| interval | The processing interval. | Any Str |
-
-### otelcol_lsminterval.overflow_metrics
-
-The estimated count of unique metrics that overflowed due to metric cardinality limit.
+The estimated count of unique items that overflowed due to cardinality limits.
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
@@ -61,34 +47,7 @@ The estimated count of unique metrics that overflowed due to metric cardinality 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
 | interval | The processing interval. | Any Str |
-
-### otelcol_lsminterval.overflow_resources
-
-The estimated count of unique resources that overflowed due to resource cardinality limit.
-
-| Unit | Metric Type | Value Type | Monotonic | Stability |
-| ---- | ----------- | ---------- | --------- | --------- |
-| 1 | Sum | Int | true | Development |
-
-#### Attributes
-
-| Name | Description | Values |
-| ---- | ----------- | ------ |
-| interval | The processing interval. | Any Str |
-
-### otelcol_lsminterval.overflow_scopes
-
-The estimated count of unique scopes that overflowed due to scope cardinality limit.
-
-| Unit | Metric Type | Value Type | Monotonic | Stability |
-| ---- | ----------- | ---------- | --------- | --------- |
-| 1 | Sum | Int | true | Development |
-
-#### Attributes
-
-| Name | Description | Values |
-| ---- | ----------- | ------ |
-| interval | The processing interval. | Any Str |
+| kind | The kind of overflow (resource, scope, metric, or datapoint). | `resource`, `scope`, `metric`, `datapoint` |
 
 ### otelcol_lsminterval.pebble_compacted_bytes_read
 

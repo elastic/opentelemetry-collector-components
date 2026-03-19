@@ -16,6 +16,10 @@ attributes:
   interval:
     description: The processing interval.
     type: string
+  kind:
+    description: The kind of overflow (resource, scope, metric, or datapoint).
+    type: string
+    enum: [resource, scope, metric, datapoint]
 
 telemetry:
   metrics:
@@ -163,42 +167,15 @@ telemetry:
         async: true
         value_type: int
         monotonic: true
-    lsminterval.overflow_resources:
+    lsminterval.overflow:
       enabled: true
-      description: The estimated count of unique resources that overflowed due to resource cardinality limit.
+      description: The estimated count of unique items that overflowed due to cardinality limits.
       unit: "1"
       stability: development
       sum:
         value_type: int
         monotonic: true
-      attributes: [interval]
-    lsminterval.overflow_scopes:
-      enabled: true
-      description: The estimated count of unique scopes that overflowed due to scope cardinality limit.
-      unit: "1"
-      stability: development
-      sum:
-        value_type: int
-        monotonic: true
-      attributes: [interval]
-    lsminterval.overflow_metrics:
-      enabled: true
-      description: The estimated count of unique metrics that overflowed due to metric cardinality limit.
-      unit: "1"
-      stability: development
-      sum:
-        value_type: int
-        monotonic: true
-      attributes: [interval]
-    lsminterval.overflow_datapoints:
-      enabled: true
-      description: The estimated count of unique datapoints that overflowed due to datapoint cardinality limit.
-      unit: "1"
-      stability: development
-      sum:
-        value_type: int
-        monotonic: true
-      attributes: [interval]
+      attributes: [interval, kind]
     lsminterval.processed_bytes:
       enabled: true
       description: The size in bytes of metric data points processed by the processor.

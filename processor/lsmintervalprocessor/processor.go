@@ -599,29 +599,24 @@ func (p *Processor) exportForInterval(
 			ctx = client.NewContext(ctx, info)
 		}
 		attributes = append(attributes, attribute.String("interval", ivl.Duration.String()))
-		if overflowStats.Resources > 0 {
-			p.telemetryBuilder.LsmintervalOverflowResources.Add(
-				ctx, int64(overflowStats.Resources),
-				metric.WithAttributes(attributes...),
-			)
-		}
-		if overflowStats.Scopes > 0 {
-			p.telemetryBuilder.LsmintervalOverflowScopes.Add(
-				ctx, int64(overflowStats.Scopes),
-				metric.WithAttributes(attributes...),
-			)
-		}
-		if overflowStats.Metrics > 0 {
-			p.telemetryBuilder.LsmintervalOverflowMetrics.Add(
-				ctx, int64(overflowStats.Metrics),
-				metric.WithAttributes(attributes...),
-			)
-		}
-		if overflowStats.Datapoints > 0 {
-			p.telemetryBuilder.LsmintervalOverflowDatapoints.Add(
-				ctx, int64(overflowStats.Datapoints),
-				metric.WithAttributes(attributes...),
-			)
+		for _, ov := range []struct {
+			kind  string
+			count uint64
+		}{
+			{"resource", overflowStats.Resources},
+			{"scope", overflowStats.Scopes},
+			{"metric", overflowStats.Metrics},
+			{"datapoint", overflowStats.Datapoints},
+		} {
+			if ov.count > 0 {
+				overflowAttrs := append(attributes,
+					attribute.String("kind", ov.kind),
+				)
+				p.telemetryBuilder.LsmintervalOverflow.Add(
+					ctx, int64(ov.count),
+					metric.WithAttributes(overflowAttrs...),
+				)
+			}
 		}
 		if err := p.next.ConsumeMetrics(ctx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
