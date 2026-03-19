@@ -377,6 +377,10 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 		}
 	}
 
+	for k, v := range e.config.Fields {
+		body.PutStr(k, v)
+	}
+
 	// We need to set these attributes on the record itself for the
 	// Elasticsearch exporter to route the record to the correct
 	// data stream.

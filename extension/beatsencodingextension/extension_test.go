@@ -110,6 +110,17 @@ func TestUnmarshalLogs(t *testing.T) {
 			wantLogs:   3,
 		},
 		{
+			name:   "fields",
+			config: Config{
+				Format:     FormatText,
+				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
+				Fields:     map[string]string{"environment": "production", "team": "security"},
+			},
+			inputFile:  "aws_vpcflow.txt",
+			goldenFile: "aws_vpcflow_fields_expected.yaml",
+			wantLogs:   3,
+		},
+		{
 			name: "input_type and tags",
 			config: Config{
 				Format:    FormatText,
