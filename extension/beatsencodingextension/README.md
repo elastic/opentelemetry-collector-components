@@ -1,6 +1,6 @@
 # Beats Encoding Extension
 
-The Beats encoding extension converts raw log bytes into OpenTelemetry log records formatted for Elastic Beats/Agent integration compatibility. It implements the `encoding.LogsUnmarshalerExtension` interface and is intended for use with receivers that accept raw payloads (e.g., `httpreceiver`).
+The Beats encoding extension converts raw log bytes into OpenTelemetry log records formatted for Elastic Beats/Agent integration compatibility. It implements the `encoding.LogsUnmarshalerExtension` and `encoding.LogsDecoderExtension` (streaming) interfaces and is intended for use with receivers that accept raw payloads (e.g., `httpreceiver`).
 
 Each extracted record is stored as a raw string under the `message` body map key. Data stream routing attributes (`data_stream.type`, `data_stream.dataset`, `data_stream.namespace`) are set on each log record so that mOTLP routes the document to the correct integration data stream.
 
@@ -9,9 +9,11 @@ Each extracted record is stored as a raw string under the `message` body map key
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `format` | string | `json` | Input format: `json` or `text`. |
-| `unwrap` | string | _(empty)_ | JSONPath expression to extract records from a wrapper structure. Only used with `json` format. |
+| `unwrap` | string | _(empty)_ | Restricted path expression to extract records from a wrapper structure (e.g., `$.records[*]`). Only `$.key1.key2...keyN[*]` is supported. Only used with `json` format. |
 | `data_stream.dataset` | string | _(required)_ | Data stream dataset (e.g., `azure.activitylogs`). |
 | `data_stream.namespace` | string | `default` | Data stream namespace. |
+| `input_type` | string | _(empty)_ | Sets the `input.type` field in the log record body (e.g., `aws-s3`, `azure-eventhub`). |
+| `tags` | []string | _(empty)_ | List of strings appended to the `tags` field in the log record body (e.g., `["forwarded", "aws-cloudtrail"]`). |
 
 ### Formats
 
