@@ -57,6 +57,14 @@ type Config struct {
 	// DataStream defines the data stream routing attributes.
 	DataStream DataStreamConfig `mapstructure:"data_stream"`
 
+	// InputType sets the "input.type" field in the log record body,
+	// matching what Beats inputs report (e.g. "aws-s3", "azure-eventhub").
+	InputType string `mapstructure:"input_type,omitempty"`
+
+	// Tags is a list of strings appended to the "tags" field in the log
+	// record body (e.g. ["forwarded", "aws-cloudtrail"]).
+	Tags []string `mapstructure:"tags,omitempty"`
+
 	// prevent unkeyed literal initialization
 	_ struct{}
 }

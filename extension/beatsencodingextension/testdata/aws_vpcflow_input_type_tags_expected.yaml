@@ -8,7 +8,7 @@ resourceLogs:
                   stringValue: logs
               - key: data_stream.dataset
                 value:
-                  stringValue: custom.nested
+                  stringValue: aws.vpcflow
               - key: data_stream.namespace
                 value:
                   stringValue: default
@@ -17,28 +17,37 @@ resourceLogs:
                 values:
                   - key: message
                     value:
-                      stringValue: '{"id": 1, "name": "first"}'
-                  - key: event.dataset
+                      stringValue: 2 123456789012 eni-1235b8ca123456789 172.31.16.139 172.31.16.21 20641 22 6 20 4249 1418530010 1418530070 ACCEPT OK
+                  - key: tags
                     value:
-                      stringValue: custom.nested
+                      arrayValue:
+                        values:
+                          - stringValue: forwarded
+                          - stringValue: aws-vpcflow
                   - key: data_stream.type
                     value:
                       stringValue: logs
                   - key: data_stream.dataset
                     value:
-                      stringValue: custom.nested
+                      stringValue: aws.vpcflow
                   - key: data_stream.namespace
                     value:
                       stringValue: default
-            observedTimeUnixNano: "1773919567377340000"
-            timeUnixNano: "1773919567377340000"
+                  - key: event.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: input.type
+                    value:
+                      stringValue: aws-s3
+            observedTimeUnixNano: "1773919567377884000"
+            timeUnixNano: "1773919567377884000"
           - attributes:
               - key: data_stream.type
                 value:
                   stringValue: logs
               - key: data_stream.dataset
                 value:
-                  stringValue: custom.nested
+                  stringValue: aws.vpcflow
               - key: data_stream.namespace
                 value:
                   stringValue: default
@@ -47,28 +56,37 @@ resourceLogs:
                 values:
                   - key: message
                     value:
-                      stringValue: '{"id": 2, "name": "second"}'
-                  - key: event.dataset
+                      stringValue: 2 123456789012 eni-1235b8ca123456789 172.31.9.69 172.31.9.12 49761 3389 6 20 4249 1418530010 1418530070 REJECT OK
+                  - key: tags
                     value:
-                      stringValue: custom.nested
+                      arrayValue:
+                        values:
+                          - stringValue: forwarded
+                          - stringValue: aws-vpcflow
                   - key: data_stream.type
                     value:
                       stringValue: logs
                   - key: data_stream.dataset
                     value:
-                      stringValue: custom.nested
+                      stringValue: aws.vpcflow
                   - key: data_stream.namespace
                     value:
                       stringValue: default
-            observedTimeUnixNano: "1773919567377340000"
-            timeUnixNano: "1773919567377340000"
+                  - key: event.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: input.type
+                    value:
+                      stringValue: aws-s3
+            observedTimeUnixNano: "1773919567377884000"
+            timeUnixNano: "1773919567377884000"
           - attributes:
               - key: data_stream.type
                 value:
                   stringValue: logs
               - key: data_stream.dataset
                 value:
-                  stringValue: custom.nested
+                  stringValue: aws.vpcflow
               - key: data_stream.namespace
                 value:
                   stringValue: default
@@ -77,21 +95,30 @@ resourceLogs:
                 values:
                   - key: message
                     value:
-                      stringValue: '{"id": 3, "name": "third"}'
-                  - key: event.dataset
+                      stringValue: 2 123456789012 eni-1235b8ca123456789 10.0.1.5 10.0.2.15 34567 443 6 15 3500 1418530010 1418530070 ACCEPT OK
+                  - key: tags
                     value:
-                      stringValue: custom.nested
+                      arrayValue:
+                        values:
+                          - stringValue: forwarded
+                          - stringValue: aws-vpcflow
                   - key: data_stream.type
                     value:
                       stringValue: logs
                   - key: data_stream.dataset
                     value:
-                      stringValue: custom.nested
+                      stringValue: aws.vpcflow
                   - key: data_stream.namespace
                     value:
                       stringValue: default
-            observedTimeUnixNano: "1773919567377340000"
-            timeUnixNano: "1773919567377340000"
+                  - key: event.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: input.type
+                    value:
+                      stringValue: aws-s3
+            observedTimeUnixNano: "1773919567377884000"
+            timeUnixNano: "1773919567377884000"
         scope:
           attributes:
             - key: elastic.mapping.mode

@@ -25,8 +25,20 @@ resourceLogs:
                               "awsRegion": "us-east-1",
                               "eventTime": "2026-01-15T10:30:00Z"
                             }
-            observedTimeUnixNano: "1773309963485465000"
-            timeUnixNano: "1773309963485465000"
+                  - key: event.dataset
+                    value:
+                      stringValue: aws.cloudtrail
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: aws.cloudtrail
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+            observedTimeUnixNano: "1773919567374642000"
+            timeUnixNano: "1773919567374642000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -50,8 +62,20 @@ resourceLogs:
                               "awsRegion": "us-west-2",
                               "eventTime": "2026-01-15T10:30:01Z"
                             }
-            observedTimeUnixNano: "1773309963485465000"
-            timeUnixNano: "1773309963485465000"
+                  - key: event.dataset
+                    value:
+                      stringValue: aws.cloudtrail
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: aws.cloudtrail
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+            observedTimeUnixNano: "1773919567374642000"
+            timeUnixNano: "1773919567374642000"
         scope:
           attributes:
             - key: elastic.mapping.mode

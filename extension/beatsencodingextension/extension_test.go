@@ -101,12 +101,24 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "json nested path unwrap",
 			config: Config{
-				Format:      FormatJSON,
-				Unwrap:      "$.data.items[*]",
-					DataStream:     DataStreamConfig{Dataset: "custom.nested", Namespace: "default"},
+				Format:    FormatJSON,
+				Unwrap:    "$.data.items[*]",
+				DataStream: DataStreamConfig{Dataset: "custom.nested", Namespace: "default"},
 			},
 			inputFile:  "json_nested.json",
 			goldenFile: "json_nested_expected.yaml",
+			wantLogs:   3,
+		},
+		{
+			name: "input_type and tags",
+			config: Config{
+				Format:    FormatText,
+				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
+				InputType: "aws-s3",
+				Tags:      []string{"forwarded", "aws-vpcflow"},
+			},
+			inputFile:  "aws_vpcflow.txt",
+			goldenFile: "aws_vpcflow_input_type_tags_expected.yaml",
 			wantLogs:   3,
 		},
 	}
@@ -188,9 +200,11 @@ func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 
 func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 	ext, err := newBeatsEncodingExtension(&Config{
-		Format:  FormatJSON,
-		Unwrap:  "$.records[*]",
+		Format:    FormatJSON,
+		Unwrap:    "$.records[*]",
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
+		InputType: "azure-eventhub",
+		Tags:      []string{"forwarded", "azure-events"},
 	}, zap.NewNop())
 	require.NoError(t, err)
 
@@ -222,6 +236,20 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 		eventCreated, ok := lr.Body().Map().Get("event.created")
 		require.True(t, ok, "log record %d: body should have 'event.created' key", i)
 		assert.NotEmpty(t, eventCreated.Str(), "log record %d: event.created should not be empty", i)
+
+		eventDataset, ok := lr.Body().Map().Get("event.dataset")
+		require.True(t, ok, "log record %d: body should have 'event.dataset' key", i)
+		assert.Equal(t, "azure.events", eventDataset.Str(), "log record %d: event.dataset should match data_stream.dataset", i)
+
+		inputType, ok := lr.Body().Map().Get("input.type")
+		require.True(t, ok, "log record %d: body should have 'input.type' key", i)
+		assert.Equal(t, "azure-eventhub", inputType.Str(), "log record %d: input.type mismatch", i)
+
+		tagsVal, ok := lr.Body().Map().Get("tags")
+		require.True(t, ok, "log record %d: body should have 'tags' key", i)
+		require.Equal(t, 2, tagsVal.Slice().Len(), "log record %d: tags should have 2 elements", i)
+		assert.Equal(t, "forwarded", tagsVal.Slice().At(0).Str())
+		assert.Equal(t, "azure-events", tagsVal.Slice().At(1).Str())
 
 		assert.NotZero(t, lr.Timestamp())
 		assert.NotZero(t, lr.ObservedTimestamp())

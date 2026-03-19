@@ -359,6 +359,27 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 	body.PutStr("message", record)
 	body.PutStr("event.created", eventCreated)
 
+	// The data_stream.* should be also set on the body as some
+	// integrations expect them.
+	body.PutStr("data_stream.type", "logs")
+	body.PutStr("data_stream.dataset", e.config.DataStream.Dataset)
+	body.PutStr("data_stream.namespace", e.config.DataStream.Namespace)
+	body.PutStr("event.dataset", e.config.DataStream.Dataset)
+
+	if e.config.InputType != "" {
+		body.PutStr("input.type", e.config.InputType)
+	}
+
+	if len(e.config.Tags) > 0 {
+		tags := body.PutEmptySlice("tags")
+		for _, tag := range e.config.Tags {
+			tags.AppendEmpty().SetStr(tag)
+		}
+	}
+
+	// We need to set these attributes on the record itself for the
+	// Elasticsearch exporter to route the record to the correct
+	// data stream.
 	attrs := lr.Attributes()
 	attrs.PutStr("data_stream.type", "logs")
 	attrs.PutStr("data_stream.dataset", e.config.DataStream.Dataset)
