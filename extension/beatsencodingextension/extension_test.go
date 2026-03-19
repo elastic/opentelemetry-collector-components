@@ -51,8 +51,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			config: Config{
 				Format:      FormatJSON,
 				Unwrap:      "$.records[*]",
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 			inputFile:  "azure_diagnostic_settings.json",
 			goldenFile: "azure_diagnostic_settings_expected.yaml",
@@ -63,8 +62,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			config: Config{
 				Format:      FormatJSON,
 				Unwrap:      "$.Records[*]",
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
 			},
 			inputFile:  "aws_cloudtrail.json",
 			goldenFile: "aws_cloudtrail_expected.yaml",
@@ -74,8 +72,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			name: "aws vpc flow logs (text)",
 			config: Config{
 				Format:      FormatText,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "aws.vpcflow", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
 			},
 			inputFile:  "aws_vpcflow.txt",
 			goldenFile: "aws_vpcflow_expected.yaml",
@@ -85,8 +82,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			name: "aws elb access logs (text)",
 			config: Config{
 				Format:      FormatText,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "aws.elb_logs", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "aws.elb_logs", Namespace: "default"},
 			},
 			inputFile:  "aws_elb.txt",
 			goldenFile: "aws_elb_expected.yaml",
@@ -96,8 +92,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			name: "json without unwrap (single record)",
 			config: Config{
 				Format:      FormatJSON,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "generic", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "generic", Namespace: "default"},
 			},
 			inputFile:  "json_single.json",
 			goldenFile: "json_single_expected.yaml",
@@ -108,8 +103,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			config: Config{
 				Format:      FormatJSON,
 				Unwrap:      "$.data.items[*]",
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "custom.nested", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "custom.nested", Namespace: "default"},
 			},
 			inputFile:  "json_nested.json",
 			goldenFile: "json_nested_expected.yaml",
@@ -165,8 +159,7 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ext, err := newBeatsEncodingExtension(&Config{
 				Format:      tt.format,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "test", Namespace: "default"},
 			}, zap.NewNop())
 			require.NoError(t, err)
 
@@ -179,10 +172,9 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 
 func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 	ext, err := newBeatsEncodingExtension(&Config{
-		Format:      FormatJSON,
-		Unwrap:      "$.records[*]",
-		TargetField: "message",
-		Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+		Format:  FormatJSON,
+		Unwrap:  "$.records[*]",
+		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	}, zap.NewNop())
 	require.NoError(t, err)
 
@@ -196,10 +188,9 @@ func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 
 func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 	ext, err := newBeatsEncodingExtension(&Config{
-		Format:      FormatJSON,
-		Unwrap:      "$.records[*]",
-		TargetField: "message",
-		Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
+		Format:  FormatJSON,
+		Unwrap:  "$.records[*]",
+		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 	}, zap.NewNop())
 	require.NoError(t, err)
 
@@ -252,10 +243,9 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 
 func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 	ext, err := newBeatsEncodingExtension(&Config{
-		Format:      FormatJSON,
-		Unwrap:      "$.records[*]",
-		TargetField: "message",
-		Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+		Format:  FormatJSON,
+		Unwrap:  "$.records[*]",
+		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	}, zap.NewNop())
 	require.NoError(t, err)
 
@@ -288,9 +278,8 @@ func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 
 func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
 	ext, err := newBeatsEncodingExtension(&Config{
-		Format:      FormatText,
-		TargetField: "message",
-		Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+		Format:  FormatText,
+		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	}, zap.NewNop())
 	require.NoError(t, err)
 

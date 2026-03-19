@@ -35,24 +35,21 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:      FormatJSON,
 				Unwrap:      "$.records[*]",
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 		},
 		{
 			name: "valid json format without unwrap",
 			config: Config{
 				Format:      FormatJSON,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "azure.events", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 		},
 		{
 			name: "valid text format",
 			config: Config{
 				Format:      FormatText,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "aws.vpcflow", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
 			},
 		},
 		{
@@ -60,15 +57,14 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:      FormatJSON,
 				Unwrap:      "$.data.items[*]",
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
+					DataStream:     DataStreamConfig{Dataset: "test", Namespace: "default"},
 			},
 		},
 		{
 			name: "invalid format",
 			config: Config{
 				Format:  "xml",
-				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: `invalid format "xml"`,
 		},
@@ -77,7 +73,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:  FormatText,
 				Unwrap:  "$.records[*]",
-				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: `unwrap is only supported when format is "json"`,
 		},
@@ -86,7 +82,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:  FormatJSON,
 				Unwrap:  "records[*]",
-				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: `must start with "$."`,
 		},
@@ -95,7 +91,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:  FormatJSON,
 				Unwrap:  "$.records",
-				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: `must end with "[*]"`,
 		},
@@ -104,7 +100,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:  FormatJSON,
 				Unwrap:  "$.records[0]",
-				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: `must end with "[*]"`,
 		},
@@ -113,7 +109,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:  FormatJSON,
 				Unwrap:  "$..records[*]",
-				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: "empty key segment",
 		},
@@ -122,36 +118,25 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:  FormatJSON,
 				Unwrap:  "$.[*]",
-				Routing: RoutingConfig{Dataset: "test", Namespace: "default"},
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 			},
 			wantErr: "must contain at least one key segment",
 		},
 		{
-			name: "empty target_field",
-			config: Config{
-				Format:      FormatJSON,
-				TargetField: "",
-				Routing:     RoutingConfig{Dataset: "test", Namespace: "default"},
-			},
-			wantErr: "target_field is required",
-		},
-		{
 			name: "missing dataset",
 			config: Config{
-				Format:      FormatJSON,
-				TargetField: "message",
-				Routing:     RoutingConfig{Namespace: "default"},
+				Format:  FormatJSON,
+				DataStream: DataStreamConfig{Namespace: "default"},
 			},
-			wantErr: "routing.dataset is required",
+			wantErr: "data_stream.dataset is required",
 		},
 		{
 			name: "missing namespace",
 			config: Config{
 				Format:      FormatJSON,
-				TargetField: "message",
-				Routing:     RoutingConfig{Dataset: "test"},
+					DataStream:     DataStreamConfig{Dataset: "test"},
 			},
-			wantErr: "routing.namespace is required",
+			wantErr: "data_stream.namespace is required",
 		},
 	}
 

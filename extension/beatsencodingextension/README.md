@@ -2,7 +2,7 @@
 
 The Beats encoding extension converts raw log bytes into OpenTelemetry log records formatted for Elastic Beats/Agent integration compatibility. It implements the `encoding.LogsUnmarshalerExtension` interface and is intended for use with receivers that accept raw payloads (e.g., `httpreceiver`).
 
-Each extracted record is stored as a raw string under a configurable body map key (default: `message`). Data stream routing attributes (`data_stream.type`, `data_stream.dataset`, `data_stream.namespace`) are set on each log record so that mOTLP routes the document to the correct integration data stream.
+Each extracted record is stored as a raw string under the `message` body map key. Data stream routing attributes (`data_stream.type`, `data_stream.dataset`, `data_stream.namespace`) are set on each log record so that mOTLP routes the document to the correct integration data stream.
 
 ## Configuration
 
@@ -10,9 +10,8 @@ Each extracted record is stored as a raw string under a configurable body map ke
 |---|---|---|---|
 | `format` | string | `json` | Input format: `json` or `text`. |
 | `unwrap` | string | _(empty)_ | JSONPath expression to extract records from a wrapper structure. Only used with `json` format. |
-| `target_field` | string | `message` | Body map key where each record's raw content is stored. |
-| `routing.dataset` | string | _(required)_ | Data stream dataset (e.g., `azure.activitylogs`). |
-| `routing.namespace` | string | `default` | Data stream namespace. |
+| `data_stream.dataset` | string | _(required)_ | Data stream dataset (e.g., `azure.activitylogs`). |
+| `data_stream.namespace` | string | `default` | Data stream namespace. |
 
 ### Formats
 
@@ -28,7 +27,7 @@ extensions:
   beats_encoding/azure:
     format: json
     unwrap: "$.records[*]"
-    routing:
+    data_stream:
       dataset: azure.activitylogs
 
 receivers:
@@ -49,7 +48,7 @@ extensions:
   beats_encoding/cloudtrail:
     format: json
     unwrap: "$.Records[*]"
-    routing:
+    data_stream:
       dataset: aws.cloudtrail
 
 service:
@@ -62,7 +61,7 @@ service:
 extensions:
   beats_encoding/text:
     format: text
-    routing:
+    data_stream:
       dataset: generic
 
 service:

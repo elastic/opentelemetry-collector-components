@@ -37,9 +37,8 @@ func NewFactory() extension.Factory {
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		Format:      FormatJSON,
-		TargetField: "message",
-		Routing: RoutingConfig{
+		Format: FormatJSON,
+		DataStream: DataStreamConfig{
 			Namespace: "default",
 		},
 	}

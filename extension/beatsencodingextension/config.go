@@ -35,8 +35,8 @@ const (
 	FormatText Format = "text"
 )
 
-// RoutingConfig defines the data stream routing attributes.
-type RoutingConfig struct {
+// DataStreamConfig defines the data stream routing attributes.
+type DataStreamConfig struct {
 	Dataset   string `mapstructure:"dataset"`
 	Namespace string `mapstructure:"namespace"`
 }
@@ -54,12 +54,8 @@ type Config struct {
 	// is treated as a single record.
 	Unwrap string `mapstructure:"unwrap,omitempty"`
 
-	// TargetField is the body map key where the raw content of each
-	// record is stored. Defaults to "message".
-	TargetField string `mapstructure:"target_field,omitempty"`
-
-	// Routing defines the data stream routing attributes.
-	Routing RoutingConfig `mapstructure:"routing"`
+	// DataStream defines the data stream routing attributes.
+	DataStream DataStreamConfig `mapstructure:"data_stream"`
 
 	// prevent unkeyed literal initialization
 	_ struct{}
@@ -82,16 +78,12 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	if c.TargetField == "" {
-		return fmt.Errorf("target_field is required")
+	if c.DataStream.Dataset == "" {
+		return fmt.Errorf("data_stream.dataset is required")
 	}
 
-	if c.Routing.Dataset == "" {
-		return fmt.Errorf("routing.dataset is required")
-	}
-
-	if c.Routing.Namespace == "" {
-		return fmt.Errorf("routing.namespace is required")
+	if c.DataStream.Namespace == "" {
+		return fmt.Errorf("data_stream.namespace is required")
 	}
 
 	return nil

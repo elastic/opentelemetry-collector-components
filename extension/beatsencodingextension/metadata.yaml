@@ -8,5 +8,5 @@ status:
 
 tests:
   config:
-    routing:
+    data_stream:
       dataset: "generic"
