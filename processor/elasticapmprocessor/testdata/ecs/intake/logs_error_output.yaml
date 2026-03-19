@@ -25,6 +25,12 @@ resourceLogs:
         - key: agent.name
           value:
             stringValue: ElasticAPM
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
     scopeLogs:
       - logRecords:
           - attributes:

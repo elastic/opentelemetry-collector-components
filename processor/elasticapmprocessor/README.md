@@ -24,6 +24,8 @@ The processor enriches traces, metrics, and logs with elastic specific requireme
 
 The processor configuration embeds all configuration options from [opentelemetry-lib enrichments config](https://github.com/elastic/opentelemetry-lib/tree/main/enrichments/config). All opentelemetry-lib enricher configuration fields are available and can be configured directly in the processor configuration.
 
+The resource enrichment config also includes `resource.default_deployment_environment.enabled`. This controls the fallback `deployment.environment=unset` behavior separately from `resource.deployment_environment.enabled`, which still handles copying `deployment.environment.name` to `deployment.environment`. The fallback is only applied for ECS mapping mode.
+
 ### Enable all enrichments
 
 ```yaml

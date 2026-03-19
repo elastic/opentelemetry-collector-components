@@ -30,12 +30,14 @@ type Config struct {
 
 // ResourceConfig configures the enrichment of resource attributes.
 type ResourceConfig struct {
-	AgentName             AttributeConfig `mapstructure:"agent_name"`
-	AgentVersion          AttributeConfig `mapstructure:"agent_version"`
-	OverrideHostName      AttributeConfig `mapstructure:"override_host_name"`
-	DeploymentEnvironment AttributeConfig `mapstructure:"deployment_environment"`
-	ServiceInstanceID     AttributeConfig `mapstructure:"service_instance_id"`
-	HostOSType            AttributeConfig `mapstructure:"host_os_type"`
+	AgentName                    AttributeConfig `mapstructure:"agent_name"`
+	AgentVersion                 AttributeConfig `mapstructure:"agent_version"`
+	OverrideHostName             AttributeConfig `mapstructure:"override_host_name"`
+	DeploymentEnvironment        AttributeConfig `mapstructure:"deployment_environment"`
+	DefaultDeploymentEnvironment AttributeConfig `mapstructure:"default_deployment_environment"`
+	ServiceInstanceID            AttributeConfig `mapstructure:"service_instance_id"`
+	ServiceName                  AttributeConfig `mapstructure:"service_name"`
+	HostOSType                   AttributeConfig `mapstructure:"host_os_type"`
 }
 
 // ScopeConfig configures the enrichment of scope attributes.

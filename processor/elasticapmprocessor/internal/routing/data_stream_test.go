@@ -45,24 +45,169 @@ func TestDataStremaEncoderDefault(t *testing.T) {
 	assert.Equal(t, "default", dataStreamNamespace.Str())
 }
 
-func TestDataStreamEncoderWithServiceName(t *testing.T) {
-	resource := pcommon.NewResource()
-	attributes := resource.Attributes()
-	attributes.PutStr("service.name", "my-service")
+func TestEncodeDataStreamWithServiceName(t *testing.T) {
+	// The normalizeServiceName function lowercases the input and then applies
+	// the regex [^a-zA-Z0-9_] to replace disallowed characters with "_".
+	// This aligns with apm-data's normalizeServiceName: hyphens, spaces,
+	// dots, and all other non-alphanumeric/non-underscore characters are
+	// replaced with "_".
+	tests := []struct {
+		name            string
+		serviceName     string
+		dataStreamType  string
+		expectedDataset string
+	}{
+		{
+			name:            "simple alphanumeric",
+			serviceName:     "myservice",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.myservice",
+		},
+		{
+			name:            "hyphen replaced",
+			serviceName:     "my-service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "dot replaced",
+			serviceName:     "my.service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "uppercase lowercased with hyphen replaced",
+			serviceName:     "My-Service",
+			dataStreamType:  "logs",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "backslash replaced",
+			serviceName:     `my\service`,
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "forward slash replaced",
+			serviceName:     "my/service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "asterisk replaced",
+			serviceName:     "my*service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "question mark replaced",
+			serviceName:     "my?service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "double quote replaced",
+			serviceName:     `my"service`,
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "angle brackets replaced",
+			serviceName:     "my<service>name",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service_name",
+		},
+		{
+			name:            "pipe replaced",
+			serviceName:     "my|service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "space replaced",
+			serviceName:     "my service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "comma replaced",
+			serviceName:     "my,service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "hash replaced",
+			serviceName:     "my#service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "colon replaced",
+			serviceName:     "my:service",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service",
+		},
+		{
+			name:            "multiple special characters",
+			serviceName:     "My Service.v2-beta/rc#1",
+			dataStreamType:  "logs",
+			expectedDataset: "apm.app.my_service_v2_beta_rc_1",
+		},
+		{
+			name:            "all disallowed characters replaced",
+			serviceName:     `a\b/c*d?e"f<g>h|i,j#k:l.m`,
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.a_b_c_d_e_f_g_h_i_j_k_l_m",
+		},
+		{
+			name:            "only alphanumeric and underscore preserved",
+			serviceName:     `a b-c_d0`,
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.a_b_c_d0",
+		},
+		{
+			name:            "empty service name falls back to unknown",
+			serviceName:     "",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.unknown",
+		},
+		{
+			name:            "underscores preserved",
+			serviceName:     "my_service_name",
+			dataStreamType:  "metrics",
+			expectedDataset: "apm.app.my_service_name",
+		},
+		{
+			name:            "traces type",
+			serviceName:     "my-service",
+			dataStreamType:  "traces",
+			expectedDataset: "apm.app.my_service",
+		},
+	}
 
-	routing.EncodeDataStream(resource, "metrics", true)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resource := pcommon.NewResource()
+			attributes := resource.Attributes()
+			if tt.serviceName != "" {
+				attributes.PutStr("service.name", tt.serviceName)
+			}
 
-	dataStreamType, ok := attributes.Get("data_stream.type")
-	assert.True(t, ok)
-	assert.Equal(t, "metrics", dataStreamType.Str())
+			routing.EncodeDataStream(resource, tt.dataStreamType, true)
 
-	dataStreamDataset, ok := attributes.Get("data_stream.dataset")
-	assert.True(t, ok)
-	assert.Equal(t, "apm.app.my_service", dataStreamDataset.Str())
+			dataStreamType, ok := attributes.Get("data_stream.type")
+			assert.True(t, ok)
+			assert.Equal(t, tt.dataStreamType, dataStreamType.Str())
 
-	dataStreamNamespace, ok := attributes.Get("data_stream.namespace")
-	assert.True(t, ok)
-	assert.Equal(t, "default", dataStreamNamespace.Str())
+			dataStreamDataset, ok := attributes.Get("data_stream.dataset")
+			assert.True(t, ok)
+			assert.Equal(t, tt.expectedDataset, dataStreamDataset.Str())
+
+			dataStreamNamespace, ok := attributes.Get("data_stream.namespace")
+			assert.True(t, ok)
+			assert.Equal(t, "default", dataStreamNamespace.Str())
+		})
+	}
 }
 
 func TestIsErrorEvent(t *testing.T) {

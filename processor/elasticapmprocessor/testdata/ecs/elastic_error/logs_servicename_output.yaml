@@ -3,7 +3,7 @@ resourceLogs:
       attributes:
         - key: service.name
           value:
-            stringValue: my-app
+            stringValue: My App
         - key: labels.my_value
           value:
             stringValue: foo
@@ -28,6 +28,12 @@ resourceLogs:
         - key: agent.name
           value:
             stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
     scopeLogs:
       - logRecords:
           - attributes:
