@@ -112,12 +112,13 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 		sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
 		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
 		now := pcommon.NewTimestampFromTime(time.Now())
+		eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
 
 		for {
 			line, flush, err := scanner.ScanString()
 
 			if line != "" {
-				e.appendLogRecord(sl, now, line)
+				e.appendLogRecord(sl, now, eventCreated, line)
 			}
 
 			if err == io.EOF {
@@ -183,7 +184,7 @@ func (e *beatsEncodingExtension) newSingleRecordDecoder(reader io.Reader, opts e
 		sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
 		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
 		now := pcommon.NewTimestampFromTime(time.Now())
-		e.appendLogRecord(sl, now, string(trimmed))
+		e.appendLogRecord(sl, now, now.AsTime().UTC().Format(time.RFC3339Nano), string(trimmed))
 		return logs, nil
 	}
 
@@ -211,6 +212,7 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 		sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
 		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
 		now := pcommon.NewTimestampFromTime(time.Now())
+		eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
 
 		for dec.More() {
 			var raw json.RawMessage
@@ -223,7 +225,7 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 				continue
 			}
 
-			e.appendLogRecord(sl, now, string(trimmed))
+			e.appendLogRecord(sl, now, eventCreated, string(trimmed))
 			batchHelper.IncrementItems(1)
 			batchHelper.IncrementBytes(int64(len(raw)))
 
@@ -348,14 +350,14 @@ func skipValue(dec *json.Decoder) error {
 	}
 }
 
-func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, record string) {
+func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated string, record string) {
 	lr := sl.LogRecords().AppendEmpty()
 	lr.SetTimestamp(ts)
 	lr.SetObservedTimestamp(ts)
 
 	body := lr.Body().SetEmptyMap()
 	body.PutStr("message", record)
-	body.PutStr("event.created", ts.AsTime().UTC().Format(time.RFC3339Nano))
+	body.PutStr("event.created", eventCreated)
 
 	attrs := lr.Attributes()
 	attrs.PutStr("data_stream.type", "logs")
