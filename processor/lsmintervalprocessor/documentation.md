@@ -26,13 +26,28 @@ The count of metric data points exported by the processor.
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| {count} | Sum | Int | true | Development |
+| 1 | Sum | Int | true | Development |
 
 #### Attributes
 
 | Name | Description | Values |
 | ---- | ----------- | ------ |
 | interval | The processing interval. | Any Str |
+
+### otelcol_lsminterval.overflow
+
+The estimated count of unique items that overflowed due to cardinality limits.
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| 1 | Sum | Int | true | Development |
+
+#### Attributes
+
+| Name | Description | Values |
+| ---- | ----------- | ------ |
+| interval | The processing interval. | Any Str |
+| kind | The kind of overflow (resource, scope, metric, or datapoint). | `resource`, `scope`, `metric`, `datapoint` |
 
 ### otelcol_lsminterval.pebble_compacted_bytes_read
 
@@ -160,4 +175,4 @@ The count of metric data points processed by the processor.
 
 | Unit | Metric Type | Value Type | Monotonic | Stability |
 | ---- | ----------- | ---------- | --------- | --------- |
-| {count} | Sum | Int | true | Development |
+| 1 | Sum | Int | true | Development |
