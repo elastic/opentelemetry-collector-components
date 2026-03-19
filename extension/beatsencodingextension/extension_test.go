@@ -344,6 +344,36 @@ func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
 	assert.Equal(t, 3, totalRecords)
 }
 
+func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
+	ext, err := newBeatsEncodingExtension(&Config{
+		Format:     FormatJSON,
+		Unwrap:     "$.records[*]",
+		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
+		Fields:     map[string]string{"environment": "production", "team": "security"},
+	}, zap.NewNop())
+	require.NoError(t, err)
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))
+	require.NoError(t, err)
+
+	logs, err := ext.UnmarshalLogs(input)
+	require.NoError(t, err)
+
+	logRecords := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
+	for i := 0; i < logRecords.Len(); i++ {
+		lr := logRecords.At(i)
+		body := lr.Body().Map()
+
+		envVal, ok := body.Get("environment")
+		require.True(t, ok, "log record %d: body should have 'environment' key", i)
+		assert.Equal(t, "production", envVal.Str())
+
+		teamVal, ok := body.Get("team")
+		require.True(t, ok, "log record %d: body should have 'team' key", i)
+		assert.Equal(t, "security", teamVal.Str())
+	}
+}
+
 // stripEventCreated removes the "event.created" key from all log record
 // body maps so golden file comparison is not affected by dynamic timestamps.
 func stripEventCreated(logs plog.Logs) {
