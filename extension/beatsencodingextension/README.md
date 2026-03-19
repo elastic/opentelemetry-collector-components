@@ -14,6 +14,7 @@ Each extracted record is stored as a raw string under the `message` body map key
 | `data_stream.namespace` | string | `default` | Data stream namespace. |
 | `input_type` | string | _(empty)_ | Sets the `input.type` field in the log record body (e.g., `aws-s3`, `azure-eventhub`). |
 | `tags` | []string | _(empty)_ | List of strings appended to the `tags` field in the log record body (e.g., `["forwarded", "aws-cloudtrail"]`). |
+| `fields` | map[string]string | _(empty)_ | Key-value pairs added to every log record body (e.g., `{environment: production}`). |
 
 ### Formats
 
@@ -55,6 +56,24 @@ extensions:
 
 service:
   extensions: [beats_encoding/cloudtrail]
+```
+
+#### AWS VPC Flow Logs with custom fields
+
+```yaml
+extensions:
+  beats_encoding/vpcflow:
+    format: text
+    data_stream:
+      dataset: aws.vpcflow
+    input_type: aws-s3
+    tags: ["forwarded", "aws-vpcflow"]
+    fields:
+      environment: production
+      team: security
+
+service:
+  extensions: [beats_encoding/vpcflow]
 ```
 
 #### Plain text logs
