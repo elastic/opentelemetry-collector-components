@@ -123,6 +123,22 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: "must contain at least one key segment",
 		},
 		{
+			name: "valid config with fields",
+			config: Config{
+				Format:     FormatText,
+				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
+				Fields:     map[string]string{"environment": "production", "team": "security"},
+			},
+		},
+		{
+			name: "valid config with empty fields",
+			config: Config{
+				Format:     FormatText,
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
+				Fields:     map[string]string{},
+			},
+		},
+		{
 			name: "missing dataset",
 			config: Config{
 				Format:  FormatJSON,

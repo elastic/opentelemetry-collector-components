@@ -65,6 +65,11 @@ type Config struct {
 	// record body (e.g. ["forwarded", "aws-cloudtrail"]).
 	Tags []string `mapstructure:"tags,omitempty"`
 
+	// Fields is a map of key-value pairs added to every log record body.
+	// This matches the Beats "fields" configuration, allowing users to
+	// inject custom metadata (e.g., environment, team) into each event.
+	Fields map[string]string `mapstructure:"fields,omitempty"`
+
 	// prevent unkeyed literal initialization
 	_ struct{}
 }
