@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -44,6 +45,7 @@ import (
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
+	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
@@ -471,9 +473,10 @@ func TestMetrics(t *testing.T) {
 	inputFiles_error := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
+		expectedDynamicAttrs       string
 	}{
-		{"metricsets.ndjson", "metricsets_expected.yaml"},
-		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml"},
+		{"metricsets.ndjson", "metricsets_expected.yaml", "tag1,tag2"},
+		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml", ""},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -502,6 +505,14 @@ func TestMetrics(t *testing.T) {
 	for _, tt := range inputFiles_error {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForMetrics(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextMetrics, testEndpoint)
+			if tt.expectedDynamicAttrs != "" {
+				// validate the at least one global label key has been included in the client metadata
+				ctxs := nextMetrics.Contexts()
+				require.GreaterOrEqual(t, len(ctxs), 1)
+				got := client.FromContext(ctxs[0]).Metadata.Get("x-dynamic-resource-attributes")
+				require.Len(t, got, 1)
+				require.Equal(t, tt.expectedDynamicAttrs, got[0])
+			}
 		})
 	}
 }
@@ -510,8 +521,9 @@ func TestLogs(t *testing.T) {
 	inputFiles := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
+		expectedDynamicAttrs       string
 	}{
-		{"logs.ndjson", "logs_expected.yaml"},
+		{"logs.ndjson", "logs_expected.yaml", "ab_testing,group,segment"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -540,6 +552,14 @@ func TestLogs(t *testing.T) {
 	for _, tt := range inputFiles {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForLogs(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextLogs, testEndpoint)
+			if tt.expectedDynamicAttrs != "" {
+				// validate the at least one global label key has been included in the client metadata
+				ctxs := nextLogs.Contexts()
+				require.GreaterOrEqual(t, len(ctxs), 1)
+				got := client.FromContext(ctxs[0]).Metadata.Get("x-dynamic-resource-attributes")
+				require.Len(t, got, 1)
+				require.Equal(t, tt.expectedDynamicAttrs, got[0])
+			}
 		})
 	}
 }
@@ -547,15 +567,16 @@ func TestLogs(t *testing.T) {
 var inputFiles = []struct {
 	inputNdJsonFileName        string
 	outputExpectedYamlFileName string
+	expectedDynamicAttrs       string
 }{
-	{"invalid_ids.ndjson", "invalid_ids_expected.yaml"},
-	{"transactions.ndjson", "transactions_expected.yaml"},
-	{"spans.ndjson", "spans_expected.yaml"},
-	{"unknown-span-type.ndjson", "unknown-span-type_expected.yaml"},
-	{"transactions_spans.ndjson", "transactions_spans_expected.yaml"},
-	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml"},
-	{"span-links.ndjson", "span-links_expected.yaml"},
-	{"hostdata.ndjson", "hostdata_expected.yaml"},
+	{"invalid_ids.ndjson", "invalid_ids_expected.yaml", ""},
+	{"transactions.ndjson", "transactions_expected.yaml", "tag1,tag2"},
+	{"spans.ndjson", "spans_expected.yaml", "tag1"},
+	{"unknown-span-type.ndjson", "unknown-span-type_expected.yaml", ""},
+	{"transactions_spans.ndjson", "transactions_spans_expected.yaml", ""},
+	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml", ""},
+	{"span-links.ndjson", "span-links_expected.yaml", ""},
+	{"hostdata.ndjson", "hostdata_expected.yaml", ""},
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -586,6 +607,14 @@ func TestTransactionsAndSpans(t *testing.T) {
 	for _, tt := range inputFiles {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForTraces(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextTrace, testEndpoint)
+			if tt.expectedDynamicAttrs != "" {
+				// validate the at least one global label key has been included in the client metadata
+				ctxs := nextTrace.Contexts()
+				require.GreaterOrEqual(t, len(ctxs), 1)
+				got := client.FromContext(ctxs[0]).Metadata.Get("x-dynamic-resource-attributes")
+				require.Len(t, got, 1)
+				require.Equal(t, tt.expectedDynamicAttrs, got[0])
+			}
 		})
 	}
 }
@@ -647,6 +676,135 @@ func TestMetadataPropagation(t *testing.T) {
 			} else {
 				require.Equal(t, tcase.expectedMetadata, md)
 			}
+		})
+	}
+}
+
+func TestGlobalKeyExtraction(t *testing.T) {
+	cases := []struct {
+		name               string
+		events             []*modelpb.APMEvent
+		expectedGlobalKeys []string
+	}{
+		{
+			name:               "nil labels",
+			events:             []*modelpb.APMEvent{{}},
+			expectedGlobalKeys: nil,
+		},
+		{
+			name: "no global labels",
+			events: []*modelpb.APMEvent{{
+				Labels: map[string]*modelpb.LabelValue{
+					"local_tag": {Value: "v1", Global: false},
+				},
+				NumericLabels: map[string]*modelpb.NumericLabelValue{
+					"local_num": {Value: 42, Global: false},
+				},
+			}},
+			expectedGlobalKeys: nil,
+		},
+		{
+			name: "only global string labels",
+			events: []*modelpb.APMEvent{{
+				Labels: map[string]*modelpb.LabelValue{
+					"team.name": {Value: "platform", Global: true},
+					"env":       {Value: "prod", Global: true},
+					"local":     {Value: "skip", Global: false},
+				},
+			}},
+			expectedGlobalKeys: []string{"env", "team.name"},
+		},
+		{
+			name: "only global numeric labels",
+			events: []*modelpb.APMEvent{{
+				NumericLabels: map[string]*modelpb.NumericLabelValue{
+					"cost_center": {Value: 100, Global: true},
+					"local_num":   {Value: 1, Global: false},
+				},
+			}},
+			expectedGlobalKeys: []string{"cost_center"},
+		},
+		{
+			name: "mixed global labels and numeric labels",
+			events: []*modelpb.APMEvent{{
+				Labels: map[string]*modelpb.LabelValue{
+					"team.name": {Value: "platform", Global: true},
+					"local":     {Value: "skip", Global: false},
+				},
+				NumericLabels: map[string]*modelpb.NumericLabelValue{
+					"cost_center": {Value: 100, Global: true},
+				},
+			}},
+			expectedGlobalKeys: []string{"cost_center", "team.name"},
+		},
+		{
+			name: "duplicate key across labels and numeric labels",
+			events: []*modelpb.APMEvent{{
+				Labels: map[string]*modelpb.LabelValue{
+					"shared_key": {Value: "str", Global: true},
+				},
+				NumericLabels: map[string]*modelpb.NumericLabelValue{
+					"shared_key": {Value: 1, Global: true},
+				},
+			}},
+			expectedGlobalKeys: []string{"shared_key"},
+		},
+		{
+			name: "nil label value skipped",
+			events: []*modelpb.APMEvent{{
+				Labels: map[string]*modelpb.LabelValue{
+					"good": {Value: "v", Global: true},
+					"nil":  nil,
+				},
+				NumericLabels: map[string]*modelpb.NumericLabelValue{
+					"nil_num": nil,
+				},
+			}},
+			expectedGlobalKeys: []string{"good"},
+		},
+		{
+			name: "global keys collected across multiple events",
+			events: []*modelpb.APMEvent{
+				{
+					Labels: map[string]*modelpb.LabelValue{
+						"key_a": {Value: "a", Global: true},
+					},
+				},
+				{
+					Labels: map[string]*modelpb.LabelValue{
+						"key_b": {Value: "b", Global: true},
+						"key_a": {Value: "a", Global: true},
+					},
+				},
+			},
+			expectedGlobalKeys: []string{"key_a", "key_b"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var globalKeys []string
+			for _, event := range tc.events {
+				for key, lv := range event.Labels {
+					if lv != nil && lv.Global {
+						globalKeys = append(globalKeys, key)
+					}
+				}
+				for key, nv := range event.NumericLabels {
+					if nv != nil && nv.Global {
+						globalKeys = append(globalKeys, key)
+					}
+				}
+			}
+
+			if len(globalKeys) == 0 {
+				require.Nil(t, tc.expectedGlobalKeys)
+				return
+			}
+
+			slices.Sort(globalKeys)
+			globalKeys = slices.Compact(globalKeys)
+			require.Equal(t, tc.expectedGlobalKeys, globalKeys)
 		})
 	}
 }

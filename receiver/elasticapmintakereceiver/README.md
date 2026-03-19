@@ -96,6 +96,14 @@ ELASTIC_APM_SERVER_URL=https://localhost:8200
 ELASTIC_APM_SERVER_CERT=server.crt
 ```
 
+### Global labels and dynamic resource attributes
+
+The intake v2 metadata can include global labels that apply to all events in a batch. The receiver collects the keys of these labels and propagates them downstream via `x-dynamic-resource-attributes` in the `client.Metadata` context. This allows downstream components to process the global labels accordingly. 
+
+Global label keys are collected as the **union across all events** in the batch. This differs from [apm-aggregation](https://github.com/elastic/apm-aggregation), which evaluates global labels **per-event**. If an event-level tag shadows a metadata label (same key, different value), apm-aggregation excludes that key from that event's aggregation grouping. 
+The receiver does not distinguish this case — the shadowed key is still included in `x-dynamic-resource-attributes`. 
+
+
 ### Architecture
 
 ![Elasticapmintakereceiver Architecture](./elasticapmintakereceiver_architecture.png )

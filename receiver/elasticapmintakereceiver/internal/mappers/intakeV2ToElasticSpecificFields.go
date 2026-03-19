@@ -382,7 +382,7 @@ func setTransactionMarks(marks map[string]*modelpb.TransactionMark, attributesMa
 // sets the resource attribute.
 // These fields are not defined by OTel.
 // Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
-func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map, globalKeys *[]string) {
+func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	if event.Cloud != nil {
 		if event.Cloud.Origin != nil {
 			putNonEmptyStr(attributesMap, elasticattr.CloudOriginAccountID, event.Cloud.Origin.AccountId)
@@ -443,7 +443,7 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 		}
 	}
 
-	setLabels(event, attributesMap, globalKeys)
+	setLabels(event, attributesMap)
 }
 
 // setLabels sets single value label fields from the APMEvent Labels and NumericLabels fields.
@@ -451,11 +451,9 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 // Allows key names with spaces to match existing behavior.
 // Ignored empty keys and values.
 //
-// When globalKeys is non-nil, keys marked as Global are appended to the slice.
-//
 // The apm data library logic will take care of overwriting metadata labels with event labels when decoding
 // the input to modelpb.APMEvent, so we simply copy all labels from the event here.
-func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map, globalKeys *[]string) {
+func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	for key, labelValue := range event.Labels {
 		if key == "" || labelValue == nil {
 			continue
@@ -470,9 +468,6 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map, globalKeys *[
 				labelValues.AppendEmpty().SetStr(v)
 			}
 		}
-		if globalKeys != nil && labelValue.Global {
-			*globalKeys = append(*globalKeys, key)
-		}
 	}
 
 	for key, numericLabelValue := range event.NumericLabels {
@@ -481,9 +476,6 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map, globalKeys *[
 		}
 		if numericLabelValue.Value != 0 {
 			attributesMap.PutDouble("numeric_labels."+key, numericLabelValue.Value)
-		}
-		if globalKeys != nil && numericLabelValue.Global {
-			*globalKeys = append(*globalKeys, key)
 		}
 	}
 }

@@ -243,8 +243,37 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		r.settings.Logger.Error("failed to process batch", zap.Error(err))
 	}
 
-	globalKeySet := make([]string, 0)
+	// Collect label keys marked as Global across all events. Global labels
+	// originate from the intake v2 metadata and are cloned onto every event
+	// by the apm-data library (see GlobalLabelsFrom):
+	// https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/modeldecoderutil/labels.go
+	//
+	// We scan all events rather than just the first because an event-level
+	// tag can shadow a metadata label, flipping its Global flag to false on
+	// that particular event (see Labels.Set):
+	// https://github.com/elastic/apm-data/blob/main/model/modelpb/labels.go
+	//
+	// Note: this collects the union of global keys across the batch, which
+	// differs from apm-aggregation where global labels are evaluated
+	// per-event (see marshalEventGlobalLabels):
+	// https://github.com/elastic/apm-aggregation/blob/main/aggregators/converter.go
+	// If an event shadows a global key, apm-aggregation excludes that key
+	// from that event's aggregation grouping. Here, the shadowed key is
+	// still included in x-dynamic-resource-attributes because we operate
+	// at the batch level, not per-event.
+	var globalKeys []string
 	for _, event := range *batch {
+		for key, lv := range event.Labels {
+			if lv != nil && lv.Global {
+				globalKeys = append(globalKeys, key)
+			}
+		}
+		for key, nv := range event.NumericLabels {
+			if nv != nil && nv.Global {
+				globalKeys = append(globalKeys, key)
+			}
+		}
+
 		timestampNanos := event.GetTimestamp()
 
 		// TODO record metrics about events processed by type?
@@ -252,7 +281,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		case modelpb.MetricEventType:
 			rm := md.ResourceMetrics().AppendEmpty()
 
-			r.setResourceAttributes(rm.Resource().Attributes(), event, &globalKeySet)
+			r.setResourceAttributes(rm.Resource().Attributes(), event)
 
 			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestampNanos); err != nil {
 				return err
@@ -260,19 +289,19 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		case modelpb.ErrorEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 
-			r.setResourceAttributes(rl.Resource().Attributes(), event, &globalKeySet)
+			r.setResourceAttributes(rl.Resource().Attributes(), event)
 
 			r.elasticErrorToOtelLogRecord(&rl, event, timestampNanos)
 		case modelpb.LogEventType:
 			rl := ld.ResourceLogs().AppendEmpty()
 
-			r.setResourceAttributes(rl.Resource().Attributes(), event, &globalKeySet)
+			r.setResourceAttributes(rl.Resource().Attributes(), event)
 
 			r.elasticLogToOtelLogRecord(&rl, event, timestampNanos)
 		case modelpb.SpanEventType, modelpb.TransactionEventType:
 			rs := td.ResourceSpans().AppendEmpty()
 
-			r.setResourceAttributes(rs.Resource().Attributes(), event, &globalKeySet)
+			r.setResourceAttributes(rs.Resource().Attributes(), event)
 
 			s := r.elasticEventToOtelSpan(&rs, event, timestampNanos)
 
@@ -287,10 +316,11 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		}
 	}
 
-	if len(globalKeySet) > 0 {
-		slices.Sort(globalKeySet)
-		globalKeySet = slices.Compact(globalKeySet)
-		ctx = withDynamicResourceAttributes(ctx, globalKeySet)
+	// collect all unique global labels keys to add to the client metadata
+	if len(globalKeys) > 0 {
+		slices.Sort(globalKeys)
+		globalKeys = slices.Compact(globalKeys)
+		ctx = withDynamicResourceAttributes(ctx, globalKeys)
 	}
 
 	var errs []error
@@ -317,11 +347,10 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 
 // setResourceAttributes maps event fields to attributes.
 // Expects the attribute map to be at the resource level e.g. pmetric.ResourceMetrics.Resource().Attributes().
-// globalKeys accumulates label keys marked as Global during label processing.
-func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, event *modelpb.APMEvent, globalKeys *[]string) {
+func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, event *modelpb.APMEvent) {
 	mappers.TranslateToOtelResourceAttributes(event, attrs)
 	mappers.SetDerivedResourceAttributes(event, attrs)
-	mappers.SetElasticSpecificResourceAttributes(event, attrs, globalKeys)
+	mappers.SetElasticSpecificResourceAttributes(event, attrs)
 }
 
 func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) error {
@@ -645,13 +674,13 @@ func withMappingMode(info client.Info, mode string, includeMetadata bool) client
 // withDynamicResourceAttributes enriches the context with the global label
 // keys as a CSV value under the "x-dynamic-resource-attributes" metadata key.
 // The provided keySet must be sorted and deduplicated by the caller.
-func withDynamicResourceAttributes(ctx context.Context, keySet []string) context.Context {
+func withDynamicResourceAttributes(ctx context.Context, globalLabelKeys []string) context.Context {
 	info := client.FromContext(ctx)
 	newMeta := make(map[string][]string)
 	for k := range info.Metadata.Keys() {
 		newMeta[k] = info.Metadata.Get(k)
 	}
-	newMeta["x-dynamic-resource-attributes"] = []string{strings.Join(keySet, ",")}
+	newMeta["x-dynamic-resource-attributes"] = []string{strings.Join(globalLabelKeys, ",")}
 	return client.NewContext(ctx, client.Info{
 		Addr:     info.Addr,
 		Auth:     info.Auth,
