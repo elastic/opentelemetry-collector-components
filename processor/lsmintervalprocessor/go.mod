@@ -6,10 +6,10 @@ require (
 	github.com/axiomhq/hyperloglog v0.2.5
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/google/go-cmp v0.7.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.147.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.147.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.147.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.148.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.148.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.148.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.148.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/client v1.54.0
 	go.opentelemetry.io/collector/component v1.54.0
@@ -52,16 +52,16 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-version v1.8.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kamstrup/intmap v0.5.1 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
 	github.com/knadh/koanf/v2 v2.3.3 // indirect
@@ -73,7 +73,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.148.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.20.5 // indirect
@@ -82,7 +82,7 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
-	github.com/ua-parser/uap-go v0.0.0-20240611065828-3a4781585db6 // indirect
+	github.com/ua-parser/uap-go v0.0.0-20251207011819-db9adb27a0b8 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/collector/component/componentstatus v0.148.0 // indirect
@@ -103,6 +103,5 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/grpc v1.79.2 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
