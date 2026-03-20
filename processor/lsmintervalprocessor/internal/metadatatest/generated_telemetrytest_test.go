@@ -95,12 +95,16 @@ func TestSetupTelemetry(t *testing.T) {
 	}))
 	tb.LsmintervalExportedBytes.Add(context.Background(), 1)
 	tb.LsmintervalExportedDataPoints.Add(context.Background(), 1)
+	tb.LsmintervalOverflow.Add(context.Background(), 1)
 	tb.LsmintervalProcessedBytes.Add(context.Background(), 1)
 	tb.LsmintervalProcessedDataPoints.Add(context.Background(), 1)
 	AssertEqualLsmintervalExportedBytes(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualLsmintervalExportedDataPoints(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualLsmintervalOverflow(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualLsmintervalPebbleCompactedBytesRead(t, testTel,

@@ -501,9 +501,15 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 			err = mgp.(*Processor).Shutdown(context.Background())
 			require.NoError(b, err)
 			allMetrics := next.AllMetrics()
-			// There should be 1 empty metrics for each of the b.N input metrics,
-			// then at last 1 actual merged metrics on shutdown
-			assert.Len(b, allMetrics, b.N+1)
+			if tc.passThrough {
+				// For pass-through, there should be 1 metrics for each
+				// of the b.N inputs, plus 1 merged metrics on shutdown.
+				assert.Len(b, allMetrics, b.N+1)
+			} else {
+				// For non pass-through, metrics are merged internally
+				// and only exported on shutdown.
+				assert.NotEmpty(b, allMetrics)
+			}
 		})
 	}
 }

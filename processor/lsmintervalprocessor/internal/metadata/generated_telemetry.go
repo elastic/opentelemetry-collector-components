@@ -47,6 +47,7 @@ type TelemetryBuilder struct {
 	registrations                             []metric.Registration
 	LsmintervalExportedBytes                  metric.Int64Counter
 	LsmintervalExportedDataPoints             metric.Int64Counter
+	LsmintervalOverflow                       metric.Int64Counter
 	LsmintervalPebbleCompactedBytesRead       metric.Int64ObservableCounter
 	LsmintervalPebbleCompactedBytesWritten    metric.Int64ObservableCounter
 	LsmintervalPebbleCompactions              metric.Int64ObservableCounter
@@ -323,7 +324,13 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	builder.LsmintervalExportedDataPoints, err = builder.meter.Int64Counter(
 		"otelcol_lsminterval.exported_data_points",
 		metric.WithDescription("The count of metric data points exported by the processor. [Development]"),
-		metric.WithUnit("{count}"),
+		metric.WithUnit("1"),
+	)
+	errs = errors.Join(errs, err)
+	builder.LsmintervalOverflow, err = builder.meter.Int64Counter(
+		"otelcol_lsminterval.overflow",
+		metric.WithDescription("The estimated count of unique items that overflowed due to cardinality limits. [Development]"),
+		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalPebbleCompactedBytesRead, err = builder.meter.Int64ObservableCounter(
@@ -419,7 +426,7 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	builder.LsmintervalProcessedDataPoints, err = builder.meter.Int64Counter(
 		"otelcol_lsminterval.processed_data_points",
 		metric.WithDescription("The count of metric data points processed by the processor. [Development]"),
-		metric.WithUnit("{count}"),
+		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	return &builder, errs

@@ -25,6 +25,12 @@ resourceLogs:
         - key: agent.name
           value:
             stringValue: android/java
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
     scopeLogs:
       - logRecords:
           - attributes:

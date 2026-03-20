@@ -16,6 +16,9 @@ resourceMetrics:
         - key: data_stream.type
           value:
             stringValue: metrics
+        - key: deployment.environment
+          value:
+            stringValue: unset
         - key: host.ip
           value:
             stringValue: 1.2.3.4
