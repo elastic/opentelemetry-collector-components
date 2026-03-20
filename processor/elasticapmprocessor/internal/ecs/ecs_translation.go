@@ -19,13 +19,12 @@ package ecs // import "github.com/elastic/opentelemetry-collector-components/pro
 
 import (
 	"strconv"
-	"strings"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
-
-	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 )
 
 // Supported ECS resource attributes
@@ -42,70 +41,19 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 	attributes := resource.Attributes()
 
 	attributes.Range(func(k string, v pcommon.Value) bool {
-		if isLabelAttribute(k) {
-			sanitized := sanitizeLabelAttributeKey(k)
+		if sanitize.IsLabelAttribute(k) {
+			sanitized := sanitize.HandleLabelAttributeKey(k)
 			if sanitized != k {
 				v.CopyTo(attributes.PutEmpty(sanitized))
 				attributes.Remove(k)
 			}
 		} else if !isSupportedAttribute(k) {
 			// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
-			setLabelAttributeValue(attributes, sanitizeLabelKey(k), v)
+			setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(k), v)
 			attributes.Remove(k)
 		}
 		return true
 	})
-}
-
-// sanitizeLabelAttributeKey sanitizes the key portion of a label attribute,
-// preserving the "labels." or "numeric_labels." prefix.
-func sanitizeLabelAttributeKey(attr string) string {
-	if strings.HasPrefix(attr, "labels.") {
-		return "labels." + sanitizeLabelKey(strings.TrimPrefix(attr, "labels."))
-	}
-	if strings.HasPrefix(attr, "numeric_labels.") {
-		return "numeric_labels." + sanitizeLabelKey(strings.TrimPrefix(attr, "numeric_labels."))
-	}
-	return attr
-}
-
-// sanitizeLabelKey sanitizes a label key, replacing the reserved characters
-// '.', '*' and '"' with '_'. This matches the apm-server behavior.
-// This matches the logic in the apm-data library here:
-// https://github.com/elastic/apm-data/blob/e3e170b/model/modeljson/labels.go.
-func sanitizeLabelKey(k string) string {
-	if strings.ContainsAny(k, ".*\"") {
-		return strings.Map(replaceReservedLabelKeyRune, k)
-	}
-	return k
-}
-
-func replaceReservedLabelKeyRune(r rune) rune {
-	switch r {
-	case '.', '*', '"':
-		return '_'
-	}
-	return r
-}
-
-// isLabelAttribute returns true if the resource attribute is already a prefixed label.
-// The elasticapmintake receiver moves labels and numeric_labels into attributes and
-// already prefixes those with "labels." and "numeric_labels." respectively and also does de-dotting.
-// So for those, we don't want to double prefix - we just leave them as is.
-func isLabelAttribute(attr string) bool {
-	return strings.HasPrefix(attr, "labels.") || strings.HasPrefix(attr, "numeric_labels.")
-}
-
-// truncate returns s truncated at n runes, and the number of runes in the resulting string (<= n).
-func truncate(s string) string {
-	var j int
-	for i := range s {
-		if j == keywordLength {
-			return s[:i]
-		}
-		j++
-	}
-	return s
 }
 
 // setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
@@ -117,7 +65,7 @@ func truncate(s string) string {
 func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		attributes.PutStr("labels."+key, truncate(value.Str()))
+		attributes.PutStr("labels."+key, sanitize.Truncate(value.Str(), keywordLength))
 	case pcommon.ValueTypeBool:
 		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
 	case pcommon.ValueTypeInt:
@@ -135,7 +83,7 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeStr {
-					target.AppendEmpty().SetStr(truncate(item.Str()))
+					target.AppendEmpty().SetStr(sanitize.Truncate(item.Str(), keywordLength))
 				}
 			}
 		case pcommon.ValueTypeBool:

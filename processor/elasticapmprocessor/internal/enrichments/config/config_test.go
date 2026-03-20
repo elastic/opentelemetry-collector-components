@@ -45,9 +45,11 @@ func assertAttributeConfigDefaults(t *testing.T, cfg reflect.Value, expectDisabl
 
 	// Fields that are intentionally disabled by default
 	disabledByDefault := map[string]bool{
-		"ClearSpanID":   true,
-		"ClearSpanName": true,
-		"HostOSType":    true,
+		"ClearSpanID":                  true,
+		"ClearSpanName":                true,
+		"DefaultDeploymentEnvironment": true,
+		"ServiceName":                  true,
+		"HostOSType":                   true,
 	}
 
 	assertAttributeConfigDefaultsRecurse(t, cfg, disabled, disabledByDefault)
