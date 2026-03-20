@@ -114,7 +114,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			config: Config{
 				Format:     FormatText,
 				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
-				Fields:     map[string]string{"environment": "production", "team": "security"},
+				Fields:     map[string]any{"environment": "production", "team": "security"},
 			},
 			inputFile:  "aws_vpcflow.txt",
 			goldenFile: "aws_vpcflow_fields_expected.yaml",
@@ -349,7 +349,11 @@ func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
 		Format:     FormatJSON,
 		Unwrap:     "$.records[*]",
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
-		Fields:     map[string]string{"environment": "production", "team": "security"},
+		Fields: map[string]any{
+			"environment": "production",
+			"team":        "security",
+			"_conf":       map[string]any{"retain": "all"},
+		},
 	}, zap.NewNop())
 	require.NoError(t, err)
 
@@ -371,6 +375,12 @@ func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
 		teamVal, ok := body.Get("team")
 		require.True(t, ok, "log record %d: body should have 'team' key", i)
 		assert.Equal(t, "security", teamVal.Str())
+
+		confVal, ok := body.Get("_conf")
+		require.True(t, ok, "log record %d: body should have '_conf' key", i)
+		retainVal, ok := confVal.Map().Get("retain")
+		require.True(t, ok, "log record %d: _conf should have 'retain' key", i)
+		assert.Equal(t, "all", retainVal.Str())
 	}
 }
 

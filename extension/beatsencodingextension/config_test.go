@@ -127,7 +127,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:     FormatText,
 				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
-				Fields:     map[string]string{"environment": "production", "team": "security"},
+				Fields:     map[string]any{"environment": "production", "team": "security"},
 			},
 		},
 		{
@@ -135,7 +135,7 @@ func TestConfig_Validate(t *testing.T) {
 			config: Config{
 				Format:     FormatText,
 				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-				Fields:     map[string]string{},
+				Fields:     map[string]any{},
 			},
 		},
 		{

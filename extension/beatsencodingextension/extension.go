@@ -350,6 +350,47 @@ func skipValue(dec *json.Decoder) error {
 	}
 }
 
+// writeFields recursively writes a map[string]any into a pcommon.Map.
+// Strings, bools, ints, and floats are written as scalar values.
+// Nested maps are written as nested pcommon.Map entries.
+// Slices are written as pcommon.Slice entries.
+func writeFields(m pcommon.Map, fields map[string]any) {
+	for k, v := range fields {
+		switch val := v.(type) {
+		case string:
+			m.PutStr(k, val)
+		case bool:
+			m.PutBool(k, val)
+		case int:
+			m.PutInt(k, int64(val))
+		case int64:
+			m.PutInt(k, val)
+		case float64:
+			m.PutDouble(k, val)
+		case map[string]any:
+			writeFields(m.PutEmptyMap(k), val)
+		case []any:
+			sl := m.PutEmptySlice(k)
+			for _, item := range val {
+				switch elem := item.(type) {
+				case string:
+					sl.AppendEmpty().SetStr(elem)
+				case bool:
+					sl.AppendEmpty().SetBool(elem)
+				case int:
+					sl.AppendEmpty().SetInt(int64(elem))
+				case int64:
+					sl.AppendEmpty().SetInt(elem)
+				case float64:
+					sl.AppendEmpty().SetDouble(elem)
+				case map[string]any:
+					writeFields(sl.AppendEmpty().SetEmptyMap(), elem)
+				}
+			}
+		}
+	}
+}
+
 func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated string, record string) {
 	lr := sl.LogRecords().AppendEmpty()
 	lr.SetTimestamp(ts)
@@ -377,9 +418,7 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 		}
 	}
 
-	for k, v := range e.config.Fields {
-		body.PutStr(k, v)
-	}
+	writeFields(body, e.config.Fields)
 
 	// We need to set these attributes on the record itself for the
 	// Elasticsearch exporter to route the record to the correct
