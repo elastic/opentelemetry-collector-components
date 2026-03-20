@@ -39,7 +39,7 @@ import (
 )
 
 func TestLogsRouting(t *testing.T) {
-	pipelineDefault := pipeline.NewIDWithName(pipeline.SignalTraces, "default")
+	pipelineDefault := pipeline.NewIDWithName(pipeline.SignalLogs, "default")
 	pipeline_0_2 := pipeline.NewIDWithName(pipeline.SignalLogs, "thershold_0_2")
 	pipeline_2_5 := pipeline.NewIDWithName(pipeline.SignalLogs, "thershold_2_5")
 	pipeline_5_inf := pipeline.NewIDWithName(pipeline.SignalLogs, "thershold_5_inf")
