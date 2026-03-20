@@ -22,6 +22,9 @@ resourceLogs:
         - key: deployment.environment
           value:
             stringValue: unset
+        - key: telemetry.sdk.language
+          value:
+            stringValue: unknown
     scopeLogs:
       - logRecords:
           - body:

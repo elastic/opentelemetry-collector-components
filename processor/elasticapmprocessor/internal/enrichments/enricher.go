@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
 
@@ -74,7 +75,11 @@ func (e *Enricher) EnrichLogs(pl plog.Logs) {
 			EnrichScope(scopeSpan.Scope(), e.Config)
 			logRecords := scopeSpan.LogRecords()
 			for k := 0; k < logRecords.Len(); k++ {
-				EnrichLog(resourceAttrs, logRecords.At(k), e.Config)
+				logRecord := logRecords.At(k)
+				if e.Config.Log.TranslateUnsupportedAttributes.Enabled {
+					ecs.TranslateLogRecordAttributes(logRecord.Attributes())
+				}
+				EnrichLog(resourceAttrs, logRecord, e.Config)
 			}
 		}
 	}

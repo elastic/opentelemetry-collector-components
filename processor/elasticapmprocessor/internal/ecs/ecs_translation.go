@@ -38,8 +38,18 @@ const (
 // Moves unsupported attributes to labels with a "labels." prefix (key sanitized),
 // and leaves supported ECS attributes unchanged.
 func TranslateResourceMetadata(resource pcommon.Resource) {
-	attributes := resource.Attributes()
+	translateAttributes(resource.Attributes(), isSupportedAttribute)
+}
 
+// TranslateLogRecordAttributes applies the apm-data OTLP fallback behaviour for
+// log record attributes in ECS mode: known semantic fields are preserved, while
+// unsupported attributes are moved to labels.* / numeric_labels.* with a
+// sanitized key.
+func TranslateLogRecordAttributes(attributes pcommon.Map) {
+	translateAttributes(attributes, isSupportedLogRecordAttribute)
+}
+
+func translateAttributes(attributes pcommon.Map, isSupported func(string) bool) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitize.IsLabelAttribute(k) {
 			sanitized := sanitize.HandleLabelAttributeKey(k)
@@ -47,8 +57,9 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 				v.CopyTo(attributes.PutEmpty(sanitized))
 				attributes.Remove(k)
 			}
-		} else if !isSupportedAttribute(k) {
-			// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
+		} else if !isSupported(k) {
+			// Attributes not supported by ECS are moved to labels with a
+			// labels./numeric_labels. prefix depending on their value type.
 			setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(k), v)
 			attributes.Remove(k)
 		}
@@ -115,6 +126,27 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 	case pcommon.ValueTypeMap, pcommon.ValueTypeBytes, pcommon.ValueTypeEmpty:
 		return
 	}
+}
+
+func isSupportedLogRecordAttribute(attr string) bool {
+	switch attr {
+	case string(semconv.ExceptionMessageKey),
+		string(semconv.ExceptionStacktraceKey),
+		string(semconv.ExceptionTypeKey),
+		string(semconv26.ExceptionEscapedKey),
+		"event.name",
+		"event.domain",
+		"session.id",
+		string(semconv.NetworkConnectionTypeKey),
+		elasticattr.ProcessorEvent,
+		elasticattr.ErrorID,
+		elasticattr.DataStreamType,
+		elasticattr.DataStreamDataset,
+		elasticattr.DataStreamNamespace:
+		return true
+	}
+
+	return false
 }
 
 // isSupportedAttribute returns true if the resource attribute is

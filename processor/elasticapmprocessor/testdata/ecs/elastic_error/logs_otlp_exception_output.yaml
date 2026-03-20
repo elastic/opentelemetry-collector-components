@@ -34,6 +34,9 @@ resourceLogs:
         - key: deployment.environment
           value:
             stringValue: unset
+        - key: telemetry.sdk.language
+          value:
+            stringValue: unknown
     scopeLogs:
       - logRecords:
           - attributes:
@@ -86,7 +89,7 @@ resourceLogs:
               stringValue: Application error occurred
             timeUnixNano: "1000000000"
           - attributes:
-              - key: log.level
+              - key: labels.log_level
                 value:
                   stringValue: info
             body:

@@ -30,14 +30,21 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
 
-// ecsResourceConfig returns a ResourceConfig that mirrors the ECS enricher
-// configuration in processor.go: base Enabled() with ECS-only resource
-// enrichments explicitly enabled.
+// ecsResourceConfig returns the base ECS resource configuration shared by the
+// signal-specific enrichers in processor.go.
 func ecsResourceConfig() config.ResourceConfig {
 	c := config.Enabled().Resource
 	c.DefaultDeploymentEnvironment.Enabled = true
 	c.ServiceName.Enabled = true
 	c.HostOSType.Enabled = true
+	return c
+}
+
+// ecsLogResourceConfig returns the ECS log resource configuration used by the
+// log processor, including the post-agent default service language behavior.
+func ecsLogResourceConfig() config.ResourceConfig {
+	c := ecsResourceConfig()
+	c.DefaultServiceLanguage.Enabled = true
 	return c
 }
 
@@ -86,6 +93,52 @@ func TestResourceEnrich(t *testing.T) {
 			config: ecsResourceConfig(),
 			enrichedAttrs: map[string]any{
 				elasticattr.AgentName:                      "customflavor",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
+			},
+		},
+		{
+			name: "default_service_language_set_for_non_intake_logs",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+				return res
+			}(),
+			config: ecsLogResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:                      "opentelemetry",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv.TelemetrySDKLanguageKey):    "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
+			},
+		},
+		{
+			name: "default_service_language_overwrites_empty_value_for_non_intake_logs",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+				res.Attributes().PutStr(string(semconv.TelemetrySDKLanguageKey), "")
+				return res
+			}(),
+			config: ecsLogResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:                      "opentelemetry",
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv.TelemetrySDKLanguageKey):    "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
+			},
+		},
+		{
+			name: "default_service_language_preserves_existing_value",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+				res.Attributes().PutStr(string(semconv.TelemetrySDKLanguageKey), "java")
+				return res
+			}(),
+			config: ecsLogResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:                      "opentelemetry/java",
 				elasticattr.AgentVersion:                   "unknown",
 				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},

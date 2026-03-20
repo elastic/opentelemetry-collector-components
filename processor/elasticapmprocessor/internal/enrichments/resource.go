@@ -122,6 +122,9 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 	if cfg.HostOSType.Enabled {
 		s.setHostOSType(resource)
 	}
+	if cfg.DefaultServiceLanguage.Enabled {
+		s.setDefaultServiceLanguage(resource)
+	}
 }
 
 // SemConv v1.27.0 deprecated `deployment.environment` and added `deployment.environment.name` in favor of it.
@@ -155,6 +158,17 @@ func (s *resourceEnrichmentContext) setDefaultDeploymentEnvironment(resource pco
 		string(semconv25.DeploymentEnvironmentKey),
 		"unset",
 	)
+}
+
+// setDefaultServiceLanguage ensures telemetry.sdk.language is populated after
+// agent.name/version have already been derived. This preserves the
+// apm-data-compatible service.language.name alias without changing agent naming.
+// The log processor enables this only for OTLP ECS log batches.
+func (s *resourceEnrichmentContext) setDefaultServiceLanguage(resource pcommon.Resource) {
+	if s.telemetrySDKLanguage != "" {
+		return
+	}
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKLanguageKey), "unknown")
 }
 
 func (s *resourceEnrichmentContext) setAgentName(resource pcommon.Resource) {
