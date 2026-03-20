@@ -1,0 +1,65 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 1.0.0
+        - key: labels.global_tag
+          value:
+            stringValue: from_event
+        - key: metricset.name
+          value:
+            stringValue: app
+        - key: service.name
+          value:
+            stringValue: shadow-test
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 2
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1496170422282000000"
+            name: app.request.count
+        scope: {}
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 1.0.0
+        - key: labels.global_tag
+          value:
+            stringValue: from_metadata
+        - key: metricset.name
+          value:
+            stringValue: app
+        - key: service.name
+          value:
+            stringValue: shadow-test
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 1
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1496170422281000000"
+            name: app.request.count
+        scope: {}

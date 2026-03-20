@@ -810,36 +810,104 @@ func TestGlobalKeyExtraction(t *testing.T) {
 }
 
 func TestGlobalLabelsMetadataPropagation(t *testing.T) {
-	factory := NewFactory()
-	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	cfg := &Config{
-		ServerConfig: confighttp.ServerConfig{
-			NetAddr: confignet.AddrConfig{
-				Endpoint:  testEndpoint,
-				Transport: confignet.TransportTypeTCP,
-			},
+	cases := []struct {
+		name                 string
+		inputFile            string
+		signal               string // "traces" or "metrics"
+		expectedDynamicAttrs string
+		expectedYamlFile     string // if non-empty, compare output against this golden file
+	}{
+		{
+			name:                 "metadata global labels propagated",
+			inputFile:            "transactions.ndjson",
+			signal:               "traces",
+			expectedDynamicAttrs: "tag1,tag2",
+		},
+		{
+			// The apm-data library marks metadata labels as Global: true and
+			// clones them onto every event. When an event has a tag with the
+			// same key as a metadata label, Labels.Set() replaces the value
+			// and resets Global to false on that event only.
+			//
+			// In apm-aggregation, marshalEventGlobalLabels() checks Global
+			// per-event, so the shadowed event would exclude that key from
+			// its aggregation grouping. Here, we collect the union of global
+			// keys across all events in the batch, so the shadowed key is
+			// still present in x-dynamic-resource-attributes as long as at
+			// least one other event retains it as Global: true.
+			//
+			// This test sends two metricsets: one without tags (global_tag
+			// stays Global: true) and one with tags: {"global_tag": "from_event"}
+			// which shadows the metadata label (Global: false on that event).
+			// The key "global_tag" should still appear in the dynamic attrs.
+			name:                 "event-level tag shadows metadata global label",
+			inputFile:            "metric_global_label_shadow.ndjson",
+			signal:               "metrics",
+			expectedDynamicAttrs: "global_tag",
+			expectedYamlFile:     "metric_global_label_shadow_expected.yaml",
 		},
 	}
 
-	set := receivertest.NewNopSettings(metadata.Type)
-	nextTrace := new(consumertest.TracesSink)
-	rcv, err := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
-	require.NoError(t, err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory := NewFactory()
+			testEndpoint := testutil.GetAvailableLocalAddress(t)
+			cfg := &Config{
+				ServerConfig: confighttp.ServerConfig{
+					NetAddr: confignet.AddrConfig{
+						Endpoint:  testEndpoint,
+						Transport: confignet.TransportTypeTCP,
+					},
+				},
+			}
+			set := receivertest.NewNopSettings(metadata.Type)
 
-	require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
-	defer func() {
-		require.NoError(t, rcv.Shutdown(context.Background()))
-	}()
+			var rcv component.Component
+			var ctxsFn func() []context.Context
+			var err error
 
-	sendInput(t, "transactions.ndjson", testEndpoint)
+			var metricsSink *consumertest.MetricsSink
+			switch tc.signal {
+			case "traces":
+				sink := new(consumertest.TracesSink)
+				rcv, err = factory.CreateTraces(context.Background(), set, cfg, sink)
+				ctxsFn = sink.Contexts
+			case "metrics":
+				metricsSink = new(consumertest.MetricsSink)
+				rcv, err = factory.CreateMetrics(context.Background(), set, cfg, metricsSink)
+				ctxsFn = metricsSink.Contexts
+			}
+			require.NoError(t, err)
 
-	ctxs := nextTrace.Contexts()
-	require.GreaterOrEqual(t, len(ctxs), 1)
-	md := client.FromContext(ctxs[0]).Metadata
+			require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
+			defer func() {
+				require.NoError(t, rcv.Shutdown(context.Background()))
+			}()
 
-	got := md.Get("x-dynamic-resource-attributes")
-	require.Len(t, got, 1, "expected exactly one x-dynamic-resource-attributes value")
-	require.Equal(t, "tag1,tag2", got[0])
+			sendInput(t, tc.inputFile, testEndpoint)
+
+			ctxs := ctxsFn()
+			require.GreaterOrEqual(t, len(ctxs), 1)
+			got := client.FromContext(ctxs[0]).Metadata.Get("x-dynamic-resource-attributes")
+			require.Len(t, got, 1, "expected exactly one x-dynamic-resource-attributes value")
+			require.Equal(t, tc.expectedDynamicAttrs, got[0])
+
+			if tc.expectedYamlFile != "" && metricsSink != nil {
+				actualMetrics := metricsSink.AllMetrics()[0]
+				expectedFile := filepath.Join(testData, tc.expectedYamlFile)
+				if *update {
+					err := golden.WriteMetrics(t, expectedFile, actualMetrics, golden.SkipMetricTimestampNormalization())
+					require.NoError(t, err)
+				}
+				expectedMetrics, err := golden.ReadMetrics(expectedFile)
+				require.NoError(t, err)
+				require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics,
+					pmetrictest.IgnoreMetricsOrder(),
+					pmetrictest.IgnoreResourceMetricsOrder(),
+				))
+			}
+		})
+	}
 }
 
 func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {

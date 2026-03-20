@@ -1,0 +1,3 @@
+{"metadata": {"service": {"name": "shadow-test", "agent": {"name": "elastic-node", "version": "1.0.0"}}, "labels": {"global_tag": "from_metadata"}}}
+{"metricset": {"samples": {"app.request.count": {"value": 1}}, "timestamp": 1496170422281000}}
+{"metricset": {"samples": {"app.request.count": {"value": 2}}, "tags": {"global_tag": "from_event"}, "timestamp": 1496170422282000}}
