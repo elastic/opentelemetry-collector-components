@@ -254,7 +254,7 @@ func TestDynamicroutingRoutedTelemetry(t *testing.T) {
 
 				connSet := connectortest.NewNopSettings(metadata.Type)
 				connSet.TelemetrySettings = testTel.NewTelemetrySettings()
-				connSet.TelemetrySettings.Logger = zaptest.NewLogger(t)
+				connSet.Logger = zaptest.NewLogger(t)
 				conn, err := NewFactory().CreateMetricsToMetrics(
 					context.Background(),
 					connSet,
@@ -337,4 +337,3 @@ func contextWithMetadata(md map[string][]string) context.Context {
 		client.Info{Metadata: client.NewMetadata(md)},
 	)
 }
-
