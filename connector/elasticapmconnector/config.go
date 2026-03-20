@@ -118,6 +118,13 @@ type AggregationConfig struct {
 
 	// Limits holds optional cardinality limits for aggregated metrics
 	Limits AggregationLimitConfig `mapstructure:"limits"`
+
+	// Statements are OTTL statements executed on metrics produced for each
+	// aggregation interval. Available OTTL paths: ottldatapoint context.
+	// Client metadata is accessible via otelcol.client.metadata["key"]
+	// (requires the ottl.contexts.enableOTelColContext feature gate, enabled
+	// by default since v0.147.0).
+	Statements []string `mapstructure:"statements"`
 }
 
 type AggregationLimitConfig struct {
@@ -157,15 +164,23 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 	if cfg.Aggregation != nil && len(cfg.Aggregation.Intervals) != 0 {
 		intervals = cfg.Aggregation.Intervals
 	}
+
+	var extraStatements []string
+	if cfg.Aggregation != nil {
+		extraStatements = cfg.Aggregation.Statements
+	}
+
 	intervalsConfig := make([]lsmconfig.IntervalConfig, 0, len(intervals))
 	for _, i := range intervals {
+		statements := []string{
+			fmt.Sprintf(`set(attributes["metricset.interval"], "%dm")`, int(i.Minutes())),
+			fmt.Sprintf(`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "%dm"], "."))`, int(i.Minutes())),
+			`set(attributes["processor.event"], "metric")`,
+		}
+		statements = append(statements, extraStatements...)
 		intervalsConfig = append(intervalsConfig, lsmconfig.IntervalConfig{
-			Duration: i,
-			Statements: []string{
-				fmt.Sprintf(`set(attributes["metricset.interval"], "%dm")`, int(i.Minutes())),
-				fmt.Sprintf(`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "%dm"], "."))`, int(i.Minutes())),
-				`set(attributes["processor.event"], "metric")`,
-			},
+			Duration:   i,
+			Statements: statements,
 		})
 	}
 

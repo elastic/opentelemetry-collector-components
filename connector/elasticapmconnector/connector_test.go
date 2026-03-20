@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
@@ -238,6 +239,110 @@ func TestConnector_AggregationMetadataKeys(t *testing.T) {
 		client1Info, client2Info, // 10m
 		client1Info, client2Info, // 60m
 	})
+}
+
+func TestConnector_OTTLStatementsWithClientMetadata(t *testing.T) {
+	// Test that OTTL statements with otelcol.client.metadata["key"] work correctly.
+	// When x-elastic-mapping-mode is "ecs", data_stream.dataset should be prefixed with "apm.".
+	// When x-elastic-mapping-mode is absent or different, no prefix should be added.
+
+	ottlStatement := `set(attributes["data_stream.dataset"], Concat(["apm.", attributes["data_stream.dataset"]], "")) where otelcol.client.metadata["x-elastic-mapping-mode"][0] == "ecs"`
+
+	cfg := &Config{
+		Aggregation: &AggregationConfig{
+			MetadataKeys: []string{"x-elastic-mapping-mode"},
+			Statements:   []string{ottlStatement},
+			Intervals:    []time.Duration{time.Second},
+		},
+	}
+
+	var ecsMetrics []pmetric.Metrics
+	var otelMetrics []pmetric.Metrics
+
+	ecsConsumer, _ := consumer.NewMetrics(func(_ context.Context, metrics pmetric.Metrics) error {
+		ecsMetrics = append(ecsMetrics, metrics)
+		return nil
+	})
+	otelConsumer, _ := consumer.NewMetrics(func(_ context.Context, metrics pmetric.Metrics) error {
+		otelMetrics = append(otelMetrics, metrics)
+		return nil
+	})
+
+	// Create two connectors: one whose output goes to ecsConsumer and one to otelConsumer.
+	// We use separate connectors so we can send different client metadata independently.
+	ecsConnector := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg, ecsConsumer)
+	otelConnector := newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg, otelConsumer)
+
+	input := plog.NewLogs()
+	rl := input.ResourceLogs().AppendEmpty()
+	rl.Resource().Attributes().PutStr("service.name", "test-service")
+	rl.Resource().Attributes().PutStr("deployment.environment", "prod")
+	rl.Resource().Attributes().PutStr("telemetry.sdk.language", "go")
+	rl.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty().Body().SetStr("test log")
+
+	ecsCtx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+	otelCtx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"otel"}}),
+	})
+
+	err := ecsConnector.ConsumeLogs(ecsCtx, input)
+	require.NoError(t, err)
+	err = ecsConnector.Shutdown(context.Background())
+	require.NoError(t, err)
+
+	err = otelConnector.ConsumeLogs(otelCtx, input)
+	require.NoError(t, err)
+	err = otelConnector.Shutdown(context.Background())
+	require.NoError(t, err)
+
+	require.NotEmpty(t, ecsMetrics, "expected ECS metrics to be produced")
+	require.NotEmpty(t, otelMetrics, "expected OTEL metrics to be produced")
+
+	// Check ECS metrics: data_stream.dataset should be prefixed with "apm."
+	for _, m := range ecsMetrics {
+		for i := 0; i < m.ResourceMetrics().Len(); i++ {
+			sm := m.ResourceMetrics().At(i).ScopeMetrics()
+			for j := 0; j < sm.Len(); j++ {
+				metrics := sm.At(j).Metrics()
+				for k := 0; k < metrics.Len(); k++ {
+					metric := metrics.At(k)
+					dps := metric.Sum().DataPoints()
+					for l := 0; l < dps.Len(); l++ {
+						dp := dps.At(l)
+						ds, ok := dp.Attributes().Get("data_stream.dataset")
+						if ok {
+							assert.Truef(t, len(ds.Str()) > 4 && ds.Str()[:4] == "apm.",
+								"expected data_stream.dataset to start with 'apm.' for ECS mode, got %q", ds.Str())
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Check OTEL metrics: data_stream.dataset should NOT be prefixed with "apm."
+	for _, m := range otelMetrics {
+		for i := 0; i < m.ResourceMetrics().Len(); i++ {
+			sm := m.ResourceMetrics().At(i).ScopeMetrics()
+			for j := 0; j < sm.Len(); j++ {
+				metrics := sm.At(j).Metrics()
+				for k := 0; k < metrics.Len(); k++ {
+					metric := metrics.At(k)
+					dps := metric.Sum().DataPoints()
+					for l := 0; l < dps.Len(); l++ {
+						dp := dps.At(l)
+						ds, ok := dp.Attributes().Get("data_stream.dataset")
+						if ok {
+							assert.Falsef(t, len(ds.Str()) > 4 && ds.Str()[:4] == "apm.",
+								"expected data_stream.dataset to NOT start with 'apm.' for OTEL mode, got %q", ds.Str())
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func compareAggregatedMetrics(t testing.TB, expectedFile string, allMetrics []pmetric.Metrics) {
