@@ -21,11 +21,14 @@ import (
 	"context"
 	"math"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/connector"
+	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pipeline"
@@ -34,138 +37,171 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 	"go.uber.org/zap/zaptest"
 
+	"github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector/internal/metadatatest"
 )
 
 func TestDynamicroutingRoutedTelemetry(t *testing.T) {
+	pipelineDefault := pipeline.NewIDWithName(pipeline.SignalMetrics, "default")
+	pipelineBucket := pipeline.NewIDWithName(pipeline.SignalMetrics, "bucket_0_2")
+	pipelineBucket2 := pipeline.NewIDWithName(pipeline.SignalMetrics, "bucket_2_5")
+	pipelineBucketInf := pipeline.NewIDWithName(pipeline.SignalMetrics, "bucket_5_inf")
+
 	cfg := Config{
 		RoutingKeys: RoutingKeys{
 			PartitionBy: []string{"x-tenant-id"},
 			MeasureBy:   []string{"x-forwarded-for"},
 		},
-		DefaultPipelines: []pipeline.ID{
-			pipeline.NewIDWithName(pipeline.SignalMetrics, "default"),
-		},
+		DefaultPipelines: []pipeline.ID{pipelineDefault},
 		RoutingPipelines: []RoutingPipeline{
-			{Pipelines: []pipeline.ID{pipeline.NewIDWithName(pipeline.SignalMetrics, "bucket_0_2")}, MaxCardinality: 2},
-			{Pipelines: []pipeline.ID{pipeline.NewIDWithName(pipeline.SignalMetrics, "bucket_2_5")}, MaxCardinality: 5},
-			{Pipelines: []pipeline.ID{pipeline.NewIDWithName(pipeline.SignalMetrics, "bucket_5_inf")}, MaxCardinality: math.Inf(1)},
+			{Pipelines: []pipeline.ID{pipelineBucket}, MaxCardinality: 2},
+			{Pipelines: []pipeline.ID{pipelineBucket2}, MaxCardinality: 5},
+			{Pipelines: []pipeline.ID{pipelineBucketInf}, MaxCardinality: math.Inf(1)},
 		},
 		RecordingInterval: time.Second,
 		TTL:               5 * time.Second,
 	}
 
+	tenant1Ctx := client.NewContext(
+		context.Background(),
+		client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id":     {"tenant-1"},
+				"x-forwarded-for": {"10.2.4.2"},
+			}),
+		},
+	)
+	tenant2Ctx := client.NewContext(
+		context.Background(),
+		client.Info{
+			Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant-id":     {"tenant-2"},
+				"x-forwarded-for": {"10.2.4.3"},
+			}),
+		},
+	)
+
 	tests := []struct {
-		name       string
-		ctxs       []context.Context
-		setup      func(*router[consumer.Metrics], context.Context) string
-		wantBucket string
+		name      string
+		setupCtxs []context.Context // sent before time advancement to form decisions
+		testCtxs  []context.Context // sent after decisions formed
+		wantDPs   []metricdata.DataPoint[int64]
 	}{
 		{
-			name: "default_bucket",
-			ctxs: []context.Context{
-				context.Background(),
+			name:     "default_bucket",
+			testCtxs: []context.Context{context.Background()},
+			wantDPs: []metricdata.DataPoint[int64]{
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", defaultCardinalityBucket),
+						attribute.String("partition_key", ""),
+					),
+				},
 			},
-			wantBucket: defaultCardinalityBucket,
 		},
 		{
-			name: "cardinality_bucket",
-			ctxs: []context.Context{
-				client.NewContext(
-					context.Background(),
-					client.Info{
-						Metadata: client.NewMetadata(map[string][]string{
-							"x-tenant-id":     {"tenant-1"},
-							"x-forwarded-for": {"10.2.4.2"},
-						}),
-					},
-				),
+			name:      "cardinality_bucket",
+			setupCtxs: []context.Context{tenant1Ctx},
+			testCtxs:  []context.Context{tenant1Ctx},
+			wantDPs: []metricdata.DataPoint[int64]{
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", defaultCardinalityBucket),
+						attribute.String("partition_key", "tenant-1:;"),
+					),
+				},
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", "0_2"),
+						attribute.String("partition_key", "tenant-1:;"),
+					),
+				},
 			},
-			setup: func(r *router[consumer.Metrics], ctx context.Context) string {
-				pk := r.partitionKey(ctx)
-				r.recordCardinality(pk, r.hashSum(ctx))
-				r.updateDecisions()
-				return pk
-			},
-			wantBucket: "0_2",
 		},
 		{
-			name: "multiple_tenants",
-			ctxs: []context.Context{
-				client.NewContext(
-					context.Background(),
-					client.Info{
-						Metadata: client.NewMetadata(map[string][]string{
-							"x-tenant-id":     {"tenant-1"},
-							"x-forwarded-for": {"10.2.4.2"},
-						}),
-					},
-				),
-				client.NewContext(
-					context.Background(),
-					client.Info{
-						Metadata: client.NewMetadata(map[string][]string{
-							"x-tenant-id":     {"tenant-2"},
-							"x-forwarded-for": {"10.2.4.3"},
-						}),
-					},
-				),
+			name:      "multiple_tenants",
+			setupCtxs: []context.Context{tenant1Ctx, tenant2Ctx},
+			testCtxs:  []context.Context{tenant1Ctx, tenant2Ctx},
+			wantDPs: []metricdata.DataPoint[int64]{
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", defaultCardinalityBucket),
+						attribute.String("partition_key", "tenant-1:;"),
+					),
+				},
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", defaultCardinalityBucket),
+						attribute.String("partition_key", "tenant-2:;"),
+					),
+				},
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", "0_2"),
+						attribute.String("partition_key", "tenant-1:;"),
+					),
+				},
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						attribute.String("cardinality_bucket", "0_2"),
+						attribute.String("partition_key", "tenant-2:;"),
+					),
+				},
 			},
-			setup: func(r *router[consumer.Metrics], ctx context.Context) string {
-				pk := r.partitionKey(ctx)
-				r.recordCardinality(pk, r.hashSum(ctx))
-				r.updateDecisions()
-				return pk
-			},
-			wantBucket: "0_2",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testTel := componenttest.NewTelemetry()
-			t.Cleanup(func() {
-				require.NoError(t, testTel.Shutdown(context.Background()))
-			})
+			synctest.Test(t, func(t *testing.T) {
+				testTel := componenttest.NewTelemetry()
+				defer func() { require.NoError(t, testTel.Shutdown(context.Background())) }()
 
-			settings := testTel.NewTelemetrySettings()
-			settings.Logger = zaptest.NewLogger(t)
-			router, err := newRouter(
-				&cfg,
-				settings,
-				func(...pipeline.ID) (consumer.Metrics, error) {
-					return consumertest.NewNop(), nil
-				},
-			)
-			require.NoError(t, err)
-			t.Cleanup(func() {
-				require.NoError(t, router.Shutdown(context.Background()))
-			})
+				routerAndConsumer := connector.NewMetricsRouter(map[pipeline.ID]consumer.Metrics{
+					pipelineDefault:   consumertest.NewNop(),
+					pipelineBucket:    consumertest.NewNop(),
+					pipelineBucket2:   consumertest.NewNop(),
+					pipelineBucketInf: consumertest.NewNop(),
+				})
 
-			var dps []metricdata.DataPoint[int64]
-			for _, ctx := range tt.ctxs {
-				var pk string
-				if tt.setup != nil {
-					pk = tt.setup(router, ctx)
+				connSet := connectortest.NewNopSettings(metadata.Type)
+				connSet.TelemetrySettings = testTel.NewTelemetrySettings()
+				connSet.TelemetrySettings.Logger = zaptest.NewLogger(t)
+				conn, err := NewFactory().CreateMetricsToMetrics(
+					context.Background(),
+					connSet,
+					&cfg,
+					routerAndConsumer.(consumer.Metrics),
+				)
+				require.NoError(t, err)
+				require.NoError(t, conn.Start(context.Background(), nil))
+				defer func() { require.NoError(t, conn.Shutdown(context.Background())) }()
+
+				md := newTestMetrics("1", "1", "1", "1")
+				for _, ctx := range tt.setupCtxs {
+					require.NoError(t, conn.ConsumeMetrics(ctx, md))
+				}
+				time.Sleep(cfg.RecordingInterval)
+				synctest.Wait()
+
+				for _, ctx := range tt.testCtxs {
+					require.NoError(t, conn.ConsumeMetrics(ctx, md))
 				}
 
-				router.Process(ctx)
-
-				dps = append(dps, metricdata.DataPoint[int64]{
-					Value: 1,
-					Attributes: attribute.NewSet(
-						attribute.String("cardinality_bucket", tt.wantBucket),
-						attribute.String("partition_key", pk),
-					),
-				})
-			}
-
-			metadatatest.AssertEqualDynamicroutingRouted(
-				t,
-				testTel,
-				dps,
-				metricdatatest.IgnoreTimestamp(),
-			)
+				metadatatest.AssertEqualDynamicroutingRouted(
+					t,
+					testTel,
+					tt.wantDPs,
+					metricdatatest.IgnoreTimestamp(),
+				)
+			})
 		})
 	}
 }

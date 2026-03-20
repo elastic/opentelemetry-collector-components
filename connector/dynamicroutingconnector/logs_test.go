@@ -21,6 +21,7 @@ import (
 	"context"
 	"math"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector/internal/metadata"
@@ -126,43 +127,46 @@ func TestLogsRouting(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var sinkDefault, sink_0_2, sink_2_5, sink_5_inf consumertest.LogsSink
-			routerAndConsumer := connector.NewLogsRouter(map[pipeline.ID]consumer.Logs{
-				pipelineDefault: &sinkDefault,
-				pipeline_0_2:    &sink_0_2,
-				pipeline_2_5:    &sink_2_5,
-				pipeline_5_inf:  &sink_5_inf,
+			synctest.Test(t, func(t *testing.T) {
+				var sinkDefault, sink_0_2, sink_2_5, sink_5_inf consumertest.LogsSink
+				routerAndConsumer := connector.NewLogsRouter(map[pipeline.ID]consumer.Logs{
+					pipelineDefault: &sinkDefault,
+					pipeline_0_2:    &sink_0_2,
+					pipeline_2_5:    &sink_2_5,
+					pipeline_5_inf:  &sink_5_inf,
+				})
+
+				cfg.RecordingInterval = tc.recordingInterval
+				cfg.TTL = 5 * tc.recordingInterval
+				connectorSet := connectortest.NewNopSettings(metadata.Type)
+				connectorSet.Logger = zaptest.NewLogger(t)
+				conn, err := NewFactory().CreateLogsToLogs(
+					context.Background(),
+					connectorSet,
+					&cfg,
+					routerAndConsumer.(consumer.Logs),
+				)
+				require.NoError(t, err)
+				require.NoError(t, conn.Start(context.Background(), nil))
+				defer func() { require.NoError(t, conn.Shutdown(context.Background())) }()
+
+				ctx := context.Background()
+				if tc.ctx != nil {
+					ctx = tc.ctx
+				}
+
+				for _, d := range tc.initialData {
+					require.NoError(t, conn.ConsumeLogs(ctx, d))
+				}
+				time.Sleep(tc.recordingInterval)
+				synctest.Wait()
+
+				require.NoError(t, conn.ConsumeLogs(ctx, tc.input))
+				compareLogsSlice(t, tc.expectSinkDefault, sinkDefault.AllLogs())
+				compareLogsSlice(t, tc.expectSink_0_2, sink_0_2.AllLogs())
+				compareLogsSlice(t, tc.expectSink_2_5, sink_2_5.AllLogs())
+				compareLogsSlice(t, tc.expectSink_5_inf, sink_5_inf.AllLogs())
 			})
-
-			cfg.RecordingInterval = tc.recordingInterval
-			cfg.TTL = 5 * tc.recordingInterval
-			connectorSet := connectortest.NewNopSettings(metadata.Type)
-			connectorSet.Logger = zaptest.NewLogger(t)
-			connector, err := NewFactory().CreateLogsToLogs(
-				t.Context(),
-				connectorSet,
-				&cfg,
-				routerAndConsumer.(consumer.Logs),
-			)
-			require.NoError(t, err)
-
-			ctx := t.Context()
-			if tc.ctx != nil {
-				ctx = tc.ctx
-			}
-
-			router := connector.(*logsConnector).router
-			for _, d := range tc.initialData {
-				require.NoError(t, connector.ConsumeLogs(ctx, d))
-			}
-			// Update the decisions to be based on initial data
-			router.updateDecisions()
-
-			require.NoError(t, connector.ConsumeLogs(ctx, tc.input))
-			compareLogsSlice(t, tc.expectSinkDefault, sinkDefault.AllLogs())
-			compareLogsSlice(t, tc.expectSink_0_2, sink_0_2.AllLogs())
-			compareLogsSlice(t, tc.expectSink_2_5, sink_2_5.AllLogs())
-			compareLogsSlice(t, tc.expectSink_5_inf, sink_5_inf.AllLogs())
 		})
 	}
 }
