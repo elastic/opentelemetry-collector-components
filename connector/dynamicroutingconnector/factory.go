@@ -22,19 +22,22 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
+	"go.opentelemetry.io/collector/connector/xconnector"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/xconsumer"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector/internal/metadata"
 )
 
 // NewFactory returns a connector.Factory.
 func NewFactory() connector.Factory {
-	return connector.NewFactory(
+	return xconnector.NewFactory(
 		metadata.Type,
 		createDefaultConfig,
-		connector.WithTracesToTraces(createTracesToTraces, metadata.TracesToTracesStability),
-		connector.WithLogsToLogs(createLogsToLogs, metadata.LogsToLogsStability),
-		connector.WithMetricsToMetrics(createMetricsToMetrics, metadata.MetricsToMetricsStability),
+		xconnector.WithTracesToTraces(createTracesToTraces, metadata.TracesToTracesStability),
+		xconnector.WithLogsToLogs(createLogsToLogs, metadata.LogsToLogsStability),
+		xconnector.WithMetricsToMetrics(createMetricsToMetrics, metadata.MetricsToMetricsStability),
+		xconnector.WithProfilesToProfiles(createProfilesToProfiles, metadata.ProfilesToProfilesStability),
 	)
 }
 
@@ -63,6 +66,15 @@ func createMetricsToMetrics(
 	metrics consumer.Metrics,
 ) (connector.Metrics, error) {
 	return newMetricsConnector(set, cfg, metrics)
+}
+
+func createProfilesToProfiles(
+	_ context.Context,
+	set connector.Settings,
+	cfg component.Config,
+	profiles xconsumer.Profiles,
+) (xconnector.Profiles, error) {
+	return newProfilesConnector(set, cfg, profiles)
 }
 
 func createDefaultConfig() component.Config {
