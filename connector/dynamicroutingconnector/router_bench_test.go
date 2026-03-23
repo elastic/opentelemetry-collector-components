@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector/internal/metadata"
-	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer"
@@ -66,10 +65,7 @@ var benchRoutingKeySets = []struct {
 func BenchmarkRouter(b *testing.B) {
 	for _, keys := range benchRoutingKeySets {
 		b.Run(keys.name, func(b *testing.B) {
-			ctx := client.NewContext(
-				context.Background(),
-				client.Info{Metadata: client.NewMetadata(keys.metadata)},
-			)
+			ctx := contextWithMetadata(keys.metadata)
 			b.Run("traces", func(b *testing.B) { benchTraces(b, ctx, keys.partitionBy, keys.measureBy) })
 			b.Run("metrics", func(b *testing.B) { benchMetrics(b, ctx, keys.partitionBy, keys.measureBy) })
 			b.Run("logs", func(b *testing.B) { benchLogs(b, ctx, keys.partitionBy, keys.measureBy) })
