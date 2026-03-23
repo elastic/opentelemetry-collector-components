@@ -128,21 +128,27 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 	}
 }
 
+// isSupportedLogRecordAttribute is based on the OTLP log-record attribute switch
+// in apm-data/input/otlp/logs.go, which preserves exception.*, event.name,
+// event.domain, session.id, network.connection.type, and data_stream.* as
+// first-class fields and sends everything else through setLabel(replaceDots(k), ...).
+// This allowlist also keeps processor-added fields like processor.event,
+// error.id, and data_stream.type so they survive the collector-side translation pass.
 func isSupportedLogRecordAttribute(attr string) bool {
 	switch attr {
-	case string(semconv.ExceptionMessageKey),
+	case string(semconv26.ExceptionEscapedKey),
+		string(semconv.ExceptionMessageKey),
 		string(semconv.ExceptionStacktraceKey),
 		string(semconv.ExceptionTypeKey),
-		string(semconv26.ExceptionEscapedKey),
-		"event.name",
-		"event.domain",
-		"session.id",
 		string(semconv.NetworkConnectionTypeKey),
-		elasticattr.ProcessorEvent,
-		elasticattr.ErrorID,
-		elasticattr.DataStreamType,
 		elasticattr.DataStreamDataset,
-		elasticattr.DataStreamNamespace:
+		elasticattr.DataStreamNamespace,
+		elasticattr.DataStreamType,
+		elasticattr.ErrorID,
+		elasticattr.EventDomain,
+		elasticattr.EventName,
+		elasticattr.ProcessorEvent,
+		elasticattr.SessionID:
 		return true
 	}
 
