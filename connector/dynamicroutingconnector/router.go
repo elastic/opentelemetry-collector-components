@@ -62,7 +62,7 @@ type router[C any] struct {
 	partitionKeys      []string
 	sortedMetadataKeys []string
 	defaultConsumer    C
-	consumers          []ct[C]
+	consumers          []consumerThreshold[C]
 
 	logger           *zap.Logger
 	telemetryBuilder *metadata.TelemetryBuilder
@@ -71,13 +71,28 @@ type router[C any] struct {
 	m        map[string]*hyperloglog.Sketch
 	stop     chan struct{}
 	stopped  chan struct{}
-	decision *ttlcache.Cache[string, ct[C]]
+	decision *ttlcache.Cache[string, routingDecision[C]]
 }
 
-type ct[C any] struct {
+// consumerThreshold is a config-time structure mapping a consumer to its
+// cardinality threshold and bucket label.
+type consumerThreshold[C any] struct {
 	consumer          C
 	maxCount          float64
 	cardinalityBucket string
+}
+
+// routingDecision is a cached per-partition-key entry holding the resolved
+// consumer and a pre-built metric option.
+type routingDecision[C any] struct {
+	consumer C
+	maxCount float64
+	// routedOpt is a pre-built metric.MeasurementOption containing the
+	// partition key and cardinality bucket attributes for this decision.
+	// It is constructed once when the decision is cached (in updateDecisions)
+	// and reused on every subsequent call, avoiding repeated attribute
+	// allocations on the hot path.
+	routedOpt metric.MeasurementOption
 }
 
 func newRouter[C any](
@@ -88,17 +103,17 @@ func newRouter[C any](
 	sortedMetadataKeys := slices.Clone(cfg.RoutingKeys.MeasureBy)
 	slices.Sort(sortedMetadataKeys)
 	decisionCache := ttlcache.New(
-		ttlcache.WithTTL[string, ct[C]](cfg.TTL),
-		ttlcache.WithDisableTouchOnHit[string, ct[C]](),
+		ttlcache.WithTTL[string, routingDecision[C]](cfg.TTL),
+		ttlcache.WithDisableTouchOnHit[string, routingDecision[C]](),
 	)
-	consumers := make([]ct[C], 0, len(cfg.RoutingPipelines))
+	consumers := make([]consumerThreshold[C], 0, len(cfg.RoutingPipelines))
 	var prevMax float64
 	for i, p := range cfg.RoutingPipelines {
 		c, err := provider(p.Pipelines...)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create consumer from provided pipelines at idx %d: %w", i, err)
 		}
-		consumers = append(consumers, ct[C]{
+		consumers = append(consumers, consumerThreshold[C]{
 			consumer:          c,
 			maxCount:          p.MaxCardinality,
 			cardinalityBucket: formatCardinalityBucket(prevMax, p.MaxCardinality),
@@ -208,9 +223,7 @@ func (r *router[C]) Shutdown(ctx context.Context) error {
 
 func (r *router[C]) Process(ctx context.Context) C {
 	pk := r.partitionKey(ctx)
-	next, bucket := r.getNextConsumerAndMaybeRecord(ctx, pk)
-	r.recordRoutedMetric(ctx, pk, bucket)
-	return next
+	return r.getNextConsumerAndMaybeRecord(ctx, pk)
 }
 
 func (r *router[C]) partitionKey(ctx context.Context) string {
@@ -283,12 +296,13 @@ func (r *router[C]) recordCardinality(pk string, hashSum uint64) {
 	hll.InsertHash(hashSum)
 }
 
-func (r *router[C]) getNextConsumerAndMaybeRecord(ctx context.Context, pk string) (C, string) {
+func (r *router[C]) getNextConsumerAndMaybeRecord(ctx context.Context, pk string) C {
 	if pk == "" {
 		if ce := r.logger.Check(zap.DebugLevel, "returning default consumer due to empty primary key"); ce != nil {
 			ce.Write(zap.String("primary_key", pk))
 		}
-		return r.defaultConsumer, defaultCardinalityBucket
+		r.telemetryBuilder.DynamicroutingRouted.Add(ctx, 1, defaultRoutedOpt)
+		return r.defaultConsumer
 	}
 
 	item := r.decision.Get(pk)
@@ -300,13 +314,19 @@ func (r *router[C]) getNextConsumerAndMaybeRecord(ctx context.Context, pk string
 		if ce := r.logger.Check(zap.DebugLevel, "returning default consumer due to missing decision"); ce != nil {
 			ce.Write(zap.String("primary_key", pk))
 		}
-		return r.defaultConsumer, defaultCardinalityBucket
+		// Cold path: no cached decision yet, build the option on the fly.
+		r.telemetryBuilder.DynamicroutingRouted.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(
+			attribute.String("cardinality_bucket", defaultCardinalityBucket),
+			attribute.String("partition_key", pk),
+		)))
+		return r.defaultConsumer
 	}
 	next := item.Value()
 	if ce := r.logger.Check(zap.DebugLevel, "returning non-default consumer"); ce != nil {
 		ce.Write(zap.String("primary_key", pk), zap.Float64("max_count", next.maxCount))
 	}
-	return next.consumer, next.cardinalityBucket
+	r.telemetryBuilder.DynamicroutingRouted.Add(ctx, 1, next.routedOpt)
+	return next.consumer
 }
 
 // updateDecisions refreshes decision cache entries from the most recently
@@ -317,12 +337,19 @@ func (r *router[C]) updateDecisions() {
 	r.m = make(map[string]*hyperloglog.Sketch)
 	r.mu.Unlock()
 
-	newDecision := make(map[string]ct[C], len(oldM))
+	newDecision := make(map[string]routingDecision[C], len(oldM))
 	for k, hll := range oldM {
 		estimate := hll.Estimate()
 		for _, c := range r.consumers {
 			if float64(estimate) <= c.maxCount {
-				newDecision[k] = c
+				newDecision[k] = routingDecision[C]{
+					consumer: c.consumer,
+					maxCount: c.maxCount,
+					routedOpt: metric.WithAttributeSet(attribute.NewSet(
+						attribute.String("cardinality_bucket", c.cardinalityBucket),
+						attribute.String("partition_key", k),
+					)),
+				}
 				break
 			}
 		}
@@ -333,23 +360,6 @@ func (r *router[C]) updateDecisions() {
 	}
 }
 
-func (r *router[C]) recordRoutedMetric(ctx context.Context, pk string, bucket string) {
-	if r.telemetryBuilder == nil {
-		return
-	}
-	if pk == "" && bucket == defaultCardinalityBucket {
-		r.telemetryBuilder.DynamicroutingRouted.Add(ctx, 1, defaultRoutedOpt)
-		return
-	}
-	r.telemetryBuilder.DynamicroutingRouted.Add(
-		ctx,
-		1,
-		metric.WithAttributes(
-			attribute.String("cardinality_bucket", bucket),
-			attribute.String("partition_key", pk),
-		),
-	)
-}
 
 func formatCardinalityBucket(prevMax float64, max float64) string {
 	return formatCardinality(prevMax) + "_" + formatCardinality(max)
