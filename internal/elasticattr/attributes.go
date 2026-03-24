@@ -127,8 +127,6 @@ const (
 	EventAction                                            = "event.action"
 	EventCategory                                          = "event.category"
 	EventDataset                                           = "event.dataset"
-	EventDomain                                            = "event.domain"
-	EventName                                              = "event.name"
 	EventType                                              = "event.type"
 	SuccessCount                                           = "event.success_count"
 	ServiceTargetType                                      = "service.target.type"

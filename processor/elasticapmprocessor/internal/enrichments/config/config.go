@@ -35,6 +35,7 @@ type ResourceConfig struct {
 	OverrideHostName             AttributeConfig `mapstructure:"override_host_name"`
 	DeploymentEnvironment        AttributeConfig `mapstructure:"deployment_environment"`
 	DefaultDeploymentEnvironment AttributeConfig `mapstructure:"default_deployment_environment"`
+	ServiceLanguage              AttributeConfig `mapstructure:"service_language"`
 	DefaultServiceLanguage       AttributeConfig `mapstructure:"default_service_language"`
 	ServiceInstanceID            AttributeConfig `mapstructure:"service_instance_id"`
 	ServiceName                  AttributeConfig `mapstructure:"service_name"`
@@ -164,6 +165,7 @@ func Enabled() Config {
 			AgentVersion:          AttributeConfig{Enabled: true},
 			OverrideHostName:      AttributeConfig{Enabled: true},
 			DeploymentEnvironment: AttributeConfig{Enabled: true},
+			ServiceLanguage:       AttributeConfig{Enabled: true},
 			ServiceInstanceID:     AttributeConfig{Enabled: true},
 		},
 		Scope: ScopeConfig{

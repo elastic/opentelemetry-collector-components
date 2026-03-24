@@ -23,6 +23,7 @@ import (
 	"io"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/mobile"
@@ -36,6 +37,9 @@ const (
 )
 
 func EnrichLog(resourceAttrs map[string]any, log plog.LogRecord, cfg config.Config) {
+	if cfg.Log.TranslateUnsupportedAttributes.Enabled {
+		ecs.TranslateLogRecordAttributes(log.Attributes())
+	}
 	eventName, ok := getEventName(log)
 	if ok {
 		ctx := mobile.EventContext{

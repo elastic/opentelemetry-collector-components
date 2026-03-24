@@ -67,7 +67,8 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 		case string(semconv.TelemetrySDKNameKey):
 			s.telemetrySDKName = v.Str()
 		case string(semconv.TelemetrySDKLanguageKey):
-			s.telemetrySDKLanguage = v.Str()
+			language := sanitize.Truncate(v.Str())
+			s.telemetrySDKLanguage = language
 		case string(semconv.TelemetrySDKVersionKey):
 			s.telemetrySDKVersion = v.Str()
 		case string(semconv.TelemetryDistroNameKey):
@@ -122,6 +123,9 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 	if cfg.HostOSType.Enabled {
 		s.setHostOSType(resource)
 	}
+	if cfg.ServiceLanguage.Enabled {
+		s.setServiceLanguage(resource)
+	}
 	if cfg.DefaultServiceLanguage.Enabled {
 		s.setDefaultServiceLanguage(resource)
 	}
@@ -158,6 +162,13 @@ func (s *resourceEnrichmentContext) setDefaultDeploymentEnvironment(resource pco
 		string(semconv25.DeploymentEnvironmentKey),
 		"unset",
 	)
+}
+
+func (s *resourceEnrichmentContext) setServiceLanguage(resource pcommon.Resource) {
+	if s.telemetrySDKLanguage == "" {
+		return
+	}
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKLanguageKey), s.telemetrySDKLanguage)
 }
 
 // setDefaultServiceLanguage ensures telemetry.sdk.language is populated after

@@ -29,7 +29,6 @@ import (
 
 // Supported ECS resource attributes
 const (
-	keywordLength                    = 1024
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
 )
 
@@ -76,7 +75,7 @@ func translateAttributes(attributes pcommon.Map, isSupported func(string) bool) 
 func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		attributes.PutStr("labels."+key, sanitize.Truncate(value.Str(), keywordLength))
+		attributes.PutStr("labels."+key, sanitize.Truncate(value.Str()))
 	case pcommon.ValueTypeBool:
 		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
 	case pcommon.ValueTypeInt:
@@ -94,7 +93,7 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeStr {
-					target.AppendEmpty().SetStr(sanitize.Truncate(item.Str(), keywordLength))
+					target.AppendEmpty().SetStr(sanitize.Truncate(item.Str()))
 				}
 			}
 		case pcommon.ValueTypeBool:
@@ -145,8 +144,8 @@ func isSupportedLogRecordAttribute(attr string) bool {
 		elasticattr.DataStreamNamespace,
 		elasticattr.DataStreamType,
 		elasticattr.ErrorID,
-		elasticattr.EventDomain,
-		elasticattr.EventName,
+		"event.domain",
+		"event.name",
 		elasticattr.ProcessorEvent,
 		elasticattr.SessionID:
 		return true

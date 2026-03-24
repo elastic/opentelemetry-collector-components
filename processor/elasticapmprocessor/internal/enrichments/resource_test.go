@@ -18,6 +18,7 @@
 package enrichments
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 )
 
 // ecsResourceConfig returns the base ECS resource configuration shared by the
@@ -140,6 +142,25 @@ func TestResourceEnrich(t *testing.T) {
 			enrichedAttrs: map[string]any{
 				elasticattr.AgentName:                      "opentelemetry/java",
 				elasticattr.AgentVersion:                   "unknown",
+				string(semconv25.DeploymentEnvironmentKey): "unset",
+			},
+		},
+		{
+			name: "telemetry_sdk_language_truncated",
+			input: func() pcommon.Resource {
+				res := pcommon.NewResource()
+				res.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+				res.Attributes().PutStr(
+					string(semconv.TelemetrySDKLanguageKey),
+					strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				)
+				return res
+			}(),
+			config: ecsLogResourceConfig(),
+			enrichedAttrs: map[string]any{
+				elasticattr.AgentName:                      "opentelemetry/" + strings.Repeat("a", sanitize.StandardKeyWordLength),
+				elasticattr.AgentVersion:                   "unknown",
+				string(semconv.TelemetrySDKLanguageKey):    strings.Repeat("a", sanitize.StandardKeyWordLength),
 				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},
