@@ -40,31 +40,19 @@ func EnrichLog(resourceAttrs map[string]any, log plog.LogRecord, cfg config.Conf
 	if cfg.Log.TranslateUnsupportedAttributes.Enabled {
 		ecs.TranslateLogRecordAttributes(log.Attributes())
 	}
-	eventName, ok := getEventName(log)
-	if ok {
-		ctx := mobile.EventContext{
-			ResourceAttributes: resourceAttrs,
-			EventName:          eventName,
-		}
+	ctx := mobile.NewEventContext(resourceAttrs, log)
+
+	if ctx.EventName != "" {
 		mobile.EnrichLogEvent(ctx, log, cfg)
 	}
 
 	if routing.IsErrorEvent(log.Attributes()) {
 		EnrichLogError(log, cfg)
 	}
-}
 
-// getEventName returns the event name from the log record.
-// If the event name is not set, it returns an empty string.
-func getEventName(logRecord plog.LogRecord) (string, bool) {
-	if logRecord.EventName() != "" {
-		return logRecord.EventName(), true
+	if ctx.Action == "crash" || routing.IsErrorEvent(log.Attributes()) {
+		routing.EncodeErrorDataStream(log.Attributes(), routing.DataStreamTypeLogs)
 	}
-	attributeValue, ok := logRecord.Attributes().Get("event.name")
-	if ok {
-		return attributeValue.AsString(), true
-	}
-	return "", false
 }
 
 // EnrichLogError enriches the log record with error attributes.

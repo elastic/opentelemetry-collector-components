@@ -64,9 +64,9 @@ func TestEnrichEvents(t *testing.T) {
 			expectedAttributes: map[string]any{
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
-				"error.type":         "crash",
-				"event.kind":         "event",
-				"event.category":     "device",
+				"error.type":       "crash",
+				"event.kind":       "event",
+				"event.category":   "device",
 			},
 		},
 		{
@@ -87,9 +87,9 @@ func TestEnrichEvents(t *testing.T) {
 			expectedAttributes: map[string]any{
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
-				"error.type":         "crash",
-				"event.kind":         "event",
-				"event.category":     "device",
+				"error.type":       "crash",
+				"event.kind":       "event",
+				"event.category":   "device",
 			},
 		},
 		{
@@ -202,9 +202,9 @@ func TestEnrichEvents(t *testing.T) {
 			expectedAttributes: map[string]any{
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": swiftStacktraceHash,
-				"error.type":         "crash",
-				"event.kind":         "event",
-				"event.category":     "device",
+				"error.type":       "crash",
+				"event.kind":       "event",
+				"event.category":   "device",
 			},
 		},
 		{
@@ -266,8 +266,8 @@ func TestEnrichEvents(t *testing.T) {
 				// attributes that are added by enrichment
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
-				"error.type":         "crash",
-				"event.category":     "device",
+				"error.type":       "crash",
+				"event.category":   "device",
 			},
 		},
 		{

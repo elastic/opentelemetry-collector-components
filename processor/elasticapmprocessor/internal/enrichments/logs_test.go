@@ -103,6 +103,9 @@ func TestEnrichResourceLog(t *testing.T) {
 			elasticattr.ErrorID:          "existing-error-id",
 			elasticattr.ErrorType:        "existing-error-type",
 			elasticattr.ErrorGroupingKey: "existing-grouping-key",
+			"data_stream.type":           "logs",
+			"data_stream.dataset":        "apm.error",
+			"data_stream.namespace":      "default",
 		}
 
 		for k, v := range existingAttrs {
