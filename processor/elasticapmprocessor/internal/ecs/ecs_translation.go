@@ -37,7 +37,7 @@ const (
 // Moves unsupported attributes to labels with a "labels." prefix (key sanitized),
 // and leaves supported ECS attributes unchanged.
 func TranslateResourceMetadata(resource pcommon.Resource) {
-	translateAttributes(resource.Attributes(), isSupportedAttribute)
+	translateAttributes(resource.Attributes(), isSupportedResourceAttribute)
 }
 
 // TranslateLogRecordAttributes applies the apm-data OTLP fallback behaviour for
@@ -154,13 +154,13 @@ func isSupportedLogRecordAttribute(attr string) bool {
 	return false
 }
 
-// isSupportedAttribute returns true if the resource attribute is
+// isSupportedResourceAttribute returns true if the resource attribute is
 // supported by ECS and can be mapped directly.
 // Supported fields can include OTEL SemConv attributes or ECS specific attributes.
 // Fields are based on those found in the below areas:
 // 1. apm-data: https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go
 // 2. elasticapmintake receiver: https://github.com/elastic/opentelemetry-collector-components/tree/main/receiver/elasticapmintakereceiver/internal/mappers
-func isSupportedAttribute(attr string) bool {
+func isSupportedResourceAttribute(attr string) bool {
 	switch attr {
 	// service.*
 	case string(semconv.ServiceNameKey),
