@@ -311,8 +311,8 @@ func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 	_, err = decoder.DecodeLogs()
 	assert.ErrorIs(t, err, io.EOF)
 
-	// Offset should be positive (bytes consumed)
-	assert.Greater(t, decoder.Offset(), int64(0))
+	// Offset should reflect total records consumed (2 records in azure_diagnostic_settings.json)
+	assert.Equal(t, int64(2), decoder.Offset())
 }
 
 func TestNewLogsDecoder_JSONResumption(t *testing.T) {
