@@ -334,43 +334,8 @@ func navigateToArray(dec *json.Decoder, keys []string) error {
 // skipValue skips a single JSON value from the decoder. This handles
 // nested objects, arrays, and scalar values.
 func skipValue(dec *json.Decoder) error {
-	tok, err := dec.Token()
-	if err != nil {
-		return err
-	}
-
-	delim, ok := tok.(json.Delim)
-	if !ok {
-		return nil // scalar value — already consumed
-	}
-
-	switch delim {
-	case '{':
-		for dec.More() {
-			// skip key
-			if _, err := dec.Token(); err != nil {
-				return err
-			}
-			// skip value
-			if err := skipValue(dec); err != nil {
-				return err
-			}
-		}
-		// consume closing '}'
-		_, err = dec.Token()
-		return err
-	case '[':
-		for dec.More() {
-			if err := skipValue(dec); err != nil {
-				return err
-			}
-		}
-		// consume closing ']'
-		_, err = dec.Token()
-		return err
-	default:
-		return fmt.Errorf("unexpected delimiter %v", delim)
-	}
+	var raw json.RawMessage
+	return dec.Decode(&raw)
 }
 
 // writeFields recursively writes a map[string]any into a pcommon.Map.
