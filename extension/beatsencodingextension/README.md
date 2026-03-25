@@ -14,7 +14,7 @@ Each extracted record is stored as a raw string under the `message` body map key
 | `data_stream.namespace` | string | `default` | Data stream namespace. |
 | `input_type` | string | _(empty)_ | Sets the `input.type` field in the log record body (e.g., `aws-s3`, `azure-eventhub`). |
 | `tags` | []string | _(empty)_ | List of strings appended to the `tags` field in the log record body (e.g., `["forwarded", "aws-cloudtrail"]`). |
-| `fields` | map[string]string | _(empty)_ | Key-value pairs added to every log record body (e.g., `{environment: production}`). |
+| `fields` | map[string]any | _(empty)_ | Key-value pairs added to every log record body (e.g., `{environment: production}`). |
 
 ### Formats
 
