@@ -52,7 +52,7 @@ func (l *logsProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (l *logsProcessor) ConsumeLogs(ctx context.Context, log plog.Logs) error {
-	mapping := l.cfg.LogMetadata
+	mapping := l.cfg.LogBodyFields
 	if len(mapping) == 0 {
 		return l.next.ConsumeLogs(ctx, log)
 	}

@@ -29,39 +29,80 @@ import (
 )
 
 func TestLogProcessing(t *testing.T) {
-	sink := &consumertest.LogsSink{}
+	t.Run("Single Key mapping", func(t *testing.T) {
+		sink := &consumertest.LogsSink{}
 
-	sourceKey := "keyA_Source"
-	destinationKey := "keyA_Destination"
-	value := "valueA"
-
-	processor := newLogsProcessor(zap.NewNop(),
-		&Config{
-			LogMetadata: map[string]string{
-				sourceKey: destinationKey,
+		processor := newLogsProcessor(zap.NewNop(),
+			&Config{
+				LogBodyFields: map[string]string{
+					"source_key": "dest_key",
+				},
 			},
-		},
-		sink)
+			sink)
 
-	logs := plog.NewLogs()
-	rl := logs.ResourceLogs().AppendEmpty()
-	sl := rl.ScopeLogs().AppendEmpty()
-	lr := sl.LogRecords().AppendEmpty()
-	lr.Body().SetEmptyMap()
+		logs := plog.NewLogs()
+		lr := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+		lr.Body().SetEmptyMap()
 
-	m := map[string][]string{}
-	m[sourceKey] = []string{value}
+		info := client.Info{}
+		info.Metadata = client.NewMetadata(map[string][]string{
+			"source_key": {"value1"},
+		})
 
-	info := client.Info{}
-	info.Metadata = client.NewMetadata(m)
+		err := processor.ConsumeLogs(client.NewContext(t.Context(), info), logs)
+		require.NoError(t, err)
 
-	err := processor.ConsumeLogs(client.NewContext(t.Context(), info), logs)
-	require.NoError(t, err)
+		require.Equal(t, 1, sink.LogRecordCount())
+		record := sink.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
 
-	require.Equal(t, 1, sink.LogRecordCount())
-	record := sink.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+		// check in context for destination key and value
+		got, ok := record.Body().Map().Get("dest_key")
+		require.True(t, ok)
+		require.Equal(t, "value1", got.AsString())
+	})
 
-	got, ok := record.Body().Map().Get(destinationKey)
-	require.True(t, ok)
-	require.Equal(t, value, got.AsString())
+	t.Run("Multiple key mapping", func(t *testing.T) {
+		sink := &consumertest.LogsSink{}
+
+		processor := newLogsProcessor(zap.NewNop(),
+			&Config{
+				LogBodyFields: map[string]string{
+					"cloud.provider": "cloud_provider",
+					"cloud.region":   "cloud_region",
+					"host.name":      "hostname",
+				},
+			},
+			sink)
+
+		logs := plog.NewLogs()
+		lr := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+		lr.Body().SetEmptyMap()
+
+		info := client.Info{}
+		info.Metadata = client.NewMetadata(map[string][]string{
+			"cloud.provider": {"aws"},
+			"cloud.region":   {"us-east-1"},
+			"host.name":      {"my-host"},
+		})
+
+		err := processor.ConsumeLogs(client.NewContext(t.Context(), info), logs)
+		require.NoError(t, err)
+
+		require.Equal(t, 1, sink.LogRecordCount())
+		record := sink.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+		body := record.Body().Map()
+
+		// Check for each destination key and value in the log body.
+		got, ok := body.Get("cloud_provider")
+		require.True(t, ok)
+		require.Equal(t, "aws", got.AsString())
+
+		got, ok = body.Get("cloud_region")
+		require.True(t, ok)
+		require.Equal(t, "us-east-1", got.AsString())
+
+		got, ok = body.Get("hostname")
+		require.True(t, ok)
+		require.Equal(t, "my-host", got.AsString())
+	})
 }

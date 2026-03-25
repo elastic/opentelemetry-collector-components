@@ -40,7 +40,7 @@ func NewFactory() processor.Factory {
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		LogMetadata: map[string]string{},
+		LogBodyFields: map[string]string{},
 	}
 }
 

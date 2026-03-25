@@ -23,8 +23,8 @@ var _ component.Config = (*Config)(nil)
 
 // Config holds configuration for the elastic metadata processor.
 type Config struct {
-	// LogMetadata accepts the key to extract from Client Metadata and key to insert the extracted value into Log body.
-	LogMetadata map[string]string `mapstructure:"log_metadata"`
+	// LogBodyFields accepts the metadata key to extract from Client Info and the key to insert the extracted value at Log body.
+	LogBodyFields map[string]string `mapstructure:"log_body_fields"`
 }
 
 func (c *Config) Validate() error {

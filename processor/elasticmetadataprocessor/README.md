@@ -12,8 +12,8 @@ Currently, supports logs only.
 ```yaml
 processors:
   elasticmetadata:
-    log_metadata:
+    log_body_fields:
       # Following has the meaning of context_key: destination_key
-      # For example, if context metadata has "cloud.provider": "aws", then the log will be enriched with "cloud_provider": "aws"
-      cloud.provider: cloud_provider
+      # For example, if context metadata has "cloud.region": "us-east-1", then the log will be enriched with "aws.region": "us-east-1"
+      cloud.region: aws.region
 ```
