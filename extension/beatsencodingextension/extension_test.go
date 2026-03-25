@@ -315,6 +315,52 @@ func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 	assert.Greater(t, decoder.Offset(), int64(0))
 }
 
+func TestNewLogsDecoder_JSONResumption(t *testing.T) {
+	ext, err := newBeatsEncodingExtension(&Config{
+		Format:     FormatJSON,
+		Unwrap:     "$.records[*]",
+		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
+	}, zap.NewNop())
+	require.NoError(t, err)
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))
+	require.NoError(t, err)
+
+	// First run: process 1 record, save the offset.
+	decoder1, err := ext.NewLogsDecoder(
+		bytes.NewReader(input),
+		encoding.WithFlushItems(1),
+	)
+	require.NoError(t, err)
+
+	logs1, err := decoder1.DecodeLogs()
+	require.NoError(t, err)
+	require.Equal(t, 1, logs1.LogRecordCount())
+
+	savedOffset := decoder1.Offset()
+	t.Logf("saved offset after record 1: %d", savedOffset)
+	require.Equal(t, int64(1), savedOffset, "offset should be record count, not byte position")
+
+	// Resume: new decoder starting from the saved offset.
+	decoder2, err := ext.NewLogsDecoder(
+		bytes.NewReader(input),
+		encoding.WithFlushItems(1),
+		encoding.WithOffset(savedOffset),
+	)
+	require.NoError(t, err, "decoder construction must succeed with a saved offset")
+
+	logs2, err := decoder2.DecodeLogs()
+	require.NoError(t, err)
+	assert.Equal(t, 1, logs2.LogRecordCount(), "resume should yield exactly 1 remaining record")
+
+	// No more records.
+	_, err = decoder2.DecodeLogs()
+	assert.ErrorIs(t, err, io.EOF)
+
+	// Final offset should be 2 (total records processed across both decoders).
+	assert.Equal(t, int64(2), decoder2.Offset(), "offset after resume should be total record count")
+}
+
 func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
 	ext, err := newBeatsEncodingExtension(&Config{
 		Format:  FormatText,
@@ -382,6 +428,36 @@ func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
 		require.True(t, ok, "log record %d: _conf should have 'retain' key", i)
 		assert.Equal(t, "all", retainVal.Str())
 	}
+}
+
+func TestNewLogsDecoder_SingleRecordResumption(t *testing.T) {
+	ext, err := newBeatsEncodingExtension(&Config{
+		Format:     FormatJSON,
+		DataStream: DataStreamConfig{Dataset: "generic", Namespace: "default"},
+	}, zap.NewNop())
+	require.NoError(t, err)
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "json_single.json"))
+	require.NoError(t, err)
+
+	// First run: consume the single record.
+	decoder1, err := ext.NewLogsDecoder(bytes.NewReader(input))
+	require.NoError(t, err)
+
+	logs1, err := decoder1.DecodeLogs()
+	require.NoError(t, err)
+	assert.Equal(t, 1, logs1.LogRecordCount())
+	assert.Equal(t, int64(1), decoder1.Offset(), "offset should be 1 after consuming single record")
+
+	// Resume: offset=1 means record already consumed, should get EOF.
+	decoder2, err := ext.NewLogsDecoder(
+		bytes.NewReader(input),
+		encoding.WithOffset(decoder1.Offset()),
+	)
+	require.NoError(t, err)
+
+	_, err = decoder2.DecodeLogs()
+	assert.ErrorIs(t, err, io.EOF)
 }
 
 // stripEventCreated removes the "event.created" key from all log record

@@ -159,13 +159,22 @@ func (e *beatsEncodingExtension) newJSONDecoder(reader io.Reader, options ...enc
 
 // newSingleRecordDecoder reads the entire stream and returns it as a
 // single record. Used when no unwrap path is configured.
+// Offset semantics: 0 = not yet consumed, 1 = already consumed.
 func (e *beatsEncodingExtension) newSingleRecordDecoder(reader io.Reader, opts encoding.DecoderOptions) (encoding.LogsDecoder, error) {
+	// If offset >= 1, the single record was already consumed.
+	if opts.Offset >= 1 {
+		decodeF := func() (plog.Logs, error) {
+			return plog.NewLogs(), io.EOF
+		}
+		offsetF := func() int64 { return opts.Offset }
+		return xstreamencoding.NewLogsDecoderAdapter(decodeF, offsetF), nil
+	}
+
 	buf, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, fmt.Errorf("reading JSON input: %w", err)
 	}
 
-	offset := opts.Offset + int64(len(buf))
 	trimmed := bytes.TrimSpace(buf)
 	done := len(trimmed) == 0
 
@@ -183,7 +192,12 @@ func (e *beatsEncodingExtension) newSingleRecordDecoder(reader io.Reader, opts e
 		return logs, nil
 	}
 
-	offsetF := func() int64 { return offset }
+	offsetF := func() int64 {
+		if done {
+			return 1
+		}
+		return 0
+	}
 	return xstreamencoding.NewLogsDecoderAdapter(decodeF, offsetF), nil
 }
 
