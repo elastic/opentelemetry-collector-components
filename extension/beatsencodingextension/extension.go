@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -149,12 +150,6 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 func (e *beatsEncodingExtension) newJSONDecoder(reader io.Reader, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
 	opts := encoding.NewDecoderOptions(options...)
 
-	if opts.Offset > 0 {
-		if _, err := io.CopyN(io.Discard, reader, opts.Offset); err != nil {
-			return nil, fmt.Errorf("discarding offset %d: %w", opts.Offset, err)
-		}
-	}
-
 	if len(e.unwrapKeys) == 0 {
 		return e.newSingleRecordDecoder(reader, opts)
 	}
@@ -203,6 +198,19 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 		return nil, fmt.Errorf("navigating to unwrap path %q: %w", e.config.Unwrap, err)
 	}
 
+	// Skip records that were already processed in a previous decoder session.
+	recordCount := int64(0)
+	for recordCount < opts.Offset {
+		if !dec.More() {
+			return nil, fmt.Errorf("EOF reached before skipping %d records (only found %d)", opts.Offset, recordCount)
+		}
+		var skip json.RawMessage
+		if err := dec.Decode(&skip); err != nil {
+			return nil, fmt.Errorf("skipping record %d: %w", recordCount, err)
+		}
+		recordCount++
+	}
+
 	decodeF := func() (plog.Logs, error) {
 		if !dec.More() {
 			return plog.NewLogs(), io.EOF
@@ -226,6 +234,7 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 			}
 
 			e.appendLogRecord(sl, now, eventCreated, string(trimmed))
+			recordCount++
 			batchHelper.IncrementItems(1)
 			batchHelper.IncrementBytes(int64(len(raw)))
 
@@ -242,7 +251,7 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 	}
 
 	offsetF := func() int64 {
-		return opts.Offset + dec.InputOffset()
+		return recordCount
 	}
 
 	return xstreamencoding.NewLogsDecoderAdapter(decodeF, offsetF), nil
