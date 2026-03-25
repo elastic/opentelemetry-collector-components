@@ -122,7 +122,7 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 				e.appendLogRecord(sl, now, eventCreated, line)
 			}
 
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			if err != nil {
@@ -377,7 +377,7 @@ func skipValue(dec *json.Decoder) error {
 // Strings, bools, ints, and floats are written as scalar values.
 // Nested maps are written as nested pcommon.Map entries.
 // Slices are written as pcommon.Slice entries.
-func writeFields(m pcommon.Map, fields map[string]any) {
+func writeFields(logger *zap.Logger, m pcommon.Map, fields map[string]any) {
 	for k, v := range fields {
 		switch val := v.(type) {
 		case string:
@@ -391,7 +391,7 @@ func writeFields(m pcommon.Map, fields map[string]any) {
 		case float64:
 			m.PutDouble(k, val)
 		case map[string]any:
-			writeFields(m.PutEmptyMap(k), val)
+			writeFields(logger, m.PutEmptyMap(k), val)
 		case []any:
 			sl := m.PutEmptySlice(k)
 			for _, item := range val {
@@ -407,9 +407,13 @@ func writeFields(m pcommon.Map, fields map[string]any) {
 				case float64:
 					sl.AppendEmpty().SetDouble(elem)
 				case map[string]any:
-					writeFields(sl.AppendEmpty().SetEmptyMap(), elem)
+					writeFields(logger, sl.AppendEmpty().SetEmptyMap(), elem)
+				default:
+					logger.Warn("unsupported field type in slice, skipping", zap.String("key", k), zap.Any("value", elem))
 				}
 			}
+		default:
+			logger.Warn("unsupported field type, skipping", zap.String("key", k), zap.Any("value", val))
 		}
 	}
 }
@@ -441,7 +445,7 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 		}
 	}
 
-	writeFields(body, e.config.Fields)
+	writeFields(e.logger, body, e.config.Fields)
 
 	// We need to set these attributes on the record itself for the
 	// Elasticsearch exporter to route the record to the correct
