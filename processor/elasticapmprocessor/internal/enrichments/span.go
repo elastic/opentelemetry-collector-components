@@ -638,7 +638,13 @@ func (s *spanEnrichmentContext) setInferredSpans(span ptrace.Span) {
 	}
 
 	spanLinks := span.Links()
-	childIDs := pcommon.NewSlice()
+	// Fast path: most spans have no links at all — avoid allocating the childIDs
+	// slice unless we actually find a span link marked as a child.
+	if spanLinks.Len() == 0 {
+		return
+	}
+
+	var childIDs pcommon.Slice
 	spanLinks.RemoveIf(func(spanLink ptrace.SpanLink) (remove bool) {
 		spanID := spanLink.SpanID()
 		spanLink.Attributes().Range(func(k string, v pcommon.Value) bool {
@@ -646,6 +652,9 @@ func (s *spanEnrichmentContext) setInferredSpans(span ptrace.Span) {
 			case "is_child", "elastic.is_child":
 				if v.Bool() && !spanID.IsEmpty() {
 					remove = true // remove the span link if it has the child attrs
+					if childIDs == (pcommon.Slice{}) {
+						childIDs = pcommon.NewSlice()
+					}
 					childIDs.AppendEmpty().SetStr(hex.EncodeToString(spanID[:]))
 				}
 				return false // stop the loop
@@ -655,7 +664,7 @@ func (s *spanEnrichmentContext) setInferredSpans(span ptrace.Span) {
 		return remove
 	})
 
-	if childIDs.Len() > 0 {
+	if childIDs != (pcommon.Slice{}) && childIDs.Len() > 0 {
 		childIDs.MoveAndAppendTo(span.Attributes().PutEmptySlice(elasticattr.ChildIDs))
 	}
 }
