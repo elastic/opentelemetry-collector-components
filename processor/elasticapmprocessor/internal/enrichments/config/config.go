@@ -35,6 +35,8 @@ type ResourceConfig struct {
 	OverrideHostName             AttributeConfig `mapstructure:"override_host_name"`
 	DeploymentEnvironment        AttributeConfig `mapstructure:"deployment_environment"`
 	DefaultDeploymentEnvironment AttributeConfig `mapstructure:"default_deployment_environment"`
+	ServiceLanguage              AttributeConfig `mapstructure:"service_language"`
+	DefaultServiceLanguage       AttributeConfig `mapstructure:"default_service_language"`
 	ServiceInstanceID            AttributeConfig `mapstructure:"service_instance_id"`
 	ServiceName                  AttributeConfig `mapstructure:"service_name"`
 	HostOSType                   AttributeConfig `mapstructure:"host_os_type"`
@@ -122,9 +124,10 @@ type ElasticMetricConfig struct {
 
 // ElasticLogConfig configures the enrichment attributes for logs
 type ElasticLogConfig struct {
-	EventConfig          EventConfig          `mapstructure:",squash"`
-	ErrorConfig          ErrorConfig          `mapstructure:",squash"`
-	ErrorExceptionConfig ErrorExceptionConfig `mapstructure:",squash"`
+	TranslateUnsupportedAttributes AttributeConfig      `mapstructure:"translate_unsupported_attributes"`
+	EventConfig                    EventConfig          `mapstructure:",squash"`
+	ErrorConfig                    ErrorConfig          `mapstructure:",squash"`
+	ErrorExceptionConfig           ErrorExceptionConfig `mapstructure:",squash"`
 }
 
 type EventConfig struct {
@@ -162,6 +165,7 @@ func Enabled() Config {
 			AgentVersion:          AttributeConfig{Enabled: true},
 			OverrideHostName:      AttributeConfig{Enabled: true},
 			DeploymentEnvironment: AttributeConfig{Enabled: true},
+			ServiceLanguage:       AttributeConfig{Enabled: true},
 			ServiceInstanceID:     AttributeConfig{Enabled: true},
 		},
 		Scope: ScopeConfig{

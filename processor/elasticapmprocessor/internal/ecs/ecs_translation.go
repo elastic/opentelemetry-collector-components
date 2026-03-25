@@ -29,7 +29,6 @@ import (
 
 // Supported ECS resource attributes
 const (
-	keywordLength                    = 1024
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
 )
 
@@ -38,8 +37,18 @@ const (
 // Moves unsupported attributes to labels with a "labels." prefix (key sanitized),
 // and leaves supported ECS attributes unchanged.
 func TranslateResourceMetadata(resource pcommon.Resource) {
-	attributes := resource.Attributes()
+	translateAttributes(resource.Attributes(), isSupportedResourceAttribute)
+}
 
+// TranslateLogRecordAttributes applies the apm-data OTLP fallback behaviour for
+// log record attributes in ECS mode: known semantic fields are preserved, while
+// unsupported attributes are moved to labels.* / numeric_labels.* with a
+// sanitized key.
+func TranslateLogRecordAttributes(attributes pcommon.Map) {
+	translateAttributes(attributes, isSupportedLogRecordAttribute)
+}
+
+func translateAttributes(attributes pcommon.Map, isSupported func(string) bool) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitize.IsLabelAttribute(k) {
 			sanitized := sanitize.HandleLabelAttributeKey(k)
@@ -47,8 +56,9 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 				v.CopyTo(attributes.PutEmpty(sanitized))
 				attributes.Remove(k)
 			}
-		} else if !isSupportedAttribute(k) {
-			// Other attributes that are not supported by ECS are moved to labels with a "labels." prefix.
+		} else if !isSupported(k) {
+			// Attributes not supported by ECS are moved to labels with a
+			// labels./numeric_labels. prefix depending on their value type.
 			setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(k), v)
 			attributes.Remove(k)
 		}
@@ -65,7 +75,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		attributes.PutStr("labels."+key, sanitize.Truncate(value.Str(), keywordLength))
+		attributes.PutStr("labels."+key, sanitize.Truncate(value.Str()))
 	case pcommon.ValueTypeBool:
 		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
 	case pcommon.ValueTypeInt:
@@ -83,7 +93,7 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeStr {
-					target.AppendEmpty().SetStr(sanitize.Truncate(item.Str(), keywordLength))
+					target.AppendEmpty().SetStr(sanitize.Truncate(item.Str()))
 				}
 			}
 		case pcommon.ValueTypeBool:
@@ -117,13 +127,40 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 	}
 }
 
-// isSupportedAttribute returns true if the resource attribute is
+// isSupportedLogRecordAttribute is based on the OTLP log-record attribute switch
+// in apm-data/input/otlp/logs.go, which preserves exception.*, event.name,
+// event.domain, session.id, network.connection.type, and data_stream.* as
+// first-class fields and sends everything else through setLabel(replaceDots(k), ...).
+// This allowlist also keeps processor-added fields like processor.event,
+// error.id, and data_stream.type so they survive the collector-side translation pass.
+func isSupportedLogRecordAttribute(attr string) bool {
+	switch attr {
+	case string(semconv26.ExceptionEscapedKey),
+		string(semconv.ExceptionMessageKey),
+		string(semconv.ExceptionStacktraceKey),
+		string(semconv.ExceptionTypeKey),
+		string(semconv.NetworkConnectionTypeKey),
+		elasticattr.DataStreamDataset,
+		elasticattr.DataStreamNamespace,
+		elasticattr.DataStreamType,
+		elasticattr.ErrorID,
+		"event.domain",
+		"event.name",
+		elasticattr.ProcessorEvent,
+		elasticattr.SessionID:
+		return true
+	}
+
+	return false
+}
+
+// isSupportedResourceAttribute returns true if the resource attribute is
 // supported by ECS and can be mapped directly.
 // Supported fields can include OTEL SemConv attributes or ECS specific attributes.
 // Fields are based on those found in the below areas:
 // 1. apm-data: https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go
 // 2. elasticapmintake receiver: https://github.com/elastic/opentelemetry-collector-components/tree/main/receiver/elasticapmintakereceiver/internal/mappers
-func isSupportedAttribute(attr string) bool {
+func isSupportedResourceAttribute(attr string) bool {
 	switch attr {
 	// service.*
 	case string(semconv.ServiceNameKey),

@@ -23,15 +23,21 @@ import (
 )
 
 const (
-	MaxDataStreamBytes = 100
+	MaxDataStreamBytes    = 100
+	StandardKeyWordLength = 1024
 )
 
 var (
 	serviceNameInvalidRegexp = regexp.MustCompile("[^a-zA-Z0-9 _-]")
 )
 
+// Truncate returns s truncated at the StandardKeyWordLength (1024) runes, and the number of runes in the resulting string (<= StandardKeyWordLength).
+func Truncate(s string) string {
+	return truncateTo(s, StandardKeyWordLength)
+}
+
 // Truncate returns s truncated at n runes, and the number of runes in the resulting string (<= n).
-func Truncate(s string, length uint) string {
+func truncateTo(s string, length uint) string {
 	var j uint
 	for i := range s {
 		if j == length {
@@ -115,5 +121,5 @@ func replaceReservedRune(r rune) rune {
 // CleanServiceName sanitizes a service name by truncating it to a defined length and replacing invalid characters with "_".
 // see https://github.com/elastic/apm-data/blob/34677210900a68d6204cdb79da4ce0d1ee685d9a/input/otlp/metadata.go#L491
 func CleanServiceName(name string) string {
-	return serviceNameInvalidRegexp.ReplaceAllString(Truncate(name, MaxDataStreamBytes), "_")
+	return serviceNameInvalidRegexp.ReplaceAllString(truncateTo(name, MaxDataStreamBytes), "_")
 }

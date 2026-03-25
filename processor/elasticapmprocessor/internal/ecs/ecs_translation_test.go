@@ -194,6 +194,108 @@ func TestTranslateResourceMetadata(t *testing.T) {
 	}
 }
 
+func TestTranslateLogRecordAttributes(t *testing.T) {
+	tests := []struct {
+		name       string
+		setAttrs   func(pcommon.Map)
+		want       map[string]any
+		wantAbsent []string
+	}{
+		{
+			name: "supported semantic fields preserved",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr(string(semconv.ExceptionMessageKey), "boom")
+				attrs.PutBool("exception.escaped", true)
+				attrs.PutStr("event.name", "user-login")
+				attrs.PutStr("event.domain", "user")
+				attrs.PutStr("session.id", "session-123")
+				attrs.PutStr(string(semconv.NetworkConnectionTypeKey), "wifi")
+				attrs.PutStr(elasticattr.ProcessorEvent, "error")
+				attrs.PutStr(elasticattr.ErrorID, "error-id-123")
+				attrs.PutStr(elasticattr.DataStreamType, "logs")
+				attrs.PutStr(elasticattr.DataStreamDataset, "apm.error")
+				attrs.PutStr(elasticattr.DataStreamNamespace, "default")
+			},
+			want: map[string]any{
+				string(semconv.ExceptionMessageKey):      "boom",
+				"exception.escaped":                      true,
+				"event.name":                             "user-login",
+				"event.domain":                           "user",
+				"session.id":                             "session-123",
+				string(semconv.NetworkConnectionTypeKey): "wifi",
+				elasticattr.ProcessorEvent:               "error",
+				elasticattr.ErrorID:                      "error-id-123",
+				elasticattr.DataStreamType:               "logs",
+				elasticattr.DataStreamDataset:            "apm.error",
+				elasticattr.DataStreamNamespace:          "default",
+			},
+		},
+		{
+			name: "unsupported attributes moved to labels",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("http.method", "GET")
+				attrs.PutInt("http.status_code", 200)
+				attrs.PutBool("custom.flag", true)
+			},
+			want: map[string]any{
+				"labels.http_method":              "GET",
+				"numeric_labels.http_status_code": float64(200),
+				"labels.custom_flag":              "true",
+			},
+			wantAbsent: []string{"http.method", "http.status_code", "custom.flag"},
+		},
+		{
+			name: "existing label keys are sanitized",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("labels.http.method", "GET")
+				attrs.PutDouble("numeric_labels.http.status_code", 200)
+			},
+			want: map[string]any{
+				"labels.http_method":              "GET",
+				"numeric_labels.http_status_code": 200.0,
+			},
+			wantAbsent: []string{"labels.http.method", "numeric_labels.http.status_code"},
+		},
+		{
+			name: "unsupported map attribute dropped",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutEmptyMap("http.request")
+			},
+			wantAbsent: []string{"http.request"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			tc.setAttrs(attrs)
+
+			TranslateLogRecordAttributes(attrs)
+
+			for key, want := range tc.want {
+				got, ok := attrs.Get(key)
+				if !assert.True(t, ok, "expected %q to be present", key) {
+					continue
+				}
+				switch want := want.(type) {
+				case string:
+					assert.Equal(t, want, got.Str())
+				case bool:
+					assert.Equal(t, want, got.Bool())
+				case float64:
+					assert.InDelta(t, want, got.Double(), 1e-9)
+				default:
+					t.Fatalf("unsupported want type %T", want)
+				}
+			}
+			for _, key := range tc.wantAbsent {
+				_, ok := attrs.Get(key)
+				assert.False(t, ok, "expected %q to be absent", key)
+			}
+		})
+	}
+}
+
 // TestSetLabelAttributeValue verifies that setLabelAttributeValue stores
 // supported value types under the correct labels.* / numeric_labels.* prefix
 // and rejects unsupported types (Map, Bytes, Empty). This matches
