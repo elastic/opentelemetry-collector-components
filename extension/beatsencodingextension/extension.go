@@ -77,7 +77,7 @@ func (e *beatsEncodingExtension) UnmarshalLogs(buf []byte) (plog.Logs, error) {
 		encoding.WithFlushItems(0),
 	)
 	if err != nil {
-		return plog.Logs{}, err
+		return plog.NewLogs(), err
 	}
 	logs, err := decoder.DecodeLogs()
 	if errors.Is(err, io.EOF) {
