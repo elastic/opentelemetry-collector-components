@@ -31,6 +31,13 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 )
 
+// cloneTraces returns a deep copy of td so benchmark iterations start from unenriched spans.
+func cloneTraces(td ptrace.Traces) ptrace.Traces {
+	c := ptrace.NewTraces()
+	td.CopyTo(c)
+	return c
+}
+
 // makeHTTPTracesForBench creates trace data representing HTTP spans
 // (a common MOTel workload): numResources services × numScopes × numSpans spans.
 func makeHTTPTracesForBench(numResources, numScopes, numSpans int) ptrace.Traces {
@@ -87,10 +94,13 @@ func BenchmarkProcessorConsumeTraces_WithPooling(b *testing.B) {
 	ecsCtx := client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
 	})
-	b.ResetTimer()
 	b.ReportAllocs()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := p.ConsumeTraces(ecsCtx, td); err != nil {
+		b.StopTimer()
+		fresh := cloneTraces(td)
+		b.StartTimer()
+		if err := p.ConsumeTraces(ecsCtx, fresh); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -115,10 +125,13 @@ func BenchmarkProcessorConsumeTraces_OTel(b *testing.B) {
 			td := makeHTTPTracesForBench(tc.resources, tc.scopes, tc.spans)
 			ctx := context.Background()
 			totalSpans := tc.resources * tc.scopes * tc.spans
-			b.ResetTimer()
 			b.ReportAllocs()
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				if err := p.ConsumeTraces(ctx, td); err != nil {
+				b.StopTimer()
+				fresh := cloneTraces(td)
+				b.StartTimer()
+				if err := p.ConsumeTraces(ctx, fresh); err != nil {
 					b.Fatal(err)
 				}
 			}
@@ -150,10 +163,18 @@ func BenchmarkProcessorConsumeTraces_ECS(b *testing.B) {
 				}),
 			})
 			totalSpans := tc.resources * tc.scopes * tc.spans
-			b.ResetTimer()
 			b.ReportAllocs()
+			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				if err := p.ConsumeTraces(ecsCtx, td); err != nil {
+				// Clone outside timed section so enrichment starts from unenriched spans.
+				// Without this, iteration 0 writes all elastic attrs and subsequent
+				// iterations see hasPresetElastic=true (already-enriched path), which
+				// benchmarks a blend of OTLP and intake-receiver paths rather than
+				// pure OTLP throughput.
+				b.StopTimer()
+				fresh := cloneTraces(td)
+				b.StartTimer()
+				if err := p.ConsumeTraces(ecsCtx, fresh); err != nil {
 					b.Fatal(err)
 				}
 			}
