@@ -64,9 +64,10 @@ func TestEnrichEvents(t *testing.T) {
 			expectedAttributes: map[string]any{
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
-				"error.type":       "crash",
-				"event.kind":       "event",
-				"event.category":   "device",
+				"error.type":         "crash",
+				"event.kind":         "event",
+				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -87,9 +88,10 @@ func TestEnrichEvents(t *testing.T) {
 			expectedAttributes: map[string]any{
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
-				"error.type":       "crash",
-				"event.kind":       "event",
-				"event.category":   "device",
+				"error.type":         "crash",
+				"event.kind":         "event",
+				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -112,6 +114,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
+				"event.type":     "error",
 			},
 		},
 		{
@@ -202,9 +205,10 @@ func TestEnrichEvents(t *testing.T) {
 			expectedAttributes: map[string]any{
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": swiftStacktraceHash,
-				"error.type":       "crash",
-				"event.kind":       "event",
-				"event.category":   "device",
+				"error.type":         "crash",
+				"event.kind":         "event",
+				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -238,6 +242,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":         "existing-error-type",
 				"error.grouping_key": "existing-grouping-key",
 				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -266,8 +271,9 @@ func TestEnrichEvents(t *testing.T) {
 				// attributes that are added by enrichment
 				"timestamp.us":       timestamp.AsTime().UnixMicro(),
 				"error.grouping_key": javaStacktraceHash,
-				"error.type":       "crash",
-				"event.category":   "device",
+				"error.type":         "crash",
+				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -348,6 +354,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
+				"event.type":     "error",
 			},
 		},
 		{
@@ -368,6 +375,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
+				"event.type":     "error",
 			},
 		},
 		{
@@ -386,6 +394,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
+				"event.type":     "error",
 			},
 		},
 	} {

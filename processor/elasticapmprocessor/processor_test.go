@@ -129,9 +129,16 @@ func TestProcessor(t *testing.T) {
 			testType:    "logs",
 			cfg:         apmConfig,
 		},
-		"ecs_log_device_crash_event": {
-			input:       "testdata/ecs/elastic_log_device_crash_event/input.yaml",
-			output:      "testdata/ecs/elastic_log_device_crash_event/output.yaml",
+		"ecs_log_device_crash_event_java": {
+			input:       "testdata/ecs/elastic_log_device_crash_event/java_crash_input.yaml",
+			output:      "testdata/ecs/elastic_log_device_crash_event/java_crash_output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
+		"ecs_log_device_crash_event_swift": {
+			input:       "testdata/ecs/elastic_log_device_crash_event/swift_crash_input.yaml",
+			output:      "testdata/ecs/elastic_log_device_crash_event/swift_crash_output.yaml",
 			mappingMode: "ecs",
 			testType:    "logs",
 			cfg:         apmConfig,

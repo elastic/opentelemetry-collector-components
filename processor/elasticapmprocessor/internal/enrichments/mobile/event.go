@@ -129,4 +129,8 @@ func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any, cf
 	if cfg.Log.ErrorConfig.ErrorType.Enabled {
 		attribute.PutStr(logRecord.Attributes(), elasticattr.ErrorType, "crash")
 	}
+
+	if cfg.Log.EventConfig.EventType.Enabled {
+		attribute.PutStr(logRecord.Attributes(), elasticattr.EventType, "error")
+	}
 }
