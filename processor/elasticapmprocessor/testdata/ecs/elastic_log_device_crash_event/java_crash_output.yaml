@@ -52,15 +52,6 @@ resourceLogs:
                     Exception in thread "main" java.lang.RuntimeException: Test
                      at com.example.Main.crash(Main.java:10)
                      at com.example.Main.main(Main.java:5)
-              - key: data_stream.type
-                value:
-                  stringValue: logs
-              - key: data_stream.dataset
-                value:
-                  stringValue: apm.error
-              - key: data_stream.namespace
-                value:
-                  stringValue: default
               - key: event.kind
                 value:
                   stringValue: event
@@ -76,6 +67,9 @@ resourceLogs:
               - key: error.type
                 value:
                   stringValue: crash
+              - key: event.type
+                value:
+                  stringValue: error
               - key: error.exception.handled
                 value:
                   boolValue: true
@@ -91,9 +85,15 @@ resourceLogs:
                     Exception in thread "main" java.lang.RuntimeException: Test
                      at com.example.Main.crash(Main.java:10)
                      at com.example.Main.main(Main.java:5)
-              - key: event.type
+              - key: data_stream.type
                 value:
-                  stringValue: error
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: apm.error
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
             body:
               stringValue: app crash
             timeUnixNano: "1581452772000000000"

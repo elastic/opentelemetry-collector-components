@@ -30,5 +30,5 @@ resourceLogs:
                   stringValue: NSException
               - key: exception.stacktrace
                 value:
-                  stringValue: "\nThread 0 Crashed:\n0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404\n1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165\n2   UIKitCore                           0x00000001a4d5e7f2 0x184d72000 + 880\n\n"
+                  stringValue: "Thread 0 Crashed:\n0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404\n1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165\n2   UIKitCore                           0x00000001a4d5e7f2 0x184d72000 + 880\n\n"
         scope: {}

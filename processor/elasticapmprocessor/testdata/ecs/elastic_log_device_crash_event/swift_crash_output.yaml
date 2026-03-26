@@ -25,6 +25,12 @@ resourceLogs:
         - key: agent.name
           value:
             stringValue: ios/swift
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
     scopeLogs:
       - logRecords:
           - attributes:
@@ -42,7 +48,12 @@ resourceLogs:
                   stringValue: NSException
               - key: exception.stacktrace
                 value:
-                  stringValue: "\nThread 0 Crashed:\n0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404\n1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165\n2   UIKitCore                           0x00000001a4d5e7f2 0x184d72000 + 880\n\n"
+                  stringValue: |2+
+                    Thread 0 Crashed:
+                    0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404
+                    1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165
+                    2   UIKitCore                           0x00000001a4d5e7f2 0x184d72000 + 880
+
               - key: event.kind
                 value:
                   stringValue: event
@@ -54,10 +65,13 @@ resourceLogs:
                   intValue: "1581452772000000"
               - key: error.grouping_key
                 value:
-                  stringValue: 4c6d612737d18679
+                  stringValue: 106766db872df672c31bfff1d30d0e7c
               - key: error.type
                 value:
                   stringValue: crash
+              - key: event.type
+                value:
+                  stringValue: error
               - key: error.exception.handled
                 value:
                   boolValue: true
@@ -69,10 +83,12 @@ resourceLogs:
                   stringValue: NSException
               - key: error.stack_trace
                 value:
-                  stringValue: "\nThread 0 Crashed:\n0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404\n1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165\n2   UIKitCore                           0x00000001a4d5e7f2 0x184d72000 + 880\n\n"
-              - key: event.type
-                value:
-                  stringValue: error
+                  stringValue: |2+
+                    Thread 0 Crashed:
+                    0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404
+                    1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165
+                    2   UIKitCore                           0x00000001a4d5e7f2 0x184d72000 + 880
+
               - key: data_stream.type
                 value:
                   stringValue: logs
