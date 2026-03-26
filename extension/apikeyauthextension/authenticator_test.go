@@ -28,8 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8/typedapi/security/hasprivileges"
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -38,6 +36,9 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/elastic/go-elasticsearch/v8/typedapi/security/hasprivileges"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 )
@@ -132,6 +133,32 @@ func TestAuthenticator(t *testing.T) {
 			handler:     newCannedHasPrivilegesHandler(hasprivileges.Response{HasAllRequested: false}),
 			expectedErr: `rpc error: code = PermissionDenied desc = unauthorized`,
 		},
+		"deployment_deleted_410": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "security_exception",
+					Reason: func() *string {
+						reason := "deployment deleted"
+						return &reason
+					}(),
+				},
+				Status: 410,
+			}),
+			expectedErr: `rpc error: code = NotFound desc = resource not found: status: 410, failed: [security_exception], reason: deployment deleted`,
+		},
+		"deployment_not_found_404": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "index_not_found_exception",
+					Reason: func() *string {
+						reason := "no such index"
+						return &reason
+					}(),
+				},
+				Status: 404,
+			}),
+			expectedErr: `rpc error: code = NotFound desc = resource not found: status: 404, failed: [index_not_found_exception], reason: no such index`,
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			srv := newMockElasticsearch(t, testcase.handler)
@@ -223,6 +250,70 @@ func TestAuthenticator_Caching(t *testing.T) {
 		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id2:secret2"))},
 	})
 	assert.EqualError(t, err, `rpc error: code = Unauthenticated desc = unauthorized`)
+}
+
+// TestAuthenticator_GoneCaching verifies that a 410 Gone response from Elasticsearch
+// is cached so subsequent requests for the same API key do not re-hit the gone cluster,
+// while a 404 Not Found (potentially transient) is never cached.
+func TestAuthenticator_GoneCaching(t *testing.T) {
+	goneErr := types.ElasticsearchError{
+		ErrorCause: types.ErrorCause{
+			Type: "security_exception",
+			Reason: func() *string {
+				reason := "deployment deleted"
+				return &reason
+			}(),
+		},
+		Status: http.StatusGone,
+	}
+	notFoundErr := types.ElasticsearchError{
+		ErrorCause: types.ErrorCause{
+			Type: "index_not_found_exception",
+			Reason: func() *string {
+				reason := "no such index"
+				return &reason
+			}(),
+		},
+		Status: http.StatusNotFound,
+	}
+
+	t.Run("410_is_cached", func(t *testing.T) {
+		calls := 0
+		srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			newCannedErrorHandler(goneErr).ServeHTTP(w, r)
+		})
+		auth := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+		apiKey := "ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))
+
+		_, err := auth.Authenticate(context.Background(), map[string][]string{"Authorization": {apiKey}})
+		assert.ErrorContains(t, err, "code = NotFound")
+		assert.Equal(t, 1, calls)
+
+		// Second call — must be served from cache, no additional ES round-trip.
+		_, err = auth.Authenticate(context.Background(), map[string][]string{"Authorization": {apiKey}})
+		assert.ErrorContains(t, err, "code = NotFound")
+		assert.Equal(t, 1, calls, "expected cache hit: ES should not be called again for a 410")
+	})
+
+	t.Run("404_is_not_cached", func(t *testing.T) {
+		calls := 0
+		srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			newCannedErrorHandler(notFoundErr).ServeHTTP(w, r)
+		})
+		auth := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+		apiKey := "ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))
+
+		_, err := auth.Authenticate(context.Background(), map[string][]string{"Authorization": {apiKey}})
+		assert.ErrorContains(t, err, "code = NotFound")
+		assert.Equal(t, 1, calls)
+
+		// Second call — must reach ES again since 404 is not cached.
+		_, err = auth.Authenticate(context.Background(), map[string][]string{"Authorization": {apiKey}})
+		assert.ErrorContains(t, err, "code = NotFound")
+		assert.Equal(t, 2, calls, "expected cache miss: 404 should not be cached as it may be transient")
+	})
 }
 
 func TestAuthenticator_CachingPreservesErrorCode(t *testing.T) {
@@ -318,6 +409,46 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			wantMetadata: map[string]string{
 				"component": metadata.Type.String(),
 				"api_key":   "no_privs_id",
+			},
+		},
+		{
+			name: "deployment_deleted_410_gone",
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "security_exception",
+					Reason: func() *string {
+						reason := "deployment deleted"
+						return &reason
+					}(),
+				},
+				Status: 410,
+			}),
+			auth:     "ApiKey " + base64.StdEncoding.EncodeToString([]byte("gone_id:secret")),
+			wantCode: codes.NotFound,
+			wantMsg:  "resource not found: status: 410, failed: [security_exception], reason: deployment deleted",
+			wantMetadata: map[string]string{
+				"component": metadata.Type.String(),
+				"api_key":   "gone_id",
+			},
+		},
+		{
+			name: "not_found_404",
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "security_exception",
+					Reason: func() *string {
+						reason := "no such resource"
+						return &reason
+					}(),
+				},
+				Status: 404,
+			}),
+			auth:     "ApiKey " + base64.StdEncoding.EncodeToString([]byte("notfound_id:secret")),
+			wantCode: codes.NotFound,
+			wantMsg:  "resource not found: status: 404, failed: [security_exception], reason: no such resource",
+			wantMetadata: map[string]string{
+				"component": metadata.Type.String(),
+				"api_key":   "notfound_id",
 			},
 		},
 	}

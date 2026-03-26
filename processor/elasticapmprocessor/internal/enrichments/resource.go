@@ -20,6 +20,7 @@ package enrichments // import "github.com/elastic/opentelemetry-collector-compon
 import (
 	"fmt"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -49,6 +50,7 @@ type resourceEnrichmentContext struct {
 	deploymentEnvironmentName string
 
 	serviceInstanceID string
+	serviceName       string
 	containerID       string
 
 	osType string
@@ -65,7 +67,8 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 		case string(semconv.TelemetrySDKNameKey):
 			s.telemetrySDKName = v.Str()
 		case string(semconv.TelemetrySDKLanguageKey):
-			s.telemetrySDKLanguage = v.Str()
+			language := sanitize.Truncate(v.Str())
+			s.telemetrySDKLanguage = language
 		case string(semconv.TelemetrySDKVersionKey):
 			s.telemetrySDKVersion = v.Str()
 		case string(semconv.TelemetryDistroNameKey):
@@ -78,6 +81,8 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 			s.deploymentEnvironmentName = v.Str()
 		case string(semconv25.ServiceInstanceIDKey):
 			s.serviceInstanceID = v.Str()
+		case string(semconv.ServiceNameKey):
+			s.serviceName = v.Str()
 		case string(semconv.ContainerIDKey):
 			s.containerID = v.Str()
 		case string(semconv.OSTypeKey):
@@ -100,15 +105,29 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 	if cfg.OverrideHostName.Enabled {
 		s.overrideHostNameWithK8sNodeName(resource)
 	}
+
 	if cfg.DeploymentEnvironment.Enabled {
 		s.setDeploymentEnvironment(resource)
+	}
+
+	if cfg.DefaultDeploymentEnvironment.Enabled {
+		s.setDefaultDeploymentEnvironment(resource)
 	}
 
 	if cfg.ServiceInstanceID.Enabled {
 		s.setServiceInstanceID(resource)
 	}
+	if cfg.ServiceName.Enabled {
+		s.sanitizeServiceName(resource)
+	}
 	if cfg.HostOSType.Enabled {
 		s.setHostOSType(resource)
+	}
+	if cfg.ServiceLanguage.Enabled {
+		s.setServiceLanguage(resource)
+	}
+	if cfg.DefaultServiceLanguage.Enabled {
+		s.setDefaultServiceLanguage(resource)
 	}
 }
 
@@ -117,13 +136,50 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 // ES currently doesn't allow aliases with multiple targets, so if the new field name is used (SemConv v1.27+),
 // we duplicate the value and also send it with the old field name to make the alias work.
 func (s *resourceEnrichmentContext) setDeploymentEnvironment(resource pcommon.Resource) {
-	if s.deploymentEnvironmentName != "" && s.deploymentEnvironment == "" {
-		attribute.PutStr(
-			resource.Attributes(),
-			string(semconv25.DeploymentEnvironmentKey),
-			s.deploymentEnvironmentName,
-		)
+	if s.deploymentEnvironment != "" {
+		return
 	}
+	if s.deploymentEnvironmentName == "" {
+		return
+	}
+
+	attribute.PutStr(
+		resource.Attributes(),
+		string(semconv25.DeploymentEnvironmentKey),
+		s.deploymentEnvironmentName,
+	)
+}
+
+// setDefaultDeploymentEnvironment sets deployment.environment to "unset"
+// when neither deployment environment field is present, matching the
+// apm-data/MIS default only where explicitly configured.
+func (s *resourceEnrichmentContext) setDefaultDeploymentEnvironment(resource pcommon.Resource) {
+	if s.deploymentEnvironment != "" || s.deploymentEnvironmentName != "" {
+		return
+	}
+	attribute.PutStr(
+		resource.Attributes(),
+		string(semconv25.DeploymentEnvironmentKey),
+		"unset",
+	)
+}
+
+func (s *resourceEnrichmentContext) setServiceLanguage(resource pcommon.Resource) {
+	if s.telemetrySDKLanguage == "" {
+		return
+	}
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKLanguageKey), s.telemetrySDKLanguage)
+}
+
+// setDefaultServiceLanguage ensures telemetry.sdk.language is populated after
+// agent.name/version have already been derived. This preserves the
+// apm-data-compatible service.language.name alias without changing agent naming.
+// The log processor enables this only for OTLP ECS log batches.
+func (s *resourceEnrichmentContext) setDefaultServiceLanguage(resource pcommon.Resource) {
+	if s.telemetrySDKLanguage != "" {
+		return
+	}
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKLanguageKey), "unknown")
 }
 
 func (s *resourceEnrichmentContext) setAgentName(resource pcommon.Resource) {
@@ -224,4 +280,14 @@ func (s *resourceEnrichmentContext) setServiceInstanceID(resource pcommon.Resour
 		return
 	}
 	attribute.PutStr(resource.Attributes(), string(semconv25.ServiceInstanceIDKey), s.serviceInstanceID)
+}
+
+func (s *resourceEnrichmentContext) sanitizeServiceName(resource pcommon.Resource) {
+	if s.serviceName == "" {
+		return
+	}
+	cleaned := sanitize.CleanServiceName(s.serviceName)
+	if cleaned != s.serviceName {
+		resource.Attributes().PutStr(string(semconv.ServiceNameKey), cleaned)
+	}
 }

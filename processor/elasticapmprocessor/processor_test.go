@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processortest"
@@ -357,6 +358,144 @@ func TestSkipEnrichmentLogs(t *testing.T) {
 			assert.NoError(t, plogtest.CompareLogs(expectedLogs, actual))
 		})
 	}
+}
+
+func TestConsumeLogs_ECSOTLPFallbacks(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	resourceLog := logs.ResourceLogs().AppendEmpty()
+	resource := resourceLog.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+
+	logRecord := resourceLog.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+	logAttrs := logRecord.Attributes()
+	logAttrs.PutStr("http.method", "GET")
+	logAttrs.PutStr("event.name", "user-login")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	actual := next.AllLogs()[0]
+
+	require.Equal(t, 1, actual.ResourceLogs().Len())
+	actualResource := actual.ResourceLogs().At(0).Resource().Attributes()
+	lang, ok := actualResource.Get(string(semconv.TelemetrySDKLanguageKey))
+	require.True(t, ok)
+	assert.Equal(t, "unknown", lang.Str())
+
+	agentName, ok := actualResource.Get("agent.name")
+	require.True(t, ok)
+	assert.Equal(t, "opentelemetry", agentName.Str())
+
+	actualLogAttrs := actual.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Attributes()
+	value, ok := actualLogAttrs.Get("labels.http_method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+
+	value, ok = actualLogAttrs.Get("event.name")
+	require.True(t, ok)
+	assert.Equal(t, "user-login", value.Str())
+
+	_, ok = actualLogAttrs.Get("http.method")
+	assert.False(t, ok)
+}
+
+func TestConsumeLogs_ECSIntakeSkipsOTLPFallbacks(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	resourceLog := logs.ResourceLogs().AppendEmpty()
+	resource := resourceLog.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
+
+	logRecord := resourceLog.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+	logRecord.Attributes().PutStr("http.method", "GET")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	actual := next.AllLogs()[0]
+
+	actualResource := actual.ResourceLogs().At(0).Resource().Attributes()
+	_, ok := actualResource.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	actualLogAttrs := actual.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Attributes()
+	value, ok := actualLogAttrs.Get("http.method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	_, ok = actualLogAttrs.Get("labels.http_method")
+	assert.False(t, ok)
+}
+
+func TestConsumeLogs_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.LogsSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+
+	intakeResourceLog := logs.ResourceLogs().AppendEmpty()
+	intakeResource := intakeResourceLog.Resource()
+	intakeResource.Attributes().PutStr("service.name", "intake-service")
+	intakeResource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
+	intakeResourceLog.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+
+	otlpResourceLog := logs.ResourceLogs().AppendEmpty()
+	otlpResource := otlpResourceLog.Resource()
+	otlpResource.Attributes().PutStr("service.name", "otlp-service")
+	otlpResource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+	otlpLogRecord := otlpResourceLog.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+	otlpLogRecord.Attributes().PutStr("http.method", "GET")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	actual := next.AllLogs()[0]
+
+	require.Equal(t, 2, actual.ResourceLogs().Len())
+
+	// Mixed-origin batches are not supported. The first resource log determines
+	// which ECS log enricher is used for the whole batch.
+	intakeAttrs := actual.ResourceLogs().At(0).Resource().Attributes()
+	_, ok := intakeAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	otlpAttrs := actual.ResourceLogs().At(1).Resource().Attributes()
+	_, ok = otlpAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	otlpLogAttrs := actual.ResourceLogs().At(1).ScopeLogs().At(0).LogRecords().At(0).Attributes()
+	value, ok := otlpLogAttrs.Get("http.method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	_, ok = otlpLogAttrs.Get("labels.http_method")
+	assert.False(t, ok)
 }
 
 // TestSkipEnrichmentMetrics tests that metrics are only enriched when skipEnrichment is false or when mapping mode is ecs

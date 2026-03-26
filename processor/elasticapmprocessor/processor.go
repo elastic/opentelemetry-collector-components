@@ -56,9 +56,11 @@ type TraceProcessor struct {
 
 func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
 	enricherConfig := cfg.Config
+
 	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	ecsEnricherConfig.Resource.HostOSType.Enabled = true
+	ecsEnricherConfig.Resource.ServiceName.Enabled = true
+	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	// The intake receiver already sets transaction.root; skip re-deriving it
@@ -162,16 +164,21 @@ type LogProcessor struct {
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
 	enricherConfig := cfg.Config
+
 	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
-	ecsEnricherConfig.Resource.AgentVersion.Enabled = false
 	ecsEnricherConfig.Resource.HostOSType.Enabled = true
+	ecsEnricherConfig.Resource.ServiceName.Enabled = true
+	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
+	ecsEnricherConfig.Resource.DefaultServiceLanguage.Enabled = true
+	ecsEnricherConfig.Log.TranslateUnsupportedAttributes.Enabled = true
 	// disable the transaction result enrichment to avoid deriving a value
 	// when the provided result is empty to match existing apm-data logic
 	ecsEnricherConfig.Transaction.Result.Enabled = false
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
+	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
+	intakeECSEnricherConfig.Log.TranslateUnsupportedAttributes.Enabled = false
 
 	return &LogProcessor{
 		next:              next,
@@ -201,9 +208,11 @@ type MetricProcessor struct {
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
 	enricherConfig := cfg.Config
+
 	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.DeploymentEnvironment.Enabled = false
 	ecsEnricherConfig.Resource.HostOSType.Enabled = true
+	ecsEnricherConfig.Resource.ServiceName.Enabled = true
+	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
@@ -325,6 +334,8 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	if ecsMode {
 		enricher = p.ecsEnricher
 		resourceLogs := ld.ResourceLogs()
+		// ECS log batches are assumed to be homogeneous by origin. We select the
+		// enricher from the first resource log and apply it to the whole batch.
 		if resourceLogs.Len() > 0 && isIntakeECS(resourceLogs.At(0).Resource()) {
 			enricher = p.intakeECSEnricher
 		}

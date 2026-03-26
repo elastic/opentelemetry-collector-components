@@ -3,7 +3,7 @@ resourceLogs:
       attributes:
         - key: service.name
           value:
-            stringValue: test-service
+            stringValue: test/service
         - key: labels.my_value
           value:
             stringValue: foo

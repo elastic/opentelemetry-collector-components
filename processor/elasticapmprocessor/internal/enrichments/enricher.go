@@ -18,6 +18,8 @@
 package enrichments // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 
 import (
+	"sync"
+
 	"github.com/ua-parser/uap-go/uaparser"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -25,6 +27,12 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
+
+// sharedUserAgentParser compiles all ~500 UA/OS/Device regexes exactly once
+// and shares the result across all Enricher instances. uaparser.NewFromSaved()
+// recompiles all patterns on every call; using sync.OnceValue avoids redundant
+// compilations when multiple processor instances are created (e.g. one per signal type).
+var sharedUserAgentParser = sync.OnceValue(uaparser.NewFromSaved)
 
 // Enricher enriches the OTel traces with attributes required to power
 // functionalities in the Elastic UI.
@@ -74,7 +82,8 @@ func (e *Enricher) EnrichLogs(pl plog.Logs) {
 			EnrichScope(scopeSpan.Scope(), e.Config)
 			logRecords := scopeSpan.LogRecords()
 			for k := 0; k < logRecords.Len(); k++ {
-				EnrichLog(resourceAttrs, logRecords.At(k), e.Config)
+				logRecord := logRecords.At(k)
+				EnrichLog(resourceAttrs, logRecord, e.Config)
 			}
 		}
 	}
@@ -101,6 +110,6 @@ func (e *Enricher) EnrichMetrics(pl pmetric.Metrics) {
 func NewEnricher(cfg config.Config) *Enricher {
 	return &Enricher{
 		Config:          cfg,
-		userAgentParser: uaparser.NewFromSaved(),
+		userAgentParser: sharedUserAgentParser(),
 	}
 }
