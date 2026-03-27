@@ -474,9 +474,7 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 		if key == "" || numericLabelValue == nil {
 			continue
 		}
-		if numericLabelValue.Value != 0 {
-			attributesMap.PutDouble("numeric_labels."+key, numericLabelValue.Value)
-		}
+		attributesMap.PutDouble("numeric_labels."+key, numericLabelValue.Value)
 	}
 }
 

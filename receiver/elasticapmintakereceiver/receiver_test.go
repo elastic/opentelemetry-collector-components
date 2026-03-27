@@ -27,7 +27,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"slices"
 	"testing"
 	"time"
 
@@ -45,7 +44,7 @@ import (
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
-	"github.com/elastic/apm-data/model/modelpb"
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
@@ -509,8 +508,8 @@ func TestMetrics(t *testing.T) {
 				// validate the at least one global label key has been included in the client metadata
 				ctxs := nextMetrics.Contexts()
 				require.GreaterOrEqual(t, len(ctxs), 1)
-				got := client.FromContext(ctxs[0]).Metadata.Get("x-elastic-dynamic-resource-attributes")
-				require.Equal(t, tt.expectedDynamicAttrs, got)
+				got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+				require.ElementsMatch(t, tt.expectedDynamicAttrs, got)
 			}
 		})
 	}
@@ -555,8 +554,8 @@ func TestLogs(t *testing.T) {
 				// validate the at least one global label key has been included in the client metadata
 				ctxs := nextLogs.Contexts()
 				require.GreaterOrEqual(t, len(ctxs), 1)
-				got := client.FromContext(ctxs[0]).Metadata.Get("x-elastic-dynamic-resource-attributes")
-				require.Equal(t, tt.expectedDynamicAttrs, got)
+				got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+				require.ElementsMatch(t, tt.expectedDynamicAttrs, got)
 			}
 		})
 	}
@@ -609,8 +608,8 @@ func TestTransactionsAndSpans(t *testing.T) {
 				// validate the at least one global label key has been included in the client metadata
 				ctxs := nextTrace.Contexts()
 				require.GreaterOrEqual(t, len(ctxs), 1)
-				got := client.FromContext(ctxs[0]).Metadata.Get("x-elastic-dynamic-resource-attributes")
-				require.Equal(t, tt.expectedDynamicAttrs, got)
+				got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+				require.ElementsMatch(t, tt.expectedDynamicAttrs, got)
 			}
 		})
 	}
@@ -677,134 +676,6 @@ func TestMetadataPropagation(t *testing.T) {
 	}
 }
 
-func TestGlobalKeyExtraction(t *testing.T) {
-	cases := []struct {
-		name               string
-		events             []*modelpb.APMEvent
-		expectedGlobalKeys []string
-	}{
-		{
-			name:               "nil labels",
-			events:             []*modelpb.APMEvent{{}},
-			expectedGlobalKeys: nil,
-		},
-		{
-			name: "no global labels",
-			events: []*modelpb.APMEvent{{
-				Labels: map[string]*modelpb.LabelValue{
-					"local_tag": {Value: "v1", Global: false},
-				},
-				NumericLabels: map[string]*modelpb.NumericLabelValue{
-					"local_num": {Value: 42, Global: false},
-				},
-			}},
-			expectedGlobalKeys: nil,
-		},
-		{
-			name: "only global string labels",
-			events: []*modelpb.APMEvent{{
-				Labels: map[string]*modelpb.LabelValue{
-					"team.name": {Value: "platform", Global: true},
-					"env":       {Value: "prod", Global: true},
-					"local":     {Value: "skip", Global: false},
-				},
-			}},
-			expectedGlobalKeys: []string{"labels.env", "labels.team.name"},
-		},
-		{
-			name: "only global numeric labels",
-			events: []*modelpb.APMEvent{{
-				NumericLabels: map[string]*modelpb.NumericLabelValue{
-					"cost_center": {Value: 100, Global: true},
-					"local_num":   {Value: 1, Global: false},
-				},
-			}},
-			expectedGlobalKeys: []string{"numeric_labels.cost_center"},
-		},
-		{
-			name: "mixed global labels and numeric labels",
-			events: []*modelpb.APMEvent{{
-				Labels: map[string]*modelpb.LabelValue{
-					"team.name": {Value: "platform", Global: true},
-					"local":     {Value: "skip", Global: false},
-				},
-				NumericLabels: map[string]*modelpb.NumericLabelValue{
-					"cost_center": {Value: 100, Global: true},
-				},
-			}},
-			expectedGlobalKeys: []string{"labels.team.name", "numeric_labels.cost_center"},
-		},
-		{
-			name: "duplicate key across labels and numeric labels",
-			events: []*modelpb.APMEvent{{
-				Labels: map[string]*modelpb.LabelValue{
-					"shared_key": {Value: "str", Global: true},
-				},
-				NumericLabels: map[string]*modelpb.NumericLabelValue{
-					"shared_key": {Value: 1, Global: true},
-				},
-			}},
-			expectedGlobalKeys: []string{"labels.shared_key", "numeric_labels.shared_key"},
-		},
-		{
-			name: "nil label value skipped",
-			events: []*modelpb.APMEvent{{
-				Labels: map[string]*modelpb.LabelValue{
-					"good": {Value: "v", Global: true},
-					"nil":  nil,
-				},
-				NumericLabels: map[string]*modelpb.NumericLabelValue{
-					"nil_num": nil,
-				},
-			}},
-			expectedGlobalKeys: []string{"labels.good"},
-		},
-		{
-			name: "global keys collected across multiple events",
-			events: []*modelpb.APMEvent{
-				{
-					Labels: map[string]*modelpb.LabelValue{
-						"key_a": {Value: "a", Global: true},
-					},
-				},
-				{
-					Labels: map[string]*modelpb.LabelValue{
-						"key_b": {Value: "b", Global: true},
-						"key_a": {Value: "a", Global: true},
-					},
-				},
-			},
-			expectedGlobalKeys: []string{"labels.key_a", "labels.key_b"},
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			var globalKeys []string
-			for _, event := range tc.events {
-				for key, lv := range event.Labels {
-					if lv != nil && lv.Global {
-						globalKeys = append(globalKeys, "labels."+key)
-					}
-				}
-				for key, nv := range event.NumericLabels {
-					if nv != nil && nv.Global {
-						globalKeys = append(globalKeys, "numeric_labels."+key)
-					}
-				}
-			}
-
-			if len(globalKeys) == 0 {
-				require.Nil(t, tc.expectedGlobalKeys)
-				return
-			}
-
-			slices.Sort(globalKeys)
-			globalKeys = slices.Compact(globalKeys)
-			require.Equal(t, tc.expectedGlobalKeys, globalKeys)
-		})
-	}
-}
 
 func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 	cases := []struct {
@@ -885,8 +756,8 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 
 			ctxs := ctxsFn()
 			require.GreaterOrEqual(t, len(ctxs), 1)
-			got := client.FromContext(ctxs[0]).Metadata.Get("x-elastic-dynamic-resource-attributes")
-			require.Equal(t, tc.expectedDynamicAttrs, got)
+			got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+			require.ElementsMatch(t, tc.expectedDynamicAttrs, got)
 
 			if tc.expectedYamlFile != "" && metricsSink != nil {
 				actualMetrics := metricsSink.AllMetrics()[0]

@@ -25,7 +25,6 @@ import (
 	"hash"
 	"net"
 	"net/http"
-	"slices"
 	"strings"
 	"sync"
 
@@ -261,16 +260,17 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	// from that event's aggregation grouping. Here, the shadowed key is
 	// still included in x-elastic-dynamic-resource-attributes because we operate
 	// at the batch level, not per-event.
-	var globalKeys []string
+	labelKeySet := make(map[string]struct{})
+	numericKeySet := make(map[string]struct{})
 	for _, event := range *batch {
 		for key, lv := range event.Labels {
 			if lv != nil && lv.Global {
-				globalKeys = append(globalKeys, "labels."+key)
+				labelKeySet[key] = struct{}{}
 			}
 		}
 		for key, nv := range event.NumericLabels {
 			if nv != nil && nv.Global {
-				globalKeys = append(globalKeys, "numeric_labels."+key)
+				numericKeySet[key] = struct{}{}
 			}
 		}
 
@@ -316,10 +316,15 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		}
 	}
 
-	// collect all unique global labels keys to add to the client metadata
-	if len(globalKeys) > 0 {
-		slices.Sort(globalKeys)
-		globalKeys = slices.Compact(globalKeys)
+	// collect all unique global label keys to add to the client metadata
+	if len(labelKeySet)+len(numericKeySet) > 0 {
+		globalKeys := make([]string, 0, len(labelKeySet)+len(numericKeySet))
+		for k := range labelKeySet {
+			globalKeys = append(globalKeys, "labels."+k)
+		}
+		for k := range numericKeySet {
+			globalKeys = append(globalKeys, "numeric_labels."+k)
+		}
 		ctx = withDynamicResourceAttributes(ctx, globalKeys)
 	}
 
@@ -683,7 +688,7 @@ func withDynamicResourceAttributes(ctx context.Context, globalLabelKeys []string
 	for k := range info.Metadata.Keys() {
 		newMeta[k] = info.Metadata.Get(k)
 	}
-	newMeta["x-elastic-dynamic-resource-attributes"] = globalLabelKeys
+	newMeta[elasticattr.MetadataDynamicResourceAttributes] = globalLabelKeys
 	return client.NewContext(ctx, client.Info{
 		Addr:     info.Addr,
 		Auth:     info.Auth,
