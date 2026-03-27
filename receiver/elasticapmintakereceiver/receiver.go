@@ -259,18 +259,18 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	// https://github.com/elastic/apm-aggregation/blob/main/aggregators/converter.go
 	// If an event shadows a global key, apm-aggregation excludes that key
 	// from that event's aggregation grouping. Here, the shadowed key is
-	// still included in x-dynamic-resource-attributes because we operate
+	// still included in x-elastic-dynamic-resource-attributes because we operate
 	// at the batch level, not per-event.
 	var globalKeys []string
 	for _, event := range *batch {
 		for key, lv := range event.Labels {
 			if lv != nil && lv.Global {
-				globalKeys = append(globalKeys, key)
+				globalKeys = append(globalKeys, "labels."+key)
 			}
 		}
 		for key, nv := range event.NumericLabels {
 			if nv != nil && nv.Global {
-				globalKeys = append(globalKeys, key)
+				globalKeys = append(globalKeys, "numeric_labels."+key)
 			}
 		}
 
@@ -672,15 +672,18 @@ func withMappingMode(info client.Info, mode string, includeMetadata bool) client
 }
 
 // withDynamicResourceAttributes enriches the context with the global label
-// keys as a CSV value under the "x-dynamic-resource-attributes" metadata key.
-// The provided keySet must be sorted and deduplicated by the caller.
+// keys under the "x-elastic-dynamic-resource-attributes" metadata key.
+// Each key is stored as a separate element in the metadata value slice so
+// that downstream OTTL expressions (e.g. otelcol.client.metadata["..."]) can
+// consume them directly as a string list.
+// The provided globalLabelKeys must be sorted and deduplicated by the caller.
 func withDynamicResourceAttributes(ctx context.Context, globalLabelKeys []string) context.Context {
 	info := client.FromContext(ctx)
 	newMeta := make(map[string][]string)
 	for k := range info.Metadata.Keys() {
 		newMeta[k] = info.Metadata.Get(k)
 	}
-	newMeta["x-dynamic-resource-attributes"] = []string{strings.Join(globalLabelKeys, ",")}
+	newMeta["x-elastic-dynamic-resource-attributes"] = globalLabelKeys
 	return client.NewContext(ctx, client.Info{
 		Addr:     info.Addr,
 		Auth:     info.Auth,

@@ -473,10 +473,10 @@ func TestMetrics(t *testing.T) {
 	inputFiles_error := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
-		expectedDynamicAttrs       string
+		expectedDynamicAttrs       []string
 	}{
-		{"metricsets.ndjson", "metricsets_expected.yaml", "tag1,tag2"},
-		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml", ""},
+		{"metricsets.ndjson", "metricsets_expected.yaml", []string{"labels.tag1", "numeric_labels.tag2"}},
+		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml", nil},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -505,13 +505,12 @@ func TestMetrics(t *testing.T) {
 	for _, tt := range inputFiles_error {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForMetrics(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextMetrics, testEndpoint)
-			if tt.expectedDynamicAttrs != "" {
+			if len(tt.expectedDynamicAttrs) > 0 {
 				// validate the at least one global label key has been included in the client metadata
 				ctxs := nextMetrics.Contexts()
 				require.GreaterOrEqual(t, len(ctxs), 1)
-				got := client.FromContext(ctxs[0]).Metadata.Get("x-dynamic-resource-attributes")
-				require.Len(t, got, 1)
-				require.Equal(t, tt.expectedDynamicAttrs, got[0])
+				got := client.FromContext(ctxs[0]).Metadata.Get("x-elastic-dynamic-resource-attributes")
+				require.Equal(t, tt.expectedDynamicAttrs, got)
 			}
 		})
 	}
@@ -521,9 +520,9 @@ func TestLogs(t *testing.T) {
 	inputFiles := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
-		expectedDynamicAttrs       string
+		expectedDynamicAttrs       []string
 	}{
-		{"logs.ndjson", "logs_expected.yaml", "ab_testing,group,segment"},
+		{"logs.ndjson", "logs_expected.yaml", []string{"labels.ab_testing", "labels.group", "numeric_labels.segment"}},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -552,13 +551,12 @@ func TestLogs(t *testing.T) {
 	for _, tt := range inputFiles {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForLogs(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextLogs, testEndpoint)
-			if tt.expectedDynamicAttrs != "" {
+			if len(tt.expectedDynamicAttrs) > 0 {
 				// validate the at least one global label key has been included in the client metadata
 				ctxs := nextLogs.Contexts()
 				require.GreaterOrEqual(t, len(ctxs), 1)
-				got := client.FromContext(ctxs[0]).Metadata.Get("x-dynamic-resource-attributes")
-				require.Len(t, got, 1)
-				require.Equal(t, tt.expectedDynamicAttrs, got[0])
+				got := client.FromContext(ctxs[0]).Metadata.Get("x-elastic-dynamic-resource-attributes")
+				require.Equal(t, tt.expectedDynamicAttrs, got)
 			}
 		})
 	}
@@ -567,16 +565,16 @@ func TestLogs(t *testing.T) {
 var inputFiles = []struct {
 	inputNdJsonFileName        string
 	outputExpectedYamlFileName string
-	expectedDynamicAttrs       string
+	expectedDynamicAttrs       []string
 }{
-	{"invalid_ids.ndjson", "invalid_ids_expected.yaml", ""},
-	{"transactions.ndjson", "transactions_expected.yaml", "tag1,tag2"},
-	{"spans.ndjson", "spans_expected.yaml", "tag1"},
-	{"unknown-span-type.ndjson", "unknown-span-type_expected.yaml", ""},
-	{"transactions_spans.ndjson", "transactions_spans_expected.yaml", ""},
-	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml", ""},
-	{"span-links.ndjson", "span-links_expected.yaml", ""},
-	{"hostdata.ndjson", "hostdata_expected.yaml", ""},
+	{"invalid_ids.ndjson", "invalid_ids_expected.yaml", nil},
+	{"transactions.ndjson", "transactions_expected.yaml", []string{"labels.tag1", "numeric_labels.tag2"}},
+	{"spans.ndjson", "spans_expected.yaml", []string{"labels.tag1"}},
+	{"unknown-span-type.ndjson", "unknown-span-type_expected.yaml", nil},
+	{"transactions_spans.ndjson", "transactions_spans_expected.yaml", nil},
+	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml", nil},
+	{"span-links.ndjson", "span-links_expected.yaml", nil},
+	{"hostdata.ndjson", "hostdata_expected.yaml", nil},
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -607,13 +605,12 @@ func TestTransactionsAndSpans(t *testing.T) {
 	for _, tt := range inputFiles {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForTraces(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextTrace, testEndpoint)
-			if tt.expectedDynamicAttrs != "" {
+			if len(tt.expectedDynamicAttrs) > 0 {
 				// validate the at least one global label key has been included in the client metadata
 				ctxs := nextTrace.Contexts()
 				require.GreaterOrEqual(t, len(ctxs), 1)
-				got := client.FromContext(ctxs[0]).Metadata.Get("x-dynamic-resource-attributes")
-				require.Len(t, got, 1)
-				require.Equal(t, tt.expectedDynamicAttrs, got[0])
+				got := client.FromContext(ctxs[0]).Metadata.Get("x-elastic-dynamic-resource-attributes")
+				require.Equal(t, tt.expectedDynamicAttrs, got)
 			}
 		})
 	}
@@ -712,7 +709,7 @@ func TestGlobalKeyExtraction(t *testing.T) {
 					"local":     {Value: "skip", Global: false},
 				},
 			}},
-			expectedGlobalKeys: []string{"env", "team.name"},
+			expectedGlobalKeys: []string{"labels.env", "labels.team.name"},
 		},
 		{
 			name: "only global numeric labels",
@@ -722,7 +719,7 @@ func TestGlobalKeyExtraction(t *testing.T) {
 					"local_num":   {Value: 1, Global: false},
 				},
 			}},
-			expectedGlobalKeys: []string{"cost_center"},
+			expectedGlobalKeys: []string{"numeric_labels.cost_center"},
 		},
 		{
 			name: "mixed global labels and numeric labels",
@@ -735,7 +732,7 @@ func TestGlobalKeyExtraction(t *testing.T) {
 					"cost_center": {Value: 100, Global: true},
 				},
 			}},
-			expectedGlobalKeys: []string{"cost_center", "team.name"},
+			expectedGlobalKeys: []string{"labels.team.name", "numeric_labels.cost_center"},
 		},
 		{
 			name: "duplicate key across labels and numeric labels",
@@ -747,7 +744,7 @@ func TestGlobalKeyExtraction(t *testing.T) {
 					"shared_key": {Value: 1, Global: true},
 				},
 			}},
-			expectedGlobalKeys: []string{"shared_key"},
+			expectedGlobalKeys: []string{"labels.shared_key", "numeric_labels.shared_key"},
 		},
 		{
 			name: "nil label value skipped",
@@ -760,7 +757,7 @@ func TestGlobalKeyExtraction(t *testing.T) {
 					"nil_num": nil,
 				},
 			}},
-			expectedGlobalKeys: []string{"good"},
+			expectedGlobalKeys: []string{"labels.good"},
 		},
 		{
 			name: "global keys collected across multiple events",
@@ -777,7 +774,7 @@ func TestGlobalKeyExtraction(t *testing.T) {
 					},
 				},
 			},
-			expectedGlobalKeys: []string{"key_a", "key_b"},
+			expectedGlobalKeys: []string{"labels.key_a", "labels.key_b"},
 		},
 	}
 
@@ -787,12 +784,12 @@ func TestGlobalKeyExtraction(t *testing.T) {
 			for _, event := range tc.events {
 				for key, lv := range event.Labels {
 					if lv != nil && lv.Global {
-						globalKeys = append(globalKeys, key)
+						globalKeys = append(globalKeys, "labels."+key)
 					}
 				}
 				for key, nv := range event.NumericLabels {
 					if nv != nil && nv.Global {
-						globalKeys = append(globalKeys, key)
+						globalKeys = append(globalKeys, "numeric_labels."+key)
 					}
 				}
 			}
@@ -814,14 +811,14 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 		name                 string
 		inputFile            string
 		signal               string // "traces" or "metrics"
-		expectedDynamicAttrs string
+		expectedDynamicAttrs []string
 		expectedYamlFile     string // if non-empty, compare output against this golden file
 	}{
 		{
 			name:                 "metadata global labels propagated",
 			inputFile:            "transactions.ndjson",
 			signal:               "traces",
-			expectedDynamicAttrs: "tag1,tag2",
+			expectedDynamicAttrs: []string{"labels.tag1", "numeric_labels.tag2"},
 		},
 		{
 			// The apm-data library marks metadata labels as Global: true and
@@ -833,7 +830,7 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			// per-event, so the shadowed event would exclude that key from
 			// its aggregation grouping. Here, we collect the union of global
 			// keys across all events in the batch, so the shadowed key is
-			// still present in x-dynamic-resource-attributes as long as at
+			// still present in x-elastic-dynamic-resource-attributes as long as at
 			// least one other event retains it as Global: true.
 			//
 			// This test sends two metricsets: one without tags (global_tag
@@ -843,7 +840,7 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			name:                 "event-level tag shadows metadata global label",
 			inputFile:            "metric_global_label_shadow.ndjson",
 			signal:               "metrics",
-			expectedDynamicAttrs: "global_tag",
+			expectedDynamicAttrs: []string{"labels.global_tag"},
 			expectedYamlFile:     "metric_global_label_shadow_expected.yaml",
 		},
 	}
@@ -888,9 +885,8 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 
 			ctxs := ctxsFn()
 			require.GreaterOrEqual(t, len(ctxs), 1)
-			got := client.FromContext(ctxs[0]).Metadata.Get("x-dynamic-resource-attributes")
-			require.Len(t, got, 1, "expected exactly one x-dynamic-resource-attributes value")
-			require.Equal(t, tc.expectedDynamicAttrs, got[0])
+			got := client.FromContext(ctxs[0]).Metadata.Get("x-elastic-dynamic-resource-attributes")
+			require.Equal(t, tc.expectedDynamicAttrs, got)
 
 			if tc.expectedYamlFile != "" && metricsSink != nil {
 				actualMetrics := metricsSink.AllMetrics()[0]
