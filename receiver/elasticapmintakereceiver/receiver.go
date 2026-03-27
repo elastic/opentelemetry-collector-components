@@ -242,7 +242,38 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		r.settings.Logger.Error("failed to process batch", zap.Error(err))
 	}
 
+	// Collect label keys marked as Global across all events. Global labels
+	// originate from the intake v2 metadata and are cloned onto every event
+	// by the apm-data library (see GlobalLabelsFrom):
+	// https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/modeldecoderutil/labels.go
+	//
+	// We scan all events rather than just the first because an event-level
+	// tag can shadow a metadata label, flipping its Global flag to false on
+	// that particular event (see Labels.Set):
+	// https://github.com/elastic/apm-data/blob/main/model/modelpb/labels.go
+	//
+	// Note: this collects the union of global keys across the batch, which
+	// differs from apm-aggregation where global labels are evaluated
+	// per-event (see marshalEventGlobalLabels):
+	// https://github.com/elastic/apm-aggregation/blob/main/aggregators/converter.go
+	// If an event shadows a global key, apm-aggregation excludes that key
+	// from that event's aggregation grouping. Here, the shadowed key is
+	// still included in x-elastic-dynamic-resource-attributes because we operate
+	// at the batch level, not per-event.
+	labelKeySet := make(map[string]struct{})
+	numericKeySet := make(map[string]struct{})
 	for _, event := range *batch {
+		for key, lv := range event.Labels {
+			if lv != nil && lv.Global {
+				labelKeySet[key] = struct{}{}
+			}
+		}
+		for key, nv := range event.NumericLabels {
+			if nv != nil && nv.Global {
+				numericKeySet[key] = struct{}{}
+			}
+		}
+
 		timestampNanos := event.GetTimestamp()
 
 		// TODO record metrics about events processed by type?
@@ -284,6 +315,19 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 			return fmt.Errorf("unhandled event type %q", event.Type())
 		}
 	}
+
+	// collect all unique global label keys to add to the client metadata
+	if len(labelKeySet)+len(numericKeySet) > 0 {
+		globalKeys := make([]string, 0, len(labelKeySet)+len(numericKeySet))
+		for k := range labelKeySet {
+			globalKeys = append(globalKeys, "labels."+k)
+		}
+		for k := range numericKeySet {
+			globalKeys = append(globalKeys, "numeric_labels."+k)
+		}
+		ctx = withDynamicResourceAttributes(ctx, globalKeys)
+	}
+
 	var errs []error
 	if numRecords := ld.LogRecordCount(); numRecords != 0 && r.nextLogs != nil {
 		ctx := r.obsreport.StartLogsOp(ctx)
@@ -630,4 +674,24 @@ func withMappingMode(info client.Info, mode string, includeMetadata bool) client
 		Auth:     info.Auth,
 		Metadata: client.NewMetadata(newMeta),
 	}
+}
+
+// withDynamicResourceAttributes enriches the context with the global label
+// keys under the "x-elastic-dynamic-resource-attributes" metadata key.
+// Each key is stored as a separate element in the metadata value slice so
+// that downstream OTTL expressions (e.g. otelcol.client.metadata["..."]) can
+// consume them directly as a string list.
+// The provided globalLabelKeys must be deduplicated by the caller.
+func withDynamicResourceAttributes(ctx context.Context, globalLabelKeys []string) context.Context {
+	info := client.FromContext(ctx)
+	newMeta := make(map[string][]string)
+	for k := range info.Metadata.Keys() {
+		newMeta[k] = info.Metadata.Get(k)
+	}
+	newMeta[elasticattr.MetadataDynamicResourceAttributes] = globalLabelKeys
+	return client.NewContext(ctx, client.Info{
+		Addr:     info.Addr,
+		Auth:     info.Auth,
+		Metadata: client.NewMetadata(newMeta),
+	})
 }
