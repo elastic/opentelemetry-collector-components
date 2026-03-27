@@ -1,0 +1,4 @@
+elasticapm:
+  custom_resource_attributes:
+    - res.1
+    - keys_expression: 'otelcol.client.metadata["x-elastic-dynamic-resource-attributes"]'
