@@ -681,7 +681,7 @@ func withMappingMode(info client.Info, mode string, includeMetadata bool) client
 // Each key is stored as a separate element in the metadata value slice so
 // that downstream OTTL expressions (e.g. otelcol.client.metadata["..."]) can
 // consume them directly as a string list.
-// The provided globalLabelKeys must be sorted and deduplicated by the caller.
+// The provided globalLabelKeys must be deduplicated by the caller.
 func withDynamicResourceAttributes(ctx context.Context, globalLabelKeys []string) context.Context {
 	info := client.FromContext(ctx)
 	newMeta := make(map[string][]string)
