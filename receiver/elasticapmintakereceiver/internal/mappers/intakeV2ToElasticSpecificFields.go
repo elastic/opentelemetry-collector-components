@@ -455,14 +455,14 @@ func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap
 // the input to modelpb.APMEvent, so we simply copy all labels from the event here.
 func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	for key, labelValue := range event.Labels {
-		if key != "" && labelValue != nil && labelValue.Value != "" {
-			attrKey := "labels." + key
-			attributesMap.PutStr(attrKey, labelValue.Value)
+		if key == "" || labelValue == nil {
+			continue
 		}
-
-		if key != "" && labelValue != nil && len(labelValue.Values) > 0 {
-			attrKey := "labels." + key
-			labelValues := attributesMap.PutEmptySlice(attrKey)
+		if labelValue.Value != "" {
+			attributesMap.PutStr("labels."+key, labelValue.Value)
+		}
+		if len(labelValue.Values) > 0 {
+			labelValues := attributesMap.PutEmptySlice("labels." + key)
 			labelValues.EnsureCapacity(len(labelValue.Values))
 			for _, v := range labelValue.Values {
 				labelValues.AppendEmpty().SetStr(v)
@@ -471,10 +471,10 @@ func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
 	}
 
 	for key, numericLabelValue := range event.NumericLabels {
-		if key != "" && numericLabelValue != nil && numericLabelValue.Value != 0 {
-			attrKey := "numeric_labels." + key
-			attributesMap.PutDouble(attrKey, numericLabelValue.Value)
+		if key == "" || numericLabelValue == nil {
+			continue
 		}
+		attributesMap.PutDouble("numeric_labels."+key, numericLabelValue.Value)
 	}
 }
 

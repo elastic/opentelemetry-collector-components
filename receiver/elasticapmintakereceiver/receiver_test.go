@@ -44,6 +44,7 @@ import (
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
@@ -471,9 +472,10 @@ func TestMetrics(t *testing.T) {
 	inputFiles_error := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
+		expectedDynamicAttrs       []string
 	}{
-		{"metricsets.ndjson", "metricsets_expected.yaml"},
-		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml"},
+		{"metricsets.ndjson", "metricsets_expected.yaml", []string{"labels.tag1", "numeric_labels.tag2"}},
+		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml", nil},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -502,6 +504,13 @@ func TestMetrics(t *testing.T) {
 	for _, tt := range inputFiles_error {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForMetrics(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextMetrics, testEndpoint)
+			if len(tt.expectedDynamicAttrs) > 0 {
+				// validate the at least one global label key has been included in the client metadata
+				ctxs := nextMetrics.Contexts()
+				require.GreaterOrEqual(t, len(ctxs), 1)
+				got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+				require.ElementsMatch(t, tt.expectedDynamicAttrs, got)
+			}
 		})
 	}
 }
@@ -510,8 +519,9 @@ func TestLogs(t *testing.T) {
 	inputFiles := []struct {
 		inputNdJsonFileName        string
 		outputExpectedYamlFileName string
+		expectedDynamicAttrs       []string
 	}{
-		{"logs.ndjson", "logs_expected.yaml"},
+		{"logs.ndjson", "logs_expected.yaml", []string{"labels.ab_testing", "labels.group", "numeric_labels.segment"}},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -540,6 +550,13 @@ func TestLogs(t *testing.T) {
 	for _, tt := range inputFiles {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForLogs(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextLogs, testEndpoint)
+			if len(tt.expectedDynamicAttrs) > 0 {
+				// validate the at least one global label key has been included in the client metadata
+				ctxs := nextLogs.Contexts()
+				require.GreaterOrEqual(t, len(ctxs), 1)
+				got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+				require.ElementsMatch(t, tt.expectedDynamicAttrs, got)
+			}
 		})
 	}
 }
@@ -547,15 +564,16 @@ func TestLogs(t *testing.T) {
 var inputFiles = []struct {
 	inputNdJsonFileName        string
 	outputExpectedYamlFileName string
+	expectedDynamicAttrs       []string
 }{
-	{"invalid_ids.ndjson", "invalid_ids_expected.yaml"},
-	{"transactions.ndjson", "transactions_expected.yaml"},
-	{"spans.ndjson", "spans_expected.yaml"},
-	{"unknown-span-type.ndjson", "unknown-span-type_expected.yaml"},
-	{"transactions_spans.ndjson", "transactions_spans_expected.yaml"},
-	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml"},
-	{"span-links.ndjson", "span-links_expected.yaml"},
-	{"hostdata.ndjson", "hostdata_expected.yaml"},
+	{"invalid_ids.ndjson", "invalid_ids_expected.yaml", nil},
+	{"transactions.ndjson", "transactions_expected.yaml", []string{"labels.tag1", "numeric_labels.tag2"}},
+	{"spans.ndjson", "spans_expected.yaml", []string{"labels.tag1"}},
+	{"unknown-span-type.ndjson", "unknown-span-type_expected.yaml", nil},
+	{"transactions_spans.ndjson", "transactions_spans_expected.yaml", nil},
+	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml", nil},
+	{"span-links.ndjson", "span-links_expected.yaml", nil},
+	{"hostdata.ndjson", "hostdata_expected.yaml", nil},
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -586,6 +604,13 @@ func TestTransactionsAndSpans(t *testing.T) {
 	for _, tt := range inputFiles {
 		t.Run(tt.inputNdJsonFileName, func(t *testing.T) {
 			runComparisonForTraces(t, tt.inputNdJsonFileName, tt.outputExpectedYamlFileName, nextTrace, testEndpoint)
+			if len(tt.expectedDynamicAttrs) > 0 {
+				// validate the at least one global label key has been included in the client metadata
+				ctxs := nextTrace.Contexts()
+				require.GreaterOrEqual(t, len(ctxs), 1)
+				got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+				require.ElementsMatch(t, tt.expectedDynamicAttrs, got)
+			}
 		})
 	}
 }
@@ -646,6 +671,107 @@ func TestMetadataPropagation(t *testing.T) {
 				}
 			} else {
 				require.Equal(t, tcase.expectedMetadata, md)
+			}
+		})
+	}
+}
+
+
+func TestGlobalLabelsMetadataPropagation(t *testing.T) {
+	cases := []struct {
+		name                 string
+		inputFile            string
+		signal               string // "traces" or "metrics"
+		expectedDynamicAttrs []string
+		expectedYamlFile     string // if non-empty, compare output against this golden file
+	}{
+		{
+			name:                 "metadata global labels propagated",
+			inputFile:            "transactions.ndjson",
+			signal:               "traces",
+			expectedDynamicAttrs: []string{"labels.tag1", "numeric_labels.tag2"},
+		},
+		{
+			// The apm-data library marks metadata labels as Global: true and
+			// clones them onto every event. When an event has a tag with the
+			// same key as a metadata label, Labels.Set() replaces the value
+			// and resets Global to false on that event only.
+			//
+			// In apm-aggregation, marshalEventGlobalLabels() checks Global
+			// per-event, so the shadowed event would exclude that key from
+			// its aggregation grouping. Here, we collect the union of global
+			// keys across all events in the batch, so the shadowed key is
+			// still present in x-elastic-dynamic-resource-attributes as long as at
+			// least one other event retains it as Global: true.
+			//
+			// This test sends two metricsets: one without tags (global_tag
+			// stays Global: true) and one with tags: {"global_tag": "from_event"}
+			// which shadows the metadata label (Global: false on that event).
+			// The key "global_tag" should still appear in the dynamic attrs.
+			name:                 "event-level tag shadows metadata global label",
+			inputFile:            "metric_global_label_shadow.ndjson",
+			signal:               "metrics",
+			expectedDynamicAttrs: []string{"labels.global_tag"},
+			expectedYamlFile:     "metric_global_label_shadow_expected.yaml",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory := NewFactory()
+			testEndpoint := testutil.GetAvailableLocalAddress(t)
+			cfg := &Config{
+				ServerConfig: confighttp.ServerConfig{
+					NetAddr: confignet.AddrConfig{
+						Endpoint:  testEndpoint,
+						Transport: confignet.TransportTypeTCP,
+					},
+				},
+			}
+			set := receivertest.NewNopSettings(metadata.Type)
+
+			var rcv component.Component
+			var ctxsFn func() []context.Context
+			var err error
+
+			var metricsSink *consumertest.MetricsSink
+			switch tc.signal {
+			case "traces":
+				sink := new(consumertest.TracesSink)
+				rcv, err = factory.CreateTraces(context.Background(), set, cfg, sink)
+				ctxsFn = sink.Contexts
+			case "metrics":
+				metricsSink = new(consumertest.MetricsSink)
+				rcv, err = factory.CreateMetrics(context.Background(), set, cfg, metricsSink)
+				ctxsFn = metricsSink.Contexts
+			}
+			require.NoError(t, err)
+
+			require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
+			defer func() {
+				require.NoError(t, rcv.Shutdown(context.Background()))
+			}()
+
+			sendInput(t, tc.inputFile, testEndpoint)
+
+			ctxs := ctxsFn()
+			require.GreaterOrEqual(t, len(ctxs), 1)
+			got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+			require.ElementsMatch(t, tc.expectedDynamicAttrs, got)
+
+			if tc.expectedYamlFile != "" && metricsSink != nil {
+				actualMetrics := metricsSink.AllMetrics()[0]
+				expectedFile := filepath.Join(testData, tc.expectedYamlFile)
+				if *update {
+					err := golden.WriteMetrics(t, expectedFile, actualMetrics, golden.SkipMetricTimestampNormalization())
+					require.NoError(t, err)
+				}
+				expectedMetrics, err := golden.ReadMetrics(expectedFile)
+				require.NoError(t, err)
+				require.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actualMetrics,
+					pmetrictest.IgnoreMetricsOrder(),
+					pmetrictest.IgnoreResourceMetricsOrder(),
+				))
 			}
 		})
 	}
