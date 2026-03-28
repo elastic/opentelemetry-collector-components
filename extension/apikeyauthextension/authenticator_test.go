@@ -110,6 +110,45 @@ func TestAuthenticator(t *testing.T) {
 			}),
 			expectedErr: `rpc error: code = Unavailable desc = failed to check privileges`,
 		},
+		"server_429_error": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "too_many_requests",
+					Reason: func() *string {
+						reason := "too many requests"
+						return &reason
+					}(),
+				},
+				Status: 429,
+			}),
+			expectedErr: `rpc error: code = ResourceExhausted desc = failed to check privileges`,
+		},
+		"server_504_error": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "gateway_timeout",
+					Reason: func() *string {
+						reason := "gateway timeout"
+						return &reason
+					}(),
+				},
+				Status: 504,
+			}),
+			expectedErr: `rpc error: code = ResourceExhausted desc = failed to check privileges`,
+		},
+		"server_502_typed_error": {
+			handler: newCannedErrorHandler(types.ElasticsearchError{
+				ErrorCause: types.ErrorCause{
+					Type: "bad_gateway",
+					Reason: func() *string {
+						reason := "bad gateway"
+						return &reason
+					}(),
+				},
+				Status: 502,
+			}),
+			expectedErr: `rpc error: code = Unavailable desc = failed to check privileges`,
+		},
 		"server_500_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
 				ErrorCause: types.ErrorCause{
@@ -571,6 +610,109 @@ func TestAuthenticator_RetryInfoDetails(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAuthenticatorHasPrivilegesTermination(t *testing.T) {
+	t.Parallel()
+
+	t.Run("local timeout returns resource exhausted with retry info", func(t *testing.T) {
+		srv := newMockElasticsearch(t, func(http.ResponseWriter, *http.Request) {
+			time.Sleep(50 * time.Millisecond)
+		})
+
+		cfg := createDefaultConfig().(*Config)
+		cfg.ElasticsearchRetry.Enabled = false
+		cfg.ClientRetry.Enabled = true
+		cfg.ClientRetry.RetryDelay = 3 * time.Second
+		cfg.HasPrivilegesTimeout = 20 * time.Millisecond
+
+		authenticator := newTestAuthenticator(t, srv, cfg)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+		defer cancel()
+
+		_, err := authenticator.Authenticate(ctx, map[string][]string{
+			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+		})
+		require.Error(t, err)
+
+		st, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, codes.ResourceExhausted, st.Code())
+		assert.Equal(t, "failed to check privileges", st.Message())
+
+		var retryInfo *errdetails.RetryInfo
+		for _, detail := range st.Details() {
+			if info, ok := detail.(*errdetails.RetryInfo); ok {
+				retryInfo = info
+				break
+			}
+		}
+		require.NotNil(t, retryInfo, "expected RetryInfo details")
+		require.NotNil(t, retryInfo.RetryDelay, "expected RetryDelay field")
+		assert.Equal(t, 3*time.Second, retryInfo.RetryDelay.AsDuration())
+	})
+
+	t.Run("parent deadline returns unavailable", func(t *testing.T) {
+		srv := newMockElasticsearch(t, func(http.ResponseWriter, *http.Request) {
+			time.Sleep(50 * time.Millisecond)
+		})
+
+		cfg := createDefaultConfig().(*Config)
+		cfg.ElasticsearchRetry.Enabled = false
+		cfg.HasPrivilegesTimeout = 200 * time.Millisecond
+
+		authenticator := newTestAuthenticator(t, srv, cfg)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+		defer cancel()
+
+		_, err := authenticator.Authenticate(ctx, map[string][]string{
+			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+		})
+		require.Error(t, err)
+
+		st, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, codes.Unavailable, st.Code())
+		assert.Contains(t, st.Message(), "context deadline exceeded")
+	})
+
+	t.Run("parent cancel returns canceled", func(t *testing.T) {
+		srv := newMockElasticsearch(t, func(http.ResponseWriter, *http.Request) {
+			time.Sleep(50 * time.Millisecond)
+		})
+
+		cfg := createDefaultConfig().(*Config)
+		cfg.ElasticsearchRetry.Enabled = false
+		cfg.ClientRetry.Enabled = false
+		cfg.HasPrivilegesTimeout = 200 * time.Millisecond
+
+		authenticator := newTestAuthenticator(t, srv, cfg)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		_, err := authenticator.Authenticate(ctx, map[string][]string{
+			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+		})
+		require.Error(t, err)
+
+		st, ok := status.FromError(err)
+		require.True(t, ok)
+		assert.Equal(t, codes.Canceled, st.Code())
+		assert.Equal(t, "request canceled", st.Message())
+	})
+}
+
+func TestIsRetryableOverloadError(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, isRetryableOverloadError(&types.ElasticsearchError{
+		ErrorCause: types.ErrorCause{Type: "unavailable"},
+		Status:     http.StatusServiceUnavailable,
+	}))
+	assert.True(t, isRetryableOverloadError(retryableOverloadError{cause: context.Canceled}))
 }
 
 func TestAuthenticator_CacheKeyHeaders(t *testing.T) {
