@@ -52,38 +52,8 @@ func TranslateLogRecordAttributes(attributes pcommon.Map) {
 // for raw metric datapoint attributes in ECS mode. Existing labels.* /
 // numeric_labels.* keys are sanitized in place, metric-specific special cases
 // are preserved, and everything else is moved to labels.* / numeric_labels.*.
-//
-// The collector preserves data_stream.type in addition to the apm-data
-// data_stream dataset/namespace handling, since datapoint-level routing depends
-// on the full data_stream triple before export.
 func TranslateMetricDataPointAttributes(attributes pcommon.Map) {
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitize.IsLabelAttribute(k) {
-			sanitized := sanitize.HandleLabelAttributeKey(k)
-			if sanitized != k {
-				v.CopyTo(attributes.PutEmpty(sanitized))
-				attributes.Remove(k)
-			}
-			return true
-		}
-		switch k {
-		case elasticattr.DataStreamDataset,
-			elasticattr.DataStreamNamespace,
-			elasticattr.DataStreamType,
-			elasticattr.EventDataset,
-			"event.module",
-			"system.process.cmdline",
-			"system.process.cpu.start_time",
-			"system.filesystem.mount_point",
-			"system.process.state",
-			string(semconv.UserNameKey):
-			return true
-		default:
-			setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(k), v)
-			attributes.Remove(k)
-		}
-		return true
-	})
+	translateAttributes(attributes, isSupportedMetricDataPointAttribute)
 }
 
 func translateAttributes(attributes pcommon.Map, isSupported func(string) bool) {
@@ -186,6 +156,31 @@ func isSupportedLogRecordAttribute(attr string) bool {
 		"event.name",
 		elasticattr.ProcessorEvent,
 		elasticattr.SessionID:
+		return true
+	}
+
+	return false
+}
+
+// isSupportedMetricDataPointAttribute mirrors the apm-data OTLP metric
+// datapoint handling where a small set of fields are preserved as first-class
+// values and the rest fall back to labels.* / numeric_labels.*.
+//
+// The collector preserves data_stream.type in addition to the apm-data
+// data_stream dataset/namespace handling, since datapoint-level routing depends
+// on the full data_stream triple before export.
+func isSupportedMetricDataPointAttribute(attr string) bool {
+	switch attr {
+	case elasticattr.DataStreamDataset,
+		elasticattr.DataStreamNamespace,
+		elasticattr.DataStreamType,
+		elasticattr.EventDataset,
+		"event.module",
+		"system.process.cmdline",
+		"system.process.cpu.start_time",
+		"system.filesystem.mount_point",
+		"system.process.state",
+		string(semconv.UserNameKey):
 		return true
 	}
 

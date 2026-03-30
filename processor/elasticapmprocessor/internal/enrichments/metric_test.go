@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -131,4 +133,123 @@ func TestEnrichMetric(t *testing.T) {
 			assert.Equal(t, expectedAttrs, actualAttrs, "resource attributes should match expected")
 		})
 	}
+}
+
+func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
+	cfg := config.Enabled()
+	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
+
+	metrics := pmetric.NewMetrics()
+	resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
+	scopeMetrics := resourceMetrics.ScopeMetrics().AppendEmpty()
+	metric := scopeMetrics.Metrics().AppendEmpty()
+	metric.SetName("test.metric")
+	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
+	dp.SetDoubleValue(1.0)
+	attrs := dp.Attributes()
+	attrs.PutStr("data_stream.dataset", "apm.internal")
+	attrs.PutStr("data_stream.namespace", "default")
+	attrs.PutStr("data_stream.type", "metrics")
+	attrs.PutStr("host", "server-01")
+	attrs.PutStr("state", "used")
+	attrs.PutStr("event.module", "system")
+	attrs.PutStr("system.process.cmdline", "/usr/bin/java")
+
+	enricher := NewEnricher(cfg)
+	enricher.EnrichMetrics(metrics)
+
+	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
+
+	value, ok := actualAttrs.Get("data_stream.dataset")
+	require.True(t, ok)
+	assert.Equal(t, "apm.internal", value.Str())
+	value, ok = actualAttrs.Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "default", value.Str())
+	value, ok = actualAttrs.Get("data_stream.type")
+	require.True(t, ok)
+	assert.Equal(t, "metrics", value.Str())
+	value, ok = actualAttrs.Get("labels.host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = actualAttrs.Get("labels.state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	value, ok = actualAttrs.Get("event.module")
+	require.True(t, ok)
+	assert.Equal(t, "system", value.Str())
+	value, ok = actualAttrs.Get("system.process.cmdline")
+	require.True(t, ok)
+	assert.Equal(t, "/usr/bin/java", value.Str())
+	_, ok = actualAttrs.Get("host")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("state")
+	assert.False(t, ok)
+}
+
+func TestEnrichMetricDataPoints_SkipsAggregatedMetricAttributes(t *testing.T) {
+	cfg := config.Enabled()
+	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
+
+	metric := pmetric.NewMetric()
+	metric.SetName("service_summary")
+	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
+	dp.SetDoubleValue(1.0)
+	attrs := dp.Attributes()
+	attrs.PutStr("metricset.name", "service_summary")
+	attrs.PutStr("host", "server-01")
+	attrs.PutStr("state", "used")
+
+	EnrichMetricDataPoints(metric, cfg)
+
+	actualAttrs := metric.Gauge().DataPoints().At(0).Attributes()
+	value, ok := actualAttrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = actualAttrs.Get("state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	_, ok = actualAttrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("labels.state")
+	assert.False(t, ok)
+}
+
+func TestEnrichMetricDataPoints_SkipsMetricsWithMappingHints(t *testing.T) {
+	cfg := config.Enabled()
+	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
+
+	metric := pmetric.NewMetric()
+	metric.SetName("transaction.duration.histogram")
+	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
+	dp.SetDoubleValue(1.0)
+	attrs := dp.Attributes()
+	hints := attrs.PutEmptySlice("elasticsearch.mapping.hints")
+	hints.AppendEmpty().SetStr("_doc_count")
+	attrs.PutStr("host", "server-01")
+
+	EnrichMetricDataPoints(metric, cfg)
+
+	actualAttrs := metric.Gauge().DataPoints().At(0).Attributes()
+	value, ok := actualAttrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	_, ok = actualAttrs.Get("labels.host")
+	assert.False(t, ok)
+}
+
+func TestEnrichMetricDataPointAttributes_NoOpWhenDisabled(t *testing.T) {
+	cfg := config.Enabled()
+	cfg.Metric.TranslateUnsupportedAttributes.Enabled = false
+
+	attrs := pcommon.NewMap()
+	attrs.PutStr("host", "server-01")
+
+	enrichMetricDataPointAttributes(attrs, cfg)
+
+	value, ok := attrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	_, ok = attrs.Get("labels.host")
+	assert.False(t, ok)
 }

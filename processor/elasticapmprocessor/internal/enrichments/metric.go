@@ -18,9 +18,11 @@
 package enrichments // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 
 import (
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
@@ -37,4 +39,74 @@ func EnrichMetric(metric pmetric.ResourceMetrics, cfg config.Config) {
 		// https://github.com/elastic/apm-data/blob/aa6b909/input/otlp/metrics.go#L171
 		attribute.PutStr(resAttrs, elasticattr.MetricsetName, metricSetNameApp)
 	}
+}
+
+func EnrichMetricDataPoints(metric pmetric.Metric, cfg config.Config) {
+	switch metric.Type() {
+	case pmetric.MetricTypeGauge:
+		dataPoints := metric.Gauge().DataPoints()
+		for i := 0; i < dataPoints.Len(); i++ {
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+		}
+	case pmetric.MetricTypeSum:
+		dataPoints := metric.Sum().DataPoints()
+		for i := 0; i < dataPoints.Len(); i++ {
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+		}
+	case pmetric.MetricTypeHistogram:
+		dataPoints := metric.Histogram().DataPoints()
+		for i := 0; i < dataPoints.Len(); i++ {
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+		}
+	case pmetric.MetricTypeExponentialHistogram:
+		dataPoints := metric.ExponentialHistogram().DataPoints()
+		for i := 0; i < dataPoints.Len(); i++ {
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+		}
+	case pmetric.MetricTypeSummary:
+		dataPoints := metric.Summary().DataPoints()
+		for i := 0; i < dataPoints.Len(); i++ {
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+		}
+	}
+}
+
+// enrichMetricDataPointAttributes applies the raw OTLP metric fallback during
+// enrichment, analogous to how EnrichLog delegates log-record fallback to
+// EnrichLog. This happens later than apm-data's OTLP-to-APM conversion, so we
+// must explicitly avoid relabeling attrs that identify aggregated metrics or
+// influence exporter behavior.
+func enrichMetricDataPointAttributes(attributes pcommon.Map, cfg config.Config) {
+	if !cfg.Metric.TranslateUnsupportedAttributes.Enabled {
+		return
+	}
+	if isAggregatedMetricDataPointAttributes(attributes) {
+		return
+	}
+	ecs.TranslateMetricDataPointAttributes(attributes)
+}
+
+// isAggregatedMetricDataPointAttributes preserves aggregated-metric identity and
+// exporter-only metadata before the raw OTLP fallback runs.
+//
+// In the collector we mutate OTel datapoints in place, so we must keep these attrs
+// out of label fallback here.
+// `elasticsearch.mapping.hints` is collector/exporter-specific metadata and has
+// no apm-data equivalent, but it also needs to passthrough untouched.
+func isAggregatedMetricDataPointAttributes(attributes pcommon.Map) bool {
+	if _, ok := attributes.Get("metricset.name"); ok {
+		return true
+	}
+	if _, ok := attributes.Get("metricset.interval"); ok {
+		return true
+	}
+	if isESMappingHint(attributes) {
+		return true
+	}
+	return false
+}
+
+func isESMappingHint(attributes pcommon.Map) bool {
+	_, ok := attributes.Get("elasticsearch.mapping.hints")
+	return ok
 }

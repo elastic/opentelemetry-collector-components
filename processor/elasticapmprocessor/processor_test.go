@@ -646,84 +646,66 @@ func TestConsumeMetrics_ECSIntakeSkipsOTLPFallbacks(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestTranslateRawOTLPMetricDataPointAttributesSkipsAggregatedMetrics(t *testing.T) {
-	tests := []struct {
-		name      string
-		markerKey string
-		markerVal func(pcommon.Map)
-	}{
-		{
-			name:      "metricset name present",
-			markerKey: "metricset.name",
-			markerVal: func(attrs pcommon.Map) { attrs.PutStr("metricset.name", "service_summary") },
-		},
-		{
-			name:      "metricset interval present",
-			markerKey: "metricset.interval",
-			markerVal: func(attrs pcommon.Map) { attrs.PutStr("metricset.interval", "1m") },
-		},
-		{
-			name:      "mapping hints present",
-			markerKey: "elasticsearch.mapping.hints",
-			markerVal: func(attrs pcommon.Map) {
-				hints := attrs.PutEmptySlice("elasticsearch.mapping.hints")
-				hints.AppendEmpty().SetStr("_doc_count")
-			},
-		},
-	}
+func TestConsumeMetrics_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			attrs := pcommon.NewMap()
-			tc.markerVal(attrs)
-			attrs.PutStr("host", "server-01")
-			attrs.PutStr("state", "used")
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.MetricsSink{}
+	cfg := NewDefaultConfig().(*Config)
 
-			translateRawOTLPMetricDataPointAttributes(attrs)
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
 
-			value, ok := attrs.Get("host")
-			require.True(t, ok)
-			assert.Equal(t, "server-01", value.Str())
-			value, ok = attrs.Get("state")
-			require.True(t, ok)
-			assert.Equal(t, "used", value.Str())
-			_, ok = attrs.Get("labels.host")
-			assert.False(t, ok)
-			_, ok = attrs.Get("labels.state")
-			assert.False(t, ok)
-		})
-	}
-}
+	metrics := pmetric.NewMetrics()
 
-func TestTranslateRawOTLPMetricDataPointAttributesPreservesRoutingAttrs(t *testing.T) {
-	attrs := pcommon.NewMap()
-	attrs.PutStr("data_stream.dataset", "apm.internal")
-	attrs.PutStr("data_stream.namespace", "default")
-	attrs.PutStr("data_stream.type", "metrics")
-	attrs.PutStr("host", "server-01")
-	attrs.PutStr("state", "used")
+	intakeResourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	intakeResource := intakeResourceMetric.Resource()
+	intakeResource.Attributes().PutStr("service.name", "intake-service")
+	intakeResource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
+	intakeMetric := intakeResourceMetric.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+	intakeMetric.SetName("intake.metric")
+	intakeMetric.SetEmptyGauge().DataPoints().AppendEmpty().SetDoubleValue(1.0)
 
-	translateRawOTLPMetricDataPointAttributes(attrs)
+	otlpResourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	otlpResource := otlpResourceMetric.Resource()
+	otlpResource.Attributes().PutStr("service.name", "otlp-service")
+	otlpResource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+	otlpMetric := otlpResourceMetric.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+	otlpMetric.SetName("http.requests.total")
+	otlpDP := otlpMetric.SetEmptySum().DataPoints().AppendEmpty()
+	otlpDP.SetIntValue(1)
+	otlpAttrs := otlpDP.Attributes()
+	otlpAttrs.PutStr("http.request.method", "GET")
+	otlpAttrs.PutStr("host", "server-01")
 
-	value, ok := attrs.Get("data_stream.dataset")
+	require.NoError(t, mp.ConsumeMetrics(ctx, metrics))
+	actual := next.AllMetrics()[0]
+
+	require.Equal(t, 2, actual.ResourceMetrics().Len())
+
+	// Mixed-origin batches are not supported. The first resource metric determines
+	// which ECS metric enricher is used for the whole batch.
+	intakeAttrs := actual.ResourceMetrics().At(0).Resource().Attributes()
+	_, ok := intakeAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	otlpAttrsAfter := actual.ResourceMetrics().At(1).Resource().Attributes()
+	_, ok = otlpAttrsAfter.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	actualDPAttrs := actual.ResourceMetrics().At(1).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0).Attributes()
+	value, ok := actualDPAttrs.Get("http.request.method")
 	require.True(t, ok)
-	assert.Equal(t, "apm.internal", value.Str())
-	value, ok = attrs.Get("data_stream.namespace")
-	require.True(t, ok)
-	assert.Equal(t, "default", value.Str())
-	value, ok = attrs.Get("data_stream.type")
-	require.True(t, ok)
-	assert.Equal(t, "metrics", value.Str())
-
-	value, ok = attrs.Get("labels.host")
+	assert.Equal(t, "GET", value.Str())
+	value, ok = actualDPAttrs.Get("host")
 	require.True(t, ok)
 	assert.Equal(t, "server-01", value.Str())
-	value, ok = attrs.Get("labels.state")
-	require.True(t, ok)
-	assert.Equal(t, "used", value.Str())
-	_, ok = attrs.Get("host")
+	_, ok = actualDPAttrs.Get("labels.http_request_method")
 	assert.False(t, ok)
-	_, ok = attrs.Get("state")
+	_, ok = actualDPAttrs.Get("labels.host")
 	assert.False(t, ok)
 }
 

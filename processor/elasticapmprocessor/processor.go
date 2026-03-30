@@ -214,10 +214,12 @@ func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) 
 	ecsEnricherConfig.Resource.ServiceName.Enabled = true
 	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
 	ecsEnricherConfig.Resource.DefaultServiceLanguage.Enabled = true
+	ecsEnricherConfig.Metric.TranslateUnsupportedAttributes.Enabled = true
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
 	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
+	intakeECSEnricherConfig.Metric.TranslateUnsupportedAttributes.Enabled = false
 
 	return &MetricProcessor{
 		next:              next,
@@ -247,7 +249,6 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 		for i := 0; i < resourceMetrics.Len(); i++ {
 			resourceMetric := resourceMetrics.At(i)
 			resource := resourceMetric.Resource()
-			resourceIsIntake := isIntakeECS(resource)
 			ecs.TranslateResourceMetadata(resource)
 			ecs.ApplyResourceConventions(resource)
 			routing.EncodeDataStream(resource, routing.DataStreamTypeMetrics, p.cfg.ServiceNameInDataStreamDataset)
@@ -263,9 +264,6 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 
 			// Route internal metrics to appropriate data streams if needed.
 			routeMetricsToDataStream(resourceMetric.ScopeMetrics(), hasServiceName)
-			if !resourceIsIntake && hasServiceName {
-				translateRawOTLPMetricDataPoints(resourceMetric.ScopeMetrics())
-			}
 		}
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
@@ -334,55 +332,6 @@ func routeMetricsToDataStream(scopeMetrics pmetric.ScopeMetricsSlice, hasService
 			}
 		}
 	}
-}
-
-func translateRawOTLPMetricDataPoints(scopeMetrics pmetric.ScopeMetricsSlice) {
-	for j := 0; j < scopeMetrics.Len(); j++ {
-		metrics := scopeMetrics.At(j).Metrics()
-		for k := 0; k < metrics.Len(); k++ {
-			metric := metrics.At(k)
-			switch metric.Type() {
-			case pmetric.MetricTypeGauge:
-				dataPoints := metric.Gauge().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					translateRawOTLPMetricDataPointAttributes(dataPoints.At(l).Attributes())
-				}
-			case pmetric.MetricTypeSum:
-				dataPoints := metric.Sum().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					translateRawOTLPMetricDataPointAttributes(dataPoints.At(l).Attributes())
-				}
-			case pmetric.MetricTypeHistogram:
-				dataPoints := metric.Histogram().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					translateRawOTLPMetricDataPointAttributes(dataPoints.At(l).Attributes())
-				}
-			case pmetric.MetricTypeExponentialHistogram:
-				dataPoints := metric.ExponentialHistogram().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					translateRawOTLPMetricDataPointAttributes(dataPoints.At(l).Attributes())
-				}
-			case pmetric.MetricTypeSummary:
-				dataPoints := metric.Summary().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					translateRawOTLPMetricDataPointAttributes(dataPoints.At(l).Attributes())
-				}
-			}
-		}
-	}
-}
-
-func translateRawOTLPMetricDataPointAttributes(attributes pcommon.Map) {
-	if _, ok := attributes.Get("metricset.name"); ok {
-		return
-	}
-	if _, ok := attributes.Get("metricset.interval"); ok {
-		return
-	}
-	if _, ok := attributes.Get("elasticsearch.mapping.hints"); ok {
-		return
-	}
-	ecs.TranslateMetricDataPointAttributes(attributes)
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {

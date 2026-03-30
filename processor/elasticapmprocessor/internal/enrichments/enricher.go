@@ -102,6 +102,10 @@ func (e *Enricher) EnrichMetrics(pl pmetric.Metrics) {
 		for j := 0; j < scopeMetics.Len(); j++ {
 			scopeMetric := scopeMetics.At(j)
 			EnrichScope(scopeMetric.Scope(), e.Config)
+			metrics := scopeMetric.Metrics()
+			for k := 0; k < metrics.Len(); k++ {
+				EnrichMetricDataPoints(metrics.At(k), e.Config)
+			}
 		}
 	}
 }
