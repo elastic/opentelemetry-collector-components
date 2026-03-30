@@ -296,6 +296,107 @@ func TestTranslateLogRecordAttributes(t *testing.T) {
 	}
 }
 
+func TestTranslateMetricDataPointAttributes(t *testing.T) {
+	tests := []struct {
+		name       string
+		setAttrs   func(pcommon.Map)
+		want       map[string]any
+		wantAbsent []string
+	}{
+		{
+			name: "raw otlp metric dimensions moved to labels",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("http.request.method", "GET")
+				attrs.PutStr("http.route", "/api/users")
+				attrs.PutInt("http.response.status_code", 200)
+				attrs.PutStr("host", "server-01")
+				attrs.PutStr("state", "used")
+			},
+			want: map[string]any{
+				"labels.http_request_method":               "GET",
+				"labels.http_route":                        "/api/users",
+				"numeric_labels.http_response_status_code": float64(200),
+				"labels.host":                              "server-01",
+				"labels.state":                             "used",
+			},
+			wantAbsent: []string{
+				"http.request.method",
+				"http.route",
+				"http.response.status_code",
+				"host",
+				"state",
+			},
+		},
+		{
+			name: "existing metric label keys are sanitized in place",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("labels.http.request.method", "GET")
+				attrs.PutDouble("numeric_labels.http.response.status_code", 200)
+			},
+			want: map[string]any{
+				"labels.http_request_method":               "GET",
+				"numeric_labels.http_response_status_code": 200.0,
+			},
+			wantAbsent: []string{
+				"labels.http.request.method",
+				"numeric_labels.http.response.status_code",
+			},
+		},
+		{
+			name: "metric special cases and routing attrs are preserved",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr(elasticattr.DataStreamDataset, "apm.internal")
+				attrs.PutStr(elasticattr.DataStreamNamespace, "default")
+				attrs.PutStr(elasticattr.DataStreamType, "metrics")
+				attrs.PutStr("host", "server-01")
+				attrs.PutStr("state", "used")
+				attrs.PutStr("system.process.cmdline", "/usr/bin/java")
+				attrs.PutStr("event.module", "system")
+				attrs.PutStr("user.name", "appuser")
+			},
+			want: map[string]any{
+				elasticattr.DataStreamDataset:   "apm.internal",
+				elasticattr.DataStreamNamespace: "default",
+				elasticattr.DataStreamType:      "metrics",
+				"labels.host":                   "server-01",
+				"labels.state":                  "used",
+				"system.process.cmdline":        "/usr/bin/java",
+				"event.module":                  "system",
+				"user.name":                     "appuser",
+			},
+			wantAbsent: []string{"host", "state"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			tc.setAttrs(attrs)
+
+			TranslateMetricDataPointAttributes(attrs)
+
+			for key, want := range tc.want {
+				got, ok := attrs.Get(key)
+				if !assert.True(t, ok, "expected %q to be present", key) {
+					continue
+				}
+				switch want := want.(type) {
+				case string:
+					assert.Equal(t, want, got.Str())
+				case float64:
+					assert.InDelta(t, want, got.Double(), 1e-9)
+				default:
+					t.Fatalf("unsupported want type %T", want)
+				}
+			}
+			for _, key := range tc.wantAbsent {
+				_, ok := attrs.Get(key)
+				assert.False(t, ok, "expected %q to be absent", key)
+			}
+		})
+	}
+}
+
 // TestSetLabelAttributeValue verifies that setLabelAttributeValue stores
 // supported value types under the correct labels.* / numeric_labels.* prefix
 // and rejects unsupported types (Map, Bytes, Empty). This matches

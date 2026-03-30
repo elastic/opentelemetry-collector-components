@@ -498,6 +498,235 @@ func TestConsumeLogs_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestConsumeMetrics_ECSOTLPFallbacks(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.MetricsSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	metrics := pmetric.NewMetrics()
+	resourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	resource := resourceMetric.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+
+	scopeMetrics := resourceMetric.ScopeMetrics().AppendEmpty()
+
+	httpMetric := scopeMetrics.Metrics().AppendEmpty()
+	httpMetric.SetName("http.requests.total")
+	httpDP := httpMetric.SetEmptySum().DataPoints().AppendEmpty()
+	httpDP.SetIntValue(1)
+	httpAttrs := httpDP.Attributes()
+	httpAttrs.PutStr("http.request.method", "GET")
+	httpAttrs.PutStr("http.route", "/api/users")
+	httpAttrs.PutInt("http.response.status_code", 200)
+
+	memoryMetric := scopeMetrics.Metrics().AppendEmpty()
+	memoryMetric.SetName("system.memory.usage")
+	memoryDP := memoryMetric.SetEmptyGauge().DataPoints().AppendEmpty()
+	memoryDP.SetDoubleValue(2048.5)
+	memoryAttrs := memoryDP.Attributes()
+	memoryAttrs.PutStr("host", "server-01")
+	memoryAttrs.PutStr("state", "used")
+
+	require.NoError(t, mp.ConsumeMetrics(ctx, metrics))
+	actual := next.AllMetrics()[0]
+
+	require.Equal(t, 1, actual.ResourceMetrics().Len())
+	actualResource := actual.ResourceMetrics().At(0).Resource().Attributes()
+	lang, ok := actualResource.Get(string(semconv.TelemetrySDKLanguageKey))
+	require.True(t, ok)
+	assert.Equal(t, "unknown", lang.Str())
+
+	agentName, ok := actualResource.Get("agent.name")
+	require.True(t, ok)
+	assert.Equal(t, "opentelemetry", agentName.Str())
+
+	actualMetrics := actual.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+	actualHTTPAttrs := actualMetrics.At(0).Sum().DataPoints().At(0).Attributes()
+	value, ok := actualHTTPAttrs.Get("labels.http_request_method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	value, ok = actualHTTPAttrs.Get("labels.http_route")
+	require.True(t, ok)
+	assert.Equal(t, "/api/users", value.Str())
+	value, ok = actualHTTPAttrs.Get("numeric_labels.http_response_status_code")
+	require.True(t, ok)
+	assert.InDelta(t, 200, value.Double(), 1e-9)
+	_, ok = actualHTTPAttrs.Get("http.request.method")
+	assert.False(t, ok)
+	_, ok = actualHTTPAttrs.Get("http.route")
+	assert.False(t, ok)
+	_, ok = actualHTTPAttrs.Get("http.response.status_code")
+	assert.False(t, ok)
+
+	actualMemoryAttrs := actualMetrics.At(1).Gauge().DataPoints().At(0).Attributes()
+	value, ok = actualMemoryAttrs.Get("labels.host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = actualMemoryAttrs.Get("labels.state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	_, ok = actualMemoryAttrs.Get("host")
+	assert.False(t, ok)
+	_, ok = actualMemoryAttrs.Get("state")
+	assert.False(t, ok)
+}
+
+func TestConsumeMetrics_ECSIntakeSkipsOTLPFallbacks(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.MetricsSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	metrics := pmetric.NewMetrics()
+	resourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	resource := resourceMetric.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
+
+	scopeMetrics := resourceMetric.ScopeMetrics().AppendEmpty()
+	metric := scopeMetrics.Metrics().AppendEmpty()
+	metric.SetName("http.requests.total")
+	dp := metric.SetEmptySum().DataPoints().AppendEmpty()
+	dp.SetIntValue(1)
+	attrs := dp.Attributes()
+	attrs.PutStr("http.request.method", "GET")
+	attrs.PutStr("http.route", "/api/users")
+	attrs.PutInt("http.response.status_code", 200)
+	attrs.PutStr("host", "server-01")
+	attrs.PutStr("state", "used")
+
+	require.NoError(t, mp.ConsumeMetrics(ctx, metrics))
+	actual := next.AllMetrics()[0]
+
+	actualResource := actual.ResourceMetrics().At(0).Resource().Attributes()
+	_, ok := actualResource.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	actualAttrs := actual.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0).Attributes()
+	value, ok := actualAttrs.Get("http.request.method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	value, ok = actualAttrs.Get("http.route")
+	require.True(t, ok)
+	assert.Equal(t, "/api/users", value.Str())
+	value, ok = actualAttrs.Get("http.response.status_code")
+	require.True(t, ok)
+	assert.EqualValues(t, 200, value.Int())
+	value, ok = actualAttrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = actualAttrs.Get("state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	_, ok = actualAttrs.Get("labels.http_request_method")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("labels.http_route")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("numeric_labels.http_response_status_code")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("labels.state")
+	assert.False(t, ok)
+}
+
+func TestTranslateRawOTLPMetricDataPointAttributesSkipsAggregatedMetrics(t *testing.T) {
+	tests := []struct {
+		name      string
+		markerKey string
+		markerVal func(pcommon.Map)
+	}{
+		{
+			name:      "metricset name present",
+			markerKey: "metricset.name",
+			markerVal: func(attrs pcommon.Map) { attrs.PutStr("metricset.name", "service_summary") },
+		},
+		{
+			name:      "metricset interval present",
+			markerKey: "metricset.interval",
+			markerVal: func(attrs pcommon.Map) { attrs.PutStr("metricset.interval", "1m") },
+		},
+		{
+			name:      "mapping hints present",
+			markerKey: "elasticsearch.mapping.hints",
+			markerVal: func(attrs pcommon.Map) {
+				hints := attrs.PutEmptySlice("elasticsearch.mapping.hints")
+				hints.AppendEmpty().SetStr("_doc_count")
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			tc.markerVal(attrs)
+			attrs.PutStr("host", "server-01")
+			attrs.PutStr("state", "used")
+
+			translateRawOTLPMetricDataPointAttributes(attrs)
+
+			value, ok := attrs.Get("host")
+			require.True(t, ok)
+			assert.Equal(t, "server-01", value.Str())
+			value, ok = attrs.Get("state")
+			require.True(t, ok)
+			assert.Equal(t, "used", value.Str())
+			_, ok = attrs.Get("labels.host")
+			assert.False(t, ok)
+			_, ok = attrs.Get("labels.state")
+			assert.False(t, ok)
+		})
+	}
+}
+
+func TestTranslateRawOTLPMetricDataPointAttributesPreservesRoutingAttrs(t *testing.T) {
+	attrs := pcommon.NewMap()
+	attrs.PutStr("data_stream.dataset", "apm.internal")
+	attrs.PutStr("data_stream.namespace", "default")
+	attrs.PutStr("data_stream.type", "metrics")
+	attrs.PutStr("host", "server-01")
+	attrs.PutStr("state", "used")
+
+	translateRawOTLPMetricDataPointAttributes(attrs)
+
+	value, ok := attrs.Get("data_stream.dataset")
+	require.True(t, ok)
+	assert.Equal(t, "apm.internal", value.Str())
+	value, ok = attrs.Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "default", value.Str())
+	value, ok = attrs.Get("data_stream.type")
+	require.True(t, ok)
+	assert.Equal(t, "metrics", value.Str())
+
+	value, ok = attrs.Get("labels.host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = attrs.Get("labels.state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	_, ok = attrs.Get("host")
+	assert.False(t, ok)
+	_, ok = attrs.Get("state")
+	assert.False(t, ok)
+}
+
 // TestSkipEnrichmentMetrics tests that metrics are only enriched when skipEnrichment is false or when mapping mode is ecs
 func TestSkipEnrichmentMetrics(t *testing.T) {
 	testCases := []struct {
