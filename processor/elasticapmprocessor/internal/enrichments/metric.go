@@ -94,7 +94,7 @@ func enrichMetricDataPointAttributes(attributes pcommon.Map, cfg config.Config) 
 // `elasticsearch.mapping.hints` is collector/exporter-specific metadata and has
 // no apm-data equivalent, but it also needs to passthrough untouched.
 func isAggregatedMetricDataPointAttributes(attributes pcommon.Map) bool {
-	if _, ok := attributes.Get("metricset.name"); ok {
+	if _, ok := attributes.Get(elasticattr.MetricsetName); ok {
 		return true
 	}
 	if _, ok := attributes.Get("metricset.interval"); ok {

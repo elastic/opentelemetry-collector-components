@@ -18,6 +18,7 @@
 package enrichments
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 )
 
 func TestEnrichMetric(t *testing.T) {
@@ -154,6 +156,8 @@ func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
 	attrs.PutStr("state", "used")
 	attrs.PutStr("event.module", "system")
 	attrs.PutStr("system.process.cmdline", "/usr/bin/java")
+	attrs.PutStr("system.filesystem.mount_point", "/mnt/data")
+	attrs.PutStr("user.name", "appuser")
 
 	enricher := NewEnricher(cfg)
 	enricher.EnrichMetrics(metrics)
@@ -181,10 +185,59 @@ func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
 	value, ok = actualAttrs.Get("system.process.cmdline")
 	require.True(t, ok)
 	assert.Equal(t, "/usr/bin/java", value.Str())
+	value, ok = actualAttrs.Get("system.filesystem.mount_point")
+	require.True(t, ok)
+	assert.Equal(t, "/mnt/data", value.Str())
+	value, ok = actualAttrs.Get("user.name")
+	require.True(t, ok)
+	assert.Equal(t, "appuser", value.Str())
 	_, ok = actualAttrs.Get("host")
 	assert.False(t, ok)
 	_, ok = actualAttrs.Get("state")
 	assert.False(t, ok)
+}
+
+func TestEnrichMetrics_TruncatesPreservedMetricSpecialCaseAttributes(t *testing.T) {
+	cfg := config.Enabled()
+	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
+
+	metrics := pmetric.NewMetrics()
+	resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
+	scopeMetrics := resourceMetrics.ScopeMetrics().AppendEmpty()
+	metric := scopeMetrics.Metrics().AppendEmpty()
+	metric.SetName("test.metric")
+	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
+	dp.SetDoubleValue(1.0)
+	attrs := dp.Attributes()
+	longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+	attrs.PutStr("system.process.cmdline", longValue)
+	attrs.PutStr("system.filesystem.mount_point", longValue)
+	attrs.PutStr("user.name", longValue)
+	attrs.PutStr("event.module", longValue)
+	attrs.PutStr("system.process.state", longValue)
+
+	NewEnricher(cfg).EnrichMetrics(metrics)
+
+	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
+	expected := strings.Repeat("a", int(sanitize.StandardKeyWordLength))
+
+	value, ok := actualAttrs.Get("system.process.cmdline")
+	require.True(t, ok)
+	assert.Equal(t, expected, value.Str())
+	value, ok = actualAttrs.Get("system.filesystem.mount_point")
+	require.True(t, ok)
+	assert.Equal(t, expected, value.Str())
+	value, ok = actualAttrs.Get("user.name")
+	require.True(t, ok)
+	assert.Equal(t, expected, value.Str())
+
+	// These preserved attrs are intentionally not truncated in apm-data.
+	value, ok = actualAttrs.Get("event.module")
+	require.True(t, ok)
+	assert.Equal(t, longValue, value.Str())
+	value, ok = actualAttrs.Get("system.process.state")
+	require.True(t, ok)
+	assert.Equal(t, longValue, value.Str())
 }
 
 func TestEnrichMetricDataPoints_SkipsAggregatedMetricAttributes(t *testing.T) {

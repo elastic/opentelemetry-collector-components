@@ -32,12 +32,20 @@ const (
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
 )
 
+type attrAction uint8
+
+const (
+	attrActionFallback attrAction = iota
+	attrActionPreserve
+	attrActionTruncateAndPreserve
+)
+
 // TranslateResourceMetadata normalizes resource attributes.
 // Sanitizes existing labels and numeric_labels keys.
 // Moves unsupported attributes to labels with a "labels." prefix (key sanitized),
 // and leaves supported ECS attributes unchanged.
 func TranslateResourceMetadata(resource pcommon.Resource) {
-	translateAttributes(resource.Attributes(), isSupportedResourceAttribute)
+	translateAttributes(resource.Attributes(), classifyResourceAttribute)
 }
 
 // TranslateLogRecordAttributes applies the apm-data OTLP fallback behaviour for
@@ -45,7 +53,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 // unsupported attributes are moved to labels.* / numeric_labels.* with a
 // sanitized key.
 func TranslateLogRecordAttributes(attributes pcommon.Map) {
-	translateAttributes(attributes, isSupportedLogRecordAttribute)
+	translateAttributes(attributes, classifyLogRecordAttribute)
 }
 
 // TranslateMetricDataPointAttributes applies the apm-data OTLP metric fallback
@@ -53,10 +61,10 @@ func TranslateLogRecordAttributes(attributes pcommon.Map) {
 // numeric_labels.* keys are sanitized in place, metric-specific special cases
 // are preserved, and everything else is moved to labels.* / numeric_labels.*.
 func TranslateMetricDataPointAttributes(attributes pcommon.Map) {
-	translateAttributes(attributes, isSupportedMetricDataPointAttribute)
+	translateAttributes(attributes, classifyMetricDataPointAttribute)
 }
 
-func translateAttributes(attributes pcommon.Map, isSupported func(string) bool) {
+func translateAttributes(attributes pcommon.Map, classify func(string, pcommon.Value) attrAction) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitize.IsLabelAttribute(k) {
 			sanitized := sanitize.HandleLabelAttributeKey(k)
@@ -64,14 +72,34 @@ func translateAttributes(attributes pcommon.Map, isSupported func(string) bool) 
 				v.CopyTo(attributes.PutEmpty(sanitized))
 				attributes.Remove(k)
 			}
-		} else if !isSupported(k) {
+			return true
+		}
+
+		switch classify(k, v) {
+		case attrActionPreserve:
+			return true
+		case attrActionTruncateAndPreserve:
+			truncated := sanitize.Truncate(v.Str())
+			if truncated != v.Str() {
+				attributes.PutStr(k, truncated)
+			}
+			return true
+		default:
 			// Attributes not supported by ECS are moved to labels with a
 			// labels./numeric_labels. prefix depending on their value type.
 			setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(k), v)
 			attributes.Remove(k)
+			return true
 		}
-		return true
 	})
+}
+
+// shouldPreserveAndTruncateIfString determines if the value should be preserved, optionally truncating strings before preserving.
+func shouldPreserveAndTruncateIfString(value pcommon.Value) attrAction {
+	if value.Type() == pcommon.ValueTypeStr {
+		return attrActionTruncateAndPreserve
+	}
+	return attrActionPreserve
 }
 
 // setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
@@ -135,13 +163,19 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 	}
 }
 
-// isSupportedLogRecordAttribute is based on the OTLP log-record attribute switch
+// classifyLogRecordAttribute is based on the OTLP log-record attribute switch
 // in apm-data/input/otlp/logs.go, which preserves exception.*, event.name,
 // event.domain, session.id, network.connection.type, and data_stream.* as
 // first-class fields and sends everything else through setLabel(replaceDots(k), ...).
+//
+// Unlike resource metadata and some metric special cases, apm-data does not
+// truncate these preserved log-record fields. Truncation for log attributes only
+// happens on the fallback label path via setLabel, which is mirrored here by
+// setLabelAttributeValue.
+//
 // This allowlist also keeps processor-added fields like processor.event,
 // error.id, and data_stream.type so they survive the collector-side translation pass.
-func isSupportedLogRecordAttribute(attr string) bool {
+func classifyLogRecordAttribute(attr string, _ pcommon.Value) attrAction {
 	switch attr {
 	case string(semconv26.ExceptionEscapedKey),
 		string(semconv.ExceptionMessageKey),
@@ -156,50 +190,58 @@ func isSupportedLogRecordAttribute(attr string) bool {
 		"event.name",
 		elasticattr.ProcessorEvent,
 		elasticattr.SessionID:
-		return true
+		return attrActionPreserve
 	}
 
-	return false
+	return attrActionFallback
 }
 
-// isSupportedMetricDataPointAttribute mirrors the apm-data OTLP metric
+// classifyMetricDataPointAttribute mirrors the apm-data OTLP metric
 // datapoint handling where a small set of fields are preserved as first-class
 // values and the rest fall back to labels.* / numeric_labels.*.
 //
 // The collector preserves data_stream.type in addition to the apm-data
 // data_stream dataset/namespace handling, since datapoint-level routing depends
 // on the full data_stream triple before export.
-func isSupportedMetricDataPointAttribute(attr string) bool {
+func classifyMetricDataPointAttribute(attr string, value pcommon.Value) attrAction {
 	switch attr {
 	case elasticattr.DataStreamDataset,
 		elasticattr.DataStreamNamespace,
 		elasticattr.DataStreamType,
 		elasticattr.EventDataset,
 		"event.module",
-		"system.process.cmdline",
 		"system.process.cpu.start_time",
+		"system.process.state":
+		return attrActionPreserve
+	case "system.process.cmdline",
 		"system.filesystem.mount_point",
-		"system.process.state",
 		string(semconv.UserNameKey):
-		return true
+		return shouldPreserveAndTruncateIfString(value)
 	}
 
-	return false
+	return attrActionFallback
 }
 
-// isSupportedResourceAttribute returns true if the resource attribute is
-// supported by ECS and can be mapped directly.
-// Supported fields can include OTEL SemConv attributes or ECS specific attributes.
+// classifyResourceAttribute returns the action required for a supported ECS
+// resource attribute. Supported fields can include OTEL SemConv attributes or
+// ECS specific attributes.
+//
 // Fields are based on those found in the below areas:
 // 1. apm-data: https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go
 // 2. elasticapmintake receiver: https://github.com/elastic/opentelemetry-collector-components/tree/main/receiver/elasticapmintakereceiver/internal/mappers
-func isSupportedResourceAttribute(attr string) bool {
+//
+// Where apm-data truncates a preserved resource string when populating the APM
+// event, we mirror that here with attrActionTruncateAndPreserve so resource
+// translation stays single-pass.
+func classifyResourceAttribute(attr string, value pcommon.Value) attrAction {
 	switch attr {
 	// service.*
-	case string(semconv.ServiceNameKey),
-		string(semconv.ServiceVersionKey),
-		string(semconv.ServiceInstanceIDKey),
-		string(semconv.ServiceNamespaceKey),
+	case string(semconv.ServiceNameKey):
+		return attrActionPreserve
+	case string(semconv.ServiceVersionKey),
+		string(semconv.ServiceInstanceIDKey):
+		return shouldPreserveAndTruncateIfString(value)
+	case string(semconv.ServiceNamespaceKey),
 		elasticattr.ServiceFrameworkName,
 		elasticattr.ServiceFrameworkVersion,
 		elasticattr.ServiceOriginID,
@@ -207,27 +249,29 @@ func isSupportedResourceAttribute(attr string) bool {
 		elasticattr.ServiceOriginVersion,
 		elasticattr.ServiceTargetName,
 		elasticattr.ServiceTargetType:
-		return true
+		return attrActionPreserve
 
 	// deployment.*
 	case string(semconv26.DeploymentEnvironmentKey), string(semconv.DeploymentEnvironmentNameKey):
-		return true
+		return shouldPreserveAndTruncateIfString(value)
 
 	// telemetry.sdk.*
 	case string(semconv.TelemetrySDKNameKey),
 		string(semconv.TelemetrySDKVersionKey),
-		string(semconv.TelemetrySDKLanguageKey),
-		string(semconv.TelemetryDistroNameKey),
+		string(semconv.TelemetrySDKLanguageKey):
+		return shouldPreserveAndTruncateIfString(value)
+	case string(semconv.TelemetryDistroNameKey),
 		string(semconv.TelemetryDistroVersionKey):
-		return true
+		return attrActionPreserve
 
 	// cloud.*
 	case string(semconv.CloudProviderKey),
 		string(semconv.CloudAccountIDKey),
 		string(semconv.CloudRegionKey),
 		string(semconv.CloudAvailabilityZoneKey),
-		string(semconv.CloudPlatformKey),
-		elasticattr.CloudOriginAccountID,
+		string(semconv.CloudPlatformKey):
+		return shouldPreserveAndTruncateIfString(value)
+	case elasticattr.CloudOriginAccountID,
 		elasticattr.CloudOriginProvider,
 		elasticattr.CloudOriginRegion,
 		elasticattr.CloudOriginServiceName,
@@ -237,74 +281,77 @@ func isSupportedResourceAttribute(attr string) bool {
 		elasticattr.CloudMachineType,
 		elasticattr.CloudProjectID,
 		elasticattr.CloudProjectName:
-		return true
+		return attrActionPreserve
 
 	// container.*
 	case string(semconv.ContainerNameKey),
 		string(semconv.ContainerIDKey),
 		string(semconv.ContainerImageNameKey),
 		elasticattr.ContainerImageTag,
-		string(semconv.ContainerImageTagsKey),
 		string(semconv.ContainerRuntimeKey):
-		return true
+		return shouldPreserveAndTruncateIfString(value)
+	case string(semconv.ContainerImageTagsKey):
+		return attrActionPreserve
 
 	// k8s.*
 	case string(semconv.K8SNamespaceNameKey),
 		string(semconv.K8SNodeNameKey),
 		string(semconv.K8SPodNameKey),
 		string(semconv.K8SPodUIDKey):
-		return true
+		return shouldPreserveAndTruncateIfString(value)
 
 	// host.*
 	case string(semconv.HostNameKey),
-		elasticattr.HostHostName, // legacy hostname key for backwards compatibility
 		string(semconv.HostIDKey),
 		string(semconv.HostTypeKey),
-		string(semconv.HostArchKey),
+		string(semconv.HostArchKey):
+		return shouldPreserveAndTruncateIfString(value)
+	case elasticattr.HostHostName,
 		string(semconv.HostIPKey),
 		elasticattr.HostOSType:
-		return true
+		return attrActionPreserve
 
 	// process.*
-	case string(semconv.ProcessPIDKey),
-		string(semconv.ProcessParentPIDKey),
-		string(semconv.ProcessExecutableNameKey),
-		string(semconv.ProcessCommandLineKey),
+	case string(semconv.ProcessCommandLineKey),
 		string(semconv.ProcessExecutablePathKey),
 		string(semconv.ProcessRuntimeNameKey),
 		string(semconv.ProcessRuntimeVersionKey),
 		string(semconv.ProcessOwnerKey):
-		return true
+		return shouldPreserveAndTruncateIfString(value)
+	case string(semconv.ProcessPIDKey),
+		string(semconv.ProcessParentPIDKey),
+		string(semconv.ProcessExecutableNameKey):
+		return attrActionPreserve
 
 	// os.*
 	case string(semconv.OSTypeKey),
 		string(semconv.OSDescriptionKey),
 		string(semconv.OSNameKey),
 		string(semconv.OSVersionKey):
-		return true
+		return shouldPreserveAndTruncateIfString(value)
 
 	// device.*
 	case string(semconv.DeviceIDKey),
 		string(semconv.DeviceModelIdentifierKey),
 		string(semconv.DeviceModelNameKey),
 		elasticattr.DeviceManufacturer:
-		return true
+		return shouldPreserveAndTruncateIfString(value)
 
 	// data_stream.*
 	case elasticattr.DataStreamDataset,
 		elasticattr.DataStreamNamespace:
-		return true
+		return attrActionPreserve
 
 	// user.*
 	case string(semconv.UserIDKey),
 		string(semconv.UserEmailKey),
 		string(semconv.UserNameKey),
 		elasticattr.UserDomain:
-		return true
+		return attrActionPreserve
 
 	// user_agent.*
 	case string(semconv.UserAgentOriginalKey):
-		return true
+		return attrActionPreserve
 
 	// network.*
 	case string(semconv.NetworkConnectionTypeKey),
@@ -313,22 +360,22 @@ func isSupportedResourceAttribute(attr string) bool {
 		string(semconv.NetworkCarrierMccKey),
 		string(semconv.NetworkCarrierMncKey),
 		string(semconv.NetworkCarrierIccKey):
-		return true
+		return attrActionPreserve
 
 	// client.*
 	case string(semconv.ClientAddressKey),
 		string(semconv.ClientPortKey):
-		return true
+		return attrActionPreserve
 
 	// source.*
 	case string(semconv.SourceAddressKey),
 		string(semconv.SourcePortKey),
 		elasticattr.SourceNATIP:
-		return true
+		return attrActionPreserve
 
 	// destination.*
 	case elasticattr.DestinationIP:
-		return true
+		return attrActionPreserve
 
 	// faas.*
 	case string(semconv.FaaSInstanceKey),
@@ -338,25 +385,25 @@ func isSupportedResourceAttribute(attr string) bool {
 		string(semconv.FaaSColdstartKey),
 		elasticattr.FaaSTriggerRequestID,
 		elasticattr.FaaSExecution:
-		return true
+		return attrActionPreserve
 
 	// Legacy OpenCensus attributes
 	case ecsAttrOpenCensusExporterVersion:
-		return true
+		return attrActionPreserve
 
 	// APM Agent enrichment
 	case elasticattr.AgentName,
 		elasticattr.AgentVersion,
 		elasticattr.AgentEphemeralID,
 		elasticattr.AgentActivationMethod:
-		return true
+		return attrActionPreserve
 
 	// Metrics
 	case elasticattr.MetricsetName:
-		return true
+		return attrActionPreserve
 	}
 
-	return false
+	return attrActionFallback
 }
 
 func ApplyResourceConventions(resource pcommon.Resource) {

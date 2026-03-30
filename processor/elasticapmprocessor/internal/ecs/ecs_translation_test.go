@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
@@ -33,6 +34,7 @@ func TestTranslateResourceMetadata(t *testing.T) {
 		inputKey   string
 		inputVal   string
 		wantKey    string
+		wantVal    string
 		wantAbsent string // if non-empty, assert this attribute key is removed after translation (e.g. sanitized key)
 	}{
 		{
@@ -124,10 +126,94 @@ func TestTranslateResourceMetadata(t *testing.T) {
 			wantKey:  string(semconv.TelemetrySDKLanguageKey),
 		},
 		{
+			name:     "supported service version truncated",
+			inputKey: string(semconv.ServiceVersionKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ServiceVersionKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported service instance id truncated",
+			inputKey: string(semconv.ServiceInstanceIDKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ServiceInstanceIDKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported deployment environment truncated",
+			inputKey: string(semconv.DeploymentEnvironmentKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.DeploymentEnvironmentKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported telemetry sdk name truncated",
+			inputKey: string(semconv.TelemetrySDKNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.TelemetrySDKNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
 			name:     "supported telemetry sdk version",
 			inputKey: string(semconv.TelemetrySDKVersionKey),
 			inputVal: "8.0.0",
 			wantKey:  string(semconv.TelemetrySDKVersionKey),
+		},
+		{
+			name:     "supported cloud provider truncated",
+			inputKey: string(semconv.CloudProviderKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.CloudProviderKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported container name truncated",
+			inputKey: string(semconv.ContainerNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ContainerNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported kubernetes namespace truncated",
+			inputKey: string(semconv.K8SNamespaceNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.K8SNamespaceNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported host name truncated",
+			inputKey: string(semconv.HostNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.HostNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported process command line truncated",
+			inputKey: string(semconv.ProcessCommandLineKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ProcessCommandLineKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported process owner truncated",
+			inputKey: string(semconv.ProcessOwnerKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ProcessOwnerKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported os description truncated",
+			inputKey: string(semconv.OSDescriptionKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.OSDescriptionKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported device model name truncated",
+			inputKey: string(semconv.DeviceModelNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.DeviceModelNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported process runtime name",
@@ -182,8 +268,12 @@ func TestTranslateResourceMetadata(t *testing.T) {
 			if !ok {
 				t.Fatalf("expected attribute %q to be present. all attrs %v", tc.wantKey, attrs.AsRaw())
 			}
-			if v.AsString() != tc.inputVal {
-				t.Errorf("attribute %q value = %q, want %q", tc.wantKey, v.AsString(), tc.inputVal)
+			wantVal := tc.inputVal
+			if tc.wantVal != "" {
+				wantVal = tc.wantVal
+			}
+			if v.AsString() != wantVal {
+				t.Errorf("attribute %q value = %q, want %q", tc.wantKey, v.AsString(), wantVal)
 			}
 			if tc.wantAbsent != "" {
 				if _, ok := attrs.Get(tc.wantAbsent); ok {
@@ -228,6 +318,34 @@ func TestTranslateLogRecordAttributes(t *testing.T) {
 				elasticattr.DataStreamType:               "logs",
 				elasticattr.DataStreamDataset:            "apm.error",
 				elasticattr.DataStreamNamespace:          "default",
+			},
+		},
+		{
+			name: "supported semantic fields are not truncated",
+			setAttrs: func(attrs pcommon.Map) {
+				longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+				attrs.PutStr(string(semconv.ExceptionMessageKey), longValue)
+				attrs.PutStr(string(semconv.ExceptionStacktraceKey), longValue)
+				attrs.PutStr(string(semconv.ExceptionTypeKey), longValue)
+				attrs.PutStr("event.name", longValue)
+				attrs.PutStr("event.domain", longValue)
+				attrs.PutStr("session.id", longValue)
+				attrs.PutStr(string(semconv.NetworkConnectionTypeKey), longValue)
+				attrs.PutStr(elasticattr.DataStreamDataset, longValue)
+				attrs.PutStr(elasticattr.DataStreamNamespace, longValue)
+				attrs.PutStr(elasticattr.DataStreamType, longValue)
+			},
+			want: map[string]any{
+				string(semconv.ExceptionMessageKey):      strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				string(semconv.ExceptionStacktraceKey):   strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				string(semconv.ExceptionTypeKey):         strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"event.name":                             strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"event.domain":                           strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"session.id":                             strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				string(semconv.NetworkConnectionTypeKey): strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				elasticattr.DataStreamDataset:            strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				elasticattr.DataStreamNamespace:          strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				elasticattr.DataStreamType:               strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
 			},
 		},
 		{
@@ -351,6 +469,7 @@ func TestTranslateMetricDataPointAttributes(t *testing.T) {
 				attrs.PutStr("host", "server-01")
 				attrs.PutStr("state", "used")
 				attrs.PutStr("system.process.cmdline", "/usr/bin/java")
+				attrs.PutStr("system.filesystem.mount_point", "/mnt/data")
 				attrs.PutStr("event.module", "system")
 				attrs.PutStr("user.name", "appuser")
 			},
@@ -361,10 +480,29 @@ func TestTranslateMetricDataPointAttributes(t *testing.T) {
 				"labels.host":                   "server-01",
 				"labels.state":                  "used",
 				"system.process.cmdline":        "/usr/bin/java",
+				"system.filesystem.mount_point": "/mnt/data",
 				"event.module":                  "system",
 				"user.name":                     "appuser",
 			},
 			wantAbsent: []string{"host", "state"},
+		},
+		{
+			name: "metric special cases requiring truncation are truncated in place",
+			setAttrs: func(attrs pcommon.Map) {
+				longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+				attrs.PutStr("system.process.cmdline", longValue)
+				attrs.PutStr("system.filesystem.mount_point", longValue)
+				attrs.PutStr("user.name", longValue)
+				attrs.PutStr("event.module", longValue)
+				attrs.PutStr("system.process.state", longValue)
+			},
+			want: map[string]any{
+				"system.process.cmdline":        strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+				"system.filesystem.mount_point": strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+				"user.name":                     strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+				"event.module":                  strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"system.process.state":          strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			},
 		},
 	}
 
