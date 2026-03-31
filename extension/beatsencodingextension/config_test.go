@@ -18,153 +18,140 @@
 package beatsencodingextension
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
+
+	"github.com/elastic/opentelemetry-collector-components/extension/beatsencodingextension/internal/metadata"
 )
 
-func TestConfig_Validate(t *testing.T) {
+func TestLoadConfig(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
-		name    string
-		config  Config
-		wantErr string
+		id       component.ID
+		expected *Config
+		wantErr  string
 	}{
 		{
-			name: "valid json format with unwrap",
-			config: Config{
-				Format:      FormatJSON,
-				Unwrap:      "$.records[*]",
-					DataStream:     DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
-			},
+			id: component.NewIDWithName(metadata.Type, "json_with_unwrap"),
+			expected: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.Unwrap = "$.records[*]"
+				cfg.DataStream.Dataset = "azure.events"
+				return cfg
+			}(),
 		},
 		{
-			name: "valid json format without unwrap",
-			config: Config{
-				Format:      FormatJSON,
-					DataStream:     DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
-			},
+			id: component.NewIDWithName(metadata.Type, "json_without_unwrap"),
+			expected: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.DataStream.Dataset = "azure.events"
+				return cfg
+			}(),
 		},
 		{
-			name: "valid text format",
-			config: Config{
-				Format:      FormatText,
-					DataStream:     DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
-			},
+			id: component.NewIDWithName(metadata.Type, "text"),
+			expected: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.Format = FormatText
+				cfg.DataStream.Dataset = "aws.vpcflow"
+				return cfg
+			}(),
 		},
 		{
-			name: "valid nested unwrap path",
-			config: Config{
-				Format:      FormatJSON,
-				Unwrap:      "$.data.items[*]",
-					DataStream:     DataStreamConfig{Dataset: "test", Namespace: "default"},
-			},
+			id: component.NewIDWithName(metadata.Type, "nested_unwrap"),
+			expected: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.Unwrap = "$.data.items[*]"
+				cfg.DataStream.Dataset = "test"
+				return cfg
+			}(),
 		},
 		{
-			name: "invalid format",
-			config: Config{
-				Format:  "xml",
-				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "invalid_format"),
 			wantErr: `invalid format "xml"`,
 		},
 		{
-			name: "unwrap with text format",
-			config: Config{
-				Format:  FormatText,
-				Unwrap:  "$.records[*]",
-				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "unwrap_with_text"),
 			wantErr: `unwrap is only supported when format is "json"`,
 		},
 		{
-			name: "unwrap missing $. prefix",
-			config: Config{
-				Format:  FormatJSON,
-				Unwrap:  "records[*]",
-				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "unwrap_missing_prefix"),
 			wantErr: `must start with "$."`,
 		},
 		{
-			name: "unwrap missing [*] suffix",
-			config: Config{
-				Format:  FormatJSON,
-				Unwrap:  "$.records",
-				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "unwrap_missing_suffix"),
 			wantErr: `must end with "[*]"`,
 		},
 		{
-			name: "unwrap with index access (unsupported)",
-			config: Config{
-				Format:  FormatJSON,
-				Unwrap:  "$.records[0]",
-				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "unwrap_with_index"),
 			wantErr: `must end with "[*]"`,
 		},
 		{
-			name: "unwrap with recursive descent (unsupported)",
-			config: Config{
-				Format:  FormatJSON,
-				Unwrap:  "$..records[*]",
-				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "unwrap_recursive_descent"),
 			wantErr: "empty key segment",
 		},
 		{
-			name: "unwrap with no key segment",
-			config: Config{
-				Format:  FormatJSON,
-				Unwrap:  "$.[*]",
-				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "unwrap_no_key_segment"),
 			wantErr: "must contain at least one key segment",
 		},
 		{
-			name: "valid config with fields",
-			config: Config{
-				Format:     FormatText,
-				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
-				Fields:     map[string]any{"environment": "production", "team": "security"},
-			},
+			id: component.NewIDWithName(metadata.Type, "with_fields"),
+			expected: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.Format = FormatText
+				cfg.DataStream.Dataset = "aws.vpcflow"
+				cfg.Fields = map[string]any{"environment": "production", "team": "security"}
+				return cfg
+			}(),
 		},
 		{
-			name: "valid config with empty fields",
-			config: Config{
-				Format:     FormatText,
-				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-				Fields:     map[string]any{},
-			},
+			id: component.NewIDWithName(metadata.Type, "empty_fields"),
+			expected: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.Format = FormatText
+				cfg.DataStream.Dataset = "test"
+				cfg.Fields = map[string]any{}
+				return cfg
+			}(),
 		},
 		{
-			name: "missing dataset",
-			config: Config{
-				Format:  FormatJSON,
-				DataStream: DataStreamConfig{Namespace: "default"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "missing_dataset"),
 			wantErr: "data_stream.dataset is required",
 		},
 		{
-			name: "missing namespace",
-			config: Config{
-				Format:      FormatJSON,
-					DataStream:     DataStreamConfig{Dataset: "test"},
-			},
+			id:      component.NewIDWithName(metadata.Type, "missing_namespace"),
 			wantErr: "data_stream.namespace is required",
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.config.Validate()
+		t.Run(tt.id.String(), func(t *testing.T) {
+			cm, err := confmaptest.LoadConf(filepath.Join("testdata", "config.yaml"))
+			require.NoError(t, err)
+
+			factory := NewFactory()
+			cfg := factory.CreateDefaultConfig()
+
+			sub, err := cm.Sub(tt.id.String())
+			require.NoError(t, err)
+			require.NoError(t, sub.Unmarshal(cfg))
+
+			err = xconfmap.Validate(cfg)
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErr)
-			} else {
-				require.NoError(t, err)
+				return
 			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, cfg)
 		})
 	}
 }

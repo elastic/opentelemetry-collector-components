@@ -1,0 +1,77 @@
+# Default config: format=json, data_stream.namespace=default
+beats_encoding/json_with_unwrap:
+  unwrap: "$.records[*]"
+  data_stream:
+    dataset: azure.events
+
+beats_encoding/json_without_unwrap:
+  data_stream:
+    dataset: azure.events
+
+beats_encoding/text:
+  format: text
+  data_stream:
+    dataset: aws.vpcflow
+
+beats_encoding/nested_unwrap:
+  unwrap: "$.data.items[*]"
+  data_stream:
+    dataset: test
+
+beats_encoding/invalid_format:
+  format: xml
+  data_stream:
+    dataset: test
+
+beats_encoding/unwrap_with_text:
+  format: text
+  unwrap: "$.records[*]"
+  data_stream:
+    dataset: test
+
+beats_encoding/unwrap_missing_prefix:
+  unwrap: "records[*]"
+  data_stream:
+    dataset: test
+
+beats_encoding/unwrap_missing_suffix:
+  unwrap: "$.records"
+  data_stream:
+    dataset: test
+
+beats_encoding/unwrap_with_index:
+  unwrap: "$.records[0]"
+  data_stream:
+    dataset: test
+
+beats_encoding/unwrap_recursive_descent:
+  unwrap: "$..records[*]"
+  data_stream:
+    dataset: test
+
+beats_encoding/unwrap_no_key_segment:
+  unwrap: "$.[*]"
+  data_stream:
+    dataset: test
+
+beats_encoding/with_fields:
+  format: text
+  data_stream:
+    dataset: aws.vpcflow
+  fields:
+    environment: production
+    team: security
+
+beats_encoding/empty_fields:
+  format: text
+  data_stream:
+    dataset: test
+  fields: {}
+
+beats_encoding/missing_dataset:
+  format: json
+
+beats_encoding/missing_namespace:
+  data_stream:
+    dataset: test
+    namespace: ""
