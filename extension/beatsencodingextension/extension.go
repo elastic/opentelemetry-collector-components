@@ -399,6 +399,7 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 	lr.SetObservedTimestamp(ts)
 
 	body := lr.Body().SetEmptyMap()
+	body.EnsureCapacity(7) // we know we'll be adding at least 7 entries to the body
 	body.PutStr("message", record)
 	body.PutStr("event.created", eventCreated)
 
@@ -415,6 +416,7 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 
 	if len(e.config.Tags) > 0 {
 		tags := body.PutEmptySlice("tags")
+		tags.EnsureCapacity(len(e.config.Tags))
 		for _, tag := range e.config.Tags {
 			tags.AppendEmpty().SetStr(tag)
 		}
