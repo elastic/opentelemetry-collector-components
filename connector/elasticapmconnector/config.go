@@ -405,6 +405,40 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Count:   "Int(AdjustedCount())",
 				Value:   "Double(0)",
 			}),
+		}, {
+			Name:                      "event.success_count",
+			Description:               "Success count as a metric for transaction",
+			IncludeResourceAttributes: transactionResourceAttributes,
+			Attributes: append(slices.Clone(transactionAttributes), signaltometricsconfig.Attribute{
+				Key:          "elasticsearch.mapping.hints",
+				DefaultValue: []any{"aggregate_metric_double"},
+			}),
+			Conditions: []string{
+				`attributes["event.outcome"] != nil and attributes["event.outcome"] == "success"`,
+			},
+			Unit: "us",
+			Histogram: configoptional.Some(signaltometricsconfig.Histogram{
+				Buckets: []float64{1},
+				Count:   "Int(AdjustedCount())",
+				Value:   "Int(AdjustedCount())",
+			}),
+		}, {
+			Name:                      "event.success_count",
+			Description:               "Success count as a metric for transaction",
+			IncludeResourceAttributes: transactionResourceAttributes,
+			Attributes: append(slices.Clone(transactionAttributes), signaltometricsconfig.Attribute{
+				Key:          "elasticsearch.mapping.hints",
+				DefaultValue: []any{"aggregate_metric_double"},
+			}),
+			Conditions: []string{
+				`attributes["event.outcome"] != nil and attributes["event.outcome"] != "success"`,
+			},
+			Unit: "us",
+			Histogram: configoptional.Some(signaltometricsconfig.Histogram{
+				Buckets: []float64{0},
+				Count:   "Int(AdjustedCount())",
+				Value:   "Double(0)",
+			}),
 		}},
 	}
 }
