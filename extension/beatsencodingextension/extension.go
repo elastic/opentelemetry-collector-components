@@ -143,7 +143,7 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 func (e *beatsEncodingExtension) newJSONDecoder(reader io.Reader, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
 	opts := encoding.NewDecoderOptions(options...)
 
-	if len(e.config.unwrapKeys) == 0 {
+	if len(e.config.Unwrap) == 0 {
 		return e.newSingleRecordDecoder(reader, opts)
 	}
 
@@ -200,8 +200,8 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 	dec := json.NewDecoder(reader)
 	batchHelper := xstreamencoding.NewBatchHelper(options...)
 
-	if err := navigateToArray(dec, e.config.unwrapKeys); err != nil {
-		return nil, fmt.Errorf("navigating to unwrap path %q: %w", e.config.Unwrap, err)
+	if err := navigateToArray(dec, e.config.Unwrap); err != nil {
+		return nil, fmt.Errorf("navigating to unwrap %v: %w", e.config.Unwrap, err)
 	}
 
 	// Skip records that were already processed in a previous decoder session.

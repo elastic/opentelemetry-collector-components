@@ -42,8 +42,7 @@ func TestLoadConfig(t *testing.T) {
 			id: component.NewIDWithName(metadata.Type, "json_with_unwrap"),
 			expected: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.Unwrap = "$.records[*]"
-				cfg.unwrapKeys = []string{"records"}
+				cfg.Unwrap = []string{"records"}
 				cfg.DataStream.Dataset = "azure.events"
 				return cfg
 			}(),
@@ -69,8 +68,7 @@ func TestLoadConfig(t *testing.T) {
 			id: component.NewIDWithName(metadata.Type, "nested_unwrap"),
 			expected: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.Unwrap = "$.data.items[*]"
-				cfg.unwrapKeys = []string{"data", "items"}
+				cfg.Unwrap = []string{"data", "items"}
 				cfg.DataStream.Dataset = "test"
 				return cfg
 			}(),
@@ -82,26 +80,6 @@ func TestLoadConfig(t *testing.T) {
 		{
 			id:      component.NewIDWithName(metadata.Type, "unwrap_with_text"),
 			wantErr: `unwrap is only supported when format is "json"`,
-		},
-		{
-			id:      component.NewIDWithName(metadata.Type, "unwrap_missing_prefix"),
-			wantErr: `must start with "$."`,
-		},
-		{
-			id:      component.NewIDWithName(metadata.Type, "unwrap_missing_suffix"),
-			wantErr: `must end with "[*]"`,
-		},
-		{
-			id:      component.NewIDWithName(metadata.Type, "unwrap_with_index"),
-			wantErr: `must end with "[*]"`,
-		},
-		{
-			id:      component.NewIDWithName(metadata.Type, "unwrap_recursive_descent"),
-			wantErr: "empty key segment",
-		},
-		{
-			id:      component.NewIDWithName(metadata.Type, "unwrap_no_key_segment"),
-			wantErr: "must contain at least one key segment",
 		},
 		{
 			id: component.NewIDWithName(metadata.Type, "with_fields"),
@@ -154,37 +132,6 @@ func TestLoadConfig(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, cfg)
-		})
-	}
-}
-
-func TestParseUnwrapPath(t *testing.T) {
-	tests := []struct {
-		expr    string
-		want    []string
-		wantErr string
-	}{
-		{expr: "$.records[*]", want: []string{"records"}},
-		{expr: "$.Records[*]", want: []string{"Records"}},
-		{expr: "$.data.items[*]", want: []string{"data", "items"}},
-		{expr: "$.a.b.c[*]", want: []string{"a", "b", "c"}},
-		{expr: "records[*]", wantErr: `must start with "$."`},
-		{expr: "$.records", wantErr: `must end with "[*]"`},
-		{expr: "$.[*]", wantErr: "must contain at least one key segment"},
-		{expr: "$..records[*]", wantErr: "empty key segment"},
-		{expr: "$.a..b[*]", wantErr: "empty key segment"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.expr, func(t *testing.T) {
-			got, err := parseUnwrapPath(tt.expr)
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				assert.Contains(t, err.Error(), tt.wantErr)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tt.want, got)
-			}
 		})
 	}
 }

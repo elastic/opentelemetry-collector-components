@@ -1,6 +1,7 @@
 # Default config: format=json, data_stream.namespace=default
 beats_encoding/json_with_unwrap:
-  unwrap: "$.records[*]"
+  unwrap:
+    - records
   data_stream:
     dataset: azure.events
 
@@ -14,7 +15,9 @@ beats_encoding/text:
     dataset: aws.vpcflow
 
 beats_encoding/nested_unwrap:
-  unwrap: "$.data.items[*]"
+  unwrap:
+    - data
+    - items
   data_stream:
     dataset: test
 
@@ -25,32 +28,8 @@ beats_encoding/invalid_format:
 
 beats_encoding/unwrap_with_text:
   format: text
-  unwrap: "$.records[*]"
-  data_stream:
-    dataset: test
-
-beats_encoding/unwrap_missing_prefix:
-  unwrap: "records[*]"
-  data_stream:
-    dataset: test
-
-beats_encoding/unwrap_missing_suffix:
-  unwrap: "$.records"
-  data_stream:
-    dataset: test
-
-beats_encoding/unwrap_with_index:
-  unwrap: "$.records[0]"
-  data_stream:
-    dataset: test
-
-beats_encoding/unwrap_recursive_descent:
-  unwrap: "$..records[*]"
-  data_stream:
-    dataset: test
-
-beats_encoding/unwrap_no_key_segment:
-  unwrap: "$.[*]"
+  unwrap:
+    - records
   data_stream:
     dataset: test
 

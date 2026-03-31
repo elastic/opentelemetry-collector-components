@@ -35,10 +35,9 @@ import (
 
 const testDataDir = "testdata"
 
-// newTestExtension validates the config and creates a beatsEncodingExtension.
+// newTestExtension creates a beatsEncodingExtension for testing.
 func newTestExtension(t *testing.T, cfg *Config) *beatsEncodingExtension {
 	t.Helper()
-	require.NoError(t, cfg.Validate())
 	ext, err := newBeatsEncodingExtension(cfg, zap.NewNop())
 	require.NoError(t, err)
 	return ext
@@ -59,7 +58,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			name: "azure diagnostic settings (json + unwrap)",
 			config: Config{
 				Format:      FormatJSON,
-				Unwrap:      "$.records[*]",
+				Unwrap:  []string{"records"},
 					DataStream:     DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 			inputFile:  "azure_diagnostic_settings.json",
@@ -70,7 +69,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			name: "aws cloudtrail (json + unwrap)",
 			config: Config{
 				Format:      FormatJSON,
-				Unwrap:      "$.Records[*]",
+				Unwrap:  []string{"Records"},
 					DataStream:     DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
 			},
 			inputFile:  "aws_cloudtrail.json",
@@ -111,7 +110,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			name: "json nested path unwrap",
 			config: Config{
 				Format:    FormatJSON,
-				Unwrap:    "$.data.items[*]",
+				Unwrap: []string{"data", "items"},
 				DataStream: DataStreamConfig{Dataset: "custom.nested", Namespace: "default"},
 			},
 			inputFile:  "json_nested.json",
@@ -203,7 +202,7 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap:     "$.records[*]",
+		Unwrap: []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	})
 
@@ -218,7 +217,7 @@ func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap:     "$.records[*]",
+		Unwrap: []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 		InputType:  "azure-eventhub",
 		Tags:       []string{"forwarded", "azure-events"},
@@ -288,7 +287,7 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap:     "$.records[*]",
+		Unwrap: []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	})
 
@@ -322,7 +321,7 @@ func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 func TestNewLogsDecoder_JSONResumption(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap:     "$.records[*]",
+		Unwrap: []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 	})
 
@@ -395,7 +394,7 @@ func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
 func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap:     "$.records[*]",
+		Unwrap: []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 		Fields: map[string]any{
 			"environment": "production",

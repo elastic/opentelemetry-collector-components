@@ -19,7 +19,6 @@ package beatsencodingextension // import "github.com/elastic/opentelemetry-colle
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Format defines how the incoming raw bytes should be interpreted.
@@ -27,7 +26,7 @@ type Format string
 
 const (
 	// FormatJSON indicates the input is a JSON document that may contain
-	// wrapped records (use Unwrap to extract them).
+	// wrapped records (use UnwrapKeys to extract them).
 	FormatJSON Format = "json"
 
 	// FormatText indicates the input is newline-delimited text where
@@ -46,13 +45,13 @@ type Config struct {
 	// Format of the incoming data: "json" or "text".
 	Format Format `mapstructure:"format"`
 
-	// Unwrap is a path expression to extract individual records from
-	// a wrapper structure. Only the $.key1.key2...[*] pattern is supported
-	// (dot-notation path to an array with wildcard iteration).
-	// Examples: "$.records[*]", "$.Records[*]", "$.data.items[*]".
+	// Unwrap is the sequence of JSON object keys to traverse in order
+	// to reach the target array whose elements become individual log records.
+	// For example, ["records"] navigates into {"records": [...]}, and
+	// ["data", "items"] navigates into {"data": {"items": [...]}}.
 	// Only used when Format is "json". When empty, the entire input
 	// is treated as a single record.
-	Unwrap string `mapstructure:"unwrap,omitempty"`
+	Unwrap []string `mapstructure:"unwrap,omitempty"`
 
 	// DataStream defines the data stream routing attributes.
 	DataStream DataStreamConfig `mapstructure:"data_stream"`
@@ -70,9 +69,6 @@ type Config struct {
 	// inject custom metadata (e.g., environment, team) into each event.
 	Fields map[string]any `mapstructure:"fields,omitempty"`
 
-	// unwrapKeys holds the parsed key segments from Unwrap, populated by Validate().
-	unwrapKeys []string
-
 	// prevent unkeyed literal initialization
 	_ struct{}
 }
@@ -84,16 +80,8 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid format %q: must be %q or %q", c.Format, FormatJSON, FormatText)
 	}
 
-	if c.Unwrap != "" && c.Format != FormatJSON {
+	if len(c.Unwrap) > 0 && c.Format != FormatJSON {
 		return fmt.Errorf("unwrap is only supported when format is %q", FormatJSON)
-	}
-
-	if c.Unwrap != "" {
-		keys, err := parseUnwrapPath(c.Unwrap)
-		if err != nil {
-			return fmt.Errorf("invalid unwrap expression %q: %w", c.Unwrap, err)
-		}
-		c.unwrapKeys = keys
 	}
 
 	if c.DataStream.Dataset == "" {
@@ -105,36 +93,4 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
-}
-
-// parseUnwrapPath parses a restricted JSONPath expression of the form
-// $.key1.key2...keyN[*] into a slice of key segments.
-//
-// For example:
-//   - "$.records[*]"    → ["records"]
-//   - "$.Records[*]"    → ["Records"]
-//   - "$.data.items[*]" → ["data", "items"]
-func parseUnwrapPath(expr string) ([]string, error) {
-	if !strings.HasPrefix(expr, "$.") {
-		return nil, fmt.Errorf("must start with \"$.\"")
-	}
-
-	if !strings.HasSuffix(expr, "[*]") {
-		return nil, fmt.Errorf("must end with \"[*]\" (wildcard array iteration)")
-	}
-
-	// Strip "$." prefix and "[*]" suffix to get "key1.key2...keyN"
-	inner := expr[2 : len(expr)-3]
-	if inner == "" {
-		return nil, fmt.Errorf("must contain at least one key segment between \"$.\" and \"[*]\"")
-	}
-
-	keys := strings.Split(inner, ".")
-	for _, k := range keys {
-		if k == "" {
-			return nil, fmt.Errorf("empty key segment in path")
-		}
-	}
-
-	return keys, nil
 }
