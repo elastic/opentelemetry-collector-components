@@ -258,7 +258,8 @@ func isSupportedResourceAttribute(attr string) bool {
 		return true
 
 	// data_stream.*
-	case elasticattr.DataStreamDataset,
+	case elasticattr.DataStreamType,
+		elasticattr.DataStreamDataset,
 		elasticattr.DataStreamNamespace:
 		return true
 
