@@ -298,9 +298,13 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
 	req.Request(&hasprivileges.Request{Application: applications})
-	privCtx, cancel := context.WithTimeoutCause(ctx,
-		a.config.HasPrivilegesTimeout, errHasPrivilegesTimeout,
-	)
+	privCtx := ctx
+	cancel := func() {}
+	if a.config.Timeout > 0 {
+		privCtx, cancel = context.WithTimeoutCause(ctx, a.config.Timeout,
+			errHasPrivilegesTimeout,
+		)
+	}
 	defer cancel()
 
 	resp, err := req.Do(privCtx)
