@@ -35,6 +35,8 @@ var defaultElasticsearchRetryConfig = RetryConfig{
 }
 
 type Config struct {
+	// ClientConfig configures the outbound Elasticsearch HTTP client.
+	// In this extension, timeout > 0 bounds the privilege-check request.
 	confighttp.ClientConfig `mapstructure:",squash"`
 
 	// ApplicationPrivileges defines the application privileges
@@ -55,10 +57,6 @@ type Config struct {
 	// ClientRetry controls gRPC RetryInfo details returned to callers.
 	// This is a hint for retrying the overall request, not Elasticsearch request retries.
 	ClientRetry ClientRetryConfig `mapstructure:"client_retry"`
-
-	// HasPrivilegesTimeout bounds how long privilege verification may wait on Elasticsearch
-	// before being classified as retryable backend overload.
-	HasPrivilegesTimeout time.Duration `mapstructure:"has_privileges_timeout"`
 }
 
 // effectiveElasticsearchRetry returns the retry config for Elasticsearch
@@ -164,8 +162,11 @@ type CacheConfig struct {
 }
 
 func createDefaultConfig() component.Config {
+	clientConfig := confighttp.NewDefaultClientConfig()
+	clientConfig.Timeout = 10 * time.Second
+
 	return &Config{
-		ClientConfig: confighttp.NewDefaultClientConfig(),
+		ClientConfig: clientConfig,
 		Cache: CacheConfig{
 			Capacity:         1000,
 			PBKDF2Iterations: 1000,
@@ -177,7 +178,6 @@ func createDefaultConfig() component.Config {
 			Enabled:    true,
 			RetryDelay: time.Second,
 		},
-		HasPrivilegesTimeout: 10 * time.Second,
 	}
 }
 
@@ -263,10 +263,6 @@ func (dr *DynamicResource) Validate() error {
 
 // Validate validates the Config.
 func (cfg *Config) Validate() error {
-	if cfg.HasPrivilegesTimeout <= 0 {
-		return fmt.Errorf("invalid has_privileges_timeout: %s, must be greater than 0", cfg.HasPrivilegesTimeout)
-	}
-
 	// Build a set of metadata keys in cache.key_metadata for quick lookup
 	keyMetadataSet := make(map[string]bool)
 	for _, key := range cfg.Cache.KeyMetadata {

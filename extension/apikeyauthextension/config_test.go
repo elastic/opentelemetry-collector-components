@@ -35,9 +35,10 @@ func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		id                 component.ID
-		expected           *Config
-		expectedErrMessage string
+		id                          component.ID
+		expected                    *Config
+		expectedUnmarshalErrMessage string
+		expectedErrMessage          string
 	}{
 		{
 			id:       component.NewID(metadata.Type),
@@ -198,16 +199,16 @@ func TestLoadConfig(t *testing.T) {
 			}(),
 		},
 		{
-			id: component.NewIDWithName(metadata.Type, "custom_has_privileges_timeout"),
+			id: component.NewIDWithName(metadata.Type, "custom_timeout"),
 			expected: func() *Config {
 				config := createDefaultConfig().(*Config)
-				config.HasPrivilegesTimeout = 7 * time.Second
+				config.Timeout = 7 * time.Second
 				return config
 			}(),
 		},
 		{
-			id:                 component.NewIDWithName(metadata.Type, "invalid_has_privileges_timeout"),
-			expectedErrMessage: `invalid has_privileges_timeout: 0s, must be greater than 0`,
+			id:                          component.NewIDWithName(metadata.Type, "deprecated_has_privileges_timeout"),
+			expectedUnmarshalErrMessage: "decoding failed due to the following error(s):\n\n'apikeyauthextension.Config' has invalid keys: has_privileges_timeout",
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "invalid_client_retry_delay"),
@@ -223,7 +224,13 @@ func TestLoadConfig(t *testing.T) {
 			cfg := factory.CreateDefaultConfig()
 			sub, err := cm.Sub(tt.id.String())
 			assert.NoError(t, err)
-			assert.NoError(t, sub.Unmarshal(cfg))
+			err = sub.Unmarshal(cfg)
+			if tt.expectedUnmarshalErrMessage != "" {
+				require.Error(t, err)
+				assert.EqualError(t, err, tt.expectedUnmarshalErrMessage)
+				return
+			}
+			assert.NoError(t, err)
 
 			err = xconfmap.Validate(cfg)
 			if tt.expectedErrMessage != "" {
