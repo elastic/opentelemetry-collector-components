@@ -20,12 +20,12 @@ package beatsencodingextension // import "github.com/elastic/opentelemetry-colle
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/xstreamencoding"
 	"go.opentelemetry.io/collector/component"

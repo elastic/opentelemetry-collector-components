@@ -18,20 +18,20 @@
 package beatsencodingextension
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNavigateToArray(t *testing.T) {
 	tests := []struct {
-		name          string
-		input         string
-		keys          []string
-		wantErr       string
+		name    string
+		input   string
+		keys    []string
+		wantErr string
 		// If wantErr is empty, these verify the decoder is positioned inside the array.
 		wantMore      bool   // expected dec.More() result after navigation
 		wantFirstElem string // if wantMore is true, the raw JSON of the first element
