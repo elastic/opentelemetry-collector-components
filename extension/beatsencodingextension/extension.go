@@ -34,6 +34,11 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	elasticMappingMode = "elastic.mapping.mode"
+	bodymap            = "bodymap"
+)
+
 var (
 	_ encoding.LogsUnmarshalerExtension = (*beatsEncodingExtension)(nil)
 	_ encoding.LogsDecoderExtension     = (*beatsEncodingExtension)(nil)
@@ -110,8 +115,7 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 
 	decodeF := func() (plog.Logs, error) {
 		logs := plog.NewLogs()
-		sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
-		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
+		sl := newScopeLogs(logs)
 		now := pcommon.NewTimestampFromTime(time.Now())
 		eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
 
@@ -185,8 +189,7 @@ func (e *beatsEncodingExtension) newSingleRecordDecoder(reader io.Reader, opts e
 		done = true
 
 		logs := plog.NewLogs()
-		sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
-		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
+		sl := newScopeLogs(logs)
 		now := pcommon.NewTimestampFromTime(time.Now())
 		e.appendLogRecord(sl, now, now.AsTime().UTC().Format(time.RFC3339Nano), string(trimmed))
 		return logs, nil
@@ -231,8 +234,7 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 		}
 
 		logs := plog.NewLogs()
-		sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
-		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
+		sl := newScopeLogs(logs)
 		now := pcommon.NewTimestampFromTime(time.Now())
 		eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
 
@@ -381,6 +383,14 @@ func writeFields(logger *zap.Logger, m pcommon.Map, fields map[string]any) {
 			logger.Warn("unsupported field type, skipping", zap.String("key", k), zap.Any("value", val))
 		}
 	}
+}
+
+// newScopeLogs creates a new ResourceLogs → ScopeLogs inside logs and sets
+// the elastic.mapping.mode scope attribute to bodymap.
+func newScopeLogs(logs plog.Logs) plog.ScopeLogs {
+	sl := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty()
+	sl.Scope().Attributes().PutStr(elasticMappingMode, bodymap)
+	return sl
 }
 
 func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated string, record string) {
