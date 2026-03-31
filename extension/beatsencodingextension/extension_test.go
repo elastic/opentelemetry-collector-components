@@ -35,6 +35,15 @@ import (
 
 const testDataDir = "testdata"
 
+// newTestExtension validates the config and creates a beatsEncodingExtension.
+func newTestExtension(t *testing.T, cfg *Config) *beatsEncodingExtension {
+	t.Helper()
+	require.NoError(t, cfg.Validate())
+	ext, err := newBeatsEncodingExtension(cfg, zap.NewNop())
+	require.NoError(t, err)
+	return ext
+}
+
 // Set to true to regenerate golden files, then set back to false.
 var updateGoldenFiles = false
 
@@ -136,8 +145,7 @@ func TestUnmarshalLogs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ext, err := newBeatsEncodingExtension(&tt.config, zap.NewNop())
-			require.NoError(t, err)
+			ext := newTestExtension(t, &tt.config)
 
 			input, err := os.ReadFile(filepath.Join(testDataDir, tt.inputFile))
 			require.NoError(t, err)
@@ -180,11 +188,10 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ext, err := newBeatsEncodingExtension(&Config{
-				Format:      tt.format,
-					DataStream:     DataStreamConfig{Dataset: "test", Namespace: "default"},
-			}, zap.NewNop())
-			require.NoError(t, err)
+			ext := newTestExtension(t, &Config{
+				Format:     tt.format,
+				DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
+			})
 
 			logs, err := ext.UnmarshalLogs(tt.input)
 			require.NoError(t, err)
@@ -194,12 +201,11 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 }
 
 func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
-	ext, err := newBeatsEncodingExtension(&Config{
-		Format:  FormatJSON,
-		Unwrap:  "$.records[*]",
+	ext := newTestExtension(t, &Config{
+		Format:     FormatJSON,
+		Unwrap:     "$.records[*]",
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-	}, zap.NewNop())
-	require.NoError(t, err)
+	})
 
 	input, err := os.ReadFile(filepath.Join(testDataDir, "json_no_records_field.json"))
 	require.NoError(t, err)
@@ -210,14 +216,13 @@ func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 }
 
 func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
-	ext, err := newBeatsEncodingExtension(&Config{
-		Format:    FormatJSON,
-		Unwrap:    "$.records[*]",
+	ext := newTestExtension(t, &Config{
+		Format:     FormatJSON,
+		Unwrap:     "$.records[*]",
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
-		InputType: "azure-eventhub",
-		Tags:      []string{"forwarded", "azure-events"},
-	}, zap.NewNop())
-	require.NoError(t, err)
+		InputType:  "azure-eventhub",
+		Tags:       []string{"forwarded", "azure-events"},
+	})
 
 	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))
 	require.NoError(t, err)
@@ -281,12 +286,11 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 }
 
 func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
-	ext, err := newBeatsEncodingExtension(&Config{
-		Format:  FormatJSON,
-		Unwrap:  "$.records[*]",
+	ext := newTestExtension(t, &Config{
+		Format:     FormatJSON,
+		Unwrap:     "$.records[*]",
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-	}, zap.NewNop())
-	require.NoError(t, err)
+	})
 
 	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))
 	require.NoError(t, err)
@@ -316,12 +320,11 @@ func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 }
 
 func TestNewLogsDecoder_JSONResumption(t *testing.T) {
-	ext, err := newBeatsEncodingExtension(&Config{
+	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
 		Unwrap:     "$.records[*]",
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
-	}, zap.NewNop())
-	require.NoError(t, err)
+	})
 
 	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))
 	require.NoError(t, err)
@@ -362,11 +365,10 @@ func TestNewLogsDecoder_JSONResumption(t *testing.T) {
 }
 
 func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
-	ext, err := newBeatsEncodingExtension(&Config{
-		Format:  FormatText,
+	ext := newTestExtension(t, &Config{
+		Format:     FormatText,
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
-	}, zap.NewNop())
-	require.NoError(t, err)
+	})
 
 	input, err := os.ReadFile(filepath.Join(testDataDir, "aws_vpcflow.txt"))
 	require.NoError(t, err)
@@ -391,7 +393,7 @@ func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
 }
 
 func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
-	ext, err := newBeatsEncodingExtension(&Config{
+	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
 		Unwrap:     "$.records[*]",
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
@@ -400,8 +402,7 @@ func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
 			"team":        "security",
 			"_conf":       map[string]any{"retain": "all"},
 		},
-	}, zap.NewNop())
-	require.NoError(t, err)
+	})
 
 	input, err := os.ReadFile(filepath.Join(testDataDir, "azure_diagnostic_settings.json"))
 	require.NoError(t, err)
@@ -431,11 +432,10 @@ func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
 }
 
 func TestNewLogsDecoder_SingleRecordResumption(t *testing.T) {
-	ext, err := newBeatsEncodingExtension(&Config{
+	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
 		DataStream: DataStreamConfig{Dataset: "generic", Namespace: "default"},
-	}, zap.NewNop())
-	require.NoError(t, err)
+	})
 
 	input, err := os.ReadFile(filepath.Join(testDataDir, "json_single.json"))
 	require.NoError(t, err)

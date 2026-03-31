@@ -43,6 +43,7 @@ func TestLoadConfig(t *testing.T) {
 			expected: func() *Config {
 				cfg := createDefaultConfig().(*Config)
 				cfg.Unwrap = "$.records[*]"
+				cfg.unwrapKeys = []string{"records"}
 				cfg.DataStream.Dataset = "azure.events"
 				return cfg
 			}(),
@@ -69,6 +70,7 @@ func TestLoadConfig(t *testing.T) {
 			expected: func() *Config {
 				cfg := createDefaultConfig().(*Config)
 				cfg.Unwrap = "$.data.items[*]"
+				cfg.unwrapKeys = []string{"data", "items"}
 				cfg.DataStream.Dataset = "test"
 				return cfg
 			}(),

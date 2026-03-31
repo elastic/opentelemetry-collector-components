@@ -45,23 +45,12 @@ var (
 )
 
 type beatsEncodingExtension struct {
-	config     *Config
-	unwrapKeys []string
-	logger     *zap.Logger
+	config *Config
+	logger *zap.Logger
 }
 
 func newBeatsEncodingExtension(config *Config, logger *zap.Logger) (*beatsEncodingExtension, error) {
-	ext := &beatsEncodingExtension{config: config, logger: logger}
-
-	if config.Unwrap != "" {
-		keys, err := parseUnwrapPath(config.Unwrap)
-		if err != nil {
-			return nil, fmt.Errorf("invalid unwrap expression %q: %w", config.Unwrap, err)
-		}
-		ext.unwrapKeys = keys
-	}
-
-	return ext, nil
+	return &beatsEncodingExtension{config: config, logger: logger}, nil
 }
 
 func (e *beatsEncodingExtension) Start(context.Context, component.Host) error {
@@ -154,7 +143,7 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 func (e *beatsEncodingExtension) newJSONDecoder(reader io.Reader, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
 	opts := encoding.NewDecoderOptions(options...)
 
-	if len(e.unwrapKeys) == 0 {
+	if len(e.config.unwrapKeys) == 0 {
 		return e.newSingleRecordDecoder(reader, opts)
 	}
 
@@ -211,7 +200,7 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 	dec := json.NewDecoder(reader)
 	batchHelper := xstreamencoding.NewBatchHelper(options...)
 
-	if err := navigateToArray(dec, e.unwrapKeys); err != nil {
+	if err := navigateToArray(dec, e.config.unwrapKeys); err != nil {
 		return nil, fmt.Errorf("navigating to unwrap path %q: %w", e.config.Unwrap, err)
 	}
 

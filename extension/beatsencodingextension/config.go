@@ -70,6 +70,9 @@ type Config struct {
 	// inject custom metadata (e.g., environment, team) into each event.
 	Fields map[string]any `mapstructure:"fields,omitempty"`
 
+	// unwrapKeys holds the parsed key segments from Unwrap, populated by Validate().
+	unwrapKeys []string
+
 	// prevent unkeyed literal initialization
 	_ struct{}
 }
@@ -86,9 +89,11 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Unwrap != "" {
-		if _, err := parseUnwrapPath(c.Unwrap); err != nil {
+		keys, err := parseUnwrapPath(c.Unwrap)
+		if err != nil {
 			return fmt.Errorf("invalid unwrap expression %q: %w", c.Unwrap, err)
 		}
+		c.unwrapKeys = keys
 	}
 
 	if c.DataStream.Dataset == "" {
