@@ -194,7 +194,7 @@ func (e *beatsEncodingExtension) newSingleRecordDecoder(reader io.Reader, opts e
 }
 
 // newStreamingJSONDecoder creates a decoder that uses json.Decoder to
-// navigate the token stream to the target array (specified by unwrapKeys)
+// navigate the token stream to the target array (specified by Unwrap)
 // and yields elements one by one.
 func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts encoding.DecoderOptions, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
 	dec := json.NewDecoder(reader)

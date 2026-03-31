@@ -26,7 +26,7 @@ type Format string
 
 const (
 	// FormatJSON indicates the input is a JSON document that may contain
-	// wrapped records (use UnwrapKeys to extract them).
+	// wrapped records (use Unwrap to extract them).
 	FormatJSON Format = "json"
 
 	// FormatText indicates the input is newline-delimited text where

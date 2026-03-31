@@ -9,7 +9,7 @@ Each extracted record is stored as a raw string under the `message` body map key
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `format` | string | `json` | Input format: `json` or `text`. |
-| `unwrap` | string | _(empty)_ | Restricted path expression to extract records from a wrapper structure (e.g., `$.records[*]`). Only `$.key1.key2...keyN[*]` is supported. Only used with `json` format. |
+| `unwrap` | []string | _(empty)_ | Sequence of JSON object keys to traverse to reach the target array (e.g., `["records"]` or `["data", "items"]`). Only used with `json` format. |
 | `data_stream.dataset` | string | _(required)_ | Data stream dataset (e.g., `azure.activitylogs`). |
 | `data_stream.namespace` | string | `default` | Data stream namespace. |
 | `input_type` | string | _(empty)_ | Sets the `input.type` field in the log record body (e.g., `aws-s3`, `azure-eventhub`). |
@@ -18,7 +18,7 @@ Each extracted record is stored as a raw string under the `message` body map key
 
 ### Formats
 
-- **`json`** — The entire input is a JSON document. When `unwrap` is set, the JSONPath expression extracts individual records from a wrapper structure (e.g., `$.records[*]` for Azure Diagnostic Settings, `$.Records[*]` for AWS CloudTrail). When `unwrap` is empty, the entire input is treated as a single record.
+- **`json`** — The entire input is a JSON document. When `unwrap` is set, the extension traverses the listed keys to reach a target array and extracts each element as a separate log record (e.g., `["records"]` for Azure Diagnostic Settings, `["Records"]` for AWS CloudTrail). When `unwrap` is empty, the entire input is treated as a single record.
 - **`text`** — Newline-delimited text. Each non-empty line becomes a separate log record.
 
 ### Examples
@@ -29,7 +29,8 @@ Each extracted record is stored as a raw string under the `message` body map key
 extensions:
   beats_encoding/azure:
     format: json
-    unwrap: "$.records[*]"
+    unwrap:
+      - records
     data_stream:
       dataset: azure.activitylogs
 
@@ -50,7 +51,8 @@ service:
 extensions:
   beats_encoding/cloudtrail:
     format: json
-    unwrap: "$.Records[*]"
+    unwrap:
+      - Records
     data_stream:
       dataset: aws.cloudtrail
 
