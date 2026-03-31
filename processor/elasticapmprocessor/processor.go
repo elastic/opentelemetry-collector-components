@@ -348,20 +348,6 @@ func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
-
-			// Check each log record for error events and route to apm.error dataset
-			// This follows the same logic as apm-data to detect error events
-			scopeLogs := resourceLog.ScopeLogs()
-			for j := 0; j < scopeLogs.Len(); j++ {
-				logRecords := scopeLogs.At(j).LogRecords()
-				for k := 0; k < logRecords.Len(); k++ {
-					logRecord := logRecords.At(k)
-					if routing.IsErrorEvent(logRecord.Attributes()) {
-						// Override the resource-level data stream for error logs
-						routing.EncodeErrorDataStream(logRecord.Attributes(), routing.DataStreamTypeLogs)
-					}
-				}
-			}
 		}
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs

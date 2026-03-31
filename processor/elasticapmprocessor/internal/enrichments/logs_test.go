@@ -98,11 +98,15 @@ func TestEnrichResourceLog(t *testing.T) {
 		existingAttrs := map[string]any{
 			elasticattr.EventKind:        "existing-event-kind",
 			elasticattr.EventCategory:    "existing-event-category",
+			elasticattr.EventType:        "existing-event-type",
 			elasticattr.ProcessorEvent:   "existing-processor-event",
 			elasticattr.TimestampUs:      int64(12345),
 			elasticattr.ErrorID:          "existing-error-id",
 			elasticattr.ErrorType:        "existing-error-type",
 			elasticattr.ErrorGroupingKey: "existing-grouping-key",
+			"data_stream.type":           "logs",
+			"data_stream.dataset":        "apm.error",
+			"data_stream.namespace":      "default",
 		}
 
 		for k, v := range existingAttrs {
