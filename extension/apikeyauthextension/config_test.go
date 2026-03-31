@@ -198,6 +198,18 @@ func TestLoadConfig(t *testing.T) {
 			}(),
 		},
 		{
+			id: component.NewIDWithName(metadata.Type, "custom_has_privileges_timeout"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.HasPrivilegesTimeout = 7 * time.Second
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "invalid_has_privileges_timeout"),
+			expectedErrMessage: `invalid has_privileges_timeout: 0s, must be greater than 0`,
+		},
+		{
 			id:                 component.NewIDWithName(metadata.Type, "invalid_client_retry_delay"),
 			expectedErrMessage: `client_retry: invalid retry_delay: 0s, must be greater than 0`,
 		},
