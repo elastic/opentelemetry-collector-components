@@ -1,0 +1,20 @@
+{
+  "records": [
+    {
+      "time": "2026-02-16T22:32:15.4699885Z",
+      "resourceId": "/tenants/aa40685b-417d-4664-b4ec-8f7640719adb/providers/Microsoft.aadiam",
+      "operationName": "Sign-in activity",
+      "operationVersion": "1.0",
+      "category": "SignInLogs",
+      "resultType": "0",
+      "durationMs": 0
+    },
+    {
+      "time": "2026-02-16T22:32:16.1234567Z",
+      "resourceId": "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Compute/virtualMachines/myVM",
+      "operationName": "Create or Update Virtual Machine",
+      "category": "Administrative",
+      "resultType": "Success"
+    }
+  ]
+}
