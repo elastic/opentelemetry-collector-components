@@ -40,7 +40,7 @@ Number of rate-limiting requests
 
 #### Attributes
 
-| Name | Description | Values |
-| ---- | ----------- | ------ |
-| decision | rate limit decision | Any Str |
-| reason | rate limit reason | Any Str |
+| Name | Description | Values | Semantic Convention |
+| ---- | ----------- | ------ | ------------------- |
+| decision | rate limit decision | Any Str | - |
+| reason | rate limit reason | Any Str | - |

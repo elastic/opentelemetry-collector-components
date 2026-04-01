@@ -44,22 +44,54 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "all_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
-					SamplesBeamCount:         MetricConfig{Enabled: true},
-					SamplesClassification:    MetricConfig{Enabled: true},
-					SamplesCpythonCount:      MetricConfig{Enabled: true},
-					SamplesCustomAggregation: MetricConfig{Enabled: true},
-					SamplesDotnetCount:       MetricConfig{Enabled: true},
-					SamplesFrameType:         MetricConfig{Enabled: true},
-					SamplesGoCount:           MetricConfig{Enabled: true},
-					SamplesJvmCount:          MetricConfig{Enabled: true},
-					SamplesKernelCount:       MetricConfig{Enabled: true},
-					SamplesNativeCount:       MetricConfig{Enabled: true},
-					SamplesPerlCount:         MetricConfig{Enabled: true},
-					SamplesPhpCount:          MetricConfig{Enabled: true},
-					SamplesRubyCount:         MetricConfig{Enabled: true},
-					SamplesRustCount:         MetricConfig{Enabled: true},
-					SamplesUserCount:         MetricConfig{Enabled: true},
-					SamplesV8jsCount:         MetricConfig{Enabled: true},
+					SamplesBeamCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesClassification: MetricConfig{
+						Enabled: true,
+					},
+					SamplesCpythonCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesCustomAggregation: MetricConfig{
+						Enabled: true,
+					},
+					SamplesDotnetCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesFrameType: MetricConfig{
+						Enabled: true,
+					},
+					SamplesGoCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesJvmCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesKernelCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesNativeCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesPerlCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesPhpCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesRubyCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesRustCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesUserCount: MetricConfig{
+						Enabled: true,
+					},
+					SamplesV8jsCount: MetricConfig{
+						Enabled: true,
+					},
 				},
 			},
 		},
@@ -67,22 +99,54 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "none_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
-					SamplesBeamCount:         MetricConfig{Enabled: false},
-					SamplesClassification:    MetricConfig{Enabled: false},
-					SamplesCpythonCount:      MetricConfig{Enabled: false},
-					SamplesCustomAggregation: MetricConfig{Enabled: false},
-					SamplesDotnetCount:       MetricConfig{Enabled: false},
-					SamplesFrameType:         MetricConfig{Enabled: false},
-					SamplesGoCount:           MetricConfig{Enabled: false},
-					SamplesJvmCount:          MetricConfig{Enabled: false},
-					SamplesKernelCount:       MetricConfig{Enabled: false},
-					SamplesNativeCount:       MetricConfig{Enabled: false},
-					SamplesPerlCount:         MetricConfig{Enabled: false},
-					SamplesPhpCount:          MetricConfig{Enabled: false},
-					SamplesRubyCount:         MetricConfig{Enabled: false},
-					SamplesRustCount:         MetricConfig{Enabled: false},
-					SamplesUserCount:         MetricConfig{Enabled: false},
-					SamplesV8jsCount:         MetricConfig{Enabled: false},
+					SamplesBeamCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesClassification: MetricConfig{
+						Enabled: false,
+					},
+					SamplesCpythonCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesCustomAggregation: MetricConfig{
+						Enabled: false,
+					},
+					SamplesDotnetCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesFrameType: MetricConfig{
+						Enabled: false,
+					},
+					SamplesGoCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesJvmCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesKernelCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesNativeCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesPerlCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesPhpCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesRubyCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesRustCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesUserCount: MetricConfig{
+						Enabled: false,
+					},
+					SamplesV8jsCount: MetricConfig{
+						Enabled: false,
+					},
 				},
 			},
 		},

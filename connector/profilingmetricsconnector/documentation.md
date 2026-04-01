@@ -38,10 +38,10 @@ Number of profiling frames by classification
 
 #### Attributes
 
-| Name | Description | Values | Requirement Level |
-| ---- | ----------- | ------ | -------- |
-| frame_type | Frame type | Any Str | Recommended |
-| profile.type_unit | Profile type unit | Any Str | Recommended |
+| Name | Description | Values | Requirement Level | Semantic Convention |
+| ---- | ----------- | ------ | ----------------- | ------------------- |
+| frame_type | Frame type | Any Str | Recommended | - |
+| profile.type_unit | Profile type unit | Any Str | Recommended | - |
 
 ### samples.dotnet.count
 
@@ -77,12 +77,12 @@ Number of samples executing kernel code (self)
 
 #### Attributes
 
-| Name | Description | Values | Requirement Level |
-| ---- | ----------- | ------ | -------- |
-| kernel_area | Breakdown of Kernel area type. | Any Str | Conditionally Required |
-| kernel_io | Breakdown of Kernel IO type. | Any Str | Conditionally Required |
-| kernel_proto | Breakdown of Kernel proto type. | Any Str | Conditionally Required |
-| syscall_name | Syscall name | Any Str | Conditionally Required |
+| Name | Description | Values | Requirement Level | Semantic Convention |
+| ---- | ----------- | ------ | ----------------- | ------------------- |
+| kernel_area | Breakdown of Kernel area type. | Any Str | Conditionally Required | - |
+| kernel_io | Breakdown of Kernel IO type. | Any Str | Conditionally Required | - |
+| kernel_proto | Breakdown of Kernel proto type. | Any Str | Conditionally Required | - |
+| syscall_name | Syscall name | Any Str | Conditionally Required | - |
 
 ### samples.native.count
 
@@ -94,9 +94,9 @@ Number of samples executing native code (self)
 
 #### Attributes
 
-| Name | Description | Values | Requirement Level |
-| ---- | ----------- | ------ | -------- |
-| shlib_name | Shared library name | Any Str | Conditionally Required |
+| Name | Description | Values | Requirement Level | Semantic Convention |
+| ---- | ----------- | ------ | ----------------- | ------------------- |
+| shlib_name | Shared library name | Any Str | Conditionally Required | - |
 
 ### samples.perl.count
 
@@ -166,11 +166,11 @@ Number of profiling frames by classification
 
 #### Attributes
 
-| Name | Description | Values | Requirement Level |
-| ---- | ----------- | ------ | -------- |
-| classification | Profile type unit | Any Str | Recommended |
-| frame_type | Frame type | Any Str | Recommended |
-| profile.type_unit | Profile type unit | Any Str | Recommended |
+| Name | Description | Values | Requirement Level | Semantic Convention |
+| ---- | ----------- | ------ | ----------------- | ------------------- |
+| classification | Profile type unit | Any Str | Recommended | - |
+| frame_type | Frame type | Any Str | Recommended | - |
+| profile.type_unit | Profile type unit | Any Str | Recommended | - |
 
 ### samples.frame_type
 
@@ -182,7 +182,7 @@ Number of profiles frames by frame type
 
 #### Attributes
 
-| Name | Description | Values | Requirement Level |
-| ---- | ----------- | ------ | -------- |
-| frame_type | Frame type | Any Str | Recommended |
-| profile.type_unit | Profile type unit | Any Str | Recommended |
+| Name | Description | Values | Requirement Level | Semantic Convention |
+| ---- | ----------- | ------ | ----------------- | ------------------- |
+| frame_type | Frame type | Any Str | Recommended | - |
+| profile.type_unit | Profile type unit | Any Str | Recommended | - |

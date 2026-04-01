@@ -16,7 +16,7 @@ Number of telemetry batches routed by the connector.
 
 #### Attributes
 
-| Name | Description | Values |
-| ---- | ----------- | ------ |
-| cardinality_bucket | Cardinality bucket identifier derived from routing_pipelines. | Any Str |
-| partition_key | Composite partition key built from routing_keys.partition_by values. | Any Str |
+| Name | Description | Values | Semantic Convention |
+| ---- | ----------- | ------ | ------------------- |
+| cardinality_bucket | Cardinality bucket identifier derived from routing_pipelines. | Any Str | - |
+| partition_key | Composite partition key built from routing_keys.partition_by values. | Any Str | - |
