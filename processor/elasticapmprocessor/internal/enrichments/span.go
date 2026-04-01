@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling"
 	"github.com/ua-parser/uap-go/uaparser"
@@ -74,7 +75,7 @@ func EnrichSpan(
 }
 
 type spanEnrichmentContext struct {
-	urlFull *url.URL
+	urlFull string // the host[:port] extracted from url.full (see extractURLHost)
 
 	peerService              string
 	serverAddress            string
@@ -101,6 +102,10 @@ type spanEnrichmentContext struct {
 	inferredUserAgentName    string
 	inferredUserAgentVersion string
 
+	// presetEventOutcome captures event.outcome from the Range scan (empty = absent).
+	// Placed with strings to avoid alignment padding after the bool block.
+	presetEventOutcome string
+
 	serverPort     int64
 	urlPort        int64
 	httpStatusCode int64
@@ -115,6 +120,41 @@ type spanEnrichmentContext struct {
 	isDB                     bool
 	messagingDestinationTemp bool
 	isGenAi                  bool
+
+	// hasPresetElastic is set during the Range scan when processor.event is detected,
+	// indicating the intake receiver has pre-populated elastic attributes.
+	// When false (OTLP path), attribute writes can skip the existence pre-check.
+	hasPresetElastic bool
+
+	// presetProcessorEventTxn is true when the Range scan finds processor.event == "transaction".
+	// Allows skipping the attrs.PutStr write (and its internal Map.Get) in enrichTransaction.
+	presetProcessorEventTxn bool
+
+	// presetSampledTrue is true when the Range scan finds transaction.sampled == true.
+	// Allows skipping the attrs.PutBool write in enrichTransaction for the common case.
+	presetSampledTrue bool
+
+	// presetTransactionRootSet is true when transaction.root was found in Range.
+	// Allows skipping putBool + isTraceRoot recompute in enrichTransaction.
+	presetTransactionRootSet bool
+
+	// presetDurationUsSet and presetTimestampUsSet flag that the attribute was found in Range.
+	// When set, we trust our prior write and skip recompute (spans are enriched once in practice).
+	presetDurationUsSet  bool
+	presetTimestampUsSet bool
+
+	// presetRepCountSet is true when transaction.representative_count was found in Range.
+	// Allows skipping the write when the value would be defaultRepresentativeCount (1.0).
+	presetRepCountSet bool
+
+	// presetSuccessCountSet is true when event.success_count was found in Range.
+	// Allows skipping the attribute.PutInt + getRepresentativeCount in setEventOutcome.
+	presetSuccessCountSet bool
+
+	// Presence flags for remaining elastic attrs — fit in struct end-padding (no size change).
+	presetTransactionIDSet     bool // skip putStr(TransactionID) when already set and !ClearSpanID
+	presetTransactionNameSet   bool // skip putStr(TransactionName) when already set
+	presetTransactionResultSet bool // skip setTxnResult when result already written
 }
 
 func (s *spanEnrichmentContext) Enrich(
@@ -175,8 +215,7 @@ func (s *spanEnrichmentContext) Enrich(
 		case string(semconv25.URLFullKey),
 			string(semconv25.HTTPURLKey):
 			s.isHTTP = true
-			// ignoring error as if parse fails then we don't want the url anyway
-			s.urlFull, _ = url.Parse(v.Str())
+			s.urlFull = extractURLHost(v.Str())
 		case string(semconv25.URLSchemeKey):
 			s.isHTTP = true
 			s.urlScheme = v.Str()
@@ -229,6 +268,33 @@ func (s *spanEnrichmentContext) Enrich(
 			s.typeValue = v.Str()
 		case elasticattr.TransactionType:
 			s.transactionType = v.Str()
+		case elasticattr.ProcessorEvent:
+			// Signal that elastic attrs are already present (intake path).
+			// Detected for free inside the existing Range scan — no extra Get needed.
+			s.hasPresetElastic = true
+			s.presetProcessorEventTxn = v.Str() == "transaction"
+		case elasticattr.EventOutcome:
+			// Cache the value to avoid attrs.Get(EventOutcome) in setEventOutcome.
+			s.presetEventOutcome = v.Str()
+		case elasticattr.TransactionSampled:
+			// Cache whether transaction.sampled is already true (the only value we write).
+			s.presetSampledTrue = v.Bool()
+		case elasticattr.TransactionRoot:
+			s.presetTransactionRootSet = true
+		case elasticattr.TransactionDurationUs:
+			s.presetDurationUsSet = true
+		case elasticattr.TimestampUs:
+			s.presetTimestampUsSet = true
+		case elasticattr.TransactionRepresentativeCount:
+			s.presetRepCountSet = true
+		case elasticattr.SuccessCount:
+			s.presetSuccessCountSet = true
+		case elasticattr.TransactionID:
+			s.presetTransactionIDSet = true
+		case elasticattr.TransactionName:
+			s.presetTransactionNameSet = true
+		case elasticattr.TransactionResult:
+			s.presetTransactionResultSet = true
 		}
 		return true
 	})
@@ -263,59 +329,71 @@ func (s *spanEnrichmentContext) enrichTransaction(
 	span ptrace.Span,
 	cfg config.ElasticTransactionConfig,
 ) {
-	if cfg.TimestampUs.Enabled {
-		attribute.PutInt(span.Attributes(), elasticattr.TimestampUs, attribute.ToTimestampUS(span.StartTimestamp()))
+	attrs := span.Attributes()
+	if cfg.TimestampUs.Enabled && !s.presetTimestampUsSet {
+		// presetTimestampUsSet: attr written in a prior call; trust prior write (spans enriched once).
+		s.putInt(attrs, elasticattr.TimestampUs, attribute.ToTimestampUS(span.StartTimestamp()))
 	}
-	if cfg.Sampled.Enabled {
-		attribute.PutBool(span.Attributes(), elasticattr.TransactionSampled, s.getSampled())
+	if cfg.Sampled.Enabled && !s.presetSampledTrue {
+		s.putBool(attrs, elasticattr.TransactionSampled, s.getSampled())
 	}
-	if cfg.ID.Enabled {
-		transactionID := span.SpanID().String()
-		attribute.PutStr(span.Attributes(), elasticattr.TransactionID, transactionID)
-
+	if cfg.ID.Enabled && (!s.presetTransactionIDSet || cfg.ClearSpanID.Enabled) {
+		s.putStr(attrs, elasticattr.TransactionID, span.SpanID().String())
 		if cfg.ClearSpanID.Enabled {
 			span.SetSpanID(pcommon.SpanID{})
 		}
 	}
-	if cfg.Root.Enabled {
-		attribute.PutBool(span.Attributes(), elasticattr.TransactionRoot, isTraceRoot(span))
+	if cfg.Root.Enabled && !s.presetTransactionRootSet {
+		// presetTransactionRootSet: attr written in a prior call; skip isTraceRoot recompute.
+		s.putBool(attrs, elasticattr.TransactionRoot, isTraceRoot(span))
 	}
-	if cfg.Name.Enabled {
+	if cfg.Name.Enabled && !s.presetTransactionNameSet {
 		// do not set transaction name to an empty str to match prior apm data behavior
-		attribute.PutNonEmptyStr(span.Attributes(), elasticattr.TransactionName, span.Name())
+		if name := span.Name(); name != "" {
+			s.putStr(attrs, elasticattr.TransactionName, name)
+		}
 		if cfg.ClearSpanName.Enabled {
 			span.SetName("")
 		}
 	}
-	if cfg.ProcessorEvent.Enabled {
-		attribute.PutStr(span.Attributes(), elasticattr.ProcessorEvent, "transaction")
+	if cfg.ProcessorEvent.Enabled && !s.presetProcessorEventTxn {
+		s.putStr(attrs, elasticattr.ProcessorEvent, "transaction")
 	}
 	if cfg.RepresentativeCount.Enabled {
-		repCount := getRepresentativeCount(span.TraceState().AsRaw())
-		attribute.PutDouble(span.Attributes(), elasticattr.TransactionRepresentativeCount, repCount)
+		ts := span.TraceState().AsRaw()
+		// Skip the W3C trace-state parse when attr already written and tracestate is empty
+		// (the only case where presetRepCountSet=true with correct defaultRepresentativeCount).
+		if !s.presetRepCountSet || ts != "" {
+			repCount := getRepresentativeCount(ts)
+			if !s.presetRepCountSet || repCount != defaultRepresentativeCount {
+				s.putDouble(attrs, elasticattr.TransactionRepresentativeCount, repCount)
+			}
+		}
 	}
-	if cfg.DurationUs.Enabled {
-		attribute.PutInt(span.Attributes(), elasticattr.TransactionDurationUs, getDurationUs(span))
+	if cfg.DurationUs.Enabled && !s.presetDurationUsSet {
+		// presetDurationUsSet: attr written in a prior call; skip getDurationUs recompute.
+		s.putInt(attrs, elasticattr.TransactionDurationUs, getDurationUs(span))
 	}
-	if cfg.Type.Enabled {
-		attribute.PutStr(span.Attributes(), elasticattr.TransactionType, s.getTxnType())
+	if cfg.Type.Enabled && s.transactionType == "" {
+		// s.transactionType extracted during Range scan; if empty, key is absent — safe to write.
+		attrs.PutStr(elasticattr.TransactionType, s.getTxnType())
 	}
-	if cfg.Result.Enabled {
+	if cfg.Result.Enabled && !s.presetTransactionResultSet {
 		s.setTxnResult(span)
 	}
 	if cfg.EventOutcome.Enabled {
 		s.setEventOutcome(span)
 	}
-	if cfg.InferredSpans.Enabled {
+	if cfg.InferredSpans.Enabled && span.Links().Len() > 0 {
 		s.setInferredSpans(span)
 	}
-	if cfg.UserAgent.Enabled {
+	if cfg.UserAgent.Enabled && (s.inferredUserAgentName != "" || s.inferredUserAgentVersion != "") {
 		s.setUserAgentIfRequired(span)
 	}
-	if cfg.MessageQueueName.Enabled {
+	if cfg.MessageQueueName.Enabled && s.messagingDestinationName != "" {
 		s.setMessageQueue(span)
 	}
-	if cfg.RemoveMessaging.Enabled {
+	if cfg.RemoveMessaging.Enabled && s.isMessaging {
 		s.removeMessagingAttrs(span)
 	}
 }
@@ -401,6 +479,52 @@ func (s *spanEnrichmentContext) getSampled() bool {
 	return true
 }
 
+// putStr writes key→val with insert-if-absent semantics.
+// When hasPresetElastic is false (OTLP path), skips the existence pre-check.
+// Inlines attribute.PutStr logic to stay within Go's inliner budget (~80 units).
+func (s *spanEnrichmentContext) putStr(attrs pcommon.Map, key, val string) {
+	if s.hasPresetElastic {
+		if _, ok := attrs.Get(key); !ok {
+			attrs.PutStr(key, val)
+		}
+	} else {
+		attrs.PutStr(key, val)
+	}
+}
+
+// putInt is putStr for int64 values.
+func (s *spanEnrichmentContext) putInt(attrs pcommon.Map, key string, val int64) {
+	if s.hasPresetElastic {
+		if _, ok := attrs.Get(key); !ok {
+			attrs.PutInt(key, val)
+		}
+	} else {
+		attrs.PutInt(key, val)
+	}
+}
+
+// putBool is putStr for bool values.
+func (s *spanEnrichmentContext) putBool(attrs pcommon.Map, key string, val bool) {
+	if s.hasPresetElastic {
+		if _, ok := attrs.Get(key); !ok {
+			attrs.PutBool(key, val)
+		}
+	} else {
+		attrs.PutBool(key, val)
+	}
+}
+
+// putDouble is putStr for float64 values.
+func (s *spanEnrichmentContext) putDouble(attrs pcommon.Map, key string, val float64) {
+	if s.hasPresetElastic {
+		if _, ok := attrs.Get(key); !ok {
+			attrs.PutDouble(key, val)
+		}
+	} else {
+		attrs.PutDouble(key, val)
+	}
+}
+
 func (s *spanEnrichmentContext) getTxnType() string {
 	txnType := "unknown"
 	switch {
@@ -438,7 +562,7 @@ func (s *spanEnrichmentContext) setTxnResult(span ptrace.Span) {
 		}
 	}
 
-	attribute.PutStr(span.Attributes(), elasticattr.TransactionResult, result)
+	s.putStr(span.Attributes(), elasticattr.TransactionResult, result)
 }
 
 // setEventOutcome derives event.outcome from span status and HTTP status,
@@ -447,14 +571,22 @@ func (s *spanEnrichmentContext) setTxnResult(span ptrace.Span) {
 // This matches the logic in the apm Elasticsearch ingest pipeline:
 // https://github.com/elastic/elasticsearch/blob/171a3b9/x-pack/plugin/apm-data/src/main/resources/ingest-pipelines/traces-apm@pipeline.yaml#L33-L40
 func (s *spanEnrichmentContext) setEventOutcome(span ptrace.Span) {
-	// Exit early when event.outcome is already explicitly set to unknown (e.g. by
-	// the intake receiver). This prevents success_count from being written when
-	// the outcome is unknown.
-	if v, ok := span.Attributes().Get(elasticattr.EventOutcome); ok && v.Str() == outcomeUnknown {
+	// s.presetEventOutcome is captured during the Range scan — no Get needed.
+	attrs := span.Attributes()
+	if s.presetEventOutcome != "" {
+		// event.outcome is already set — don't overwrite it.
+		// Exit early when set to unknown (prevents success_count from being written).
+		if s.presetEventOutcome == outcomeUnknown {
+			return
+		}
+		// Non-unknown value — set success_count if absent (skip if already present).
+		if !s.presetSuccessCountSet {
+			attribute.PutInt(attrs, elasticattr.SuccessCount, int64(getRepresentativeCount(span.TraceState().AsRaw())))
+		}
 		return
 	}
 
-	// default to success outcome
+	// event.outcome is absent — compute and write directly (skip redundant pre-check).
 	outcome := outcomeSuccess
 	successCount := getRepresentativeCount(span.TraceState().AsRaw())
 	switch {
@@ -470,8 +602,9 @@ func (s *spanEnrichmentContext) setEventOutcome(span ptrace.Span) {
 		successCount = 0
 	}
 
-	attribute.PutStr(span.Attributes(), elasticattr.EventOutcome, outcome)
-	attribute.PutInt(span.Attributes(), elasticattr.SuccessCount, int64(successCount))
+	// Direct insert: we already confirmed EventOutcome is absent — no second Get needed.
+	attrs.PutStr(elasticattr.EventOutcome, outcome)
+	s.putInt(attrs, elasticattr.SuccessCount, int64(successCount))
 }
 
 func (s *spanEnrichmentContext) setSpanAction(span ptrace.Span) {
@@ -821,35 +954,35 @@ func isTraceRoot(span ptrace.Span) bool {
 }
 
 func isElasticTransaction(span ptrace.Span) bool {
+	// Check cheap O(1) conditions before the O(N) attribute scan for processor.event.
+	if isTraceRoot(span) {
+		return true
+	}
+
 	flags := tracepb.SpanFlags(span.Flags())
-
-	// Events may have already been defined as an elastic transaction.
-	// check the processor.event value to avoid incorrectly classifying
-	// a span.
-	processorEvent, _ := span.Attributes().Get(elasticattr.ProcessorEvent)
-
-	switch {
-	case processorEvent.Str() == "transaction":
-		return true
-	case isTraceRoot(span):
-		return true
-	case (flags & tracepb.SpanFlags_SPAN_FLAGS_CONTEXT_HAS_IS_REMOTE_MASK) == 0:
+	if (flags & tracepb.SpanFlags_SPAN_FLAGS_CONTEXT_HAS_IS_REMOTE_MASK) == 0 {
 		// span parent is unknown, fall back to span kind
 		return span.Kind() == ptrace.SpanKindServer || span.Kind() == ptrace.SpanKindConsumer
-	case (flags & tracepb.SpanFlags_SPAN_FLAGS_CONTEXT_IS_REMOTE_MASK) != 0:
+	}
+	if (flags & tracepb.SpanFlags_SPAN_FLAGS_CONTEXT_IS_REMOTE_MASK) != 0 {
 		// span parent is remote
 		return true
 	}
-	return false
+
+	// Last-resort check: processor.event may have been explicitly set to "transaction"
+	// (e.g. by the intake receiver). This is O(N) — only reached when none of the
+	// cheaper structural checks matched.
+	processorEvent, _ := span.Attributes().Get(elasticattr.ProcessorEvent)
+	return processorEvent.Str() == "transaction"
 }
 
 func getHostPort(
-	urlFull *url.URL, urlDomain string, urlPort int64,
+	urlFull string, urlDomain string, urlPort int64,
 	fallbackServerAddress string, fallbackServerPort int64,
 ) string {
 	switch {
-	case urlFull != nil:
-		return urlFull.Host
+	case urlFull != "":
+		return urlFull
 	case urlDomain != "":
 		if urlPort == 0 {
 			return urlDomain
@@ -870,4 +1003,62 @@ var standardStatusCodeResults = [...]string{
 	"HTTP 3xx",
 	"HTTP 4xx",
 	"HTTP 5xx",
+}
+
+// extractURLHost extracts the host[:port] from a raw URL string without a full url.Parse.
+// It handles the common case of http/https URLs efficiently.
+// Falls back to url.Parse for URLs with userinfo (user:pass@host) or unusual schemes.
+// The returned host is lowercased per RFC 3986.
+func extractURLHost(rawURL string) string {
+	n := len(rawURL)
+
+	// Fast path for the most common cases: detect "://" at known positions
+	// for 4-char schemes (http, grpc, amqp) and 5-char schemes (https, redis).
+	// This avoids the full strings.Index scan for these common schemes.
+	var authorityStart int
+	switch {
+	case n > 7 && rawURL[4] == ':' && rawURL[5] == '/' && rawURL[6] == '/':
+		authorityStart = 7 // 4-char scheme: http://, grpc://, etc.
+	case n > 8 && rawURL[5] == ':' && rawURL[6] == '/' && rawURL[7] == '/':
+		authorityStart = 8 // 5-char scheme: https://, redis://, etc.
+	default:
+		i := strings.Index(rawURL, "://")
+		if i < 0 {
+			return ""
+		}
+		authorityStart = i + 3
+	}
+
+	s := rawURL[authorityStart:]
+
+	// Single pass: scan for authority boundary (/?#) and userinfo (@),
+	// while tracking uppercase chars to avoid a separate strings.ToLower scan.
+	hasUpper := false
+	for j := 0; j < len(s); j++ {
+		c := s[j]
+		switch {
+		case c == '/' || c == '?' || c == '#':
+			// Authority ends here.
+			host := s[:j]
+			if hasUpper {
+				return strings.ToLower(host)
+			}
+			return host
+		case c == '@':
+			// Userinfo present — fall back to url.Parse for correctness.
+			u, err := url.Parse(rawURL)
+			if err != nil || u == nil {
+				return ""
+			}
+			return u.Host
+		case c >= 'A' && c <= 'Z':
+			hasUpper = true
+		}
+	}
+
+	// No path separator — whole remainder is the authority (e.g. "http://hostname").
+	if hasUpper {
+		return strings.ToLower(s)
+	}
+	return s
 }
