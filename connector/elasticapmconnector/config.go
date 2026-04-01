@@ -43,13 +43,16 @@ type Config struct {
 	Aggregation *AggregationConfig `mapstructure:"aggregation"`
 
 	// CustomResourceAttributes define a list of resource attributes that will
-	// be added to all the aggregated metrics as optional attributes i.e. the
-	// attribute will be added to the aggregated metrics if they are present in
-	// the incoming signal, otherwise, the attribute will be ignored.
+	// be added to all the aggregated metrics. Each entry can be either:
+	//   - A plain string: treated as a static attribute key (optional, included
+	//     only if present in the incoming signal).
+	//   - A struct with `key` or `keys_expression`: `key` behaves like the
+	//     plain string form; `keys_expression` is an OTTL value expression
+	//     that resolves to a list of attribute keys at runtime.
 	//
 	// NOTE: any custom attributes should have a bounded and preferably low
 	// cardinality to be performant.
-	CustomResourceAttributes []string `mapstructure:"custom_resource_attributes"`
+	CustomResourceAttributes []CustomResourceAttribute `mapstructure:"custom_resource_attributes"`
 
 	// CustomSpanAttributes define a list of span attributes that will be added
 	// to the aggregated `service_transaction`, `transaction`, and `span_destination`
@@ -60,6 +63,26 @@ type Config struct {
 	// NOTE: any custom attributes should have a bounded and preferably low
 	// cardinality to be performant.
 	CustomSpanAttributes []string `mapstructure:"custom_span_attributes"`
+}
+
+// CustomResourceAttribute defines a resource attribute to include in
+// aggregated metrics. Exactly one of Key or KeysExpression must be set.
+type CustomResourceAttribute struct {
+	// Key is a static resource attribute key.
+	Key string `mapstructure:"key"`
+
+	// KeysExpression is an OTTL value expression that resolves to a list
+	// of resource attribute keys at runtime. The expression must return a
+	// pcommon.Slice or []string.
+	KeysExpression string `mapstructure:"keys_expression"`
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler, allowing plain strings
+// in YAML to be deserialized as a CustomResourceAttribute with Key set.
+// This preserves backward compatibility with the previous []string format.
+func (a *CustomResourceAttribute) UnmarshalText(text []byte) error {
+	a.Key = string(text)
+	return nil
 }
 
 type AggregationConfig struct {
@@ -110,6 +133,15 @@ type LimitConfig struct {
 }
 
 func (cfg Config) Validate() error {
+	for i, attr := range cfg.CustomResourceAttributes {
+		hasKey := attr.Key != ""
+		hasExpr := attr.KeysExpression != ""
+		if hasKey == hasExpr {
+			return fmt.Errorf(
+				"custom_resource_attributes[%d]: exactly one of key or keys_expression must be set", i,
+			)
+		}
+	}
 	lsmConfig := cfg.lsmConfig()
 	return lsmConfig.Validate()
 }
@@ -193,7 +225,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Key:          "agent.name",
 				DefaultValue: "unknown",
 			},
-		}, toSignalToMetricsAttributes(cfg.CustomResourceAttributes)...,
+		}, toSignalToMetricsResourceAttributes(cfg.CustomResourceAttributes)...,
 	)
 
 	// serviceSummaryResourceAttributes are resource attributes for service
@@ -443,8 +475,28 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 	}
 }
 
-// toSignalToMetricsAttributes converts slice to string to signal to metricsa attributes
-// assuming `optional: true` for each attribute.
+// toSignalToMetricsResourceAttributes converts CustomResourceAttribute entries
+// to signal-to-metrics Attribute entries. Static keys are marked optional;
+// keys_expression entries are passed through as-is.
+func toSignalToMetricsResourceAttributes(in []CustomResourceAttribute) []signaltometricsconfig.Attribute {
+	attrs := make([]signaltometricsconfig.Attribute, 0, len(in))
+	for _, a := range in {
+		if a.KeysExpression != "" {
+			attrs = append(attrs, signaltometricsconfig.Attribute{
+				KeysExpression: a.KeysExpression,
+			})
+		} else {
+			attrs = append(attrs, signaltometricsconfig.Attribute{
+				Key:      a.Key,
+				Optional: true,
+			})
+		}
+	}
+	return attrs
+}
+
+// toSignalToMetricsAttributes converts a slice of strings to signal-to-metrics
+// attributes assuming `optional: true` for each attribute.
 func toSignalToMetricsAttributes(in []string) []signaltometricsconfig.Attribute {
 	attrs := make([]signaltometricsconfig.Attribute, 0, len(in))
 	for _, k := range in {
