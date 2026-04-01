@@ -9,8 +9,8 @@ require (
 	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.40.0
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9
 	github.com/elastic/opentelemetry-lib v0.35.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.148.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.148.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.149.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.149.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
 	go.opentelemetry.io/collector/client v1.55.0
@@ -84,7 +84,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.148.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.149.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect
