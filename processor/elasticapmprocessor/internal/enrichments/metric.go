@@ -41,32 +41,32 @@ func EnrichMetric(metric pmetric.ResourceMetrics, cfg config.Config) {
 	}
 }
 
-func EnrichMetricDataPoints(metric pmetric.Metric, cfg config.Config) {
+func EnrichMetricDataPoints(metric pmetric.Metric, scopeAttrs pcommon.Map, cfg config.Config) {
 	switch metric.Type() {
 	case pmetric.MetricTypeGauge:
 		dataPoints := metric.Gauge().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
 		}
 	case pmetric.MetricTypeSum:
 		dataPoints := metric.Sum().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
 		}
 	case pmetric.MetricTypeHistogram:
 		dataPoints := metric.Histogram().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
 		}
 	case pmetric.MetricTypeExponentialHistogram:
 		dataPoints := metric.ExponentialHistogram().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
 		}
 	case pmetric.MetricTypeSummary:
 		dataPoints := metric.Summary().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
 		}
 	}
 }
@@ -76,14 +76,26 @@ func EnrichMetricDataPoints(metric pmetric.Metric, cfg config.Config) {
 // EnrichLog. This happens later than apm-data's OTLP-to-APM conversion, so we
 // must explicitly avoid relabeling attrs that identify aggregated metrics or
 // influence exporter behavior.
-func enrichMetricDataPointAttributes(attributes pcommon.Map, cfg config.Config) {
-	if !cfg.Metric.TranslateUnsupportedAttributes.Enabled {
-		return
-	}
+func enrichMetricDataPointAttributes(attributes pcommon.Map, scopeAttrs pcommon.Map, cfg config.Config) {
 	if isAggregatedMetricDataPointAttributes(attributes) {
 		return
 	}
-	ecs.TranslateMetricDataPointAttributes(attributes)
+	if cfg.Metric.TranslateUnsupportedAttributes.Enabled {
+		ecs.TranslateMetricDataPointAttributes(attributes)
+		projectMetricFrameworkAttributes(attributes, scopeAttrs, cfg)
+	}
+}
+
+func projectMetricFrameworkAttributes(attributes pcommon.Map, scopeAttrs pcommon.Map, cfg config.Config) {
+	if !cfg.Scope.ServiceFrameworkName.Enabled {
+		return
+	}
+	if value, ok := scopeAttrs.Get(elasticattr.ServiceFrameworkName); ok {
+		attribute.PutStr(attributes, elasticattr.ServiceFrameworkName, value.Str())
+	}
+	if value, ok := scopeAttrs.Get(elasticattr.ServiceFrameworkVersion); ok {
+		attribute.PutStr(attributes, elasticattr.ServiceFrameworkVersion, value.Str())
+	}
 }
 
 // isAggregatedMetricDataPointAttributes preserves aggregated-metric identity and

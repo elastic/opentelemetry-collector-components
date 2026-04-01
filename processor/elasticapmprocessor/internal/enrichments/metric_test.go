@@ -144,6 +144,8 @@ func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
 	metrics := pmetric.NewMetrics()
 	resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
 	scopeMetrics := resourceMetrics.ScopeMetrics().AppendEmpty()
+	scopeMetrics.Scope().SetName("metrics-instrumentation")
+	scopeMetrics.Scope().SetVersion("1.0.0")
 	metric := scopeMetrics.Metrics().AppendEmpty()
 	metric.SetName("test.metric")
 	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
@@ -191,6 +193,12 @@ func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
 	value, ok = actualAttrs.Get("user.name")
 	require.True(t, ok)
 	assert.Equal(t, "appuser", value.Str())
+	value, ok = actualAttrs.Get(elasticattr.ServiceFrameworkName)
+	require.True(t, ok)
+	assert.Equal(t, "metrics-instrumentation", value.Str())
+	value, ok = actualAttrs.Get(elasticattr.ServiceFrameworkVersion)
+	require.True(t, ok)
+	assert.Equal(t, "1.0.0", value.Str())
 	_, ok = actualAttrs.Get("host")
 	assert.False(t, ok)
 	_, ok = actualAttrs.Get("state")
@@ -253,7 +261,12 @@ func TestEnrichMetricDataPoints_SkipsAggregatedMetricAttributes(t *testing.T) {
 	attrs.PutStr("host", "server-01")
 	attrs.PutStr("state", "used")
 
-	EnrichMetricDataPoints(metric, cfg)
+	scope := pcommon.NewInstrumentationScope()
+	scope.SetName("github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector")
+	scope.SetVersion("1.0.0")
+	scopeAttrs := scope.Attributes()
+
+	EnrichMetricDataPoints(metric, scopeAttrs, cfg)
 
 	actualAttrs := metric.Gauge().DataPoints().At(0).Attributes()
 	value, ok := actualAttrs.Get("host")
@@ -265,6 +278,10 @@ func TestEnrichMetricDataPoints_SkipsAggregatedMetricAttributes(t *testing.T) {
 	_, ok = actualAttrs.Get("labels.host")
 	assert.False(t, ok)
 	_, ok = actualAttrs.Get("labels.state")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get(elasticattr.ServiceFrameworkName)
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get(elasticattr.ServiceFrameworkVersion)
 	assert.False(t, ok)
 }
 
@@ -281,13 +298,20 @@ func TestEnrichMetricDataPoints_SkipsMetricsWithMappingHints(t *testing.T) {
 	hints.AppendEmpty().SetStr("_doc_count")
 	attrs.PutStr("host", "server-01")
 
-	EnrichMetricDataPoints(metric, cfg)
+	scope := pcommon.NewInstrumentationScope()
+	scope.SetName("github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector")
+	scope.SetVersion("1.0.0")
+	scopeAttrs := scope.Attributes()
+
+	EnrichMetricDataPoints(metric, scopeAttrs, cfg)
 
 	actualAttrs := metric.Gauge().DataPoints().At(0).Attributes()
 	value, ok := actualAttrs.Get("host")
 	require.True(t, ok)
 	assert.Equal(t, "server-01", value.Str())
 	_, ok = actualAttrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get(elasticattr.ServiceFrameworkName)
 	assert.False(t, ok)
 }
 
@@ -298,11 +322,18 @@ func TestEnrichMetricDataPointAttributes_NoOpWhenDisabled(t *testing.T) {
 	attrs := pcommon.NewMap()
 	attrs.PutStr("host", "server-01")
 
-	enrichMetricDataPointAttributes(attrs, cfg)
+	scope := pcommon.NewInstrumentationScope()
+	scope.SetName("metrics-instrumentation")
+	scope.SetVersion("1.0.0")
+	scopeAttrs := scope.Attributes()
+
+	enrichMetricDataPointAttributes(attrs, scopeAttrs, cfg)
 
 	value, ok := attrs.Get("host")
 	require.True(t, ok)
 	assert.Equal(t, "server-01", value.Str())
 	_, ok = attrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = attrs.Get(elasticattr.ServiceFrameworkName)
 	assert.False(t, ok)
 }
