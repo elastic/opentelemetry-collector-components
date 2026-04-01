@@ -57,9 +57,9 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "azure diagnostic settings (json + unwrap)",
 			config: Config{
-				Format:      FormatJSON,
-				Unwrap:  []string{"records"},
-					DataStream:     DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
+				Format:     FormatJSON,
+				Unwrap:     []string{"records"},
+				DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 			inputFile:  "azure_diagnostic_settings.json",
 			goldenFile: "azure_diagnostic_settings_expected.yaml",
@@ -68,9 +68,9 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "aws cloudtrail (json + unwrap)",
 			config: Config{
-				Format:      FormatJSON,
-				Unwrap:  []string{"Records"},
-					DataStream:     DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
+				Format:     FormatJSON,
+				Unwrap:     []string{"Records"},
+				DataStream: DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
 			},
 			inputFile:  "aws_cloudtrail.json",
 			goldenFile: "aws_cloudtrail_expected.yaml",
@@ -79,8 +79,8 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "aws vpc flow logs (text)",
 			config: Config{
-				Format:      FormatText,
-					DataStream:     DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
+				Format:     FormatText,
+				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
 			},
 			inputFile:  "aws_vpcflow.txt",
 			goldenFile: "aws_vpcflow_expected.yaml",
@@ -89,8 +89,8 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "aws elb access logs (text)",
 			config: Config{
-				Format:      FormatText,
-					DataStream:     DataStreamConfig{Dataset: "aws.elb_logs", Namespace: "default"},
+				Format:     FormatText,
+				DataStream: DataStreamConfig{Dataset: "aws.elb_logs", Namespace: "default"},
 			},
 			inputFile:  "aws_elb.txt",
 			goldenFile: "aws_elb_expected.yaml",
@@ -99,8 +99,8 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "json without unwrap (single record)",
 			config: Config{
-				Format:      FormatJSON,
-					DataStream:     DataStreamConfig{Dataset: "generic", Namespace: "default"},
+				Format:     FormatJSON,
+				DataStream: DataStreamConfig{Dataset: "generic", Namespace: "default"},
 			},
 			inputFile:  "json_single.json",
 			goldenFile: "json_single_expected.yaml",
@@ -109,8 +109,8 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "json nested path unwrap",
 			config: Config{
-				Format:    FormatJSON,
-				Unwrap: []string{"data", "items"},
+				Format:     FormatJSON,
+				Unwrap:     []string{"data", "items"},
 				DataStream: DataStreamConfig{Dataset: "custom.nested", Namespace: "default"},
 			},
 			inputFile:  "json_nested.json",
@@ -118,7 +118,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			wantLogs:   3,
 		},
 		{
-			name:   "fields",
+			name: "fields",
 			config: Config{
 				Format:     FormatText,
 				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
@@ -131,10 +131,10 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "input_type and tags",
 			config: Config{
-				Format:    FormatText,
+				Format:     FormatText,
 				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
-				InputType: "aws-s3",
-				Tags:      []string{"forwarded", "aws-vpcflow"},
+				InputType:  "aws-s3",
+				Tags:       []string{"forwarded", "aws-vpcflow"},
 			},
 			inputFile:  "aws_vpcflow.txt",
 			goldenFile: "aws_vpcflow_input_type_tags_expected.yaml",
@@ -202,7 +202,7 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	})
 
@@ -217,7 +217,7 @@ func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 		InputType:  "azure-eventhub",
 		Tags:       []string{"forwarded", "azure-events"},
@@ -287,7 +287,7 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	})
 
@@ -321,7 +321,7 @@ func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 func TestNewLogsDecoder_JSONResumption(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 	})
 
@@ -394,7 +394,7 @@ func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
 func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 		Fields: map[string]any{
 			"environment": "production",
