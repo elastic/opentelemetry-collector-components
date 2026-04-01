@@ -45,19 +45,163 @@ var (
 )
 
 type beatsEncodingExtension struct {
-	config *Config
-	logger *zap.Logger
+	config      *Config
+	logger      *zap.Logger
+	fieldWriter func(pcommon.Map)
 }
 
 func newBeatsEncodingExtension(config *Config, logger *zap.Logger) (*beatsEncodingExtension, error) {
-	return &beatsEncodingExtension{config: config, logger: logger}, nil
+	return &beatsEncodingExtension{
+		config:      config,
+		logger:      logger,
+		fieldWriter: compileMapWriter(logger, config.Fields),
+	}, nil
 }
 
-func (e *beatsEncodingExtension) Start(context.Context, component.Host) error {
+// compileMapWriter converts static config fields into a reusable map writer.
+// This shifts type-switch and recursion work to startup so per-record writes
+// in appendLogRecord stay cheaper on hot paths.
+func compileMapWriter(logger *zap.Logger, fields map[string]any) func(pcommon.Map) {
+	if len(fields) == 0 {
+		return nil
+	}
+
+	writers := make([]func(pcommon.Map), 0, len(fields))
+	for k, v := range fields {
+		switch val := v.(type) {
+		case string:
+			key := k
+			value := val
+			writers = append(writers, func(m pcommon.Map) {
+				m.PutStr(key, value)
+			})
+		case bool:
+			key := k
+			value := val
+			writers = append(writers, func(m pcommon.Map) {
+				m.PutBool(key, value)
+			})
+		case int:
+			key := k
+			value := int64(val)
+			writers = append(writers, func(m pcommon.Map) {
+				m.PutInt(key, value)
+			})
+		case int64:
+			key := k
+			value := val
+			writers = append(writers, func(m pcommon.Map) {
+				m.PutInt(key, value)
+			})
+		case float64:
+			key := k
+			value := val
+			writers = append(writers, func(m pcommon.Map) {
+				m.PutDouble(key, value)
+			})
+		case map[string]any:
+			key := k
+			nestedLen := len(val)
+			nestedWriter := compileMapWriter(logger, val)
+			writers = append(writers, func(m pcommon.Map) {
+				nested := m.PutEmptyMap(key)
+				nested.EnsureCapacity(nestedLen)
+				if nestedWriter != nil {
+					nestedWriter(nested)
+				}
+			})
+		case []any:
+			key := k
+			sliceWriter := compileSliceWriter(logger, key, val)
+			writers = append(writers, func(m pcommon.Map) {
+				sl := m.PutEmptySlice(key)
+				if sliceWriter != nil {
+					sliceWriter(sl)
+				}
+			})
+		default:
+			key := k
+			value := val
+			writers = append(writers, func(pcommon.Map) {
+				logger.Warn("unsupported field type, skipping", zap.String("key", key), zap.Any("value", value))
+			})
+		}
+	}
+
+	return func(m pcommon.Map) {
+		for _, writer := range writers {
+			writer(m)
+		}
+	}
+}
+
+// compileSliceWriter converts static slice values into reusable appenders.
+// This avoids repeating per-element type checks for every log record and keeps
+// field enrichment overhead lower in steady-state decoding.
+func compileSliceWriter(logger *zap.Logger, key string, values []any) func(pcommon.Slice) {
+	if len(values) == 0 {
+		return nil
+	}
+
+	appenders := make([]func(pcommon.Slice), 0, len(values))
+	for _, item := range values {
+		switch elem := item.(type) {
+		case string:
+			value := elem
+			appenders = append(appenders, func(sl pcommon.Slice) {
+				sl.AppendEmpty().SetStr(value)
+			})
+		case bool:
+			value := elem
+			appenders = append(appenders, func(sl pcommon.Slice) {
+				sl.AppendEmpty().SetBool(value)
+			})
+		case int:
+			value := int64(elem)
+			appenders = append(appenders, func(sl pcommon.Slice) {
+				sl.AppendEmpty().SetInt(value)
+			})
+		case int64:
+			value := elem
+			appenders = append(appenders, func(sl pcommon.Slice) {
+				sl.AppendEmpty().SetInt(value)
+			})
+		case float64:
+			value := elem
+			appenders = append(appenders, func(sl pcommon.Slice) {
+				sl.AppendEmpty().SetDouble(value)
+			})
+		case map[string]any:
+			nestedLen := len(elem)
+			nestedWriter := compileMapWriter(logger, elem)
+			appenders = append(appenders, func(sl pcommon.Slice) {
+				nested := sl.AppendEmpty().SetEmptyMap()
+				nested.EnsureCapacity(nestedLen)
+				if nestedWriter != nil {
+					nestedWriter(nested)
+				}
+			})
+		default:
+			value := elem
+			appenders = append(appenders, func(pcommon.Slice) {
+				logger.Warn("unsupported field type in slice, skipping", zap.String("key", key), zap.Any("value", value))
+			})
+		}
+	}
+
+	return func(sl pcommon.Slice) {
+		sl.EnsureCapacity(len(appenders))
+		for _, appender := range appenders {
+			appender(sl)
+		}
+	}
+}
+
+func (*beatsEncodingExtension) Start(context.Context, component.Host) error {
 	return nil
 }
 
-func (e *beatsEncodingExtension) Shutdown(context.Context) error {
+func (*beatsEncodingExtension) Shutdown(context.Context) error {
 	return nil
 }
 
@@ -65,19 +209,85 @@ func (e *beatsEncodingExtension) Shutdown(context.Context) error {
 // the streaming decoder with flushing disabled, so all records are returned
 // in a single batch.
 func (e *beatsEncodingExtension) UnmarshalLogs(buf []byte) (plog.Logs, error) {
-	decoder, err := e.NewLogsDecoder(
-		bytes.NewReader(buf),
-		encoding.WithFlushBytes(0),
-		encoding.WithFlushItems(0),
-	)
+	switch e.config.Format {
+	case FormatText:
+		return e.unmarshalText(buf)
+	case FormatJSON:
+		return e.unmarshalJSON(buf)
+	default:
+		return plog.NewLogs(), fmt.Errorf("unsupported format: %q", e.config.Format)
+	}
+}
+
+func (e *beatsEncodingExtension) unmarshalText(buf []byte) (plog.Logs, error) {
+	scanner, err := xstreamencoding.NewScannerHelper(bytes.NewReader(buf))
 	if err != nil {
 		return plog.NewLogs(), err
 	}
-	logs, err := decoder.DecodeLogs()
-	if errors.Is(err, io.EOF) {
+
+	logs := plog.NewLogs()
+	sl := newScopeLogs(logs)
+	now := pcommon.NewTimestampFromTime(time.Now())
+	eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
+
+	for {
+		line, _, err := scanner.ScanString()
+		if line != "" {
+			e.appendLogRecord(sl, now, eventCreated, line)
+		}
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return logs, err
+		}
+	}
+
+	return logs, nil
+}
+
+func (e *beatsEncodingExtension) unmarshalJSON(buf []byte) (plog.Logs, error) {
+	if len(e.config.Unwrap) == 0 {
+		trimmed := bytes.TrimSpace(buf)
+		if len(trimmed) == 0 {
+			return plog.NewLogs(), nil
+		}
+
+		logs := plog.NewLogs()
+		sl := newScopeLogs(logs)
+		now := pcommon.NewTimestampFromTime(time.Now())
+		e.appendLogRecord(sl, now, now.AsTime().UTC().Format(time.RFC3339Nano), string(trimmed))
+		return logs, nil
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(buf))
+	if err := navigateToArray(dec, e.config.Unwrap); err != nil {
+		return plog.NewLogs(), fmt.Errorf("navigating to unwrap %v: %w", e.config.Unwrap, err)
+	}
+
+	logs := plog.NewLogs()
+	sl := newScopeLogs(logs)
+	now := pcommon.NewTimestampFromTime(time.Now())
+	eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
+
+	for dec.More() {
+		var raw json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
+			return logs, fmt.Errorf("decoding array element: %w", err)
+		}
+
+		trimmed := bytes.TrimSpace(raw)
+		if len(trimmed) == 0 {
+			continue
+		}
+
+		e.appendLogRecord(sl, now, eventCreated, string(trimmed))
+	}
+
+	if logs.LogRecordCount() == 0 {
 		return plog.NewLogs(), nil
 	}
-	return logs, err
+	return logs, nil
 }
 
 // NewLogsDecoder creates a streaming decoder for the configured format.
@@ -347,9 +557,12 @@ func writeFields(logger *zap.Logger, m pcommon.Map, fields map[string]any) {
 		case float64:
 			m.PutDouble(k, val)
 		case map[string]any:
-			writeFields(logger, m.PutEmptyMap(k), val)
+			nested := m.PutEmptyMap(k)
+			nested.EnsureCapacity(len(val))
+			writeFields(logger, nested, val)
 		case []any:
 			sl := m.PutEmptySlice(k)
+			sl.EnsureCapacity(len(val))
 			for _, item := range val {
 				switch elem := item.(type) {
 				case string:
@@ -382,7 +595,7 @@ func newScopeLogs(logs plog.Logs) plog.ScopeLogs {
 	return sl
 }
 
-func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated string, record string) {
+func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated, record string) {
 	lr := sl.LogRecords().AppendEmpty()
 	lr.SetTimestamp(ts)
 	lr.SetObservedTimestamp(ts)
@@ -411,12 +624,15 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 		}
 	}
 
-	writeFields(e.logger, body, e.config.Fields)
+	if e.fieldWriter != nil {
+		e.fieldWriter(body)
+	}
 
 	// We need to set these attributes on the record itself for the
 	// Elasticsearch exporter to route the record to the correct
 	// data stream.
 	attrs := lr.Attributes()
+	attrs.EnsureCapacity(3)
 	attrs.PutStr("data_stream.type", "logs")
 	attrs.PutStr("data_stream.dataset", e.config.DataStream.Dataset)
 	attrs.PutStr("data_stream.namespace", e.config.DataStream.Namespace)

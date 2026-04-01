@@ -29,6 +29,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/zap"
 )
@@ -57,9 +58,9 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "azure diagnostic settings (json + unwrap)",
 			config: Config{
-				Format:      FormatJSON,
-				Unwrap:  []string{"records"},
-					DataStream:     DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
+				Format:     FormatJSON,
+				Unwrap:     []string{"records"},
+				DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 			},
 			inputFile:  "azure_diagnostic_settings.json",
 			goldenFile: "azure_diagnostic_settings_expected.yaml",
@@ -68,9 +69,9 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "aws cloudtrail (json + unwrap)",
 			config: Config{
-				Format:      FormatJSON,
-				Unwrap:  []string{"Records"},
-					DataStream:     DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
+				Format:     FormatJSON,
+				Unwrap:     []string{"Records"},
+				DataStream: DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
 			},
 			inputFile:  "aws_cloudtrail.json",
 			goldenFile: "aws_cloudtrail_expected.yaml",
@@ -79,8 +80,8 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "aws vpc flow logs (text)",
 			config: Config{
-				Format:      FormatText,
-					DataStream:     DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
+				Format:     FormatText,
+				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
 			},
 			inputFile:  "aws_vpcflow.txt",
 			goldenFile: "aws_vpcflow_expected.yaml",
@@ -89,8 +90,8 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "aws elb access logs (text)",
 			config: Config{
-				Format:      FormatText,
-					DataStream:     DataStreamConfig{Dataset: "aws.elb_logs", Namespace: "default"},
+				Format:     FormatText,
+				DataStream: DataStreamConfig{Dataset: "aws.elb_logs", Namespace: "default"},
 			},
 			inputFile:  "aws_elb.txt",
 			goldenFile: "aws_elb_expected.yaml",
@@ -99,8 +100,8 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "json without unwrap (single record)",
 			config: Config{
-				Format:      FormatJSON,
-					DataStream:     DataStreamConfig{Dataset: "generic", Namespace: "default"},
+				Format:     FormatJSON,
+				DataStream: DataStreamConfig{Dataset: "generic", Namespace: "default"},
 			},
 			inputFile:  "json_single.json",
 			goldenFile: "json_single_expected.yaml",
@@ -109,8 +110,8 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "json nested path unwrap",
 			config: Config{
-				Format:    FormatJSON,
-				Unwrap: []string{"data", "items"},
+				Format:     FormatJSON,
+				Unwrap:     []string{"data", "items"},
 				DataStream: DataStreamConfig{Dataset: "custom.nested", Namespace: "default"},
 			},
 			inputFile:  "json_nested.json",
@@ -118,7 +119,7 @@ func TestUnmarshalLogs(t *testing.T) {
 			wantLogs:   3,
 		},
 		{
-			name:   "fields",
+			name: "fields",
 			config: Config{
 				Format:     FormatText,
 				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
@@ -131,10 +132,10 @@ func TestUnmarshalLogs(t *testing.T) {
 		{
 			name: "input_type and tags",
 			config: Config{
-				Format:    FormatText,
+				Format:     FormatText,
 				DataStream: DataStreamConfig{Dataset: "aws.vpcflow", Namespace: "default"},
-				InputType: "aws-s3",
-				Tags:      []string{"forwarded", "aws-vpcflow"},
+				InputType:  "aws-s3",
+				Tags:       []string{"forwarded", "aws-vpcflow"},
 			},
 			inputFile:  "aws_vpcflow.txt",
 			goldenFile: "aws_vpcflow_input_type_tags_expected.yaml",
@@ -202,7 +203,7 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	})
 
@@ -217,7 +218,7 @@ func TestUnmarshalLogs_UnwrapFieldMissing(t *testing.T) {
 func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 		InputType:  "azure-eventhub",
 		Tags:       []string{"forwarded", "azure-events"},
@@ -287,7 +288,7 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "test", Namespace: "default"},
 	})
 
@@ -321,7 +322,7 @@ func TestNewLogsDecoder_StreamingBatches(t *testing.T) {
 func TestNewLogsDecoder_JSONResumption(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 	})
 
@@ -394,7 +395,7 @@ func TestNewLogsDecoder_TextStreamingBatches(t *testing.T) {
 func TestUnmarshalLogs_FieldsStructural(t *testing.T) {
 	ext := newTestExtension(t, &Config{
 		Format:     FormatJSON,
-		Unwrap: []string{"records"},
+		Unwrap:     []string{"records"},
 		DataStream: DataStreamConfig{Dataset: "azure.events", Namespace: "default"},
 		Fields: map[string]any{
 			"environment": "production",
@@ -457,6 +458,115 @@ func TestNewLogsDecoder_SingleRecordResumption(t *testing.T) {
 
 	_, err = decoder2.DecodeLogs()
 	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestCompileMapWriter(t *testing.T) {
+	cases := []struct {
+		name              string
+		fields            map[string]any
+		expectedWriterNil bool
+		expectedRaw       map[string]any
+	}{
+		{
+			name:              "empty fields returns nil writer",
+			fields:            map[string]any{},
+			expectedWriterNil: true,
+			expectedRaw:       map[string]any{},
+		},
+		{
+			name: "supported scalar nested and slice fields",
+			fields: map[string]any{
+				"environment": "production",
+				"enabled":     true,
+				"retries":     3,
+				"latency":     float64(1.5),
+				"nested":      map[string]any{"region": "us-east-1", "zone": "a"},
+				"tags":        []any{"forwarded", int64(7), map[string]any{"name": "security"}},
+			},
+			expectedWriterNil: false,
+			expectedRaw: map[string]any{
+				"environment": "production",
+				"enabled":     true,
+				"retries":     int64(3),
+				"latency":     float64(1.5),
+				"nested":      map[string]any{"region": "us-east-1", "zone": "a"},
+				"tags":        []any{"forwarded", int64(7), map[string]any{"name": "security"}},
+			},
+		},
+		{
+			name: "unsupported values are skipped",
+			fields: map[string]any{
+				"ok":      "value",
+				"bad":     struct{ Name string }{Name: "x"},
+				"badList": []any{"kept", struct{ ID int }{ID: 1}},
+			},
+			expectedWriterNil: false,
+			expectedRaw: map[string]any{
+				"ok":      "value",
+				"badList": []any{"kept"},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			writer := compileMapWriter(zap.NewNop(), tc.fields)
+			m := pcommon.NewMap()
+
+			if tc.expectedWriterNil {
+				require.Nil(t, writer)
+			} else {
+				require.NotNil(t, writer)
+				writer(m)
+			}
+
+			require.Equal(t, tc.expectedRaw, m.AsRaw())
+		})
+	}
+}
+
+func TestCompileSliceWriter(t *testing.T) {
+	cases := []struct {
+		name              string
+		values            []any
+		expectedWriterNil bool
+		expectedRaw       []any
+	}{
+		{
+			name:              "empty values returns nil writer",
+			values:            []any{},
+			expectedWriterNil: true,
+			expectedRaw:       []any{},
+		},
+		{
+			name:              "supported values and nested map",
+			values:            []any{"a", true, int(3), int64(4), float64(2.5), map[string]any{"k": "v"}},
+			expectedWriterNil: false,
+			expectedRaw:       []any{"a", true, int64(3), int64(4), float64(2.5), map[string]any{"k": "v"}},
+		},
+		{
+			name:              "unsupported values are skipped",
+			values:            []any{"kept", struct{ X int }{X: 1}},
+			expectedWriterNil: false,
+			expectedRaw:       []any{"kept"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			writer := compileSliceWriter(zap.NewNop(), "test", tc.values)
+			sl := pcommon.NewSlice()
+
+			if tc.expectedWriterNil {
+				require.Nil(t, writer)
+			} else {
+				require.NotNil(t, writer)
+				writer(sl)
+			}
+
+			require.Equal(t, tc.expectedRaw, sl.AsRaw())
+		})
+	}
 }
 
 // stripEventCreated removes the "event.created" key from all log record
