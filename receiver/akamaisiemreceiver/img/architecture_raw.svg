@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="340" fill="#f8fafc" rx="6"/>
+  <text x="450" y="24" text-anchor="middle" fill="#1e293b" font-size="15" font-weight="700">Raw Mode — output_format: raw (default)</text>
+
+  <!-- SIEM API -->
+  <rect x="20" y="75" width="110" height="65" rx="8" fill="#1e3a5f"/>
+  <text x="75" y="103" text-anchor="middle" fill="white" font-weight="700" font-size="11">SIEM API</text>
+  <text x="75" y="119" text-anchor="middle" fill="#94b8d6" font-size="8">NDJSON stream</text>
+
+  <!-- Arrow: API → Receiver -->
+  <line x1="130" y1="107" x2="168" y2="107" stroke="#2563eb" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Receiver -->
+  <rect x="170" y="60" width="200" height="95" rx="8" fill="#0f172a" stroke="#059669" stroke-width="2"/>
+  <text x="270" y="82" text-anchor="middle" fill="#38bdf8" font-weight="700" font-size="11">akamai_siem / output_format: raw</text>
+  <text x="270" y="100" text-anchor="middle" fill="#a7f3d0" font-size="10">Raw JSON → Body (no parsing)</text>
+  <text x="270" y="116" text-anchor="middle" fill="#a7f3d0" font-size="9">logs_index set in ES exporter</text>
+  <text x="270" y="132" text-anchor="middle" fill="#a7f3d0" font-size="8">x-elastic-mapping-mode: ecs (auto)</text>
+  <text x="270" y="148" text-anchor="middle" fill="#64748b" font-size="8">~0.009ms/event | 1.4 KB/event</text>
+
+  <!-- Arrow: Receiver → Batch -->
+  <line x1="370" y1="107" x2="408" y2="107" stroke="#059669" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Batch Processor -->
+  <rect x="410" y="82" width="90" height="50" rx="6" fill="#8b5cf6"/>
+  <text x="455" y="105" text-anchor="middle" fill="white" font-weight="700" font-size="11">Batch</text>
+  <text x="455" y="119" text-anchor="middle" fill="#ddd6fe" font-size="9">Processor</text>
+
+  <!-- Arrow: Batch → ES Exporter -->
+  <line x1="500" y1="107" x2="538" y2="107" stroke="#8b5cf6" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- ES Exporter -->
+  <rect x="540" y="82" width="90" height="50" rx="6" fill="#dc2626"/>
+  <text x="585" y="102" text-anchor="middle" fill="white" font-weight="700" font-size="10">ES Exporter</text>
+  <text x="585" y="116" text-anchor="middle" fill="#fecaca" font-size="8">Body → "message"</text>
+  <text x="585" y="128" text-anchor="middle" fill="#fecaca" font-size="7">auto ECS mode</text>
+
+  <!-- Arrow: ES Exporter → Elasticsearch -->
+  <line x1="630" y1="107" x2="668" y2="107" stroke="#dc2626" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Elasticsearch -->
+  <rect x="670" y="55" width="200" height="105" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
+  <text x="770" y="77" text-anchor="middle" fill="#92400e" font-weight="700" font-size="11">Elasticsearch</text>
+  <text x="770" y="95" text-anchor="middle" fill="#92400e" font-size="9">Index: logs-akamai.siem-*</text>
+  <text x="770" y="111" text-anchor="middle" fill="#92400e" font-size="9">Ingest pipeline: JSON parse</text>
+  <text x="770" y="127" text-anchor="middle" fill="#92400e" font-size="9">→ ECS mapping → GeoIP</text>
+  <text x="770" y="143" text-anchor="middle" fill="#92400e" font-size="9">→ Kibana dashboard ready</text>
+
+  <!-- Best For -->
+  <rect x="20" y="190" width="420" height="130" rx="8" fill="#f0fdf4" stroke="#059669" stroke-width="1"/>
+  <text x="230" y="212" text-anchor="middle" fill="#059669" font-weight="700" font-size="12">Best For</text>
+  <text x="30" y="232" fill="#166534" font-size="10">Elasticsearch + Kibana deployments</text>
+  <text x="30" y="248" fill="#166534" font-size="10">Fastest mode: ~0.009ms CPU, 1.4 KB per event</text>
+  <text x="30" y="264" fill="#166534" font-size="10">Lowest memory footprint: ~105 MB RSS</text>
+  <text x="30" y="280" fill="#166534" font-size="10">Zero parsing — raw JSON passthrough to ingest pipeline</text>
+  <text x="30" y="296" fill="#166534" font-size="10">ES exporter auto-detects ECS mode via context metadata</text>
+  <text x="30" y="312" fill="#166534" font-size="10">Pre-built Kibana dashboards work out of the box</text>
+
+  <!-- Trade-offs -->
+  <rect x="460" y="190" width="420" height="130" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1"/>
+  <text x="670" y="212" text-anchor="middle" fill="#d97706" font-weight="700" font-size="12">Trade-offs</text>
+  <text x="470" y="232" fill="#92400e" font-size="10">Backend must support ingest pipeline processing</text>
+  <text x="470" y="248" fill="#92400e" font-size="10">Akamai integration assets must be installed</text>
+  <text x="470" y="264" fill="#92400e" font-size="10">Non-pipeline backends receive raw JSON body</text>
+  <text x="470" y="280" fill="#92400e" font-size="10">Events not queryable by OTel Collector processors</text>
+</svg>

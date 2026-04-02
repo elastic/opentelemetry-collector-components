@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="340" fill="#f8fafc" rx="6"/>
+  <text x="450" y="24" text-anchor="middle" fill="#1e293b" font-size="15" font-weight="700">OTel Mode — output_format: otel</text>
+
+  <!-- SIEM API -->
+  <rect x="20" y="75" width="110" height="65" rx="8" fill="#1e3a5f"/>
+  <text x="75" y="103" text-anchor="middle" fill="white" font-weight="700" font-size="11">SIEM API</text>
+  <text x="75" y="119" text-anchor="middle" fill="#94b8d6" font-size="8">NDJSON stream</text>
+
+  <!-- Arrow: API → Receiver -->
+  <line x1="130" y1="107" x2="168" y2="107" stroke="#2563eb" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Receiver -->
+  <rect x="170" y="55" width="210" height="105" rx="8" fill="#0f172a" stroke="#0284c7" stroke-width="2"/>
+  <text x="275" y="77" text-anchor="middle" fill="#38bdf8" font-weight="700" font-size="11">akamai_siem / output_format: otel</text>
+  <text x="275" y="95" text-anchor="middle" fill="#bae6fd" font-size="10">JSON parse → 30+ OTel attrs</text>
+  <text x="275" y="111" text-anchor="middle" fill="#bae6fd" font-size="9">http.request.method, source.address</text>
+  <text x="275" y="127" text-anchor="middle" fill="#bae6fd" font-size="9">url.full, network.protocol.name ...</text>
+  <text x="275" y="143" text-anchor="middle" fill="#64748b" font-size="8">~0.036ms/event | 15.6 KB/event</text>
+  <text x="275" y="155" text-anchor="middle" fill="#64748b" font-size="7">no x-elastic-mapping-mode set</text>
+
+  <!-- Arrow: Receiver → Batch -->
+  <line x1="380" y1="107" x2="418" y2="107" stroke="#0284c7" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Batch Processor -->
+  <rect x="420" y="82" width="90" height="50" rx="6" fill="#8b5cf6"/>
+  <text x="465" y="105" text-anchor="middle" fill="white" font-weight="700" font-size="11">Batch</text>
+  <text x="465" y="119" text-anchor="middle" fill="#ddd6fe" font-size="9">Processor</text>
+
+  <!-- Arrow: Batch → Exporter -->
+  <line x1="510" y1="107" x2="548" y2="107" stroke="#8b5cf6" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- OTLP Exporter -->
+  <rect x="550" y="82" width="90" height="50" rx="6" fill="#0284c7"/>
+  <text x="595" y="105" text-anchor="middle" fill="white" font-weight="700" font-size="11">OTLP/HTTP</text>
+  <text x="595" y="119" text-anchor="middle" fill="#bae6fd" font-size="9">Exporter</text>
+
+  <!-- Arrow: Exporter → Backend -->
+  <line x1="640" y1="107" x2="678" y2="107" stroke="#0284c7" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Any OTel Backend -->
+  <rect x="680" y="70" width="190" height="75" rx="8" fill="#0c4a6e" stroke="#0284c7" stroke-width="2"/>
+  <text x="775" y="95" text-anchor="middle" fill="white" font-weight="700" font-size="12">Any OTel Backend</text>
+  <text x="775" y="113" text-anchor="middle" fill="#7dd3fc" font-size="9">Structured OTel attributes</text>
+  <text x="775" y="129" text-anchor="middle" fill="#7dd3fc" font-size="9">queryable without custom parsing</text>
+
+  <!-- Best For -->
+  <rect x="20" y="190" width="420" height="130" rx="8" fill="#f0f9ff" stroke="#0284c7" stroke-width="1"/>
+  <text x="230" y="212" text-anchor="middle" fill="#0284c7" font-weight="700" font-size="12">Best For</text>
+  <text x="30" y="232" fill="#0c4a6e" font-size="10">Any OTel-compatible backend (vendor-neutral)</text>
+  <text x="30" y="248" fill="#0c4a6e" font-size="10">Structured attributes — query fields directly</text>
+  <text x="30" y="264" fill="#0c4a6e" font-size="10">OTel Collector processors can filter/route on attrs</text>
+  <text x="30" y="280" fill="#0c4a6e" font-size="10">No ingest pipeline dependency</text>
+  <text x="30" y="296" fill="#0c4a6e" font-size="10">OTel semantic conventions for interoperability</text>
+
+  <!-- Trade-offs -->
+  <rect x="460" y="190" width="420" height="130" rx="8" fill="#fffbeb" stroke="#d97706" stroke-width="1"/>
+  <text x="670" y="212" text-anchor="middle" fill="#d97706" font-weight="700" font-size="12">Trade-offs</text>
+  <text x="470" y="232" fill="#92400e" font-size="10">4x more CPU per event (JSON parse + attr mapping)</text>
+  <text x="470" y="248" fill="#92400e" font-size="10">11x more memory allocation per event (15.6 KB)</text>
+  <text x="470" y="264" fill="#92400e" font-size="10">RSS +7-30 MB vs raw mode (depends on batch size)</text>
+  <text x="470" y="280" fill="#92400e" font-size="10">Kibana Akamai dashboards require raw mode + ingest pipeline</text>
+  <text x="470" y="296" fill="#92400e" font-size="10">Mapping errors skip events (body not preserved)</text>
+</svg>
