@@ -2107,12 +2107,13 @@ resourceSpans:
               - key: span.representative_count
                 value:
                   doubleValue: 1
-            endTimeUnixNano: "1532976822422581000"
+            endTimeUnixNano: "1532976822281000000"
             name: Rabbitmq receive
             parentSpanId: abcdef0123456789
             startTimeUnixNano: "1532976822281000000"
             status: {}
             traceId: fdedef0123456789abcdef9876543210
+            traceState: ot=th:e6666666666668
   - resource:
       attributes:
         - key: service.name
@@ -2290,7 +2291,7 @@ resourceSpans:
               - key: span.representative_count
                 value:
                   doubleValue: 1
-            endTimeUnixNano: "1625572686060463200"
+            endTimeUnixNano: "1625572686041570100"
             name: SELECT FROM p_details
             parentSpanId: abcdef0123456789
             spanId: abcdef0123456700
@@ -2298,3 +2299,4 @@ resourceSpans:
             status:
               code: 1
             traceId: edcbaf0123456789abcdef9876543210
+            traceState: ot=th:e6666666666668
