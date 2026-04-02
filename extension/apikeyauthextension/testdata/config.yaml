@@ -111,6 +111,12 @@ apikeyauth/client_retry_disabled:
     enabled: false
     retry_delay: 3s
 
+apikeyauth/custom_timeout:
+  timeout: 7s
+
+apikeyauth/deprecated_has_privileges_timeout:
+  has_privileges_timeout: 7s
+
 apikeyauth/invalid_client_retry_delay:
   client_retry:
     enabled: true

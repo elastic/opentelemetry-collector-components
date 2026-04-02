@@ -46,7 +46,7 @@ jobs:
     steps:
       - name: Get token to checkout on the repository and to create a PR
         id: get_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.OBS_AUTOMATION_APP_ID }}
           private-key: ${{ secrets.OBS_AUTOMATION_APP_PEM }}
@@ -57,7 +57,7 @@ jobs:
         with:
           token: ${{ steps.get_token.outputs.token }}
 
-      - uses: elastic/oblt-actions/git/setup@55166bdfaa06a86350bd4516af37ceae1d45b757
+      - uses: elastic/oblt-actions/git/setup@1ca176af5fc993b401180b66004de5b3b82d928d
         with:
           github-token: ${{ steps.get_token.outputs.token }}
 

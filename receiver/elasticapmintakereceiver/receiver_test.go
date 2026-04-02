@@ -676,7 +676,6 @@ func TestMetadataPropagation(t *testing.T) {
 	}
 }
 
-
 func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 	cases := []struct {
 		name                 string

@@ -360,7 +360,6 @@ func (r *router[C]) updateDecisions() {
 	}
 }
 
-
 func formatCardinalityBucket(prevMax float64, max float64) string {
 	return formatCardinality(prevMax) + "_" + formatCardinality(max)
 }

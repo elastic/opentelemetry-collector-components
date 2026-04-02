@@ -1,0 +1,99 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: aws.vpcflow
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: 2 123456789012 eni-1235b8ca123456789 172.31.16.139 172.31.16.21 20641 22 6 20 4249 1418530010 1418530070 ACCEPT OK
+                  - key: event.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+            observedTimeUnixNano: "1773919567375465000"
+            timeUnixNano: "1773919567375465000"
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: aws.vpcflow
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: 2 123456789012 eni-1235b8ca123456789 172.31.9.69 172.31.9.12 49761 3389 6 20 4249 1418530010 1418530070 REJECT OK
+                  - key: event.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+            observedTimeUnixNano: "1773919567375465000"
+            timeUnixNano: "1773919567375465000"
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: aws.vpcflow
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: 2 123456789012 eni-1235b8ca123456789 10.0.1.5 10.0.2.15 34567 443 6 15 3500 1418530010 1418530070 ACCEPT OK
+                  - key: event.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: aws.vpcflow
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+            observedTimeUnixNano: "1773919567375465000"
+            timeUnixNano: "1773919567375465000"
+        scope:
+          attributes:
+            - key: elastic.mapping.mode
+              value:
+                stringValue: bodymap

@@ -31,6 +31,35 @@ import (
 type EventContext struct {
 	ResourceAttributes map[string]any
 	EventName          string
+	EventDomain        string
+	IsDeviceEvent      bool
+	Action             string
+}
+
+// NewEventContext builds context for log enrichment. resourceAttrs must be the OTLP resource
+// attributes (e.g. telemetry.sdk.language); enrichCrashEvent uses them for language-specific
+// grouping keys. logRecord supplies event name and domain from log attributes.
+func NewEventContext(resourceAttrs map[string]any, logRecord plog.LogRecord) EventContext {
+	eventName, ok := getEventName(logRecord)
+	ctx := EventContext{
+		ResourceAttributes: resourceAttrs,
+	}
+	if ok {
+		ctx.EventName = eventName
+	}
+	domainAttr, ok := logRecord.Attributes().Get("event.domain")
+	if ok {
+		ctx.EventDomain = domainAttr.AsString()
+	}
+
+	if isDeviceEvent(logRecord, eventName) {
+		ctx.IsDeviceEvent = true
+	}
+
+	action := strings.TrimPrefix(eventName, "device.")
+	ctx.Action = action
+
+	return ctx
 }
 
 func EnrichLogEvent(ctx EventContext, logRecord plog.LogRecord, cfg config.Config) {
@@ -50,6 +79,19 @@ func EnrichLogEvent(ctx EventContext, logRecord plog.LogRecord, cfg config.Confi
 			attribute.PutStr(logRecord.Attributes(), elasticattr.EventAction, action)
 		}
 	}
+}
+
+// getEventName returns the event name from the log record.
+// If the event name is not set, it returns an empty string.
+func getEventName(logRecord plog.LogRecord) (string, bool) {
+	if logRecord.EventName() != "" {
+		return logRecord.EventName(), true
+	}
+	attributeValue, ok := logRecord.Attributes().Get("event.name")
+	if ok {
+		return attributeValue.AsString(), true
+	}
+	return "", false
 }
 
 func isDeviceEvent(logRecord plog.LogRecord, eventName string) bool {
@@ -86,5 +128,9 @@ func enrichCrashEvent(logRecord plog.LogRecord, resourceAttrs map[string]any, cf
 	}
 	if cfg.Log.ErrorConfig.ErrorType.Enabled {
 		attribute.PutStr(logRecord.Attributes(), elasticattr.ErrorType, "crash")
+	}
+
+	if cfg.Log.EventConfig.EventType.Enabled {
+		attribute.PutStr(logRecord.Attributes(), elasticattr.EventType, "error")
 	}
 }

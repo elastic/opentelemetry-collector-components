@@ -1,0 +1,85 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: azure.events
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: |-
+                        {
+                              "time": "2026-02-16T22:32:15.4699885Z",
+                              "resourceId": "/tenants/aa40685b-417d-4664-b4ec-8f7640719adb/providers/Microsoft.aadiam",
+                              "operationName": "Sign-in activity",
+                              "operationVersion": "1.0",
+                              "category": "SignInLogs",
+                              "resultType": "0",
+                              "durationMs": 0
+                            }
+                  - key: event.dataset
+                    value:
+                      stringValue: azure.events
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: azure.events
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+            observedTimeUnixNano: "1773919567373288000"
+            timeUnixNano: "1773919567373288000"
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: azure.events
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: |-
+                        {
+                              "time": "2026-02-16T22:32:16.1234567Z",
+                              "resourceId": "/subscriptions/12345678/resourceGroups/myRG/providers/Microsoft.Compute/virtualMachines/myVM",
+                              "operationName": "Create or Update Virtual Machine",
+                              "category": "Administrative",
+                              "resultType": "Success"
+                            }
+                  - key: event.dataset
+                    value:
+                      stringValue: azure.events
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: azure.events
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+            observedTimeUnixNano: "1773919567373288000"
+            timeUnixNano: "1773919567373288000"
+        scope:
+          attributes:
+            - key: elastic.mapping.mode
+              value:
+                stringValue: bodymap

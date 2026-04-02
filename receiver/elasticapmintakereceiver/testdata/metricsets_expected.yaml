@@ -232,6 +232,11 @@ resourceMetrics:
           - histogram:
               dataPoints:
                 - attributes:
+                    - key: elasticsearch.mapping.hints
+                      value:
+                        arrayValue:
+                          values:
+                            - stringValue: "histogram:raw"
                     - key: processor.event
                       value:
                         stringValue: metric
@@ -239,10 +244,12 @@ resourceMetrics:
                     - "1"
                     - "2"
                     - "3"
+                    - "0"
                   count: "6"
                   explicitBounds:
                     - 1.1
                     - 2.2
+                    - 3.3
                   sum: 15.399999999999999
                   timeUnixNano: "1496170421368000000"
             name: latency_distribution

@@ -430,8 +430,18 @@ func (r *elasticAPMIntakeReceiver) populateDataPointCommon(dp otelDataPoint, eve
 // Assumptions:
 // - the histogram values and counts are all non-negative
 //
-// Sets fields: sum, count, bucket_counts, explicit_bounds. All other optional fields are not set per OTEL metric model:
+// Sets fields: sum, count, bucket_counts, explicit_bounds, mapping hints.
+// All other optional fields are not set per OTEL metric model:
 //   - https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto
+//
+// The intake-v2 histogram format has a 1:1 mapping between values and counts
+// (len(values) == len(counts)), where each value is a representative value for
+// its bucket. To preserve these values through the OTel pipeline without
+// midpoint approximation, we:
+//  1. Set all values as explicit_bounds and append a zero-count overflow bucket
+//     to satisfy the OTel requirement of len(bucket_counts) == len(explicit_bounds) + 1.
+//  2. Add the "histogram:raw" mapping hint to signal the Elasticsearch exporter
+//     to use the explicit bounds directly as representative values.
 func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric.HistogramDataPoint) {
 	histogram := sample.GetHistogram()
 	if histogram == nil {
@@ -477,10 +487,13 @@ func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric
 	// The sum of the bucket_counts must equal the value in the count field.
 	//
 	// The number of elements in bucket_counts array must be by one greater than
-	// the number of elements in explicit_bounds array. The exception to this rule
-	// is when the length
+	// the number of elements in explicit_bounds array.
+	//
+	// Append a zero-count overflow bucket to satisfy the OTel invariant
+	// len(bucket_counts) == len(explicit_bounds) + 1 while preserving all
+	// original values as explicit bounds.
 	bucketCounts := dp.BucketCounts()
-	bucketCounts.FromRaw(apmHistogramCounts)
+	bucketCounts.FromRaw(append(apmHistogramCounts, 0))
 
 	// explicit_bounds specifies buckets with explicitly defined bounds for values.
 	//
@@ -496,13 +509,17 @@ func populateOTelHistogramDataPoint(sample *modelpb.MetricsetSample, dp *pmetric
 	// bucket where the boundary is at infinity. This format is intentionally
 	// compatible with the OpenMetrics histogram definition.
 	//
-	// If bucket_counts length is 0 then explicit_bounds length must also be 0,
-	// otherwise the data point is invalid.
+	// All intake-v2 values are set as explicit bounds to preserve the original
+	// representative values. The zero-count overflow bucket added above ensures
+	// no data is attributed to the unbounded (+infinity) range.
 	explicitBounds := dp.ExplicitBounds()
+	explicitBounds.FromRaw(apmHistogramValues)
 
-	// explicit bounds are derived from the sample.Histogram.Values, where each value is the upper bound for a bucket.
-	// Except the last bound value which is implied to be +Inf bucket, so it is not set.
-	explicitBounds.FromRaw(apmHistogramValues[:len(apmHistogramValues)-1])
+	// Add the "histogram:raw" mapping hint to signal the Elasticsearch exporter
+	// to use explicit bounds directly as representative values without midpoint
+	// approximation.
+	hints := dp.Attributes().PutEmptySlice("elasticsearch.mapping.hints")
+	hints.AppendEmpty().SetStr("histogram:raw")
 }
 
 func (r *elasticAPMIntakeReceiver) translateBreakdownMetricsToOtel(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) {

@@ -50,7 +50,6 @@ func EncodeDataStream(resource pcommon.Resource, dataStreamType string, serviceN
 
 func encodeDataStreamDefault(resource pcommon.Resource, dataStreamType string) {
 	attributes := resource.Attributes()
-
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, "apm")
 	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)

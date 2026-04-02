@@ -67,6 +67,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":         "crash",
 				"event.kind":         "event",
 				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -90,6 +91,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":         "crash",
 				"event.kind":         "event",
 				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -112,6 +114,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
+				"event.type":     "error",
 			},
 		},
 		{
@@ -205,6 +208,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":         "crash",
 				"event.kind":         "event",
 				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -238,6 +242,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":         "existing-error-type",
 				"error.grouping_key": "existing-grouping-key",
 				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -268,6 +273,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.grouping_key": javaStacktraceHash,
 				"error.type":         "crash",
 				"event.category":     "device",
+				"event.type":         "error",
 			},
 		},
 		{
@@ -348,6 +354,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
+				"event.type":     "error",
 			},
 		},
 		{
@@ -368,6 +375,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
+				"event.type":     "error",
 			},
 		},
 		{
@@ -386,6 +394,7 @@ func TestEnrichEvents(t *testing.T) {
 				"error.type":     "crash",
 				"event.kind":     "event",
 				"event.category": "device",
+				"event.type":     "error",
 			},
 		},
 	} {

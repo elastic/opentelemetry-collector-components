@@ -1,0 +1,34 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ios
+        - key: telemetry.sdk.language
+          value:
+            stringValue: swift
+    scopeLogs:
+      - logRecords:
+          - body:
+              stringValue: Application crashed
+            timeUnixNano: "1581452772000000000"
+            attributes:
+              - key: event.name
+                value:
+                  stringValue: device.crash
+              - key: error.id
+                value:
+                  stringValue: "error-id-123"
+              - key: exception.message
+                value:
+                  stringValue: Application crashed
+              - key: exception.type
+                value:
+                  stringValue: NSException
+              - key: exception.stacktrace
+                value:
+                  stringValue: "Thread 0 Crashed:\n0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404\n1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165\n2   UIKitCore                           0x00000001a4d5e7f2 0x184d72000 + 880\n\n"
+        scope: {}

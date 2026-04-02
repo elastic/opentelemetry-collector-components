@@ -44,13 +44,22 @@ func TestConfig(t *testing.T) {
 		{
 			path: "customattrs",
 			expected: &Config{
-				CustomResourceAttributes: []string{
-					"res.1",
-					"res.2",
+				CustomResourceAttributes: []CustomResourceAttribute{
+					{Key: "res.1"},
+					{Key: "res.2"},
 				},
 				CustomSpanAttributes: []string{
 					"span.1",
 					"span.2",
+				},
+			},
+		},
+		{
+			path: "dynamicattrs",
+			expected: &Config{
+				CustomResourceAttributes: []CustomResourceAttribute{
+					{Key: "res.1"},
+					{KeysExpression: `otelcol.client.metadata["x-elastic-dynamic-resource-attributes"]`},
 				},
 			},
 		},
@@ -76,9 +85,9 @@ func TestConfig(t *testing.T) {
 						},
 					},
 				},
-				CustomResourceAttributes: []string{
-					"res.1",
-					"res.2",
+				CustomResourceAttributes: []CustomResourceAttribute{
+					{Key: "res.1"},
+					{Key: "res.2"},
 				},
 				CustomSpanAttributes: []string{
 					"span.1",
@@ -100,6 +109,58 @@ func TestConfig(t *testing.T) {
 			err = xconfmap.Validate(cfg)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, cfg)
+		})
+	}
+}
+
+func TestCustomResourceAttributeValidation(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		cfg     Config
+		wantErr bool
+	}{
+		{
+			name: "valid static key",
+			cfg: Config{
+				CustomResourceAttributes: []CustomResourceAttribute{
+					{Key: "res.1"},
+				},
+			},
+		},
+		{
+			name: "valid keys_expression",
+			cfg: Config{
+				CustomResourceAttributes: []CustomResourceAttribute{
+					{KeysExpression: `otelcol.client.metadata["x"]`},
+				},
+			},
+		},
+		{
+			name: "invalid both set",
+			cfg: Config{
+				CustomResourceAttributes: []CustomResourceAttribute{
+					{Key: "res.1", KeysExpression: `otelcol.client.metadata["x"]`},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid neither set",
+			cfg: Config{
+				CustomResourceAttributes: []CustomResourceAttribute{
+					{},
+				},
+			},
+			wantErr: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := xconfmap.Validate(tc.cfg)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }

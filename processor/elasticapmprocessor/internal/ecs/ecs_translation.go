@@ -71,6 +71,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			elasticattr.HostOSType,
 			elasticattr.DataStreamDataset,
 			elasticattr.DataStreamNamespace,
+			elasticattr.DataStreamType,
 			string(semconv.UserIDKey),
 			string(semconv.UserEmailKey),
 			string(semconv.UserNameKey),

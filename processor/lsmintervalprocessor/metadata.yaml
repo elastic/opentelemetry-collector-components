@@ -41,6 +41,15 @@ telemetry:
         value_type: int
         monotonic: true
       attributes: [interval]
+    lsminterval.overflow:
+      enabled: true
+      description: The estimated count of unique items that overflowed due to cardinality limits.
+      unit: "1"
+      stability: development
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: [interval, kind]
     lsminterval.pebble_compacted_bytes_read:
       enabled: true
       description: The size in bytes read by pebble during compaction.
@@ -167,15 +176,6 @@ telemetry:
         async: true
         value_type: int
         monotonic: true
-    lsminterval.overflow:
-      enabled: true
-      description: The estimated count of unique items that overflowed due to cardinality limits.
-      unit: "1"
-      stability: development
-      sum:
-        value_type: int
-        monotonic: true
-      attributes: [interval, kind]
     lsminterval.processed_bytes:
       enabled: true
       description: The size in bytes of metric data points processed by the processor.

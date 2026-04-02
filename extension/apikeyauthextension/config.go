@@ -35,6 +35,8 @@ var defaultElasticsearchRetryConfig = RetryConfig{
 }
 
 type Config struct {
+	// ClientConfig configures the outbound Elasticsearch HTTP client.
+	// In this extension, timeout > 0 bounds the privilege-check request.
 	confighttp.ClientConfig `mapstructure:",squash"`
 
 	// ApplicationPrivileges defines the application privileges
@@ -160,8 +162,11 @@ type CacheConfig struct {
 }
 
 func createDefaultConfig() component.Config {
+	clientConfig := confighttp.NewDefaultClientConfig()
+	clientConfig.Timeout = 10 * time.Second
+
 	return &Config{
-		ClientConfig: confighttp.NewDefaultClientConfig(),
+		ClientConfig: clientConfig,
 		Cache: CacheConfig{
 			Capacity:         1000,
 			PBKDF2Iterations: 1000,

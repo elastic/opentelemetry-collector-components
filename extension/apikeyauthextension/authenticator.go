@@ -62,6 +62,7 @@ const (
 var (
 	errAuthorizationHeaderWrongScheme = errors.New("ApiKey prefix not found, expected ApiKey <value>")
 	errAuthorizationHeaderInvalid     = errors.New("invalid API Key")
+	errHasPrivilegesTimeout           = errors.New("has privileges request timed out")
 
 	_ client.AuthData      = (*authData)(nil)
 	_ extensionauth.Server = (*authenticator)(nil)
@@ -76,6 +77,22 @@ type metadataValidationError struct {
 func (e *metadataValidationError) Error() string {
 	return e.message
 }
+
+type retryableOverloadError struct {
+	cause error
+}
+
+func (e retryableOverloadError) Error() string { return e.cause.Error() }
+
+func (e retryableOverloadError) Unwrap() error { return e.cause }
+
+type parentCanceledError struct {
+	cause error
+}
+
+func (e parentCanceledError) Error() string { return e.cause.Error() }
+
+func (e parentCanceledError) Unwrap() error { return e.cause }
 
 type cacheEntry struct {
 	// key holds the PBKDF2 hashed value of the API Key.
@@ -281,8 +298,24 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
 	req.Request(&hasprivileges.Request{Application: applications})
-	resp, err := req.Do(ctx)
+	privCtx := ctx
+	cancel := func() {}
+	if a.config.Timeout > 0 {
+		privCtx, cancel = context.WithTimeoutCause(ctx, a.config.Timeout,
+			errHasPrivilegesTimeout,
+		)
+	}
+	defer cancel()
+
+	resp, err := req.Do(privCtx)
 	if err != nil {
+		if errors.Is(context.Cause(privCtx), errHasPrivilegesTimeout) {
+			// Wrap the error in a retryable overload error to signal the
+			// caller that the request should be retried.
+			err = retryableOverloadError{cause: err}
+		} else if errors.Is(ctx.Err(), context.Canceled) {
+			err = parentCanceledError{cause: err}
+		}
 		return false, "", err
 	}
 	return resp.HasAllRequested, resp.Username, nil
@@ -364,11 +397,26 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 
 	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
+		if isRetryableOverloadError(err) {
+			return ctx, errorWithDetails(status.New(
+				codes.ResourceExhausted, "failed to check privileges",
+			), id, retryDelay)
+		}
+
+		var canceledErr parentCanceledError
+		if errors.As(err, &canceledErr) {
+			return ctx, status.Error(codes.Canceled, "request canceled")
+		}
+
 		var elasticsearchErr *types.ElasticsearchError
 		if errors.As(err, &elasticsearchErr) {
 			switch elasticsearchErr.Status {
 			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
+			case http.StatusTooManyRequests, http.StatusGatewayTimeout:
+				return ctx, errorWithDetails(status.New(
+					codes.ResourceExhausted, "failed to check privileges",
+				), id, retryDelay)
 			case http.StatusNotFound:
 				// Not cached: a 404 may be transient (e.g. a deployment that is
 				// temporarily unavailable) and could recover.
@@ -389,12 +437,10 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 					), id, 0)
 				a.cache.Add(cacheKey, &cacheEntry{key: derivedKey, err: goneErr})
 				return ctx, goneErr
-			case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
-				return ctx, errorWithDetails(
-					status.New(
-						codes.Unavailable,
-						"failed to check privileges",
-					), id, retryDelay)
+			case http.StatusBadGateway, http.StatusServiceUnavailable:
+				return ctx, errorWithDetails(status.New(
+					codes.Unavailable, "failed to check privileges",
+				), id, retryDelay)
 			default:
 				return ctx, status.Errorf(codes.Internal, "error checking privileges: %v", err)
 			}
@@ -437,6 +483,11 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 	}
 	a.cache.Add(cacheKey, cacheEntry)
 	return newCtxWithAuthData(ctx, cacheEntry.data), nil
+}
+
+func isRetryableOverloadError(err error) bool {
+	var overloadErr retryableOverloadError
+	return errors.As(err, &overloadErr)
 }
 
 func newCtxWithAuthData(ctx context.Context, authData *authData) context.Context {

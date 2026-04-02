@@ -1,0 +1,12 @@
+type: beats_encoding
+scope_name: github.com/elastic/opentelemetry-collector-components/extension/beatsencodingextension
+
+status:
+  class: extension
+  stability:
+    development: [extension]
+
+tests:
+  config:
+    data_stream:
+      dataset: "generic"
