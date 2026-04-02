@@ -8,3 +8,8 @@ _build/
 *.iws
 *.iml
 *.ipr
+
+### Misc ###
+.vscode/
+.claude/
+.DS_Store
