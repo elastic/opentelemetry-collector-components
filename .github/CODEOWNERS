@@ -6,6 +6,7 @@ internal/elasticattr                   @elastic/obs-ds-intake-services @elastic/
 loadgen                                @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 receiver/loadgenreceiver               @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 receiver/elasticapmintakereceiver      @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
+receiver/akamaisiemreceiver            @elastic/sde-service-integrations
 processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations @elastic/ingest-otel-data
 processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
