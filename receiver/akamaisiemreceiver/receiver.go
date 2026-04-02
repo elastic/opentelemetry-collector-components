@@ -196,7 +196,7 @@ func (r *akamaiReceiver) Start(ctx context.Context, host component.Host) error {
 			BytesReceived:      tb.AkamaiSiemBytesReceived,
 			PageProcessingTime: tb.AkamaiSiemPageProcessingTime,
 
-			EventsPerPage:      tb.AkamaiSiemEventsPerPage,
+			EventsPerPage: tb.AkamaiSiemEventsPerPage,
 		}
 	}
 

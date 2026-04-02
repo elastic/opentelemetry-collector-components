@@ -459,7 +459,6 @@ func TestReceiver_RawMode_BodyIsRawJSON(t *testing.T) {
 	assert.Contains(t, lr.Body().Str(), `"host":"test.com"`)
 }
 
-
 func TestReceiver_InvalidMappingMode(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
 	cfg.Endpoint = "https://test.example.com"
