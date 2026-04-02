@@ -1,0 +1,1 @@
+{"attackData":{"appliedAction":"deny","clientIP":"10.0.0.1","configId":"99999","policyId":"TEST"},"httpMessage":{"host":"standalone.example.com","method":"GET","path":"/","start":"1762365020","status":"200"}}
