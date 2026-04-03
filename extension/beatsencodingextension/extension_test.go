@@ -196,6 +196,7 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 			logs, err := ext.UnmarshalLogs(tt.input)
 			require.NoError(t, err)
 			assert.Equal(t, 0, logs.LogRecordCount())
+			assert.Equal(t, 0, logs.ResourceLogs().Len(), "empty input must not retain resource wrappers")
 		})
 	}
 }

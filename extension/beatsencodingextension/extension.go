@@ -243,6 +243,9 @@ func (e *beatsEncodingExtension) unmarshalText(buf []byte) (plog.Logs, error) {
 		}
 	}
 
+	if logs.LogRecordCount() == 0 {
+		return plog.NewLogs(), nil
+	}
 	return logs, nil
 }
 
@@ -338,7 +341,7 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 		}
 
 		if logs.LogRecordCount() == 0 {
-			return logs, io.EOF
+			return plog.NewLogs(), io.EOF
 		}
 		return logs, nil
 	}
@@ -460,7 +463,7 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 		}
 
 		if logs.LogRecordCount() == 0 {
-			return logs, io.EOF
+			return plog.NewLogs(), io.EOF
 		}
 		return logs, nil
 	}
