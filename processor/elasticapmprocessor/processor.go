@@ -61,6 +61,7 @@ func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *T
 	ecsEnricherConfig.Resource.HostOSType.Enabled = true
 	ecsEnricherConfig.Resource.ServiceName.Enabled = true
 	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
+	ecsEnricherConfig.Resource.DefaultServiceLanguage.Enabled = true
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	// The intake receiver already sets transaction.root; skip re-deriving it
@@ -69,6 +70,7 @@ func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *T
 	intakeECSEnricherConfig.Transaction.Result.Enabled = false
 	// The `host.os.type` field should not be added for APM events
 	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
+	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
 
 	return &TraceProcessor{
 		next:              next,

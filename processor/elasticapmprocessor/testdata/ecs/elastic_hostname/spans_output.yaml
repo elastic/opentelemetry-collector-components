@@ -28,6 +28,9 @@ resourceSpans:
         - key: service.instance.id
           value:
             stringValue: hostname-1
+        - key: telemetry.sdk.language
+          value:
+            stringValue: unknown
     scopeSpans:
       - scope: {}
         spans:
