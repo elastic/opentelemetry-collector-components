@@ -50,7 +50,7 @@ func NewFactory() connector.Factory {
 // createDefaultConfig creates the default configuration.
 func createDefaultConfig() component.Config {
 	return &Config{
-		ErrorMode: ottl.IgnoreError,
+		ErrorMode: ottl.PropagateError,
 		Aggregation: &AggregationConfig{
 			Limits: AggregationLimitConfig{
 				ResourceLimit: LimitConfig{

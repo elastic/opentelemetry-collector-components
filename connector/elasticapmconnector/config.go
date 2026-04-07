@@ -41,7 +41,7 @@ var defaultIntervals []time.Duration = []time.Duration{
 type Config struct {
 	// ErrorMode determines how the connector reacts to errors that occur
 	// while processing an OTTL condition or statement. Valid values are
-	// `propagate`, `ignore`, and `silent`. The default value is `ignore`.
+	// `propagate`, `ignore`, and `silent`. The default value is `propagate`.
 	ErrorMode ottl.ErrorMode `mapstructure:"error_mode"`
 
 	// Aggregation holds configuration related to aggregation of Elastic APM
