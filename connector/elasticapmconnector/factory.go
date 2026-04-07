@@ -20,6 +20,7 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 import (
 	"context"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
@@ -49,6 +50,7 @@ func NewFactory() connector.Factory {
 // createDefaultConfig creates the default configuration.
 func createDefaultConfig() component.Config {
 	return &Config{
+		ErrorMode: ottl.PropagateError,
 		Aggregation: &AggregationConfig{
 			Limits: AggregationLimitConfig{
 				ResourceLimit: LimitConfig{
