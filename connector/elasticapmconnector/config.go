@@ -23,6 +23,7 @@ import (
 	"time"
 
 	signaltometricsconfig "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector/config"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configoptional"
 
@@ -38,6 +39,11 @@ var defaultIntervals []time.Duration = []time.Duration{
 }
 
 type Config struct {
+	// ErrorMode determines how the connector reacts to errors that occur
+	// while processing an OTTL condition or statement. Valid values are
+	// `propagate`, `ignore`, and `silent`. The default value is `ignore`.
+	ErrorMode ottl.ErrorMode `mapstructure:"error_mode"`
+
 	// Aggregation holds configuration related to aggregation of Elastic APM
 	// metrics from other signals.
 	Aggregation *AggregationConfig `mapstructure:"aggregation"`
@@ -320,6 +326,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 	}
 
 	return &signaltometricsconfig.Config{
+		ErrorMode: cfg.ErrorMode,
 		Logs: []signaltometricsconfig.MetricInfo{{
 			Name:                      "service_summary",
 			IncludeResourceAttributes: serviceSummaryResourceAttributes,
