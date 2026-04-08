@@ -127,7 +127,7 @@ func TestSyncErrorDiscardsBuffer(t *testing.T) {
 	t.Cleanup(func() { unregister(name) })
 
 	store := newMemoryStore()
-	store.Set("pre_existing", "value")
+	require.NoError(t, store.Set("pre_existing", "value"))
 	sink := &consumertest.LogsSink{}
 	rcvr := newReceiver(nopSettings(), testConfig(name), sink)
 	require.NoError(t, rcvr.Start(context.Background(), testHost(name, store)))
