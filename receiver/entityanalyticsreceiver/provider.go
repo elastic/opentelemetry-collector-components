@@ -38,31 +38,41 @@ var (
 
 // Register adds a named provider factory. Providers call this from
 // init() so that blank-importing the provider package is sufficient
-// to make it available.
+// to make it available. It panics if name is empty, f is nil, or a
+// factory is already registered under name.
 func Register(name string, f ProviderFactory) {
+	if name == "" {
+		panic("entityanalyticsreceiver: Register called with empty name")
+	}
+	if f == nil {
+		panic("entityanalyticsreceiver: Register called with nil factory for " + name)
+	}
 	mu.Lock()
 	defer mu.Unlock()
+	if _, dup := factories[name]; dup {
+		panic("entityanalyticsreceiver: duplicate Register for " + name)
+	}
 	factories[name] = f
 }
 
 // Get returns the factory for name and whether it was found.
 func Get(name string) (ProviderFactory, bool) {
 	mu.RLock()
-	defer mu.RUnlock()
 	f, ok := factories[name]
+	mu.RUnlock()
 	return f, ok
 }
 
 // Has reports whether a provider factory is registered under name.
 func Has(name string) bool {
 	mu.RLock()
-	defer mu.RUnlock()
 	_, ok := factories[name]
+	mu.RUnlock()
 	return ok
 }
 
 func unregister(name string) {
 	mu.Lock()
-	defer mu.Unlock()
 	delete(factories, name)
+	mu.Unlock()
 }
