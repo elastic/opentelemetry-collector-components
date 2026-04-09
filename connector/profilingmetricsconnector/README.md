@@ -106,9 +106,7 @@ them over OTLP:
 
 ```yaml
 receivers:
-  otlp:
-    protocols:
-      grpc:
+  profiling:
 
 connectors:
   profilingmetrics:
@@ -120,7 +118,7 @@ exporters:
 service:
   pipelines:
     profiles:
-      receivers: [otlp]
+      receivers: [profiling]
       exporters: [profilingmetrics]
     metrics:
       receivers: [profilingmetrics]
