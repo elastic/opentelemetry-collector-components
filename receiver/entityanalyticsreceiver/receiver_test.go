@@ -74,33 +74,29 @@ func TestPublisherMapping(t *testing.T) {
 
 	logs := sink.AllLogs()[0]
 	rl := logs.ResourceLogs().At(0)
-	res := rl.Resource().Attributes()
-	v, ok := res.Get("asset.id")
-	require.True(t, ok)
-	assert.Equal(t, "u-42", v.Str())
 
 	sl := rl.ScopeLogs().At(0)
 	assert.Equal(t, "test.scope", sl.Scope().Name())
 	assert.Equal(t, "v0.0.0-test", sl.Scope().Version())
+	mode, ok := sl.Scope().Attributes().Get("elastic.mapping.mode")
+	require.True(t, ok, "scope must have elastic.mapping.mode")
+	assert.Equal(t, "bodymap", mode.Str())
 
 	lr := sl.LogRecords().At(0)
 	assert.Equal(t, now.UnixNano(), lr.Timestamp().AsTime().UnixNano())
 
-	action, _ := lr.Attributes().Get("event.action")
-	assert.Equal(t, "discovered", action.Str())
-
-	kind, _ := lr.Attributes().Get("event.kind")
-	assert.Equal(t, "asset", kind.Str())
-
-	assetType, _ := lr.Attributes().Get("asset.type")
-	assert.Equal(t, "user", assetType.Str())
-
-	source, _ := lr.Attributes().Get("labels.identity_source")
-	assert.Equal(t, "testprov", source.Str())
+	docID, ok := lr.Attributes().Get("elasticsearch.document_id")
+	require.True(t, ok, "log record must have elasticsearch.document_id")
+	assert.Equal(t, "u-42", docID.Str())
 
 	body := lr.Body().Map().AsRaw()
 	assert.Equal(t, "alice", body["user.name"])
 	assert.Equal(t, "alice@example.com", body["user.email"])
+	assert.Equal(t, "discovered", body["event.action"])
+	assert.Equal(t, "asset", body["event.kind"])
+	assert.Equal(t, "user", body["asset.type"])
+	assert.Equal(t, "u-42", body["asset.id"])
+	assert.Equal(t, "testprov", body["labels.identity_source"])
 }
 
 func TestPublisherDeletedEventKind(t *testing.T) {
@@ -114,8 +110,8 @@ func TestPublisherDeletedEventKind(t *testing.T) {
 	require.NoError(t, pub(context.Background(), doc))
 
 	lr := sink.AllLogs()[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	kind, _ := lr.Attributes().Get("event.kind")
-	assert.Equal(t, "event", kind.Str())
+	body := lr.Body().Map().AsRaw()
+	assert.Equal(t, "event", body["event.kind"])
 }
 
 func TestSyncErrorDiscardsBuffer(t *testing.T) {

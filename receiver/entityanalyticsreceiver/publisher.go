@@ -30,47 +30,51 @@ import (
 
 // newPublisher returns an entcollect.Publisher that converts each
 // Document to a plog.Logs and pushes it to the consumer. Each
-// document is published individually (not batched) to bound memory
-// use during large syncs.
+// document is published individually (not batched) so that memory
+// use stays proportional to a single document during large syncs.
 //
-// The mapping here differs from the beats entity analytics input in
-// two ways:
+// The log record uses bodymap mapping mode: the entire ECS document
+// is placed in the log record body, and the scope attribute
+// "elastic.mapping.mode" is set to "bodymap". This tells the
+// elasticsearch exporter to use the body as the ES document directly,
+// stripping OTLP attributes from the final document. Only routing
+// metadata (document ID) goes in attributes.
 //
-//   - event.action uses bare values ("deleted", "discovered",
-//     "modified") rather than prefixed values ("user-deleted",
-//     "device-discovered"). The entity kind is carried separately
-//     in asset.type.
-//   - event.kind distinguishes deletions ("event") from upserts
-//     ("asset"). The beats path emits no event.kind; the ingest
-//     pipeline sets it unconditionally to "asset".
-//
-// Both differences are resolved by the ingest pipeline. If the
-// pipeline is absent, the output schema will differ from beats.
+// See https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/35444
 func newPublisher(cons consumer.Logs, provider, scopeName, scopeVersion string) entcollect.Publisher {
 	return func(ctx context.Context, doc entcollect.Document) error {
 		logs := plog.NewLogs()
 		rl := logs.ResourceLogs().AppendEmpty()
-		rl.Resource().Attributes().PutStr("asset.id", doc.ID)
 
 		sl := rl.ScopeLogs().AppendEmpty()
 		sl.Scope().SetName(scopeName)
 		sl.Scope().SetVersion(scopeVersion)
+		sl.Scope().Attributes().PutStr("elastic.mapping.mode", "bodymap")
+
 		lr := sl.LogRecords().AppendEmpty()
 		lr.SetTimestamp(pcommon.NewTimestampFromTime(doc.Timestamp))
 
-		lr.Attributes().PutStr("event.action", doc.Action.String())
+		if doc.ID != "" {
+			lr.Attributes().PutStr("elasticsearch.document_id", doc.ID)
+		}
+
 		kind := "asset"
 		if doc.Action == entcollect.ActionDeleted {
 			kind = "event"
 		}
-		lr.Attributes().PutStr("event.kind", kind)
-		lr.Attributes().PutStr("asset.type", doc.Kind.String())
-		lr.Attributes().PutStr("labels.identity_source", provider)
 
-		if doc.Fields != nil {
-			if err := lr.Body().SetEmptyMap().FromRaw(doc.Fields); err != nil {
-				return fmt.Errorf("encoding document body: %w", err)
-			}
+		body := make(map[string]any)
+		for k, v := range doc.Fields {
+			body[k] = v
+		}
+		body["event.action"] = doc.Action.String()
+		body["event.kind"] = kind
+		body["asset.type"] = doc.Kind.String()
+		body["asset.id"] = doc.ID
+		body["labels.identity_source"] = provider
+
+		if err := lr.Body().SetEmptyMap().FromRaw(body); err != nil {
+			return fmt.Errorf("encoding document body: %w", err)
 		}
 		return cons.ConsumeLogs(ctx, logs)
 	}
