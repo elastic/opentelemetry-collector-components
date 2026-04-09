@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -93,36 +92,19 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestampNanos uint64, s ptr
 	}
 
 	durationNanos := event.GetEvent().GetDuration()
-
-	// For composite spans, use the composite sum as the effective duration
-	// so that downstream aggregation (end_time - start_time) reflects the
-	// total duration of all compressed sub-spans.
-	if composite := event.GetSpan().GetComposite(); composite != nil {
-		compositeSumNanos := uint64(composite.GetSum() * float64(time.Millisecond))
-		durationNanos = compositeSumNanos
-	}
-
 	s.SetStartTimestamp(pcommon.Timestamp(timestampNanos))
 	s.SetEndTimestamp(pcommon.Timestamp(timestampNanos + durationNanos))
 
-	// Encode the effective representative count into the W3C tracestate
-	// so that AdjustedCount() in the signal-to-metrics connector returns
-	// the correct multiplier. For composite spans, the effective count is
-	// composite.count * representative_count. For non-composite spans, it
-	// is representative_count alone.
-	//
-	// We only set the tracestate when the effective count differs from 1
-	// (the default AdjustedCount) to avoid noisy tracestate on every span.
+	// Encode representative_count into the W3C tracestate so that
+	// AdjustedCount() in the signal-to-metrics connector returns the
+	// correct sampling weight. We only set the tracestate when the
+	// representative count differs from 1 (the AdjustedCount default)
+	// to avoid noisy tracestate on every span.
 	if span := event.GetSpan(); span != nil {
 		repCount := span.GetRepresentativeCount()
-		if repCount > 0 {
-			if composite := span.GetComposite(); composite != nil && composite.GetCount() > 0 {
-				repCount *= float64(composite.GetCount())
-			}
-			if repCount != 1 {
-				if tvalue := probabilityToTValue(1.0 / repCount); tvalue != "" {
-					s.TraceState().FromRaw(fmt.Sprintf("ot=th:%s", tvalue))
-				}
+		if repCount > 0 && repCount != 1 {
+			if tvalue := probabilityToTValue(1.0 / repCount); tvalue != "" {
+				s.TraceState().FromRaw(fmt.Sprintf("ot=th:%s", tvalue))
 			}
 		}
 	}
@@ -137,11 +119,9 @@ func probabilityToTValue(probability float64) string {
 		return ""
 	}
 	if probability == 1 {
-		// Always-sample threshold: T-value "0"
 		return "0"
 	}
 	threshold := uint64(math.Round((1.0 - probability) * (1 << 56)))
-	// Encode as hex, stripping trailing zeros for canonical form
 	s := fmt.Sprintf("%014x", threshold)
 	s = strings.TrimRight(s, "0")
 	if s == "" {
