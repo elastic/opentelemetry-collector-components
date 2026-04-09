@@ -121,7 +121,15 @@ func probabilityToTValue(probability float64) string {
 	if probability == 1 {
 		return "0"
 	}
-	threshold := uint64(math.Round((1.0 - probability) * (1 << 56)))
+	const maxThreshold = (1 << 56) - 1
+	raw := math.Round((1.0 - probability) * (1 << 56))
+	if raw < 0 {
+		raw = 0
+	}
+	if raw > maxThreshold {
+		raw = maxThreshold
+	}
+	threshold := uint64(raw)
 	s := fmt.Sprintf("%014x", threshold)
 	s = strings.TrimRight(s, "0")
 	if s == "" {
