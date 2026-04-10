@@ -414,6 +414,122 @@ func TestTranslateLogRecordAttributes(t *testing.T) {
 	}
 }
 
+func TestTranslateSpanAttributes(t *testing.T) {
+	tests := []struct {
+		name       string
+		setAttrs   func(pcommon.Map)
+		want       map[string]any
+		wantAbsent []string
+	}{
+		{
+			name: "supported span attrs preserved",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("http.request.method", "GET")
+				attrs.PutInt("http.response.status_code", 200)
+				attrs.PutStr("http.url", "https://api.example.com/users")
+				attrs.PutStr("db.query.text", "SELECT * FROM users")
+				attrs.PutStr("session.id", "session-123")
+				attrs.PutStr(string(semconv.NetworkConnectionTypeKey), "wifi")
+				attrs.PutStr(elasticattr.DataStreamDataset, "apm")
+			},
+			want: map[string]any{
+				"http.request.method":                    "GET",
+				"http.response.status_code":              int64(200),
+				"http.url":                               "https://api.example.com/users",
+				"db.query.text":                          "SELECT * FROM users",
+				"session.id":                             "session-123",
+				string(semconv.NetworkConnectionTypeKey): "wifi",
+				elasticattr.DataStreamDataset:            "apm",
+			},
+		},
+		{
+			name: "unsupported span attrs moved to labels",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("http.route", "/users")
+				attrs.PutInt("http.response_content_length", 1024)
+				attrs.PutStr("error.message", "Database connection failed")
+				attrs.PutStr("error.type", "DBError")
+				attrs.PutStr("exception.message", "Database connection failed")
+				attrs.PutStr("exception.type", "DBError")
+				attrs.PutStr("exception.stacktrace", "stacktrace")
+				attrs.PutBool("custom.flag", true)
+			},
+			want: map[string]any{
+				"labels.http_route":                           "/users",
+				"numeric_labels.http_response_content_length": float64(1024),
+				"labels.error_message":                        "Database connection failed",
+				"labels.error_type":                           "DBError",
+				"labels.exception_message":                    "Database connection failed",
+				"labels.exception_type":                       "DBError",
+				"labels.exception_stacktrace":                 "stacktrace",
+				"labels.custom_flag":                          "true",
+			},
+			wantAbsent: []string{
+				"http.route",
+				"http.response_content_length",
+				"error.message",
+				"error.type",
+				"exception.message",
+				"exception.type",
+				"exception.stacktrace",
+				"custom.flag",
+			},
+		},
+		{
+			name: "existing span label keys are sanitized",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("labels.http.route", "/users")
+				attrs.PutDouble("numeric_labels.http.response_content_length", 1024)
+			},
+			want: map[string]any{
+				"labels.http_route":                           "/users",
+				"numeric_labels.http_response_content_length": 1024.0,
+			},
+			wantAbsent: []string{
+				"labels.http.route",
+				"numeric_labels.http.response_content_length",
+			},
+		},
+		{
+			name: "unsupported span map attr dropped",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutEmptyMap("http.request")
+			},
+			wantAbsent: []string{"http.request"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			tc.setAttrs(attrs)
+
+			TranslateSpanAttributes(attrs)
+
+			for key, want := range tc.want {
+				got, ok := attrs.Get(key)
+				if !assert.True(t, ok, "expected %q to be present", key) {
+					continue
+				}
+				switch want := want.(type) {
+				case string:
+					assert.Equal(t, want, got.Str())
+				case int64:
+					assert.Equal(t, want, got.Int())
+				case float64:
+					assert.InDelta(t, want, got.Double(), 1e-9)
+				default:
+					t.Fatalf("unsupported want type %T", want)
+				}
+			}
+			for _, key := range tc.wantAbsent {
+				_, ok := attrs.Get(key)
+				assert.False(t, ok, "expected %q to be absent", key)
+			}
+		})
+	}
+}
+
 func TestTranslateMetricDataPointAttributes(t *testing.T) {
 	tests := []struct {
 		name       string

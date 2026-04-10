@@ -87,19 +87,20 @@ type ElasticSpanConfig struct {
 	// TimestampUs is a temporary attribute to enable higher
 	// resolution timestamps in Elasticsearch. For more details see:
 	// https://github.com/elastic/opentelemetry-dev/issues/374.
-	TimestampUs         AttributeConfig `mapstructure:"timestamp_us"`
-	ProcessorEvent      AttributeConfig `mapstructure:"processor_event"`
-	RepresentativeCount AttributeConfig `mapstructure:"representative_count"`
-	Action              AttributeConfig `mapstructure:"action"`
-	TypeSubtype         AttributeConfig `mapstructure:"type_subtype"`
-	DurationUs          AttributeConfig `mapstructure:"duration_us"`
-	EventOutcome        AttributeConfig `mapstructure:"event_outcome"`
-	ServiceTarget       AttributeConfig `mapstructure:"service_target"`
-	DestinationService  AttributeConfig `mapstructure:"destination_service"`
-	InferredSpans       AttributeConfig `mapstructure:"inferred_spans"`
-	UserAgent           AttributeConfig `mapstructure:"user_agent"`
-	RemoveMessaging     AttributeConfig `mapstructure:"remove_messaging"`
-	MessageQueueName    AttributeConfig `mapstructure:"message_queue_name"`
+	TimestampUs                    AttributeConfig `mapstructure:"timestamp_us"`
+	ProcessorEvent                 AttributeConfig `mapstructure:"processor_event"`
+	RepresentativeCount            AttributeConfig `mapstructure:"representative_count"`
+	Action                         AttributeConfig `mapstructure:"action"`
+	TypeSubtype                    AttributeConfig `mapstructure:"type_subtype"`
+	DurationUs                     AttributeConfig `mapstructure:"duration_us"`
+	EventOutcome                   AttributeConfig `mapstructure:"event_outcome"`
+	ServiceTarget                  AttributeConfig `mapstructure:"service_target"`
+	DestinationService             AttributeConfig `mapstructure:"destination_service"`
+	InferredSpans                  AttributeConfig `mapstructure:"inferred_spans"`
+	UserAgent                      AttributeConfig `mapstructure:"user_agent"`
+	RemoveMessaging                AttributeConfig `mapstructure:"remove_messaging"`
+	MessageQueueName               AttributeConfig `mapstructure:"message_queue_name"`
+	TranslateUnsupportedAttributes AttributeConfig `mapstructure:"translate_unsupported_attributes"`
 }
 
 // SpanEventConfig configures enrichment attributes for the span events.

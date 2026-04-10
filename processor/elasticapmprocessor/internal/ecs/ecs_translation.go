@@ -185,6 +185,88 @@ func TranslateLogRecordAttributes(attributes pcommon.Map) {
 	})
 }
 
+// TranslateSpanAttributes applies the apm-data OTLP span fallback behaviour for
+// ECS mode spans. The preserved attributes and fallback-to-label cases are based
+// on the OTLP span translation in apm-data's input/otlp/traces.go:
+// https://github.com/elastic/apm-data/blob/7da222dcc0320f9c812c5d72f65f830c838aae11/input/otlp/traces.go
+//
+// Attributes required by span enrichment or exporter-side ECS conversions are
+// preserved, while unsupported attributes are moved to labels.* /
+// numeric_labels.* with a sanitized key.
+func TranslateSpanAttributes(attributes pcommon.Map) {
+	attributes.Range(func(k string, v pcommon.Value) bool {
+		if sanitizeExistingLabelAttribute(attributes, k, v) {
+			return true
+		}
+
+		switch k {
+		case elasticattr.DataStreamDataset,
+			elasticattr.DataStreamNamespace,
+			elasticattr.DataStreamType,
+			elasticattr.TransactionType,
+			"code.stacktrace",
+			"db.name",
+			"db.namespace",
+			"db.query.text",
+			"db.statement",
+			"db.system",
+			"db.system.name",
+			"db.user",
+			"gen_ai.provider.name",
+			"gen_ai.system",
+			"http.flavor",
+			"http.method",
+			"http.request.method",
+			"http.response.body.size",
+			"http.response.status_code",
+			"http.scheme",
+			"http.status_code",
+			"http.target",
+			"http.url",
+			"http.user_agent",
+			"messaging.destination.name",
+			"messaging.destination.temporary",
+			"messaging.operation",
+			"messaging.operation.name",
+			"messaging.system",
+			"net.host.name",
+			"net.peer.name",
+			"net.peer.port",
+			"network.carrier.icc",
+			"network.carrier.mcc",
+			"network.carrier.mnc",
+			"network.carrier.name",
+			"network.connection.subtype",
+			"network.connection.type",
+			"peer.service",
+			"rpc.grpc.status_code",
+			"rpc.method",
+			"rpc.response.status_code",
+			"rpc.service",
+			"rpc.system",
+			"rpc.system.name",
+			"server.address",
+			"server.port",
+			"service.peer.name",
+			"session.id",
+			"type",
+			"url.domain",
+			"url.full",
+			"url.path",
+			"url.port",
+			"url.query",
+			"url.scheme",
+			"user_agent.name",
+			"user_agent.original",
+			"user_agent.version":
+			return true
+		default:
+			fallbackToLabelAttribute(attributes, k, v)
+			return true
+		}
+	})
+}
+
 // TranslateMetricDataPointAttributes applies the apm-data OTLP metric fallback
 // for raw metric datapoint attributes in ECS mode. Existing labels.* /
 // numeric_labels.* keys are sanitized in place, metric-specific special cases

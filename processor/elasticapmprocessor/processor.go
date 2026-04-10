@@ -62,6 +62,7 @@ func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *T
 	ecsEnricherConfig.Resource.ServiceName.Enabled = true
 	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
 	ecsEnricherConfig.Resource.DefaultServiceLanguage.Enabled = true
+	ecsEnricherConfig.Span.TranslateUnsupportedAttributes.Enabled = true
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	// The intake receiver already sets transaction.root; skip re-deriving it
@@ -72,6 +73,7 @@ func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *T
 	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
 	// disable default service language to avoid adding it on apm events
 	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
+	intakeECSEnricherConfig.Span.TranslateUnsupportedAttributes.Enabled = false
 
 	return &TraceProcessor{
 		next:              next,
@@ -88,16 +90,12 @@ func (p *TraceProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	enricher := p.enricher
 	if isECS(ctx) {
-		enricher = p.ecsEnricher
 		resourceSpans := td.ResourceSpans()
-		if resourceSpans.Len() > 0 && isIntakeECS(resourceSpans.At(0).Resource()) {
-			enricher = p.intakeECSEnricher
-		}
 		for i := 0; i < resourceSpans.Len(); i++ {
 			resourceSpan := resourceSpans.At(i)
 			resource := resourceSpan.Resource()
+			enricher := p.ecsTraceEnricher(resource)
 			ecs.TranslateResourceMetadata(resource)
 			ecs.ApplyResourceConventions(resource)
 			// Traces signal never need to be routed to service-specific datasets
@@ -122,12 +120,21 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 					}
 				}
 			}
+
+			enricher.EnrichResourceSpans(resourceSpan)
 		}
+		return p.next.ConsumeTraces(ctx, td)
 	}
 
-	enricher.EnrichTraces(td)
-
+	p.enricher.EnrichTraces(td)
 	return p.next.ConsumeTraces(ctx, td)
+}
+
+func (p *TraceProcessor) ecsTraceEnricher(resource pcommon.Resource) *enrichments.Enricher {
+	if isIntakeECS(resource) {
+		return p.intakeECSEnricher
+	}
+	return p.ecsEnricher
 }
 
 func isECS(ctx context.Context) bool {

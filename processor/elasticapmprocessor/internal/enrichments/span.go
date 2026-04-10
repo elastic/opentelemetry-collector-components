@@ -40,6 +40,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
@@ -122,6 +123,10 @@ func (s *spanEnrichmentContext) Enrich(
 	cfg config.Config,
 	userAgentParser *uaparser.Parser,
 ) {
+	if cfg.Span.TranslateUnsupportedAttributes.Enabled {
+		ecs.TranslateSpanAttributes(span.Attributes())
+	}
+
 	// Extract top level span information.
 	s.spanStatusCode = span.Status().Code()
 

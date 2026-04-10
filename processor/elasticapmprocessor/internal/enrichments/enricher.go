@@ -52,16 +52,22 @@ type Enricher struct {
 func (e *Enricher) EnrichTraces(pt ptrace.Traces) {
 	resSpans := pt.ResourceSpans()
 	for i := 0; i < resSpans.Len(); i++ {
-		resSpan := resSpans.At(i)
-		EnrichResource(resSpan.Resource(), e.Config.Resource)
-		scopeSpans := resSpan.ScopeSpans()
-		for j := 0; j < scopeSpans.Len(); j++ {
-			scopeSpan := scopeSpans.At(j)
-			EnrichScope(scopeSpan.Scope(), e.Config)
-			spans := scopeSpan.Spans()
-			for k := 0; k < spans.Len(); k++ {
-				EnrichSpan(spans.At(k), e.Config, e.userAgentParser)
-			}
+		e.EnrichResourceSpans(resSpans.At(i))
+	}
+}
+
+// EnrichResourceSpans enriches a single ResourceSpans with the current enricher
+// configuration. This is used when ECS batches need per-resource enrichment
+// policies based on the origin of each ResourceSpans.
+func (e *Enricher) EnrichResourceSpans(resSpan ptrace.ResourceSpans) {
+	EnrichResource(resSpan.Resource(), e.Config.Resource)
+	scopeSpans := resSpan.ScopeSpans()
+	for j := 0; j < scopeSpans.Len(); j++ {
+		scopeSpan := scopeSpans.At(j)
+		EnrichScope(scopeSpan.Scope(), e.Config)
+		spans := scopeSpan.Spans()
+		for k := 0; k < spans.Len(); k++ {
+			EnrichSpan(spans.At(k), e.Config, e.userAgentParser)
 		}
 	}
 }

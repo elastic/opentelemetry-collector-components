@@ -35,6 +35,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/processortest"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -300,6 +301,260 @@ func testMetrics(t *testing.T, ctx context.Context, factory processor.Factory, s
 	expectedMetrics, err := golden.ReadMetrics(outputFile)
 	require.NoError(t, err)
 	assert.NoError(t, pmetrictest.CompareMetrics(expectedMetrics, actual, pmetrictest.IgnoreMetricsOrder(), pmetrictest.IgnoreResourceMetricsOrder(), pmetrictest.IgnoreTimestamp()))
+}
+
+func appendTraceResourceSpan(traces ptrace.Traces, serviceName, sdkName, osType, spanName string) {
+	resourceSpan := traces.ResourceSpans().AppendEmpty()
+	resource := resourceSpan.Resource()
+	resource.Attributes().PutStr(string(semconv.ServiceNameKey), serviceName)
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), sdkName)
+	if osType != "" {
+		resource.Attributes().PutStr(string(semconv.OSTypeKey), osType)
+	}
+
+	scopeSpans := resourceSpan.ScopeSpans().AppendEmpty()
+	span := scopeSpans.Spans().AppendEmpty()
+	span.SetName(spanName)
+	span.SetKind(ptrace.SpanKindServer)
+	span.SetStartTimestamp(pcommon.Timestamp(1_000_000_000))
+	span.SetEndTimestamp(pcommon.Timestamp(2_000_000_000))
+	span.Status().SetCode(ptrace.StatusCodeOk)
+}
+
+func TestConsumeTraces_ECSIntakeSkipsOTLPFallbacks(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.TracesSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	traces := ptrace.NewTraces()
+	appendTraceResourceSpan(traces, "intake-service", "ElasticAPM", "linux", "intake-span")
+
+	require.NoError(t, tp.ConsumeTraces(ctx, traces))
+	actual := next.AllTraces()[0]
+
+	require.Equal(t, 1, actual.ResourceSpans().Len())
+	actualResource := actual.ResourceSpans().At(0).Resource().Attributes()
+	_, ok := actualResource.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+	_, ok = actualResource.Get(elasticattr.HostOSType)
+	assert.False(t, ok)
+
+	actualSpanAttrs := actual.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
+	_, ok = actualSpanAttrs.Get(elasticattr.TransactionResult)
+	assert.False(t, ok)
+}
+
+func TestConsumeTraces_ECSMixedOriginUsesPerResourceEnricher(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.TracesSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	traces := ptrace.NewTraces()
+	appendTraceResourceSpan(traces, "intake-service", "ElasticAPM", "linux", "intake-span")
+	appendTraceResourceSpan(traces, "otlp-service", "opentelemetry", "linux", "otlp-span")
+
+	require.NoError(t, tp.ConsumeTraces(ctx, traces))
+	actual := next.AllTraces()[0]
+
+	require.Equal(t, 2, actual.ResourceSpans().Len())
+
+	intakeResourceAttrs := actual.ResourceSpans().At(0).Resource().Attributes()
+	_, ok := intakeResourceAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+	_, ok = intakeResourceAttrs.Get(elasticattr.HostOSType)
+	assert.False(t, ok)
+
+	intakeSpanAttrs := actual.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
+	_, ok = intakeSpanAttrs.Get(elasticattr.TransactionResult)
+	assert.False(t, ok)
+
+	otlpResourceAttrs := actual.ResourceSpans().At(1).Resource().Attributes()
+	value, ok := otlpResourceAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
+	require.True(t, ok)
+	assert.Equal(t, "unknown", value.Str())
+	value, ok = otlpResourceAttrs.Get(elasticattr.HostOSType)
+	require.True(t, ok)
+	assert.Equal(t, "linux", value.Str())
+
+	otlpSpanAttrs := actual.ResourceSpans().At(1).ScopeSpans().At(0).Spans().At(0).Attributes()
+	value, ok = otlpSpanAttrs.Get(elasticattr.TransactionResult)
+	require.True(t, ok)
+	assert.Equal(t, "Success", value.Str())
+}
+
+func TestConsumeTraces_ECSOTLPFallbacks(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.TracesSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	traces := ptrace.NewTraces()
+	resourceSpan := traces.ResourceSpans().AppendEmpty()
+	resource := resourceSpan.Resource()
+	resource.Attributes().PutStr("service.name", "otlp-service")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+
+	scopeSpans := resourceSpan.ScopeSpans().AppendEmpty()
+	span := scopeSpans.Spans().AppendEmpty()
+	span.SetName("otlp-span")
+	span.SetKind(ptrace.SpanKindClient)
+	span.SetParentSpanID(pcommon.SpanID{1, 2, 3, 4, 5, 6, 7, 8})
+	span.SetStartTimestamp(pcommon.Timestamp(1_000_000_000))
+	span.SetEndTimestamp(pcommon.Timestamp(2_000_000_000))
+	span.Status().SetCode(ptrace.StatusCodeError)
+
+	attrs := span.Attributes()
+	attrs.PutStr("http.request.method", "GET")
+	attrs.PutInt("http.response.status_code", 404)
+	attrs.PutStr("http.url", "https://api.example.com/users")
+	attrs.PutStr("http.route", "/users")
+	attrs.PutInt("http.response_content_length", 1024)
+	attrs.PutStr("error.message", "Database connection failed")
+	attrs.PutStr("error.type", "DBError")
+	attrs.PutStr("exception.message", "Database connection failed")
+	attrs.PutStr("exception.type", "DBError")
+	attrs.PutStr("exception.stacktrace", "stacktrace")
+
+	require.NoError(t, tp.ConsumeTraces(ctx, traces))
+	actual := next.AllTraces()[0]
+
+	actualResource := actual.ResourceSpans().At(0).Resource().Attributes()
+	lang, ok := actualResource.Get(string(semconv.TelemetrySDKLanguageKey))
+	require.True(t, ok)
+	assert.Equal(t, "unknown", lang.Str())
+
+	actualSpanAttrs := actual.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
+	value, ok := actualSpanAttrs.Get("labels.http_route")
+	require.True(t, ok)
+	assert.Equal(t, "/users", value.Str())
+	value, ok = actualSpanAttrs.Get("numeric_labels.http_response_content_length")
+	require.True(t, ok)
+	assert.InDelta(t, 1024, value.Double(), 1e-9)
+	value, ok = actualSpanAttrs.Get("labels.error_message")
+	require.True(t, ok)
+	assert.Equal(t, "Database connection failed", value.Str())
+	value, ok = actualSpanAttrs.Get("labels.error_type")
+	require.True(t, ok)
+	assert.Equal(t, "DBError", value.Str())
+	value, ok = actualSpanAttrs.Get("labels.exception_message")
+	require.True(t, ok)
+	assert.Equal(t, "Database connection failed", value.Str())
+	value, ok = actualSpanAttrs.Get("labels.exception_type")
+	require.True(t, ok)
+	assert.Equal(t, "DBError", value.Str())
+	value, ok = actualSpanAttrs.Get("labels.exception_stacktrace")
+	require.True(t, ok)
+	assert.Equal(t, "stacktrace", value.Str())
+
+	value, ok = actualSpanAttrs.Get("http.request.method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	value, ok = actualSpanAttrs.Get("http.response.status_code")
+	require.True(t, ok)
+	assert.EqualValues(t, 404, value.Int())
+	value, ok = actualSpanAttrs.Get("http.url")
+	require.True(t, ok)
+	assert.Equal(t, "https://api.example.com/users", value.Str())
+
+	_, ok = actualSpanAttrs.Get("http.route")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("http.response_content_length")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("error.message")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("error.type")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("exception.message")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("exception.type")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("exception.stacktrace")
+	assert.False(t, ok)
+}
+
+func TestConsumeTraces_ECSIntakeSkipsOTLPSpanFallbackTranslation(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.TracesSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	traces := ptrace.NewTraces()
+	resourceSpan := traces.ResourceSpans().AppendEmpty()
+	resource := resourceSpan.Resource()
+	resource.Attributes().PutStr("service.name", "intake-service")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
+
+	scopeSpans := resourceSpan.ScopeSpans().AppendEmpty()
+	span := scopeSpans.Spans().AppendEmpty()
+	span.SetName("intake-span")
+	span.SetKind(ptrace.SpanKindClient)
+	span.SetParentSpanID(pcommon.SpanID{1, 2, 3, 4, 5, 6, 7, 8})
+	span.SetStartTimestamp(pcommon.Timestamp(1_000_000_000))
+	span.SetEndTimestamp(pcommon.Timestamp(2_000_000_000))
+	span.Status().SetCode(ptrace.StatusCodeError)
+
+	attrs := span.Attributes()
+	attrs.PutStr("http.request.method", "GET")
+	attrs.PutStr("http.route", "/users")
+	attrs.PutInt("http.response_content_length", 1024)
+	attrs.PutStr("error.message", "Database connection failed")
+	attrs.PutStr("exception.message", "Database connection failed")
+
+	require.NoError(t, tp.ConsumeTraces(ctx, traces))
+	actual := next.AllTraces()[0]
+
+	actualSpanAttrs := actual.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0).Attributes()
+	value, ok := actualSpanAttrs.Get("http.request.method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	value, ok = actualSpanAttrs.Get("http.route")
+	require.True(t, ok)
+	assert.Equal(t, "/users", value.Str())
+	value, ok = actualSpanAttrs.Get("error.message")
+	require.True(t, ok)
+	assert.Equal(t, "Database connection failed", value.Str())
+	value, ok = actualSpanAttrs.Get("exception.message")
+	require.True(t, ok)
+	assert.Equal(t, "Database connection failed", value.Str())
+
+	_, ok = actualSpanAttrs.Get("labels.http_route")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("numeric_labels.http_response_content_length")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("labels.error_message")
+	assert.False(t, ok)
+	_, ok = actualSpanAttrs.Get("labels.exception_message")
+	assert.False(t, ok)
 }
 
 // TestSkipEnrichmentLogs tests that logs are only enriched when skipEnrichment is false or when mapping mode is ecs
