@@ -261,7 +261,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		for key, lv := range event.Labels {
 			if lv != nil && lv.Global {
 				if _, ok := keyIndex[key]; !ok {
-					keyIndex[key] = globalKeyInfo{bitPos: bitPos, isNumeric: false}
+					keyIndex[key] = globalKeyInfo{bitPos: bitPos, prefixedKey: "labels." + key}
 					bitPos++
 				}
 			}
@@ -269,7 +269,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		for key, nv := range event.NumericLabels {
 			if nv != nil && nv.Global {
 				if _, ok := keyIndex[key]; !ok {
-					keyIndex[key] = globalKeyInfo{bitPos: bitPos, isNumeric: true}
+					keyIndex[key] = globalKeyInfo{bitPos: bitPos, prefixedKey: "numeric_labels." + key}
 					bitPos++
 				}
 			}
@@ -419,10 +419,11 @@ func (r *elasticAPMIntakeReceiver) consumeOTel(ctx context.Context, ld *plog.Log
 	return errs
 }
 
-// globalKeyInfo stores a global label key's bit position and type.
+// globalKeyInfo stores a global label key's bit position and its
+// prefixed name for use in x-elastic-dynamic-resource-attributes.
 type globalKeyInfo struct {
-	bitPos    int
-	isNumeric bool
+	bitPos      int
+	prefixedKey string
 }
 
 // setResourceAttributes maps event fields to attributes.
@@ -844,15 +845,11 @@ func eventGlobalMask(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo)
 // names. If mask is nil, all keys in keyIndex are included.
 func resolveGlobalKeys(mask *big.Int, keyIndex map[string]globalKeyInfo) []string {
 	keys := make([]string, 0, len(keyIndex))
-	for key, info := range keyIndex {
+	for _, info := range keyIndex {
 		if mask != nil && mask.Bit(info.bitPos) == 0 {
 			continue
 		}
-		if info.isNumeric {
-			keys = append(keys, "numeric_labels."+key)
-		} else {
-			keys = append(keys, "labels."+key)
-		}
+		keys = append(keys, info.prefixedKey)
 	}
 	return keys
 }
