@@ -100,6 +100,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			string(semconv.SourcePortKey),
 			string(semconv.TelemetryDistroNameKey),
 			string(semconv.TelemetryDistroVersionKey),
+			"telemetry.sdk.elastic_export_timestamp",
 			string(semconv.UserAgentOriginalKey),
 			string(semconv.UserEmailKey),
 			string(semconv.UserIDKey),
