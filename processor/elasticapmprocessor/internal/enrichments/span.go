@@ -79,6 +79,7 @@ type spanEnrichmentContext struct {
 
 	peerService              string
 	serverAddress            string
+	httpTarget               string
 	urlScheme                string
 	urlDomain                string
 	urlPath                  string
@@ -172,11 +173,13 @@ func (s *spanEnrichmentContext) Enrich(
 			s.httpStatusCode = v.Int()
 		case string(semconv25.HTTPMethodKey),
 			string(semconv25.HTTPRequestMethodKey),
-			string(semconv25.HTTPTargetKey),
 			string(semconv25.HTTPSchemeKey),
 			string(semconv25.HTTPFlavorKey),
 			string(semconv25.NetHostNameKey):
 			s.isHTTP = true
+		case string(semconv25.HTTPTargetKey):
+			s.isHTTP = true
+			s.httpTarget = v.Str()
 		case string(semconv25.URLFullKey),
 			string(semconv25.HTTPURLKey):
 			s.isHTTP = true
@@ -241,6 +244,9 @@ func (s *spanEnrichmentContext) Enrich(
 	s.normalizeAttributes(userAgentParser)
 	s.isTransaction = isElasticTransaction(span)
 	s.enrich(span, cfg)
+	if cfg.Span.TranslateUnsupportedAttributes.Enabled && s.isHTTP {
+		s.removeHTTPSourceAttributes(span)
+	}
 
 	spanEvents := span.Events()
 	for i := 0; i < spanEvents.Len(); i++ {
@@ -393,6 +399,9 @@ func (s *spanEnrichmentContext) enrichSpan(
 func (s *spanEnrichmentContext) normalizeAttributes(userAgentPraser *uaparser.Parser) {
 	if s.rpcSystem == "" && s.grpcStatus != "" {
 		s.rpcSystem = "grpc"
+	}
+	if s.urlFull == nil {
+		s.urlFull = s.buildURLFromComponents()
 	}
 	if s.userAgentOriginal != "" && userAgentPraser != nil {
 		ua := userAgentPraser.ParseUserAgent(s.userAgentOriginal)
@@ -582,7 +591,9 @@ func (s *spanEnrichmentContext) setServiceTarget(span ptrace.Span) {
 		}
 	case s.isHTTP:
 		targetType = "http"
-		if resource := getHostPort(
+		if details, ok := s.httpDestinationDetails(); ok && details.serviceTargetName != "" {
+			targetName = details.serviceTargetName
+		} else if resource := getHostPort(
 			s.urlFull, s.urlDomain, s.urlPort,
 			s.serverAddress, s.serverPort, // fallback
 		); resource != "" {
@@ -619,6 +630,19 @@ func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 			destnResource += "/" + s.messagingDestinationName
 		}
 	case s.isRPC, s.isHTTP:
+		if s.isHTTP {
+			if details, ok := s.httpDestinationDetails(); ok {
+				attribute.PutNonEmptyStr(span.Attributes(), "destination.address", details.destinationAddress)
+				if details.destinationPort > 0 {
+					attribute.PutInt(span.Attributes(), "destination.port", details.destinationPort)
+				}
+				attribute.PutNonEmptyStr(span.Attributes(), "url.original", details.urlOriginal)
+				attribute.PutNonEmptyStr(span.Attributes(), elasticattr.SpanDestinationServiceName, details.spanDestinationServiceName)
+				attribute.PutStr(span.Attributes(), elasticattr.SpanDestinationServiceType, "external")
+				destnResource = details.spanDestinationServiceResource
+				break
+			}
+		}
 		if destnResource == "" {
 			if res := getHostPort(
 				s.urlFull, s.urlDomain, s.urlPort,
@@ -635,6 +659,109 @@ func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 	if destnResource != "" {
 		attribute.PutStr(span.Attributes(), elasticattr.SpanDestinationServiceResource, destnResource)
 	}
+}
+
+type httpDestinationDetails struct {
+	urlOriginal                    string
+	destinationAddress             string
+	destinationPort                int64
+	serviceTargetName              string
+	spanDestinationServiceName     string
+	spanDestinationServiceResource string
+}
+
+// httpDestinationDetails derives the HTTP destination/service target fields that
+// apm-data computes inline while translating OTLP spans in input/otlp/traces.go:
+// https://github.com/elastic/apm-data/blob/7da222dcc0320f9c812c5d72f65f830c838aae11/input/otlp/traces.go#L848-L1034
+func (s *spanEnrichmentContext) httpDestinationDetails() (httpDestinationDetails, bool) {
+	if s.urlFull == nil {
+		return httpDestinationDetails{}, false
+	}
+
+	details := httpDestinationDetails{
+		urlOriginal:        s.urlFull.String(),
+		destinationAddress: s.urlFull.Hostname(),
+	}
+	if details.destinationAddress == "" {
+		return httpDestinationDetails{}, false
+	}
+
+	if portString := s.urlFull.Port(); portString != "" {
+		port, err := strconv.ParseInt(portString, 10, 64)
+		if err == nil {
+			details.destinationPort = port
+		}
+	} else {
+		details.destinationPort = int64(schemeDefaultPort(s.urlFull.Scheme))
+	}
+
+	urlForName := url.URL{
+		Scheme: s.urlFull.Scheme,
+		Host:   s.urlFull.Host,
+	}
+	resource := s.urlFull.Host
+	defaultPort := int64(schemeDefaultPort(urlForName.Scheme))
+	if defaultPort > 0 && details.destinationPort == defaultPort {
+		if s.urlFull.Port() != "" {
+			urlForName.Host = details.destinationAddress
+		} else {
+			resource = fmt.Sprintf("%s:%d", resource, details.destinationPort)
+		}
+	}
+
+	details.serviceTargetName = resource
+	details.spanDestinationServiceName = urlForName.String()
+	details.spanDestinationServiceResource = resource
+	return details, true
+}
+
+func (s *spanEnrichmentContext) buildURLFromComponents() *url.URL {
+	target := s.httpTarget
+	if target == "" {
+		if s.urlPath == "" {
+			return nil
+		}
+		target = s.urlPath
+		if s.urlQuery != "" {
+			target += "?" + s.urlQuery
+		}
+	}
+
+	u, err := url.Parse(target)
+	if err != nil {
+		return nil
+	}
+	if u.Scheme == "" {
+		u.Scheme = s.urlScheme
+	}
+	if u.Host == "" {
+		host := s.urlDomain
+		port := s.urlPort
+		if host == "" {
+			host = s.serverAddress
+			port = s.serverPort
+		}
+		if host != "" {
+			if port > 0 {
+				u.Host = net.JoinHostPort(host, strconv.FormatInt(port, 10))
+			} else {
+				u.Host = host
+			}
+		}
+	}
+	return u
+}
+
+func (s *spanEnrichmentContext) removeHTTPSourceAttributes(span ptrace.Span) {
+	attributes := span.Attributes()
+	attributes.Remove(string(semconv25.HTTPURLKey))
+	attributes.Remove(string(semconv25.HTTPTargetKey))
+	attributes.Remove(string(semconv25.URLFullKey))
+	attributes.Remove(string(semconv25.URLSchemeKey))
+	attributes.Remove(string(semconv25.URLDomainKey))
+	attributes.Remove(string(semconv25.URLPortKey))
+	attributes.Remove(string(semconv25.URLPathKey))
+	attributes.Remove(string(semconv25.URLQueryKey))
 }
 
 func (s *spanEnrichmentContext) setInferredSpans(span ptrace.Span) {
@@ -867,6 +994,16 @@ func getHostPort(
 		return net.JoinHostPort(fallbackServerAddress, strconv.FormatInt(fallbackServerPort, 10))
 	}
 	return ""
+}
+
+func schemeDefaultPort(scheme string) int {
+	switch scheme {
+	case "http":
+		return 80
+	case "https":
+		return 443
+	}
+	return 0
 }
 
 var standardStatusCodeResults = [...]string{
