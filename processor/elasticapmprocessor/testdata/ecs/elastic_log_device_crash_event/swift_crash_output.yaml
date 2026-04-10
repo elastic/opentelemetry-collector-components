@@ -48,7 +48,7 @@ resourceLogs:
                   stringValue: NSException
               - key: exception.stacktrace
                 value:
-                  stringValue: |2+
+                  stringValue: |+
                     Thread 0 Crashed:
                     0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404
                     1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165
@@ -63,9 +63,6 @@ resourceLogs:
               - key: timestamp.us
                 value:
                   intValue: "1581452772000000"
-              - key: error.grouping_key
-                value:
-                  stringValue: 106766db872df672c31bfff1d30d0e7c
               - key: error.type
                 value:
                   stringValue: crash
@@ -83,12 +80,15 @@ resourceLogs:
                   stringValue: NSException
               - key: error.stack_trace
                 value:
-                  stringValue: |2+
+                  stringValue: |+
                     Thread 0 Crashed:
                     0   libswiftCore.dylib                  0x0000000195712d2c 0x1956e8000 + 175404
                     1   MyApp                              0x0000000102a3b4c5 0x107050000 + 165
                     2   UIKitCore                           0x00000001a4d5e7f2 0x184d72000 + 880
 
+              - key: error.grouping_key
+                value:
+                  stringValue: 106766db872df672c31bfff1d30d0e7c
               - key: data_stream.type
                 value:
                   stringValue: logs
