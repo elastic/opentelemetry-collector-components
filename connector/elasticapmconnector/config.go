@@ -389,19 +389,54 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Unit:      "us",
 			Histogram: configoptional.Some(transactionDurationSummaryHistogram),
 		}, {
+			// For composite spans, the response time sum is the composite
+			// duration (total of all compressed sub-spans).
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
 			Attributes:                spanDestinationAttributes,
-			Unit:                      "us",
+			Conditions: []string{
+				`attributes["span.composite.sum.us"] != nil`,
+			},
+			Unit: "us",
+			Sum: configoptional.Some(signaltometricsconfig.Sum{
+				Value: `Double(attributes["span.composite.sum.us"])`,
+			}),
+		}, {
+			// For non-composite spans, use the span wall-clock duration.
+			Name:                      "span.destination.service.response_time.sum.us",
+			Description:               "APM span destination metrics",
+			IncludeResourceAttributes: spanDestinationResourceAttributes,
+			Attributes:                spanDestinationAttributes,
+			Conditions: []string{
+				`attributes["span.composite.sum.us"] == nil`,
+			},
+			Unit: "us",
 			Sum: configoptional.Some(signaltometricsconfig.Sum{
 				Value: "Double(Microseconds(end_time - start_time))",
 			}),
 		}, {
+			// For composite spans, the count is the number of compressed
+			// operations.
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
 			Attributes:                spanDestinationAttributes,
+			Conditions: []string{
+				`attributes["span.composite.count"] != nil`,
+			},
+			Sum: configoptional.Some(signaltometricsconfig.Sum{
+				Value: `Int(attributes["span.composite.count"])`,
+			}),
+		}, {
+			// For non-composite spans, count is the sampling weight.
+			Name:                      "span.destination.service.response_time.count",
+			Description:               "APM span destination metrics",
+			IncludeResourceAttributes: spanDestinationResourceAttributes,
+			Attributes:                spanDestinationAttributes,
+			Conditions: []string{
+				`attributes["span.composite.count"] == nil`,
+			},
 			Sum: configoptional.Some(signaltometricsconfig.Sum{
 				Value: "Int(AdjustedCount())",
 			}),
