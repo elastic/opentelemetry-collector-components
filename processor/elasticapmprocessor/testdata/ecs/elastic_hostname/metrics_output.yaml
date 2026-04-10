@@ -34,6 +34,9 @@ resourceMetrics:
         - key: service.name
           value:
             stringValue: test-service
+        - key: telemetry.sdk.language
+          value:
+            stringValue: unknown
     scopeMetrics:
       - metrics:
           - gauge:

@@ -118,8 +118,9 @@ type SpanEventConfig struct {
 
 // ElasticMetricConfig configures the enrichment attributes for metrics
 type ElasticMetricConfig struct {
-	ProcessorEvent AttributeConfig `mapstructure:"processor_event"`
-	MetricsetName  AttributeConfig `mapstructure:"metricset_name"`
+	ProcessorEvent                 AttributeConfig `mapstructure:"processor_event"`
+	MetricsetName                  AttributeConfig `mapstructure:"metricset_name"`
+	TranslateUnsupportedAttributes AttributeConfig `mapstructure:"translate_unsupported_attributes"`
 }
 
 // ElasticLogConfig configures the enrichment attributes for logs

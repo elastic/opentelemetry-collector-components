@@ -39,6 +39,7 @@ import (
 	"go.opentelemetry.io/collector/processor/processortest"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/metadata"
 )
 
@@ -502,6 +503,247 @@ func TestConsumeLogs_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "GET", value.Str())
 	_, ok = otlpLogAttrs.Get("labels.http_method")
+	assert.False(t, ok)
+}
+
+func TestConsumeMetrics_ECSOTLPFallbacks(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.MetricsSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	metrics := pmetric.NewMetrics()
+	resourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	resource := resourceMetric.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+
+	scopeMetrics := resourceMetric.ScopeMetrics().AppendEmpty()
+	scopeMetrics.Scope().SetName("metrics-instrumentation")
+	scopeMetrics.Scope().SetVersion("1.0.0")
+
+	httpMetric := scopeMetrics.Metrics().AppendEmpty()
+	httpMetric.SetName("http.requests.total")
+	httpDP := httpMetric.SetEmptySum().DataPoints().AppendEmpty()
+	httpDP.SetIntValue(1)
+	httpAttrs := httpDP.Attributes()
+	httpAttrs.PutStr("http.request.method", "GET")
+	httpAttrs.PutStr("http.route", "/api/users")
+	httpAttrs.PutInt("http.response.status_code", 200)
+
+	memoryMetric := scopeMetrics.Metrics().AppendEmpty()
+	memoryMetric.SetName("system.memory.usage")
+	memoryDP := memoryMetric.SetEmptyGauge().DataPoints().AppendEmpty()
+	memoryDP.SetDoubleValue(2048.5)
+	memoryAttrs := memoryDP.Attributes()
+	memoryAttrs.PutStr("host", "server-01")
+	memoryAttrs.PutStr("state", "used")
+
+	require.NoError(t, mp.ConsumeMetrics(ctx, metrics))
+	actual := next.AllMetrics()[0]
+
+	require.Equal(t, 1, actual.ResourceMetrics().Len())
+	actualResource := actual.ResourceMetrics().At(0).Resource().Attributes()
+	lang, ok := actualResource.Get(string(semconv.TelemetrySDKLanguageKey))
+	require.True(t, ok)
+	assert.Equal(t, "unknown", lang.Str())
+
+	agentName, ok := actualResource.Get("agent.name")
+	require.True(t, ok)
+	assert.Equal(t, "opentelemetry", agentName.Str())
+
+	actualMetrics := actual.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
+	actualHTTPAttrs := actualMetrics.At(0).Sum().DataPoints().At(0).Attributes()
+	value, ok := actualHTTPAttrs.Get("labels.http_request_method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	value, ok = actualHTTPAttrs.Get("labels.http_route")
+	require.True(t, ok)
+	assert.Equal(t, "/api/users", value.Str())
+	value, ok = actualHTTPAttrs.Get("numeric_labels.http_response_status_code")
+	require.True(t, ok)
+	assert.InDelta(t, 200, value.Double(), 1e-9)
+	value, ok = actualHTTPAttrs.Get(elasticattr.ServiceFrameworkName)
+	require.True(t, ok)
+	assert.Equal(t, "metrics-instrumentation", value.Str())
+	value, ok = actualHTTPAttrs.Get(elasticattr.ServiceFrameworkVersion)
+	require.True(t, ok)
+	assert.Equal(t, "1.0.0", value.Str())
+	_, ok = actualHTTPAttrs.Get("http.request.method")
+	assert.False(t, ok)
+	_, ok = actualHTTPAttrs.Get("http.route")
+	assert.False(t, ok)
+	_, ok = actualHTTPAttrs.Get("http.response.status_code")
+	assert.False(t, ok)
+
+	actualMemoryAttrs := actualMetrics.At(1).Gauge().DataPoints().At(0).Attributes()
+	value, ok = actualMemoryAttrs.Get("labels.host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = actualMemoryAttrs.Get("labels.state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	value, ok = actualMemoryAttrs.Get(elasticattr.ServiceFrameworkName)
+	require.True(t, ok)
+	assert.Equal(t, "metrics-instrumentation", value.Str())
+	value, ok = actualMemoryAttrs.Get(elasticattr.ServiceFrameworkVersion)
+	require.True(t, ok)
+	assert.Equal(t, "1.0.0", value.Str())
+	_, ok = actualMemoryAttrs.Get("host")
+	assert.False(t, ok)
+	_, ok = actualMemoryAttrs.Get("state")
+	assert.False(t, ok)
+}
+
+func TestConsumeMetrics_ECSIntakeSkipsOTLPFallbacks(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.MetricsSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	metrics := pmetric.NewMetrics()
+	resourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	resource := resourceMetric.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
+
+	scopeMetrics := resourceMetric.ScopeMetrics().AppendEmpty()
+	scopeMetrics.Scope().SetName("metrics-instrumentation")
+	scopeMetrics.Scope().SetVersion("1.0.0")
+	metric := scopeMetrics.Metrics().AppendEmpty()
+	metric.SetName("http.requests.total")
+	dp := metric.SetEmptySum().DataPoints().AppendEmpty()
+	dp.SetIntValue(1)
+	attrs := dp.Attributes()
+	attrs.PutStr("http.request.method", "GET")
+	attrs.PutStr("http.route", "/api/users")
+	attrs.PutInt("http.response.status_code", 200)
+	attrs.PutStr("host", "server-01")
+	attrs.PutStr("state", "used")
+
+	require.NoError(t, mp.ConsumeMetrics(ctx, metrics))
+	actual := next.AllMetrics()[0]
+
+	actualResource := actual.ResourceMetrics().At(0).Resource().Attributes()
+	_, ok := actualResource.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	actualAttrs := actual.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0).Attributes()
+	value, ok := actualAttrs.Get("http.request.method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	value, ok = actualAttrs.Get("http.route")
+	require.True(t, ok)
+	assert.Equal(t, "/api/users", value.Str())
+	value, ok = actualAttrs.Get("http.response.status_code")
+	require.True(t, ok)
+	assert.EqualValues(t, 200, value.Int())
+	value, ok = actualAttrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = actualAttrs.Get("state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	_, ok = actualAttrs.Get("labels.http_request_method")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("labels.http_route")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("numeric_labels.http_response_status_code")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("labels.state")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get(elasticattr.ServiceFrameworkName)
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get(elasticattr.ServiceFrameworkVersion)
+	assert.False(t, ok)
+}
+
+func TestConsumeMetrics_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
+	})
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	next := &consumertest.MetricsSink{}
+	cfg := NewDefaultConfig().(*Config)
+
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	metrics := pmetric.NewMetrics()
+
+	intakeResourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	intakeResource := intakeResourceMetric.Resource()
+	intakeResource.Attributes().PutStr("service.name", "intake-service")
+	intakeResource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
+	intakeScopeMetrics := intakeResourceMetric.ScopeMetrics().AppendEmpty()
+	intakeScopeMetrics.Scope().SetName("metrics-instrumentation")
+	intakeScopeMetrics.Scope().SetVersion("1.0.0")
+	intakeMetric := intakeScopeMetrics.Metrics().AppendEmpty()
+	intakeMetric.SetName("intake.metric")
+	intakeMetric.SetEmptyGauge().DataPoints().AppendEmpty().SetDoubleValue(1.0)
+
+	otlpResourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	otlpResource := otlpResourceMetric.Resource()
+	otlpResource.Attributes().PutStr("service.name", "otlp-service")
+	otlpResource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+	otlpScopeMetrics := otlpResourceMetric.ScopeMetrics().AppendEmpty()
+	otlpScopeMetrics.Scope().SetName("metrics-instrumentation")
+	otlpScopeMetrics.Scope().SetVersion("1.0.0")
+	otlpMetric := otlpScopeMetrics.Metrics().AppendEmpty()
+	otlpMetric.SetName("http.requests.total")
+	otlpDP := otlpMetric.SetEmptySum().DataPoints().AppendEmpty()
+	otlpDP.SetIntValue(1)
+	otlpAttrs := otlpDP.Attributes()
+	otlpAttrs.PutStr("http.request.method", "GET")
+	otlpAttrs.PutStr("host", "server-01")
+
+	require.NoError(t, mp.ConsumeMetrics(ctx, metrics))
+	actual := next.AllMetrics()[0]
+
+	require.Equal(t, 2, actual.ResourceMetrics().Len())
+
+	// Mixed-origin batches are not supported. The first resource metric determines
+	// which ECS metric enricher is used for the whole batch.
+	intakeAttrs := actual.ResourceMetrics().At(0).Resource().Attributes()
+	_, ok := intakeAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	otlpAttrsAfter := actual.ResourceMetrics().At(1).Resource().Attributes()
+	_, ok = otlpAttrsAfter.Get(string(semconv.TelemetrySDKLanguageKey))
+	assert.False(t, ok)
+
+	actualDPAttrs := actual.ResourceMetrics().At(1).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0).Attributes()
+	value, ok := actualDPAttrs.Get("http.request.method")
+	require.True(t, ok)
+	assert.Equal(t, "GET", value.Str())
+	value, ok = actualDPAttrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	_, ok = actualDPAttrs.Get("labels.http_request_method")
+	assert.False(t, ok)
+	_, ok = actualDPAttrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = actualDPAttrs.Get(elasticattr.ServiceFrameworkName)
+	assert.False(t, ok)
+	_, ok = actualDPAttrs.Get(elasticattr.ServiceFrameworkVersion)
 	assert.False(t, ok)
 }
 

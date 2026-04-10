@@ -37,7 +37,121 @@ const (
 // Moves unsupported attributes to labels with a "labels." prefix (key sanitized),
 // and leaves supported ECS attributes unchanged.
 func TranslateResourceMetadata(resource pcommon.Resource) {
-	translateAttributes(resource.Attributes(), isSupportedResourceAttribute)
+	attributes := resource.Attributes()
+	attributes.Range(func(k string, v pcommon.Value) bool {
+		if sanitizeExistingLabelAttribute(attributes, k, v) {
+			return true
+		}
+
+		switch k {
+		case elasticattr.AgentActivationMethod,
+			elasticattr.AgentEphemeralID,
+			elasticattr.AgentName,
+			elasticattr.AgentVersion,
+			elasticattr.CloudAccountName,
+			elasticattr.CloudInstanceID,
+			elasticattr.CloudInstanceName,
+			elasticattr.CloudMachineType,
+			elasticattr.CloudOriginAccountID,
+			elasticattr.CloudOriginProvider,
+			elasticattr.CloudOriginRegion,
+			elasticattr.CloudOriginServiceName,
+			elasticattr.CloudProjectID,
+			elasticattr.CloudProjectName,
+			elasticattr.DataStreamDataset,
+			elasticattr.DataStreamNamespace,
+			elasticattr.DataStreamType,
+			elasticattr.DestinationIP,
+			elasticattr.FaaSExecution,
+			elasticattr.FaaSTriggerRequestID,
+			elasticattr.HostHostName,
+			elasticattr.HostOSType,
+			elasticattr.MetricsetName,
+			elasticattr.ServiceFrameworkName,
+			elasticattr.ServiceFrameworkVersion,
+			elasticattr.ServiceOriginID,
+			elasticattr.ServiceOriginName,
+			elasticattr.ServiceOriginVersion,
+			elasticattr.ServiceTargetName,
+			elasticattr.ServiceTargetType,
+			elasticattr.SourceNATIP,
+			elasticattr.UserDomain,
+			string(semconv.ClientAddressKey),
+			string(semconv.ClientPortKey),
+			string(semconv.ContainerImageTagsKey),
+			string(semconv.FaaSColdstartKey),
+			string(semconv.FaaSInstanceKey),
+			string(semconv.FaaSNameKey),
+			string(semconv.FaaSTriggerKey),
+			string(semconv.FaaSVersionKey),
+			string(semconv.HostIPKey),
+			string(semconv.NetworkCarrierIccKey),
+			string(semconv.NetworkCarrierMccKey),
+			string(semconv.NetworkCarrierMncKey),
+			string(semconv.NetworkCarrierNameKey),
+			string(semconv.NetworkConnectionSubtypeKey),
+			string(semconv.NetworkConnectionTypeKey),
+			string(semconv.ProcessExecutableNameKey),
+			string(semconv.ProcessParentPIDKey),
+			string(semconv.ProcessPIDKey),
+			string(semconv.ServiceNameKey),
+			string(semconv.ServiceNamespaceKey),
+			string(semconv.SourceAddressKey),
+			string(semconv.SourcePortKey),
+			string(semconv.TelemetryDistroNameKey),
+			string(semconv.TelemetryDistroVersionKey),
+			"telemetry.sdk.elastic_export_timestamp",
+			string(semconv.UserAgentOriginalKey),
+			string(semconv.UserEmailKey),
+			string(semconv.UserIDKey),
+			string(semconv.UserNameKey),
+			ecsAttrOpenCensusExporterVersion:
+			return true
+		case elasticattr.ContainerImageTag,
+			elasticattr.DeviceManufacturer,
+			string(semconv.CloudAccountIDKey),
+			string(semconv.CloudAvailabilityZoneKey),
+			string(semconv.CloudPlatformKey),
+			string(semconv.CloudProviderKey),
+			string(semconv.CloudRegionKey),
+			string(semconv.ContainerIDKey),
+			string(semconv.ContainerImageNameKey),
+			string(semconv.ContainerNameKey),
+			string(semconv.ContainerRuntimeKey),
+			string(semconv26.DeploymentEnvironmentKey),
+			string(semconv.DeploymentEnvironmentNameKey),
+			string(semconv.DeviceIDKey),
+			string(semconv.DeviceModelIdentifierKey),
+			string(semconv.DeviceModelNameKey),
+			string(semconv.HostArchKey),
+			string(semconv.HostIDKey),
+			string(semconv.HostNameKey),
+			string(semconv.HostTypeKey),
+			string(semconv.K8SNamespaceNameKey),
+			string(semconv.K8SNodeNameKey),
+			string(semconv.K8SPodNameKey),
+			string(semconv.K8SPodUIDKey),
+			string(semconv.OSDescriptionKey),
+			string(semconv.OSNameKey),
+			string(semconv.OSTypeKey),
+			string(semconv.OSVersionKey),
+			string(semconv.ProcessCommandLineKey),
+			string(semconv.ProcessExecutablePathKey),
+			string(semconv.ProcessOwnerKey),
+			string(semconv.ProcessRuntimeNameKey),
+			string(semconv.ProcessRuntimeVersionKey),
+			string(semconv.ServiceInstanceIDKey),
+			string(semconv.ServiceVersionKey),
+			string(semconv.TelemetrySDKLanguageKey),
+			string(semconv.TelemetrySDKNameKey),
+			string(semconv.TelemetrySDKVersionKey):
+			truncatePreservedStringAttribute(attributes, k, v)
+			return true
+		default:
+			fallbackToLabelAttribute(attributes, k, v)
+			return true
+		}
+	})
 }
 
 // TranslateLogRecordAttributes applies the apm-data OTLP fallback behaviour for
@@ -45,25 +159,89 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 // unsupported attributes are moved to labels.* / numeric_labels.* with a
 // sanitized key.
 func TranslateLogRecordAttributes(attributes pcommon.Map) {
-	translateAttributes(attributes, isSupportedLogRecordAttribute)
+	attributes.Range(func(k string, v pcommon.Value) bool {
+		if sanitizeExistingLabelAttribute(attributes, k, v) {
+			return true
+		}
+
+		switch k {
+		case elasticattr.DataStreamDataset,
+			elasticattr.DataStreamNamespace,
+			elasticattr.DataStreamType,
+			elasticattr.ErrorID,
+			elasticattr.ProcessorEvent,
+			elasticattr.SessionID,
+			string(semconv26.ExceptionEscapedKey),
+			string(semconv.ExceptionMessageKey),
+			string(semconv.ExceptionStacktraceKey),
+			string(semconv.ExceptionTypeKey),
+			string(semconv.NetworkConnectionTypeKey),
+			"event.domain",
+			"event.name":
+			return true
+		default:
+			fallbackToLabelAttribute(attributes, k, v)
+			return true
+		}
+	})
 }
 
-func translateAttributes(attributes pcommon.Map, isSupported func(string) bool) {
+// TranslateMetricDataPointAttributes applies the apm-data OTLP metric fallback
+// for raw metric datapoint attributes in ECS mode. Existing labels.* /
+// numeric_labels.* keys are sanitized in place, metric-specific special cases
+// are preserved, and everything else is moved to labels.* / numeric_labels.*.
+func TranslateMetricDataPointAttributes(attributes pcommon.Map) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitize.IsLabelAttribute(k) {
-			sanitized := sanitize.HandleLabelAttributeKey(k)
-			if sanitized != k {
-				v.CopyTo(attributes.PutEmpty(sanitized))
-				attributes.Remove(k)
-			}
-		} else if !isSupported(k) {
-			// Attributes not supported by ECS are moved to labels with a
-			// labels./numeric_labels. prefix depending on their value type.
-			setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(k), v)
-			attributes.Remove(k)
+		if sanitizeExistingLabelAttribute(attributes, k, v) {
+			return true
 		}
-		return true
+
+		switch k {
+		case elasticattr.DataStreamDataset,
+			elasticattr.DataStreamNamespace,
+			elasticattr.DataStreamType,
+			elasticattr.EventDataset,
+			"event.module",
+			"system.process.cpu.start_time",
+			"system.process.state":
+			return true
+		case string(semconv.UserNameKey),
+			"system.filesystem.mount_point",
+			"system.process.cmdline":
+			truncatePreservedStringAttribute(attributes, k, v)
+			return true
+		default:
+			fallbackToLabelAttribute(attributes, k, v)
+			return true
+		}
 	})
+}
+
+func sanitizeExistingLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) bool {
+	if !sanitize.IsLabelAttribute(key) {
+		return false
+	}
+	sanitized := sanitize.HandleLabelAttributeKey(key)
+	if sanitized != key {
+		value.CopyTo(attributes.PutEmpty(sanitized))
+		attributes.Remove(key)
+	}
+	return true
+}
+
+func truncatePreservedStringAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
+	if value.Type() != pcommon.ValueTypeStr {
+		return
+	}
+	truncated := sanitize.Truncate(value.Str())
+	if truncated != value.Str() {
+		attributes.PutStr(key, truncated)
+	}
+}
+
+func fallbackToLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
+	setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(key), value)
+	attributes.Remove(key)
 }
 
 // setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
@@ -125,206 +303,6 @@ func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Va
 	case pcommon.ValueTypeMap, pcommon.ValueTypeBytes, pcommon.ValueTypeEmpty:
 		return
 	}
-}
-
-// isSupportedLogRecordAttribute is based on the OTLP log-record attribute switch
-// in apm-data/input/otlp/logs.go, which preserves exception.*, event.name,
-// event.domain, session.id, network.connection.type, and data_stream.* as
-// first-class fields and sends everything else through setLabel(replaceDots(k), ...).
-// This allowlist also keeps processor-added fields like processor.event,
-// error.id, and data_stream.type so they survive the collector-side translation pass.
-func isSupportedLogRecordAttribute(attr string) bool {
-	switch attr {
-	case string(semconv26.ExceptionEscapedKey),
-		string(semconv.ExceptionMessageKey),
-		string(semconv.ExceptionStacktraceKey),
-		string(semconv.ExceptionTypeKey),
-		string(semconv.NetworkConnectionTypeKey),
-		elasticattr.DataStreamDataset,
-		elasticattr.DataStreamNamespace,
-		elasticattr.DataStreamType,
-		elasticattr.ErrorID,
-		"event.domain",
-		"event.name",
-		elasticattr.ProcessorEvent,
-		elasticattr.SessionID:
-		return true
-	}
-
-	return false
-}
-
-// isSupportedResourceAttribute returns true if the resource attribute is
-// supported by ECS and can be mapped directly.
-// Supported fields can include OTEL SemConv attributes or ECS specific attributes.
-// Fields are based on those found in the below areas:
-// 1. apm-data: https://github.com/elastic/apm-data/blob/main/input/otlp/metadata.go
-// 2. elasticapmintake receiver: https://github.com/elastic/opentelemetry-collector-components/tree/main/receiver/elasticapmintakereceiver/internal/mappers
-func isSupportedResourceAttribute(attr string) bool {
-	switch attr {
-	// service.*
-	case string(semconv.ServiceNameKey),
-		string(semconv.ServiceVersionKey),
-		string(semconv.ServiceInstanceIDKey),
-		string(semconv.ServiceNamespaceKey),
-		elasticattr.ServiceFrameworkName,
-		elasticattr.ServiceFrameworkVersion,
-		elasticattr.ServiceOriginID,
-		elasticattr.ServiceOriginName,
-		elasticattr.ServiceOriginVersion,
-		elasticattr.ServiceTargetName,
-		elasticattr.ServiceTargetType:
-		return true
-
-	// deployment.*
-	case string(semconv26.DeploymentEnvironmentKey), string(semconv.DeploymentEnvironmentNameKey):
-		return true
-
-	// telemetry.sdk.*
-	case string(semconv.TelemetrySDKNameKey),
-		string(semconv.TelemetrySDKVersionKey),
-		string(semconv.TelemetrySDKLanguageKey),
-		string(semconv.TelemetryDistroNameKey),
-		string(semconv.TelemetryDistroVersionKey):
-		return true
-
-	// cloud.*
-	case string(semconv.CloudProviderKey),
-		string(semconv.CloudAccountIDKey),
-		string(semconv.CloudRegionKey),
-		string(semconv.CloudAvailabilityZoneKey),
-		string(semconv.CloudPlatformKey),
-		elasticattr.CloudOriginAccountID,
-		elasticattr.CloudOriginProvider,
-		elasticattr.CloudOriginRegion,
-		elasticattr.CloudOriginServiceName,
-		elasticattr.CloudAccountName,
-		elasticattr.CloudInstanceID,
-		elasticattr.CloudInstanceName,
-		elasticattr.CloudMachineType,
-		elasticattr.CloudProjectID,
-		elasticattr.CloudProjectName:
-		return true
-
-	// container.*
-	case string(semconv.ContainerNameKey),
-		string(semconv.ContainerIDKey),
-		string(semconv.ContainerImageNameKey),
-		elasticattr.ContainerImageTag,
-		string(semconv.ContainerImageTagsKey),
-		string(semconv.ContainerRuntimeKey):
-		return true
-
-	// k8s.*
-	case string(semconv.K8SNamespaceNameKey),
-		string(semconv.K8SNodeNameKey),
-		string(semconv.K8SPodNameKey),
-		string(semconv.K8SPodUIDKey):
-		return true
-
-	// host.*
-	case string(semconv.HostNameKey),
-		elasticattr.HostHostName, // legacy hostname key for backwards compatibility
-		string(semconv.HostIDKey),
-		string(semconv.HostTypeKey),
-		string(semconv.HostArchKey),
-		string(semconv.HostIPKey),
-		elasticattr.HostOSType:
-		return true
-
-	// process.*
-	case string(semconv.ProcessPIDKey),
-		string(semconv.ProcessParentPIDKey),
-		string(semconv.ProcessExecutableNameKey),
-		string(semconv.ProcessCommandLineKey),
-		string(semconv.ProcessExecutablePathKey),
-		string(semconv.ProcessRuntimeNameKey),
-		string(semconv.ProcessRuntimeVersionKey),
-		string(semconv.ProcessOwnerKey):
-		return true
-
-	// os.*
-	case string(semconv.OSTypeKey),
-		string(semconv.OSDescriptionKey),
-		string(semconv.OSNameKey),
-		string(semconv.OSVersionKey):
-		return true
-
-	// device.*
-	case string(semconv.DeviceIDKey),
-		string(semconv.DeviceModelIdentifierKey),
-		string(semconv.DeviceModelNameKey),
-		elasticattr.DeviceManufacturer:
-		return true
-
-	// data_stream.*
-	case elasticattr.DataStreamType,
-		elasticattr.DataStreamDataset,
-		elasticattr.DataStreamNamespace:
-		return true
-
-	// user.*
-	case string(semconv.UserIDKey),
-		string(semconv.UserEmailKey),
-		string(semconv.UserNameKey),
-		elasticattr.UserDomain:
-		return true
-
-	// user_agent.*
-	case string(semconv.UserAgentOriginalKey):
-		return true
-
-	// network.*
-	case string(semconv.NetworkConnectionTypeKey),
-		string(semconv.NetworkConnectionSubtypeKey),
-		string(semconv.NetworkCarrierNameKey),
-		string(semconv.NetworkCarrierMccKey),
-		string(semconv.NetworkCarrierMncKey),
-		string(semconv.NetworkCarrierIccKey):
-		return true
-
-	// client.*
-	case string(semconv.ClientAddressKey),
-		string(semconv.ClientPortKey):
-		return true
-
-	// source.*
-	case string(semconv.SourceAddressKey),
-		string(semconv.SourcePortKey),
-		elasticattr.SourceNATIP:
-		return true
-
-	// destination.*
-	case elasticattr.DestinationIP:
-		return true
-
-	// faas.*
-	case string(semconv.FaaSInstanceKey),
-		string(semconv.FaaSNameKey),
-		string(semconv.FaaSVersionKey),
-		string(semconv.FaaSTriggerKey),
-		string(semconv.FaaSColdstartKey),
-		elasticattr.FaaSTriggerRequestID,
-		elasticattr.FaaSExecution:
-		return true
-
-	// Legacy OpenCensus attributes
-	case ecsAttrOpenCensusExporterVersion:
-		return true
-
-	// APM Agent enrichment
-	case elasticattr.AgentName,
-		elasticattr.AgentVersion,
-		elasticattr.AgentEphemeralID,
-		elasticattr.AgentActivationMethod:
-		return true
-
-	// Metrics
-	case elasticattr.MetricsetName:
-		return true
-	}
-
-	return false
 }
 
 func ApplyResourceConventions(resource pcommon.Resource) {

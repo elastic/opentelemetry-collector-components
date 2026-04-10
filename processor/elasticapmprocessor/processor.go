@@ -217,9 +217,13 @@ func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) 
 	ecsEnricherConfig.Resource.HostOSType.Enabled = true
 	ecsEnricherConfig.Resource.ServiceName.Enabled = true
 	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
+	ecsEnricherConfig.Resource.DefaultServiceLanguage.Enabled = true
+	ecsEnricherConfig.Metric.TranslateUnsupportedAttributes.Enabled = true
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
+	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
+	intakeECSEnricherConfig.Metric.TranslateUnsupportedAttributes.Enabled = false
 
 	return &MetricProcessor{
 		next:              next,
@@ -241,6 +245,8 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 	if ecsMode {
 		enricher = p.ecsEnricher
 		resourceMetrics := md.ResourceMetrics()
+		// ECS metric batches are assumed to be homogeneous by origin. We select
+		// the enricher from the first resource metric and apply it to the whole batch.
 		if resourceMetrics.Len() > 0 && isIntakeECS(resourceMetrics.At(0).Resource()) {
 			enricher = p.intakeECSEnricher
 		}
