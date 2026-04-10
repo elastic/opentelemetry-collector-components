@@ -280,14 +280,14 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	var shadowIndex map[string]int // mask.String() → index, created lazily
 
 	for _, event := range *batch {
-		if !eventShadowsGlobalKey(event, keyIndex) {
+		mask, shadowed := eventShadowMask(event, keyIndex)
+		if !shadowed {
 			if err := r.appendEvent(event, &ld, &md, &td); err != nil {
 				return err
 			}
 			continue
 		}
 
-		mask := eventGlobalMask(event, keyIndex)
 		maskKey := mask.String()
 		if shadowIndex == nil {
 			shadowIndex = make(map[string]int)
@@ -799,46 +799,46 @@ type shadowedBatch struct {
 	td            *ptrace.Traces
 }
 
-// eventShadowsGlobalKey reports whether the event has a non-global label
-// whose key is present in the batch-level global key set, meaning an
-// event-level tag has shadowed a metadata label.
-func eventShadowsGlobalKey(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo) bool {
-	for key, lv := range event.Labels {
-		if lv != nil && !lv.Global {
-			if _, ok := keyIndex[key]; ok {
-				return true
-			}
-		}
-	}
-	for key, nv := range event.NumericLabels {
-		if nv != nil && !nv.Global {
-			if _, ok := keyIndex[key]; ok {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// eventGlobalMask returns a bitmask representing the global label keys
-// that are still Global: true on this event.
-func eventGlobalMask(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo) big.Int {
+// eventShadowMask checks whether the event shadows any global label key
+// and returns a bitmask of the global keys that are still Global: true
+// on this event along with a bool indicating whether shadowing was
+// detected. When shadowed is false, the mask has all bits set (i.e. all
+// global keys are retained) and can be ignored — the bool avoids the
+// need to compare the mask against a full mask for this common case.
+// Events with identical masks need the same set of keys in their
+// x-elastic-dynamic-resource-attributes context and can share a batch.
+func eventShadowMask(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo) (big.Int, bool) {
 	var mask big.Int
+	var shadowed bool
 	for key, lv := range event.Labels {
-		if lv != nil && lv.Global {
-			if info, ok := keyIndex[key]; ok {
-				mask.SetBit(&mask, info.bitPos, 1)
-			}
+		if lv == nil {
+			continue
+		}
+		info, ok := keyIndex[key]
+		if !ok {
+			continue
+		}
+		if lv.Global {
+			mask.SetBit(&mask, info.bitPos, 1)
+		} else {
+			shadowed = true
 		}
 	}
 	for key, nv := range event.NumericLabels {
-		if nv != nil && nv.Global {
-			if info, ok := keyIndex[key]; ok {
-				mask.SetBit(&mask, info.bitPos, 1)
-			}
+		if nv == nil {
+			continue
+		}
+		info, ok := keyIndex[key]
+		if !ok {
+			continue
+		}
+		if nv.Global {
+			mask.SetBit(&mask, info.bitPos, 1)
+		} else {
+			shadowed = true
 		}
 	}
-	return mask
+	return mask, shadowed
 }
 
 // resolveGlobalKeys converts a bitmask back to prefixed global label key
