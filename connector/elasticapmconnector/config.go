@@ -121,9 +121,7 @@ type AggregationConfig struct {
 
 	// Statements are OTTL statements executed on metrics produced for each
 	// aggregation interval. Available OTTL paths: ottldatapoint context.
-	// Client metadata is accessible via otelcol.client.metadata["key"]
-	// (requires the ottl.contexts.enableOTelColContext feature gate, enabled
-	// by default since v0.147.0).
+	// Client metadata is accessible via otelcol.client.metadata["key"].
 	Statements []string `mapstructure:"statements"`
 }
 

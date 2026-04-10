@@ -22,6 +22,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -313,7 +314,7 @@ func TestConnector_OTTLStatementsWithClientMetadata(t *testing.T) {
 						dp := dps.At(l)
 						ds, ok := dp.Attributes().Get("data_stream.dataset")
 						if ok {
-							assert.Truef(t, len(ds.Str()) > 4 && ds.Str()[:4] == "apm.",
+							assert.Truef(t, strings.HasPrefix(ds.Str(), "apm."),
 								"expected data_stream.dataset to start with 'apm.' for ECS mode, got %q", ds.Str())
 						}
 					}
@@ -335,7 +336,7 @@ func TestConnector_OTTLStatementsWithClientMetadata(t *testing.T) {
 						dp := dps.At(l)
 						ds, ok := dp.Attributes().Get("data_stream.dataset")
 						if ok {
-							assert.Falsef(t, len(ds.Str()) > 4 && ds.Str()[:4] == "apm.",
+							assert.Falsef(t, strings.HasPrefix(ds.Str(), "apm."),
 								"expected data_stream.dataset to NOT start with 'apm.' for OTEL mode, got %q", ds.Str())
 						}
 					}
