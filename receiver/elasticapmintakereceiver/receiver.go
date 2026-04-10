@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"math/big"
 	"net"
 	"net/http"
 	"strings"
@@ -225,9 +226,9 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 }
 
 func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
-	ld := plog.NewLogs()
-	md := pmetric.NewMetrics()
-	td := ptrace.NewTraces()
+	var ld *plog.Logs
+	var md *pmetric.Metrics
+	var td *ptrace.Traces
 
 	processors := modelprocessor.Chained{
 		modelprocessor.SetGroupingKey{
@@ -242,112 +243,186 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		r.settings.Logger.Error("failed to process batch", zap.Error(err))
 	}
 
-	// Collect label keys marked as Global across all events. Global labels
-	// originate from the intake v2 metadata and are cloned onto every event
-	// by the apm-data library (see GlobalLabelsFrom):
-	// https://github.com/elastic/apm-data/blob/main/input/elasticapm/internal/modeldecoder/modeldecoderutil/labels.go
+	// Collect label keys marked as Global across all events, assigning each
+	// unique key a bit position. Global labels originate from the intake v2
+	// metadata and are cloned onto every event by the apm-data library.
 	//
-	// We scan all events rather than just the first because an event-level
-	// tag can shadow a metadata label, flipping its Global flag to false on
-	// that particular event (see Labels.Set):
-	// https://github.com/elastic/apm-data/blob/main/model/modelpb/labels.go
-	//
-	// Note: this collects the union of global keys across the batch, which
-	// differs from apm-aggregation where global labels are evaluated
-	// per-event (see marshalEventGlobalLabels):
-	// https://github.com/elastic/apm-aggregation/blob/main/aggregators/converter.go
-	// If an event shadows a global key, apm-aggregation excludes that key
-	// from that event's aggregation grouping. Here, the shadowed key is
-	// still included in x-elastic-dynamic-resource-attributes because we operate
-	// at the batch level, not per-event.
-	labelKeySet := make(map[string]struct{})
-	numericKeySet := make(map[string]struct{})
+	// When an event has a tag with the same key as a metadata label,
+	// Labels.Set() replaces the value and resets Global to false on that
+	// event only. To match apm-aggregation's per-event behavior
+	// (marshalEventGlobalLabels), events that shadow a global key are
+	// separated into shadowed batches grouped by their effective global key
+	// set (represented as a bitmask). Each shadowed batch is consumed with
+	// its own context so that the shadowed key is excluded from
+	// "x-elastic-dynamic-resource-attributes" for those events.
+	keyIndex := make(map[string]globalKeyInfo)
+	bitPos := 0
 	for _, event := range *batch {
 		for key, lv := range event.Labels {
 			if lv != nil && lv.Global {
-				labelKeySet[key] = struct{}{}
+				if _, ok := keyIndex[key]; !ok {
+					keyIndex[key] = globalKeyInfo{bitPos: bitPos, isNumeric: false}
+					bitPos++
+				}
 			}
 		}
 		for key, nv := range event.NumericLabels {
 			if nv != nil && nv.Global {
-				numericKeySet[key] = struct{}{}
+				if _, ok := keyIndex[key]; !ok {
+					keyIndex[key] = globalKeyInfo{bitPos: bitPos, isNumeric: true}
+					bitPos++
+				}
 			}
-		}
-
-		timestampNanos := event.GetTimestamp()
-
-		// TODO record metrics about events processed by type?
-		switch event.Type() {
-		case modelpb.MetricEventType:
-			rm := md.ResourceMetrics().AppendEmpty()
-
-			r.setResourceAttributes(rm.Resource().Attributes(), event)
-
-			if err := r.elasticMetricsToOtelMetrics(&rm, event, timestampNanos); err != nil {
-				return err
-			}
-		case modelpb.ErrorEventType:
-			rl := ld.ResourceLogs().AppendEmpty()
-
-			r.setResourceAttributes(rl.Resource().Attributes(), event)
-
-			r.elasticErrorToOtelLogRecord(&rl, event, timestampNanos)
-		case modelpb.LogEventType:
-			rl := ld.ResourceLogs().AppendEmpty()
-
-			r.setResourceAttributes(rl.Resource().Attributes(), event)
-
-			r.elasticLogToOtelLogRecord(&rl, event, timestampNanos)
-		case modelpb.SpanEventType, modelpb.TransactionEventType:
-			rs := td.ResourceSpans().AppendEmpty()
-
-			r.setResourceAttributes(rs.Resource().Attributes(), event)
-
-			s := r.elasticEventToOtelSpan(&rs, event, timestampNanos)
-
-			isTransaction := event.Type() == modelpb.TransactionEventType
-			if isTransaction {
-				r.elasticTransactionToOtelSpan(&s, event)
-			} else {
-				r.elasticSpanToOTelSpan(&s, event)
-			}
-		default:
-			return fmt.Errorf("unhandled event type %q", event.Type())
 		}
 	}
 
-	// collect all unique global label keys to add to the client metadata
-	if len(labelKeySet)+len(numericKeySet) > 0 {
-		globalKeys := make([]string, 0, len(labelKeySet)+len(numericKeySet))
-		for k := range labelKeySet {
-			globalKeys = append(globalKeys, "labels."+k)
+	var shadowedBatches []shadowedBatch
+	var shadowIndex map[string]int // mask.String() → index, created lazily
+
+	for _, event := range *batch {
+		if !eventShadowsGlobalKey(event, keyIndex) {
+			if err := r.appendEvent(event, &ld, &md, &td); err != nil {
+				return err
+			}
+			continue
 		}
-		for k := range numericKeySet {
-			globalKeys = append(globalKeys, "numeric_labels."+k)
+
+		mask := eventGlobalMask(event, keyIndex)
+		maskKey := mask.String()
+		if shadowIndex == nil {
+			shadowIndex = make(map[string]int)
 		}
-		ctx = withDynamicResourceAttributes(ctx, globalKeys)
+		if idx, ok := shadowIndex[maskKey]; ok {
+			if err := r.appendEvent(event, &shadowedBatches[idx].ld, &shadowedBatches[idx].md, &shadowedBatches[idx].td); err != nil {
+				return err
+			}
+		} else {
+			shadowIndex[maskKey] = len(shadowedBatches)
+			sb := shadowedBatch{
+				globalKeyMask: mask,
+			}
+			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td); err != nil {
+				return err
+			}
+			shadowedBatches = append(shadowedBatches, sb)
+		}
+	}
+
+	// Consume the main batch with the full set of global keys.
+	mainCtx := ctx
+	if len(keyIndex) > 0 {
+		mainCtx = withDynamicResourceAttributes(ctx, resolveGlobalKeys(nil, keyIndex))
 	}
 
 	var errs []error
-	if numRecords := ld.LogRecordCount(); numRecords != 0 && r.nextLogs != nil {
-		ctx := r.obsreport.StartLogsOp(ctx)
-		err := r.nextLogs.ConsumeLogs(ctx, ld)
-		r.obsreport.EndLogsOp(ctx, dataFormatElasticAPM, numRecords, err)
-		errs = append(errs, err)
-	}
-	if numDataPoints := md.DataPointCount(); numDataPoints != 0 && r.nextMetrics != nil {
-		ctx := r.obsreport.StartMetricsOp(ctx)
-		err := r.nextMetrics.ConsumeMetrics(ctx, md)
-		r.obsreport.EndMetricsOp(ctx, dataFormatElasticAPM, numDataPoints, err)
-		errs = append(errs, err)
-	}
-	if numSpans := td.SpanCount(); numSpans != 0 && r.nextTraces != nil {
-		ctx := r.obsreport.StartTracesOp(ctx)
-		err := r.nextTraces.ConsumeTraces(ctx, td)
-		r.obsreport.EndTracesOp(ctx, dataFormatElasticAPM, numSpans, err)
-		errs = append(errs, err)
+	errs = append(errs, r.consumeOTel(mainCtx, ld, md, td)...)
+
+	// Consume shadowed batches, each with its own global key set.
+	for _, sb := range shadowedBatches {
+		sbCtx := withDynamicResourceAttributes(ctx, resolveGlobalKeys(&sb.globalKeyMask, keyIndex))
+		errs = append(errs, r.consumeOTel(sbCtx, sb.ld, sb.md, sb.td)...)
 	}
 	return errors.Join(errs...)
+}
+
+// appendEvent converts an APM event to its OTel representation and appends
+// it to the appropriate pdata structure. The pdata pointers are lazily
+// initialized on first use.
+func (r *elasticAPMIntakeReceiver) appendEvent(event *modelpb.APMEvent, ld **plog.Logs, md **pmetric.Metrics, td **ptrace.Traces) error {
+	timestampNanos := event.GetTimestamp()
+
+	// TODO record metrics about events processed by type?
+	switch event.Type() {
+	case modelpb.MetricEventType:
+		if *md == nil {
+			m := pmetric.NewMetrics()
+			*md = &m
+		}
+		rm := (*md).ResourceMetrics().AppendEmpty()
+
+		r.setResourceAttributes(rm.Resource().Attributes(), event)
+
+		if err := r.elasticMetricsToOtelMetrics(&rm, event, timestampNanos); err != nil {
+			return err
+		}
+	case modelpb.ErrorEventType:
+		if *ld == nil {
+			l := plog.NewLogs()
+			*ld = &l
+		}
+		rl := (*ld).ResourceLogs().AppendEmpty()
+
+		r.setResourceAttributes(rl.Resource().Attributes(), event)
+
+		r.elasticErrorToOtelLogRecord(&rl, event, timestampNanos)
+	case modelpb.LogEventType:
+		if *ld == nil {
+			l := plog.NewLogs()
+			*ld = &l
+		}
+		rl := (*ld).ResourceLogs().AppendEmpty()
+
+		r.setResourceAttributes(rl.Resource().Attributes(), event)
+
+		r.elasticLogToOtelLogRecord(&rl, event, timestampNanos)
+	case modelpb.SpanEventType, modelpb.TransactionEventType:
+		if *td == nil {
+			tr := ptrace.NewTraces()
+			*td = &tr
+		}
+		rs := (*td).ResourceSpans().AppendEmpty()
+
+		r.setResourceAttributes(rs.Resource().Attributes(), event)
+
+		s := r.elasticEventToOtelSpan(&rs, event, timestampNanos)
+
+		isTransaction := event.Type() == modelpb.TransactionEventType
+		if isTransaction {
+			r.elasticTransactionToOtelSpan(&s, event)
+		} else {
+			r.elasticSpanToOTelSpan(&s, event)
+		}
+	default:
+		return fmt.Errorf("unhandled event type %q", event.Type())
+	}
+	return nil
+}
+
+// consumeOTel sends the populated pdata structures to downstream consumers.
+// Nil pointers are skipped.
+func (r *elasticAPMIntakeReceiver) consumeOTel(ctx context.Context, ld *plog.Logs, md *pmetric.Metrics, td *ptrace.Traces) []error {
+	var errs []error
+	if ld != nil {
+		if numRecords := ld.LogRecordCount(); numRecords != 0 && r.nextLogs != nil {
+			obsCtx := r.obsreport.StartLogsOp(ctx)
+			err := r.nextLogs.ConsumeLogs(obsCtx, *ld)
+			r.obsreport.EndLogsOp(obsCtx, dataFormatElasticAPM, numRecords, err)
+			errs = append(errs, err)
+		}
+	}
+	if md != nil {
+		if numDataPoints := md.DataPointCount(); numDataPoints != 0 && r.nextMetrics != nil {
+			obsCtx := r.obsreport.StartMetricsOp(ctx)
+			err := r.nextMetrics.ConsumeMetrics(obsCtx, *md)
+			r.obsreport.EndMetricsOp(obsCtx, dataFormatElasticAPM, numDataPoints, err)
+			errs = append(errs, err)
+		}
+	}
+	if td != nil {
+		if numSpans := td.SpanCount(); numSpans != 0 && r.nextTraces != nil {
+			obsCtx := r.obsreport.StartTracesOp(ctx)
+			err := r.nextTraces.ConsumeTraces(obsCtx, *td)
+			r.obsreport.EndTracesOp(obsCtx, dataFormatElasticAPM, numSpans, err)
+			errs = append(errs, err)
+		}
+	}
+	return errs
+}
+
+// globalKeyInfo stores a global label key's bit position and type.
+type globalKeyInfo struct {
+	bitPos    int
+	isNumeric bool
 }
 
 // setResourceAttributes maps event fields to attributes.
@@ -711,4 +786,73 @@ func withDynamicResourceAttributes(ctx context.Context, globalLabelKeys []string
 		Auth:     info.Auth,
 		Metadata: client.NewMetadata(newMeta),
 	})
+}
+
+// shadowedBatch holds events that shadow at least one global label key
+// and share the same effective global key set (represented as a bitmask).
+// The pdata fields are lazily initialized by appendEvent on first use.
+type shadowedBatch struct {
+	globalKeyMask big.Int
+	ld            *plog.Logs
+	md            *pmetric.Metrics
+	td            *ptrace.Traces
+}
+
+// eventShadowsGlobalKey reports whether the event has a non-global label
+// whose key is present in the batch-level global key set, meaning an
+// event-level tag has shadowed a metadata label.
+func eventShadowsGlobalKey(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo) bool {
+	for key, lv := range event.Labels {
+		if lv != nil && !lv.Global {
+			if _, ok := keyIndex[key]; ok {
+				return true
+			}
+		}
+	}
+	for key, nv := range event.NumericLabels {
+		if nv != nil && !nv.Global {
+			if _, ok := keyIndex[key]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// eventGlobalMask returns a bitmask representing the global label keys
+// that are still Global: true on this event.
+func eventGlobalMask(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo) big.Int {
+	var mask big.Int
+	for key, lv := range event.Labels {
+		if lv != nil && lv.Global {
+			if info, ok := keyIndex[key]; ok {
+				mask.SetBit(&mask, info.bitPos, 1)
+			}
+		}
+	}
+	for key, nv := range event.NumericLabels {
+		if nv != nil && nv.Global {
+			if info, ok := keyIndex[key]; ok {
+				mask.SetBit(&mask, info.bitPos, 1)
+			}
+		}
+	}
+	return mask
+}
+
+// resolveGlobalKeys converts a bitmask back to prefixed global label key
+// names. If mask is nil, all keys in keyIndex are included.
+func resolveGlobalKeys(mask *big.Int, keyIndex map[string]globalKeyInfo) []string {
+	keys := make([]string, 0, len(keyIndex))
+	for key, info := range keyIndex {
+		if mask != nil && mask.Bit(info.bitPos) == 0 {
+			continue
+		}
+		if info.isNumeric {
+			keys = append(keys, "numeric_labels."+key)
+		} else {
+			keys = append(keys, "labels."+key)
+		}
+	}
+	return keys
 }
