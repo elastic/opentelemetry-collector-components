@@ -104,7 +104,7 @@ func newBenchConfig(statements []string) *Config {
 
 func benchmarkTracesConnector(b *testing.B, statements []string, input ptrace.Traces) {
 	b.Helper()
-	next := &consumertest.MetricsSink{}
+	next := consumertest.NewNop()
 	factory := NewFactory()
 	settings := connectortest.NewNopSettings(metadata.Type)
 
@@ -126,7 +126,7 @@ func benchmarkTracesConnector(b *testing.B, statements []string, input ptrace.Tr
 
 func benchmarkLogsConnector(b *testing.B, statements []string, input plog.Logs) {
 	b.Helper()
-	next := &consumertest.MetricsSink{}
+	next := consumertest.NewNop()
 	factory := NewFactory()
 	settings := connectortest.NewNopSettings(metadata.Type)
 
@@ -148,7 +148,7 @@ func benchmarkLogsConnector(b *testing.B, statements []string, input plog.Logs) 
 
 func benchmarkMetricsConnector(b *testing.B, statements []string, input pmetric.Metrics) {
 	b.Helper()
-	next := &consumertest.MetricsSink{}
+	next := consumertest.NewNop()
 	factory := NewFactory()
 	settings := connectortest.NewNopSettings(metadata.Type)
 
