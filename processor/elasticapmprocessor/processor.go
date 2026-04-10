@@ -70,6 +70,7 @@ func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *T
 	intakeECSEnricherConfig.Transaction.Result.Enabled = false
 	// The `host.os.type` field should not be added for APM events
 	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
+	// disable default service language to avoid adding it on apm events
 	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
 
 	return &TraceProcessor{
@@ -179,6 +180,7 @@ func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogPr
 
 	intakeECSEnricherConfig := ecsEnricherConfig
 	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
+	// disable default service language to avoid adding it on apm events
 	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
 	intakeECSEnricherConfig.Log.TranslateUnsupportedAttributes.Enabled = false
 
