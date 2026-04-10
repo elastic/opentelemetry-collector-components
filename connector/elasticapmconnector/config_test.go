@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
@@ -66,6 +67,7 @@ func TestConfig(t *testing.T) {
 		{
 			path: "full",
 			expected: &Config{
+				ErrorMode: ottl.SilentError,
 				Aggregation: &AggregationConfig{
 					Directory:    "/path/to/aggregation/state",
 					MetadataKeys: []string{"a", "B", "c"},
