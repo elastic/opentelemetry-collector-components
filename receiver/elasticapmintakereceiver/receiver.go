@@ -256,7 +256,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	// its own context so that the shadowed key is excluded from
 	// "x-elastic-dynamic-resource-attributes" for those events.
 	keyIndex := make(map[string]globalKeyInfo)
-	bitPos := 0
+	var bitPos int
 	for _, event := range *batch {
 		for key, lv := range event.Labels {
 			if lv != nil && lv.Global {
