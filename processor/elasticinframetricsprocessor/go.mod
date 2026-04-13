@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/processor/elasticin
 go 1.25.0
 
 require (
-	github.com/elastic/opentelemetry-lib v0.35.0
+	github.com/elastic/opentelemetry-lib v0.36.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.149.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.149.0
 	github.com/stretchr/testify v1.11.1
@@ -50,13 +50,13 @@ require (
 	go.opentelemetry.io/collector/pdata/xpdata v0.149.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.55.0 // indirect
 	go.opentelemetry.io/collector/processor/xprocessor v0.149.0 // indirect
-	go.opentelemetry.io/otel v1.42.0 // indirect
-	go.opentelemetry.io/otel/metric v1.42.0 // indirect
+	go.opentelemetry.io/otel v1.43.0 // indirect
+	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.42.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.42.0 // indirect
-	go.opentelemetry.io/otel/trace v1.42.0 // indirect
+	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
