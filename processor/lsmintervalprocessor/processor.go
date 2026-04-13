@@ -536,6 +536,23 @@ func (p *Processor) exportForInterval(
 			errs = append(errs, fmt.Errorf("failed to finalize merged metric: %w", err))
 			continue
 		}
+
+		// Restore client metadata from the storage key into the context so that
+		// OTTL statements can access it via otelcol.client.metadata["key"].
+		var attributes []attribute.KeyValue
+		exportCtx := ctx
+		if n := len(key.Metadata); n != 0 {
+			attributes = make([]attribute.KeyValue, 0, n)
+			metadataMap := make(map[string][]string, n)
+			for _, kvs := range key.Metadata {
+				metadataMap[kvs.Key] = kvs.Values
+				attributes = append(attributes, attribute.StringSlice(kvs.Key, kvs.Values))
+			}
+			info := client.FromContext(exportCtx)
+			info.Metadata = client.NewMetadata(metadataMap)
+			exportCtx = client.NewContext(exportCtx, info)
+		}
+
 		resourceMetrics := finalMetrics.ResourceMetrics()
 		if ivl.Statements != nil {
 			for i := 0; i < resourceMetrics.Len(); i++ {
@@ -549,7 +566,7 @@ func (p *Processor) exportForInterval(
 						executeTransform := func(dp any) {
 							dCtx := ottldatapoint.NewTransformContextPtr(res, scope, metric, dp)
 							defer dCtx.Close()
-							if err := ivl.Statements.Execute(ctx, dCtx); err != nil {
+							if err := ivl.Statements.Execute(exportCtx, dCtx); err != nil {
 								errs = append(errs, fmt.Errorf("failed to execute ottl statement for interval %s: %w", ivl.Duration, err))
 							}
 						}
@@ -586,18 +603,6 @@ func (p *Processor) exportForInterval(
 				}
 			}
 		}
-		var attributes []attribute.KeyValue
-		if n := len(key.Metadata); n != 0 {
-			attributes = make([]attribute.KeyValue, 0, n)
-			metadataMap := make(map[string][]string, n)
-			for _, kvs := range key.Metadata {
-				metadataMap[kvs.Key] = kvs.Values
-				attributes = append(attributes, attribute.StringSlice(kvs.Key, kvs.Values))
-			}
-			info := client.FromContext(ctx)
-			info.Metadata = client.NewMetadata(metadataMap)
-			ctx = client.NewContext(ctx, info)
-		}
 		attributes = append(attributes, attribute.String("interval", ivl.Duration.String()))
 		for _, ov := range []struct {
 			kind  string
@@ -618,19 +623,19 @@ func (p *Processor) exportForInterval(
 				)
 			}
 		}
-		if err := p.next.ConsumeMetrics(ctx, finalMetrics); err != nil {
+		if err := p.next.ConsumeMetrics(exportCtx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
 			continue
 		}
 		cnt := finalMetrics.DataPointCount()
 		exportedDPCount += cnt
 		p.telemetryBuilder.LsmintervalExportedDataPoints.Add(
-			ctx,
+			exportCtx,
 			int64(cnt),
 			metric.WithAttributes(attributes...),
 		)
 		p.telemetryBuilder.LsmintervalExportedBytes.Add(
-			ctx,
+			exportCtx,
 			int64(len(iter.Key())+len(iter.Value())),
 			metric.WithAttributes(attributes...),
 		)
