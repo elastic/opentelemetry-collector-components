@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -209,6 +210,8 @@ func TranslateSpanAttributes(attributes pcommon.Map) {
 			elasticattr.DataStreamNamespace,
 			elasticattr.DataStreamType,
 			// miscellaneous
+			elasticattr.EventOutcome,
+			elasticattr.ProcessorEvent,
 			elasticattr.SessionID,
 			elasticattr.TransactionType,
 			"type",
@@ -233,6 +236,7 @@ func TranslateSpanAttributes(attributes pcommon.Map) {
 			string(semconv25.HTTPSchemeKey),
 			string(semconv25.HTTPStatusCodeKey),
 			string(semconv25.HTTPTargetKey),
+			string(semconv12.HTTPHostKey),
 			string(semconv25.HTTPURLKey),
 			string(semconv25.HTTPUserAgentKey),
 			// messaging.*

@@ -32,6 +32,7 @@ import (
 	"github.com/ua-parser/uap-go/uaparser"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -78,6 +79,7 @@ type spanEnrichmentContext struct {
 	urlFull *url.URL
 
 	peerService              string
+	httpHost                 string
 	serverAddress            string
 	httpTarget               string
 	urlScheme                string
@@ -98,6 +100,7 @@ type spanEnrichmentContext struct {
 
 	// The inferred* attributes are derived from a base attribute
 	userAgentOriginal        string
+	userAgentOriginalSet     bool
 	userAgentName            string
 	userAgentVersion         string
 	inferredUserAgentName    string
@@ -136,6 +139,9 @@ func (s *spanEnrichmentContext) Enrich(
 		switch k {
 		case string(semconv25.PeerServiceKey), string(semconv39.ServicePeerNameKey):
 			s.peerService = v.Str()
+		case string(semconv12.HTTPHostKey):
+			s.isHTTP = true
+			s.httpHost = v.Str()
 		case string(semconv25.ServerAddressKey):
 			s.serverAddress = v.Str()
 		case string(semconv25.ServerPortKey):
@@ -227,8 +233,13 @@ func (s *spanEnrichmentContext) Enrich(
 		case string(semconv27.GenAISystemKey), string(semconv37.GenAIProviderNameKey):
 			s.isGenAi = true
 			s.genAiSystem = v.Str()
+		case string(semconv25.HTTPUserAgentKey):
+			if !s.userAgentOriginalSet {
+				s.userAgentOriginal = v.Str()
+			}
 		case string(semconv27.UserAgentOriginalKey):
 			s.userAgentOriginal = v.Str()
+			s.userAgentOriginalSet = true
 		case string(semconv27.UserAgentNameKey):
 			s.userAgentName = v.Str()
 		case string(semconv27.UserAgentVersionKey):
@@ -743,17 +754,21 @@ func (s *spanEnrichmentContext) buildURLFromComponents() *url.URL {
 		}
 	}
 	if u.Host == "" {
-		host := s.urlDomain
-		port := s.urlPort
-		if host == "" {
-			host = s.serverAddress
-			port = s.serverPort
-		}
-		if host != "" {
-			if port > 0 {
-				u.Host = net.JoinHostPort(host, strconv.FormatInt(port, 10))
-			} else {
-				u.Host = host
+		if s.httpHost != "" {
+			u.Host = s.httpHost
+		} else {
+			host := s.urlDomain
+			port := s.urlPort
+			if host == "" {
+				host = s.serverAddress
+				port = s.serverPort
+			}
+			if host != "" {
+				if port > 0 {
+					u.Host = net.JoinHostPort(host, strconv.FormatInt(port, 10))
+				} else {
+					u.Host = host
+				}
 			}
 		}
 	}
@@ -762,14 +777,20 @@ func (s *spanEnrichmentContext) buildURLFromComponents() *url.URL {
 
 func (s *spanEnrichmentContext) removeHTTPSourceAttributes(span ptrace.Span) {
 	attributes := span.Attributes()
-	attributes.Remove(string(semconv25.HTTPURLKey))
-	attributes.Remove(string(semconv25.HTTPTargetKey))
-	attributes.Remove(string(semconv25.URLFullKey))
-	attributes.Remove(string(semconv25.URLSchemeKey))
-	attributes.Remove(string(semconv25.URLDomainKey))
-	attributes.Remove(string(semconv25.URLPortKey))
-	attributes.Remove(string(semconv25.URLPathKey))
-	attributes.Remove(string(semconv25.URLQueryKey))
+	if _, ok := attributes.Get("url.original"); ok {
+		attributes.Remove(string(semconv12.HTTPHostKey))
+		attributes.Remove(string(semconv25.HTTPURLKey))
+		attributes.Remove(string(semconv25.HTTPTargetKey))
+		attributes.Remove(string(semconv25.URLFullKey))
+		attributes.Remove(string(semconv25.URLSchemeKey))
+		attributes.Remove(string(semconv25.URLDomainKey))
+		attributes.Remove(string(semconv25.URLPortKey))
+		attributes.Remove(string(semconv25.URLPathKey))
+		attributes.Remove(string(semconv25.URLQueryKey))
+	}
+	if _, ok := attributes.Get(string(semconv27.UserAgentOriginalKey)); ok {
+		attributes.Remove(string(semconv25.HTTPUserAgentKey))
+	}
 }
 
 func (s *spanEnrichmentContext) setInferredSpans(span ptrace.Span) {
@@ -810,6 +831,13 @@ func (s *spanEnrichmentContext) setInferredSpans(span ptrace.Span) {
 }
 
 func (s *spanEnrichmentContext) setUserAgentIfRequired(span ptrace.Span) {
+	if s.userAgentOriginal != "" {
+		attribute.PutStr(
+			span.Attributes(),
+			string(semconv27.UserAgentOriginalKey),
+			s.userAgentOriginal,
+		)
+	}
 	if s.userAgentName == "" && s.inferredUserAgentName != "" {
 		attribute.PutStr(
 			span.Attributes(),

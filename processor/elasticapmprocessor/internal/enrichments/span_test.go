@@ -30,6 +30,7 @@ import (
 	"github.com/ua-parser/uap-go/uaparser"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -1171,6 +1172,7 @@ func TestElasticSpanEnrich(t *testing.T) {
 		input             ptrace.Span
 		config            config.ElasticSpanConfig
 		enrichedAttrs     map[string]any
+		removedAttrs      []string
 		expectedSpanLinks *ptrace.SpanLinkSlice
 	}{
 		{
@@ -1499,6 +1501,80 @@ func TestElasticSpanEnrich(t *testing.T) {
 				elasticattr.SpanDestinationServiceType:     "external",
 				elasticattr.SpanDestinationServiceResource: "api.example.com:80",
 				"url.original":                             "http://api.example.com/search?q=OpenTelemetry",
+			},
+		},
+		{
+			name: "http_span_legacy_http_host",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Status().SetCode(ptrace.StatusCodeOk)
+				span.Attributes().PutInt(
+					string(semconv25.HTTPResponseStatusCodeKey),
+					http.StatusOK,
+				)
+				span.Attributes().PutStr(string(semconv12.HTTPHostKey), "api.example.com:444")
+				span.Attributes().PutStr(string(semconv25.HTTPTargetKey), "/search?q=OpenTelemetry")
+				return span
+			}(),
+			config: func() config.ElasticSpanConfig {
+				cfg := config.Enabled().Span
+				cfg.TranslateUnsupportedAttributes.Enabled = true
+				return cfg
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "external",
+				elasticattr.SpanSubtype:                    "http",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				"destination.address":                      "api.example.com",
+				"destination.port":                         int64(444),
+				elasticattr.ServiceTargetType:              "http",
+				elasticattr.ServiceTargetName:              "api.example.com:444",
+				elasticattr.SpanDestinationServiceName:     "http://api.example.com:444",
+				elasticattr.SpanDestinationServiceType:     "external",
+				elasticattr.SpanDestinationServiceResource: "api.example.com:444",
+				"url.original":                             "http://api.example.com:444/search?q=OpenTelemetry",
+			},
+			removedAttrs: []string{
+				string(semconv12.HTTPHostKey),
+				string(semconv25.HTTPTargetKey),
+			},
+		},
+		{
+			name: "http_source_attrs_retained_without_destination_service",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Status().SetCode(ptrace.StatusCodeOk)
+				span.Attributes().PutInt(
+					string(semconv25.HTTPResponseStatusCodeKey),
+					http.StatusOK,
+				)
+				span.Attributes().PutStr(string(semconv25.HTTPURLKey), "https://api.example.com/users")
+				return span
+			}(),
+			config: func() config.ElasticSpanConfig {
+				cfg := config.Enabled().Span
+				cfg.TranslateUnsupportedAttributes.Enabled = true
+				cfg.DestinationService.Enabled = false
+				return cfg
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:             startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:          "span",
+				elasticattr.SpanRepresentativeCount: float64(1),
+				elasticattr.SpanType:                "external",
+				elasticattr.SpanSubtype:             "http",
+				elasticattr.SpanDurationUs:          expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:            outcomeSuccess,
+				elasticattr.SuccessCount:            int64(1),
+				elasticattr.ServiceTargetType:       "http",
+				elasticattr.ServiceTargetName:       "api.example.com:443",
 			},
 		},
 		{
@@ -2174,6 +2250,67 @@ func TestElasticSpanEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "http_user_agent_alias_promoted_and_removed",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.SetSpanID([8]byte{1})
+				span.Attributes().PutStr(string(semconv25.HTTPRequestMethodKey), "GET")
+				span.Attributes().PutStr(string(semconv25.HTTPUserAgentKey), "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1")
+				return span
+			}(),
+			config: func() config.ElasticSpanConfig {
+				cfg := config.Enabled().Span
+				cfg.TranslateUnsupportedAttributes.Enabled = true
+				return cfg
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:             "span",
+				elasticattr.SpanRepresentativeCount:    float64(1),
+				elasticattr.SpanType:                   "external",
+				elasticattr.SpanSubtype:                "http",
+				elasticattr.SpanDurationUs:             expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:               outcomeSuccess,
+				elasticattr.SuccessCount:               int64(1),
+				elasticattr.ServiceTargetType:          "http",
+				elasticattr.ServiceTargetName:          "",
+				string(semconv27.UserAgentOriginalKey): "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1",
+				string(semconv27.UserAgentNameKey):     "Mobile Safari",
+				string(semconv27.UserAgentVersionKey):  "13.1.1",
+			},
+			removedAttrs: []string{string(semconv25.HTTPUserAgentKey)},
+		},
+		{
+			name: "http_user_agent_alias_retained_when_user_agent_disabled",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.SetSpanID([8]byte{1})
+				span.Attributes().PutStr(string(semconv25.HTTPRequestMethodKey), "GET")
+				span.Attributes().PutStr(string(semconv25.HTTPUserAgentKey), "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1")
+				return span
+			}(),
+			config: func() config.ElasticSpanConfig {
+				cfg := config.Enabled().Span
+				cfg.TranslateUnsupportedAttributes.Enabled = true
+				cfg.UserAgent.Enabled = false
+				return cfg
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:             startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:          "span",
+				elasticattr.SpanRepresentativeCount: float64(1),
+				elasticattr.SpanType:                "external",
+				elasticattr.SpanSubtype:             "http",
+				elasticattr.SpanDurationUs:          expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:            outcomeSuccess,
+				elasticattr.SuccessCount:            int64(1),
+				elasticattr.ServiceTargetType:       "http",
+				elasticattr.ServiceTargetName:       "",
+			},
+		},
+		{
 			name: "event_outcome_unknown_preserved_no_success_count",
 			input: func() ptrace.Span {
 				span := getElasticSpan()
@@ -2327,6 +2464,9 @@ func TestElasticSpanEnrich(t *testing.T) {
 			// Merge with the expected attributes and override the span links.
 			for k, v := range tc.enrichedAttrs {
 				_ = expectedSpan.Attributes().PutEmpty(k).FromRaw(v)
+			}
+			for _, key := range tc.removedAttrs {
+				expectedSpan.Attributes().Remove(key)
 			}
 			enrichConfig := config.Config{
 				Span: tc.config,

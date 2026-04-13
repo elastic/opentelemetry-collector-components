@@ -428,6 +428,8 @@ func TestTranslateSpanAttributes(t *testing.T) {
 				attrs.PutInt("http.response.status_code", 200)
 				attrs.PutStr("http.url", "https://api.example.com/users")
 				attrs.PutStr("db.query.text", "SELECT * FROM users")
+				attrs.PutStr(elasticattr.EventOutcome, "unknown")
+				attrs.PutStr(elasticattr.ProcessorEvent, "transaction")
 				attrs.PutStr("session.id", "session-123")
 				attrs.PutStr(string(semconv.NetworkConnectionTypeKey), "wifi")
 				attrs.PutStr(elasticattr.DataStreamDataset, "apm")
@@ -437,6 +439,8 @@ func TestTranslateSpanAttributes(t *testing.T) {
 				"http.response.status_code":              int64(200),
 				"http.url":                               "https://api.example.com/users",
 				"db.query.text":                          "SELECT * FROM users",
+				elasticattr.EventOutcome:                 "unknown",
+				elasticattr.ProcessorEvent:               "transaction",
 				"session.id":                             "session-123",
 				string(semconv.NetworkConnectionTypeKey): "wifi",
 				elasticattr.DataStreamDataset:            "apm",
