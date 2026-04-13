@@ -738,6 +738,9 @@ func (s *spanEnrichmentContext) buildURLFromComponents() *url.URL {
 	}
 	if u.Scheme == "" {
 		u.Scheme = s.urlScheme
+		if u.Scheme == "" {
+			u.Scheme = "http"
+		}
 	}
 	if u.Host == "" {
 		host := s.urlDomain

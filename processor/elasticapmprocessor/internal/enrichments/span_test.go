@@ -1468,6 +1468,40 @@ func TestElasticSpanEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "http_span_synthesized_url_defaults_scheme",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Status().SetCode(ptrace.StatusCodeOk)
+				span.Attributes().PutInt(
+					string(semconv25.HTTPResponseStatusCodeKey),
+					http.StatusOK,
+				)
+				span.Attributes().PutStr(string(semconv25.HTTPTargetKey), "/search?q=OpenTelemetry")
+				span.Attributes().PutStr(string(semconv25.ServerAddressKey), "api.example.com")
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "external",
+				elasticattr.SpanSubtype:                    "http",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				"destination.address":                      "api.example.com",
+				"destination.port":                         int64(80),
+				elasticattr.ServiceTargetType:              "http",
+				elasticattr.ServiceTargetName:              "api.example.com:80",
+				elasticattr.SpanDestinationServiceName:     "http://api.example.com",
+				elasticattr.SpanDestinationServiceType:     "external",
+				elasticattr.SpanDestinationServiceResource: "api.example.com:80",
+				"url.original":                             "http://api.example.com/search?q=OpenTelemetry",
+			},
+		},
+		{
 			name: "rpc_span_grpc",
 			input: func() ptrace.Span {
 				span := getElasticSpan()
