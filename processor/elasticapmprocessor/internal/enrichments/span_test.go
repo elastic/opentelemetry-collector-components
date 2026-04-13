@@ -1327,8 +1327,8 @@ func TestElasticSpanEnrich(t *testing.T) {
 				span := getElasticSpan()
 				span.SetName("testspan")
 				span.Status().SetCode(ptrace.StatusCodeError)
-				// peer.service should be ignored if more specific deductions
-				// can be made about the service target.
+				// peer.service should be ignored for service.target.*, but
+				// preserved for span.destination.service.*.
 				span.Attributes().PutStr(string(semconv25.PeerServiceKey), "testsvc")
 				span.Attributes().PutInt(
 					string(semconv25.HTTPResponseStatusCodeKey),
@@ -1354,9 +1354,9 @@ func TestElasticSpanEnrich(t *testing.T) {
 				"destination.port":                         int64(443),
 				elasticattr.ServiceTargetType:              "http",
 				elasticattr.ServiceTargetName:              "www.foo.bar:443",
-				elasticattr.SpanDestinationServiceName:     "https://www.foo.bar",
+				elasticattr.SpanDestinationServiceName:     "testsvc",
 				elasticattr.SpanDestinationServiceType:     "external",
-				elasticattr.SpanDestinationServiceResource: "www.foo.bar:443",
+				elasticattr.SpanDestinationServiceResource: "testsvc",
 				"url.original":                             "https://www.foo.bar:443/search?q=OpenTelemetry#SemConv",
 			},
 		},
@@ -1391,9 +1391,9 @@ func TestElasticSpanEnrich(t *testing.T) {
 				"destination.port":                         int64(443),
 				elasticattr.ServiceTargetType:              "http",
 				elasticattr.ServiceTargetName:              "api.example.com:443",
-				elasticattr.SpanDestinationServiceName:     "https://api.example.com",
+				elasticattr.SpanDestinationServiceName:     "testsvc",
 				elasticattr.SpanDestinationServiceType:     "external",
-				elasticattr.SpanDestinationServiceResource: "api.example.com:443",
+				elasticattr.SpanDestinationServiceResource: "testsvc",
 				"url.original":                             "https://api.example.com/users",
 			},
 		},
@@ -1402,8 +1402,8 @@ func TestElasticSpanEnrich(t *testing.T) {
 			input: func() ptrace.Span {
 				span := getElasticSpan()
 				span.SetName("testspan")
-				// peer.service should be ignored if more specific deductions
-				// can be made about the service target.
+				// peer.service should be ignored for service.target.*, but
+				// preserved for span.destination.service.*.
 				span.Attributes().PutStr(string(semconv25.PeerServiceKey), "testsvc")
 				// No explicit span status code; HTTP 5xx triggers failure outcome
 				span.Attributes().PutInt(
@@ -1430,9 +1430,9 @@ func TestElasticSpanEnrich(t *testing.T) {
 				"destination.port":                         int64(443),
 				elasticattr.ServiceTargetType:              "http",
 				elasticattr.ServiceTargetName:              "www.foo.bar:443",
-				elasticattr.SpanDestinationServiceName:     "https://www.foo.bar",
+				elasticattr.SpanDestinationServiceName:     "testsvc",
 				elasticattr.SpanDestinationServiceType:     "external",
-				elasticattr.SpanDestinationServiceResource: "www.foo.bar:443",
+				elasticattr.SpanDestinationServiceResource: "testsvc",
 				"url.original":                             "https://www.foo.bar:443/search?q=OpenTelemetry#SemConv",
 			},
 		},

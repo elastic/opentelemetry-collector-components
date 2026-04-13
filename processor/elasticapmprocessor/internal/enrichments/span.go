@@ -609,6 +609,7 @@ func (s *spanEnrichmentContext) setServiceTarget(span ptrace.Span) {
 }
 
 func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
+	attributes := span.Attributes()
 	var destnResource string
 	if s.peerService != "" {
 		destnResource = s.peerService
@@ -632,14 +633,18 @@ func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 	case s.isRPC, s.isHTTP:
 		if s.isHTTP {
 			if details, ok := s.httpDestinationDetails(); ok {
-				attribute.PutNonEmptyStr(span.Attributes(), "destination.address", details.destinationAddress)
+				attribute.PutNonEmptyStr(attributes, "destination.address", details.destinationAddress)
 				if details.destinationPort > 0 {
-					attribute.PutInt(span.Attributes(), "destination.port", details.destinationPort)
+					attribute.PutInt(attributes, "destination.port", details.destinationPort)
 				}
-				attribute.PutNonEmptyStr(span.Attributes(), "url.original", details.urlOriginal)
-				attribute.PutNonEmptyStr(span.Attributes(), elasticattr.SpanDestinationServiceName, details.spanDestinationServiceName)
-				attribute.PutStr(span.Attributes(), elasticattr.SpanDestinationServiceType, "external")
-				destnResource = details.spanDestinationServiceResource
+				attribute.PutNonEmptyStr(attributes, "url.original", details.urlOriginal)
+				if s.peerService != "" {
+					attribute.PutStr(attributes, elasticattr.SpanDestinationServiceName, s.peerService)
+				} else {
+					attribute.PutNonEmptyStr(attributes, elasticattr.SpanDestinationServiceName, details.spanDestinationServiceName)
+					destnResource = details.spanDestinationServiceResource
+				}
+				attribute.PutStr(attributes, elasticattr.SpanDestinationServiceType, "external")
 				break
 			}
 		}
@@ -657,7 +662,7 @@ func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 	}
 
 	if destnResource != "" {
-		attribute.PutStr(span.Attributes(), elasticattr.SpanDestinationServiceResource, destnResource)
+		attribute.PutStr(attributes, elasticattr.SpanDestinationServiceResource, destnResource)
 	}
 }
 
