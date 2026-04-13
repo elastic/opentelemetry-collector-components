@@ -23,8 +23,11 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv39 "go.opentelemetry.io/otel/semconv/v1.39.0"
 )
 
 // Supported ECS resource attributes
@@ -200,65 +203,78 @@ func TranslateSpanAttributes(attributes pcommon.Map) {
 		}
 
 		switch k {
+		// data_stream.*
 		case elasticattr.DataStreamDataset,
 			elasticattr.DataStreamNamespace,
 			elasticattr.DataStreamType,
+			// miscellaneous
+			elasticattr.SessionID,
 			elasticattr.TransactionType,
-			"code.stacktrace",
-			"db.name",
-			"db.namespace",
-			"db.query.text",
-			"db.statement",
-			"db.system",
-			"db.system.name",
-			"db.user",
-			"gen_ai.provider.name",
-			"gen_ai.system",
-			"http.flavor",
-			"http.method",
-			"http.request.method",
-			"http.response.body.size",
-			"http.response.status_code",
-			"http.scheme",
-			"http.status_code",
-			"http.target",
-			"http.url",
-			"http.user_agent",
-			"messaging.destination.name",
-			"messaging.destination.temporary",
-			"messaging.operation",
-			"messaging.operation.name",
-			"messaging.system",
-			"net.host.name",
-			"net.peer.name",
-			"net.peer.port",
-			"network.carrier.icc",
-			"network.carrier.mcc",
-			"network.carrier.mnc",
-			"network.carrier.name",
-			"network.connection.subtype",
-			"network.connection.type",
-			"peer.service",
-			"rpc.grpc.status_code",
-			"rpc.method",
-			"rpc.response.status_code",
-			"rpc.service",
-			"rpc.system",
-			"rpc.system.name",
-			"server.address",
-			"server.port",
-			"service.peer.name",
-			"session.id",
 			"type",
-			"url.domain",
-			"url.full",
-			"url.path",
-			"url.port",
-			"url.query",
-			"url.scheme",
-			"user_agent.name",
-			"user_agent.original",
-			"user_agent.version":
+			"code.stacktrace",
+			// db.*
+			string(semconv25.DBNameKey),
+			string(semconv37.DBNamespaceKey),
+			string(semconv37.DBQueryTextKey),
+			string(semconv25.DBStatementKey),
+			string(semconv25.DBSystemKey),
+			string(semconv37.DBSystemNameKey),
+			string(semconv25.DBUserKey),
+			// gen_ai.*
+			string(semconv37.GenAIProviderNameKey),
+			string(semconv.GenAISystemKey),
+			// http.*
+			string(semconv25.HTTPFlavorKey),
+			string(semconv25.HTTPMethodKey),
+			string(semconv25.HTTPRequestMethodKey),
+			string(semconv.HTTPResponseBodySizeKey),
+			string(semconv25.HTTPResponseStatusCodeKey),
+			string(semconv25.HTTPSchemeKey),
+			string(semconv25.HTTPStatusCodeKey),
+			string(semconv25.HTTPTargetKey),
+			string(semconv25.HTTPURLKey),
+			string(semconv25.HTTPUserAgentKey),
+			// messaging.*
+			string(semconv25.MessagingDestinationNameKey),
+			string(semconv25.MessagingDestinationTemporaryKey),
+			string(semconv25.MessagingOperationKey),
+			string(semconv37.MessagingOperationNameKey),
+			string(semconv25.MessagingSystemKey),
+			// net.*
+			string(semconv25.NetHostNameKey),
+			string(semconv25.NetPeerNameKey),
+			string(semconv25.NetPeerPortKey),
+			// network.*
+			string(semconv.NetworkCarrierIccKey),
+			string(semconv.NetworkCarrierMccKey),
+			string(semconv.NetworkCarrierMncKey),
+			string(semconv.NetworkCarrierNameKey),
+			string(semconv.NetworkConnectionSubtypeKey),
+			string(semconv.NetworkConnectionTypeKey),
+			// rpc.*
+			string(semconv25.PeerServiceKey),
+			string(semconv25.RPCGRPCStatusCodeKey),
+			string(semconv39.RPCMethodKey),
+			string(semconv39.RPCResponseStatusCodeKey),
+			string(semconv25.RPCServiceKey),
+			string(semconv25.RPCSystemKey),
+			string(semconv39.RPCSystemNameKey),
+			// server.*
+			string(semconv25.ServerAddressKey),
+			string(semconv25.ServerPortKey),
+			// service.*
+			string(semconv39.ServicePeerNameKey),
+			// url.*
+			string(semconv25.URLDomainKey),
+			string(semconv25.URLFullKey),
+			string(semconv25.URLPathKey),
+			string(semconv25.URLPortKey),
+			string(semconv25.URLQueryKey),
+			string(semconv25.URLSchemeKey),
+			// user_agent.*
+			string(semconv.UserAgentNameKey),
+			string(semconv.UserAgentOriginalKey),
+			string(semconv.UserAgentVersionKey):
 			return true
 		default:
 			fallbackToLabelAttribute(attributes, k, v)
