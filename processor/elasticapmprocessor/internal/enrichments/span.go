@@ -78,6 +78,8 @@ func EnrichSpan(
 type spanEnrichmentContext struct {
 	urlFull *url.URL
 
+	processorEvent           string
+	eventOutcome             string
 	peerService              string
 	httpHost                 string
 	serverAddress            string
@@ -127,16 +129,29 @@ func (s *spanEnrichmentContext) Enrich(
 	cfg config.Config,
 	userAgentParser *uaparser.Parser,
 ) {
+	s.capture(span)
+	s.normalizeAttributes(userAgentParser)
+	s.isTransaction = isElasticTransaction(span, s.processorEvent)
 	if cfg.Span.TranslateUnsupportedAttributes.Enabled {
 		ecs.TranslateSpanAttributes(span.Attributes())
 	}
+	s.enrich(span, cfg)
+	if cfg.Span.TranslateUnsupportedAttributes.Enabled && s.isHTTP {
+		s.removeHTTPSourceAttributes(span)
+	}
 
-	// Extract top level span information.
+	s.enrichSpanEvents(span, cfg.SpanEvent)
+}
+
+func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 	s.spanStatusCode = span.Status().Code()
 
-	// Extract information from span attributes.
 	span.Attributes().Range(func(k string, v pcommon.Value) bool {
 		switch k {
+		case elasticattr.ProcessorEvent:
+			s.processorEvent = v.Str()
+		case elasticattr.EventOutcome:
+			s.eventOutcome = v.Str()
 		case string(semconv25.PeerServiceKey), string(semconv39.ServicePeerNameKey):
 			s.peerService = v.Str()
 		case string(semconv12.HTTPHostKey):
@@ -251,18 +266,13 @@ func (s *spanEnrichmentContext) Enrich(
 		}
 		return true
 	})
+}
 
-	s.normalizeAttributes(userAgentParser)
-	s.isTransaction = isElasticTransaction(span)
-	s.enrich(span, cfg)
-	if cfg.Span.TranslateUnsupportedAttributes.Enabled && s.isHTTP {
-		s.removeHTTPSourceAttributes(span)
-	}
-
+func (s *spanEnrichmentContext) enrichSpanEvents(span ptrace.Span, cfg config.SpanEventConfig) {
 	spanEvents := span.Events()
 	for i := 0; i < spanEvents.Len(); i++ {
 		var c spanEventEnrichmentContext
-		c.enrich(s, spanEvents.At(i), cfg.SpanEvent)
+		c.enrich(s, spanEvents.At(i), cfg)
 	}
 }
 
@@ -475,7 +485,7 @@ func (s *spanEnrichmentContext) setEventOutcome(span ptrace.Span) {
 	// Exit early when event.outcome is already explicitly set to unknown (e.g. by
 	// the intake receiver). This prevents success_count from being written when
 	// the outcome is unknown.
-	if v, ok := span.Attributes().Get(elasticattr.EventOutcome); ok && v.Str() == outcomeUnknown {
+	if s.eventOutcome == outcomeUnknown {
 		return
 	}
 
@@ -988,16 +998,11 @@ func isTraceRoot(span ptrace.Span) bool {
 	return span.ParentSpanID().IsEmpty()
 }
 
-func isElasticTransaction(span ptrace.Span) bool {
+func isElasticTransaction(span ptrace.Span, processorEvent string) bool {
 	flags := tracepb.SpanFlags(span.Flags())
 
-	// Events may have already been defined as an elastic transaction.
-	// check the processor.event value to avoid incorrectly classifying
-	// a span.
-	processorEvent, _ := span.Attributes().Get(elasticattr.ProcessorEvent)
-
 	switch {
-	case processorEvent.Str() == "transaction":
+	case processorEvent == "transaction":
 		return true
 	case isTraceRoot(span):
 		return true
