@@ -13,9 +13,37 @@
 
 Polls the [Akamai SIEM API](https://techdocs.akamai.com/siem-integration/reference/get-configid) for security events and emits them as OTel logs. Supports three operating modes controlled by `output_format`:
 
-- **Raw mode** (`output_format: raw`, default): Raw Akamai JSON placed in `LogRecord.Body` unchanged. Route to Elasticsearch with `logs_dynamic_index: enabled: true` and `metadata_keys: ["x-elastic-mapping-mode"]` on both the batch processor and ES exporter (see [ECS serialization](#1-ecs-serialization-via-context-metadata)). The existing [Akamai integration](https://docs.elastic.co/integrations/akamai) ingest pipeline handles all enrichment. Works with pre-built Kibana dashboards out of the box.
+- **Raw mode** (`output_format: raw`, default): Raw Akamai JSON placed in `LogRecord.Body` as a map (`{message: rawJSON}`). Route to Elasticsearch with a `transform` processor that sets `elastic.mapping.mode: bodymap` as a scope attribute and `logs_dynamic_index: enabled: true` on the exporter (see [The `transform/raw` processor](#1-the-transformraw-processor-required-for-elasticsearch)). The existing [Akamai integration](https://docs.elastic.co/integrations/akamai) ingest pipeline handles all enrichment. Works with pre-built Kibana dashboards out of the box.
 - **OTel mode** (`output_format: otel`): Receiver parses JSON and maps 30+ fields to OTel semantic conventions directly on the `LogRecord`. Works with any OTel-compatible backend.
 - **Dual mode**: Two receiver instances (`akamai_siem/raw` + `akamai_siem/otel`) share a single API connection and cursor. Each pipeline gets its native format — Elasticsearch gets raw JSON, OTLP backend gets structured attributes. Zero duplicate API calls.
+
+## Contents
+
+- [Architecture](#architecture)
+  - [Raw Mode Path](#raw-mode-path)
+  - [OTel Mode Path](#otel-mode-path)
+  - [Dual Mode Path](#dual-mode-path)
+  - [Data Flow](#data-flow)
+  - [Chain State Machine](#chain-state-machine)
+  - [Streaming Architecture (per page)](#streaming-architecture-per-page)
+  - [What the Receiver Does vs What It Doesn't](#what-the-receiver-does-vs-what-it-doesnt)
+  - [Component naming convention](#component-naming-convention)
+  - [Pipeline Processors](#pipeline-processors)
+- [Getting Started](#getting-started)
+  - [Scenario 1: Raw Mode → Elasticsearch + Kibana Dashboard](#scenario-1-raw-mode--elasticsearch--kibana-dashboard)
+  - [Scenario 2: OTel Mode → Elasticsearch (Structured Attributes)](#scenario-2-otel-mode--elasticsearch-structured-attributes)
+  - [Scenario 3: OTel Mode → OTLP Backend](#scenario-3-otel-mode--otlp-backend)
+  - [Scenario 4: Dual Export — ES + OTLP (Shared Poller)](#scenario-4-dual-export--es--otlp-shared-poller)
+  - [Scenario 5: Dual Export — Both to Elasticsearch (Shared Poller)](#scenario-5-dual-export--both-to-elasticsearch-shared-poller)
+  - [Scenario 6: File Export (Testing / Archival)](#scenario-6-file-export-testing--archival)
+  - [Scenario 7: Console Debug (Development)](#scenario-7-console-debug-development)
+  - [Scenario 8: High-Throughput Production](#scenario-8-high-throughput-production)
+- [Using Without Fleet (Headless Mode)](#using-without-fleet-headless-mode)
+- [Live Test Results](#live-test-results)
+- [Configuration Reference](#configuration-reference)
+- [OTel Semantic Convention Mapping](#otel-semantic-convention-mapping)
+- [Telemetry](#telemetry)
+- [Performance](#performance)
 
 ## Architecture
 
@@ -27,42 +55,46 @@ Polls the [Akamai SIEM API](https://techdocs.akamai.com/siem-integration/referen
 
 ![Raw Mode Architecture](./img/architecture_raw.svg)
 
-Raw mode is the default and the fastest path. The receiver places the raw Akamai JSON event string into `LogRecord.Body` unchanged — no parsing, no field extraction. Two things make this work with the ECS pipeline:
+Raw mode is the default and the fastest path. The receiver places the raw Akamai JSON event string into `LogRecord.Body` as a map with key `message` — no parsing, no field extraction. A `transform` processor in the pipeline config handles all Elasticsearch-specific concerns, keeping the receiver backend-agnostic.
 
-#### 1. ECS serialization via context metadata
+#### 1. The `transform/raw` processor (required for Elasticsearch)
 
-The ES exporter must use ECS serialization so that `LogRecord.Body` lands in the `message` field. Without it, the exporter defaults to `otel` serialization, which writes to `body.text` — and the Akamai ingest pipeline fails with `field [event] not present as part of path [event.original]`.
+The `transform/raw` processor does two things:
 
-ECS serialization gives you:
+**a) Sets bodymap mapping mode** — tells the ES exporter to serialize the body map fields directly as document fields (instead of writing to `body.text`). Without this, the Akamai ingest pipeline fails because it expects a `message` field.
 
-- `LogRecord.Body` → `message` field in the Elasticsearch document
-- Timestamp is mapped to `@timestamp`
-- No `.otel` suffix is added to the data stream dataset name
-
-**How it works:** In raw mode, the receiver injects `x-elastic-mapping-mode: ecs` into the OTel client context metadata on every `ConsumeLogs` call (same mechanism as `elasticapmintakereceiver`). The ES exporter reads this metadata and switches to ECS serialization for that request.
-
-> **Important — `metadata_keys` is required:** Both the `batch` processor and the ES exporter have internal buffering that **strips context metadata by default**. The `batch` processor flushes with a fresh `context.Background()`, and the ES exporter's `QueueBatch` does the same. Without `metadata_keys: ["x-elastic-mapping-mode"]` on **both** components, the ECS signal is lost and all documents silently serialize as OTel (writing to `body.text` instead of `message`).
->
-> **`mapping: mode: ecs` is deprecated** (ignored since ES exporter v0.145.0). Do not rely on it — it has no effect. The context metadata path is the only mechanism that works.
-
-**Required config for raw mode pipelines:**
+**b) Copies `data_stream.*` into the body map** — in bodymap mode, the ES exporter serializes **only** the body map content into the document. Resource attributes (like `data_stream.dataset`) are used for index routing but are **not** written into the document body. Kibana filters on `data_stream.dataset` inside the document, so these fields must be in the body map.
 
 ```yaml
 processors:
-  # metadata_keys preserves x-elastic-mapping-mode through the batch flush
-  batch:
-    timeout: 10s
-    metadata_keys: ["x-elastic-mapping-mode"]
-
-exporters:
-  elasticsearch:
-    logs_dynamic_index:
-      enabled: true
-    # metadata_keys preserves x-elastic-mapping-mode through the exporter's internal queue
-    metadata_keys: ["x-elastic-mapping-mode"]
+  transform/raw:
+    log_statements:
+      # Set bodymap mapping mode on scope — tells the ES exporter to write
+      # body map fields directly as document fields. Scope attributes are part
+      # of the plog.Logs data structure and survive batch processor flushes and
+      # exporter queues without any special config.
+      - context: scope
+        statements:
+          - set(attributes["elastic.mapping.mode"], "bodymap")
+      # Copy data_stream.* into the body map — bodymap mode only writes body
+      # content to the document, so these must be present for Kibana filters.
+      - context: log
+        statements:
+          - set(body["data_stream.type"], "logs")
+          - set(body["data_stream.dataset"], resource.attributes["data_stream.dataset"])
+          - set(body["data_stream.namespace"], "default")
 ```
 
-> **Tip:** If your raw pipeline does not use a `batch` processor, you only need `metadata_keys` on the ES exporter. The context flows directly from the receiver through the `resource` processor (which is transparent to context) to the exporter.
+> **Why scope attributes instead of context metadata?** The [ES exporter migration docs](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/elasticsearchexporter#migration-setting-mapping-mode-via-scope-attribute) recommend scope attributes as the preferred mechanism. Context metadata (`x-elastic-mapping-mode`) requires `metadata_keys` config on every buffering component to survive flushes — a brittle requirement. Scope attributes travel with the data itself.
+
+#### Why OTel mode does not need a `transform` processor
+
+In OTel mode, the ES exporter uses its **default `otel` serialization** which:
+- Writes the full `LogRecord` (body, attributes, resource attributes, scope) into the document
+- Embeds `data_stream.*` from resource attributes into the document automatically
+- Appends `.otel` to `data_stream.dataset` (e.g., `akamai.siem` → `akamai.siem.otel`)
+
+No scope attribute override is needed because `otel` is already the exporter's default. No `data_stream.*` body map injection is needed because OTel mode serializes the complete record, not just the body.
 
 #### 2. Data stream routing
 
@@ -82,16 +114,13 @@ exporters:
   elasticsearch:
     logs_dynamic_index:
       enabled: true
-    metadata_keys: ["x-elastic-mapping-mode"]
 ```
 
 > **Note:** `data_stream.type` defaults to `"logs"` in the ES exporter's dynamic router (inferred from the signal type), so you do not need to set it explicitly. `data_stream.namespace` defaults to `"default"`. Only set these if you need to override the defaults.
 
-The dynamic router reads `data_stream.dataset` and `data_stream.namespace` from resource attributes, derives the index name (`logs-akamai.siem-default`), and writes `data_stream.*` fields into each document (required for Kibana's `data_stream.dataset` filters). The Elasticsearch index template `logs-akamai.siem-*` matches and sets `default_pipeline` to the Akamai ingest pipeline automatically.
+The dynamic router reads `data_stream.dataset` and `data_stream.namespace` from resource attributes and derives the index name (`logs-akamai.siem-default`). The Elasticsearch index template `logs-akamai.siem-*` matches and sets `default_pipeline` to the Akamai ingest pipeline automatically.
 
 Without a `resource` processor, the dynamic router defaults to `dataset="generic"` → index `logs-generic-default`.
-
-Alternatively, you can use `logs_index: "logs-akamai.siem-default"` to hardcode the target index. Note that with static `logs_index`, the exporter's `IsDataStream()` returns `false` and `data_stream.*` fields are **not** written into documents — Kibana's `data_stream.dataset` filter will return 0 results. Use `logs_dynamic_index` to avoid this.
 
 #### What the ingest pipeline does
 
@@ -112,7 +141,7 @@ Pre-built Kibana dashboards work immediately after the pipeline runs.
 
 OTel mode parses each Akamai JSON event and maps 30+ fields into OTel semantic convention attributes directly on the `LogRecord`. Fields like `httpMessage.method` become `http.request.method`, `geo.country` becomes `source.geo.country_iso_code`, etc. This produces structured, queryable log records that any OTel-compatible backend can index and search natively without custom parsing.
 
-OTel mode does **not** set `x-elastic-mapping-mode` in the context — the exporter uses its default `otel` serialization. This is intentional: OTel mode output is vendor-neutral.
+OTel mode output is vendor-neutral — no Elastic-specific scope attributes are required. If routing to Elasticsearch, use a `transform` processor to set `elastic.mapping.mode: otel` (the exporter's default).
 
 > **Data stream naming:** When the Elasticsearch exporter uses `otel` mapping mode (the default), it automatically appends `.otel` to the `data_stream.dataset` value. For example, if you set `data_stream.dataset: akamai.siem` via a resource processor, the actual target data stream becomes `logs-akamai.siem.otel-default`. This matches the built-in `logs-*.otel-*` index template. No manual suffix is needed.
 
@@ -206,10 +235,10 @@ Total latency = max(Raw, OTel) = OTel only. Dual mode has **zero throughput over
    - Peak memory bounded to `stream_buffer_size + batch_size` events regardless of page size
 4. **Cursor Store** persists chain state only after ALL batches in a page succeed
 5. **output_format** determines how events are emitted per batch:
-   - **raw**: Raw JSON body + `x-elastic-mapping-mode: ecs` context → ES ingest pipeline enriches
+   - **raw**: Body map `{message: rawJSON}` → `transform` processor sets `elastic.mapping.mode: bodymap` on scope → ES exporter writes `message` field → ingest pipeline enriches
    - **otel**: Parsed into semantic convention attributes (HTTP, URL, source, geo, TLS, attack data)
    - **Dual**: Both modes run in parallel on the same event batch → each pipeline gets its format
-6. **Elastic mapping mode propagation**: In raw mode, the receiver injects `x-elastic-mapping-mode: ecs` into the OTel client context metadata (same pattern as `elasticapmintakereceiver`). This tells the downstream `elasticsearchexporter` to serialize `LogRecord.Body` into the `message` field. Both the `batch` processor and ES exporter strip context metadata by default, so `metadata_keys: ["x-elastic-mapping-mode"]` must be set on both to preserve the signal. Note: `mapping: mode: ecs` on the exporter is deprecated (ignored since v0.145.0) — see [ECS serialization](#1-ecs-serialization-via-context-metadata) for details.
+6. **Mapping mode is a pipeline concern**: The receiver does not set any mapping mode. For raw mode, the `transform/raw` processor sets `elastic.mapping.mode: bodymap` as a scope attribute and copies `data_stream.*` into the body map (bodymap mode only writes body content to the document). OTel mode needs no transform — the exporter's default `otel` serialization handles everything. See [The `transform/raw` processor](#1-the-transformraw-processor-required-for-elasticsearch) for details.
 7. Cursor, chain drain, offset recovery, and telemetry are **identical in all modes**
 
 ### Chain State Machine
@@ -284,22 +313,23 @@ cursor persisted (only after all batches succeed)
 ### Raw Mode Path
 
 ```
-Receiver → plog.Logs (raw JSON body) + x-elastic-mapping-mode: ecs in context
+Receiver → plog.Logs (body map {message: rawJSON})
   → Resource processor (adds data_stream.dataset=akamai.siem)
-    → Batch (metadata_keys preserves ECS context)
-      → ES Exporter (metadata_keys preserves ECS context, logs_dynamic_index: enabled: true)
-        → Dynamic router: logs-akamai.siem-default
-          → Index Template matches, sets default_pipeline
-            → Ingest Pipeline: JSON parse, ECS map, GeoIP, base64 decode, _id fingerprint
-              → Enriched documents stored in Data Stream
-                → Kibana Akamai SIEM Dashboard
+    → Transform processor (sets bodymap scope + copies data_stream.* into body map)
+      → [Batch] (optional, recommended)
+        → ES Exporter (reads scope attribute, uses bodymap mode, logs_dynamic_index: enabled: true)
+          → Dynamic router: logs-akamai.siem-default
+            → Index Template matches, sets default_pipeline
+              → Ingest Pipeline: JSON parse, ECS map, GeoIP, base64 decode, _id fingerprint
+                → Enriched documents stored in Data Stream
+                  → Kibana Akamai SIEM Dashboard
 ```
 
 ### OTel Mode Path
 
 ```
 Receiver → plog.Logs (structured OTel attributes)
-  → Batch → Exporter
+  → [Batch] (optional, recommended) → Exporter
     → Elasticsearch (logs_dynamic_index → routes by data_stream.* attrs, no ingest pipeline needed)
     → OR any OTel-compatible backend
 ```
@@ -323,15 +353,33 @@ Note: OTel mode does not work with the existing Akamai Kibana dashboard, which e
 | Dashboards | Akamai integration (Kibana) | Not available |
 | Data stream routing | `resource` processor + ES exporter (`logs_dynamic_index`) | `resource` processor + ES exporter (`logs_dynamic_index`) |
 
+### Component naming convention
+
+OTel Collector configs use a `type/name` convention to create multiple instances of the same component. The `type` identifies the actual processor (or receiver, exporter, etc.), and `name` is an arbitrary label you choose:
+
+```yaml
+processors:
+  transform/raw:    # type=transform, name=raw
+    ...
+  transform/otel:   # type=transform, name=otel (same processor, different config)
+    ...
+  batch/raw:        # type=batch, name=raw
+    ...
+  batch/otel:       # type=batch, name=otel
+    ...
+```
+
+When only one instance is needed, the name can be omitted: `transform:`, `batch:`, `resource:`. The examples in this README use named instances (`transform/raw`, `batch/raw`) in dual-mode configs where both pipelines need separate processor instances, and plain names (`transform`, `batch`) in single-pipeline configs.
+
 ### Pipeline Processors
 
-The example configs in this README use two standard OTel Collector processors. These are not part of the receiver — they are general-purpose pipeline components:
+The example configs in this README use standard OTel Collector processors. These are not part of the receiver — they are general-purpose pipeline components:
 
 - **`resource` processor** — Adds or updates resource-level attributes on every log record passing through the pipeline. Used here to set `data_stream.dataset` so the Elasticsearch exporter's dynamic router can derive the correct target index (e.g., `logs-akamai.siem-default`). `data_stream.type` defaults to `"logs"` and `data_stream.namespace` defaults to `"default"`, so only `dataset` needs to be set explicitly. Without it, documents land in `logs-generic-default`.
 
-- **`batch` processor** — Buffers log records and flushes them to the exporter in batches rather than one at a time. `timeout: 10s` means the batch is flushed every 10 seconds or when it reaches the default size limit (8192 records), whichever comes first. This reduces the number of bulk requests to Elasticsearch and improves throughput. In most scenarios this is recommended but not required.
+- **`transform` processor** (required for raw mode Elasticsearch pipelines, named `transform/raw` in dual-mode configs) — Uses [OTTL](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor) statements to set `elastic.mapping.mode: bodymap` as a scope attribute and copy `data_stream.*` fields into the body map. See [The `transform/raw` processor](#1-the-transformraw-processor-required-for-elasticsearch) for a detailed explanation of why each statement is needed. Not required for OTel mode — the exporter's default `otel` serialization handles everything automatically.
 
-  > **Important for raw mode pipelines:** The batch processor flushes with a fresh `context.Background()`, which strips the `x-elastic-mapping-mode: ecs` metadata the receiver injects. You **must** add `metadata_keys: ["x-elastic-mapping-mode"]` to any batch processor on a raw mode pipeline. Without it, the ES exporter silently falls back to OTel serialization, writing to `body.text` instead of `message` — and the ingest pipeline fails. OTel mode pipelines do not need this because `otel` is the exporter's default serialization.
+- **`batch` processor** (optional, recommended) — Buffers log records and flushes them to the exporter in batches rather than one at a time. `timeout: 10s` means the batch is flushed every 10 seconds or when it reaches the default size limit (8192 records), whichever comes first. This reduces the number of bulk requests to Elasticsearch and improves throughput. The pipeline works without it — the `transform` processor sets a scope attribute (not context metadata), so no special buffering config is needed to preserve the mapping mode signal.
 
 ## Getting Started
 
@@ -361,11 +409,19 @@ processors:
       - key: data_stream.dataset
         value: "akamai.siem"
         action: upsert
-  # metadata_keys on batch preserves x-elastic-mapping-mode: ecs through flush
+  transform/raw:
+    log_statements:
+      - context: scope
+        statements:
+          - set(attributes["elastic.mapping.mode"], "bodymap")
+      - context: log
+        statements:
+          - set(body["data_stream.type"], "logs")
+          - set(body["data_stream.dataset"], resource.attributes["data_stream.dataset"])
+          - set(body["data_stream.namespace"], "default")
   batch:
     timeout: 10s
     send_batch_size: 1024
-    metadata_keys: ["x-elastic-mapping-mode"]
 
 exporters:
   elasticsearch:
@@ -374,8 +430,6 @@ exporters:
     api_key: "${ES_API_KEY}"
     logs_dynamic_index:
       enabled: true
-    # metadata_keys on exporter preserves x-elastic-mapping-mode through internal queue
-    metadata_keys: ["x-elastic-mapping-mode"]
     sending_queue:
       enabled: true
       storage: file_storage  # persistent queue for at-least-once delivery
@@ -392,7 +446,7 @@ service:
   pipelines:
     logs:
       receivers: [akamai_siem]
-      processors: [resource, batch]
+      processors: [resource, transform/raw, batch]
       exporters: [elasticsearch]
 ```
 
@@ -511,11 +565,18 @@ processors:
       - key: data_stream.dataset
         value: "akamai.siem"
         action: upsert
-  # Raw pipeline batch — metadata_keys preserves ECS mapping mode through flush
+  transform/raw:
+    log_statements:
+      - context: scope
+        statements:
+          - set(attributes["elastic.mapping.mode"], "bodymap")
+      - context: log
+        statements:
+          - set(body["data_stream.type"], "logs")
+          - set(body["data_stream.dataset"], resource.attributes["data_stream.dataset"])
+          - set(body["data_stream.namespace"], "default")
   batch/raw:
     timeout: 10s
-    metadata_keys: ["x-elastic-mapping-mode"]
-  # OTel pipeline batch — no metadata_keys needed (default otel serialization)
   batch/otel:
     timeout: 10s
 
@@ -526,7 +587,6 @@ exporters:
     api_key: "${ES_API_KEY}"
     logs_dynamic_index:
       enabled: true
-    metadata_keys: ["x-elastic-mapping-mode"]
     sending_queue:
       enabled: true
       storage: file_storage
@@ -544,7 +604,7 @@ service:
   pipelines:
     logs/es:
       receivers: [akamai_siem/raw]
-      processors: [resource/es, batch/raw]
+      processors: [resource/es, transform/raw, batch/raw]
       exporters: [elasticsearch]
     logs/otlp:
       receivers: [akamai_siem/otel]
@@ -584,21 +644,29 @@ processors:
       - key: data_stream.dataset
         value: "akamai.siem"
         action: upsert
+  transform/raw:
+    log_statements:
+      - context: scope
+        statements:
+          - set(attributes["elastic.mapping.mode"], "bodymap")
+      - context: log
+        statements:
+          - set(body["data_stream.type"], "logs")
+          - set(body["data_stream.dataset"], resource.attributes["data_stream.dataset"])
+          - set(body["data_stream.namespace"], "default")
   batch/raw:
     timeout: 10s
-    metadata_keys: ["x-elastic-mapping-mode"]
   batch/otel:
     timeout: 10s
 
 exporters:
-  # Raw → ECS serialization, dataset stays "akamai.siem" → logs-akamai.siem-default
+  # Raw → bodymap serialization, dataset stays "akamai.siem" → logs-akamai.siem-default
   elasticsearch/raw:
     endpoints:
       - "https://elasticsearch:9200"
     api_key: "${ES_API_KEY}"
     logs_dynamic_index:
       enabled: true
-    metadata_keys: ["x-elastic-mapping-mode"]
 
   # OTel (default) → router appends .otel → logs-akamai.siem.otel-default
   elasticsearch/otel:
@@ -617,7 +685,7 @@ service:
   pipelines:
     logs/raw:
       receivers: [akamai_siem/raw]
-      processors: [resource, batch/raw]
+      processors: [resource, transform/raw, batch/raw]
       exporters: [elasticsearch/raw]
     logs/otel:
       receivers: [akamai_siem/otel]
@@ -629,7 +697,7 @@ The `resource` processor sets `data_stream.dataset: akamai.siem` for both pipeli
 
 | Exporter | Mapping mode | `.otel` suffix | Target data stream |
 |---|---|---|---|
-| `elasticsearch/raw` | `ecs` (via context metadata) | No | `logs-akamai.siem-default` |
+| `elasticsearch/raw` | `bodymap` (via scope attribute) | No | `logs-akamai.siem-default` |
 | `elasticsearch/otel` | `otel` (default) | **Yes** (automatic) | `logs-akamai.siem.otel-default` |
 
 ### Scenario 6: File Export (Testing / Archival)
@@ -717,11 +785,20 @@ processors:
       - key: data_stream.dataset
         value: "akamai.siem"
         action: upsert
+  transform/raw:
+    log_statements:
+      - context: scope
+        statements:
+          - set(attributes["elastic.mapping.mode"], "bodymap")
+      - context: log
+        statements:
+          - set(body["data_stream.type"], "logs")
+          - set(body["data_stream.dataset"], resource.attributes["data_stream.dataset"])
+          - set(body["data_stream.namespace"], "default")
   batch:
     timeout: 5s
     send_batch_size: 5000
     send_batch_max_size: 10000
-    metadata_keys: ["x-elastic-mapping-mode"]
 
 exporters:
   elasticsearch:
@@ -732,7 +809,6 @@ exporters:
     api_key: "${ES_API_KEY}"
     logs_dynamic_index:
       enabled: true
-    metadata_keys: ["x-elastic-mapping-mode"]
     sending_queue:
       enabled: true
       num_consumers: 10
@@ -754,7 +830,7 @@ service:
   pipelines:
     logs:
       receivers: [akamai_siem]
-      processors: [resource, batch]
+      processors: [resource, transform/raw, batch]
       exporters: [elasticsearch]
 ```
 
@@ -799,7 +875,6 @@ exporters:
     api_key: "${ES_API_KEY}"   # base64-encoded id:api_key
     logs_dynamic_index:
       enabled: true
-    metadata_keys: ["x-elastic-mapping-mode"]
     sending_queue:
       enabled: true
       storage: file_storage
@@ -870,6 +945,16 @@ processors:
       - key: data_stream.dataset
         value: "akamai.siem"
         action: upsert
+  transform/raw:
+    log_statements:
+      - context: scope
+        statements:
+          - set(attributes["elastic.mapping.mode"], "bodymap")
+      - context: log
+        statements:
+          - set(body["data_stream.type"], "logs")
+          - set(body["data_stream.dataset"], resource.attributes["data_stream.dataset"])
+          - set(body["data_stream.namespace"], "default")
 
 exporters:
   elasticsearch:
@@ -880,7 +965,6 @@ exporters:
       insecure_skip_verify: true
     logs_dynamic_index:
       enabled: true
-    metadata_keys: ["x-elastic-mapping-mode"]
   debug:
     verbosity: detailed
 
@@ -893,9 +977,7 @@ service:
   pipelines:
     logs:
       receivers: [akamai_siem]
-      # No batch processor here — context flows directly to the exporter.
-      # If you add a batch processor, include metadata_keys: ["x-elastic-mapping-mode"]
-      processors: [resource]
+      processors: [resource, transform/raw]
       exporters: [elasticsearch, debug]
 ```
 
@@ -936,9 +1018,9 @@ The following documents were captured from a live run against the Akamai SIT env
 ### Raw Mode — Elasticsearch document after ingest pipeline
 
 Data stream: `logs-akamai.siem-default`
-Config: `output_format: raw`, `metadata_keys: ["x-elastic-mapping-mode"]` on batch and ES exporter, `resource` processor sets `data_stream.dataset: akamai.siem`, `logs_dynamic_index: enabled: true`
+Config: `output_format: raw`, `transform/raw` processor sets `elastic.mapping.mode: bodymap` as a scope attribute and copies `data_stream.*` fields into the body map, `resource` processor sets `data_stream.dataset: akamai.siem`, `logs_dynamic_index: enabled: true`
 
-The receiver injects `x-elastic-mapping-mode: ecs` into the context, which tells the ES exporter to use ECS serialization (`LogRecord.Body` → `message`). The Akamai ingest pipeline then parses the raw JSON into full ECS fields:
+The `transform/raw` processor sets `elastic.mapping.mode: bodymap` as a scope attribute, which tells the ES exporter to use bodymap serialization (`LogRecord.Body` map → document fields), and copies `data_stream.*` into the body map so Kibana filters work correctly. The Akamai ingest pipeline then parses the raw JSON into full ECS fields:
 
 ```json
 {

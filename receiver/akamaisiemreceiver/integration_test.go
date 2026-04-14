@@ -28,21 +28,20 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configopaque"
-	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 )
 
-// Integration tests verify the exact output of each mapping mode (ECS, OTel, Dual)
+// Integration tests verify the exact output of each mapping mode (Raw, OTel, Dual)
 // against realistic Akamai SIEM API responses using a local httptest server.
 // Test data: testdata/siem_response_full.ndjson — 3 events with different attack
 // types, HTTP methods, geo locations, and applied actions.
 
-func TestIntegration_ECSMode_FullResponse(t *testing.T) {
+func TestIntegration_RawMode_FullResponse(t *testing.T) {
 	ndjson, err := os.ReadFile("testdata/siem_response_full.ndjson")
 	require.NoError(t, err)
 
@@ -52,7 +51,7 @@ func TestIntegration_ECSMode_FullResponse(t *testing.T) {
 	defer server.Close()
 
 	sink := &consumertest.LogsSink{}
-	rcv := createTestReceiver(t, server.URL, "ecs", sink)
+	rcv := createTestReceiver(t, server.URL, "raw", sink)
 
 	require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
 	assert.Eventually(t, func() bool { return sink.LogRecordCount() >= 3 }, 10*time.Second, 50*time.Millisecond)
@@ -64,27 +63,27 @@ func TestIntegration_ECSMode_FullResponse(t *testing.T) {
 	records := collectRecords(allLogs)
 	require.Len(t, records, 3, "expected 3 events from test data")
 
-	// ECS mode: body contains raw JSON, no attributes on the record.
+	// Raw mode: body is a map with "message" key containing raw JSON, no attributes on the record.
 	for i, lr := range records {
-		body := lr.Body().Str()
+		body := intBodyMessage(t, lr)
 		assert.NotEmpty(t, body, "record %d body should not be empty", i)
 		assert.Contains(t, body, `"attackData"`, "record %d should contain raw Akamai JSON", i)
 		assert.Contains(t, body, `"httpMessage"`, "record %d should contain httpMessage", i)
-		assert.Equal(t, 0, lr.Attributes().Len(), "ECS mode should have no record attributes, got %d on record %d", lr.Attributes().Len(), i)
+		assert.Equal(t, 0, lr.Attributes().Len(), "Raw mode should have no record attributes, got %d on record %d", lr.Attributes().Len(), i)
 	}
 
 	// Verify specific event content by body.
-	assert.Contains(t, records[0].Body().Str(), `"appliedAction":"deny"`)
-	assert.Contains(t, records[0].Body().Str(), `"method":"POST"`)
-	assert.Contains(t, records[0].Body().Str(), `"host":"api.example.com"`)
+	assert.Contains(t, intBodyMessage(t, records[0]), `"appliedAction":"deny"`)
+	assert.Contains(t, intBodyMessage(t, records[0]), `"method":"POST"`)
+	assert.Contains(t, intBodyMessage(t, records[0]), `"host":"api.example.com"`)
 
-	assert.Contains(t, records[1].Body().Str(), `"appliedAction":"monitor"`)
-	assert.Contains(t, records[1].Body().Str(), `"method":"GET"`)
-	assert.Contains(t, records[1].Body().Str(), `"country":"BR"`)
+	assert.Contains(t, intBodyMessage(t, records[1]), `"appliedAction":"monitor"`)
+	assert.Contains(t, intBodyMessage(t, records[1]), `"method":"GET"`)
+	assert.Contains(t, intBodyMessage(t, records[1]), `"country":"BR"`)
 
-	assert.Contains(t, records[2].Body().Str(), `"appliedAction":"alert"`)
-	assert.Contains(t, records[2].Body().Str(), `"method":"DELETE"`)
-	assert.Contains(t, records[2].Body().Str(), `"status":"500"`)
+	assert.Contains(t, intBodyMessage(t, records[2]), `"appliedAction":"alert"`)
+	assert.Contains(t, intBodyMessage(t, records[2]), `"method":"DELETE"`)
+	assert.Contains(t, intBodyMessage(t, records[2]), `"status":"500"`)
 }
 
 func TestIntegration_OTelMode_FullResponse(t *testing.T) {
@@ -235,10 +234,10 @@ func TestIntegration_DualMode_FullResponse(t *testing.T) {
 	require.Len(t, ecsRecords, 3)
 	require.Len(t, otelRecords, 3)
 
-	// ECS records: raw JSON body, no attributes.
+	// Raw records: body map with "message" key containing raw JSON, no attributes.
 	for i, lr := range ecsRecords {
-		assert.Contains(t, lr.Body().Str(), `"attackData"`, "ECS record %d", i)
-		assert.Equal(t, 0, lr.Attributes().Len(), "ECS record %d should have no attrs", i)
+		assert.Contains(t, intBodyMessage(t, lr), `"attackData"`, "Raw record %d", i)
+		assert.Equal(t, 0, lr.Attributes().Len(), "Raw record %d should have no attrs", i)
 	}
 
 	// OTel records: structured attributes.
@@ -249,103 +248,19 @@ func TestIntegration_DualMode_FullResponse(t *testing.T) {
 		assert.True(t, hasAction, "OTel record %d should have akamai.siem.applied_action", i)
 	}
 
-	// Verify same events — ECS body for event 0 should match OTel's source data.
-	assert.Contains(t, ecsRecords[0].Body().Str(), `"appliedAction":"deny"`)
+	// Verify same events — raw body for event 0 should match OTel's source data.
+	assert.Contains(t, intBodyMessage(t, ecsRecords[0]), `"appliedAction":"deny"`)
 	assertAttr(t, otelRecords[0].Attributes(), "akamai.siem.applied_action", "deny")
 }
 
-func TestIntegration_ECSMode_ContextMetadata(t *testing.T) {
-	ndjson, err := os.ReadFile("testdata/siem_response_full.ndjson")
-	require.NoError(t, err)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(ndjson)
-	}))
-	defer server.Close()
-
-	// Use a channel to safely pass the context from the consumer goroutine.
-	ctxCh := make(chan context.Context, 1)
-	capture := &contextCapturingConsumer{
-		onConsume: func(ctx context.Context, _ plog.Logs) error {
-			select {
-			case ctxCh <- ctx:
-			default:
-			}
-			return nil
-		},
-	}
-
-	rcv := createTestReceiverWithConsumer(t, server.URL, "ecs", capture)
-	require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
-
-	var capturedCtx context.Context
-	assert.Eventually(t, func() bool {
-		select {
-		case capturedCtx = <-ctxCh:
-			return true
-		default:
-			return false
-		}
-	}, 10*time.Second, 50*time.Millisecond)
-	require.NoError(t, rcv.Shutdown(context.Background()))
-	require.NotNil(t, capturedCtx)
-
-	// ECS mode should set x-elastic-mapping-mode: ecs.
-	info := client.FromContext(capturedCtx)
-	values := info.Metadata.Get("x-elastic-mapping-mode")
-	require.Len(t, values, 1)
-	assert.Equal(t, "ecs", values[0])
-}
-
-func TestIntegration_OTelMode_NoContextMetadata(t *testing.T) {
-	ndjson, err := os.ReadFile("testdata/siem_response_full.ndjson")
-	require.NoError(t, err)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(ndjson)
-	}))
-	defer server.Close()
-
-	ctxCh := make(chan context.Context, 1)
-	capture := &contextCapturingConsumer{
-		onConsume: func(ctx context.Context, _ plog.Logs) error {
-			select {
-			case ctxCh <- ctx:
-			default:
-			}
-			return nil
-		},
-	}
-
-	rcv := createTestReceiverWithConsumer(t, server.URL, "otel", capture)
-	require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
-
-	var capturedCtx context.Context
-	assert.Eventually(t, func() bool {
-		select {
-		case capturedCtx = <-ctxCh:
-			return true
-		default:
-			return false
-		}
-	}, 10*time.Second, 50*time.Millisecond)
-	require.NoError(t, rcv.Shutdown(context.Background()))
-	require.NotNil(t, capturedCtx)
-
-	// OTel mode should NOT set x-elastic-mapping-mode.
-	info := client.FromContext(capturedCtx)
-	values := info.Metadata.Get("x-elastic-mapping-mode")
-	assert.Empty(t, values)
-}
-
-func TestIntegration_ECSMode_EmptyResponse(t *testing.T) {
+func TestIntegration_RawMode_EmptyResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintln(w, `{"offset":"empty-cursor","total":0,"limit":10000}`)
 	}))
 	defer server.Close()
 
 	sink := &consumertest.LogsSink{}
-	rcv := createTestReceiver(t, server.URL, "ecs", sink)
+	rcv := createTestReceiver(t, server.URL, "raw", sink)
 
 	require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
 	time.Sleep(2 * time.Second)
@@ -371,14 +286,14 @@ func TestIntegration_OTelMode_EmptyResponse(t *testing.T) {
 	assert.Equal(t, 0, sink.LogRecordCount())
 }
 
-func TestIntegration_ECSMode_SeverityMapping(t *testing.T) {
+func TestIntegration_RawMode_SeverityMapping(t *testing.T) {
 	// Test all severity levels: deny → ERROR, alert/tarpit → WARN, monitor → INFO
 	events := []struct {
 		action   string
 		wantSev  plog.SeverityNumber
 		wantText string
 	}{
-		// ECS mode doesn't set severity — it's raw JSON passthrough.
+		// Raw mode doesn't set severity — it's raw JSON passthrough.
 		// Severity is only set in OTel mode.
 	}
 	_ = events
@@ -392,16 +307,16 @@ func TestIntegration_ECSMode_SeverityMapping(t *testing.T) {
 	defer server.Close()
 
 	sink := &consumertest.LogsSink{}
-	rcv := createTestReceiver(t, server.URL, "ecs", sink)
+	rcv := createTestReceiver(t, server.URL, "raw", sink)
 
 	require.NoError(t, rcv.Start(context.Background(), componenttest.NewNopHost()))
 	assert.Eventually(t, func() bool { return sink.LogRecordCount() >= 3 }, 10*time.Second, 50*time.Millisecond)
 	require.NoError(t, rcv.Shutdown(context.Background()))
 
 	records := collectRecords(sink.AllLogs())
-	// ECS mode: all records have SeverityNumber=Unspecified.
+	// Raw mode: all records have SeverityNumber=Unspecified.
 	for i, lr := range records {
-		assert.Equal(t, plog.SeverityNumberUnspecified, lr.SeverityNumber(), "ECS record %d should have unspecified severity", i)
+		assert.Equal(t, plog.SeverityNumberUnspecified, lr.SeverityNumber(), "Raw record %d should have unspecified severity", i)
 	}
 }
 
@@ -431,30 +346,6 @@ func createTestReceiver(t *testing.T, serverURL, outputFormat string, sink *cons
 	return rcv
 }
 
-func createTestReceiverWithConsumer(t *testing.T, serverURL, outputFormat string, cons consumer.Logs) *akamaiReceiver {
-	t.Helper()
-	cfg := createDefaultConfig().(*Config)
-	cfg.Endpoint = serverURL
-	cfg.ConfigIDs = "1"
-	cfg.Authentication = EdgeGridAuth{
-		ClientToken: configopaque.String("ct"), ClientSecret: configopaque.String("cs"), AccessToken: configopaque.String("at"),
-	}
-	cfg.PollInterval = 24 * time.Hour
-	cfg.OutputFormat = outputFormat
-
-	set := receivertest.NewNopSettings(NewFactory().Type())
-	rcv, err := newAkamaiReceiver(cfg, set)
-	require.NoError(t, err)
-
-	switch outputFormat {
-	case "otel":
-		rcv.setOTelConsumer(cons)
-	default:
-		rcv.setRawConsumer(cons)
-	}
-	return rcv
-}
-
 func collectRecords(allLogs []plog.Logs) []plog.LogRecord {
 	var records []plog.LogRecord
 	for _, logs := range allLogs {
@@ -469,4 +360,13 @@ func collectRecords(allLogs []plog.Logs) []plog.LogRecord {
 		}
 	}
 	return records
+}
+
+// intBodyMessage extracts the "message" string from a raw-mode LogRecord body map.
+func intBodyMessage(t *testing.T, lr plog.LogRecord) string {
+	t.Helper()
+	require.Equal(t, pcommon.ValueTypeMap, lr.Body().Type(), "raw mode body should be a map")
+	v, ok := lr.Body().Map().Get("message")
+	require.True(t, ok, "raw mode body map should have 'message' key")
+	return v.Str()
 }

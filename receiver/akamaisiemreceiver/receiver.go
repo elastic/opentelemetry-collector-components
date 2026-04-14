@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -52,7 +51,7 @@ type consumerEntry struct {
 }
 
 // akamaiReceiver polls the Akamai SIEM API and emits logs. Supports single mode
-// (one consumer, ECS or OTel) and dual mode (two consumers sharing one poller).
+// (one consumer, raw or OTel) and dual mode (two consumers sharing one poller).
 // In dual mode, the sharedcomponent.SharedMap ensures a single API connection.
 type akamaiReceiver struct {
 	cfg      *Config // primary config (poller settings, endpoint, auth)
@@ -318,14 +317,11 @@ func (r *akamaiReceiver) emitEvents(ctx context.Context, events []string) error 
 	return nil
 }
 
-// emitRaw sends events as raw JSON body strings. The ES ingest pipeline handles all
-// field parsing and ECS enrichment downstream. Injects x-elastic-mapping-mode: ecs
-// into the OTel client context so the elasticsearchexporter serializes
-// LogRecord.Body → "message" field (not "body.text") without requiring explicit
-// mapping.mode config on the exporter.
+// emitRaw sends events as raw JSON body maps. Each log record body is a map
+// with key "message" containing the raw Akamai JSON string. The downstream
+// pipeline should set elastic.mapping.mode: bodymap via a transform processor
+// so the ES exporter serializes the map fields directly into the document.
 func (r *akamaiReceiver) emitRaw(ctx context.Context, events []string, entry *consumerEntry) error {
-	ctx = withMappingMode(ctx, "ecs")
-
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
 	sl := rl.ScopeLogs().AppendEmpty()
@@ -349,7 +345,8 @@ func (r *akamaiReceiver) emitRaw(ctx context.Context, events []string, entry *co
 		lr := sl.LogRecords().AppendEmpty()
 		lr.SetTimestamp(now)
 		lr.SetObservedTimestamp(now)
-		lr.Body().SetStr(rawJSON)
+		body := lr.Body().SetEmptyMap()
+		body.PutStr("message", rawJSON)
 	}
 
 	if r.mappingDuration != nil {
@@ -418,25 +415,6 @@ func (r *akamaiReceiver) emitOTel(ctx context.Context, events []string, entry *c
 	}
 
 	return entry.consumer.ConsumeLogs(ctx, logs)
-}
-
-// withMappingMode injects x-elastic-mapping-mode into the OTel client context
-// metadata. The downstream elasticsearchexporter reads this to serialize
-// LogRecord.Body into the "message" field (ECS) rather than "body.text" (OTel default),
-// without requiring explicit mapping.mode config on the exporter.
-// This follows the same pattern as elasticapmintakereceiver.
-func withMappingMode(ctx context.Context, mode string) context.Context {
-	info := client.FromContext(ctx)
-	newMeta := make(map[string][]string)
-	for k := range info.Metadata.Keys() {
-		newMeta[k] = info.Metadata.Get(k)
-	}
-	newMeta["x-elastic-mapping-mode"] = []string{mode}
-	return client.NewContext(ctx, client.Info{
-		Addr:     info.Addr,
-		Auth:     info.Auth,
-		Metadata: client.NewMetadata(newMeta),
-	})
 }
 
 // getStorageClient retrieves a storage.Client from the configured storage extension.

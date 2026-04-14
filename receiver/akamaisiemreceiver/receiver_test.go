@@ -32,7 +32,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -135,7 +134,7 @@ func TestReceiver_EmitsEvents(t *testing.T) {
 	require.NotEmpty(t, allLogs)
 	rl := allLogs[0].ResourceLogs().At(0)
 	lr := rl.ScopeLogs().At(0).LogRecords().At(0)
-	assert.Contains(t, lr.Body().Str(), `"rule":"950004"`)
+	assert.Contains(t, bodyMessage(t, lr), `"rule":"950004"`)
 }
 
 // TestReceiver_CursorPersistAndResume verifies that:
@@ -329,12 +328,12 @@ func TestReceiver_TestdataResponse(t *testing.T) {
 	records := allLogs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords()
 	assert.Equal(t, 2, records.Len())
 
-	body0 := records.At(0).Body().Str()
+	body0 := bodyMessage(t, records.At(0))
 	assert.Contains(t, body0, `"clientIP":"198.51.100.1"`)
 	assert.Contains(t, body0, `"configId":"67217"`)
 	assert.Contains(t, body0, `"host":"example.com"`)
 
-	body1 := records.At(1).Body().Str()
+	body1 := bodyMessage(t, records.At(1))
 	assert.Contains(t, body1, `"clientIP":"203.0.113.42"`)
 	assert.Contains(t, body1, `"status":"403"`)
 }
@@ -455,8 +454,8 @@ func TestReceiver_RawMode_BodyIsRawJSON(t *testing.T) {
 	_, hasMethod := lr.Attributes().Get("http.request.method")
 	assert.False(t, hasMethod, "raw mode should not parse into OTel attrs")
 
-	// Body is raw JSON.
-	assert.Contains(t, lr.Body().Str(), `"host":"test.com"`)
+	// Body is a map with raw JSON in "message" key.
+	assert.Contains(t, bodyMessage(t, lr), `"host":"test.com"`)
 }
 
 func TestReceiver_InvalidMappingMode(t *testing.T) {
@@ -472,10 +471,10 @@ func TestReceiver_InvalidMappingMode(t *testing.T) {
 	assert.ErrorContains(t, cfg.Validate(), `output_format must be "raw" or "otel"`)
 }
 
-// TestReceiver_ECSMode_FullFlow tests the complete flow in raw mode:
+// TestReceiver_RawMode_FullFlow tests the complete flow in raw mode:
 // Mock Akamai API → EdgeGrid auth → NDJSON parse → cursor persist
-// → plog.Logs with raw JSON body, no OTel semantic attributes.
-func TestReceiver_ECSMode_FullFlow(t *testing.T) {
+// → plog.Logs with body map {message: rawJSON}, no OTel semantic attributes.
+func TestReceiver_RawMode_FullFlow(t *testing.T) {
 	var requestCount atomic.Int32
 	ndjson, err := os.ReadFile("testdata/siem_response.ndjson")
 	require.NoError(t, err)
@@ -527,7 +526,7 @@ func TestReceiver_ECSMode_FullFlow(t *testing.T) {
 
 	for i := 0; i < records.Len(); i++ {
 		lr := records.At(i)
-		body := lr.Body().Str()
+		body := bodyMessage(t, lr)
 		assert.True(t, json.Valid([]byte(body)), "record %d body should be valid JSON", i)
 		assert.Contains(t, body, `"attackData"`, "record %d missing attackData", i)
 		assert.Contains(t, body, `"httpMessage"`, "record %d missing httpMessage", i)
@@ -538,12 +537,12 @@ func TestReceiver_ECSMode_FullFlow(t *testing.T) {
 		assert.False(t, hasMethod, "record %d should not have http.request.method in raw mode", i)
 	}
 
-	assert.Contains(t, records.At(0).Body().Str(), `"clientIP":"198.51.100.1"`)
-	assert.Contains(t, records.At(1).Body().Str(), `"clientIP":"203.0.113.42"`)
+	assert.Contains(t, bodyMessage(t, records.At(0)), `"clientIP":"198.51.100.1"`)
+	assert.Contains(t, bodyMessage(t, records.At(1)), `"clientIP":"203.0.113.42"`)
 
 	// Offset context should not appear as an event.
 	for i := 0; i < records.Len(); i++ {
-		assert.NotContains(t, records.At(i).Body().Str(), `"offset"`)
+		assert.NotContains(t, bodyMessage(t, records.At(i)), `"offset"`)
 	}
 
 	assert.GreaterOrEqual(t, int(requestCount.Load()), 1)
@@ -844,7 +843,7 @@ func assertAttrI(t *testing.T, m pcommon.Map, key string, want int64) {
 
 // --- Dual mode tests ---
 
-// TestDualMode_BothConsumersReceiveEvents verifies that when both ECS and OTel
+// TestDualMode_BothConsumersReceiveEvents verifies that when both raw and OTel
 // consumers are registered, both receive the same events in their respective formats.
 func TestDualMode_BothConsumersReceiveEvents(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -892,11 +891,11 @@ func TestDualMode_BothConsumersReceiveEvents(t *testing.T) {
 	require.NoError(t, ecsRcv.Shutdown(context.Background()))
 	require.NoError(t, otelRcv.Shutdown(context.Background()))
 
-	// Verify ECS sink got raw JSON body.
+	// Verify raw sink got body map with raw JSON.
 	ecsLogs := ecsSink.AllLogs()
 	require.NotEmpty(t, ecsLogs)
 	ecsRecord := ecsLogs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	assert.Contains(t, ecsRecord.Body().Str(), `"rule":"950004"`, "ECS should have raw JSON body")
+	assert.Contains(t, bodyMessage(t, ecsRecord), `"rule":"950004"`, "raw mode should have raw JSON in body map")
 
 	// Verify OTel sink got structured attributes.
 	otelLogs := otelSink.AllLogs()
@@ -954,9 +953,9 @@ func TestDualMode_SlowestWins_CursorNotAdvancedOnFailure(t *testing.T) {
 	assert.Nil(t, cursorData, "cursor should NOT be persisted when one consumer fails in dual mode")
 }
 
-// TestDualMode_SingleECSBackwardCompat verifies single ECS instance works
+// TestDualMode_SingleRawBackwardCompat verifies single raw instance works
 // identically to the pre-dual-mode behavior.
-func TestDualMode_SingleECSBackwardCompat(t *testing.T) {
+func TestDualMode_SingleRawBackwardCompat(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintln(w, `{"attackData":{"rule":"123"},"httpMessage":{"host":"compat.test"}}`)
 		_, _ = fmt.Fprintln(w, `{"offset":"compat-cursor","total":1,"limit":10000}`)
@@ -990,7 +989,7 @@ func TestDualMode_SingleECSBackwardCompat(t *testing.T) {
 	logs := sink.AllLogs()
 	require.NotEmpty(t, logs)
 	lr := logs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
-	assert.Contains(t, lr.Body().Str(), `"rule":"123"`)
+	assert.Contains(t, bodyMessage(t, lr), `"rule":"123"`)
 }
 
 // TestDualMode_SingleOTelBackwardCompat verifies single OTel instance works.
@@ -1155,7 +1154,7 @@ func TestEmitEvents_DualMode_BothSucceed(t *testing.T) {
 	err = rcv.emitEvents(context.Background(), events)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, ecsSink.LogRecordCount(), "ECS sink should have 1 record")
+	assert.Equal(t, 1, ecsSink.LogRecordCount(), "raw sink should have 1 record")
 	assert.Equal(t, 1, otelSink.LogRecordCount(), "OTel sink should have 1 record")
 }
 
@@ -1181,82 +1180,42 @@ func TestEmitEvents_DualMode_OneFailsReturnsError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "OTel consumer")
 
-	// ECS sink still received its data (parallel execution).
+	// Raw sink still received its data (parallel execution).
 	assert.Equal(t, 1, ecsSink.LogRecordCount())
 }
 
-// TestEmitRaw_SetsElasticMappingModeContext verifies that emitRaw injects
-// x-elastic-mapping-mode: ecs into the context metadata, following the same
-// pattern as elasticapmintakereceiver. This allows the downstream
-// elasticsearchexporter to auto-detect ECS serialization (Body → "message" field)
-// without requiring explicit mapping.mode config on the exporter.
-func TestEmitRaw_SetsElasticMappingModeContext(t *testing.T) {
+// TestEmitRaw_BodyIsMap verifies that emitRaw produces a body map with
+// a "message" key containing the raw JSON string. The downstream pipeline
+// sets elastic.mapping.mode: bodymap via a transform processor.
+func TestEmitRaw_BodyIsMap(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
 	rcv, err := newAkamaiReceiver(cfg, receivertest.NewNopSettings(NewFactory().Type()))
 	require.NoError(t, err)
 
-	// Use a consumer that captures the context.
-	var capturedCtx context.Context
-	capture := &contextCapturingConsumer{
-		onConsume: func(ctx context.Context, _ plog.Logs) error {
-			capturedCtx = ctx
-			return nil
-		},
-	}
-
-	rcv.setRawConsumer(capture)
+	sink := &consumertest.LogsSink{}
+	rcv.setRawConsumer(sink)
 
 	err = rcv.emitEvents(context.Background(), []string{`{"test":"event"}`})
 	require.NoError(t, err)
-	require.NotNil(t, capturedCtx, "consumer should have been called")
 
-	// Verify x-elastic-mapping-mode was set in context metadata.
-	clientInfo := client.FromContext(capturedCtx)
-	values := clientInfo.Metadata.Get("x-elastic-mapping-mode")
-	require.Len(t, values, 1, "x-elastic-mapping-mode should be set")
-	assert.Equal(t, "ecs", values[0])
+	allLogs := sink.AllLogs()
+	require.NotEmpty(t, allLogs)
+	lr := allLogs[0].ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0)
+
+	// Body should be a map with "message" key.
+	require.Equal(t, pcommon.ValueTypeMap, lr.Body().Type(), "raw mode body should be a map")
+	v, ok := lr.Body().Map().Get("message")
+	require.True(t, ok, "body map should have 'message' key")
+	assert.Equal(t, `{"test":"event"}`, v.Str())
 }
 
-// TestEmitOTel_DoesNotSetElasticMappingModeContext verifies that emitOTel
-// does NOT inject x-elastic-mapping-mode, allowing the exporter to use its
-// default otel mode.
-func TestEmitOTel_DoesNotSetElasticMappingModeContext(t *testing.T) {
-	cfg := createDefaultConfig().(*Config)
-	rcv, err := newAkamaiReceiver(cfg, receivertest.NewNopSettings(NewFactory().Type()))
-	require.NoError(t, err)
-
-	var capturedCtx context.Context
-	capture := &contextCapturingConsumer{
-		onConsume: func(ctx context.Context, _ plog.Logs) error {
-			capturedCtx = ctx
-			return nil
-		},
-	}
-
-	rcv.setOTelConsumer(capture)
-
-	events := []string{`{"attackData":{"rule":"1"},"httpMessage":{"host":"test","start":"1700000000","status":"200","method":"GET","path":"/","protocol":"HTTP/1.1","bytes":"0","requestHeaders":"","responseHeaders":"","port":"80","query":""},"geo":{},"userRiskData":{}}`}
-	err = rcv.emitEvents(context.Background(), events)
-	require.NoError(t, err)
-	require.NotNil(t, capturedCtx)
-
-	// Verify x-elastic-mapping-mode is NOT set.
-	clientInfo := client.FromContext(capturedCtx)
-	values := clientInfo.Metadata.Get("x-elastic-mapping-mode")
-	assert.Empty(t, values, "OTel mode should not set x-elastic-mapping-mode")
-}
-
-// contextCapturingConsumer is a consumer.Logs that captures the context passed to ConsumeLogs.
-type contextCapturingConsumer struct {
-	onConsume func(ctx context.Context, ld plog.Logs) error
-}
-
-func (c *contextCapturingConsumer) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	return c.onConsume(ctx, ld)
-}
-
-func (c *contextCapturingConsumer) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{}
+// bodyMessage extracts the "message" string from a raw-mode LogRecord body map.
+func bodyMessage(t *testing.T, lr plog.LogRecord) string {
+	t.Helper()
+	require.Equal(t, pcommon.ValueTypeMap, lr.Body().Type(), "raw mode body should be a map")
+	v, ok := lr.Body().Map().Get("message")
+	require.True(t, ok, "raw mode body map should have 'message' key")
+	return v.Str()
 }
 
 // mockStorageExtension implements storage.Extension for tests.

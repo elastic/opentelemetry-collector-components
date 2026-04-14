@@ -79,8 +79,9 @@ type Config struct {
 	StreamBufferSize int `mapstructure:"stream_buffer_size"`
 
 	// OutputFormat controls the structure of emitted log records.
-	// "raw" (default): raw Akamai JSON placed in LogRecord.Body unchanged — the ES ingest
-	// pipeline handles all field parsing and ECS enrichment downstream.
+	// "raw" (default): raw Akamai JSON placed in LogRecord.Body as a map with key
+	// "message". Use a transform processor to set the elastic.mapping.mode scope
+	// attribute for Elasticsearch backends (see README for details).
 	// "otel": receiver parses each JSON event and maps 30+ fields to OTel semantic
 	// convention attributes on the LogRecord. Use for non-ES backends or structured querying.
 	OutputFormat string `mapstructure:"output_format"`

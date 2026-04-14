@@ -33,7 +33,7 @@
   <rect x="186" y="156" width="118" height="62" rx="6" fill="#059669"/>
   <text x="245" y="172" text-anchor="middle" fill="white" font-weight="700" font-size="10">goroutine 1</text>
   <text x="245" y="186" text-anchor="middle" fill="#a7f3d0" font-size="8">Raw: Body = raw JSON</text>
-  <text x="245" y="198" text-anchor="middle" fill="#a7f3d0" font-size="7">x-elastic-mapping-mode: ecs</text>
+  <text x="245" y="198" text-anchor="middle" fill="#a7f3d0" font-size="7">scope: elastic.mapping.mode: bodymap</text>
   <text x="245" y="212" text-anchor="middle" fill="#d1fae5" font-size="7">~0ms (free)</text>
 
   <!-- Goroutine 2: OTel -->
@@ -53,10 +53,10 @@
   <!-- Arrow: OTel goroutine → Pipeline 2 (bottom) -->
   <polyline points="434,187 468,187 468,230 488,230" fill="none" stroke="#0284c7" stroke-width="2" marker-end="url(#ah)"/>
 
-  <!-- Pipeline 1: ECS path -->
+  <!-- Pipeline 1: Raw path -->
   <rect x="490" y="78" width="80" height="44" rx="6" fill="#8b5cf6"/>
   <text x="530" y="98" text-anchor="middle" fill="white" font-weight="700" font-size="9">Batch</text>
-  <text x="530" y="112" text-anchor="middle" fill="#ddd6fe" font-size="7">logs/es</text>
+  <text x="530" y="112" text-anchor="middle" fill="#ddd6fe" font-size="7">(optional)</text>
 
   <line x1="570" y1="100" x2="598" y2="100" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#ah)"/>
 
@@ -75,7 +75,7 @@
   <!-- Pipeline 2: OTel path -->
   <rect x="490" y="208" width="80" height="44" rx="6" fill="#8b5cf6"/>
   <text x="530" y="228" text-anchor="middle" fill="white" font-weight="700" font-size="9">Batch</text>
-  <text x="530" y="242" text-anchor="middle" fill="#ddd6fe" font-size="7">logs/otlp</text>
+  <text x="530" y="242" text-anchor="middle" fill="#ddd6fe" font-size="7">(optional)</text>
 
   <line x1="570" y1="230" x2="598" y2="230" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#ah)"/>
 

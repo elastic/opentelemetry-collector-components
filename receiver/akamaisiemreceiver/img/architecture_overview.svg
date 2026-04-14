@@ -50,7 +50,7 @@
   <text x="352" y="306" text-anchor="middle" fill="white" font-weight="700" font-size="11">Raw Mode (default)</text>
   <text x="352" y="322" text-anchor="middle" fill="#a7f3d0" font-size="9">Raw JSON in log body</text>
   <text x="352" y="336" text-anchor="middle" fill="#a7f3d0" font-size="9">data_stream.* attributes</text>
-  <text x="352" y="350" text-anchor="middle" fill="#a7f3d0" font-size="9">x-elastic-mapping-mode: ecs</text>
+  <text x="352" y="350" text-anchor="middle" fill="#a7f3d0" font-size="9">scope: elastic.mapping.mode: bodymap</text>
   <text x="352" y="362" text-anchor="middle" fill="#d1fae5" font-size="8">→ Elasticsearch + Kibana</text>
 
   <!-- OTel Mode Box -->
@@ -71,7 +71,7 @@
   <!-- ===== COL 3: Pipeline ===== -->
   <rect x="720" y="155" width="100" height="45" rx="6" fill="#8b5cf6"/>
   <text x="770" y="176" text-anchor="middle" fill="white" font-weight="700" font-size="12">Batch</text>
-  <text x="770" y="192" text-anchor="middle" fill="#ddd6fe" font-size="9">Processor</text>
+  <text x="770" y="192" text-anchor="middle" fill="#ddd6fe" font-size="9">(optional)</text>
 
   <rect x="720" y="220" width="100" height="45" rx="6" fill="#dc2626"/>
   <text x="770" y="240" text-anchor="middle" fill="white" font-weight="700" font-size="11">Elasticsearch</text>
@@ -143,7 +143,7 @@
   <line x1="1220" y1="200" x2="1258" y2="200" stroke="#db2777" stroke-width="2" marker-end="url(#ah)"/>
 
   <!-- Caption -->
-  <text x="700" y="490" text-anchor="middle" fill="#64748b" font-size="10">Raw mode: raw JSON → x-elastic-mapping-mode: ecs → ES exporter (Body → "message") → ingest pipeline → Kibana</text>
+  <text x="700" y="490" text-anchor="middle" fill="#64748b" font-size="10">Raw mode: body map {message: rawJSON} → transform sets bodymap scope → ES exporter → ingest pipeline → Kibana</text>
   <text x="700" y="506" text-anchor="middle" fill="#64748b" font-size="10">OTel mode: parsed into OTel semantic conventions → any OTel-compatible backend</text>
   <text x="700" y="518" text-anchor="middle" fill="#64748b" font-size="10">Dual mode: both simultaneously via shared poller — single API connection, single cursor, zero duplicate calls</text>
 </svg>
