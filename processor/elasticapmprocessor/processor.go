@@ -240,19 +240,13 @@ func (p *MetricProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	enricher := p.enricher
 	ecsMode := isECS(ctx)
 	if ecsMode {
-		enricher = p.ecsEnricher
 		resourceMetrics := md.ResourceMetrics()
-		// ECS metric batches are assumed to be homogeneous by origin. We select
-		// the enricher from the first resource metric and apply it to the whole batch.
-		if resourceMetrics.Len() > 0 && isIntakeECS(resourceMetrics.At(0).Resource()) {
-			enricher = p.intakeECSEnricher
-		}
 		for i := 0; i < resourceMetrics.Len(); i++ {
 			resourceMetric := resourceMetrics.At(i)
 			resource := resourceMetric.Resource()
+			enricher := p.ecsMetricEnricher(resource)
 			ecs.TranslateResourceMetadata(resource)
 			ecs.ApplyResourceConventions(resource)
 			routing.EncodeDataStream(resource, routing.DataStreamTypeMetrics, p.cfg.ServiceNameInDataStreamDataset)
@@ -268,14 +262,24 @@ func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics
 
 			// Route internal metrics to appropriate data streams if needed.
 			routeMetricsToDataStream(resourceMetric.ScopeMetrics(), hasServiceName)
+
+			enricher.EnrichResourceMetrics(resourceMetric)
 		}
+		return p.next.ConsumeMetrics(ctx, md)
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.cfg.SkipEnrichment || ecsMode {
-		enricher.EnrichMetrics(md)
+	if !p.cfg.SkipEnrichment {
+		p.enricher.EnrichMetrics(md)
 	}
 	return p.next.ConsumeMetrics(ctx, md)
+}
+
+func (p *MetricProcessor) ecsMetricEnricher(resource pcommon.Resource) *enrichments.Enricher {
+	if isIntakeECS(resource) {
+		return p.intakeECSEnricher
+	}
+	return p.ecsEnricher
 }
 
 func routeMetricsToDataStream(scopeMetrics pmetric.ScopeMetricsSlice, hasServiceName bool) {
@@ -339,31 +343,35 @@ func routeMetricsToDataStream(scopeMetrics pmetric.ScopeMetricsSlice, hasService
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	enricher := p.enricher
 	ecsMode := isECS(ctx)
 	if ecsMode {
-		enricher = p.ecsEnricher
 		resourceLogs := ld.ResourceLogs()
-		// ECS log batches are assumed to be homogeneous by origin. We select the
-		// enricher from the first resource log and apply it to the whole batch.
-		if resourceLogs.Len() > 0 && isIntakeECS(resourceLogs.At(0).Resource()) {
-			enricher = p.intakeECSEnricher
-		}
 		for i := 0; i < resourceLogs.Len(); i++ {
 			resourceLog := resourceLogs.At(i)
 			resource := resourceLog.Resource()
+			enricher := p.ecsLogEnricher(resource)
 			ecs.TranslateResourceMetadata(resource)
 			ecs.ApplyResourceConventions(resource)
 			routing.EncodeDataStream(resource, routing.DataStreamTypeLogs, p.cfg.ServiceNameInDataStreamDataset)
 			if p.cfg.HostIPEnabled {
 				ecs.SetHostIP(ctx, resource.Attributes())
 			}
+
+			enricher.EnrichResourceLogs(resourceLog)
 		}
+		return p.next.ConsumeLogs(ctx, ld)
 	}
 	// When skipEnrichment is true, only enrich when mapping mode is ecs
 	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.cfg.SkipEnrichment || ecsMode {
-		enricher.EnrichLogs(ld)
+	if !p.cfg.SkipEnrichment {
+		p.enricher.EnrichLogs(ld)
 	}
 	return p.next.ConsumeLogs(ctx, ld)
+}
+
+func (p *LogProcessor) ecsLogEnricher(resource pcommon.Resource) *enrichments.Enricher {
+	if isIntakeECS(resource) {
+		return p.intakeECSEnricher
+	}
+	return p.ecsEnricher
 }

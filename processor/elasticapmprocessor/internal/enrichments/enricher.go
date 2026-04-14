@@ -72,19 +72,24 @@ func (e *Enricher) EnrichTraces(pt ptrace.Traces) {
 func (e *Enricher) EnrichLogs(pl plog.Logs) {
 	resLogs := pl.ResourceLogs()
 	for i := 0; i < resLogs.Len(); i++ {
-		resLog := resLogs.At(i)
-		resource := resLog.Resource()
-		EnrichResource(resource, e.Config.Resource)
-		resourceAttrs := resource.Attributes().AsRaw()
-		scopeLogs := resLog.ScopeLogs()
-		for j := 0; j < scopeLogs.Len(); j++ {
-			scopeSpan := scopeLogs.At(j)
-			EnrichScope(scopeSpan.Scope(), e.Config)
-			logRecords := scopeSpan.LogRecords()
-			for k := 0; k < logRecords.Len(); k++ {
-				logRecord := logRecords.At(k)
-				EnrichLog(resourceAttrs, logRecord, e.Config)
-			}
+		e.EnrichResourceLogs(resLogs.At(i))
+	}
+}
+
+// EnrichResourceLogs enriches a single ResourceLogs with the current enricher
+// configuration. This is used when ECS batches need per-resource enrichment
+// policies based on the origin of each ResourceLogs.
+func (e *Enricher) EnrichResourceLogs(resLog plog.ResourceLogs) {
+	resource := resLog.Resource()
+	EnrichResource(resource, e.Config.Resource)
+	resourceAttrs := resource.Attributes().AsRaw()
+	scopeLogs := resLog.ScopeLogs()
+	for j := 0; j < scopeLogs.Len(); j++ {
+		scopeLog := scopeLogs.At(j)
+		EnrichScope(scopeLog.Scope(), e.Config)
+		logRecords := scopeLog.LogRecords()
+		for k := 0; k < logRecords.Len(); k++ {
+			EnrichLog(resourceAttrs, logRecords.At(k), e.Config)
 		}
 	}
 }
@@ -95,18 +100,24 @@ func (e *Enricher) EnrichLogs(pl plog.Logs) {
 func (e *Enricher) EnrichMetrics(pl pmetric.Metrics) {
 	resMetrics := pl.ResourceMetrics()
 	for i := 0; i < resMetrics.Len(); i++ {
-		resMetric := resMetrics.At(i)
-		EnrichMetric(resMetric, e.Config)
-		EnrichResource(resMetric.Resource(), e.Config.Resource)
-		scopeMetics := resMetric.ScopeMetrics()
-		for j := 0; j < scopeMetics.Len(); j++ {
-			scopeMetric := scopeMetics.At(j)
-			EnrichScope(scopeMetric.Scope(), e.Config)
-			scopeAttrs := scopeMetric.Scope().Attributes()
-			metrics := scopeMetric.Metrics()
-			for k := 0; k < metrics.Len(); k++ {
-				EnrichMetricDataPoints(metrics.At(k), scopeAttrs, e.Config)
-			}
+		e.EnrichResourceMetrics(resMetrics.At(i))
+	}
+}
+
+// EnrichResourceMetrics enriches a single ResourceMetrics with the current
+// enricher configuration. This is used when ECS batches need per-resource
+// enrichment policies based on the origin of each ResourceMetrics.
+func (e *Enricher) EnrichResourceMetrics(resMetric pmetric.ResourceMetrics) {
+	EnrichMetric(resMetric, e.Config)
+	EnrichResource(resMetric.Resource(), e.Config.Resource)
+	scopeMetrics := resMetric.ScopeMetrics()
+	for j := 0; j < scopeMetrics.Len(); j++ {
+		scopeMetric := scopeMetrics.At(j)
+		EnrichScope(scopeMetric.Scope(), e.Config)
+		scopeAttrs := scopeMetric.Scope().Attributes()
+		metrics := scopeMetric.Metrics()
+		for k := 0; k < metrics.Len(); k++ {
+			EnrichMetricDataPoints(metrics.At(k), scopeAttrs, e.Config)
 		}
 	}
 }
