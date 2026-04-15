@@ -65,6 +65,7 @@ func TestElasticTransactionEnrich(t *testing.T) {
 		input             ptrace.Span
 		config            config.ElasticTransactionConfig
 		spanConfig        config.ElasticSpanConfig
+		remapToECSLabels  bool
 		enrichedAttrs     map[string]any
 		expectedSpanLinks *ptrace.SpanLinkSlice
 	}{
@@ -297,11 +298,8 @@ func TestElasticTransactionEnrich(t *testing.T) {
 				return span
 			}(),
 			config: config.Enabled().Transaction,
-			spanConfig: func() config.ElasticSpanConfig {
-				cfg := config.Enabled().Span
-				cfg.TranslateUnsupportedAttributes.Enabled = true
-				return cfg
-			}(),
+			spanConfig:       config.Enabled().Span,
+			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{
 				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
 				elasticattr.TransactionSampled:             true,
@@ -791,11 +789,8 @@ func TestElasticTransactionEnrich(t *testing.T) {
 				return span
 			}(),
 			config: config.Enabled().Transaction,
-			spanConfig: func() config.ElasticSpanConfig {
-				cfg := config.Enabled().Span
-				cfg.TranslateUnsupportedAttributes.Enabled = true
-				return cfg
-			}(),
+			spanConfig:       config.Enabled().Span,
+			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{
 				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
 				elasticattr.TransactionSampled:             true,
@@ -860,7 +855,7 @@ func TestElasticTransactionEnrich(t *testing.T) {
 			EnrichSpan(tc.input, config.Config{
 				Transaction: tc.config,
 				Span:        tc.spanConfig,
-			}, uaparser.NewFromSaved())
+			}, uaparser.NewFromSaved(), tc.remapToECSLabels)
 			assert.NoError(t, ptracetest.CompareSpan(expectedSpan, tc.input))
 		})
 	}
@@ -1218,7 +1213,7 @@ func TestRootSpanAsDependencyEnrich(t *testing.T) {
 				expectedSpan.Links().RemoveIf(func(_ ptrace.SpanLink) bool { return true })
 			}
 
-			EnrichSpan(tc.input, tc.config, uaparser.NewFromSaved())
+			EnrichSpan(tc.input, tc.config, uaparser.NewFromSaved(), false)
 			assert.NoError(t, ptracetest.CompareSpan(expectedSpan, tc.input))
 		})
 	}
@@ -1241,6 +1236,7 @@ func TestElasticSpanEnrich(t *testing.T) {
 		name              string
 		input             ptrace.Span
 		config            config.ElasticSpanConfig
+		remapToECSLabels  bool
 		enrichedAttrs     map[string]any
 		removedAttrs      []string
 		expectedSpanLinks *ptrace.SpanLinkSlice
@@ -1587,11 +1583,8 @@ func TestElasticSpanEnrich(t *testing.T) {
 				span.Attributes().PutStr(string(semconv25.HTTPTargetKey), "/search?q=OpenTelemetry")
 				return span
 			}(),
-			config: func() config.ElasticSpanConfig {
-				cfg := config.Enabled().Span
-				cfg.TranslateUnsupportedAttributes.Enabled = true
-				return cfg
-			}(),
+			config:           config.Enabled().Span,
+			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{
 				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
 				elasticattr.ProcessorEvent:                 "span",
@@ -1630,10 +1623,10 @@ func TestElasticSpanEnrich(t *testing.T) {
 			}(),
 			config: func() config.ElasticSpanConfig {
 				cfg := config.Enabled().Span
-				cfg.TranslateUnsupportedAttributes.Enabled = true
 				cfg.DestinationService.Enabled = false
 				return cfg
 			}(),
+			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{
 				elasticattr.TimestampUs:             startTs.AsTime().UnixMicro(),
 				elasticattr.ProcessorEvent:          "span",
@@ -2329,11 +2322,8 @@ func TestElasticSpanEnrich(t *testing.T) {
 				span.Attributes().PutStr(string(semconv25.HTTPUserAgentKey), "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1")
 				return span
 			}(),
-			config: func() config.ElasticSpanConfig {
-				cfg := config.Enabled().Span
-				cfg.TranslateUnsupportedAttributes.Enabled = true
-				return cfg
-			}(),
+			config:           config.Enabled().Span,
+			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{
 				elasticattr.TimestampUs:                startTs.AsTime().UnixMicro(),
 				elasticattr.ProcessorEvent:             "span",
@@ -2363,10 +2353,10 @@ func TestElasticSpanEnrich(t *testing.T) {
 			}(),
 			config: func() config.ElasticSpanConfig {
 				cfg := config.Enabled().Span
-				cfg.TranslateUnsupportedAttributes.Enabled = true
 				cfg.UserAgent.Enabled = false
 				return cfg
 			}(),
+			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{
 				elasticattr.TimestampUs:             startTs.AsTime().UnixMicro(),
 				elasticattr.ProcessorEvent:          "span",
@@ -2561,7 +2551,7 @@ func TestElasticSpanEnrich(t *testing.T) {
 				expectedSpan.Links().RemoveIf(func(_ ptrace.SpanLink) bool { return true })
 			}
 
-			EnrichSpan(tc.input, enrichConfig, uaparser.NewFromSaved())
+			EnrichSpan(tc.input, enrichConfig, uaparser.NewFromSaved(), tc.remapToECSLabels)
 			assert.NoError(t, ptracetest.CompareSpan(expectedSpan, tc.input))
 		})
 	}
@@ -2667,7 +2657,7 @@ func TestSpanEventEnrich(t *testing.T) {
 			tc.input.MoveTo(tc.parent.Events().AppendEmpty())
 			EnrichSpan(tc.parent, config.Config{
 				SpanEvent: tc.config,
-			}, uaparser.NewFromSaved())
+			}, uaparser.NewFromSaved(), false)
 
 			actual := tc.parent.Events().At(0).Attributes()
 			errorID, ok := actual.Get(elasticattr.ErrorID)

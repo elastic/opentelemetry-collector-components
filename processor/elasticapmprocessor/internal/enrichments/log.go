@@ -36,9 +36,9 @@ const (
 	emptyExceptionMsg = "[EMPTY]"
 )
 
-func EnrichLog(resourceAttrs map[string]any, log plog.LogRecord, cfg config.Config) {
-	if cfg.Log.TranslateUnsupportedAttributes.Enabled {
-		ecs.TranslateLogRecordAttributes(log.Attributes())
+func EnrichLog(resourceAttrs map[string]any, log plog.LogRecord, cfg config.Config, remapToECSLabels bool) {
+	if remapToECSLabels {
+		ecs.RemapLogRecordAttributesToECSLabels(log.Attributes())
 	}
 	ctx := mobile.NewEventContext(resourceAttrs, log)
 

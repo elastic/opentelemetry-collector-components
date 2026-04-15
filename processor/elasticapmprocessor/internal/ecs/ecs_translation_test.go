@@ -284,7 +284,7 @@ func TestTranslateResourceMetadata(t *testing.T) {
 	}
 }
 
-func TestTranslateLogRecordAttributes(t *testing.T) {
+func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		setAttrs   func(pcommon.Map)
@@ -388,7 +388,7 @@ func TestTranslateLogRecordAttributes(t *testing.T) {
 			attrs := pcommon.NewMap()
 			tc.setAttrs(attrs)
 
-			TranslateLogRecordAttributes(attrs)
+			RemapLogRecordAttributesToECSLabels(attrs)
 
 			for key, want := range tc.want {
 				got, ok := attrs.Get(key)
@@ -414,7 +414,7 @@ func TestTranslateLogRecordAttributes(t *testing.T) {
 	}
 }
 
-func TestTranslateSpanAttributes(t *testing.T) {
+func TestRemapSpanAttributesToECSLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		setAttrs   func(pcommon.Map)
@@ -508,7 +508,7 @@ func TestTranslateSpanAttributes(t *testing.T) {
 			attrs := pcommon.NewMap()
 			tc.setAttrs(attrs)
 
-			TranslateSpanAttributes(attrs)
+			RemapSpanAttributesToECSLabels(attrs)
 
 			for key, want := range tc.want {
 				got, ok := attrs.Get(key)
@@ -534,7 +534,7 @@ func TestTranslateSpanAttributes(t *testing.T) {
 	}
 }
 
-func TestTranslateMetricDataPointAttributes(t *testing.T) {
+func TestRemapMetricDataPointAttributesToECSLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		setAttrs   func(pcommon.Map)
@@ -631,7 +631,7 @@ func TestTranslateMetricDataPointAttributes(t *testing.T) {
 			attrs := pcommon.NewMap()
 			tc.setAttrs(attrs)
 
-			TranslateMetricDataPointAttributes(attrs)
+			RemapMetricDataPointAttributesToECSLabels(attrs)
 
 			for key, want := range tc.want {
 				got, ok := attrs.Get(key)

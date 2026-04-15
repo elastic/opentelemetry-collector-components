@@ -96,11 +96,10 @@ type ElasticSpanConfig struct {
 	EventOutcome                   AttributeConfig `mapstructure:"event_outcome"`
 	ServiceTarget                  AttributeConfig `mapstructure:"service_target"`
 	DestinationService             AttributeConfig `mapstructure:"destination_service"`
-	InferredSpans                  AttributeConfig `mapstructure:"inferred_spans"`
-	UserAgent                      AttributeConfig `mapstructure:"user_agent"`
-	RemoveMessaging                AttributeConfig `mapstructure:"remove_messaging"`
-	MessageQueueName               AttributeConfig `mapstructure:"message_queue_name"`
-	TranslateUnsupportedAttributes AttributeConfig `mapstructure:"translate_unsupported_attributes"`
+	InferredSpans    AttributeConfig `mapstructure:"inferred_spans"`
+	UserAgent        AttributeConfig `mapstructure:"user_agent"`
+	RemoveMessaging  AttributeConfig `mapstructure:"remove_messaging"`
+	MessageQueueName AttributeConfig `mapstructure:"message_queue_name"`
 }
 
 // SpanEventConfig configures enrichment attributes for the span events.
@@ -119,15 +118,13 @@ type SpanEventConfig struct {
 
 // ElasticMetricConfig configures the enrichment attributes for metrics
 type ElasticMetricConfig struct {
-	ProcessorEvent                 AttributeConfig `mapstructure:"processor_event"`
-	MetricsetName                  AttributeConfig `mapstructure:"metricset_name"`
-	TranslateUnsupportedAttributes AttributeConfig `mapstructure:"translate_unsupported_attributes"`
+	ProcessorEvent AttributeConfig `mapstructure:"processor_event"`
+	MetricsetName  AttributeConfig `mapstructure:"metricset_name"`
 }
 
 // ElasticLogConfig configures the enrichment attributes for logs
 type ElasticLogConfig struct {
-	TranslateUnsupportedAttributes AttributeConfig      `mapstructure:"translate_unsupported_attributes"`
-	EventConfig                    EventConfig          `mapstructure:",squash"`
+	EventConfig          EventConfig          `mapstructure:",squash"`
 	ErrorConfig                    ErrorConfig          `mapstructure:",squash"`
 	ErrorExceptionConfig           ErrorExceptionConfig `mapstructure:",squash"`
 }

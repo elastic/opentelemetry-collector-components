@@ -130,7 +130,7 @@ func NewAPMMetricEnricher(baseCfg config.Config, hostIPEnabled bool, serviceName
 	cfg := ecsAPMConfig(baseCfg)
 	return &APMMetricEnricher{
 		ecsMetricEnricher: ecsMetricEnricher{
-			enricher:                       NewEnricher(cfg),
+			enricher:                       NewEnricher(cfg, false /* remapToECSLabels */),
 			hostIPEnabled:                  hostIPEnabled,
 			serviceNameInDataStreamDataset: serviceNameInDataStreamDataset,
 		},
@@ -149,10 +149,9 @@ func (e *OTelMetricEnricher) EnrichResourceMetrics(ctx context.Context, rm pmetr
 // NewOTelMetricEnricher creates a MetricEnricher for elastic OTel events.
 func NewOTelMetricEnricher(baseCfg config.Config, hostIPEnabled bool, serviceNameInDataStreamDataset bool) *OTelMetricEnricher {
 	cfg := ecsOTelConfig(baseCfg)
-	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
 	return &OTelMetricEnricher{
 		ecsMetricEnricher: ecsMetricEnricher{
-			enricher:                       NewEnricher(cfg),
+			enricher:                       NewEnricher(cfg, true /* remapToECSLabels */),
 			hostIPEnabled:                  hostIPEnabled,
 			serviceNameInDataStreamDataset: serviceNameInDataStreamDataset,
 		},
@@ -171,6 +170,6 @@ func (e *DefaultMetricEnricher) EnrichResourceMetrics(_ context.Context, rm pmet
 // NewDefaultMetricEnricher creates a MetricEnricher for non-ECS metric events.
 func NewDefaultMetricEnricher(baseCfg config.Config) *DefaultMetricEnricher {
 	return &DefaultMetricEnricher{
-		enricher: NewEnricher(baseCfg),
+		enricher: NewEnricher(baseCfg, false /* remapToECSLabels */),
 	}
 }

@@ -46,6 +46,12 @@ type Enricher struct {
 	userAgentParser *uaparser.Parser
 
 	Config config.Config
+
+	// remapToECSLabels controls whether unsupported attributes are
+	// translated to labels.*/numeric_labels.* for ECS compatibility.
+	// This is set by the enricher type (true for OTel, false for APM/Default)
+	// and is not user-configurable.
+	remapToECSLabels bool
 }
 
 // EnrichResourceSpans enriches a single ResourceSpans with the current enricher
@@ -59,7 +65,7 @@ func (e *Enricher) EnrichResourceSpans(resSpan ptrace.ResourceSpans) {
 		EnrichScope(scopeSpan.Scope(), e.Config)
 		spans := scopeSpan.Spans()
 		for k := 0; k < spans.Len(); k++ {
-			EnrichSpan(spans.At(k), e.Config, e.userAgentParser)
+			EnrichSpan(spans.At(k), e.Config, e.userAgentParser, e.remapToECSLabels)
 		}
 	}
 }
@@ -76,7 +82,7 @@ func (e *Enricher) EnrichResourceLogs(resLog plog.ResourceLogs) {
 		EnrichScope(scopeLog.Scope(), e.Config)
 		logRecords := scopeLog.LogRecords()
 		for k := 0; k < logRecords.Len(); k++ {
-			EnrichLog(resourceAttrs, logRecords.At(k), e.Config)
+			EnrichLog(resourceAttrs, logRecords.At(k), e.Config, e.remapToECSLabels)
 		}
 	}
 }
@@ -93,7 +99,7 @@ func (e *Enricher) EnrichResourceMetrics(resMetric pmetric.ResourceMetrics) {
 		scopeAttrs := scopeMetric.Scope().Attributes()
 		metrics := scopeMetric.Metrics()
 		for k := 0; k < metrics.Len(); k++ {
-			EnrichMetricDataPoints(metrics.At(k), scopeAttrs, e.Config)
+			EnrichMetricDataPoints(metrics.At(k), scopeAttrs, e.Config, e.remapToECSLabels)
 		}
 	}
 }
@@ -131,10 +137,13 @@ func ecsPreProcessResource(ctx context.Context, resource pcommon.Resource, dataS
 	}
 }
 
-// NewEnricher creates a new instance of Enricher.
-func NewEnricher(cfg config.Config) *Enricher {
+// NewEnricher creates a new instance of Enricher. remapToECSLabels
+// controls whether unsupported attributes are moved to labels.* /
+// numeric_labels.* for ECS compatibility (true for OTel enrichers).
+func NewEnricher(cfg config.Config, remapToECSLabels bool) *Enricher {
 	return &Enricher{
-		Config:          cfg,
-		userAgentParser: sharedUserAgentParser(),
+		Config:               cfg,
+		remapToECSLabels:  remapToECSLabels,
+		userAgentParser:      sharedUserAgentParser(),
 	}
 }

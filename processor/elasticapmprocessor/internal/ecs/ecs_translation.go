@@ -158,11 +158,11 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 	})
 }
 
-// TranslateLogRecordAttributes applies the apm-data OTLP fallback behaviour for
+// RemapLogRecordAttributesToECSLabels applies the apm-data OTLP fallback behaviour for
 // log record attributes in ECS mode: known semantic fields are preserved, while
 // unsupported attributes are moved to labels.* / numeric_labels.* with a
 // sanitized key.
-func TranslateLogRecordAttributes(attributes pcommon.Map) {
+func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitizeExistingLabelAttribute(attributes, k, v) {
 			return true
@@ -190,7 +190,7 @@ func TranslateLogRecordAttributes(attributes pcommon.Map) {
 	})
 }
 
-// TranslateSpanAttributes applies the apm-data OTLP span fallback behaviour for
+// RemapSpanAttributesToECSLabels applies the apm-data OTLP span fallback behaviour for
 // ECS mode spans. The preserved attributes and fallback-to-label cases are based
 // on the OTLP span translation in apm-data's input/otlp/traces.go:
 // https://github.com/elastic/apm-data/blob/7da222dcc0320f9c812c5d72f65f830c838aae11/input/otlp/traces.go
@@ -198,7 +198,7 @@ func TranslateLogRecordAttributes(attributes pcommon.Map) {
 // Attributes required by span enrichment or exporter-side ECS conversions are
 // preserved, while unsupported attributes are moved to labels.* /
 // numeric_labels.* with a sanitized key.
-func TranslateSpanAttributes(attributes pcommon.Map) {
+func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitizeExistingLabelAttribute(attributes, k, v) {
 			return true
@@ -288,11 +288,11 @@ func TranslateSpanAttributes(attributes pcommon.Map) {
 	})
 }
 
-// TranslateMetricDataPointAttributes applies the apm-data OTLP metric fallback
+// RemapMetricDataPointAttributesToECSLabels applies the apm-data OTLP metric fallback
 // for raw metric datapoint attributes in ECS mode. Existing labels.* /
 // numeric_labels.* keys are sanitized in place, metric-specific special cases
 // are preserved, and everything else is moved to labels.* / numeric_labels.*.
-func TranslateMetricDataPointAttributes(attributes pcommon.Map) {
+func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitizeExistingLabelAttribute(attributes, k, v) {
 			return true

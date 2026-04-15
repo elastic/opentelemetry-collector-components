@@ -61,7 +61,7 @@ func NewAPMLogEnricher(baseCfg config.Config, hostIPEnabled bool, serviceNameInD
 	cfg.Transaction.Result.Enabled = false
 	return &APMLogEnricher{
 		ecsLogEnricher: ecsLogEnricher{
-			enricher:                       NewEnricher(cfg),
+			enricher:                       NewEnricher(cfg, false /* remapToECSLabels */),
 			hostIPEnabled:                  hostIPEnabled,
 			serviceNameInDataStreamDataset: serviceNameInDataStreamDataset,
 		},
@@ -80,13 +80,12 @@ func (e *OTelLogEnricher) EnrichResourceLogs(ctx context.Context, rl plog.Resour
 // NewOTelLogEnricher creates a LogEnricher for elastic OTel events.
 func NewOTelLogEnricher(baseCfg config.Config, hostIPEnabled bool, serviceNameInDataStreamDataset bool) *OTelLogEnricher {
 	cfg := ecsOTelConfig(baseCfg)
-	cfg.Log.TranslateUnsupportedAttributes.Enabled = true
 	// disable the transaction result enrichment to avoid deriving a value
 	// when the provided result is empty to match existing apm-data logic
 	cfg.Transaction.Result.Enabled = false
 	return &OTelLogEnricher{
 		ecsLogEnricher: ecsLogEnricher{
-			enricher:                       NewEnricher(cfg),
+			enricher:                       NewEnricher(cfg, true /* remapToECSLabels */),
 			hostIPEnabled:                  hostIPEnabled,
 			serviceNameInDataStreamDataset: serviceNameInDataStreamDataset,
 		},
@@ -105,6 +104,6 @@ func (e *DefaultLogEnricher) EnrichResourceLogs(_ context.Context, rl plog.Resou
 // NewDefaultLogEnricher creates a LogEnricher for non-ECS log events.
 func NewDefaultLogEnricher(baseCfg config.Config) *DefaultLogEnricher {
 	return &DefaultLogEnricher{
-		enricher: NewEnricher(baseCfg),
+		enricher: NewEnricher(baseCfg, false /* remapToECSLabels */),
 	}
 }

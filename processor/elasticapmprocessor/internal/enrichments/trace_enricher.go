@@ -85,7 +85,7 @@ func NewAPMTraceEnricher(baseCfg config.Config, hostIPEnabled bool) *APMTraceEnr
 	cfg.Transaction.Result.Enabled = false
 	return &APMTraceEnricher{
 		ecsTraceEnricher: ecsTraceEnricher{
-			enricher:      NewEnricher(cfg),
+			enricher:      NewEnricher(cfg, false /* remapToECSLabels */),
 			hostIPEnabled: hostIPEnabled,
 		},
 	}
@@ -106,10 +106,9 @@ func (e *OTelTraceEnricher) EnrichResourceSpans(ctx context.Context, rs ptrace.R
 // NewOTelTraceEnricher creates a TraceEnricher for elastic OTel events.
 func NewOTelTraceEnricher(baseCfg config.Config, hostIPEnabled bool) *OTelTraceEnricher {
 	cfg := ecsOTelConfig(baseCfg)
-	cfg.Span.TranslateUnsupportedAttributes.Enabled = true
 	return &OTelTraceEnricher{
 		ecsTraceEnricher: ecsTraceEnricher{
-			enricher:      NewEnricher(cfg),
+			enricher:      NewEnricher(cfg, true /* remapToECSLabels */),
 			hostIPEnabled: hostIPEnabled,
 		},
 	}
@@ -128,6 +127,6 @@ func (e *DefaultTraceEnricher) EnrichResourceSpans(_ context.Context, rs ptrace.
 // NewDefaultTraceEnricher creates a TraceEnricher for non-ECS trace events.
 func NewDefaultTraceEnricher(baseCfg config.Config) *DefaultTraceEnricher {
 	return &DefaultTraceEnricher{
-		enricher: NewEnricher(baseCfg),
+		enricher: NewEnricher(baseCfg, false /* remapToECSLabels */),
 	}
 }

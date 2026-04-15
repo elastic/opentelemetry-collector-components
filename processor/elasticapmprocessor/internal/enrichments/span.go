@@ -70,9 +70,10 @@ func EnrichSpan(
 	span ptrace.Span,
 	cfg config.Config,
 	userAgentParser *uaparser.Parser,
+	remapToECSLabels bool,
 ) {
 	var c spanEnrichmentContext
-	c.Enrich(span, cfg, userAgentParser)
+	c.Enrich(span, cfg, userAgentParser, remapToECSLabels)
 }
 
 type spanEnrichmentContext struct {
@@ -128,15 +129,16 @@ func (s *spanEnrichmentContext) Enrich(
 	span ptrace.Span,
 	cfg config.Config,
 	userAgentParser *uaparser.Parser,
+	remapToECSLabels bool,
 ) {
 	s.capture(span)
 	s.normalizeAttributes(userAgentParser)
 	s.isTransaction = isElasticTransaction(span, s.processorEvent)
-	if cfg.Span.TranslateUnsupportedAttributes.Enabled {
-		ecs.TranslateSpanAttributes(span.Attributes())
+	if remapToECSLabels {
+		ecs.RemapSpanAttributesToECSLabels(span.Attributes())
 	}
 	s.enrich(span, cfg)
-	if cfg.Span.TranslateUnsupportedAttributes.Enabled && s.isHTTP {
+	if remapToECSLabels && s.isHTTP {
 		s.removeHTTPSourceAttributes(span)
 	}
 
