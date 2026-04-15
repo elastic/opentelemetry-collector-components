@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -209,6 +210,11 @@ func TranslateSpanAttributes(attributes pcommon.Map) {
 		case elasticattr.DataStreamDataset,
 			elasticattr.DataStreamNamespace,
 			elasticattr.DataStreamType,
+			elasticattr.ServiceTargetName,
+			elasticattr.ServiceTargetType,
+			elasticattr.SpanDestinationServiceName,
+			elasticattr.SpanDestinationServiceType,
+			elasticattr.SpanDestinationServiceResource,
 			// miscellaneous
 			elasticattr.EventOutcome,
 			elasticattr.ProcessorEvent,
@@ -240,15 +246,20 @@ func TranslateSpanAttributes(attributes pcommon.Map) {
 			string(semconv25.HTTPURLKey),
 			string(semconv25.HTTPUserAgentKey),
 			// messaging.*
+			string(semconv16.MessagingDestinationKey),
 			string(semconv25.MessagingDestinationNameKey),
 			string(semconv25.MessagingDestinationTemporaryKey),
 			string(semconv25.MessagingOperationKey),
+			string(semconv.MessagingOperationTypeKey),
 			string(semconv37.MessagingOperationNameKey),
 			string(semconv25.MessagingSystemKey),
 			// net.*
 			string(semconv25.NetHostNameKey),
 			string(semconv25.NetPeerNameKey),
 			string(semconv25.NetPeerPortKey),
+			string(semconv12.NetPeerIPKey),
+			string(semconv25.NetSockPeerAddrKey),
+			string(semconv.NetworkPeerAddressKey),
 			// network.*
 			string(semconv.NetworkCarrierIccKey),
 			string(semconv.NetworkCarrierMccKey),
@@ -280,6 +291,16 @@ func TranslateSpanAttributes(attributes pcommon.Map) {
 			string(semconv.UserAgentNameKey),
 			string(semconv.UserAgentOriginalKey),
 			string(semconv.UserAgentVersionKey):
+			return true
+		case "span.kind",
+			"message_bus.destination",
+			"peer.address",
+			"peer.port",
+			"peer.hostname",
+			"peer.ipv4",
+			"peer.ipv6":
+			// remove redundant aliases
+			attributes.Remove(k)
 			return true
 		default:
 			fallbackToLabelAttribute(attributes, k, v)

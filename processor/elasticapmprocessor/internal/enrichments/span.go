@@ -27,12 +27,14 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling"
 	"github.com/ua-parser/uap-go/uaparser"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -81,6 +83,8 @@ type spanEnrichmentContext struct {
 	processorEvent           string
 	eventOutcome             string
 	peerService              string
+	peerAddress              string
+	netPeerIP                string
 	httpHost                 string
 	serverAddress            string
 	httpTarget               string
@@ -146,6 +150,11 @@ func (s *spanEnrichmentContext) Enrich(
 func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 	s.spanStatusCode = span.Status().Code()
 
+	// Keep alias decoding aligned with apm-data's OTLP span translator so later
+	// enrichment decisions are driven by the same normalized inputs, especially
+	// for older db.*, peer.*, and messaging.* variants:
+	// https://github.com/elastic/apm-data/blob/26adeeef7f92ba5e01e59fb9e4c735fb8c31b58e/input/otlp/traces.go#L686-L712
+	// https://github.com/elastic/apm-data/blob/26adeeef7f92ba5e01e59fb9e4c735fb8c31b58e/input/otlp/traces.go#L769-L785
 	span.Attributes().Range(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.ProcessorEvent:
@@ -161,7 +170,7 @@ func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 			s.serverAddress = v.Str()
 		case string(semconv25.ServerPortKey):
 			s.serverPort = v.Int()
-		case string(semconv25.NetPeerNameKey):
+		case string(semconv25.NetPeerNameKey), "peer.hostname":
 			if s.serverAddress == "" {
 				// net.peer.name is deprecated, so has lower priority
 				// only set when not already set with server.address
@@ -175,17 +184,35 @@ func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 				// allowed to be overridden by server.port.
 				s.serverPort = v.Int()
 			}
-		case string(semconv25.MessagingDestinationNameKey):
+		case string(semconv12.NetPeerIPKey),
+			string(semconv25.NetSockPeerAddrKey),
+			string(semconv27.NetworkPeerAddressKey),
+			"peer.ipv4",
+			"peer.ipv6":
+			s.netPeerIP = v.Str()
+		case "peer.address":
+			s.peerAddress = v.Str()
+		case "peer.port":
+			// fallback if not already set
+			if s.serverPort == 0 {
+				s.serverPort = v.Int()
+			}
+		case string(semconv16.MessagingDestinationKey),
+			string(semconv25.MessagingDestinationNameKey),
+			"message_bus.destination":
 			s.isMessaging = true
 			s.messagingDestinationName = v.Str()
 		case string(semconv25.MessagingOperationKey),
-			string(semconv37.MessagingOperationNameKey):
+			string(semconv27.MessagingOperationTypeKey):
 			s.isMessaging = true
 			s.messagingOperation = v.Str()
+		case string(semconv37.MessagingOperationNameKey):
+			s.isMessaging = true
 		case string(semconv25.MessagingSystemKey):
 			s.isMessaging = true
 			s.messagingSystem = v.Str()
-		case string(semconv25.MessagingDestinationTemporaryKey):
+		case string(semconv16.MessagingTempDestinationKey),
+			string(semconv25.MessagingDestinationTemporaryKey):
 			s.isMessaging = true
 			s.messagingDestinationTemp = true
 		case string(semconv25.HTTPStatusCodeKey),
@@ -239,12 +266,23 @@ func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 		case string(semconv25.DBStatementKey),
 			string(semconv25.DBUserKey), string(semconv37.DBQueryTextKey):
 			s.isDB = true
-		case string(semconv25.DBNameKey), string(semconv37.DBNamespaceKey):
+		case string(semconv25.DBNameKey),
+			string(semconv37.DBNamespaceKey),
+			"db.instance",
+			"db.elasticsearch.cluster.name":
 			s.isDB = true
 			s.dbName = v.Str()
-		case string(semconv25.DBSystemKey), string(semconv37.DBSystemNameKey):
+		case string(semconv25.DBSystemKey),
+			string(semconv37.DBSystemNameKey),
+			"db.type":
 			s.isDB = true
 			s.dbSystem = v.Str()
+		case "sql.query":
+			s.isDB = true
+			// fallback if not already set
+			if s.dbSystem == "" {
+				s.dbSystem = "sql"
+			}
 		case string(semconv27.GenAISystemKey), string(semconv37.GenAIProviderNameKey):
 			s.isGenAi = true
 			s.genAiSystem = v.Str()
@@ -421,6 +459,17 @@ func (s *spanEnrichmentContext) normalizeAttributes(userAgentPraser *uaparser.Pa
 	if s.rpcSystem == "" && s.grpcStatus != "" {
 		s.rpcSystem = "grpc"
 	}
+	if s.serverAddress == "" {
+		// apm-data treats peer.address as a hostname fallback only when it is not
+		// obviously a connection string / ip:port, then uses the normalized peer
+		// host and port when synthesizing HTTP URLs and destinations:
+		// https://github.com/elastic/apm-data/blob/26adeeef7f92ba5e01e59fb9e4c735fb8c31b58e/input/otlp/traces.go#L840-L878
+		if s.netPeerIP != "" {
+			s.serverAddress = s.netPeerIP
+		} else if s.peerAddress != "" && (!strings.ContainsRune(s.peerAddress, ':') || net.ParseIP(s.peerAddress) != nil) {
+			s.serverAddress = s.peerAddress
+		}
+	}
 	if s.urlFull == nil {
 		s.urlFull = s.buildURLFromComponents()
 	}
@@ -536,10 +585,15 @@ func (s *spanEnrichmentContext) setMessageQueue(span ptrace.Span) {
 // This is another reason the attributes are deleted here to avoid special handling at export time.
 func (s *spanEnrichmentContext) removeMessagingAttrs(span ptrace.Span) {
 	if s.isMessaging {
+		span.Attributes().Remove(string(semconv16.MessagingDestinationKey))
+		span.Attributes().Remove("message_bus.destination")
 		span.Attributes().Remove(string(semconv25.MessagingOperationKey))
+		span.Attributes().Remove(string(semconv27.MessagingOperationTypeKey))
 		span.Attributes().Remove(string(semconv37.MessagingOperationNameKey))
 		span.Attributes().Remove(string(semconv25.MessagingSystemKey))
 		span.Attributes().Remove(string(semconv25.MessagingDestinationNameKey))
+		span.Attributes().Remove(string(semconv16.MessagingTempDestinationKey))
+		span.Attributes().Remove(string(semconv25.MessagingDestinationTemporaryKey))
 	}
 }
 
@@ -612,6 +666,9 @@ func (s *spanEnrichmentContext) setServiceTarget(span ptrace.Span) {
 		}
 	case s.isHTTP:
 		targetType = "http"
+		// For HTTP, apm-data derives service.target.name from the concrete URL/host,
+		// while span.destination.service.* may still preserve an explicit peer.service:
+		// https://github.com/elastic/apm-data/blob/26adeeef7f92ba5e01e59fb9e4c735fb8c31b58e/input/otlp/traces.go#L978-L1000
 		if details, ok := s.httpDestinationDetails(); ok && details.serviceTargetName != "" {
 			targetName = details.serviceTargetName
 		} else if resource := getHostPort(
@@ -634,6 +691,9 @@ func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 	var destnResource string
 	if s.peerService != "" {
 		destnResource = s.peerService
+	}
+	if s.peerAddress != "" {
+		destnResource = s.peerAddress
 	}
 
 	switch {

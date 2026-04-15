@@ -430,20 +430,30 @@ func TestTranslateSpanAttributes(t *testing.T) {
 				attrs.PutStr("db.query.text", "SELECT * FROM users")
 				attrs.PutStr(elasticattr.EventOutcome, "unknown")
 				attrs.PutStr(elasticattr.ProcessorEvent, "transaction")
+				attrs.PutStr(elasticattr.ServiceTargetName, "api.example.com:443")
+				attrs.PutStr(elasticattr.ServiceTargetType, "http")
+				attrs.PutStr(elasticattr.SpanDestinationServiceName, "https://api.example.com")
+				attrs.PutStr(elasticattr.SpanDestinationServiceType, "external")
+				attrs.PutStr(elasticattr.SpanDestinationServiceResource, "api.example.com:443")
 				attrs.PutStr("session.id", "session-123")
 				attrs.PutStr(string(semconv.NetworkConnectionTypeKey), "wifi")
 				attrs.PutStr(elasticattr.DataStreamDataset, "apm")
 			},
 			want: map[string]any{
-				"http.request.method":                    "GET",
-				"http.response.status_code":              int64(200),
-				"http.url":                               "https://api.example.com/users",
-				"db.query.text":                          "SELECT * FROM users",
-				elasticattr.EventOutcome:                 "unknown",
-				elasticattr.ProcessorEvent:               "transaction",
-				"session.id":                             "session-123",
-				string(semconv.NetworkConnectionTypeKey): "wifi",
-				elasticattr.DataStreamDataset:            "apm",
+				"http.request.method":                      "GET",
+				"http.response.status_code":                int64(200),
+				"http.url":                                 "https://api.example.com/users",
+				"db.query.text":                            "SELECT * FROM users",
+				elasticattr.EventOutcome:                   "unknown",
+				elasticattr.ProcessorEvent:                 "transaction",
+				elasticattr.ServiceTargetName:              "api.example.com:443",
+				elasticattr.ServiceTargetType:              "http",
+				elasticattr.SpanDestinationServiceName:     "https://api.example.com",
+				elasticattr.SpanDestinationServiceType:     "external",
+				elasticattr.SpanDestinationServiceResource: "api.example.com:443",
+				"session.id":                               "session-123",
+				string(semconv.NetworkConnectionTypeKey):   "wifi",
+				elasticattr.DataStreamDataset:              "apm",
 			},
 		},
 		{
@@ -500,6 +510,13 @@ func TestTranslateSpanAttributes(t *testing.T) {
 				attrs.PutEmptyMap("http.request")
 			},
 			wantAbsent: []string{"http.request"},
+		},
+		{
+			name: "span kind dropped",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("span.kind", "client")
+			},
+			wantAbsent: []string{"span.kind"},
 		},
 	}
 
