@@ -66,13 +66,13 @@ func (p *TraceProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	ecsMode := isECS(ctx)
+	ecsMode := isECSMappingMode(ctx)
 	resourceSpans := td.ResourceSpans()
 	for i := 0; i < resourceSpans.Len(); i++ {
 		rs := resourceSpans.At(i)
 		enricher := p.defaultEnricher
 		if ecsMode {
-			if isIntakeECS(rs.Resource()) {
+			if isElasticAPMAgent(rs.Resource()) {
 				enricher = p.apmEnricher
 			} else {
 				enricher = p.otelEnricher
@@ -83,16 +83,17 @@ func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) er
 	return p.next.ConsumeTraces(ctx, td)
 }
 
-func isECS(ctx context.Context) bool {
+func isECSMappingMode(ctx context.Context) bool {
 	clientCtx := client.FromContext(ctx)
 	mappingMode := getMetadataValue(clientCtx)
 	return mappingMode == "ecs"
 }
 
-// isIntakeECS reports whether the data originated from the elasticapmintakereceiver
-// by checking telemetry.sdk.name == "ElasticAPM" on the resource attributes.
-// The intake receiver always sets this value; OTLP events use their own SDK name.
-func isIntakeECS(resource pcommon.Resource) bool {
+// isElasticAPMAgent reports whether the data originated from an Elastic APM
+// agent by checking telemetry.sdk.name == "ElasticAPM" on the resource
+// attributes. The elasticapmintakereceiver always sets this value; OTLP
+// events use their own SDK name.
+func isElasticAPMAgent(resource pcommon.Resource) bool {
 	if v, ok := resource.Attributes().Get(string(semconv.TelemetrySDKNameKey)); ok {
 		return v.Str() == "ElasticAPM"
 	}
@@ -161,37 +162,43 @@ func (p *MetricProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	ecsMode := isECS(ctx)
-	if ecsMode {
-		// ECS metric batches are assumed to be homogeneous by origin. We select
-		// the enricher from the first resource metric and apply it to the whole batch.
-		enricher := p.otelEnricher
-		resourceMetrics := md.ResourceMetrics()
-		if resourceMetrics.Len() > 0 && isIntakeECS(resourceMetrics.At(0).Resource()) {
-			enricher = p.apmEnricher
+	ecsMode := isECSMappingMode(ctx)
+	if !ecsMode && p.cfg.SkipEnrichment {
+		return p.next.ConsumeMetrics(ctx, md)
+	}
+	resourceMetrics := md.ResourceMetrics()
+	for i := 0; i < resourceMetrics.Len(); i++ {
+		rm := resourceMetrics.At(i)
+		enricher := p.defaultEnricher
+		if ecsMode {
+			if isElasticAPMAgent(rm.Resource()) {
+				enricher = p.apmEnricher
+			} else {
+				enricher = p.otelEnricher
+			}
 		}
-		enricher.EnrichMetrics(ctx, md)
-	} else if !p.cfg.SkipEnrichment {
-		// When skipEnrichment is false (default), always enrich (backwards compatible)
-		p.defaultEnricher.EnrichMetrics(ctx, md)
+		enricher.EnrichResourceMetrics(ctx, rm)
 	}
 	return p.next.ConsumeMetrics(ctx, md)
 }
 
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	ecsMode := isECS(ctx)
-	if ecsMode {
-		// ECS log batches are assumed to be homogeneous by origin. We select the
-		// enricher from the first resource log and apply it to the whole batch.
-		enricher := p.otelEnricher
-		resourceLogs := ld.ResourceLogs()
-		if resourceLogs.Len() > 0 && isIntakeECS(resourceLogs.At(0).Resource()) {
-			enricher = p.apmEnricher
+	ecsMode := isECSMappingMode(ctx)
+	if !ecsMode && p.cfg.SkipEnrichment {
+		return p.next.ConsumeLogs(ctx, ld)
+	}
+	resourceLogs := ld.ResourceLogs()
+	for i := 0; i < resourceLogs.Len(); i++ {
+		rl := resourceLogs.At(i)
+		enricher := p.defaultEnricher
+		if ecsMode {
+			if isElasticAPMAgent(rl.Resource()) {
+				enricher = p.apmEnricher
+			} else {
+				enricher = p.otelEnricher
+			}
 		}
-		enricher.EnrichLogs(ctx, ld)
-	} else if !p.cfg.SkipEnrichment {
-		// When skipEnrichment is false (default), always enrich (backwards compatible)
-		p.defaultEnricher.EnrichLogs(ctx, ld)
+		enricher.EnrichResourceLogs(ctx, rl)
 	}
 	return p.next.ConsumeLogs(ctx, ld)
 }

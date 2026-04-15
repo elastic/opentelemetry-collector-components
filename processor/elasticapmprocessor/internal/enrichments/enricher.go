@@ -64,47 +64,36 @@ func (e *Enricher) EnrichResourceSpans(resSpan ptrace.ResourceSpans) {
 	}
 }
 
-// EnrichLogs enriches the OTel logs with attributes required to power
-// functionalities in the Elastic UI. The logs passed to this function are mutated.
-// Any existing attributes will not be enriched or modified.
-func (e *Enricher) EnrichLogs(pl plog.Logs) {
-	resLogs := pl.ResourceLogs()
-	for i := 0; i < resLogs.Len(); i++ {
-		resLog := resLogs.At(i)
-		resource := resLog.Resource()
-		EnrichResource(resource, e.Config.Resource)
-		resourceAttrs := resource.Attributes().AsRaw()
-		scopeLogs := resLog.ScopeLogs()
-		for j := 0; j < scopeLogs.Len(); j++ {
-			scopeSpan := scopeLogs.At(j)
-			EnrichScope(scopeSpan.Scope(), e.Config)
-			logRecords := scopeSpan.LogRecords()
-			for k := 0; k < logRecords.Len(); k++ {
-				logRecord := logRecords.At(k)
-				EnrichLog(resourceAttrs, logRecord, e.Config)
-			}
+// EnrichResourceLogs enriches a single ResourceLogs with the current enricher
+// configuration.
+func (e *Enricher) EnrichResourceLogs(resLog plog.ResourceLogs) {
+	resource := resLog.Resource()
+	EnrichResource(resource, e.Config.Resource)
+	resourceAttrs := resource.Attributes().AsRaw()
+	scopeLogs := resLog.ScopeLogs()
+	for j := 0; j < scopeLogs.Len(); j++ {
+		scopeLog := scopeLogs.At(j)
+		EnrichScope(scopeLog.Scope(), e.Config)
+		logRecords := scopeLog.LogRecords()
+		for k := 0; k < logRecords.Len(); k++ {
+			EnrichLog(resourceAttrs, logRecords.At(k), e.Config)
 		}
 	}
 }
 
-// EnrichMetrics enriches the OTel metrics with attributes required to power
-// functionalities in the Elastic UI. The metrics passed to this function are mutated.
-// Any existing attributes will not be enriched or modified.
-func (e *Enricher) EnrichMetrics(pl pmetric.Metrics) {
-	resMetrics := pl.ResourceMetrics()
-	for i := 0; i < resMetrics.Len(); i++ {
-		resMetric := resMetrics.At(i)
-		EnrichMetric(resMetric, e.Config)
-		EnrichResource(resMetric.Resource(), e.Config.Resource)
-		scopeMetics := resMetric.ScopeMetrics()
-		for j := 0; j < scopeMetics.Len(); j++ {
-			scopeMetric := scopeMetics.At(j)
-			EnrichScope(scopeMetric.Scope(), e.Config)
-			scopeAttrs := scopeMetric.Scope().Attributes()
-			metrics := scopeMetric.Metrics()
-			for k := 0; k < metrics.Len(); k++ {
-				EnrichMetricDataPoints(metrics.At(k), scopeAttrs, e.Config)
-			}
+// EnrichResourceMetrics enriches a single ResourceMetrics with the current
+// enricher configuration.
+func (e *Enricher) EnrichResourceMetrics(resMetric pmetric.ResourceMetrics) {
+	EnrichMetric(resMetric, e.Config)
+	EnrichResource(resMetric.Resource(), e.Config.Resource)
+	scopeMetrics := resMetric.ScopeMetrics()
+	for j := 0; j < scopeMetrics.Len(); j++ {
+		scopeMetric := scopeMetrics.At(j)
+		EnrichScope(scopeMetric.Scope(), e.Config)
+		scopeAttrs := scopeMetric.Scope().Attributes()
+		metrics := scopeMetric.Metrics()
+		for k := 0; k < metrics.Len(); k++ {
+			EnrichMetricDataPoints(metrics.At(k), scopeAttrs, e.Config)
 		}
 	}
 }

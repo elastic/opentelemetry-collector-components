@@ -26,9 +26,9 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 )
 
-// MetricEnricher enriches metric data for a specific mapping mode.
+// MetricEnricher enriches a single ResourceMetrics for a specific mapping mode.
 type MetricEnricher interface {
-	EnrichMetrics(ctx context.Context, md pmetric.Metrics)
+	EnrichResourceMetrics(ctx context.Context, rm pmetric.ResourceMetrics)
 }
 
 // ecsMetricEnricher contains the shared ECS metric enrichment pipeline
@@ -39,23 +39,19 @@ type ecsMetricEnricher struct {
 	serviceNameInDataStreamDataset bool
 }
 
-func (e *ecsMetricEnricher) enrichMetrics(ctx context.Context, md pmetric.Metrics) {
-	resourceMetrics := md.ResourceMetrics()
-	for i := 0; i < resourceMetrics.Len(); i++ {
-		resourceMetric := resourceMetrics.At(i)
-		resource := resourceMetric.Resource()
-		ecsPreProcessResource(ctx, resource, routing.DataStreamTypeMetrics, e.serviceNameInDataStreamDataset, e.hostIPEnabled)
+func (e *ecsMetricEnricher) enrichResourceMetrics(ctx context.Context, rm pmetric.ResourceMetrics) {
+	resource := rm.Resource()
+	ecsPreProcessResource(ctx, resource, routing.DataStreamTypeMetrics, e.serviceNameInDataStreamDataset, e.hostIPEnabled)
 
-		// Check if resource has a service name for routing decisions
-		hasServiceName := false
-		if serviceName, ok := resource.Attributes().Get(routing.ServiceNameAttributeKey); ok && serviceName.Str() != "" {
-			hasServiceName = true
-		}
-
-		// Route internal metrics to appropriate data streams if needed.
-		routeMetricsToDataStream(resourceMetric.ScopeMetrics(), hasServiceName)
+	// Check if resource has a service name for routing decisions
+	hasServiceName := false
+	if serviceName, ok := resource.Attributes().Get(routing.ServiceNameAttributeKey); ok && serviceName.Str() != "" {
+		hasServiceName = true
 	}
-	e.enricher.EnrichMetrics(md)
+
+	// Route internal metrics to appropriate data streams if needed.
+	routeMetricsToDataStream(rm.ScopeMetrics(), hasServiceName)
+	e.enricher.EnrichResourceMetrics(rm)
 }
 
 // routeMetricsToDataStream routes individual metric data points to their
@@ -125,8 +121,8 @@ type APMMetricEnricher struct {
 	ecsMetricEnricher
 }
 
-func (e *APMMetricEnricher) EnrichMetrics(ctx context.Context, md pmetric.Metrics) {
-	e.enrichMetrics(ctx, md)
+func (e *APMMetricEnricher) EnrichResourceMetrics(ctx context.Context, rm pmetric.ResourceMetrics) {
+	e.enrichResourceMetrics(ctx, rm)
 }
 
 // NewAPMMetricEnricher creates a MetricEnricher for elastic APM intake events.
@@ -146,8 +142,8 @@ type OTelMetricEnricher struct {
 	ecsMetricEnricher
 }
 
-func (e *OTelMetricEnricher) EnrichMetrics(ctx context.Context, md pmetric.Metrics) {
-	e.enrichMetrics(ctx, md)
+func (e *OTelMetricEnricher) EnrichResourceMetrics(ctx context.Context, rm pmetric.ResourceMetrics) {
+	e.enrichResourceMetrics(ctx, rm)
 }
 
 // NewOTelMetricEnricher creates a MetricEnricher for elastic OTel events.
@@ -168,8 +164,8 @@ type DefaultMetricEnricher struct {
 	enricher *Enricher
 }
 
-func (e *DefaultMetricEnricher) EnrichMetrics(_ context.Context, md pmetric.Metrics) {
-	e.enricher.EnrichMetrics(md)
+func (e *DefaultMetricEnricher) EnrichResourceMetrics(_ context.Context, rm pmetric.ResourceMetrics) {
+	e.enricher.EnrichResourceMetrics(rm)
 }
 
 // NewDefaultMetricEnricher creates a MetricEnricher for non-ECS metric events.

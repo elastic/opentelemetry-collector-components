@@ -18,6 +18,7 @@
 package enrichments
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -161,8 +162,10 @@ func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
 	attrs.PutStr("system.filesystem.mount_point", "/mnt/data")
 	attrs.PutStr("user.name", "appuser")
 
-	enricher := NewEnricher(cfg)
-	enricher.EnrichMetrics(metrics)
+	enricher := NewDefaultMetricEnricher(cfg)
+	for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
+		enricher.EnrichResourceMetrics(context.Background(), metrics.ResourceMetrics().At(i))
+	}
 
 	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
 
@@ -224,7 +227,10 @@ func TestEnrichMetrics_TruncatesPreservedMetricSpecialCaseAttributes(t *testing.
 	attrs.PutStr("event.module", longValue)
 	attrs.PutStr("system.process.state", longValue)
 
-	NewEnricher(cfg).EnrichMetrics(metrics)
+	enricher := NewDefaultMetricEnricher(cfg)
+	for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
+		enricher.EnrichResourceMetrics(context.Background(), metrics.ResourceMetrics().At(i))
+	}
 
 	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
 	expected := strings.Repeat("a", int(sanitize.StandardKeyWordLength))

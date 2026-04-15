@@ -708,7 +708,7 @@ func TestConsumeLogs_ECSIntakeSkipsOTLPFallbacks(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestConsumeLogs_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
+func TestConsumeLogs_ECSMixedBatchOrigin(t *testing.T) {
 	ctx := client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
 	})
@@ -741,22 +741,24 @@ func TestConsumeLogs_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
 
 	require.Equal(t, 2, actual.ResourceLogs().Len())
 
-	// Mixed-origin batches are not supported. The first resource log determines
-	// which ECS log enricher is used for the whole batch.
+	// Per-resource enricher selection: each resource gets the correct enricher.
+	// APM enricher: DefaultServiceLanguage disabled → not set
 	intakeAttrs := actual.ResourceLogs().At(0).Resource().Attributes()
 	_, ok := intakeAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
 	assert.False(t, ok)
 
+	// OTel enricher: DefaultServiceLanguage enabled → set
 	otlpAttrs := actual.ResourceLogs().At(1).Resource().Attributes()
 	_, ok = otlpAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
-	assert.False(t, ok)
+	assert.True(t, ok)
 
+	// OTel enricher: TranslateUnsupportedAttributes enabled → http.method moved to labels
 	otlpLogAttrs := actual.ResourceLogs().At(1).ScopeLogs().At(0).LogRecords().At(0).Attributes()
-	value, ok := otlpLogAttrs.Get("http.method")
+	_, ok = otlpLogAttrs.Get("http.method")
+	assert.False(t, ok)
+	value, ok := otlpLogAttrs.Get("labels.http_method")
 	require.True(t, ok)
 	assert.Equal(t, "GET", value.Str())
-	_, ok = otlpLogAttrs.Get("labels.http_method")
-	assert.False(t, ok)
 }
 
 func TestConsumeMetrics_ECSOTLPFallbacks(t *testing.T) {
@@ -927,7 +929,7 @@ func TestConsumeMetrics_ECSIntakeSkipsOTLPFallbacks(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestConsumeMetrics_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
+func TestConsumeMetrics_ECSMixedBatchOrigin(t *testing.T) {
 	ctx := client.NewContext(context.Background(), client.Info{
 		Metadata: client.NewMetadata(map[string][]string{"x-elastic-mapping-mode": {"ecs"}}),
 	})
@@ -973,31 +975,36 @@ func TestConsumeMetrics_ECSAssumesHomogeneousBatchOrigin(t *testing.T) {
 
 	require.Equal(t, 2, actual.ResourceMetrics().Len())
 
-	// Mixed-origin batches are not supported. The first resource metric determines
-	// which ECS metric enricher is used for the whole batch.
+	// Per-resource enricher selection: each resource gets the correct enricher.
+	// APM enricher: DefaultServiceLanguage disabled → not set
 	intakeAttrs := actual.ResourceMetrics().At(0).Resource().Attributes()
 	_, ok := intakeAttrs.Get(string(semconv.TelemetrySDKLanguageKey))
 	assert.False(t, ok)
 
+	// OTel enricher: DefaultServiceLanguage enabled → set
 	otlpAttrsAfter := actual.ResourceMetrics().At(1).Resource().Attributes()
 	_, ok = otlpAttrsAfter.Get(string(semconv.TelemetrySDKLanguageKey))
-	assert.False(t, ok)
+	assert.True(t, ok)
 
+	// OTel enricher: TranslateUnsupportedAttributes enabled → attrs moved to labels
 	actualDPAttrs := actual.ResourceMetrics().At(1).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0).Attributes()
-	value, ok := actualDPAttrs.Get("http.request.method")
+	_, ok = actualDPAttrs.Get("http.request.method")
+	assert.False(t, ok)
+	value, ok := actualDPAttrs.Get("labels.http_request_method")
 	require.True(t, ok)
 	assert.Equal(t, "GET", value.Str())
-	value, ok = actualDPAttrs.Get("host")
+	_, ok = actualDPAttrs.Get("host")
+	assert.False(t, ok)
+	value, ok = actualDPAttrs.Get("labels.host")
 	require.True(t, ok)
 	assert.Equal(t, "server-01", value.Str())
-	_, ok = actualDPAttrs.Get("labels.http_request_method")
-	assert.False(t, ok)
-	_, ok = actualDPAttrs.Get("labels.host")
-	assert.False(t, ok)
-	_, ok = actualDPAttrs.Get(elasticattr.ServiceFrameworkName)
-	assert.False(t, ok)
-	_, ok = actualDPAttrs.Get(elasticattr.ServiceFrameworkVersion)
-	assert.False(t, ok)
+	// OTel enricher: scope framework attributes set
+	value, ok = actualDPAttrs.Get(elasticattr.ServiceFrameworkName)
+	require.True(t, ok)
+	assert.Equal(t, "metrics-instrumentation", value.Str())
+	value, ok = actualDPAttrs.Get(elasticattr.ServiceFrameworkVersion)
+	require.True(t, ok)
+	assert.Equal(t, "1.0.0", value.Str())
 }
 
 // TestSkipEnrichmentMetrics tests that metrics are only enriched when skipEnrichment is false or when mapping mode is ecs
@@ -1315,7 +1322,7 @@ func TestIsIntakeECS(t *testing.T) {
 			for k, v := range tc.attrs {
 				res.Attributes().PutStr(k, v)
 			}
-			require.Equal(t, tc.want, isIntakeECS(res))
+			require.Equal(t, tc.want, isElasticAPMAgent(res))
 		})
 	}
 }

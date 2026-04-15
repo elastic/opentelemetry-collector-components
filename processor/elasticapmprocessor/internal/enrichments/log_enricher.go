@@ -26,9 +26,9 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 )
 
-// LogEnricher enriches log data for a specific mapping mode.
+// LogEnricher enriches a single ResourceLogs for a specific mapping mode.
 type LogEnricher interface {
-	EnrichLogs(ctx context.Context, ld plog.Logs)
+	EnrichResourceLogs(ctx context.Context, rl plog.ResourceLogs)
 }
 
 // ecsLogEnricher contains the shared ECS log enrichment pipeline
@@ -39,12 +39,9 @@ type ecsLogEnricher struct {
 	serviceNameInDataStreamDataset bool
 }
 
-func (e *ecsLogEnricher) enrichLogs(ctx context.Context, ld plog.Logs) {
-	resourceLogs := ld.ResourceLogs()
-	for i := 0; i < resourceLogs.Len(); i++ {
-		ecsPreProcessResource(ctx, resourceLogs.At(i).Resource(), routing.DataStreamTypeLogs, e.serviceNameInDataStreamDataset, e.hostIPEnabled)
-	}
-	e.enricher.EnrichLogs(ld)
+func (e *ecsLogEnricher) enrichResourceLogs(ctx context.Context, rl plog.ResourceLogs) {
+	ecsPreProcessResource(ctx, rl.Resource(), routing.DataStreamTypeLogs, e.serviceNameInDataStreamDataset, e.hostIPEnabled)
+	e.enricher.EnrichResourceLogs(rl)
 }
 
 // APMLogEnricher handles elastic APM intake log events in ECS mode.
@@ -52,8 +49,8 @@ type APMLogEnricher struct {
 	ecsLogEnricher
 }
 
-func (e *APMLogEnricher) EnrichLogs(ctx context.Context, ld plog.Logs) {
-	e.enrichLogs(ctx, ld)
+func (e *APMLogEnricher) EnrichResourceLogs(ctx context.Context, rl plog.ResourceLogs) {
+	e.enrichResourceLogs(ctx, rl)
 }
 
 // NewAPMLogEnricher creates a LogEnricher for elastic APM intake events.
@@ -76,8 +73,8 @@ type OTelLogEnricher struct {
 	ecsLogEnricher
 }
 
-func (e *OTelLogEnricher) EnrichLogs(ctx context.Context, ld plog.Logs) {
-	e.enrichLogs(ctx, ld)
+func (e *OTelLogEnricher) EnrichResourceLogs(ctx context.Context, rl plog.ResourceLogs) {
+	e.enrichResourceLogs(ctx, rl)
 }
 
 // NewOTelLogEnricher creates a LogEnricher for elastic OTel events.
@@ -101,8 +98,8 @@ type DefaultLogEnricher struct {
 	enricher *Enricher
 }
 
-func (e *DefaultLogEnricher) EnrichLogs(_ context.Context, ld plog.Logs) {
-	e.enricher.EnrichLogs(ld)
+func (e *DefaultLogEnricher) EnrichResourceLogs(_ context.Context, rl plog.ResourceLogs) {
+	e.enricher.EnrichResourceLogs(rl)
 }
 
 // NewDefaultLogEnricher creates a LogEnricher for non-ECS log events.
