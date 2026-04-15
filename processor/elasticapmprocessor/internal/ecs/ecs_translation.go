@@ -200,6 +200,7 @@ func TranslateLogRecordAttributes(attributes pcommon.Map) {
 // preserved, while unsupported attributes are moved to labels.* /
 // numeric_labels.* with a sanitized key.
 func TranslateSpanAttributes(attributes pcommon.Map) {
+	var attrsToDrop []string
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitizeExistingLabelAttribute(attributes, k, v) {
 			return true
@@ -300,13 +301,16 @@ func TranslateSpanAttributes(attributes pcommon.Map) {
 			"peer.ipv4",
 			"peer.ipv6":
 			// remove redundant aliases
-			attributes.Remove(k)
+			attrsToDrop = append(attrsToDrop, k)
 			return true
 		default:
 			fallbackToLabelAttribute(attributes, k, v)
 			return true
 		}
 	})
+	for _, key := range attrsToDrop {
+		attributes.Remove(key)
+	}
 }
 
 // TranslateMetricDataPointAttributes applies the apm-data OTLP metric fallback

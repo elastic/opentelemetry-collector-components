@@ -31,6 +31,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -845,10 +846,15 @@ func TestElasticTransactionEnrich(t *testing.T) {
 			}
 			// Remove messaging attributes if RemoveMessaging is enabled
 			if tc.config.RemoveMessaging.Enabled {
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingDestinationKey))
+				expectedSpan.Attributes().Remove("message_bus.destination")
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingSystemKey))
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingOperationKey))
+				expectedSpan.Attributes().Remove(string(semconv27.MessagingOperationTypeKey))
 				expectedSpan.Attributes().Remove(string(semconv37.MessagingOperationNameKey))
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationNameKey))
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingTempDestinationKey))
+				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationTemporaryKey))
 			}
 			// Override span links
 			if tc.expectedSpanLinks != nil {
@@ -1574,6 +1580,46 @@ func TestElasticSpanEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "http_span_peer_address_port_fallback",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Status().SetCode(ptrace.StatusCodeOk)
+				span.Attributes().PutInt(
+					string(semconv25.HTTPResponseStatusCodeKey),
+					http.StatusOK,
+				)
+				span.Attributes().PutStr(string(semconv25.HTTPTargetKey), "/search?q=OpenTelemetry")
+				span.Attributes().PutStr("peer.address", "api.example.com")
+				span.Attributes().PutInt("peer.port", 8080)
+				return span
+			}(),
+			config: func() config.ElasticSpanConfig {
+				cfg := config.Enabled().Span
+				cfg.TranslateUnsupportedAttributes.Enabled = true
+				return cfg
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "external",
+				elasticattr.SpanSubtype:                    "http",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				"destination.address":                      "api.example.com",
+				"destination.port":                         int64(8080),
+				elasticattr.ServiceTargetType:              "http",
+				elasticattr.ServiceTargetName:              "api.example.com:8080",
+				elasticattr.SpanDestinationServiceName:     "http://api.example.com:8080",
+				elasticattr.SpanDestinationServiceType:     "external",
+				elasticattr.SpanDestinationServiceResource: "api.example.com:8080",
+				"url.original":                             "http://api.example.com:8080/search?q=OpenTelemetry",
+			},
+			removedAttrs: []string{"peer.address", "peer.port", string(semconv25.HTTPTargetKey)},
+		},
+		{
 			name: "http_span_legacy_http_host",
 			input: func() ptrace.Span {
 				span := getElasticSpan()
@@ -1916,6 +1962,38 @@ func TestElasticSpanEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "messaging_legacy_aliases",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Attributes().PutStr(string(semconv25.MessagingSystemKey), "kafka")
+				span.Attributes().PutStr("message_bus.destination", "t1")
+				span.Attributes().PutStr(string(semconv27.MessagingOperationTypeKey), "publish")
+				return span
+			}(),
+			config: func() config.ElasticSpanConfig {
+				cfg := config.Enabled().Span
+				cfg.TranslateUnsupportedAttributes.Enabled = true
+				return cfg
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "messaging",
+				elasticattr.SpanSubtype:                    "kafka",
+				elasticattr.SpanAction:                     "publish",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.ServiceTargetType:              "kafka",
+				elasticattr.ServiceTargetName:              "t1",
+				elasticattr.SpanDestinationServiceResource: "kafka/t1",
+				elasticattr.SpanMessageQueueName:           "t1",
+			},
+			removedAttrs: []string{"message_bus.destination", string(semconv27.MessagingOperationTypeKey), string(semconv25.MessagingSystemKey)},
+		},
+		{
 			name: "messaging_with_existing_attributes_are_preserved",
 			input: func() ptrace.Span {
 				span := getElasticSpan()
@@ -1981,6 +2059,33 @@ func TestElasticSpanEnrich(t *testing.T) {
 				span.SetName("testspan")
 				span.Attributes().PutStr(string(semconv25.PeerServiceKey), "testsvc")
 				span.Attributes().PutBool(string(semconv25.MessagingDestinationTemporaryKey), true)
+				span.Attributes().PutStr(string(semconv25.MessagingOperationKey), "receive")
+				span.Attributes().PutStr(string(semconv25.MessagingDestinationNameKey), "t1")
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "messaging",
+				elasticattr.SpanAction:                     "receive",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.ServiceTargetType:              "messaging",
+				elasticattr.ServiceTargetName:              "testsvc",
+				elasticattr.SpanDestinationServiceResource: "testsvc/t1",
+				elasticattr.SpanMessageQueueName:           "t1",
+			},
+		},
+		{
+			name: "messaging_legacy_temp_destination",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Attributes().PutStr(string(semconv25.PeerServiceKey), "testsvc")
+				span.Attributes().PutBool(string(semconv16.MessagingTempDestinationKey), true)
 				span.Attributes().PutStr(string(semconv25.MessagingOperationKey), "receive")
 				span.Attributes().PutStr(string(semconv25.MessagingDestinationNameKey), "t1")
 				return span
@@ -2506,6 +2611,57 @@ func TestElasticSpanEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "db_span_legacy_aliases",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("select users")
+				span.Attributes().PutStr("sql.query", "select * from users")
+				span.Attributes().PutStr("db.type", "postgresql")
+				span.Attributes().PutStr("db.instance", "users")
+				span.Attributes().PutStr("peer.hostname", "db.example.com")
+				span.Attributes().PutInt(string(semconv25.NetPeerPortKey), 5432)
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.SpanDestinationServiceResource: "postgresql",
+				elasticattr.SpanType:                       "db",
+				elasticattr.SpanSubtype:                    "postgresql",
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.ServiceTargetType:              "postgresql",
+				elasticattr.ServiceTargetName:              "users",
+			},
+		},
+		{
+			name: "db_span_elasticsearch_cluster_name_alias",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("select users")
+				span.Attributes().PutStr("db.elasticsearch.cluster.name", "cluster-a")
+				span.Attributes().PutStr("db.type", "elasticsearch")
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.SpanDestinationServiceResource: "elasticsearch",
+				elasticattr.SpanType:                       "db",
+				elasticattr.SpanSubtype:                    "elasticsearch",
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.ServiceTargetType:              "elasticsearch",
+				elasticattr.ServiceTargetName:              "cluster-a",
+			},
+		},
+		{
 			name: "db_span_after_db_stabilization_with_db_query_text",
 			input: func() ptrace.Span {
 				span := getElasticSpan()
@@ -2549,10 +2705,15 @@ func TestElasticSpanEnrich(t *testing.T) {
 			}
 			// Remove messaging attributes if RemoveMessaging is enabled
 			if enrichConfig.Transaction.RemoveMessaging.Enabled || enrichConfig.Span.RemoveMessaging.Enabled {
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingDestinationKey))
+				expectedSpan.Attributes().Remove("message_bus.destination")
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingSystemKey))
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingOperationKey))
+				expectedSpan.Attributes().Remove(string(semconv27.MessagingOperationTypeKey))
 				expectedSpan.Attributes().Remove(string(semconv37.MessagingOperationNameKey))
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationNameKey))
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingTempDestinationKey))
+				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationTemporaryKey))
 			}
 			// Override span links
 			if tc.expectedSpanLinks != nil {

@@ -203,11 +203,10 @@ func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 			s.isMessaging = true
 			s.messagingDestinationName = v.Str()
 		case string(semconv25.MessagingOperationKey),
+			string(semconv37.MessagingOperationNameKey),
 			string(semconv27.MessagingOperationTypeKey):
 			s.isMessaging = true
 			s.messagingOperation = v.Str()
-		case string(semconv37.MessagingOperationNameKey):
-			s.isMessaging = true
 		case string(semconv25.MessagingSystemKey):
 			s.isMessaging = true
 			s.messagingSystem = v.Str()
