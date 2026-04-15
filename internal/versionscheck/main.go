@@ -94,7 +94,9 @@ func run() error {
 	}
 
 	if !*quiet {
-		fmt.Fprintf(os.Stdout, "versionscheck: ok (%s version %s, %d modules checked)\n", edotBaseKey, ms.Version, len(ms.Modules))
+		if _, err := fmt.Fprintf(os.Stdout, "versionscheck: ok (%s version %s, %d modules checked)\n", edotBaseKey, ms.Version, len(ms.Modules)); err != nil {
+			log.Printf("warning: could not write success message: %v", err)
+		}
 	}
 	return nil
 }
