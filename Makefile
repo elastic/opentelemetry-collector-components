@@ -158,6 +158,7 @@ push-tags: $(MULTIMOD) versionscheck
 	$(MULTIMOD) verify
 	set -e; for tag in `$(MULTIMOD) tag -m ${MODSET} -c ${COMMIT} --print-tags | grep -v "Using" `; do \
 		echo "pushing tag $${tag}"; \
+		git push ${REMOTE} $${tag}; \
 	done;
 
 .PHONY: clean
