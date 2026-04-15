@@ -297,7 +297,7 @@ func TestElasticTransactionEnrich(t *testing.T) {
 				span.Attributes().PutStr(elasticattr.EventOutcome, outcomeUnknown)
 				return span
 			}(),
-			config: config.Enabled().Transaction,
+			config:           config.Enabled().Transaction,
 			spanConfig:       config.Enabled().Span,
 			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{

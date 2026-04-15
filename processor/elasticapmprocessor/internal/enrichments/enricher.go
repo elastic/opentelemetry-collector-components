@@ -142,8 +142,8 @@ func ecsPreProcessResource(ctx context.Context, resource pcommon.Resource, dataS
 // numeric_labels.* for ECS compatibility (true for OTel enrichers).
 func NewEnricher(cfg config.Config, remapToECSLabels bool) *Enricher {
 	return &Enricher{
-		Config:               cfg,
-		remapToECSLabels:  remapToECSLabels,
-		userAgentParser:      sharedUserAgentParser(),
+		Config:           cfg,
+		remapToECSLabels: remapToECSLabels,
+		userAgentParser:  sharedUserAgentParser(),
 	}
 }
