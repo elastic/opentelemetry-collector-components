@@ -31,6 +31,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -809,10 +810,15 @@ func TestElasticTransactionEnrich(t *testing.T) {
 			}
 			// Remove messaging attributes if RemoveMessaging is enabled
 			if tc.config.RemoveMessaging.Enabled {
-				expectedSpan.Attributes().Remove(string(semconv25.MessagingSystemKey))
+				expectedSpan.Attributes().Remove("message_bus.destination")
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingOperationKey))
+				expectedSpan.Attributes().Remove(string(semconv27.MessagingOperationTypeKey))
 				expectedSpan.Attributes().Remove(string(semconv37.MessagingOperationNameKey))
+				expectedSpan.Attributes().Remove(string(semconv25.MessagingSystemKey))
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingDestinationKey))
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationNameKey))
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingTempDestinationKey))
+				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationTemporaryKey))
 			}
 			// Override span links
 			if tc.expectedSpanLinks != nil {
@@ -1170,10 +1176,15 @@ func TestRootSpanAsDependencyEnrich(t *testing.T) {
 			}
 			// Remove messaging attributes if RemoveMessaging is enabled
 			if tc.config.Transaction.RemoveMessaging.Enabled || tc.config.Span.RemoveMessaging.Enabled {
-				expectedSpan.Attributes().Remove(string(semconv25.MessagingSystemKey))
+				expectedSpan.Attributes().Remove("message_bus.destination")
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingOperationKey))
+				expectedSpan.Attributes().Remove(string(semconv27.MessagingOperationTypeKey))
 				expectedSpan.Attributes().Remove(string(semconv37.MessagingOperationNameKey))
+				expectedSpan.Attributes().Remove(string(semconv25.MessagingSystemKey))
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingDestinationKey))
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationNameKey))
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingTempDestinationKey))
+				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationTemporaryKey))
 			}
 			// Override span links
 			if tc.expectedSpanLinks != nil {
@@ -2508,10 +2519,15 @@ func TestElasticSpanEnrich(t *testing.T) {
 			}
 			// Remove messaging attributes if RemoveMessaging is enabled
 			if enrichConfig.Transaction.RemoveMessaging.Enabled || enrichConfig.Span.RemoveMessaging.Enabled {
-				expectedSpan.Attributes().Remove(string(semconv25.MessagingSystemKey))
+				expectedSpan.Attributes().Remove("message_bus.destination")
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingOperationKey))
+				expectedSpan.Attributes().Remove(string(semconv27.MessagingOperationTypeKey))
 				expectedSpan.Attributes().Remove(string(semconv37.MessagingOperationNameKey))
+				expectedSpan.Attributes().Remove(string(semconv25.MessagingSystemKey))
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingDestinationKey))
 				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationNameKey))
+				expectedSpan.Attributes().Remove(string(semconv16.MessagingTempDestinationKey))
+				expectedSpan.Attributes().Remove(string(semconv25.MessagingDestinationTemporaryKey))
 			}
 			// Override span links
 			if tc.expectedSpanLinks != nil {

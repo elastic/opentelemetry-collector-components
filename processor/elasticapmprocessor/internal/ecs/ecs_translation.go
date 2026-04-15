@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -245,11 +246,15 @@ func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 			string(semconv25.HTTPURLKey),
 			string(semconv25.HTTPUserAgentKey),
 			// messaging.*
+			"message_bus.destination",
 			string(semconv25.MessagingDestinationNameKey),
 			string(semconv25.MessagingDestinationTemporaryKey),
 			string(semconv25.MessagingOperationKey),
 			string(semconv37.MessagingOperationNameKey),
 			string(semconv25.MessagingSystemKey),
+			string(semconv26.MessagingOperationTypeKey),
+			string(semconv16.MessagingTempDestinationKey),
+			string(semconv16.MessagingDestinationKey),
 			// net.*
 			string(semconv25.NetHostNameKey),
 			string(semconv25.NetPeerNameKey),

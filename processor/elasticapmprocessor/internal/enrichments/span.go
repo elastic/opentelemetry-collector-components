@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -177,17 +178,21 @@ func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 				// allowed to be overridden by server.port.
 				s.serverPort = v.Int()
 			}
-		case string(semconv25.MessagingDestinationNameKey):
+		case string(semconv16.MessagingDestinationKey),
+			string(semconv25.MessagingDestinationNameKey),
+			"message_bus.destination":
 			s.isMessaging = true
 			s.messagingDestinationName = v.Str()
 		case string(semconv25.MessagingOperationKey),
+			string(semconv27.MessagingOperationTypeKey),
 			string(semconv37.MessagingOperationNameKey):
 			s.isMessaging = true
 			s.messagingOperation = v.Str()
 		case string(semconv25.MessagingSystemKey):
 			s.isMessaging = true
 			s.messagingSystem = v.Str()
-		case string(semconv25.MessagingDestinationTemporaryKey):
+		case string(semconv16.MessagingTempDestinationKey),
+			string(semconv25.MessagingDestinationTemporaryKey):
 			s.isMessaging = true
 			s.messagingDestinationTemp = true
 		case string(semconv25.HTTPStatusCodeKey),
@@ -538,10 +543,15 @@ func (s *spanEnrichmentContext) setMessageQueue(span ptrace.Span) {
 // This is another reason the attributes are deleted here to avoid special handling at export time.
 func (s *spanEnrichmentContext) removeMessagingAttrs(span ptrace.Span) {
 	if s.isMessaging {
+		span.Attributes().Remove("message_bus.destination")
 		span.Attributes().Remove(string(semconv25.MessagingOperationKey))
+		span.Attributes().Remove(string(semconv27.MessagingOperationTypeKey))
 		span.Attributes().Remove(string(semconv37.MessagingOperationNameKey))
 		span.Attributes().Remove(string(semconv25.MessagingSystemKey))
+		span.Attributes().Remove(string(semconv16.MessagingDestinationKey))
 		span.Attributes().Remove(string(semconv25.MessagingDestinationNameKey))
+		span.Attributes().Remove(string(semconv16.MessagingTempDestinationKey))
+		span.Attributes().Remove(string(semconv25.MessagingDestinationTemporaryKey))
 	}
 }
 
