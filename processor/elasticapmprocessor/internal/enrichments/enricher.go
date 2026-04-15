@@ -48,18 +48,6 @@ type Enricher struct {
 	Config config.Config
 }
 
-// EnrichTraces enriches the OTel traces with attributes required to power
-// functionalities in the Elastic UI. The traces are processed as per the
-// Elastic's definition of transactions and spans. The traces passed to
-// this function are mutated.
-// Any existing attributes will not be enriched or modified.
-func (e *Enricher) EnrichTraces(pt ptrace.Traces) {
-	resSpans := pt.ResourceSpans()
-	for i := 0; i < resSpans.Len(); i++ {
-		e.EnrichResourceSpans(resSpans.At(i))
-	}
-}
-
 // EnrichResourceSpans enriches a single ResourceSpans with the current enricher
 // configuration. This is used when ECS batches need per-resource enrichment
 // policies based on the origin of each ResourceSpans.
