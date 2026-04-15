@@ -209,6 +209,11 @@ func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 		case elasticattr.DataStreamDataset,
 			elasticattr.DataStreamNamespace,
 			elasticattr.DataStreamType,
+			elasticattr.ServiceTargetName,
+			elasticattr.ServiceTargetType,
+			elasticattr.SpanDestinationServiceName,
+			elasticattr.SpanDestinationServiceType,
+			elasticattr.SpanDestinationServiceResource,
 			// miscellaneous
 			elasticattr.EventOutcome,
 			elasticattr.ProcessorEvent,
