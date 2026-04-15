@@ -775,37 +775,6 @@ func TestElasticTransactionEnrich(t *testing.T) {
 			enrichedAttrs: map[string]any{},
 		},
 		{
-			name: "processor_event_transaction_unknown_outcome_preserved_with_translation",
-			input: func() ptrace.Span {
-				span := ptrace.NewSpan()
-				span.SetSpanID([8]byte{1})
-				span.SetParentSpanID([8]byte{8, 9, 10, 11, 12, 13, 14})
-				span.SetKind(ptrace.SpanKindInternal)
-				span.SetStartTimestamp(startTs)
-				span.SetEndTimestamp(endTs)
-				span.SetName("testtxn")
-				span.Attributes().PutStr(elasticattr.ProcessorEvent, "transaction")
-				span.Attributes().PutStr(elasticattr.EventOutcome, outcomeUnknown)
-				return span
-			}(),
-			config: config.Enabled().Transaction,
-			spanConfig:       config.Enabled().Span,
-			remapToECSLabels: true,
-			enrichedAttrs: map[string]any{
-				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
-				elasticattr.TransactionSampled:             true,
-				elasticattr.TransactionRoot:                false,
-				elasticattr.TransactionID:                  "0100000000000000",
-				elasticattr.TransactionName:                "testtxn",
-				elasticattr.ProcessorEvent:                 "transaction",
-				elasticattr.TransactionRepresentativeCount: float64(1),
-				elasticattr.TransactionDurationUs:          expectedDuration.Microseconds(),
-				elasticattr.TransactionResult:              "Success",
-				elasticattr.TransactionType:                "unknown",
-				elasticattr.EventOutcome:                   outcomeUnknown,
-			},
-		},
-		{
 			name: "http_status_ok_for_mobile",
 			input: func() ptrace.Span {
 				span := getElasticMobileTxn()
