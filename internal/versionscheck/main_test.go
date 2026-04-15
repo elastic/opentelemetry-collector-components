@@ -102,33 +102,33 @@ func edotBaseCheckWouldError(edotVersion, latestTag string) bool {
 func TestEdotBaseVersusLatestTagGate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name       string
-		edot       string
-		latestTag  string
+		name      string
+		edot      string
+		latestTag string
 		wantError bool
 	}{
 		{
-			name:       "edot strictly greater than latest tag",
-			edot:       "v2.0.0",
-			latestTag:  "v1.0.0",
+			name:      "edot strictly greater than latest tag",
+			edot:      "v2.0.0",
+			latestTag: "v1.0.0",
 			wantError: false,
 		},
 		{
-			name:       "edot equal to latest tag",
-			edot:       "v1.0.0",
-			latestTag:  "v1.0.0",
+			name:      "edot equal to latest tag",
+			edot:      "v1.0.0",
+			latestTag: "v1.0.0",
 			wantError: true,
 		},
 		{
-			name:       "edot strictly less than latest tag",
-			edot:       "v1.0.0",
-			latestTag:  "v2.0.0",
+			name:      "edot strictly less than latest tag",
+			edot:      "v1.0.0",
+			latestTag: "v2.0.0",
 			wantError: true,
 		},
 		{
-			name:       "no semver tags (latest empty)",
-			edot:       "v1.0.0",
-			latestTag:  "",
+			name:      "no semver tags (latest empty)",
+			edot:      "v1.0.0",
+			latestTag: "",
 			wantError: false,
 		},
 	}
