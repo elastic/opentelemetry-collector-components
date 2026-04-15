@@ -31,9 +31,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 	"go.uber.org/zap"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 )
 
 var _ processor.Traces = (*TraceProcessor)(nil)
@@ -44,42 +42,22 @@ type TraceProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next        consumer.Traces
-	enricher    *enrichments.Enricher
-	ecsEnricher *enrichments.Enricher
-	// intakeECSEnricher applies ECS enrichment for traces ingested by the
-	// elasticapmintakereceiver. It extends ecsEnricher with intake-specific overrides.
-	intakeECSEnricher *enrichments.Enricher
-	logger            *zap.Logger
-	cfg               *Config
+	next            consumer.Traces
+	defaultEnricher enrichments.TraceEnricher
+	apmEnricher     enrichments.TraceEnricher
+	otelEnricher    enrichments.TraceEnricher
+	logger          *zap.Logger
+	cfg             *Config
 }
 
 func NewTraceProcessor(cfg *Config, next consumer.Traces, logger *zap.Logger) *TraceProcessor {
-	enricherConfig := cfg.Config
-
-	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.HostOSType.Enabled = true
-	ecsEnricherConfig.Resource.ServiceName.Enabled = true
-	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
-	ecsEnricherConfig.Resource.DefaultServiceLanguage.Enabled = true
-
-	intakeECSEnricherConfig := ecsEnricherConfig
-	// The intake receiver already sets transaction.root; skip re-deriving it
-	// to avoid overwriting the intake-supplied value or avoid deriving a value
-	// when the provided transaction.result is empty to match existing apm-data logic.
-	intakeECSEnricherConfig.Transaction.Result.Enabled = false
-	// The `host.os.type` field should not be added for APM events
-	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
-	// disable default service language to avoid adding it on apm events
-	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
-
 	return &TraceProcessor{
-		next:              next,
-		logger:            logger,
-		enricher:          enrichments.NewEnricher(enricherConfig),
-		ecsEnricher:       enrichments.NewEnricher(ecsEnricherConfig),
-		intakeECSEnricher: enrichments.NewEnricher(intakeECSEnricherConfig),
-		cfg:               cfg,
+		next:            next,
+		logger:          logger,
+		defaultEnricher: enrichments.NewDefaultTraceEnricher(cfg.Config),
+		apmEnricher:     enrichments.NewAPMTraceEnricher(cfg.Config, cfg.HostIPEnabled),
+		otelEnricher:    enrichments.NewOTelTraceEnricher(cfg.Config, cfg.HostIPEnabled),
+		cfg:             cfg,
 	}
 }
 
@@ -88,58 +66,34 @@ func (p *TraceProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *TraceProcessor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
-	enricher := p.enricher
-	if isECS(ctx) {
-		enricher = p.ecsEnricher
-		resourceSpans := td.ResourceSpans()
-		if resourceSpans.Len() > 0 && isIntakeECS(resourceSpans.At(0).Resource()) {
-			enricher = p.intakeECSEnricher
-		}
-		for i := 0; i < resourceSpans.Len(); i++ {
-			resourceSpan := resourceSpans.At(i)
-			resource := resourceSpan.Resource()
-			ecs.TranslateResourceMetadata(resource)
-			ecs.ApplyResourceConventions(resource)
-			// Traces signal never need to be routed to service-specific datasets
-			routing.EncodeDataStream(resource, routing.DataStreamTypeTraces, false)
-			if p.cfg.HostIPEnabled {
-				ecs.SetHostIP(ctx, resource.Attributes())
-			}
-
-			// Iterate through spans to find errors in span events
-			scopeSpans := resourceSpan.ScopeSpans()
-			for j := 0; j < scopeSpans.Len(); j++ {
-				spans := scopeSpans.At(j).Spans()
-				for k := 0; k < spans.Len(); k++ {
-					span := spans.At(k)
-					events := span.Events()
-					for l := 0; l < events.Len(); l++ {
-						event := events.At(l)
-						if routing.IsErrorEvent(event.Attributes()) {
-							// Override the resource-level data stream for error events in spans.
-							routing.EncodeErrorDataStream(event.Attributes(), routing.DataStreamTypeTraces)
-						}
-					}
-				}
+	ecsMode := isECSMappingMode(ctx)
+	resourceSpans := td.ResourceSpans()
+	for i := 0; i < resourceSpans.Len(); i++ {
+		rs := resourceSpans.At(i)
+		enricher := p.defaultEnricher
+		if ecsMode {
+			if isElasticAPMAgent(rs.Resource()) {
+				enricher = p.apmEnricher
+			} else {
+				enricher = p.otelEnricher
 			}
 		}
+		enricher.EnrichResourceSpans(ctx, rs)
 	}
-
-	enricher.EnrichTraces(td)
-
 	return p.next.ConsumeTraces(ctx, td)
 }
 
-func isECS(ctx context.Context) bool {
+func isECSMappingMode(ctx context.Context) bool {
 	clientCtx := client.FromContext(ctx)
 	mappingMode := getMetadataValue(clientCtx)
 	return mappingMode == "ecs"
 }
 
-// isIntakeECS reports whether the data originated from the elasticapmintakereceiver
-// by checking telemetry.sdk.name == "ElasticAPM" on the resource attributes.
-// The intake receiver always sets this value; OTLP events use their own SDK name.
-func isIntakeECS(resource pcommon.Resource) bool {
+// isElasticAPMAgent reports whether the data originated from an Elastic APM
+// agent by checking telemetry.sdk.name == "ElasticAPM" on the resource
+// attributes. The elasticapmintakereceiver always sets this value; OTLP
+// events use their own SDK name.
+func isElasticAPMAgent(resource pcommon.Resource) bool {
 	if v, ok := resource.Attributes().Get(string(semconv.TelemetrySDKNameKey)); ok {
 		return v.Str() == "ElasticAPM"
 	}
@@ -157,40 +111,22 @@ type LogProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next              consumer.Logs
-	enricher          *enrichments.Enricher
-	ecsEnricher       *enrichments.Enricher
-	intakeECSEnricher *enrichments.Enricher
-	logger            *zap.Logger
-	cfg               *Config
+	next            consumer.Logs
+	defaultEnricher enrichments.LogEnricher
+	apmEnricher     enrichments.LogEnricher
+	otelEnricher    enrichments.LogEnricher
+	logger          *zap.Logger
+	cfg             *Config
 }
 
 func newLogProcessor(cfg *Config, next consumer.Logs, logger *zap.Logger) *LogProcessor {
-	enricherConfig := cfg.Config
-
-	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.HostOSType.Enabled = true
-	ecsEnricherConfig.Resource.ServiceName.Enabled = true
-	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
-	ecsEnricherConfig.Resource.DefaultServiceLanguage.Enabled = true
-	ecsEnricherConfig.Log.TranslateUnsupportedAttributes.Enabled = true
-	// disable the transaction result enrichment to avoid deriving a value
-	// when the provided result is empty to match existing apm-data logic
-	ecsEnricherConfig.Transaction.Result.Enabled = false
-
-	intakeECSEnricherConfig := ecsEnricherConfig
-	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
-	// disable default service language to avoid adding it on apm events
-	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
-	intakeECSEnricherConfig.Log.TranslateUnsupportedAttributes.Enabled = false
-
 	return &LogProcessor{
-		next:              next,
-		logger:            logger,
-		enricher:          enrichments.NewEnricher(enricherConfig),
-		ecsEnricher:       enrichments.NewEnricher(ecsEnricherConfig),
-		intakeECSEnricher: enrichments.NewEnricher(intakeECSEnricherConfig),
-		cfg:               cfg,
+		next:            next,
+		logger:          logger,
+		defaultEnricher: enrichments.NewDefaultLogEnricher(cfg.Config),
+		apmEnricher:     enrichments.NewAPMLogEnricher(cfg.Config, cfg.HostIPEnabled, cfg.ServiceNameInDataStreamDataset),
+		otelEnricher:    enrichments.NewOTelLogEnricher(cfg.Config, cfg.HostIPEnabled, cfg.ServiceNameInDataStreamDataset),
+		cfg:             cfg,
 	}
 }
 
@@ -202,36 +138,22 @@ type MetricProcessor struct {
 	component.StartFunc
 	component.ShutdownFunc
 
-	next              consumer.Metrics
-	enricher          *enrichments.Enricher
-	ecsEnricher       *enrichments.Enricher
-	intakeECSEnricher *enrichments.Enricher
-	logger            *zap.Logger
-	cfg               *Config
+	next            consumer.Metrics
+	defaultEnricher enrichments.MetricEnricher
+	apmEnricher     enrichments.MetricEnricher
+	otelEnricher    enrichments.MetricEnricher
+	logger          *zap.Logger
+	cfg             *Config
 }
 
 func newMetricProcessor(cfg *Config, next consumer.Metrics, logger *zap.Logger) *MetricProcessor {
-	enricherConfig := cfg.Config
-
-	ecsEnricherConfig := cfg.Config
-	ecsEnricherConfig.Resource.HostOSType.Enabled = true
-	ecsEnricherConfig.Resource.ServiceName.Enabled = true
-	ecsEnricherConfig.Resource.DefaultDeploymentEnvironment.Enabled = true
-	ecsEnricherConfig.Resource.DefaultServiceLanguage.Enabled = true
-	ecsEnricherConfig.Metric.TranslateUnsupportedAttributes.Enabled = true
-
-	intakeECSEnricherConfig := ecsEnricherConfig
-	intakeECSEnricherConfig.Resource.HostOSType.Enabled = false
-	intakeECSEnricherConfig.Resource.DefaultServiceLanguage.Enabled = false
-	intakeECSEnricherConfig.Metric.TranslateUnsupportedAttributes.Enabled = false
-
 	return &MetricProcessor{
-		next:              next,
-		logger:            logger,
-		enricher:          enrichments.NewEnricher(enricherConfig),
-		ecsEnricher:       enrichments.NewEnricher(ecsEnricherConfig),
-		intakeECSEnricher: enrichments.NewEnricher(intakeECSEnricherConfig),
-		cfg:               cfg,
+		next:            next,
+		logger:          logger,
+		defaultEnricher: enrichments.NewDefaultMetricEnricher(cfg.Config),
+		apmEnricher:     enrichments.NewAPMMetricEnricher(cfg.Config, cfg.HostIPEnabled, cfg.ServiceNameInDataStreamDataset),
+		otelEnricher:    enrichments.NewOTelMetricEnricher(cfg.Config, cfg.HostIPEnabled, cfg.ServiceNameInDataStreamDataset),
+		cfg:             cfg,
 	}
 }
 
@@ -240,130 +162,43 @@ func (p *MetricProcessor) Capabilities() consumer.Capabilities {
 }
 
 func (p *MetricProcessor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
-	enricher := p.enricher
-	ecsMode := isECS(ctx)
-	if ecsMode {
-		enricher = p.ecsEnricher
-		resourceMetrics := md.ResourceMetrics()
-		// ECS metric batches are assumed to be homogeneous by origin. We select
-		// the enricher from the first resource metric and apply it to the whole batch.
-		if resourceMetrics.Len() > 0 && isIntakeECS(resourceMetrics.At(0).Resource()) {
-			enricher = p.intakeECSEnricher
-		}
-		for i := 0; i < resourceMetrics.Len(); i++ {
-			resourceMetric := resourceMetrics.At(i)
-			resource := resourceMetric.Resource()
-			ecs.TranslateResourceMetadata(resource)
-			ecs.ApplyResourceConventions(resource)
-			routing.EncodeDataStream(resource, routing.DataStreamTypeMetrics, p.cfg.ServiceNameInDataStreamDataset)
-			if p.cfg.HostIPEnabled {
-				ecs.SetHostIP(ctx, resource.Attributes())
-			}
-
-			// Check if resource has a service name for routing decisions
-			hasServiceName := false
-			if serviceName, ok := resource.Attributes().Get(routing.ServiceNameAttributeKey); ok && serviceName.Str() != "" {
-				hasServiceName = true
-			}
-
-			// Route internal metrics to appropriate data streams if needed.
-			routeMetricsToDataStream(resourceMetric.ScopeMetrics(), hasServiceName)
-		}
+	ecsMode := isECSMappingMode(ctx)
+	if !ecsMode && p.cfg.SkipEnrichment {
+		return p.next.ConsumeMetrics(ctx, md)
 	}
-	// When skipEnrichment is true, only enrich when mapping mode is ecs
-	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.cfg.SkipEnrichment || ecsMode {
-		enricher.EnrichMetrics(md)
+	resourceMetrics := md.ResourceMetrics()
+	for i := 0; i < resourceMetrics.Len(); i++ {
+		rm := resourceMetrics.At(i)
+		enricher := p.defaultEnricher
+		if ecsMode {
+			if isElasticAPMAgent(rm.Resource()) {
+				enricher = p.apmEnricher
+			} else {
+				enricher = p.otelEnricher
+			}
+		}
+		enricher.EnrichResourceMetrics(ctx, rm)
 	}
 	return p.next.ConsumeMetrics(ctx, md)
 }
 
-func routeMetricsToDataStream(scopeMetrics pmetric.ScopeMetricsSlice, hasServiceName bool) {
-	for j := 0; j < scopeMetrics.Len(); j++ {
-		metrics := scopeMetrics.At(j).Metrics()
-		for k := 0; k < metrics.Len(); k++ {
-			metric := metrics.At(k)
-			metricName := metric.Name()
-
-			// Track if any data point is routed to internal metrics
-			isInternal := false
-
-			// Route data points based on metric type
-			switch metric.Type() {
-			case pmetric.MetricTypeGauge:
-				dataPoints := metric.Gauge().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
-						isInternal = true
-					}
-				}
-			case pmetric.MetricTypeSum:
-				dataPoints := metric.Sum().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
-						isInternal = true
-					}
-				}
-			case pmetric.MetricTypeHistogram:
-				dataPoints := metric.Histogram().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
-						isInternal = true
-					}
-				}
-			case pmetric.MetricTypeExponentialHistogram:
-				dataPoints := metric.ExponentialHistogram().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
-						isInternal = true
-					}
-				}
-			case pmetric.MetricTypeSummary:
-				dataPoints := metric.Summary().DataPoints()
-				for l := 0; l < dataPoints.Len(); l++ {
-					if routing.EncodeDataStreamMetricDataPoint(dataPoints.At(l).Attributes(), metricName, hasServiceName) {
-						isInternal = true
-					}
-				}
-			}
-
-			// Internal metrics data stream does not use dynamic mapping,
-			// so we must drop unit if specified.
-			// This matches the behavior in apm-data:
-			// https://github.com/elastic/apm-data/blob/main/model/modelprocessor/datastream.go#L160-L172
-			if isInternal {
-				metric.SetUnit("")
-			}
-		}
-	}
-}
-
 func (p *LogProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	enricher := p.enricher
-	ecsMode := isECS(ctx)
-	if ecsMode {
-		enricher = p.ecsEnricher
-		resourceLogs := ld.ResourceLogs()
-		// ECS log batches are assumed to be homogeneous by origin. We select the
-		// enricher from the first resource log and apply it to the whole batch.
-		if resourceLogs.Len() > 0 && isIntakeECS(resourceLogs.At(0).Resource()) {
-			enricher = p.intakeECSEnricher
-		}
-		for i := 0; i < resourceLogs.Len(); i++ {
-			resourceLog := resourceLogs.At(i)
-			resource := resourceLog.Resource()
-			ecs.TranslateResourceMetadata(resource)
-			ecs.ApplyResourceConventions(resource)
-			routing.EncodeDataStream(resource, routing.DataStreamTypeLogs, p.cfg.ServiceNameInDataStreamDataset)
-			if p.cfg.HostIPEnabled {
-				ecs.SetHostIP(ctx, resource.Attributes())
+	ecsMode := isECSMappingMode(ctx)
+	if !ecsMode && p.cfg.SkipEnrichment {
+		return p.next.ConsumeLogs(ctx, ld)
+	}
+	resourceLogs := ld.ResourceLogs()
+	for i := 0; i < resourceLogs.Len(); i++ {
+		rl := resourceLogs.At(i)
+		enricher := p.defaultEnricher
+		if ecsMode {
+			if isElasticAPMAgent(rl.Resource()) {
+				enricher = p.apmEnricher
+			} else {
+				enricher = p.otelEnricher
 			}
 		}
-	}
-	// When skipEnrichment is true, only enrich when mapping mode is ecs
-	// When skipEnrichment is false (default), always enrich (backwards compatible)
-	if !p.cfg.SkipEnrichment || ecsMode {
-		enricher.EnrichLogs(ld)
+		enricher.EnrichResourceLogs(ctx, rl)
 	}
 	return p.next.ConsumeLogs(ctx, ld)
 }

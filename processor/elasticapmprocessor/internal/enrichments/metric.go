@@ -41,32 +41,32 @@ func EnrichMetric(metric pmetric.ResourceMetrics, cfg config.Config) {
 	}
 }
 
-func EnrichMetricDataPoints(metric pmetric.Metric, scopeAttrs pcommon.Map, cfg config.Config) {
+func EnrichMetricDataPoints(metric pmetric.Metric, scopeAttrs pcommon.Map, cfg config.Config, remapToECSLabels bool) {
 	switch metric.Type() {
 	case pmetric.MetricTypeGauge:
 		dataPoints := metric.Gauge().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg, remapToECSLabels)
 		}
 	case pmetric.MetricTypeSum:
 		dataPoints := metric.Sum().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg, remapToECSLabels)
 		}
 	case pmetric.MetricTypeHistogram:
 		dataPoints := metric.Histogram().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg, remapToECSLabels)
 		}
 	case pmetric.MetricTypeExponentialHistogram:
 		dataPoints := metric.ExponentialHistogram().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg, remapToECSLabels)
 		}
 	case pmetric.MetricTypeSummary:
 		dataPoints := metric.Summary().DataPoints()
 		for i := 0; i < dataPoints.Len(); i++ {
-			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg)
+			enrichMetricDataPointAttributes(dataPoints.At(i).Attributes(), scopeAttrs, cfg, remapToECSLabels)
 		}
 	}
 }
@@ -76,12 +76,12 @@ func EnrichMetricDataPoints(metric pmetric.Metric, scopeAttrs pcommon.Map, cfg c
 // EnrichLog. This happens later than apm-data's OTLP-to-APM conversion, so we
 // must explicitly avoid relabeling attrs that identify aggregated metrics or
 // influence exporter behavior.
-func enrichMetricDataPointAttributes(attributes pcommon.Map, scopeAttrs pcommon.Map, cfg config.Config) {
+func enrichMetricDataPointAttributes(attributes pcommon.Map, scopeAttrs pcommon.Map, cfg config.Config, remapToECSLabels bool) {
 	if isAggregatedMetricDataPointAttributes(attributes) {
 		return
 	}
-	if cfg.Metric.TranslateUnsupportedAttributes.Enabled {
-		ecs.TranslateMetricDataPointAttributes(attributes)
+	if remapToECSLabels {
+		ecs.RemapMetricDataPointAttributesToECSLabels(attributes)
 		projectMetricFrameworkAttributes(attributes, scopeAttrs, cfg)
 	}
 }

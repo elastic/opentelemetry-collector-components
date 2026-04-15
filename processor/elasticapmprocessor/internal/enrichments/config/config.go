@@ -118,17 +118,15 @@ type SpanEventConfig struct {
 
 // ElasticMetricConfig configures the enrichment attributes for metrics
 type ElasticMetricConfig struct {
-	ProcessorEvent                 AttributeConfig `mapstructure:"processor_event"`
-	MetricsetName                  AttributeConfig `mapstructure:"metricset_name"`
-	TranslateUnsupportedAttributes AttributeConfig `mapstructure:"translate_unsupported_attributes"`
+	ProcessorEvent AttributeConfig `mapstructure:"processor_event"`
+	MetricsetName  AttributeConfig `mapstructure:"metricset_name"`
 }
 
 // ElasticLogConfig configures the enrichment attributes for logs
 type ElasticLogConfig struct {
-	TranslateUnsupportedAttributes AttributeConfig      `mapstructure:"translate_unsupported_attributes"`
-	EventConfig                    EventConfig          `mapstructure:",squash"`
-	ErrorConfig                    ErrorConfig          `mapstructure:",squash"`
-	ErrorExceptionConfig           ErrorExceptionConfig `mapstructure:",squash"`
+	EventConfig          EventConfig          `mapstructure:",squash"`
+	ErrorConfig          ErrorConfig          `mapstructure:",squash"`
+	ErrorExceptionConfig ErrorExceptionConfig `mapstructure:",squash"`
 }
 
 type EventConfig struct {
