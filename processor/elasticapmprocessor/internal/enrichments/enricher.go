@@ -18,14 +18,18 @@
 package enrichments // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 
 import (
+	"context"
 	"sync"
 
 	"github.com/ua-parser/uap-go/uaparser"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 )
 
 // sharedUserAgentParser compiles all ~500 UA/OS/Device regexes exactly once
@@ -114,6 +118,39 @@ func (e *Enricher) EnrichMetrics(pl pmetric.Metrics) {
 				EnrichMetricDataPoints(metrics.At(k), scopeAttrs, e.Config)
 			}
 		}
+	}
+}
+
+// ecsOTelConfig returns a config with the common ECS resource enrichments
+// enabled for elastic OTel events. Signal-specific flags (e.g.
+// Span/Log/Metric.TranslateUnsupportedAttributes) must be set by the caller.
+func ecsOTelConfig(cfg config.Config) config.Config {
+	cfg.Resource.HostOSType.Enabled = true
+	cfg.Resource.ServiceName.Enabled = true
+	cfg.Resource.DefaultDeploymentEnvironment.Enabled = true
+	cfg.Resource.DefaultServiceLanguage.Enabled = true
+	return cfg
+}
+
+// ecsAPMConfig returns a config with the common ECS resource enrichments
+// enabled for elastic APM intake events. The intake receiver already
+// provides host.os.type and default service language, so these are left
+// disabled. Signal-specific flags must be set by the caller.
+func ecsAPMConfig(cfg config.Config) config.Config {
+	cfg.Resource.ServiceName.Enabled = true
+	cfg.Resource.DefaultDeploymentEnvironment.Enabled = true
+	return cfg
+}
+
+// ecsPreProcessResource runs the shared ECS pre-processing pipeline on a
+// resource. This is common across all signal types (traces, logs, metrics)
+// in ECS mode.
+func ecsPreProcessResource(ctx context.Context, resource pcommon.Resource, dataStreamType string, serviceNameInDataStreamDataset bool, hostIPEnabled bool) {
+	ecs.TranslateResourceMetadata(resource)
+	ecs.ApplyResourceConventions(resource)
+	routing.EncodeDataStream(resource, dataStreamType, serviceNameInDataStreamDataset)
+	if hostIPEnabled {
+		ecs.SetHostIP(ctx, resource.Attributes())
 	}
 }
 
