@@ -223,6 +223,10 @@ func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 			"type",
 			"code.stacktrace",
 			// db.*
+			"sql.query",
+			"db.type",
+			"db.instance",
+			"db.elasticsearch.cluster.name",
 			string(semconv25.DBNameKey),
 			string(semconv37.DBNamespaceKey),
 			string(semconv37.DBQueryTextKey),
@@ -259,6 +263,15 @@ func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 			string(semconv25.NetHostNameKey),
 			string(semconv25.NetPeerNameKey),
 			string(semconv25.NetPeerPortKey),
+			string(semconv12.NetPeerIPKey),
+			string(semconv25.NetSockPeerAddrKey),
+			string(semconv.NetworkPeerAddressKey),
+			// peer.*
+			"peer.address",
+			"peer.hostname",
+			"peer.ipv4",
+			"peer.ipv6",
+			"peer.port",
 			// network.*
 			string(semconv.NetworkCarrierIccKey),
 			string(semconv.NetworkCarrierMccKey),

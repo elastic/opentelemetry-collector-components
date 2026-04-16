@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling"
 	"github.com/ua-parser/uap-go/uaparser"
@@ -83,6 +84,8 @@ type spanEnrichmentContext struct {
 	processorEvent           string
 	eventOutcome             string
 	peerService              string
+	peerAddress              string
+	netPeerIP                string
 	httpHost                 string
 	serverAddress            string
 	httpTarget               string
@@ -164,20 +167,28 @@ func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 			s.serverAddress = v.Str()
 		case string(semconv25.ServerPortKey):
 			s.serverPort = v.Int()
-		case string(semconv25.NetPeerNameKey):
+		case string(semconv25.NetPeerNameKey), "peer.hostname":
 			if s.serverAddress == "" {
 				// net.peer.name is deprecated, so has lower priority
 				// only set when not already set with server.address
 				// and allowed to be overridden by server.address.
 				s.serverAddress = v.Str()
 			}
-		case string(semconv25.NetPeerPortKey):
+		case string(semconv25.NetPeerPortKey), "peer.port":
 			if s.serverPort == 0 {
 				// net.peer.port is deprecated, so has lower priority
 				// only set when not already set with server.port and
 				// allowed to be overridden by server.port.
 				s.serverPort = v.Int()
 			}
+		case string(semconv12.NetPeerIPKey),
+			string(semconv25.NetSockPeerAddrKey),
+			string(semconv27.NetworkPeerAddressKey),
+			"peer.ipv4",
+			"peer.ipv6":
+			s.netPeerIP = v.Str()
+		case "peer.address":
+			s.peerAddress = v.Str()
 		case string(semconv16.MessagingDestinationKey),
 			string(semconv25.MessagingDestinationNameKey),
 			"message_bus.destination":
@@ -246,12 +257,21 @@ func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 		case string(semconv25.DBStatementKey),
 			string(semconv25.DBUserKey), string(semconv37.DBQueryTextKey):
 			s.isDB = true
-		case string(semconv25.DBNameKey), string(semconv37.DBNamespaceKey):
+		case string(semconv25.DBNameKey),
+			string(semconv37.DBNamespaceKey),
+			"db.instance",
+			"db.elasticsearch.cluster.name":
 			s.isDB = true
 			s.dbName = v.Str()
-		case string(semconv25.DBSystemKey), string(semconv37.DBSystemNameKey):
+		case string(semconv25.DBSystemKey), string(semconv37.DBSystemNameKey), "db.type":
 			s.isDB = true
 			s.dbSystem = v.Str()
+		case "sql.query":
+			s.isDB = true
+			// fallback if not already set
+			if s.dbSystem == "" {
+				s.dbSystem = "sql"
+			}
 		case string(semconv27.GenAISystemKey), string(semconv37.GenAIProviderNameKey):
 			s.isGenAi = true
 			s.genAiSystem = v.Str()
@@ -427,6 +447,16 @@ func (s *spanEnrichmentContext) enrichSpan(
 func (s *spanEnrichmentContext) normalizeAttributes(userAgentPraser *uaparser.Parser) {
 	if s.rpcSystem == "" && s.grpcStatus != "" {
 		s.rpcSystem = "grpc"
+	}
+	if s.serverAddress == "" {
+		// apm-data prefers hostname-like peer.address over net.peer.ip, and only
+		// uses peer.address when it is not obviously a connection string / ip:port:
+		// https://github.com/elastic/apm-data/blob/26adeeef7f92ba5e01e59fb9e4c735fb8c31b58e/input/otlp/traces.go#L840-L878
+		if s.peerAddress != "" && (!strings.ContainsRune(s.peerAddress, ':') || net.ParseIP(s.peerAddress) != nil) {
+			s.serverAddress = s.peerAddress
+		} else if s.netPeerIP != "" {
+			s.serverAddress = s.netPeerIP
+		}
 	}
 	if s.urlFull == nil {
 		s.urlFull = s.buildURLFromComponents()
@@ -643,9 +673,9 @@ func (s *spanEnrichmentContext) setServiceTarget(span ptrace.Span) {
 
 func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 	attributes := span.Attributes()
-	var destnResource string
-	if s.peerService != "" {
-		destnResource = s.peerService
+	destnResource := s.peerService
+	if destnResource != "" && s.peerAddress != "" {
+		destnResource = s.peerAddress
 	}
 
 	switch {
