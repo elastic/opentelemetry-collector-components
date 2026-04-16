@@ -137,9 +137,8 @@ func TestEnrichMetric(t *testing.T) {
 	}
 }
 
-func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
+func TestEnrichMetrics_RemapToECSLabels(t *testing.T) {
 	cfg := config.Enabled()
-	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
 
 	metrics := pmetric.NewMetrics()
 	resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
@@ -161,8 +160,8 @@ func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
 	attrs.PutStr("system.filesystem.mount_point", "/mnt/data")
 	attrs.PutStr("user.name", "appuser")
 
-	enricher := NewEnricher(cfg)
-	enricher.EnrichMetrics(metrics)
+	enricher := NewEnricher(cfg, true /* remapToECSLabels */)
+	enricher.EnrichResourceMetrics(metrics.ResourceMetrics().At(0))
 
 	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
 
@@ -207,7 +206,6 @@ func TestEnrichMetrics_TranslateUnsupportedAttributes(t *testing.T) {
 
 func TestEnrichMetrics_TruncatesPreservedMetricSpecialCaseAttributes(t *testing.T) {
 	cfg := config.Enabled()
-	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
 
 	metrics := pmetric.NewMetrics()
 	resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
@@ -224,7 +222,8 @@ func TestEnrichMetrics_TruncatesPreservedMetricSpecialCaseAttributes(t *testing.
 	attrs.PutStr("event.module", longValue)
 	attrs.PutStr("system.process.state", longValue)
 
-	NewEnricher(cfg).EnrichMetrics(metrics)
+	enricher := NewEnricher(cfg, true /* remapToECSLabels */)
+	enricher.EnrichResourceMetrics(metrics.ResourceMetrics().At(0))
 
 	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
 	expected := strings.Repeat("a", int(sanitize.StandardKeyWordLength))
@@ -250,7 +249,7 @@ func TestEnrichMetrics_TruncatesPreservedMetricSpecialCaseAttributes(t *testing.
 
 func TestEnrichMetricDataPoints_SkipsAggregatedMetricAttributes(t *testing.T) {
 	cfg := config.Enabled()
-	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
+	// remapToECSLabels is handled by the OTel enricher type, not config
 
 	metric := pmetric.NewMetric()
 	metric.SetName("service_summary")
@@ -266,7 +265,7 @@ func TestEnrichMetricDataPoints_SkipsAggregatedMetricAttributes(t *testing.T) {
 	scope.SetVersion("1.0.0")
 	scopeAttrs := scope.Attributes()
 
-	EnrichMetricDataPoints(metric, scopeAttrs, cfg)
+	EnrichMetricDataPoints(metric, scopeAttrs, cfg, true /* remapToECSLabels */)
 
 	actualAttrs := metric.Gauge().DataPoints().At(0).Attributes()
 	value, ok := actualAttrs.Get("host")
@@ -287,7 +286,6 @@ func TestEnrichMetricDataPoints_SkipsAggregatedMetricAttributes(t *testing.T) {
 
 func TestEnrichMetricDataPoints_SkipsMetricsWithMappingHints(t *testing.T) {
 	cfg := config.Enabled()
-	cfg.Metric.TranslateUnsupportedAttributes.Enabled = true
 
 	metric := pmetric.NewMetric()
 	metric.SetName("transaction.duration.histogram")
@@ -303,7 +301,7 @@ func TestEnrichMetricDataPoints_SkipsMetricsWithMappingHints(t *testing.T) {
 	scope.SetVersion("1.0.0")
 	scopeAttrs := scope.Attributes()
 
-	EnrichMetricDataPoints(metric, scopeAttrs, cfg)
+	EnrichMetricDataPoints(metric, scopeAttrs, cfg, true /* remapToECSLabels */)
 
 	actualAttrs := metric.Gauge().DataPoints().At(0).Attributes()
 	value, ok := actualAttrs.Get("host")
@@ -317,7 +315,6 @@ func TestEnrichMetricDataPoints_SkipsMetricsWithMappingHints(t *testing.T) {
 
 func TestEnrichMetricDataPointAttributes_NoOpWhenDisabled(t *testing.T) {
 	cfg := config.Enabled()
-	cfg.Metric.TranslateUnsupportedAttributes.Enabled = false
 
 	attrs := pcommon.NewMap()
 	attrs.PutStr("host", "server-01")
@@ -327,7 +324,7 @@ func TestEnrichMetricDataPointAttributes_NoOpWhenDisabled(t *testing.T) {
 	scope.SetVersion("1.0.0")
 	scopeAttrs := scope.Attributes()
 
-	enrichMetricDataPointAttributes(attrs, scopeAttrs, cfg)
+	enrichMetricDataPointAttributes(attrs, scopeAttrs, cfg, false /* remapToECSLabels */)
 
 	value, ok := attrs.Get("host")
 	require.True(t, ok)

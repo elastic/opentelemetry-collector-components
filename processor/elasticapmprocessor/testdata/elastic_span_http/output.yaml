@@ -52,10 +52,25 @@ resourceSpans:
                   stringValue: http
               - key: service.target.name
                 value:
-                  stringValue: www.foo.bar
-              - key: span.destination.service.resource
+                  stringValue: www.foo.bar:443
+              - key: destination.address
                 value:
                   stringValue: www.foo.bar
+              - key: destination.port
+                value:
+                  intValue: "443"
+              - key: url.original
+                value:
+                  stringValue: https://www.foo.bar/search?q=OpenTelemetry#SemConv
+              - key: span.destination.service.name
+                value:
+                  stringValue: https://www.foo.bar
+              - key: span.destination.service.type
+                value:
+                  stringValue: external
+              - key: span.destination.service.resource
+                value:
+                  stringValue: www.foo.bar:443
               - key: processor.event
                 value:
                   stringValue: span

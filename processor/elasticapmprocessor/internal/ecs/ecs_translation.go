@@ -23,8 +23,13 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
+	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv26 "go.opentelemetry.io/otel/semconv/v1.26.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv39 "go.opentelemetry.io/otel/semconv/v1.39.0"
 )
 
 // Supported ECS resource attributes
@@ -154,11 +159,11 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 	})
 }
 
-// TranslateLogRecordAttributes applies the apm-data OTLP fallback behaviour for
+// RemapLogRecordAttributesToECSLabels applies the apm-data OTLP fallback behaviour for
 // log record attributes in ECS mode: known semantic fields are preserved, while
 // unsupported attributes are moved to labels.* / numeric_labels.* with a
 // sanitized key.
-func TranslateLogRecordAttributes(attributes pcommon.Map) {
+func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitizeExistingLabelAttribute(attributes, k, v) {
 			return true
@@ -186,11 +191,118 @@ func TranslateLogRecordAttributes(attributes pcommon.Map) {
 	})
 }
 
-// TranslateMetricDataPointAttributes applies the apm-data OTLP metric fallback
+// RemapSpanAttributesToECSLabels applies the apm-data OTLP span fallback behaviour for
+// ECS mode spans. The preserved attributes and fallback-to-label cases are based
+// on the OTLP span translation in apm-data's input/otlp/traces.go:
+// https://github.com/elastic/apm-data/blob/7da222dcc0320f9c812c5d72f65f830c838aae11/input/otlp/traces.go
+//
+// Attributes required by span enrichment or exporter-side ECS conversions are
+// preserved, while unsupported attributes are moved to labels.* /
+// numeric_labels.* with a sanitized key.
+func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
+	attributes.Range(func(k string, v pcommon.Value) bool {
+		if sanitizeExistingLabelAttribute(attributes, k, v) {
+			return true
+		}
+
+		switch k {
+		// data_stream.*
+		case elasticattr.DataStreamDataset,
+			elasticattr.DataStreamNamespace,
+			elasticattr.DataStreamType,
+			elasticattr.ServiceTargetName,
+			elasticattr.ServiceTargetType,
+			elasticattr.SpanDestinationServiceName,
+			elasticattr.SpanDestinationServiceType,
+			elasticattr.SpanDestinationServiceResource,
+			// miscellaneous
+			elasticattr.EventOutcome,
+			elasticattr.ProcessorEvent,
+			elasticattr.SessionID,
+			elasticattr.TransactionType,
+			"type",
+			"code.stacktrace",
+			// db.*
+			string(semconv25.DBNameKey),
+			string(semconv37.DBNamespaceKey),
+			string(semconv37.DBQueryTextKey),
+			string(semconv25.DBStatementKey),
+			string(semconv25.DBSystemKey),
+			string(semconv37.DBSystemNameKey),
+			string(semconv25.DBUserKey),
+			// gen_ai.*
+			string(semconv37.GenAIProviderNameKey),
+			string(semconv.GenAISystemKey),
+			// http.*
+			string(semconv25.HTTPFlavorKey),
+			string(semconv25.HTTPMethodKey),
+			string(semconv25.HTTPRequestMethodKey),
+			string(semconv.HTTPResponseBodySizeKey),
+			string(semconv25.HTTPResponseStatusCodeKey),
+			string(semconv25.HTTPSchemeKey),
+			string(semconv25.HTTPStatusCodeKey),
+			string(semconv25.HTTPTargetKey),
+			string(semconv12.HTTPHostKey),
+			string(semconv25.HTTPURLKey),
+			string(semconv25.HTTPUserAgentKey),
+			// messaging.*
+			"message_bus.destination",
+			string(semconv25.MessagingDestinationNameKey),
+			string(semconv25.MessagingDestinationTemporaryKey),
+			string(semconv25.MessagingOperationKey),
+			string(semconv37.MessagingOperationNameKey),
+			string(semconv25.MessagingSystemKey),
+			string(semconv26.MessagingOperationTypeKey),
+			string(semconv16.MessagingTempDestinationKey),
+			string(semconv16.MessagingDestinationKey),
+			// net.*
+			string(semconv25.NetHostNameKey),
+			string(semconv25.NetPeerNameKey),
+			string(semconv25.NetPeerPortKey),
+			// network.*
+			string(semconv.NetworkCarrierIccKey),
+			string(semconv.NetworkCarrierMccKey),
+			string(semconv.NetworkCarrierMncKey),
+			string(semconv.NetworkCarrierNameKey),
+			string(semconv.NetworkConnectionSubtypeKey),
+			string(semconv.NetworkConnectionTypeKey),
+			// rpc.*
+			string(semconv25.PeerServiceKey),
+			string(semconv25.RPCGRPCStatusCodeKey),
+			string(semconv39.RPCMethodKey),
+			string(semconv39.RPCResponseStatusCodeKey),
+			string(semconv25.RPCServiceKey),
+			string(semconv25.RPCSystemKey),
+			string(semconv39.RPCSystemNameKey),
+			// server.*
+			string(semconv25.ServerAddressKey),
+			string(semconv25.ServerPortKey),
+			// service.*
+			string(semconv39.ServicePeerNameKey),
+			// url.*
+			string(semconv25.URLDomainKey),
+			string(semconv25.URLFullKey),
+			string(semconv25.URLPathKey),
+			string(semconv25.URLPortKey),
+			string(semconv25.URLQueryKey),
+			string(semconv25.URLSchemeKey),
+			// user_agent.*
+			string(semconv.UserAgentNameKey),
+			string(semconv.UserAgentOriginalKey),
+			string(semconv.UserAgentVersionKey):
+			return true
+		default:
+			fallbackToLabelAttribute(attributes, k, v)
+			return true
+		}
+	})
+}
+
+// RemapMetricDataPointAttributesToECSLabels applies the apm-data OTLP metric fallback
 // for raw metric datapoint attributes in ECS mode. Existing labels.* /
 // numeric_labels.* keys are sanitized in place, metric-specific special cases
 // are preserved, and everything else is moved to labels.* / numeric_labels.*.
-func TranslateMetricDataPointAttributes(attributes pcommon.Map) {
+func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
 	attributes.Range(func(k string, v pcommon.Value) bool {
 		if sanitizeExistingLabelAttribute(attributes, k, v) {
 			return true

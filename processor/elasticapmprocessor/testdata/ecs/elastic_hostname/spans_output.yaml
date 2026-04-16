@@ -35,7 +35,7 @@ resourceSpans:
       - scope: {}
         spans:
           - attributes:
-              - key: some.key
+              - key: labels.some_key
                 value:
                   stringValue: main
               - key: timestamp.us
