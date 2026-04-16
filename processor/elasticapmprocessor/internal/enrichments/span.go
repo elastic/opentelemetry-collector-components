@@ -673,12 +673,9 @@ func (s *spanEnrichmentContext) setServiceTarget(span ptrace.Span) {
 
 func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 	attributes := span.Attributes()
-	var destnResource string
-	if s.peerService != "" {
-		destnResource = s.peerService
-		if s.peerAddress != "" {
-			destnResource = s.peerAddress
-		}
+	destnResource := s.peerService
+	if destnResource != "" && s.peerAddress != "" {
+		destnResource = s.peerAddress
 	}
 
 	switch {
