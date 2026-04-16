@@ -449,14 +449,13 @@ func (s *spanEnrichmentContext) normalizeAttributes(userAgentPraser *uaparser.Pa
 		s.rpcSystem = "grpc"
 	}
 	if s.serverAddress == "" {
-		// apm-data treats peer.address as a hostname fallback only when it is not
-		// obviously a connection string / ip:port, then uses the normalized peer
-		// host and port when synthesizing HTTP URLs and destinations:
+		// apm-data prefers hostname-like peer.address over net.peer.ip, and only
+		// uses peer.address when it is not obviously a connection string / ip:port:
 		// https://github.com/elastic/apm-data/blob/26adeeef7f92ba5e01e59fb9e4c735fb8c31b58e/input/otlp/traces.go#L840-L878
-		if s.netPeerIP != "" {
-			s.serverAddress = s.netPeerIP
-		} else if s.peerAddress != "" && (!strings.ContainsRune(s.peerAddress, ':') || net.ParseIP(s.peerAddress) != nil) {
+		if s.peerAddress != "" && (!strings.ContainsRune(s.peerAddress, ':') || net.ParseIP(s.peerAddress) != nil) {
 			s.serverAddress = s.peerAddress
+		} else if s.netPeerIP != "" {
+			s.serverAddress = s.netPeerIP
 		}
 	}
 	if s.urlFull == nil {
@@ -677,10 +676,9 @@ func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 	var destnResource string
 	if s.peerService != "" {
 		destnResource = s.peerService
-	}
-
-	if s.peerAddress != "" {
-		destnResource = s.peerAddress
+		if s.peerAddress != "" {
+			destnResource = s.peerAddress
+		}
 	}
 
 	switch {

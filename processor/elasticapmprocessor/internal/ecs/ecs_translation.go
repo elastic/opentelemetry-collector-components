@@ -223,6 +223,10 @@ func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 			"type",
 			"code.stacktrace",
 			// db.*
+			"sql.query",
+			"db.type",
+			"db.instance",
+			"db.elasticsearch.cluster.name",
 			string(semconv25.DBNameKey),
 			string(semconv37.DBNamespaceKey),
 			string(semconv37.DBQueryTextKey),

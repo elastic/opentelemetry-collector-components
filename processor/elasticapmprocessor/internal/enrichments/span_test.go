@@ -1585,6 +1585,42 @@ func TestElasticSpanEnrich(t *testing.T) {
 			},
 		},
 		{
+			name: "http_span_peer_address_preferred_over_net_peer_ip",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				span.Status().SetCode(ptrace.StatusCodeOk)
+				span.Attributes().PutInt(
+					string(semconv25.HTTPResponseStatusCodeKey),
+					http.StatusOK,
+				)
+				span.Attributes().PutStr(string(semconv25.HTTPTargetKey), "/search?q=OpenTelemetry")
+				span.Attributes().PutStr("peer.address", "api.example.com")
+				span.Attributes().PutStr(string(semconv12.NetPeerIPKey), "10.0.0.7")
+				span.Attributes().PutInt("peer.port", 8080)
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "external",
+				elasticattr.SpanSubtype:                    "http",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				"destination.address":                      "api.example.com",
+				"destination.port":                         int64(8080),
+				elasticattr.ServiceTargetType:              "http",
+				elasticattr.ServiceTargetName:              "api.example.com:8080",
+				elasticattr.SpanDestinationServiceName:     "http://api.example.com:8080",
+				elasticattr.SpanDestinationServiceType:     "external",
+				elasticattr.SpanDestinationServiceResource: "api.example.com:8080",
+				"url.original":                             "http://api.example.com:8080/search?q=OpenTelemetry",
+			},
+		},
+		{
 			name: "http_span_legacy_http_host",
 			input: func() ptrace.Span {
 				span := getElasticSpan()
@@ -1880,6 +1916,31 @@ func TestElasticSpanEnrich(t *testing.T) {
 				span.Attributes().PutStr(string(semconv25.RPCServiceKey), "service.Test")
 				span.Attributes().PutStr(string(semconv25.NetPeerNameKey), "10.2.20.18")
 				span.Attributes().PutInt(string(semconv25.NetPeerPortKey), 8081)
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:                    startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:                 "span",
+				elasticattr.SpanRepresentativeCount:        float64(1),
+				elasticattr.SpanType:                       "external",
+				elasticattr.SpanDurationUs:                 expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:                   outcomeSuccess,
+				elasticattr.SuccessCount:                   int64(1),
+				elasticattr.ServiceTargetType:              "external",
+				elasticattr.ServiceTargetName:              "service.Test",
+				elasticattr.SpanDestinationServiceResource: "10.2.20.18:8081",
+			},
+		},
+		{
+			name: "rpc_span_peer.address_port_fallback",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.SetName("testspan")
+				// No peer.service is set.
+				span.Attributes().PutStr(string(semconv25.RPCServiceKey), "service.Test")
+				span.Attributes().PutStr("peer.address", "10.2.20.18")
+				span.Attributes().PutInt("peer.port", 8081)
 				return span
 			}(),
 			config: config.Enabled().Span,
@@ -2552,7 +2613,8 @@ func TestElasticSpanEnrich(t *testing.T) {
 				span.Attributes().PutInt(string(semconv25.NetPeerPortKey), 5432)
 				return span
 			}(),
-			config: config.Enabled().Span,
+			config:           config.Enabled().Span,
+			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{
 				elasticattr.SpanDestinationServiceResource: "postgresql",
 				elasticattr.SpanType:                       "db",
@@ -2576,7 +2638,8 @@ func TestElasticSpanEnrich(t *testing.T) {
 				span.Attributes().PutStr("db.type", "elasticsearch")
 				return span
 			}(),
-			config: config.Enabled().Span,
+			config:           config.Enabled().Span,
+			remapToECSLabels: true,
 			enrichedAttrs: map[string]any{
 				elasticattr.SpanDestinationServiceResource: "elasticsearch",
 				elasticattr.SpanType:                       "db",
