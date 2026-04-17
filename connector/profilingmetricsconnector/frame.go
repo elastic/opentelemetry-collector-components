@@ -132,12 +132,12 @@ var (
 			rx:   regexp.MustCompile(`^(?:udp_sendmsg|udp_write|udp_push|udp_sendpage)`),
 		},
 		{
-			name: "ipc/read",
+			name: "ipc//read",
 			rx: regexp.MustCompile(`^(?:pipe_read|pipe_read_iter|eventfd_read` +
 				`|unix_stream_read_generic|unix_stream_recvmsg)`),
 		},
 		{
-			name: "ipc/write",
+			name: "ipc//write",
 			rx: regexp.MustCompile(`^(?:pipe_write|pipe_write_iter|eventfd_write` +
 				`|unix_stream_write_generic|unix_stream_sendmsg)`),
 		},
@@ -150,12 +150,12 @@ var (
 			rx:   regexp.MustCompile(`^(?:sock_sendmsg|__sock_sendmsg|sock_write_iter)`),
 		},
 		{
-			name: "disk/read",
+			name: "disk//read",
 			rx: regexp.MustCompile(`^(?:ext4_file_read_iter|xfs_file_read_iter` +
 				`|btrfs_file_read_iter|filemap_read|generic_file_read_iter)`),
 		},
 		{
-			name: "disk/write",
+			name: "disk//write",
 			rx: regexp.MustCompile(`^(?:ext4_file_write_iter|xfs_file_write_iter` +
 				`|btrfs_file_write_iter|filemap_write|generic_file_write_iter` +
 				`|writeback_sb_inodes)`),
