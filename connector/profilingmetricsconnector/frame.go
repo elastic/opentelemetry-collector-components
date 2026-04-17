@@ -336,7 +336,8 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 	lastMatchIdx := len(classes)
 	hasKernel := false
 	for idx := range locationIndices.Len() {
-		fi, err := c.fetchFrameInfo(dictionary, locationIndices, idx)
+		var fi frameInfo
+		fi, err = c.fetchFrameInfo(dictionary, locationIndices, idx)
 		if err != nil {
 			break
 		}
@@ -396,6 +397,7 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 
 		kernelCounts[attrInfo{class: className, syscall: syscall}] += multiplier
 	}
+
 	return err
 }
 
