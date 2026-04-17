@@ -191,6 +191,11 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 		sample.TimestampsUnixNano().Append(uint64(time.Now().UnixNano()))
 	}
 
+	if multiplier == 0 {
+		// Add a value
+		sample.Values().Append(1)
+	}
+
 	// Set sample to reference the stack
 	sample.SetStackIndex(int32(stackTable.Len()))
 	stack := stackTable.AppendEmpty()
@@ -246,8 +251,17 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	tp := newTestProfiles()
 	prof := tp.newProfile()
 
+	// Cover all supported frame types
 	tp.addSample(t, prof, 0, goFrame())
 	tp.addSample(t, prof, 42, pyFrame())
+	tp.addSample(t, prof, 1, jvmFrame())
+	tp.addSample(t, prof, 2, v8Frame())
+	tp.addSample(t, prof, 3, phpFrame())
+	tp.addSample(t, prof, 4, perlFrame())
+	tp.addSample(t, prof, 5, rubyFrame())
+	tp.addSample(t, prof, 6, dotnetFrame())
+	tp.addSample(t, prof, 7, beamFrame())
+	tp.addSample(t, prof, 8, rustFrame())
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
