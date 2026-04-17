@@ -289,7 +289,7 @@ func (c *profilesToMetricsConnector) fetchFrameInfo(dictionary pprofile.Profiles
 // classifyUser classifies a non-kernel frame by increasing relevant metric counts.
 // Must NOT be called for kernel frames.
 func classifyUser(fi frameInfo,
-	counts map[metric]int64,
+	userCounts map[metric]int64,
 	nativeCounts map[attrInfo]int64,
 	multiplier int64,
 ) {
@@ -298,10 +298,10 @@ func classifyUser(fi frameInfo,
 	// We have a distinct metricUser (even if there's no specific frame type for it)
 	// so that we can calculate the total number of stacktraces for any given time
 	// interval: metricUser.count + metricKernel.count
-	counts[metricUser] += multiplier
+	userCounts[metricUser] += multiplier
 	metric := allowedFrameTypes[ft]
 	if ft != frameTypeNative {
-		counts[metric] += multiplier
+		userCounts[metric] += multiplier
 		return
 	}
 
@@ -324,7 +324,7 @@ func classifyUser(fi frameInfo,
 // This takes place by incrementing the associated metric count.
 func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.ProfilesDictionary,
 	locationIndices pcommon.Int32Slice,
-	counts map[metric]int64,
+	userCounts map[metric]int64,
 	nativeCounts map[attrInfo]int64,
 	kernelCounts map[attrInfo]int64,
 	multiplier int64,
@@ -345,7 +345,7 @@ func (c *profilesToMetricsConnector) classifyFrames(dictionary pprofile.Profiles
 		if idx == 0 && fi.typ != frameTypeKernel {
 			// Only need to call this once per stacktrace, for the leaf frame,
 			// which is the first location indexed.
-			classifyUser(fi, counts, nativeCounts, multiplier)
+			classifyUser(fi, userCounts, nativeCounts, multiplier)
 		}
 
 		// Kernel frame specific logic follows
@@ -406,7 +406,7 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 ) {
 	stackTable := dictionary.StackTable()
 
-	counts := make(map[metric]int64)
+	userCounts := make(map[metric]int64)
 	nativeCounts := make(map[attrInfo]int64)
 	kernelCounts := make(map[attrInfo]int64)
 
@@ -415,13 +415,13 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 		multiplier := max(int64(sample.TimestampsUnixNano().Len()), 1)
 		stack := stackTable.At(int(sample.StackIndex()))
 		if err := c.classifyFrames(dictionary, stack.LocationIndices(),
-			counts, nativeCounts, kernelCounts, multiplier); err != nil {
+			userCounts, nativeCounts, kernelCounts, multiplier); err != nil {
 			c.logger.Error("classifyFrames", zap.Error(err))
 		}
 	}
 
-	// Generate metrics
-	for metric, count := range counts {
+	// Generate userspace metrics
+	for metric, count := range userCounts {
 		// TODO: share MetricBuilder with classifyFrames to
 		// automatically record the metrics
 		switch metric {
@@ -443,6 +443,8 @@ func (c *profilesToMetricsConnector) addFrameMetrics(dictionary pprofile.Profile
 			c.mb.RecordSamplesRustCountDataPoint(profile.Time(), count)
 		case metricRuby:
 			c.mb.RecordSamplesRubyCountDataPoint(profile.Time(), count)
+		case metricV8JS:
+			c.mb.RecordSamplesV8jsCountDataPoint(profile.Time(), count)
 		case metricUser:
 			c.mb.RecordSamplesUserCountDataPoint(profile.Time(), count)
 		}
