@@ -118,6 +118,11 @@ type AggregationConfig struct {
 
 	// Limits holds optional cardinality limits for aggregated metrics
 	Limits AggregationLimitConfig `mapstructure:"limits"`
+
+	// Statements are OTTL statements executed on metrics produced for each
+	// aggregation interval. Available OTTL paths: ottldatapoint context.
+	// Client metadata is accessible via otelcol.client.metadata["key"].
+	Statements []string `mapstructure:"statements"`
 }
 
 type AggregationLimitConfig struct {
@@ -157,15 +162,23 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 	if cfg.Aggregation != nil && len(cfg.Aggregation.Intervals) != 0 {
 		intervals = cfg.Aggregation.Intervals
 	}
+
+	var extraStatements []string
+	if cfg.Aggregation != nil {
+		extraStatements = cfg.Aggregation.Statements
+	}
+
 	intervalsConfig := make([]lsmconfig.IntervalConfig, 0, len(intervals))
 	for _, i := range intervals {
+		statements := []string{
+			fmt.Sprintf(`set(attributes["metricset.interval"], "%dm")`, int(i.Minutes())),
+			fmt.Sprintf(`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "%dm"], "."))`, int(i.Minutes())),
+			`set(attributes["processor.event"], "metric")`,
+		}
+		statements = append(statements, extraStatements...)
 		intervalsConfig = append(intervalsConfig, lsmconfig.IntervalConfig{
-			Duration: i,
-			Statements: []string{
-				fmt.Sprintf(`set(attributes["metricset.interval"], "%dm")`, int(i.Minutes())),
-				fmt.Sprintf(`set(attributes["data_stream.dataset"], Concat([attributes["metricset.name"], "%dm"], "."))`, int(i.Minutes())),
-				`set(attributes["processor.event"], "metric")`,
-			},
+			Duration:   i,
+			Statements: statements,
 		})
 	}
 
@@ -389,19 +402,54 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Unit:      "us",
 			Histogram: configoptional.Some(transactionDurationSummaryHistogram),
 		}, {
+			// For composite spans, the response time sum is the composite
+			// duration (total of all compressed sub-spans).
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
 			Attributes:                spanDestinationAttributes,
-			Unit:                      "us",
+			Conditions: []string{
+				`attributes["span.composite.sum.us"] != nil`,
+			},
+			Unit: "us",
+			Sum: configoptional.Some(signaltometricsconfig.Sum{
+				Value: `Double(attributes["span.composite.sum.us"])`,
+			}),
+		}, {
+			// For non-composite spans, use the span wall-clock duration.
+			Name:                      "span.destination.service.response_time.sum.us",
+			Description:               "APM span destination metrics",
+			IncludeResourceAttributes: spanDestinationResourceAttributes,
+			Attributes:                spanDestinationAttributes,
+			Conditions: []string{
+				`attributes["span.composite.sum.us"] == nil`,
+			},
+			Unit: "us",
 			Sum: configoptional.Some(signaltometricsconfig.Sum{
 				Value: "Double(Microseconds(end_time - start_time))",
 			}),
 		}, {
+			// For composite spans, the count is the number of compressed
+			// operations.
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
 			Attributes:                spanDestinationAttributes,
+			Conditions: []string{
+				`attributes["span.composite.count"] != nil`,
+			},
+			Sum: configoptional.Some(signaltometricsconfig.Sum{
+				Value: `Int(attributes["span.composite.count"])`,
+			}),
+		}, {
+			// For non-composite spans, count is the sampling weight.
+			Name:                      "span.destination.service.response_time.count",
+			Description:               "APM span destination metrics",
+			IncludeResourceAttributes: spanDestinationResourceAttributes,
+			Attributes:                spanDestinationAttributes,
+			Conditions: []string{
+				`attributes["span.composite.count"] == nil`,
+			},
 			Sum: configoptional.Some(signaltometricsconfig.Sum{
 				Value: "Int(AdjustedCount())",
 			}),

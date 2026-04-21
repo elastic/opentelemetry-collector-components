@@ -1,3 +1,5 @@
-{"metadata": {"service": {"name": "shadow-test", "agent": {"name": "elastic-node", "version": "1.0.0"}}, "labels": {"global_tag": "from_metadata"}}}
+{"metadata": {"service": {"name": "shadow-test", "agent": {"name": "elastic-node", "version": "1.0.0"}}, "labels": {"global_tag": "from_metadata", "num_tag": 100}}}
 {"metricset": {"samples": {"app.request.count": {"value": 1}}, "timestamp": 1496170422281000}}
 {"metricset": {"samples": {"app.request.count": {"value": 2}}, "tags": {"global_tag": "from_event"}, "timestamp": 1496170422282000}}
+{"metricset": {"samples": {"app.request.count": {"value": 3}}, "tags": {"global_tag": "from_event_2"}, "timestamp": 1496170422283000}}
+{"metricset": {"samples": {"app.request.count": {"value": 4}}, "tags": {"num_tag": 200}, "timestamp": 1496170422284000}}

@@ -28,6 +28,9 @@ resourceSpans:
         - key: deployment.environment
           value:
             stringValue: unset
+        - key: telemetry.sdk.language
+          value:
+            stringValue: unknown
     scopeSpans:
       - scope: {}
         spans:
