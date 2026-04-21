@@ -18,13 +18,17 @@
 package enrichments
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 )
 
 func TestEnrichMetric(t *testing.T) {
@@ -131,4 +135,202 @@ func TestEnrichMetric(t *testing.T) {
 			assert.Equal(t, expectedAttrs, actualAttrs, "resource attributes should match expected")
 		})
 	}
+}
+
+func TestEnrichMetrics_RemapToECSLabels(t *testing.T) {
+	cfg := config.Enabled()
+
+	metrics := pmetric.NewMetrics()
+	resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
+	scopeMetrics := resourceMetrics.ScopeMetrics().AppendEmpty()
+	scopeMetrics.Scope().SetName("metrics-instrumentation")
+	scopeMetrics.Scope().SetVersion("1.0.0")
+	metric := scopeMetrics.Metrics().AppendEmpty()
+	metric.SetName("test.metric")
+	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
+	dp.SetDoubleValue(1.0)
+	attrs := dp.Attributes()
+	attrs.PutStr("data_stream.dataset", "apm.internal")
+	attrs.PutStr("data_stream.namespace", "default")
+	attrs.PutStr("data_stream.type", "metrics")
+	attrs.PutStr("host", "server-01")
+	attrs.PutStr("state", "used")
+	attrs.PutStr("event.module", "system")
+	attrs.PutStr("system.process.cmdline", "/usr/bin/java")
+	attrs.PutStr("system.filesystem.mount_point", "/mnt/data")
+	attrs.PutStr("user.name", "appuser")
+
+	enricher := NewEnricher(cfg, true /* remapToECSLabels */)
+	enricher.EnrichResourceMetrics(metrics.ResourceMetrics().At(0))
+
+	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
+
+	value, ok := actualAttrs.Get("data_stream.dataset")
+	require.True(t, ok)
+	assert.Equal(t, "apm.internal", value.Str())
+	value, ok = actualAttrs.Get("data_stream.namespace")
+	require.True(t, ok)
+	assert.Equal(t, "default", value.Str())
+	value, ok = actualAttrs.Get("data_stream.type")
+	require.True(t, ok)
+	assert.Equal(t, "metrics", value.Str())
+	value, ok = actualAttrs.Get("labels.host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = actualAttrs.Get("labels.state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	value, ok = actualAttrs.Get("event.module")
+	require.True(t, ok)
+	assert.Equal(t, "system", value.Str())
+	value, ok = actualAttrs.Get("system.process.cmdline")
+	require.True(t, ok)
+	assert.Equal(t, "/usr/bin/java", value.Str())
+	value, ok = actualAttrs.Get("system.filesystem.mount_point")
+	require.True(t, ok)
+	assert.Equal(t, "/mnt/data", value.Str())
+	value, ok = actualAttrs.Get("user.name")
+	require.True(t, ok)
+	assert.Equal(t, "appuser", value.Str())
+	value, ok = actualAttrs.Get(elasticattr.ServiceFrameworkName)
+	require.True(t, ok)
+	assert.Equal(t, "metrics-instrumentation", value.Str())
+	value, ok = actualAttrs.Get(elasticattr.ServiceFrameworkVersion)
+	require.True(t, ok)
+	assert.Equal(t, "1.0.0", value.Str())
+	_, ok = actualAttrs.Get("host")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("state")
+	assert.False(t, ok)
+}
+
+func TestEnrichMetrics_TruncatesPreservedMetricSpecialCaseAttributes(t *testing.T) {
+	cfg := config.Enabled()
+
+	metrics := pmetric.NewMetrics()
+	resourceMetrics := metrics.ResourceMetrics().AppendEmpty()
+	scopeMetrics := resourceMetrics.ScopeMetrics().AppendEmpty()
+	metric := scopeMetrics.Metrics().AppendEmpty()
+	metric.SetName("test.metric")
+	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
+	dp.SetDoubleValue(1.0)
+	attrs := dp.Attributes()
+	longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+	attrs.PutStr("system.process.cmdline", longValue)
+	attrs.PutStr("system.filesystem.mount_point", longValue)
+	attrs.PutStr("user.name", longValue)
+	attrs.PutStr("event.module", longValue)
+	attrs.PutStr("system.process.state", longValue)
+
+	enricher := NewEnricher(cfg, true /* remapToECSLabels */)
+	enricher.EnrichResourceMetrics(metrics.ResourceMetrics().At(0))
+
+	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
+	expected := strings.Repeat("a", int(sanitize.StandardKeyWordLength))
+
+	value, ok := actualAttrs.Get("system.process.cmdline")
+	require.True(t, ok)
+	assert.Equal(t, expected, value.Str())
+	value, ok = actualAttrs.Get("system.filesystem.mount_point")
+	require.True(t, ok)
+	assert.Equal(t, expected, value.Str())
+	value, ok = actualAttrs.Get("user.name")
+	require.True(t, ok)
+	assert.Equal(t, expected, value.Str())
+
+	// These preserved attrs are intentionally not truncated in apm-data.
+	value, ok = actualAttrs.Get("event.module")
+	require.True(t, ok)
+	assert.Equal(t, longValue, value.Str())
+	value, ok = actualAttrs.Get("system.process.state")
+	require.True(t, ok)
+	assert.Equal(t, longValue, value.Str())
+}
+
+func TestEnrichMetricDataPoints_SkipsAggregatedMetricAttributes(t *testing.T) {
+	cfg := config.Enabled()
+	// remapToECSLabels is handled by the OTel enricher type, not config
+
+	metric := pmetric.NewMetric()
+	metric.SetName("service_summary")
+	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
+	dp.SetDoubleValue(1.0)
+	attrs := dp.Attributes()
+	attrs.PutStr("metricset.name", "service_summary")
+	attrs.PutStr("host", "server-01")
+	attrs.PutStr("state", "used")
+
+	scope := pcommon.NewInstrumentationScope()
+	scope.SetName("github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector")
+	scope.SetVersion("1.0.0")
+	scopeAttrs := scope.Attributes()
+
+	EnrichMetricDataPoints(metric, scopeAttrs, cfg, true /* remapToECSLabels */)
+
+	actualAttrs := metric.Gauge().DataPoints().At(0).Attributes()
+	value, ok := actualAttrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	value, ok = actualAttrs.Get("state")
+	require.True(t, ok)
+	assert.Equal(t, "used", value.Str())
+	_, ok = actualAttrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get("labels.state")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get(elasticattr.ServiceFrameworkName)
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get(elasticattr.ServiceFrameworkVersion)
+	assert.False(t, ok)
+}
+
+func TestEnrichMetricDataPoints_SkipsMetricsWithMappingHints(t *testing.T) {
+	cfg := config.Enabled()
+
+	metric := pmetric.NewMetric()
+	metric.SetName("transaction.duration.histogram")
+	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
+	dp.SetDoubleValue(1.0)
+	attrs := dp.Attributes()
+	hints := attrs.PutEmptySlice("elasticsearch.mapping.hints")
+	hints.AppendEmpty().SetStr("_doc_count")
+	attrs.PutStr("host", "server-01")
+
+	scope := pcommon.NewInstrumentationScope()
+	scope.SetName("github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector")
+	scope.SetVersion("1.0.0")
+	scopeAttrs := scope.Attributes()
+
+	EnrichMetricDataPoints(metric, scopeAttrs, cfg, true /* remapToECSLabels */)
+
+	actualAttrs := metric.Gauge().DataPoints().At(0).Attributes()
+	value, ok := actualAttrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	_, ok = actualAttrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = actualAttrs.Get(elasticattr.ServiceFrameworkName)
+	assert.False(t, ok)
+}
+
+func TestEnrichMetricDataPointAttributes_NoOpWhenDisabled(t *testing.T) {
+	cfg := config.Enabled()
+
+	attrs := pcommon.NewMap()
+	attrs.PutStr("host", "server-01")
+
+	scope := pcommon.NewInstrumentationScope()
+	scope.SetName("metrics-instrumentation")
+	scope.SetVersion("1.0.0")
+	scopeAttrs := scope.Attributes()
+
+	enrichMetricDataPointAttributes(attrs, scopeAttrs, cfg, false /* remapToECSLabels */)
+
+	value, ok := attrs.Get("host")
+	require.True(t, ok)
+	assert.Equal(t, "server-01", value.Str())
+	_, ok = attrs.Get("labels.host")
+	assert.False(t, ok)
+	_, ok = attrs.Get(elasticattr.ServiceFrameworkName)
+	assert.False(t, ok)
 }

@@ -18,6 +18,8 @@
 package mappers // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/mappers"
 
 import (
+	"fmt"
+	"math"
 	"strings"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -92,6 +94,49 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestampNanos uint64, s ptr
 	durationNanos := event.GetEvent().GetDuration()
 	s.SetStartTimestamp(pcommon.Timestamp(timestampNanos))
 	s.SetEndTimestamp(pcommon.Timestamp(timestampNanos + durationNanos))
+
+	// Encode representative_count into the W3C tracestate so that
+	// AdjustedCount() in the signal-to-metrics connector returns the
+	// correct sampling weight. We only set the tracestate when the
+	// representative count differs from 1 (the AdjustedCount default)
+	// to avoid noisy tracestate on every span.
+	// see: https://opentelemetry.io/docs/specs/otel/trace/tracestate-handling/#sampling-threshold-value-th
+	if span := event.GetSpan(); span != nil {
+		repCount := span.GetRepresentativeCount()
+		if repCount > 0 && repCount != 1 {
+			if tvalue := probabilityToTValue(1.0 / repCount); tvalue != "" {
+				s.TraceState().FromRaw(fmt.Sprintf("ot=th:%s", tvalue))
+			}
+		}
+	}
+}
+
+// probabilityToTValue converts a sampling probability (0, 1] to a W3C
+// tracestate T-value hex string. The T-value encodes the rejection
+// threshold: threshold = (1 - probability) * 2^56. AdjustedCount() then
+// returns 1/probability.
+func probabilityToTValue(probability float64) string {
+	if probability <= 0 || probability > 1 {
+		return ""
+	}
+	if probability == 1 {
+		return "0"
+	}
+	const maxThreshold = (1 << 56) - 1
+	raw := math.Round((1.0 - probability) * (1 << 56))
+	if raw < 0 {
+		raw = 0
+	}
+	if raw > maxThreshold {
+		raw = maxThreshold
+	}
+	threshold := uint64(raw)
+	s := fmt.Sprintf("%014x", threshold)
+	s = strings.TrimRight(s, "0")
+	if s == "" {
+		return "0"
+	}
+	return s
 }
 
 // Sets top level fields on plog.LogRecord based on the APMEvent

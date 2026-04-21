@@ -124,10 +124,9 @@ type ElasticMetricConfig struct {
 
 // ElasticLogConfig configures the enrichment attributes for logs
 type ElasticLogConfig struct {
-	TranslateUnsupportedAttributes AttributeConfig      `mapstructure:"translate_unsupported_attributes"`
-	EventConfig                    EventConfig          `mapstructure:",squash"`
-	ErrorConfig                    ErrorConfig          `mapstructure:",squash"`
-	ErrorExceptionConfig           ErrorExceptionConfig `mapstructure:",squash"`
+	EventConfig          EventConfig          `mapstructure:",squash"`
+	ErrorConfig          ErrorConfig          `mapstructure:",squash"`
+	ErrorExceptionConfig ErrorExceptionConfig `mapstructure:",squash"`
 }
 
 type EventConfig struct {

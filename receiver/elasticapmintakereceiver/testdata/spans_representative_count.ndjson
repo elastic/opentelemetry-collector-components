@@ -1,0 +1,2 @@
+{"metadata": {"service": {"name": "rep-count-test", "agent": {"name": "elastic-node", "version": "1.0.0"}}}}
+{"span": {"trace_id": "abcdef0123456789abcdef9876543210", "parent_id": "0000000011111111", "id": "abcdef0123456789", "transaction_id": "ab45781d265894fe", "name": "GET /api", "type": "request", "duration": 10, "timestamp": 1532976822281000, "sample_rate": 0.25, "outcome": "success", "context": {"destination": {"service": {"resource": "api.example.com:443"}}}}}

@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
@@ -33,6 +34,7 @@ func TestTranslateResourceMetadata(t *testing.T) {
 		inputKey   string
 		inputVal   string
 		wantKey    string
+		wantVal    string
 		wantAbsent string // if non-empty, assert this attribute key is removed after translation (e.g. sanitized key)
 	}{
 		{
@@ -124,10 +126,94 @@ func TestTranslateResourceMetadata(t *testing.T) {
 			wantKey:  string(semconv.TelemetrySDKLanguageKey),
 		},
 		{
+			name:     "supported service version truncated",
+			inputKey: string(semconv.ServiceVersionKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ServiceVersionKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported service instance id truncated",
+			inputKey: string(semconv.ServiceInstanceIDKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ServiceInstanceIDKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported deployment environment truncated",
+			inputKey: string(semconv.DeploymentEnvironmentKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.DeploymentEnvironmentKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported telemetry sdk name truncated",
+			inputKey: string(semconv.TelemetrySDKNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.TelemetrySDKNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
 			name:     "supported telemetry sdk version",
 			inputKey: string(semconv.TelemetrySDKVersionKey),
 			inputVal: "8.0.0",
 			wantKey:  string(semconv.TelemetrySDKVersionKey),
+		},
+		{
+			name:     "supported cloud provider truncated",
+			inputKey: string(semconv.CloudProviderKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.CloudProviderKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported container name truncated",
+			inputKey: string(semconv.ContainerNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ContainerNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported kubernetes namespace truncated",
+			inputKey: string(semconv.K8SNamespaceNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.K8SNamespaceNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported host name truncated",
+			inputKey: string(semconv.HostNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.HostNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported process command line truncated",
+			inputKey: string(semconv.ProcessCommandLineKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ProcessCommandLineKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported process owner truncated",
+			inputKey: string(semconv.ProcessOwnerKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.ProcessOwnerKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported os description truncated",
+			inputKey: string(semconv.OSDescriptionKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.OSDescriptionKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+		},
+		{
+			name:     "supported device model name truncated",
+			inputKey: string(semconv.DeviceModelNameKey),
+			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			wantKey:  string(semconv.DeviceModelNameKey),
+			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported process runtime name",
@@ -182,8 +268,12 @@ func TestTranslateResourceMetadata(t *testing.T) {
 			if !ok {
 				t.Fatalf("expected attribute %q to be present. all attrs %v", tc.wantKey, attrs.AsRaw())
 			}
-			if v.AsString() != tc.inputVal {
-				t.Errorf("attribute %q value = %q, want %q", tc.wantKey, v.AsString(), tc.inputVal)
+			wantVal := tc.inputVal
+			if tc.wantVal != "" {
+				wantVal = tc.wantVal
+			}
+			if v.AsString() != wantVal {
+				t.Errorf("attribute %q value = %q, want %q", tc.wantKey, v.AsString(), wantVal)
 			}
 			if tc.wantAbsent != "" {
 				if _, ok := attrs.Get(tc.wantAbsent); ok {
@@ -194,7 +284,7 @@ func TestTranslateResourceMetadata(t *testing.T) {
 	}
 }
 
-func TestTranslateLogRecordAttributes(t *testing.T) {
+func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 	tests := []struct {
 		name       string
 		setAttrs   func(pcommon.Map)
@@ -228,6 +318,34 @@ func TestTranslateLogRecordAttributes(t *testing.T) {
 				elasticattr.DataStreamType:               "logs",
 				elasticattr.DataStreamDataset:            "apm.error",
 				elasticattr.DataStreamNamespace:          "default",
+			},
+		},
+		{
+			name: "supported semantic fields are not truncated",
+			setAttrs: func(attrs pcommon.Map) {
+				longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+				attrs.PutStr(string(semconv.ExceptionMessageKey), longValue)
+				attrs.PutStr(string(semconv.ExceptionStacktraceKey), longValue)
+				attrs.PutStr(string(semconv.ExceptionTypeKey), longValue)
+				attrs.PutStr("event.name", longValue)
+				attrs.PutStr("event.domain", longValue)
+				attrs.PutStr("session.id", longValue)
+				attrs.PutStr(string(semconv.NetworkConnectionTypeKey), longValue)
+				attrs.PutStr(elasticattr.DataStreamDataset, longValue)
+				attrs.PutStr(elasticattr.DataStreamNamespace, longValue)
+				attrs.PutStr(elasticattr.DataStreamType, longValue)
+			},
+			want: map[string]any{
+				string(semconv.ExceptionMessageKey):      strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				string(semconv.ExceptionStacktraceKey):   strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				string(semconv.ExceptionTypeKey):         strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"event.name":                             strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"event.domain":                           strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"session.id":                             strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				string(semconv.NetworkConnectionTypeKey): strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				elasticattr.DataStreamDataset:            strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				elasticattr.DataStreamNamespace:          strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				elasticattr.DataStreamType:               strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
 			},
 		},
 		{
@@ -270,7 +388,7 @@ func TestTranslateLogRecordAttributes(t *testing.T) {
 			attrs := pcommon.NewMap()
 			tc.setAttrs(attrs)
 
-			TranslateLogRecordAttributes(attrs)
+			RemapLogRecordAttributesToECSLabels(attrs)
 
 			for key, want := range tc.want {
 				got, ok := attrs.Get(key)
@@ -282,6 +400,264 @@ func TestTranslateLogRecordAttributes(t *testing.T) {
 					assert.Equal(t, want, got.Str())
 				case bool:
 					assert.Equal(t, want, got.Bool())
+				case float64:
+					assert.InDelta(t, want, got.Double(), 1e-9)
+				default:
+					t.Fatalf("unsupported want type %T", want)
+				}
+			}
+			for _, key := range tc.wantAbsent {
+				_, ok := attrs.Get(key)
+				assert.False(t, ok, "expected %q to be absent", key)
+			}
+		})
+	}
+}
+
+func TestRemapSpanAttributesToECSLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		setAttrs   func(pcommon.Map)
+		want       map[string]any
+		wantAbsent []string
+	}{
+		{
+			name: "supported span attrs preserved",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("http.request.method", "GET")
+				attrs.PutInt("http.response.status_code", 200)
+				attrs.PutStr("http.url", "https://api.example.com/users")
+				attrs.PutStr("db.query.text", "SELECT * FROM users")
+				attrs.PutStr(elasticattr.EventOutcome, "unknown")
+				attrs.PutStr(elasticattr.ProcessorEvent, "transaction")
+				attrs.PutStr(elasticattr.ServiceTargetName, "api.example.com:443")
+				attrs.PutStr(elasticattr.ServiceTargetType, "http")
+				attrs.PutStr(elasticattr.SpanDestinationServiceName, "https://api.example.com")
+				attrs.PutStr(elasticattr.SpanDestinationServiceType, "external")
+				attrs.PutStr(elasticattr.SpanDestinationServiceResource, "api.example.com:443")
+				attrs.PutStr("session.id", "session-123")
+				attrs.PutStr(string(semconv.NetworkConnectionTypeKey), "wifi")
+				attrs.PutStr(elasticattr.DataStreamDataset, "apm")
+			},
+			want: map[string]any{
+				"http.request.method":                      "GET",
+				"http.response.status_code":                int64(200),
+				"http.url":                                 "https://api.example.com/users",
+				"db.query.text":                            "SELECT * FROM users",
+				elasticattr.EventOutcome:                   "unknown",
+				elasticattr.ProcessorEvent:                 "transaction",
+				elasticattr.ServiceTargetName:              "api.example.com:443",
+				elasticattr.ServiceTargetType:              "http",
+				elasticattr.SpanDestinationServiceName:     "https://api.example.com",
+				elasticattr.SpanDestinationServiceType:     "external",
+				elasticattr.SpanDestinationServiceResource: "api.example.com:443",
+				"session.id":                               "session-123",
+				string(semconv.NetworkConnectionTypeKey):   "wifi",
+				elasticattr.DataStreamDataset:              "apm",
+			},
+		},
+		{
+			name: "unsupported span attrs moved to labels",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("http.route", "/users")
+				attrs.PutInt("http.response_content_length", 1024)
+				attrs.PutStr("error.message", "Database connection failed")
+				attrs.PutStr("error.type", "DBError")
+				attrs.PutStr("exception.message", "Database connection failed")
+				attrs.PutStr("exception.type", "DBError")
+				attrs.PutStr("exception.stacktrace", "stacktrace")
+				attrs.PutBool("custom.flag", true)
+			},
+			want: map[string]any{
+				"labels.http_route":                           "/users",
+				"numeric_labels.http_response_content_length": float64(1024),
+				"labels.error_message":                        "Database connection failed",
+				"labels.error_type":                           "DBError",
+				"labels.exception_message":                    "Database connection failed",
+				"labels.exception_type":                       "DBError",
+				"labels.exception_stacktrace":                 "stacktrace",
+				"labels.custom_flag":                          "true",
+			},
+			wantAbsent: []string{
+				"http.route",
+				"http.response_content_length",
+				"error.message",
+				"error.type",
+				"exception.message",
+				"exception.type",
+				"exception.stacktrace",
+				"custom.flag",
+			},
+		},
+		{
+			name: "existing span label keys are sanitized",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("labels.http.route", "/users")
+				attrs.PutDouble("numeric_labels.http.response_content_length", 1024)
+			},
+			want: map[string]any{
+				"labels.http_route":                           "/users",
+				"numeric_labels.http_response_content_length": 1024.0,
+			},
+			wantAbsent: []string{
+				"labels.http.route",
+				"numeric_labels.http.response_content_length",
+			},
+		},
+		{
+			name: "unsupported span map attr dropped",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutEmptyMap("http.request")
+			},
+			wantAbsent: []string{"http.request"},
+		},
+		{
+			name: "span kind dropped",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("span.kind", "client")
+			},
+			wantAbsent: []string{"span.kind"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			tc.setAttrs(attrs)
+
+			RemapSpanAttributesToECSLabels(attrs)
+
+			for key, want := range tc.want {
+				got, ok := attrs.Get(key)
+				if !assert.True(t, ok, "expected %q to be present", key) {
+					continue
+				}
+				switch want := want.(type) {
+				case string:
+					assert.Equal(t, want, got.Str())
+				case int64:
+					assert.Equal(t, want, got.Int())
+				case float64:
+					assert.InDelta(t, want, got.Double(), 1e-9)
+				default:
+					t.Fatalf("unsupported want type %T", want)
+				}
+			}
+			for _, key := range tc.wantAbsent {
+				_, ok := attrs.Get(key)
+				assert.False(t, ok, "expected %q to be absent", key)
+			}
+		})
+	}
+}
+
+func TestRemapMetricDataPointAttributesToECSLabels(t *testing.T) {
+	tests := []struct {
+		name       string
+		setAttrs   func(pcommon.Map)
+		want       map[string]any
+		wantAbsent []string
+	}{
+		{
+			name: "raw otlp metric dimensions moved to labels",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("http.request.method", "GET")
+				attrs.PutStr("http.route", "/api/users")
+				attrs.PutInt("http.response.status_code", 200)
+				attrs.PutStr("host", "server-01")
+				attrs.PutStr("state", "used")
+			},
+			want: map[string]any{
+				"labels.http_request_method":               "GET",
+				"labels.http_route":                        "/api/users",
+				"numeric_labels.http_response_status_code": float64(200),
+				"labels.host":                              "server-01",
+				"labels.state":                             "used",
+			},
+			wantAbsent: []string{
+				"http.request.method",
+				"http.route",
+				"http.response.status_code",
+				"host",
+				"state",
+			},
+		},
+		{
+			name: "existing metric label keys are sanitized in place",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr("labels.http.request.method", "GET")
+				attrs.PutDouble("numeric_labels.http.response.status_code", 200)
+			},
+			want: map[string]any{
+				"labels.http_request_method":               "GET",
+				"numeric_labels.http_response_status_code": 200.0,
+			},
+			wantAbsent: []string{
+				"labels.http.request.method",
+				"numeric_labels.http.response.status_code",
+			},
+		},
+		{
+			name: "metric special cases and routing attrs are preserved",
+			setAttrs: func(attrs pcommon.Map) {
+				attrs.PutStr(elasticattr.DataStreamDataset, "apm.internal")
+				attrs.PutStr(elasticattr.DataStreamNamespace, "default")
+				attrs.PutStr(elasticattr.DataStreamType, "metrics")
+				attrs.PutStr("host", "server-01")
+				attrs.PutStr("state", "used")
+				attrs.PutStr("system.process.cmdline", "/usr/bin/java")
+				attrs.PutStr("system.filesystem.mount_point", "/mnt/data")
+				attrs.PutStr("event.module", "system")
+				attrs.PutStr("user.name", "appuser")
+			},
+			want: map[string]any{
+				elasticattr.DataStreamDataset:   "apm.internal",
+				elasticattr.DataStreamNamespace: "default",
+				elasticattr.DataStreamType:      "metrics",
+				"labels.host":                   "server-01",
+				"labels.state":                  "used",
+				"system.process.cmdline":        "/usr/bin/java",
+				"system.filesystem.mount_point": "/mnt/data",
+				"event.module":                  "system",
+				"user.name":                     "appuser",
+			},
+			wantAbsent: []string{"host", "state"},
+		},
+		{
+			name: "metric special cases requiring truncation are truncated in place",
+			setAttrs: func(attrs pcommon.Map) {
+				longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+				attrs.PutStr("system.process.cmdline", longValue)
+				attrs.PutStr("system.filesystem.mount_point", longValue)
+				attrs.PutStr("user.name", longValue)
+				attrs.PutStr("event.module", longValue)
+				attrs.PutStr("system.process.state", longValue)
+			},
+			want: map[string]any{
+				"system.process.cmdline":        strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+				"system.filesystem.mount_point": strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+				"user.name":                     strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+				"event.module":                  strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"system.process.state":          strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			attrs := pcommon.NewMap()
+			tc.setAttrs(attrs)
+
+			RemapMetricDataPointAttributesToECSLabels(attrs)
+
+			for key, want := range tc.want {
+				got, ok := attrs.Get(key)
+				if !assert.True(t, ok, "expected %q to be present", key) {
+					continue
+				}
+				switch want := want.(type) {
+				case string:
+					assert.Equal(t, want, got.Str())
 				case float64:
 					assert.InDelta(t, want, got.Double(), 1e-9)
 				default:
