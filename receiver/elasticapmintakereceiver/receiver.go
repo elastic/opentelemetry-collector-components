@@ -181,6 +181,17 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 	})
 
 	return func(w http.ResponseWriter, req *http.Request) {
+		var result struct {
+			Accepted int      `json:"accepted"`
+			Errors   []string `json:"errors,omitempty"`
+		}
+		if !isAPMEndpoint(req) {
+			result.Errors = []string{"intake/v2/events is only supported on .apm. endpoints"}
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(&result)
+			return
+		}
+
 		statusCode := http.StatusAccepted
 
 		var elasticapmResult elasticapm.Result
@@ -197,10 +208,6 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 		_ = streamErr
 		// TODO record metrics about errors?
 
-		var result struct {
-			Accepted int      `json:"accepted"`
-			Errors   []string `json:"errors,omitempty"`
-		}
 		result.Accepted = elasticapmResult.Accepted
 		result.Errors = make([]string, 0, len(elasticapmResult.Errors))
 		for _, err := range elasticapmResult.Errors {
@@ -748,6 +755,13 @@ func mapSpanKind(kind string) ptrace.SpanKind {
 	default:
 		return ptrace.SpanKindUnspecified
 	}
+}
+
+// isAPMEndpoint reports whether the request arrived via an APM endpoint
+// by inspecting the Host header. Intake-v2 is only supported on .apm
+// endpoints, not .ingest.
+func isAPMEndpoint(req *http.Request) bool {
+	return strings.HasPrefix(req.Host, "apm.") || strings.Contains(req.Host, ".apm.")
 }
 
 func withECSMappingMode(ctx context.Context, includeMetadata bool) context.Context {

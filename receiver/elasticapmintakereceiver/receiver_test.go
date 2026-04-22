@@ -401,7 +401,14 @@ func TestInvalidInput(t *testing.T) {
 				t.Fatalf("failed to read file: %v", err)
 			}
 
-			resp, err := http.Post("http://"+testEndpoint+intakeV2EventsPath, "application/x-ndjson", bytes.NewBuffer(data))
+			req, err := http.NewRequest(http.MethodPost, "http://"+testEndpoint+intakeV2EventsPath, bytes.NewBuffer(data))
+			if err != nil {
+				t.Fatalf("failed to create HTTP request: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/x-ndjson")
+			req.Host = "my-deployment.apm.elastic.cloud"
+
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				t.Fatalf("failed to send HTTP request: %v", err)
 			}
@@ -795,13 +802,110 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 	}
 }
 
+func TestIsAPMEndpoint(t *testing.T) {
+	tests := []struct {
+		name          string
+		host          string
+		expectedIsAPM bool
+	}{
+		{
+			name:          "no host header returns false",
+			expectedIsAPM: false,
+		},
+		{
+			name:          "apm host",
+			host:          "my-deployment.apm.elastic.cloud",
+			expectedIsAPM: true,
+		},
+		{
+			name:          "apm as first label",
+			host:          "apm.elastic.cloud",
+			expectedIsAPM: true,
+		},
+		{
+			name:          "ingest host",
+			host:          "my-deployment.ingest.elastic.cloud",
+			expectedIsAPM: false,
+		},
+		{
+			name:          "ingest host with port",
+			host:          "my-deployment.ingest.elastic.cloud:443",
+			expectedIsAPM: false,
+		},
+		{
+			name:          "apm as part of a larger label does not match",
+			host:          "myapmservice.ingest.elastic.cloud",
+			expectedIsAPM: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodPost, "http://localhost"+intakeV2EventsPath, nil)
+			require.NoError(t, err)
+			if tt.host != "" {
+				req.Host = tt.host
+			}
+			assert.Equal(t, tt.expectedIsAPM, isAPMEndpoint(req))
+		})
+	}
+}
+
+func TestIntakeV2RejectedOnIngestEndpoint(t *testing.T) {
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
+		},
+	}
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	nextTrace := new(consumertest.TracesSink)
+	rcvr, err := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
+	require.NoError(t, err)
+
+	require.NoError(t, rcvr.Start(context.Background(), componenttest.NewNopHost()))
+	defer func() {
+		require.NoError(t, rcvr.Shutdown(context.Background()))
+	}()
+
+	data, err := os.ReadFile(filepath.Join(testData, "transactions.ndjson"))
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPost, "http://"+testEndpoint+intakeV2EventsPath, bytes.NewBuffer(data))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/x-ndjson")
+	req.Host = "my-deployment.ingest.elastic.cloud"
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	bodyBytes, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"accepted":0,"errors":["intake/v2/events is only supported on .apm. endpoints"]}`, string(bodyBytes))
+	assert.Empty(t, nextTrace.AllTraces())
+}
+
 func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
 	}
 
-	resp, err := http.Post("http://"+testEndpoint+intakeV2EventsPath, "application/x-ndjson", bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, "http://"+testEndpoint+intakeV2EventsPath, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatalf("failed to create HTTP request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-ndjson")
+	req.Host = "my-deployment.apm.elastic.cloud"
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("failed to send HTTP request: %v", err)
 	}
