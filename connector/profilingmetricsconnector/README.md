@@ -85,7 +85,7 @@ points to regular time boundaries.
 ### Use cases
 
 - **Profiling cost reduction**: distill high-volume profiling data into
-  compact, queryable metrics.
+  compact, queryable metrics also amenable to LLM processing.
 - **Infrastructure dashboards**: visualize CPU time distribution across
   runtimes, kernel subsystems, and shared libraries.
 - **Alerting**: set threshold alerts on kernel synchronization time, network
