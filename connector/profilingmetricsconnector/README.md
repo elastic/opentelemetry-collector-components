@@ -36,7 +36,7 @@ its time without requiring you to query raw profiling data.
 
 ### What it does
 
-For every batch of profiling data the connector receives, it walks each
+For every batch of Profiles data the connector receives, it walks each
 sample's stack trace and:
 
 1. **Classifies the leaf frame** into one of the supported runtime/frame types
