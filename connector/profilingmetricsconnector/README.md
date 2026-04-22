@@ -24,7 +24,7 @@
 
 The Profiling Metrics connector is an opinionated OpenTelemetry connector that
 transforms [OTel Profiles data](https://opentelemetry.io/docs/specs/otel/profiles/)
-into OpenTelemetry metrics. It analyzes stack traces from profiling samples and
+into OpenTelemetry metrics. It analyzes stack traces from Profiles samples and
 produces per-resource delta metrics that break down exclusive CPU time by frame type
 (kernel, native, JVM, Go, Python, etc.), shared library, kernel subsystem, and
 more.
