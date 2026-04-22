@@ -27,7 +27,7 @@ resourceMetrics:
                     - key: kernel_area
                       value:
                         stringValue: disk
-                    - key: kernel_proto
+                    - key: kernel_io
                       value:
                         stringValue: read
                   startTimeUnixNano: "1000000"
@@ -36,7 +36,7 @@ resourceMetrics:
                     - key: kernel_area
                       value:
                         stringValue: disk
-                    - key: kernel_proto
+                    - key: kernel_io
                       value:
                         stringValue: write
                   startTimeUnixNano: "1000000"
@@ -45,7 +45,7 @@ resourceMetrics:
                     - key: kernel_area
                       value:
                         stringValue: ipc
-                    - key: kernel_proto
+                    - key: kernel_io
                       value:
                         stringValue: read
                   startTimeUnixNano: "1000000"
@@ -54,7 +54,7 @@ resourceMetrics:
                     - key: kernel_area
                       value:
                         stringValue: ipc
-                    - key: kernel_proto
+                    - key: kernel_io
                       value:
                         stringValue: write
                   startTimeUnixNano: "1000000"
