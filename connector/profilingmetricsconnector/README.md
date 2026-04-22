@@ -72,7 +72,7 @@ sample's stack trace and:
 └────────────┘       └───────────────────────┘       └──────────────┘
 ```
 
-The connector sits between a **profiles** exporter pipeline and a **metrics**
+The connector sits between a **Profiles** exporter pipeline and a **Metrics**
 receiver pipeline. It consumes `pprofile.Profiles`, walks stack frames using
 the shared dictionary (string table, location table, function table, mapping
 table), and emits `pmetric.Metrics` to the next consumer.
