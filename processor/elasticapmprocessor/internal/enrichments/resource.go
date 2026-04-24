@@ -174,7 +174,7 @@ func (s *resourceEnrichmentContext) setServiceLanguage(resource pcommon.Resource
 // setDefaultServiceLanguage ensures telemetry.sdk.language is populated after
 // agent.name/version have already been derived. This preserves the
 // apm-data-compatible service.language.name alias without changing agent naming.
-// The log processor enables this only for OTLP ECS log batches.
+// The ECS log and metric processors enable this only for non-intake OTLP batches.
 func (s *resourceEnrichmentContext) setDefaultServiceLanguage(resource pcommon.Resource) {
 	if s.telemetrySDKLanguage != "" {
 		return

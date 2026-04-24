@@ -18,6 +18,7 @@
 package enrichments
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -32,12 +33,15 @@ func BenchmarkEnrich(b *testing.B) {
 	traceFile := filepath.Join("testdata", "trace.yaml")
 	traces, err := golden.ReadTraces(traceFile)
 	require.NoError(b, err)
-	enricher := NewEnricher(config.Config{})
+	enricher := NewDefaultTraceEnricher(config.Config{})
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		enricher.EnrichTraces(traces)
+		rs := traces.ResourceSpans()
+		for j := 0; j < rs.Len(); j++ {
+			enricher.EnrichResourceSpans(context.Background(), rs.At(j))
+		}
 	}
 }
 

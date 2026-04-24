@@ -42,6 +42,9 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -574,6 +577,7 @@ var inputFiles = []struct {
 	{"language_name_mapping.ndjson", "language_name_mapping_expected.yaml", nil},
 	{"span-links.ndjson", "span-links_expected.yaml", nil},
 	{"hostdata.ndjson", "hostdata_expected.yaml", nil},
+	{"spans_representative_count.ndjson", "spans_representative_count_expected.yaml", nil},
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -682,7 +686,11 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 		inputFile            string
 		signal               string // "traces" or "metrics"
 		expectedDynamicAttrs []string
-		expectedYamlFile     string // if non-empty, compare output against this golden file
+		// expectedPerGroupDynamicAttrs, if set, verifies each group's
+		// context independently (one entry per ConsumeX call, in order).
+		// When set, expectedDynamicAttrs is ignored.
+		expectedPerGroupDynamicAttrs [][]string
+		expectedYamlFile             string // if non-empty, compare output against this golden file
 	}{
 		{
 			name:                 "metadata global labels propagated",
@@ -696,22 +704,20 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			// same key as a metadata label, Labels.Set() replaces the value
 			// and resets Global to false on that event only.
 			//
-			// In apm-aggregation, marshalEventGlobalLabels() checks Global
-			// per-event, so the shadowed event would exclude that key from
-			// its aggregation grouping. Here, we collect the union of global
-			// keys across all events in the batch, so the shadowed key is
-			// still present in x-elastic-dynamic-resource-attributes as long as at
-			// least one other event retains it as Global: true.
-			//
-			// This test sends two metricsets: one without tags (global_tag
-			// stays Global: true) and one with tags: {"global_tag": "from_event"}
-			// which shadows the metadata label (Global: false on that event).
-			// The key "global_tag" should still appear in the dynamic attrs.
-			name:                 "event-level tag shadows metadata global label",
-			inputFile:            "metric_global_label_shadow.ndjson",
-			signal:               "metrics",
-			expectedDynamicAttrs: []string{"labels.global_tag"},
-			expectedYamlFile:     "metric_global_label_shadow_expected.yaml",
+			// Events are grouped by their per-event global key set (bitmask)
+			// to match apm-aggregation's per-event behavior:
+			//   - Event 1: no tags → both globals retained → main batch
+			//   - Events 2,3: shadow global_tag → grouped (same mask) → shadowed batch A
+			//   - Event 4: shadows num_tag → different mask → shadowed batch B
+			name:      "event-level tag shadows metadata global label",
+			inputFile: "metric_global_label_shadow.ndjson",
+			signal:    "metrics",
+			expectedPerGroupDynamicAttrs: [][]string{
+				{"labels.global_tag", "numeric_labels.num_tag"}, // main: event 1, both globals
+				{"numeric_labels.num_tag"},                      // shadowed batch A: events 2,3 shadow global_tag
+				{"labels.global_tag"},                           // shadowed batch B: event 4 shadows num_tag
+			},
+			expectedYamlFile: "metric_global_label_shadow_expected.yaml",
 		},
 	}
 
@@ -754,12 +760,25 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			sendInput(t, tc.inputFile, testEndpoint)
 
 			ctxs := ctxsFn()
-			require.GreaterOrEqual(t, len(ctxs), 1)
-			got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
-			require.ElementsMatch(t, tc.expectedDynamicAttrs, got)
+			if tc.expectedPerGroupDynamicAttrs != nil {
+				require.Len(t, ctxs, len(tc.expectedPerGroupDynamicAttrs))
+				for i, expectedAttrs := range tc.expectedPerGroupDynamicAttrs {
+					got := client.FromContext(ctxs[i]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+					assert.ElementsMatch(t, expectedAttrs, got, "mismatch at context index %d", i)
+				}
+			} else {
+				require.GreaterOrEqual(t, len(ctxs), 1)
+				got := client.FromContext(ctxs[0]).Metadata.Get(elasticattr.MetadataDynamicResourceAttributes)
+				require.ElementsMatch(t, tc.expectedDynamicAttrs, got)
+			}
 
 			if tc.expectedYamlFile != "" && metricsSink != nil {
-				actualMetrics := metricsSink.AllMetrics()[0]
+				// Merge metrics from all consume calls for golden file comparison.
+				allMetrics := metricsSink.AllMetrics()
+				actualMetrics := pmetric.NewMetrics()
+				for _, m := range allMetrics {
+					m.ResourceMetrics().MoveAndAppendTo(actualMetrics.ResourceMetrics())
+				}
 				expectedFile := filepath.Join(testData, tc.expectedYamlFile)
 				if *update {
 					err := golden.WriteMetrics(t, expectedFile, actualMetrics, golden.SkipMetricTimestampNormalization())
@@ -803,7 +822,13 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 	nextTrace.Reset()
 
 	sendInput(t, inputJsonFileName, testEndpoint)
-	actualTraces := nextTrace.AllTraces()[0]
+	// Merge traces from all consume calls (there may be multiple when
+	// events are separated due to global label shadowing).
+	allTraces := nextTrace.AllTraces()
+	actualTraces := ptrace.NewTraces()
+	for _, tr := range allTraces {
+		tr.ResourceSpans().MoveAndAppendTo(actualTraces.ResourceSpans())
+	}
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	if *update {
 		err := golden.WriteTraces(t, expectedFile, actualTraces)
@@ -811,8 +836,11 @@ func runComparisonForTraces(t *testing.T, inputJsonFileName string, expectedYaml
 	}
 	expectedTraces, err := golden.ReadTraces(expectedFile)
 	require.NoError(t, err)
-	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces, ptracetest.IgnoreStartTimestamp(),
-		ptracetest.IgnoreEndTimestamp()))
+	require.NoError(t, ptracetest.CompareTraces(expectedTraces, actualTraces,
+		ptracetest.IgnoreStartTimestamp(),
+		ptracetest.IgnoreEndTimestamp(),
+		ptracetest.IgnoreResourceSpansOrder(),
+	))
 }
 
 func runComparisonForLogs(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
@@ -821,15 +849,19 @@ func runComparisonForLogs(t *testing.T, inputJsonFileName string, expectedYamlFi
 	nextLog.Reset()
 
 	sendInput(t, inputJsonFileName, testEndpoint)
-	actualMetrics := nextLog.AllLogs()[0]
+	allLogs := nextLog.AllLogs()
+	actualLogs := plog.NewLogs()
+	for _, l := range allLogs {
+		l.ResourceLogs().MoveAndAppendTo(actualLogs.ResourceLogs())
+	}
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	if *update {
-		err := golden.WriteLogs(t, expectedFile, actualMetrics)
+		err := golden.WriteLogs(t, expectedFile, actualLogs)
 		assert.NoError(t, err)
 	}
-	expectedMetrics, err := golden.ReadLogs(expectedFile)
+	expectedLogs, err := golden.ReadLogs(expectedFile)
 	require.NoError(t, err)
-	require.NoError(t, plogtest.CompareLogs(expectedMetrics, actualMetrics, plogtest.IgnoreLogRecordsOrder()))
+	require.NoError(t, plogtest.CompareLogs(expectedLogs, actualLogs, plogtest.IgnoreLogRecordsOrder()))
 }
 
 func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYamlFileName string,
@@ -837,7 +869,11 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 ) {
 	nextMetric.Reset()
 	sendInput(t, inputJsonFileName, testEndpoint)
-	actualMetrics := nextMetric.AllMetrics()[0]
+	allMetrics := nextMetric.AllMetrics()
+	actualMetrics := pmetric.NewMetrics()
+	for _, m := range allMetrics {
+		m.ResourceMetrics().MoveAndAppendTo(actualMetrics.ResourceMetrics())
+	}
 	expectedFile := filepath.Join(testData, expectedYamlFileName)
 	if *update {
 		err := golden.WriteMetrics(t, expectedFile, actualMetrics, golden.SkipMetricTimestampNormalization())

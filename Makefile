@@ -20,6 +20,13 @@ GOTOOLCHAIN ?= go1.25.7+auto
 .PHONY: all
 all: misspell
 
+# Compare versions.yaml module-set version to latest semver tags from repository
+VERSIONSCHECK_GITHUB_REPO ?= elastic/opentelemetry-collector-components
+
+.PHONY: versionscheck
+versionscheck:
+	@cd "$(SRC_ROOT)" && $(GOCMD) run -C internal/versionscheck . -versions $(SRC_ROOT)/versions.yaml -github-repo $(VERSIONSCHECK_GITHUB_REPO) -module-key $(MODSET)
+
 # Append root module to all modules
 GOMODULES = $(ALL_MODULES)
 
@@ -149,7 +156,7 @@ COMMIT?=HEAD
 MODSET?=edot-base
 REMOTE?=git@github.com:elastic/opentelemetry-collector-components.git
 .PHONY: push-tags
-push-tags: $(MULTIMOD)
+push-tags: $(MULTIMOD) versionscheck
 	$(MULTIMOD) verify
 	set -e; for tag in `$(MULTIMOD) tag -m ${MODSET} -c ${COMMIT} --print-tags | grep -v "Using" `; do \
 		echo "pushing tag $${tag}"; \

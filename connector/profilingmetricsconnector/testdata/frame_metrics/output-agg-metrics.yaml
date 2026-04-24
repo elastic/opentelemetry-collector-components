@@ -2,12 +2,32 @@ resourceMetrics:
   - resource: {}
     scopeMetrics:
       - metrics:
+          - description: Number of samples executing Beam code (self)
+            name: samples.beam.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "21"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: "1"
           - description: Number of samples executing Python code (self)
             name: samples.cpython.count
             sum:
               aggregationTemporality: 1
               dataPoints:
                 - asInt: "126"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: "1"
+          - description: Number of samples executing Dotnet code (self)
+            name: samples.dotnet.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "18"
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
               isMonotonic: true
@@ -22,12 +42,72 @@ resourceMetrics:
                   timeUnixNano: "2000000"
               isMonotonic: true
             unit: "1"
+          - description: Number of samples executing HotSpot code (self)
+            name: samples.jvm.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "3"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: "1"
+          - description: Number of samples executing Perl code (self)
+            name: samples.perl.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "12"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: "1"
+          - description: Number of samples executing PHP code (self)
+            name: samples.php.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "9"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: "1"
+          - description: Number of samples executing Ruby code (self)
+            name: samples.ruby.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "15"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: "1"
+          - description: Number of samples executing Rust code (self)
+            name: samples.rust.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "24"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: "1"
           - description: Number of samples executing userspace code (self)
             name: samples.user.count
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asInt: "129"
+                - asInt: "237"
+                  startTimeUnixNano: "1000000"
+                  timeUnixNano: "2000000"
+              isMonotonic: true
+            unit: "1"
+          - description: Number of samples executing v8js code (self)
+            name: samples.v8js.count
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "6"
                   startTimeUnixNano: "1000000"
                   timeUnixNano: "2000000"
               isMonotonic: true

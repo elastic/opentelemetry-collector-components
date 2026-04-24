@@ -27,11 +27,14 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling"
 	"github.com/ua-parser/uap-go/uaparser"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv27 "go.opentelemetry.io/otel/semconv/v1.27.0"
 	semconv37 "go.opentelemetry.io/otel/semconv/v1.37.0"
@@ -40,6 +43,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
@@ -68,16 +72,23 @@ func EnrichSpan(
 	span ptrace.Span,
 	cfg config.Config,
 	userAgentParser *uaparser.Parser,
+	remapToECSLabels bool,
 ) {
 	var c spanEnrichmentContext
-	c.Enrich(span, cfg, userAgentParser)
+	c.Enrich(span, cfg, userAgentParser, remapToECSLabels)
 }
 
 type spanEnrichmentContext struct {
 	urlFull *url.URL
 
+	processorEvent           string
+	eventOutcome             string
 	peerService              string
+	peerAddress              string
+	netPeerIP                string
+	httpHost                 string
 	serverAddress            string
+	httpTarget               string
 	urlScheme                string
 	urlDomain                string
 	urlPath                  string
@@ -96,6 +107,7 @@ type spanEnrichmentContext struct {
 
 	// The inferred* attributes are derived from a base attribute
 	userAgentOriginal        string
+	userAgentOriginalSet     bool
 	userAgentName            string
 	userAgentVersion         string
 	inferredUserAgentName    string
@@ -121,44 +133,77 @@ func (s *spanEnrichmentContext) Enrich(
 	span ptrace.Span,
 	cfg config.Config,
 	userAgentParser *uaparser.Parser,
+	remapToECSLabels bool,
 ) {
-	// Extract top level span information.
+	s.capture(span)
+	s.normalizeAttributes(userAgentParser)
+	s.isTransaction = isElasticTransaction(span, s.processorEvent)
+	if remapToECSLabels {
+		ecs.RemapSpanAttributesToECSLabels(span.Attributes())
+	}
+	s.enrich(span, cfg)
+	if remapToECSLabels && s.isHTTP {
+		s.removeHTTPSourceAttributes(span)
+	}
+
+	s.enrichSpanEvents(span, cfg.SpanEvent)
+}
+
+func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 	s.spanStatusCode = span.Status().Code()
 
-	// Extract information from span attributes.
 	span.Attributes().Range(func(k string, v pcommon.Value) bool {
 		switch k {
+		case elasticattr.ProcessorEvent:
+			s.processorEvent = v.Str()
+		case elasticattr.EventOutcome:
+			s.eventOutcome = v.Str()
 		case string(semconv25.PeerServiceKey), string(semconv39.ServicePeerNameKey):
 			s.peerService = v.Str()
+		case string(semconv12.HTTPHostKey):
+			s.isHTTP = true
+			s.httpHost = v.Str()
 		case string(semconv25.ServerAddressKey):
 			s.serverAddress = v.Str()
 		case string(semconv25.ServerPortKey):
 			s.serverPort = v.Int()
-		case string(semconv25.NetPeerNameKey):
+		case string(semconv25.NetPeerNameKey), "peer.hostname":
 			if s.serverAddress == "" {
 				// net.peer.name is deprecated, so has lower priority
 				// only set when not already set with server.address
 				// and allowed to be overridden by server.address.
 				s.serverAddress = v.Str()
 			}
-		case string(semconv25.NetPeerPortKey):
+		case string(semconv25.NetPeerPortKey), "peer.port":
 			if s.serverPort == 0 {
 				// net.peer.port is deprecated, so has lower priority
 				// only set when not already set with server.port and
 				// allowed to be overridden by server.port.
 				s.serverPort = v.Int()
 			}
-		case string(semconv25.MessagingDestinationNameKey):
+		case string(semconv12.NetPeerIPKey),
+			string(semconv25.NetSockPeerAddrKey),
+			string(semconv27.NetworkPeerAddressKey),
+			"peer.ipv4",
+			"peer.ipv6":
+			s.netPeerIP = v.Str()
+		case "peer.address":
+			s.peerAddress = v.Str()
+		case string(semconv16.MessagingDestinationKey),
+			string(semconv25.MessagingDestinationNameKey),
+			"message_bus.destination":
 			s.isMessaging = true
 			s.messagingDestinationName = v.Str()
 		case string(semconv25.MessagingOperationKey),
+			string(semconv27.MessagingOperationTypeKey),
 			string(semconv37.MessagingOperationNameKey):
 			s.isMessaging = true
 			s.messagingOperation = v.Str()
 		case string(semconv25.MessagingSystemKey):
 			s.isMessaging = true
 			s.messagingSystem = v.Str()
-		case string(semconv25.MessagingDestinationTemporaryKey):
+		case string(semconv16.MessagingTempDestinationKey),
+			string(semconv25.MessagingDestinationTemporaryKey):
 			s.isMessaging = true
 			s.messagingDestinationTemp = true
 		case string(semconv25.HTTPStatusCodeKey),
@@ -167,11 +212,13 @@ func (s *spanEnrichmentContext) Enrich(
 			s.httpStatusCode = v.Int()
 		case string(semconv25.HTTPMethodKey),
 			string(semconv25.HTTPRequestMethodKey),
-			string(semconv25.HTTPTargetKey),
 			string(semconv25.HTTPSchemeKey),
 			string(semconv25.HTTPFlavorKey),
 			string(semconv25.NetHostNameKey):
 			s.isHTTP = true
+		case string(semconv25.HTTPTargetKey):
+			s.isHTTP = true
+			s.httpTarget = v.Str()
 		case string(semconv25.URLFullKey),
 			string(semconv25.HTTPURLKey):
 			s.isHTTP = true
@@ -210,17 +257,31 @@ func (s *spanEnrichmentContext) Enrich(
 		case string(semconv25.DBStatementKey),
 			string(semconv25.DBUserKey), string(semconv37.DBQueryTextKey):
 			s.isDB = true
-		case string(semconv25.DBNameKey), string(semconv37.DBNamespaceKey):
+		case string(semconv25.DBNameKey),
+			string(semconv37.DBNamespaceKey),
+			"db.instance",
+			"db.elasticsearch.cluster.name":
 			s.isDB = true
 			s.dbName = v.Str()
-		case string(semconv25.DBSystemKey), string(semconv37.DBSystemNameKey):
+		case string(semconv25.DBSystemKey), string(semconv37.DBSystemNameKey), "db.type":
 			s.isDB = true
 			s.dbSystem = v.Str()
+		case "sql.query":
+			s.isDB = true
+			// fallback if not already set
+			if s.dbSystem == "" {
+				s.dbSystem = "sql"
+			}
 		case string(semconv27.GenAISystemKey), string(semconv37.GenAIProviderNameKey):
 			s.isGenAi = true
 			s.genAiSystem = v.Str()
+		case string(semconv25.HTTPUserAgentKey):
+			if !s.userAgentOriginalSet {
+				s.userAgentOriginal = v.Str()
+			}
 		case string(semconv27.UserAgentOriginalKey):
 			s.userAgentOriginal = v.Str()
+			s.userAgentOriginalSet = true
 		case string(semconv27.UserAgentNameKey):
 			s.userAgentName = v.Str()
 		case string(semconv27.UserAgentVersionKey):
@@ -232,15 +293,13 @@ func (s *spanEnrichmentContext) Enrich(
 		}
 		return true
 	})
+}
 
-	s.normalizeAttributes(userAgentParser)
-	s.isTransaction = isElasticTransaction(span)
-	s.enrich(span, cfg)
-
+func (s *spanEnrichmentContext) enrichSpanEvents(span ptrace.Span, cfg config.SpanEventConfig) {
 	spanEvents := span.Events()
 	for i := 0; i < spanEvents.Len(); i++ {
 		var c spanEventEnrichmentContext
-		c.enrich(s, spanEvents.At(i), cfg.SpanEvent)
+		c.enrich(s, spanEvents.At(i), cfg)
 	}
 }
 
@@ -389,6 +448,19 @@ func (s *spanEnrichmentContext) normalizeAttributes(userAgentPraser *uaparser.Pa
 	if s.rpcSystem == "" && s.grpcStatus != "" {
 		s.rpcSystem = "grpc"
 	}
+	if s.serverAddress == "" {
+		// apm-data prefers hostname-like peer.address over net.peer.ip, and only
+		// uses peer.address when it is not obviously a connection string / ip:port:
+		// https://github.com/elastic/apm-data/blob/26adeeef7f92ba5e01e59fb9e4c735fb8c31b58e/input/otlp/traces.go#L840-L878
+		if s.peerAddress != "" && (!strings.ContainsRune(s.peerAddress, ':') || net.ParseIP(s.peerAddress) != nil) {
+			s.serverAddress = s.peerAddress
+		} else if s.netPeerIP != "" {
+			s.serverAddress = s.netPeerIP
+		}
+	}
+	if s.urlFull == nil {
+		s.urlFull = s.buildURLFromComponents()
+	}
 	if s.userAgentOriginal != "" && userAgentPraser != nil {
 		ua := userAgentPraser.ParseUserAgent(s.userAgentOriginal)
 		s.inferredUserAgentName = ua.Family
@@ -450,7 +522,7 @@ func (s *spanEnrichmentContext) setEventOutcome(span ptrace.Span) {
 	// Exit early when event.outcome is already explicitly set to unknown (e.g. by
 	// the intake receiver). This prevents success_count from being written when
 	// the outcome is unknown.
-	if v, ok := span.Attributes().Get(elasticattr.EventOutcome); ok && v.Str() == outcomeUnknown {
+	if s.eventOutcome == outcomeUnknown {
 		return
 	}
 
@@ -501,10 +573,15 @@ func (s *spanEnrichmentContext) setMessageQueue(span ptrace.Span) {
 // This is another reason the attributes are deleted here to avoid special handling at export time.
 func (s *spanEnrichmentContext) removeMessagingAttrs(span ptrace.Span) {
 	if s.isMessaging {
+		span.Attributes().Remove("message_bus.destination")
 		span.Attributes().Remove(string(semconv25.MessagingOperationKey))
+		span.Attributes().Remove(string(semconv27.MessagingOperationTypeKey))
 		span.Attributes().Remove(string(semconv37.MessagingOperationNameKey))
 		span.Attributes().Remove(string(semconv25.MessagingSystemKey))
+		span.Attributes().Remove(string(semconv16.MessagingDestinationKey))
 		span.Attributes().Remove(string(semconv25.MessagingDestinationNameKey))
+		span.Attributes().Remove(string(semconv16.MessagingTempDestinationKey))
+		span.Attributes().Remove(string(semconv25.MessagingDestinationTemporaryKey))
 	}
 }
 
@@ -577,7 +654,9 @@ func (s *spanEnrichmentContext) setServiceTarget(span ptrace.Span) {
 		}
 	case s.isHTTP:
 		targetType = "http"
-		if resource := getHostPort(
+		if details, ok := s.httpDestinationDetails(); ok && details.serviceTargetName != "" {
+			targetName = details.serviceTargetName
+		} else if resource := getHostPort(
 			s.urlFull, s.urlDomain, s.urlPort,
 			s.serverAddress, s.serverPort, // fallback
 		); resource != "" {
@@ -593,9 +672,10 @@ func (s *spanEnrichmentContext) setServiceTarget(span ptrace.Span) {
 }
 
 func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
-	var destnResource string
-	if s.peerService != "" {
-		destnResource = s.peerService
+	attributes := span.Attributes()
+	destnResource := s.peerService
+	if destnResource != "" && s.peerAddress != "" {
+		destnResource = s.peerAddress
 	}
 
 	switch {
@@ -614,6 +694,23 @@ func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 			destnResource += "/" + s.messagingDestinationName
 		}
 	case s.isRPC, s.isHTTP:
+		if s.isHTTP {
+			if details, ok := s.httpDestinationDetails(); ok {
+				attribute.PutNonEmptyStr(attributes, "destination.address", details.destinationAddress)
+				if details.destinationPort > 0 {
+					attribute.PutInt(attributes, "destination.port", details.destinationPort)
+				}
+				attribute.PutNonEmptyStr(attributes, "url.original", details.urlOriginal)
+				if s.peerService != "" {
+					attribute.PutStr(attributes, elasticattr.SpanDestinationServiceName, s.peerService)
+				} else {
+					attribute.PutNonEmptyStr(attributes, elasticattr.SpanDestinationServiceName, details.spanDestinationServiceName)
+					destnResource = details.spanDestinationServiceResource
+				}
+				attribute.PutStr(attributes, elasticattr.SpanDestinationServiceType, "external")
+				break
+			}
+		}
 		if destnResource == "" {
 			if res := getHostPort(
 				s.urlFull, s.urlDomain, s.urlPort,
@@ -628,7 +725,123 @@ func (s *spanEnrichmentContext) setDestinationService(span ptrace.Span) {
 	}
 
 	if destnResource != "" {
-		attribute.PutStr(span.Attributes(), elasticattr.SpanDestinationServiceResource, destnResource)
+		attribute.PutStr(attributes, elasticattr.SpanDestinationServiceResource, destnResource)
+	}
+}
+
+type httpDestinationDetails struct {
+	urlOriginal                    string
+	destinationAddress             string
+	destinationPort                int64
+	serviceTargetName              string
+	spanDestinationServiceName     string
+	spanDestinationServiceResource string
+}
+
+// httpDestinationDetails derives the HTTP destination/service target fields that
+// apm-data computes inline while translating OTLP spans in input/otlp/traces.go:
+// https://github.com/elastic/apm-data/blob/7da222dcc0320f9c812c5d72f65f830c838aae11/input/otlp/traces.go#L848-L1034
+func (s *spanEnrichmentContext) httpDestinationDetails() (httpDestinationDetails, bool) {
+	if s.urlFull == nil {
+		return httpDestinationDetails{}, false
+	}
+
+	details := httpDestinationDetails{
+		urlOriginal:        s.urlFull.String(),
+		destinationAddress: s.urlFull.Hostname(),
+	}
+	if details.destinationAddress == "" {
+		return httpDestinationDetails{}, false
+	}
+
+	if portString := s.urlFull.Port(); portString != "" {
+		port, err := strconv.ParseInt(portString, 10, 64)
+		if err == nil {
+			details.destinationPort = port
+		}
+	} else {
+		details.destinationPort = int64(schemeDefaultPort(s.urlFull.Scheme))
+	}
+
+	urlForName := url.URL{
+		Scheme: s.urlFull.Scheme,
+		Host:   s.urlFull.Host,
+	}
+	resource := s.urlFull.Host
+	defaultPort := int64(schemeDefaultPort(urlForName.Scheme))
+	if defaultPort > 0 && details.destinationPort == defaultPort {
+		if s.urlFull.Port() != "" {
+			urlForName.Host = details.destinationAddress
+		} else {
+			resource = fmt.Sprintf("%s:%d", resource, details.destinationPort)
+		}
+	}
+
+	details.serviceTargetName = resource
+	details.spanDestinationServiceName = urlForName.String()
+	details.spanDestinationServiceResource = resource
+	return details, true
+}
+
+func (s *spanEnrichmentContext) buildURLFromComponents() *url.URL {
+	target := s.httpTarget
+	if target == "" {
+		if s.urlPath == "" {
+			return nil
+		}
+		target = s.urlPath
+		if s.urlQuery != "" {
+			target += "?" + s.urlQuery
+		}
+	}
+
+	u, err := url.Parse(target)
+	if err != nil {
+		return nil
+	}
+	if u.Scheme == "" {
+		u.Scheme = s.urlScheme
+		if u.Scheme == "" {
+			u.Scheme = "http"
+		}
+	}
+	if u.Host == "" {
+		if s.httpHost != "" {
+			u.Host = s.httpHost
+		} else {
+			host := s.urlDomain
+			port := s.urlPort
+			if host == "" {
+				host = s.serverAddress
+				port = s.serverPort
+			}
+			if host != "" {
+				if port > 0 {
+					u.Host = net.JoinHostPort(host, strconv.FormatInt(port, 10))
+				} else {
+					u.Host = host
+				}
+			}
+		}
+	}
+	return u
+}
+
+func (s *spanEnrichmentContext) removeHTTPSourceAttributes(span ptrace.Span) {
+	attributes := span.Attributes()
+	if _, ok := attributes.Get("url.original"); ok {
+		attributes.Remove(string(semconv12.HTTPHostKey))
+		attributes.Remove(string(semconv25.HTTPURLKey))
+		attributes.Remove(string(semconv25.HTTPTargetKey))
+		attributes.Remove(string(semconv25.URLFullKey))
+		attributes.Remove(string(semconv25.URLSchemeKey))
+		attributes.Remove(string(semconv25.URLDomainKey))
+		attributes.Remove(string(semconv25.URLPortKey))
+		attributes.Remove(string(semconv25.URLPathKey))
+		attributes.Remove(string(semconv25.URLQueryKey))
+	}
+	if _, ok := attributes.Get(string(semconv27.UserAgentOriginalKey)); ok {
+		attributes.Remove(string(semconv25.HTTPUserAgentKey))
 	}
 }
 
@@ -670,6 +883,13 @@ func (s *spanEnrichmentContext) setInferredSpans(span ptrace.Span) {
 }
 
 func (s *spanEnrichmentContext) setUserAgentIfRequired(span ptrace.Span) {
+	if s.userAgentOriginal != "" {
+		attribute.PutStr(
+			span.Attributes(),
+			string(semconv27.UserAgentOriginalKey),
+			s.userAgentOriginal,
+		)
+	}
 	if s.userAgentName == "" && s.inferredUserAgentName != "" {
 		attribute.PutStr(
 			span.Attributes(),
@@ -820,16 +1040,11 @@ func isTraceRoot(span ptrace.Span) bool {
 	return span.ParentSpanID().IsEmpty()
 }
 
-func isElasticTransaction(span ptrace.Span) bool {
+func isElasticTransaction(span ptrace.Span, processorEvent string) bool {
 	flags := tracepb.SpanFlags(span.Flags())
 
-	// Events may have already been defined as an elastic transaction.
-	// check the processor.event value to avoid incorrectly classifying
-	// a span.
-	processorEvent, _ := span.Attributes().Get(elasticattr.ProcessorEvent)
-
 	switch {
-	case processorEvent.Str() == "transaction":
+	case processorEvent == "transaction":
 		return true
 	case isTraceRoot(span):
 		return true
@@ -862,6 +1077,16 @@ func getHostPort(
 		return net.JoinHostPort(fallbackServerAddress, strconv.FormatInt(fallbackServerPort, 10))
 	}
 	return ""
+}
+
+func schemeDefaultPort(scheme string) int {
+	switch scheme {
+	case "http":
+		return 80
+	case "https":
+		return 443
+	}
+	return 0
 }
 
 var standardStatusCodeResults = [...]string{

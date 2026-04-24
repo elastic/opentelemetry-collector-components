@@ -18,6 +18,7 @@
 package enrichments
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 	"time"
@@ -44,8 +45,10 @@ func TestEnrichResourceLog(t *testing.T) {
 	// This is needed because the yaml unmarshalling is not yet aware of this new field
 	logRecords.At(2).SetEventName("field.name")
 
-	enricher := NewEnricher(config.Enabled())
-	enricher.EnrichLogs(logs)
+	enricher := NewDefaultLogEnricher(config.Enabled())
+	for i := 0; i < logs.ResourceLogs().Len(); i++ {
+		enricher.EnrichResourceLogs(context.Background(), logs.ResourceLogs().At(i))
+	}
 
 	t.Run("resource_enrichment", func(t *testing.T) {
 		resourceAttributes := resourceLogs.Resource().Attributes()
@@ -117,8 +120,10 @@ func TestEnrichResourceLog(t *testing.T) {
 		originalAttrs := logRecord.Attributes().AsRaw()
 
 		// Enrich the log
-		enricher := NewEnricher(config.Enabled())
-		enricher.EnrichLogs(logs)
+		enricher := NewDefaultLogEnricher(config.Enabled())
+		for i := 0; i < logs.ResourceLogs().Len(); i++ {
+			enricher.EnrichResourceLogs(context.Background(), logs.ResourceLogs().At(i))
+		}
 
 		// Verify existing attributes are preserved
 		for k, expectedValue := range existingAttrs {

@@ -42,10 +42,7 @@ type testProfiles struct {
 	profiles pprofile.Profiles
 	dict     pprofile.ProfilesDictionary
 
-	attrGoIdx     int32
-	attrPyIdx     int32
-	attrKernelIdx int32
-	attrNativeIdx int32
+	attrFtIdxTable map[string]int32
 }
 
 type testFrame struct {
@@ -64,6 +61,14 @@ func (tf testFrame) withFunction(name string) testFrame {
 	return tf
 }
 
+func kernelFrame() testFrame {
+	return testFrame{frameType: frameTypeKernel}
+}
+
+func nativeFrame() testFrame {
+	return testFrame{frameType: frameTypeNative}
+}
+
 func goFrame() testFrame {
 	return testFrame{frameType: frameTypeGo}
 }
@@ -72,12 +77,36 @@ func pyFrame() testFrame {
 	return testFrame{frameType: frameTypePython}
 }
 
-func nativeFrame() testFrame {
-	return testFrame{frameType: frameTypeNative}
+func jvmFrame() testFrame {
+	return testFrame{frameType: frameTypeJVM}
 }
 
-func kernelFrame() testFrame {
-	return testFrame{frameType: frameTypeKernel}
+func v8Frame() testFrame {
+	return testFrame{frameType: frameTypeV8JS}
+}
+
+func phpFrame() testFrame {
+	return testFrame{frameType: frameTypePHP}
+}
+
+func perlFrame() testFrame {
+	return testFrame{frameType: frameTypePerl}
+}
+
+func rubyFrame() testFrame {
+	return testFrame{frameType: frameTypeRuby}
+}
+
+func dotnetFrame() testFrame {
+	return testFrame{frameType: frameTypeDotnet}
+}
+
+func beamFrame() testFrame {
+	return testFrame{frameType: frameTypeBeam}
+}
+
+func rustFrame() testFrame {
+	return testFrame{frameType: frameTypeRust}
 }
 
 func newTestProfiles() *testProfiles {
@@ -102,35 +131,34 @@ func newTestProfiles() *testProfiles {
 	ftIdx := int32(strTable.Len())
 	strTable.Append(string(semconv.ProfileFrameTypeKey))
 
+	ftIdxTable := map[string]int32{}
+
 	// Add all used frame types as attributes
-	attrGoIdx := attrTable.Len()
-	attrGo := attrTable.AppendEmpty()
-	attrGo.SetKeyStrindex(ftIdx)
-	attrGo.Value().SetStr(frameTypeGo)
-
-	attrPyIdx := attrTable.Len()
-	attrPy := attrTable.AppendEmpty()
-	attrPy.SetKeyStrindex(ftIdx)
-	attrPy.Value().SetStr(frameTypePython)
-
-	attrKernelIdx := attrTable.Len()
-	attrKernel := attrTable.AppendEmpty()
-	attrKernel.SetKeyStrindex(ftIdx)
-	attrKernel.Value().SetStr(frameTypeKernel)
-
-	attrNativeIdx := attrTable.Len()
-	attrNative := attrTable.AppendEmpty()
-	attrNative.SetKeyStrindex(ftIdx)
-	attrNative.Value().SetStr(frameTypeNative)
+	for _, ft := range []string{
+		frameTypeKernel,
+		frameTypeNative,
+		frameTypeGo,
+		frameTypePython,
+		frameTypeJVM,
+		frameTypeV8JS,
+		frameTypePHP,
+		frameTypePerl,
+		frameTypeRuby,
+		frameTypeDotnet,
+		frameTypeBeam,
+		frameTypeRust,
+	} {
+		attrIdx := attrTable.Len()
+		attr := attrTable.AppendEmpty()
+		attr.SetKeyStrindex(ftIdx)
+		attr.Value().SetStr(ft)
+		ftIdxTable[ft] = int32(attrIdx)
+	}
 
 	return &testProfiles{
-		profiles: profiles,
-		dict:     dict,
-
-		attrGoIdx:     int32(attrGoIdx),
-		attrPyIdx:     int32(attrPyIdx),
-		attrKernelIdx: int32(attrKernelIdx),
-		attrNativeIdx: int32(attrNativeIdx),
+		profiles:       profiles,
+		dict:           dict,
+		attrFtIdxTable: ftIdxTable,
 	}
 }
 
@@ -163,6 +191,11 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 		sample.TimestampsUnixNano().Append(uint64(time.Now().UnixNano()))
 	}
 
+	if multiplier == 0 {
+		// Add a value
+		sample.Values().Append(1)
+	}
+
 	// Set sample to reference the stack
 	sample.SetStackIndex(int32(stackTable.Len()))
 	stack := stackTable.AppendEmpty()
@@ -171,15 +204,14 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 		// Add a location referencing the attribute
 		locIdx := locTable.Len()
 		loc := locTable.AppendEmpty()
+		ftIdx := tp.attrFtIdxTable[frame.frameType]
 
-		ftIdx := int32(0)
 		switch frame.frameType {
-		case frameTypeGo:
-			ftIdx = tp.attrGoIdx
-		case frameTypePython:
-			ftIdx = tp.attrPyIdx
+		case frameTypeGo, frameTypePython, frameTypeJVM, frameTypeV8JS,
+			frameTypePHP, frameTypePerl, frameTypeRuby, frameTypeDotnet,
+			frameTypeBeam, frameTypeRust:
+		// Nothing extra to do
 		case frameTypeKernel:
-			ftIdx = tp.attrKernelIdx
 			if frame.funcName != "" {
 				ln := loc.Lines().AppendEmpty()
 				ln.SetFunctionIndex(int32(funcTable.Len()))
@@ -188,7 +220,6 @@ func (tp *testProfiles) addSample(t *testing.T, prof pprofile.Profile,
 				strTable.Append(frame.funcName)
 			}
 		case frameTypeNative:
-			ftIdx = tp.attrNativeIdx
 			if frame.fileName != "" {
 				loc.SetMappingIndex(int32(mappingTable.Len()))
 				mapping := mappingTable.AppendEmpty()
@@ -220,8 +251,17 @@ func TestConsumeProfiles_FrameMetrics(t *testing.T) {
 	tp := newTestProfiles()
 	prof := tp.newProfile()
 
+	// Cover all supported frame types
 	tp.addSample(t, prof, 0, goFrame())
 	tp.addSample(t, prof, 42, pyFrame())
+	tp.addSample(t, prof, 1, jvmFrame())
+	tp.addSample(t, prof, 2, v8Frame())
+	tp.addSample(t, prof, 3, phpFrame())
+	tp.addSample(t, prof, 4, perlFrame())
+	tp.addSample(t, prof, 5, rubyFrame())
+	tp.addSample(t, prof, 6, dotnetFrame())
+	tp.addSample(t, prof, 7, beamFrame())
+	tp.addSample(t, prof, 8, rustFrame())
 
 	err := conn.ConsumeProfiles(context.Background(), tp.profiles)
 	assert.NoError(t, err)
