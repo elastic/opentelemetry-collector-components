@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package prometheusremotewritereceiver1 // import "github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritereceiver1"
+package prometheusremotewritev1receiver // import "github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver"
 
 import (
 	"go.opentelemetry.io/collector/component"

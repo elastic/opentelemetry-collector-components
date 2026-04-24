@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package prometheusremotewritereceiver1 // import "github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritereceiver1"
+package prometheusremotewritev1receiver // import "github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver"
 
 import (
 	"context"
@@ -146,7 +146,7 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 
 	obsCtx := r.obsrecv.StartMetricsOp(req.Context())
 	err = r.nextConsumer.ConsumeMetrics(req.Context(), md)
-	r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritereceiver1", md.ResourceMetrics().Len(), err)
+	r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", md.ResourceMetrics().Len(), err)
 	if err != nil {
 		r.settings.Logger.Error("Failed to consume metrics", zap.Error(err))
 		if consumererror.IsPermanent(err) {
@@ -265,12 +265,16 @@ func findOrCreateScope(rm pmetric.ResourceMetrics) pmetric.ScopeMetrics {
 	return rm.ScopeMetrics().AppendEmpty()
 }
 
-// buildAttributes returns a pcommon.Map of data-point attributes from the time-series labels,
-// excluding labels that are promoted to the resource level or used as the metric name.
+var reservedLabels = map[string]struct{}{
+	"__name__": {},
+}
+
 func buildAttributes(labels []prompb.Label) pcommon.Map {
 	attrs := pcommon.NewMap()
 	for _, lbl := range labels {
-		attrs.PutStr(lbl.Name, lbl.Value)
+		if _, ok := reservedLabels[lbl.Name]; !ok {
+			attrs.PutStr(lbl.Name, lbl.Value)
+		}
 	}
 	return attrs
 }

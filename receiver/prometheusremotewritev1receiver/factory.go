@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package prometheusremotewritereceiver1 // import "github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritereceiver1"
+package prometheusremotewritev1receiver // import "github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver"
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 
-	"github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritereceiver1/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver/internal/metadata"
 )
 
 // NewFactory creates a new Prometheus Remote Write v1 receiver factory.
