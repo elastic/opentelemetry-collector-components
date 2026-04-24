@@ -840,7 +840,6 @@ func assertAttrI(t *testing.T, m pcommon.Map, key string, want int64) {
 	assert.Equal(t, want, v.Int(), "attribute %q", key)
 }
 
-
 // TestEmitRaw_BodyIsMap verifies that emitRaw produces a body map with
 // a "message" key containing the raw JSON string. The downstream pipeline
 // sets elastic.mapping.mode: bodymap via a transform processor.
