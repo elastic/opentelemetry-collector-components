@@ -44,25 +44,6 @@ func BenchmarkEmitEvents_OTel_1000(b *testing.B)   { benchEmit(b, "otel", 1000) 
 func BenchmarkEmitEvents_OTel_100000(b *testing.B) { benchEmit(b, "otel", 100000) }
 func BenchmarkEmitEvents_OTel_600000(b *testing.B) { benchEmit(b, "otel", 600000) }
 
-// Dual mode benchmarks — measures parallel raw+OTel formatting cost.
-func BenchmarkEmitEvents_Dual_1(b *testing.B)      { benchEmitDual(b, 1) }
-func BenchmarkEmitEvents_Dual_1000(b *testing.B)   { benchEmitDual(b, 1000) }
-func BenchmarkEmitEvents_Dual_100000(b *testing.B) { benchEmitDual(b, 100000) }
-
-func benchEmitDual(b *testing.B, n int) {
-	b.Helper()
-	events := loadBenchEvents(b, n)
-	rcv := benchReceiverDual(b)
-
-	ctx := context.Background()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		if err := rcv.emitEvents(ctx, events); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func benchEmit(b *testing.B, mapping string, n int) {
 	b.Helper()
 	events := loadBenchEvents(b, n)
@@ -203,45 +184,9 @@ func benchReceiver(b testing.TB, mapping string) *akamaiReceiver {
 
 	sink := &consumertest.LogsSink{}
 	set := receivertest.NewNopSettings(NewFactory().Type())
-	rcv, err := newAkamaiReceiver(cfg, set)
+	rcv, err := newAkamaiReceiver(cfg, set, sink)
 	if err != nil {
 		b.Fatal(err)
 	}
-	switch mapping {
-	case "otel":
-		rcv.setOTelConsumer(sink)
-	default:
-		rcv.setRawConsumer(sink)
-	}
-	return rcv
-}
-
-func benchReceiverDual(b *testing.B) *akamaiReceiver {
-	b.Helper()
-	cfg := createDefaultConfig().(*Config)
-	cfg.Endpoint = "https://bench.example.com"
-	cfg.ConfigIDs = "bench"
-	cfg.Authentication = EdgeGridAuth{
-		ClientToken:  configopaque.String("ct"),
-		ClientSecret: configopaque.String("cs"),
-		AccessToken:  configopaque.String("at"),
-	}
-
-	rawSink := &consumertest.LogsSink{}
-	otelSink := &consumertest.LogsSink{}
-	set := receivertest.NewNopSettings(NewFactory().Type())
-	rcv, err := newAkamaiReceiver(cfg, set)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	rawCfg := *cfg
-	rawCfg.OutputFormat = "raw"
-	rcv.setRawConsumer(rawSink)
-
-	otelCfg := *cfg
-	otelCfg.OutputFormat = "otel"
-	rcv.setOTelConsumer(otelSink)
-
 	return rcv
 }

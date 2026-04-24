@@ -20,11 +20,13 @@ package akamaisiemreceiver // import "github.com/elastic/opentelemetry-collector
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/extension/xextension/storage"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/receiver"
@@ -34,8 +36,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
-	"go.opentelemetry.io/collector/extension/xextension/storage"
-
 	"github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver/internal/akamaiclient"
 	"github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver/internal/auth"
 	"github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver/internal/cursor"
@@ -44,25 +44,14 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver/internal/poller"
 )
 
-// consumerEntry wraps a pipeline consumer. In dual mode, one entry produces raw JSON
-// bodies (raw output_format) and the other produces structured OTel attributes (otel output_format).
-type consumerEntry struct {
-	consumer consumer.Logs
-}
-
-// akamaiReceiver polls the Akamai SIEM API and emits logs. Supports single mode
-// (one consumer, raw or OTel) and dual mode (two consumers sharing one poller).
-// In dual mode, the sharedcomponent.SharedMap ensures a single API connection.
+// akamaiReceiver polls the Akamai SIEM API and emits logs. The output format
+// (raw JSON body map or parsed OTel semantic convention attributes) is
+// controlled by cfg.OutputFormat.
 type akamaiReceiver struct {
-	cfg      *Config // primary config (poller settings, endpoint, auth)
+	cfg      *Config
 	settings receiver.Settings
 	log      *zap.Logger
-
-	// Consumers — one or both may be set. When both are set, emitEvents
-	// fans out to both in parallel goroutines (dual export mode).
-	mu           sync.Mutex
-	rawConsumer  *consumerEntry
-	otelConsumer *consumerEntry
+	consumer consumer.Logs
 
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
@@ -71,33 +60,13 @@ type akamaiReceiver struct {
 	tracer          trace.Tracer            // nil-safe
 }
 
-func newAkamaiReceiver(cfg *Config, settings receiver.Settings) (*akamaiReceiver, error) {
+func newAkamaiReceiver(cfg *Config, settings receiver.Settings, cons consumer.Logs) (*akamaiReceiver, error) {
 	return &akamaiReceiver{
 		cfg:      cfg,
 		settings: settings,
 		log:      settings.Logger,
+		consumer: cons,
 	}, nil
-}
-
-// setRawConsumer registers a raw-mode consumer on the shared receiver.
-func (r *akamaiReceiver) setRawConsumer(cons consumer.Logs) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.rawConsumer = &consumerEntry{consumer: cons}
-}
-
-// setOTelConsumer registers an OTel-mode consumer on the shared receiver.
-func (r *akamaiReceiver) setOTelConsumer(cons consumer.Logs) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.otelConsumer = &consumerEntry{consumer: cons}
-}
-
-// isDualMode returns true when both raw and OTel consumers are registered.
-func (r *akamaiReceiver) isDualMode() bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.rawConsumer != nil && r.otelConsumer != nil
 }
 
 // Start implements receiver.Logs.
@@ -136,14 +105,20 @@ func (r *akamaiReceiver) Start(ctx context.Context, host component.Host) error {
 		return fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 
-	// Wrap transport with EdgeGrid signing.
+	// Wrap transport with EdgeGrid signing. ToClient may return a client with a
+	// nil Transport (meaning use http.DefaultTransport); guard against that so
+	// auth.Transport.RoundTrip never dereferences a nil Base.
 	signer := auth.NewEdgeGridSigner(
 		string(r.cfg.Authentication.ClientToken),
 		string(r.cfg.Authentication.ClientSecret),
 		string(r.cfg.Authentication.AccessToken),
 	)
+	base := httpClient.Transport
+	if base == nil {
+		base = http.DefaultTransport
+	}
 	httpClient.Transport = &auth.Transport{
-		Base:   httpClient.Transport,
+		Base:   base,
 		Signer: signer,
 	}
 
@@ -204,11 +179,6 @@ func (r *akamaiReceiver) Start(ctx context.Context, host component.Host) error {
 	pollCtx, cancel := context.WithCancel(context.Background())
 	r.cancel = cancel
 
-	mode := "single"
-	if r.isDualMode() {
-		mode = "dual"
-	}
-
 	r.wg.Add(1)
 	go func() {
 		defer r.wg.Done()
@@ -227,7 +197,7 @@ func (r *akamaiReceiver) Start(ctx context.Context, host component.Host) error {
 		zap.String("endpoint", r.cfg.Endpoint),
 		zap.String("config_ids", r.cfg.ConfigIDs),
 		zap.Duration("poll_interval", r.cfg.PollInterval),
-		zap.String("mode", mode),
+		zap.String("output_format", r.cfg.OutputFormat),
 		zap.Int("event_limit", r.cfg.EventLimit),
 		zap.String("storage", storageInfo),
 	)
@@ -235,15 +205,26 @@ func (r *akamaiReceiver) Start(ctx context.Context, host component.Host) error {
 	return nil
 }
 
-// Shutdown implements receiver.Logs.
-func (r *akamaiReceiver) Shutdown(_ context.Context) error {
+// Shutdown implements receiver.Logs. It respects the context deadline so a
+// hung poll goroutine does not block the collector's shutdown indefinitely.
+func (r *akamaiReceiver) Shutdown(ctx context.Context) error {
 	r.log.Info("akamai SIEM receiver shutting down")
 	if r.cancel != nil {
 		r.cancel()
 	}
-	r.wg.Wait()
-	r.log.Info("akamai SIEM receiver stopped")
-	return nil
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		r.log.Info("akamai SIEM receiver stopped")
+		return nil
+	case <-ctx.Done():
+		r.log.Warn("akamai SIEM receiver shutdown context expired", zap.Error(ctx.Err()))
+		return ctx.Err()
+	}
 }
 
 func (r *akamaiReceiver) pollLoop(ctx context.Context, poll *poller.Poller) {
@@ -274,54 +255,21 @@ func (r *akamaiReceiver) pollLoop(ctx context.Context, poll *poller.Poller) {
 }
 
 // emitEvents converts raw JSON strings to plog.Logs and sends them to the
-// OTel pipeline(s). In dual mode, both raw and OTel formatting run in parallel
-// and the cursor advances only when both succeed (slowest-wins).
+// configured consumer based on output_format.
 func (r *akamaiReceiver) emitEvents(ctx context.Context, events []string) error {
-	r.mu.Lock()
-	raw := r.rawConsumer
-	otel := r.otelConsumer
-	r.mu.Unlock()
-
-	// Single consumer mode — no goroutine overhead.
-	if raw != nil && otel == nil {
-		return r.emitRaw(ctx, events, raw)
+	switch r.cfg.OutputFormat {
+	case "otel":
+		return r.emitOTel(ctx, events)
+	default:
+		return r.emitRaw(ctx, events)
 	}
-	if otel != nil && raw == nil {
-		return r.emitOTel(ctx, events, otel)
-	}
-	if raw == nil && otel == nil {
-		return fmt.Errorf("no consumers registered")
-	}
-
-	// Dual mode — parallel formatting + emission, slowest-wins.
-	var wg sync.WaitGroup
-	var rawErr, otelErr error
-
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		rawErr = r.emitRaw(ctx, events, raw)
-	}()
-	go func() {
-		defer wg.Done()
-		otelErr = r.emitOTel(ctx, events, otel)
-	}()
-	wg.Wait()
-
-	if rawErr != nil {
-		return fmt.Errorf("raw consumer: %w", rawErr)
-	}
-	if otelErr != nil {
-		return fmt.Errorf("OTel consumer: %w", otelErr)
-	}
-	return nil
 }
 
 // emitRaw sends events as raw JSON body maps. Each log record body is a map
 // with key "message" containing the raw Akamai JSON string. The downstream
 // pipeline should set elastic.mapping.mode: bodymap via a transform processor
 // so the ES exporter serializes the map fields directly into the document.
-func (r *akamaiReceiver) emitRaw(ctx context.Context, events []string, entry *consumerEntry) error {
+func (r *akamaiReceiver) emitRaw(ctx context.Context, events []string) error {
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
 	sl := rl.ScopeLogs().AppendEmpty()
@@ -353,11 +301,11 @@ func (r *akamaiReceiver) emitRaw(ctx context.Context, events []string, entry *co
 		r.mappingDuration.Record(ctx, time.Since(mapStart).Seconds())
 	}
 
-	return entry.consumer.ConsumeLogs(ctx, logs)
+	return r.consumer.ConsumeLogs(ctx, logs)
 }
 
 // emitOTel parses events and maps them into OTel semantic convention attributes.
-func (r *akamaiReceiver) emitOTel(ctx context.Context, events []string, entry *consumerEntry) error {
+func (r *akamaiReceiver) emitOTel(ctx context.Context, events []string) error {
 	logs := plog.NewLogs()
 	rl := logs.ResourceLogs().AppendEmpty()
 	sl := rl.ScopeLogs().AppendEmpty()
@@ -414,7 +362,7 @@ func (r *akamaiReceiver) emitOTel(ctx context.Context, events []string, entry *c
 		r.mappingDuration.Record(ctx, time.Since(mapStart).Seconds())
 	}
 
-	return entry.consumer.ConsumeLogs(ctx, logs)
+	return r.consumer.ConsumeLogs(ctx, logs)
 }
 
 // getStorageClient retrieves a storage.Client from the configured storage extension.

@@ -279,8 +279,8 @@ func (p *Poller) persistCursor(ctx context.Context) {
 // regardless of total page size.
 //
 // Cursor is NOT persisted here — the caller handles that after processPage
-// returns, matching the Beats pattern where cursor persist happens after all
-// events in the page are confirmed.
+// returns, so cursor persist only happens after all events in the page
+// are confirmed.
 func (p *Poller) processPage(ctx context.Context, body interface{ Read([]byte) (int, error) }, page int, params akamaiclient.FetchParams) (int, akamaiclient.OffsetContext, error) {
 	_, endSpan := p.telemetry.startSpan(ctx, "akamai_siem.ProcessPage",
 		attribute.Int("page", page),

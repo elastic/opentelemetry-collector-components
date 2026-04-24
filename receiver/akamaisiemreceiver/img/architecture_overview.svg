@@ -43,7 +43,7 @@
 
   <!-- MAPPING MODE SWITCH -->
   <rect x="260" y="245" width="380" height="30" rx="6" fill="#4f46e5"/>
-  <text x="450" y="265" text-anchor="middle" fill="white" font-weight="700" font-size="12">output_format: raw | otel (dual: both via shared poller)</text>
+  <text x="450" y="265" text-anchor="middle" fill="white" font-weight="700" font-size="12">output_format: raw | otel</text>
 
   <!-- Raw Mode Box -->
   <rect x="260" y="288" width="185" height="80" rx="6" fill="#059669"/>
@@ -145,5 +145,5 @@
   <!-- Caption -->
   <text x="700" y="490" text-anchor="middle" fill="#64748b" font-size="10">Raw mode: body map {message: rawJSON} → transform sets bodymap scope → ES exporter → ingest pipeline → Kibana</text>
   <text x="700" y="506" text-anchor="middle" fill="#64748b" font-size="10">OTel mode: parsed into OTel semantic conventions → any OTel-compatible backend</text>
-  <text x="700" y="518" text-anchor="middle" fill="#64748b" font-size="10">Dual mode: both simultaneously via shared poller — single API connection, single cursor, zero duplicate calls</text>
+  <text x="700" y="518" text-anchor="middle" fill="#64748b" font-size="10">Cursor persistence via OTel storage extension (e.g. file_storage) for safe resume across restarts</text>
 </svg>

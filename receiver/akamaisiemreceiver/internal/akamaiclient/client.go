@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// Package sharedcomponent contains the core Akamai SIEM API client, NDJSON
-// streaming parser, and polling state machine.
+// Package akamaiclient contains the core Akamai SIEM API client and NDJSON
+// streaming parser.
 package akamaiclient // import "github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver/internal/akamaiclient"
 
 import (
@@ -204,8 +204,8 @@ func (c *Client) buildRequestURL(params FetchParams) string {
 }
 
 // StreamEvents reads NDJSON lines from body, pushing event lines into eventCh
-// using a one-line delay pattern (identical to the Beats implementation). The
-// last line is checked for offset context metadata and returned separately.
+// using a one-line delay pattern. The last line is checked for offset context
+// metadata and returned separately.
 //
 // The caller must close eventCh after StreamEvents returns.
 func StreamEvents(ctx context.Context, body io.Reader, eventCh chan<- string) (OffsetContext, int, error) {

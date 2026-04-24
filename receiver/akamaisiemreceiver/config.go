@@ -40,9 +40,7 @@ const (
 	defaultStreamBufferSize = 4
 )
 
-// Config defines the configuration for the Akamai SIEM receiver. In dual mode,
-// multiple instances with the same endpoint/config_ids/auth share a single poller;
-// each instance's mapping mode determines its output format.
+// Config defines the configuration for the Akamai SIEM receiver.
 type Config struct {
 	// Endpoint is the Akamai API host (e.g. "https://akab-xxx.luna.akamaiapis.net").
 	Endpoint string `mapstructure:"endpoint"`

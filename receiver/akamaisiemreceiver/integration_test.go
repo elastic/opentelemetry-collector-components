@@ -36,7 +36,7 @@ import (
 	"go.opentelemetry.io/collector/receiver/receivertest"
 )
 
-// Integration tests verify the exact output of each mapping mode (Raw, OTel, Dual)
+// Integration tests verify the exact output of each output format (Raw, OTel)
 // against realistic Akamai SIEM API responses using a local httptest server.
 // Test data: testdata/siem_response_full.ndjson — 3 events with different attack
 // types, HTTP methods, geo locations, and applied actions.
@@ -185,74 +185,6 @@ func TestIntegration_OTelMode_FullResponse(t *testing.T) {
 	assert.Equal(t, "999999", rules2.Slice().At(0).Str())
 }
 
-func TestIntegration_DualMode_FullResponse(t *testing.T) {
-	ndjson, err := os.ReadFile("testdata/siem_response_full.ndjson")
-	require.NoError(t, err)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(ndjson)
-	}))
-	defer server.Close()
-
-	ecsSink := &consumertest.LogsSink{}
-	otelSink := &consumertest.LogsSink{}
-
-	cfg := createDefaultConfig().(*Config)
-	cfg.Endpoint = server.URL
-	cfg.ConfigIDs = "1"
-	cfg.Authentication = EdgeGridAuth{
-		ClientToken: configopaque.String("ct"), ClientSecret: configopaque.String("cs"), AccessToken: configopaque.String("at"),
-	}
-	cfg.PollInterval = 24 * time.Hour
-
-	// Create two factory instances with same key → dual mode.
-	ecsCfg := *cfg
-	ecsCfg.OutputFormat = "raw"
-	otelCfg := *cfg
-	otelCfg.OutputFormat = "otel"
-
-	set := receivertest.NewNopSettings(NewFactory().Type())
-	factory := NewFactory()
-
-	ecsRcv, err := factory.CreateLogs(context.Background(), set, &ecsCfg, ecsSink)
-	require.NoError(t, err)
-	otelRcv, err := factory.CreateLogs(context.Background(), set, &otelCfg, otelSink)
-	require.NoError(t, err)
-
-	require.NoError(t, ecsRcv.Start(context.Background(), componenttest.NewNopHost()))
-	require.NoError(t, otelRcv.Start(context.Background(), componenttest.NewNopHost()))
-
-	assert.Eventually(t, func() bool {
-		return ecsSink.LogRecordCount() >= 3 && otelSink.LogRecordCount() >= 3
-	}, 10*time.Second, 50*time.Millisecond, "both sinks should receive 3 events")
-
-	require.NoError(t, ecsRcv.Shutdown(context.Background()))
-	require.NoError(t, otelRcv.Shutdown(context.Background()))
-
-	ecsRecords := collectRecords(ecsSink.AllLogs())
-	otelRecords := collectRecords(otelSink.AllLogs())
-	require.Len(t, ecsRecords, 3)
-	require.Len(t, otelRecords, 3)
-
-	// Raw records: body map with "message" key containing raw JSON, no attributes.
-	for i, lr := range ecsRecords {
-		assert.Contains(t, intBodyMessage(t, lr), `"attackData"`, "Raw record %d", i)
-		assert.Equal(t, 0, lr.Attributes().Len(), "Raw record %d should have no attrs", i)
-	}
-
-	// OTel records: structured attributes.
-	for i, lr := range otelRecords {
-		_, hasMethod := lr.Attributes().Get("http.request.method")
-		assert.True(t, hasMethod, "OTel record %d should have http.request.method", i)
-		_, hasAction := lr.Attributes().Get("akamai.siem.applied_action")
-		assert.True(t, hasAction, "OTel record %d should have akamai.siem.applied_action", i)
-	}
-
-	// Verify same events — raw body for event 0 should match OTel's source data.
-	assert.Contains(t, intBodyMessage(t, ecsRecords[0]), `"appliedAction":"deny"`)
-	assertAttr(t, otelRecords[0].Attributes(), "akamai.siem.applied_action", "deny")
-}
-
 func TestIntegration_RawMode_EmptyResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintln(w, `{"offset":"empty-cursor","total":0,"limit":10000}`)
@@ -334,15 +266,8 @@ func createTestReceiver(t *testing.T, serverURL, outputFormat string, sink *cons
 	cfg.OutputFormat = outputFormat
 
 	set := receivertest.NewNopSettings(NewFactory().Type())
-	rcv, err := newAkamaiReceiver(cfg, set)
+	rcv, err := newAkamaiReceiver(cfg, set, sink)
 	require.NoError(t, err)
-
-	switch outputFormat {
-	case "otel":
-		rcv.setOTelConsumer(sink)
-	default:
-		rcv.setRawConsumer(sink)
-	}
 	return rcv
 }
 
