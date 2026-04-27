@@ -174,12 +174,7 @@ type metricKey struct {
 // translate converts a v1 WriteRequest into OTLP pmetric.Metrics.
 //
 // Because the v1 protocol carries no metric metadata (type, unit, help text),
-// metric types are inferred from label-name conventions:
-//
-//   - "target_info" series → resource attributes (job/instance → service.* attributes)
-//   - Metrics ending in "_total" → monotonic cumulative Sum (counter)
-//   - All other metrics → Gauge
-//
+// metric types is defaulted to Guage.
 // Stale markers (special NaN 0x7ff0000000000002) are translated to data points
 // with the NoRecordedValue flag set.
 func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metrics {
