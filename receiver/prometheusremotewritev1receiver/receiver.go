@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 
@@ -178,6 +179,8 @@ type metricKey struct {
 // Stale markers (special NaN 0x7ff0000000000002) are translated to data points
 // with the NoRecordedValue flag set.
 func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metrics {
+	labelsBuilder := labels.NewScratchBuilder(0)
+
 	md := pmetric.NewMetrics()
 
 	// rmMap groups ResourceMetrics by (job, instance) key to avoid duplicates per request.
@@ -211,14 +214,16 @@ func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metr
 	for i := range wr.Timeseries {
 		ts := &wr.Timeseries[i]
 
-		metricName := labelValue(ts.Labels, "__name__")
+		ls := ts.ToLabels(&labelsBuilder, []string{})
+
+		metricName := ls.Get("__name__")
 		if metricName == "" {
 			r.settings.Logger.Warn("Dropping time series with missing __name__ label")
 			continue
 		}
 
-		job := labelValue(ts.Labels, "job")
-		instance := labelValue(ts.Labels, "instance")
+		job := ls.Get("job")
+		instance := ls.Get("instance")
 
 		// target_info is a special metric that carries resource attributes.
 		if metricName == "target_info" {
@@ -272,14 +277,4 @@ func buildAttributes(labels []prompb.Label) pcommon.Map {
 		}
 	}
 	return attrs
-}
-
-// labelValue returns the value of the named label from the slice, or "" if not found.
-func labelValue(labels []prompb.Label, name string) string {
-	for _, l := range labels {
-		if l.Name == name {
-			return l.Value
-		}
-	}
-	return ""
 }
