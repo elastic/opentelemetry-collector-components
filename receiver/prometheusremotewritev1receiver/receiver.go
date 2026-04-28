@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 
 	"github.com/gogo/protobuf/proto"
@@ -197,25 +196,17 @@ func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metr
 			dp := m.Gauge().DataPoints().AppendEmpty()
 			dp.SetTimestamp(tsNanos)
 			attrs.CopyTo(dp.Attributes())
-			if value.IsStaleNaN(s.Value) {
-				dp.SetFlags(pmetric.DefaultDataPointFlags.WithNoRecordedValue(true))
-			} else {
-				dp.SetDoubleValue(s.Value)
-			}
+			dp.SetDoubleValue(s.Value)
 		}
 	}
 
 	return md
 }
 
-var reservedLabels = map[string]struct{}{
-	"__name__": {},
-}
-
 func buildAttributes(labels []prompb.Label) pcommon.Map {
 	attrs := pcommon.NewMap()
 	for _, lbl := range labels {
-		if _, ok := reservedLabels[lbl.Name]; !ok {
+		if lbl.Name != "__name__" {
 			attrs.PutStr(lbl.Name, lbl.Value)
 		}
 	}

@@ -20,14 +20,12 @@ package prometheusremotewritev1receiver
 import (
 	"bytes"
 	"context"
-	"math"
 	"net"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -248,29 +246,6 @@ func TestE2E_TargetInfoTreatedAsRegularMetric(t *testing.T) {
 	assert.Equal(t, 1.0, tiDp.DoubleValue())
 }
 
-func TestE2E_StaleNaN(t *testing.T) {
-	sink := new(consumertest.MetricsSink)
-	addr := startReceiver(t, sink)
-
-	wr := &prompb.WriteRequest{
-		Timeseries: []prompb.TimeSeries{
-			{
-				Labels:  []prompb.Label{{Name: "__name__", Value: "up"}, {Name: "job", Value: "svc"}},
-				Samples: []prompb.Sample{{Value: math.Float64frombits(value.StaleNaN), Timestamp: 1000}},
-			},
-		},
-	}
-
-	resp := doWrite(t, addr, wr)
-	defer resp.Body.Close()
-	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
-
-	waitForN(t, sink, 1)
-
-	dp := sink.AllMetrics()[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0)
-	assert.True(t, dp.Flags().NoRecordedValue(), "stale NaN must set the NoRecordedValue flag")
-}
-
 func TestE2E_MissingContentType(t *testing.T) {
 	sink := new(consumertest.MetricsSink)
 	addr := startReceiver(t, sink)
@@ -357,7 +332,7 @@ func TestE2E_GracefulShutdown(t *testing.T) {
 			},
 		},
 	}
-	resp := doWrite(t, "http://"+addr+"/api/v1/write", wr)
+	resp := doWrite(t, addr, wr)
 	resp.Body.Close()
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
