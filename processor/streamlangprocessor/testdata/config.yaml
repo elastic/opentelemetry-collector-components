@@ -1,0 +1,5 @@
+streamlang:
+  steps:
+    - action: set
+      to: attributes.processed_by
+      value: streamlangprocessor

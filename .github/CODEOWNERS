@@ -13,6 +13,7 @@ processor/lsmintervalprocessor         @elastic/obs-ds-intake-services @elastic/
 processor/ratelimitprocessor           @elastic/ingest-managed-jobs @elastic/ingest-otel-data
 processor/integrationprocessor         @elastic/ecosystem @elastic/ingest-otel-data
 processor/partitioningprocessor        @elastic/ingest-otel-data
+processor/streamlangprocessor          @elastic/ingest-otel-data
 connector/elasticapmconnector          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 extension/apikeyauthextension          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 extension/apmconfigextension           @elastic/ingest-otel-data

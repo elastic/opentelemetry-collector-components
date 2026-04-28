@@ -1,0 +1,15 @@
+type: streamlang
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/streamlangprocessor
+
+status:
+  class: processor
+  stability:
+    development: [logs, metrics, traces]
+  distributions: []
+
+tests:
+  config:
+    steps:
+      - action: set
+        to: attributes.processed_by
+        value: streamlangprocessor
