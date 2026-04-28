@@ -19,7 +19,11 @@ package pipeline // import "github.com/elastic/opentelemetry-collector-component
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/streamlangprocessor/condition"
 	"github.com/elastic/opentelemetry-collector-components/processor/streamlangprocessor/document"
@@ -66,10 +70,35 @@ func (c *Compiled) ExecuteBatch(
 		return stats, nil
 	}
 	start := time.Now()
+
+	// Per-batch span — gives APM a single waterfall row per Consume call
+	// with per-action applied/skipped/error/ignored counts attached as
+	// attributes. Querying for `streamlang.batch.<action>.applied > 0` is
+	// the cheap "did this action actually run" signal.
+	var span trace.Span
+	if instr != nil {
+		ctx, span = instr.Tracer().Start(ctx, "streamlang.pipeline.execute_batch",
+			trace.WithSpanKind(trace.SpanKindInternal),
+			trace.WithAttributes(
+				attribute.String("tenant.id", tenantID),
+				attribute.Int("streamlang.batch.input_count", len(docs)),
+				attribute.Int("streamlang.pipeline.steps", len(c.steps)),
+			),
+		)
+	}
+
 	defer func() {
 		if instr != nil {
 			ms := float64(time.Since(start).Microseconds()) / 1000.0
 			instr.RecordPipelineDuration(ctx, ms, tenantID)
+		}
+		if span != nil {
+			span.SetAttributes(
+				attribute.Int("streamlang.batch.dropped_count", stats.Dropped),
+				attribute.Float64("streamlang.batch.duration_ms",
+					float64(time.Since(start).Microseconds())/1000.0),
+			)
+			span.End()
 		}
 	}()
 
@@ -113,12 +142,37 @@ func (c *Compiled) ExecuteBatch(
 	}
 
 	for i, step := range c.steps {
+		action := step.proc.Action()
 		if instr != nil {
-			action := step.proc.Action()
 			instr.RecordProcessorOutcome(ctx, action, telemetry.OutcomeApplied, totals[i].applied, tenantID)
 			instr.RecordProcessorOutcome(ctx, action, telemetry.OutcomeSkipped, totals[i].skipped, tenantID)
 			instr.RecordProcessorOutcome(ctx, action, telemetry.OutcomeError, totals[i].errored, tenantID)
 			instr.RecordProcessorOutcome(ctx, action, telemetry.OutcomeIgnored, totals[i].ignored, tenantID)
+		}
+		if span != nil {
+			// Per-action counts: only tag the batch span when the action
+			// actually fired (applied or errored). Pure-skip steps would
+			// otherwise dominate every span's attribute set with zeros.
+			if totals[i].applied > 0 {
+				span.SetAttributes(attribute.Int(
+					fmt.Sprintf("streamlang.batch.%s.applied", action),
+					int(totals[i].applied)))
+			}
+			if totals[i].skipped > 0 {
+				span.SetAttributes(attribute.Int(
+					fmt.Sprintf("streamlang.batch.%s.skipped", action),
+					int(totals[i].skipped)))
+			}
+			if totals[i].errored > 0 {
+				span.SetAttributes(attribute.Int(
+					fmt.Sprintf("streamlang.batch.%s.errored", action),
+					int(totals[i].errored)))
+			}
+			if totals[i].ignored > 0 {
+				span.SetAttributes(attribute.Int(
+					fmt.Sprintf("streamlang.batch.%s.ignored", action),
+					int(totals[i].ignored)))
+			}
 		}
 	}
 
