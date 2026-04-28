@@ -161,55 +161,19 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	w.WriteHeader(http.StatusNoContent)
 }
 
-type rmKey struct {
-	job      string
-	instance string
-}
-
-type metricKey struct {
-	job        string
-	instance   string
-	metricName string
-}
-
 // translate converts a v1 WriteRequest into OTLP pmetric.Metrics.
 //
-// Because the v1 protocol carries no metric metadata (type, unit, help text),
-// metric types is defaulted to Guage.
+// Each timeseries maps directly to one Gauge metric whose samples become data
+// points. All labels except __name__ (including job and instance) are stored
+// as data point attributes. There are no resource attributes and no grouping
+// by metric name or resource.
 // Stale markers (special NaN 0x7ff0000000000002) are translated to data points
 // with the NoRecordedValue flag set.
 func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metrics {
 	labelsBuilder := labels.NewScratchBuilder(0)
 
 	md := pmetric.NewMetrics()
-
-	// rmMap groups ResourceMetrics by (job, instance) key to avoid duplicates per request.
-	rmMap := make(map[rmKey]pmetric.ResourceMetrics)
-
-	// metricMap groups pmetric.Metric objects by (resource, metricName) to aggregate samples.
-	metricMap := make(map[metricKey]pmetric.Metric)
-
-	getOrCreateRM := func(job, instance string) pmetric.ResourceMetrics {
-		k := rmKey{job, instance}
-		if rm, ok := rmMap[k]; ok {
-			return rm
-		}
-		rmMap[k] = md.ResourceMetrics().AppendEmpty()
-		return rmMap[k]
-	}
-
-	getOrCreateMetric := func(rm pmetric.ResourceMetrics, job, instance, metricName string) pmetric.Metric {
-		k := metricKey{job, instance, metricName}
-		if m, ok := metricMap[k]; ok {
-			return m
-		}
-		scope := findOrCreateScope(rm)
-		m := scope.Metrics().AppendEmpty()
-		m.SetName(metricName)
-		m.SetEmptyGauge()
-		metricMap[k] = m
-		return m
-	}
+	scope := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
 
 	for i := range wr.Timeseries {
 		ts := &wr.Timeseries[i]
@@ -222,21 +186,9 @@ func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metr
 			continue
 		}
 
-		job := ls.Get("job")
-		instance := ls.Get("instance")
-
-		// target_info is a special metric that carries resource attributes.
-		if metricName == "target_info" {
-			rm := getOrCreateRM(job, instance)
-			attrs := rm.Resource().Attributes()
-			for _, lbl := range ts.Labels {
-				attrs.PutStr(lbl.Name, lbl.Value)
-			}
-			continue
-		}
-
-		rm := getOrCreateRM(job, instance)
-		m := getOrCreateMetric(rm, job, instance, metricName)
+		m := scope.Metrics().AppendEmpty()
+		m.SetName(metricName)
+		m.SetEmptyGauge()
 
 		attrs := buildAttributes(ts.Labels)
 
@@ -254,15 +206,6 @@ func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metr
 	}
 
 	return md
-}
-
-// findOrCreateScope returns the first ScopeMetrics on rm, creating one if none exist.
-// The v1 protocol carries no scope information, so we use a single unnamed scope.
-func findOrCreateScope(rm pmetric.ResourceMetrics) pmetric.ScopeMetrics {
-	if rm.ScopeMetrics().Len() > 0 {
-		return rm.ScopeMetrics().At(0)
-	}
-	return rm.ScopeMetrics().AppendEmpty()
 }
 
 var reservedLabels = map[string]struct{}{
