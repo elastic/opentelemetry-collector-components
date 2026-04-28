@@ -15,15 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package partitioningprocessor // import "github.com/elastic/opentelemetry-collector-components/processor/partitioningprocessor"
+package partitioningprocessor
 
-// Config is the configuration for the partitioning processor.
-type Config struct {
-	// TODO wire in PartitionKeyConfig.
-}
+import (
+	"testing"
 
-// PartitionKeyConfig defines a single partition key.
-type PartitionKeyConfig struct {
-	Name  string `mapstructure:"name"`
-	Value string `mapstructure:"value"`
+	"github.com/stretchr/testify/assert"
+)
+
+func TestCapabilities(t *testing.T) {
+	p := &partitioningProcessor{}
+	assert.False(t, p.Capabilities().MutatesData)
 }
