@@ -113,7 +113,7 @@ func TestE2E_BasicMetricsReceived(t *testing.T) {
 	}
 
 	resp := doWrite(t, addr, wr)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // it's a test
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	waitForN(t, sink, 1)
@@ -154,7 +154,7 @@ func TestE2E_MultipleConsecutiveRequests(t *testing.T) {
 			},
 		}
 		resp := doWrite(t, addr, wr)
-		resp.Body.Close()
+		resp.Body.Close() //nolint:errcheck // it's a test
 		assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 	}
 
@@ -182,7 +182,7 @@ func TestE2E_DifferentJobsShareSingleResource(t *testing.T) {
 	}
 
 	resp := doWrite(t, addr, wr)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // it's a test
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	waitForN(t, sink, 1)
@@ -225,7 +225,7 @@ func TestE2E_TargetInfoTreatedAsRegularMetric(t *testing.T) {
 	}
 
 	resp := doWrite(t, addr, wr)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // it's a test
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	waitForN(t, sink, 1)
@@ -256,7 +256,7 @@ func TestE2E_MissingContentType(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // it's a test
 
 	assert.Equal(t, http.StatusUnsupportedMediaType, resp.StatusCode)
 	assert.Empty(t, sink.AllMetrics())
@@ -272,7 +272,7 @@ func TestE2E_WrongContentType(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // it's a test
 
 	assert.Equal(t, http.StatusUnsupportedMediaType, resp.StatusCode)
 	assert.Empty(t, sink.AllMetrics())
@@ -288,7 +288,7 @@ func TestE2E_InvalidProtobuf(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // it's a test
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Empty(t, sink.AllMetrics())
@@ -299,7 +299,7 @@ func TestE2E_EmptyWriteRequest(t *testing.T) {
 	addr := startReceiver(t, sink)
 
 	resp := doWrite(t, addr, &prompb.WriteRequest{})
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // it's a test
 
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 	assert.Empty(t, sink.AllMetrics())
@@ -333,7 +333,7 @@ func TestE2E_GracefulShutdown(t *testing.T) {
 		},
 	}
 	resp := doWrite(t, addr, wr)
-	resp.Body.Close()
+	resp.Body.Close() //nolint:errcheck // it's a test
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 
 	// Shutdown must complete without error.
