@@ -166,8 +166,6 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 // points. All labels except __name__ (including job and instance) are stored
 // as data point attributes. There are no resource attributes and no grouping
 // by metric name or resource.
-// Stale markers (special NaN 0x7ff0000000000002) are translated to data points
-// with the NoRecordedValue flag set.
 func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metrics {
 	labelsBuilder := labels.NewScratchBuilder(0)
 
