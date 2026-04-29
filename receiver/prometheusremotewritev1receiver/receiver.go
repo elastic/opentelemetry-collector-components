@@ -111,16 +111,19 @@ func (r *prometheusRWv1Receiver) Shutdown(ctx context.Context) error {
 // handleWrite is the HTTP handler for the remote write endpoint.
 // It validates the request per the v1 spec, decodes it, translates to OTLP, and forwards to the next consumer.
 func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Request) {
+	obsCtx := r.obsrecv.StartMetricsOp(req.Context())
 	contentType := req.Header.Get("Content-Type")
 	if contentType == "" {
 		r.settings.Logger.Warn("Request missing Content-Type header")
 		http.Error(w, "Content-Type header is required", http.StatusUnsupportedMediaType)
+		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, errors.New("Request missing Content-Type header"))
 		return
 	}
 	// The v1 spec mandates application/x-protobuf. No proto= parameter is needed.
 	if !strings.HasPrefix(contentType, "application/x-protobuf") {
 		r.settings.Logger.Warn("Unsupported Content-Type", zap.String("content_type", contentType))
 		http.Error(w, "Content-Type must be application/x-protobuf", http.StatusUnsupportedMediaType)
+		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, errors.New("Unsupported Content-Type"))
 		return
 	}
 
@@ -128,6 +131,7 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	if err != nil {
 		r.settings.Logger.Warn("Failed to read request body", zap.Error(err))
 		http.Error(w, fmt.Sprintf("read request body: %v", err), http.StatusBadRequest)
+		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, err)
 		return
 	}
 
@@ -135,28 +139,32 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	if err := proto.Unmarshal(reqBody, &wr); err != nil {
 		r.settings.Logger.Warn("Protobuf unmarshal failed", zap.Error(err))
 		http.Error(w, fmt.Sprintf("protobuf unmarshal: %v", err), http.StatusBadRequest)
+		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, err)
 		return
 	}
 
-	md := r.translate(&wr)
-	if md.MetricCount() == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
+	md, isInvalid := r.translate(&wr)
 
-	obsCtx := r.obsrecv.StartMetricsOp(req.Context())
-	err = r.nextConsumer.ConsumeMetrics(req.Context(), md)
-	r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", md.ResourceMetrics().Len(), err)
-	if err != nil {
-		r.settings.Logger.Error("Failed to consume metrics", zap.Error(err))
-		if consumererror.IsPermanent(err) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	if md.MetricCount() > 0 {
+		err = r.nextConsumer.ConsumeMetrics(req.Context(), md)
+		if err != nil {
+			r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", md.MetricCount(), err)
+			r.settings.Logger.Error("Failed to consume metrics", zap.Error(err))
+			if consumererror.IsPermanent(err) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			} else {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+			return
 		}
+	}
+	// if request is invalid, we return 400 even if some metrics were accepted.
+	if isInvalid {
+		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", md.MetricCount(), errors.New("one or more time series were missing the __name__ label and were dropped"))
+		http.Error(w, "one or more time series were missing the __name__ label and were dropped", http.StatusBadRequest)
 		return
 	}
-
+	r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", md.MetricCount(), nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -166,11 +174,13 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 // points. All labels except __name__ (including job and instance) are stored
 // as data point attributes. There are no resource attributes and no grouping
 // by metric name or resource.
-func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metrics {
+// isInvalid is true if any time series were missing the __name__ label and were dropped.
+func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) (pmetric.Metrics, bool) {
 	labelsBuilder := labels.NewScratchBuilder(0)
 
 	md := pmetric.NewMetrics()
 	scope := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty()
+	var isInvalid bool
 
 	for i := range wr.Timeseries {
 		ts := &wr.Timeseries[i]
@@ -179,6 +189,7 @@ func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metr
 
 		metricName := ls.Get("__name__")
 		if metricName == "" {
+			isInvalid = true
 			r.settings.Logger.Warn("Dropping time series with missing __name__ label")
 			continue
 		}
@@ -198,7 +209,7 @@ func (r *prometheusRWv1Receiver) translate(wr *prompb.WriteRequest) pmetric.Metr
 		}
 	}
 
-	return md
+	return md, isInvalid
 }
 
 func buildAttributes(labels []prompb.Label) pcommon.Map {
