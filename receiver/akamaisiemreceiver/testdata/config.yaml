@@ -1,0 +1,19 @@
+akamai_siem:
+  endpoint: "https://akab-test.luna.akamaiapis.net"
+  config_ids: "12345,67890"
+  authentication:
+    client_token: "test-client-token"
+    client_secret: "test-client-secret"
+    access_token: "test-access-token"
+  poll_interval: 30s
+  initial_lookback: 6h
+  event_limit: 5000
+  offset_ttl: 60s
+  max_recovery_attempts: 5
+  invalid_timestamp_retries: 3
+  batch_size: 1000
+  stream_buffer_size: 4
+  output_format: raw
+  http:
+    timeout: 45s
+  storage: file_storage
