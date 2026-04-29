@@ -1,0 +1,10 @@
+type: prometheusremotewrite
+scope_name: github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: receiver
+  stability:
+    development: [metrics]
+  #codeowners:
+  #  active: []
