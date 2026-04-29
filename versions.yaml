@@ -4,6 +4,7 @@ module-sets:
     modules:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
+      - github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver
       - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/elasticmetadataprocessor
