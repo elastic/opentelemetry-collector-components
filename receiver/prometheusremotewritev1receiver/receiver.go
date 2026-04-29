@@ -33,6 +33,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -91,6 +92,7 @@ func (r *prometheusRWv1Receiver) Start(ctx context.Context, host component.Host)
 
 	r.shutdownWG.Go(func() {
 		if err := r.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			componentstatus.ReportStatus(host, componentstatus.NewFatalErrorEvent(err))
 			r.settings.Logger.Error("HTTP server error", zap.Error(err))
 		}
 	})
