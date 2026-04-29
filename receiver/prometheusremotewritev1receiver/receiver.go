@@ -118,14 +118,14 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	if contentType == "" {
 		r.settings.Logger.Warn("Request missing Content-Type header")
 		http.Error(w, "Content-Type header is required", http.StatusUnsupportedMediaType)
-		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, errors.New("Request missing Content-Type header"))
+		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, errors.New("request missing Content-Type header"))
 		return
 	}
 	// The v1 spec mandates application/x-protobuf. No proto= parameter is needed.
 	if !strings.HasPrefix(contentType, "application/x-protobuf") {
 		r.settings.Logger.Warn("Unsupported Content-Type", zap.String("content_type", contentType))
 		http.Error(w, "Content-Type must be application/x-protobuf", http.StatusUnsupportedMediaType)
-		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, errors.New("Unsupported Content-Type"))
+		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, errors.New("unsupported Content-Type"))
 		return
 	}
 
