@@ -1,0 +1,55 @@
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+package entityanalyticsreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/entityanalyticsreceiver"
+
+import (
+	"fmt"
+	"time"
+
+	"go.opentelemetry.io/collector/component"
+)
+
+var _ component.Config = (*Config)(nil)
+
+// Config defines configuration for the entity analytics receiver.
+type Config struct {
+	Provider       string        `mapstructure:"provider"`
+	StorageID      string        `mapstructure:"storage"`
+	SyncInterval   time.Duration `mapstructure:"sync_interval"`
+	UpdateInterval time.Duration `mapstructure:"update_interval"`
+}
+
+func (cfg *Config) Validate() error {
+	if cfg.Provider == "" {
+		return fmt.Errorf("provider must be set")
+	}
+	if !Has(cfg.Provider) {
+		return fmt.Errorf("unknown provider %q", cfg.Provider)
+	}
+	var id component.ID
+	if err := id.UnmarshalText([]byte(cfg.StorageID)); err != nil {
+		return fmt.Errorf("invalid storage ID %q: %w", cfg.StorageID, err)
+	}
+	if cfg.SyncInterval <= 0 {
+		return fmt.Errorf("sync_interval must be positive")
+	}
+	if cfg.UpdateInterval <= 0 {
+		return fmt.Errorf("update_interval must be positive")
+	}
+	return nil
+}
