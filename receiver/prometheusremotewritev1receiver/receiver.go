@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver/internal/metadata"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/prompb"
 
@@ -118,14 +119,14 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	if contentType == "" {
 		r.settings.Logger.Warn("Request missing Content-Type header")
 		http.Error(w, "Content-Type header is required", http.StatusUnsupportedMediaType)
-		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, errors.New("request missing Content-Type header"))
+		r.obsrecv.EndMetricsOp(obsCtx, metadata.Type.String(), 0, errors.New("request missing Content-Type header"))
 		return
 	}
 	// The v1 spec mandates application/x-protobuf. No proto= parameter is needed.
 	if !strings.HasPrefix(contentType, "application/x-protobuf") {
 		r.settings.Logger.Warn("Unsupported Content-Type", zap.String("content_type", contentType))
 		http.Error(w, "Content-Type must be application/x-protobuf", http.StatusUnsupportedMediaType)
-		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, errors.New("unsupported Content-Type"))
+		r.obsrecv.EndMetricsOp(obsCtx, metadata.Type.String(), 0, errors.New("unsupported Content-Type"))
 		return
 	}
 
@@ -133,7 +134,7 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	if err != nil {
 		r.settings.Logger.Warn("Failed to read request body", zap.Error(err))
 		http.Error(w, fmt.Sprintf("read request body: %v", err), http.StatusBadRequest)
-		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, err)
+		r.obsrecv.EndMetricsOp(obsCtx, metadata.Type.String(), 0, err)
 		return
 	}
 
@@ -141,7 +142,7 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	if err := proto.Unmarshal(reqBody, &wr); err != nil {
 		r.settings.Logger.Warn("Protobuf unmarshal failed", zap.Error(err))
 		http.Error(w, fmt.Sprintf("protobuf unmarshal: %v", err), http.StatusBadRequest)
-		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", 0, err)
+		r.obsrecv.EndMetricsOp(obsCtx, metadata.Type.String(), 0, err)
 		return
 	}
 
@@ -150,7 +151,7 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	if md.MetricCount() > 0 {
 		err = r.nextConsumer.ConsumeMetrics(req.Context(), md)
 		if err != nil {
-			r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", md.MetricCount(), err)
+			r.obsrecv.EndMetricsOp(obsCtx, metadata.Type.String(), md.MetricCount(), err)
 			r.settings.Logger.Error("Failed to consume metrics", zap.Error(err))
 			if consumererror.IsPermanent(err) {
 				http.Error(w, err.Error(), http.StatusBadRequest)
@@ -162,11 +163,11 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	}
 	// if request is invalid, we return 400 even if some metrics were accepted.
 	if isInvalid {
-		r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", md.MetricCount(), errors.New("one or more time series were missing the __name__ label and were dropped"))
+		r.obsrecv.EndMetricsOp(obsCtx, metadata.Type.String(), md.MetricCount(), errors.New("one or more time series were missing the __name__ label and were dropped"))
 		http.Error(w, "one or more time series were missing the __name__ label and were dropped", http.StatusBadRequest)
 		return
 	}
-	r.obsrecv.EndMetricsOp(obsCtx, "prometheusremotewritev1receiver", md.MetricCount(), nil)
+	r.obsrecv.EndMetricsOp(obsCtx, metadata.Type.String(), md.MetricCount(), nil)
 	w.WriteHeader(http.StatusNoContent)
 }
 
