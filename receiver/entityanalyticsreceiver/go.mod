@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/receiver/entityanal
 go 1.25.0
 
 require (
-	github.com/elastic/entcollect v0.0.0-20260408214411-765a9bedd20c
+	github.com/elastic/entcollect v0.0.0-20260501012805-5fd94422b104
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.55.0
 	go.opentelemetry.io/collector/component/componenttest v0.149.0
