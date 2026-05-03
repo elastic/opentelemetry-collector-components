@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"time"
 
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/confmap"
 
 	"github.com/elastic/entcollect"
@@ -39,15 +40,16 @@ func jamfProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 		// jamfLocalConf mirrors ecjamf.Config with mapstructure tags for confmap.Conf
 		// Unmarshal. If ecjamf.Config gains a new field, add it here too.
 		type jamfLocalConf struct {
-			TenantID    string        `mapstructure:"jamf_tenant"`
-			Username    string        `mapstructure:"jamf_username"`
-			Password    string        `mapstructure:"jamf_password"`
-			PageSize    int           `mapstructure:"page_size"`
-			IDSetShards int           `mapstructure:"idset_shards"`
-			TokenGrace  time.Duration `mapstructure:"token_grace_period"`
+			TenantID    configopaque.String `mapstructure:"jamf_tenant"`
+			Username    configopaque.String `mapstructure:"jamf_username"`
+			Password    configopaque.String `mapstructure:"jamf_password"`
+			PageSize    int                 `mapstructure:"page_size"`
+			IDSetShards int                 `mapstructure:"idset_shards"`
+			TokenGrace  time.Duration       `mapstructure:"token_grace_period"`
 		}
 
 		lc := jamfLocalConf{
+			PageSize:    ec.PageSize,
 			IDSetShards: ec.IDSetShards,
 			TokenGrace:  ec.TokenGrace,
 		}
@@ -55,21 +57,32 @@ func jamfProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 		if err != nil {
 			return nil, fmt.Errorf("jamf: unmarshal config: %w", err)
 		}
-		ec.TenantID = lc.TenantID
-		ec.Username = lc.Username
-		ec.Password = lc.Password
+		ec.TenantID = string(lc.TenantID)
+		ec.Username = string(lc.Username)
+		ec.Password = string(lc.Password)
 		ec.PageSize = lc.PageSize
 		ec.IDSetShards = lc.IDSetShards
 		ec.TokenGrace = lc.TokenGrace
 	} else {
 		// cfg is nil when the receiver has no provider-specific sub-config
-		// (the current default). Credentials are read from environment variables.
+		// (the current default). Credentials and optional settings are read
+		// from environment variables.
 		ec.TenantID = os.Getenv("JAMF_TENANT")
 		ec.Username = os.Getenv("JAMF_USERNAME")
 		ec.Password = os.Getenv("JAMF_PASSWORD")
 		if v := os.Getenv("JAMF_PAGE_SIZE"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil {
 				ec.PageSize = n
+			}
+		}
+		if v := os.Getenv("JAMF_IDSET_SHARDS"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil {
+				ec.IDSetShards = n
+			}
+		}
+		if v := os.Getenv("JAMF_TOKEN_GRACE_PERIOD"); v != "" {
+			if d, err := time.ParseDuration(v); err == nil {
+				ec.TokenGrace = d
 			}
 		}
 	}
