@@ -221,7 +221,7 @@ func testConfig(provider string) *Config {
 	return &Config{
 		Provider:       provider,
 		StorageID:      "elasticsearch_storage",
-		SyncInterval:   time.Hour,
+		SyncInterval:   24 * time.Hour,
 		UpdateInterval: time.Hour,
 	}
 }

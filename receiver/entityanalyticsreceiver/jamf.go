@@ -71,19 +71,25 @@ func jamfProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 		ec.Username = os.Getenv("JAMF_USERNAME")
 		ec.Password = os.Getenv("JAMF_PASSWORD")
 		if v := os.Getenv("JAMF_PAGE_SIZE"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil {
-				ec.PageSize = n
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				return nil, fmt.Errorf("jamf: parse JAMF_PAGE_SIZE: %w", err)
 			}
+			ec.PageSize = n
 		}
 		if v := os.Getenv("JAMF_IDSET_SHARDS"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil {
-				ec.IDSetShards = n
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				return nil, fmt.Errorf("jamf: parse JAMF_IDSET_SHARDS: %w", err)
 			}
+			ec.IDSetShards = n
 		}
 		if v := os.Getenv("JAMF_TOKEN_GRACE_PERIOD"); v != "" {
-			if d, err := time.ParseDuration(v); err == nil {
-				ec.TokenGrace = d
+			d, err := time.ParseDuration(v)
+			if err != nil {
+				return nil, fmt.Errorf("jamf: parse JAMF_TOKEN_GRACE_PERIOD: %w", err)
 			}
+			ec.TokenGrace = d
 		}
 	}
 	err := ec.Validate()
