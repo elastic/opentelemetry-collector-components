@@ -38,7 +38,7 @@ func NewFactory() connector.Factory {
 
 func createDefaultConfig() component.Config {
 	return &Config{
-		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+		MetricsBuilderConfig: metadata.NewDefaultMetricsBuilderConfig(),
 		FlushInterval:        30 * time.Second,
 	}
 }

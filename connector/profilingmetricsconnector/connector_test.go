@@ -41,7 +41,7 @@ import (
 func TestConsumeProfiles_WithMetrics(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+		MetricsBuilderConfig: metadata.NewDefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
@@ -71,7 +71,7 @@ func TestConsumeProfiles_WithMetrics(t *testing.T) {
 
 func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
-	metricsCfg := metadata.DefaultMetricsBuilderConfig()
+	metricsCfg := metadata.NewDefaultMetricsBuilderConfig()
 	metricsCfg.Metrics.SamplesFrameType.Enabled = true
 	cfg := &Config{
 		MetricsBuilderConfig: metricsCfg,
@@ -163,7 +163,7 @@ func TestConsumeProfiles_FrameTypeMetrics(t *testing.T) {
 
 func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
-	metricsCfg := metadata.DefaultMetricsBuilderConfig()
+	metricsCfg := metadata.NewDefaultMetricsBuilderConfig()
 	metricsCfg.Metrics.SamplesFrameType.Enabled = true
 	cfg := &Config{
 		MetricsBuilderConfig: metricsCfg,
@@ -268,7 +268,7 @@ func TestConsumeProfiles_MultipleSamplesAndFrameTypes(t *testing.T) {
 func TestConsumeProfiles_NoMetrics(t *testing.T) {
 	mockConsumer := new(consumertest.MetricsSink)
 	cfg := &Config{
-		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+		MetricsBuilderConfig: metadata.NewDefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
 		nextConsumer: mockConsumer,
@@ -288,7 +288,7 @@ func TestConsumeProfiles_NoMetrics(t *testing.T) {
 
 func TestCollectClassificationCounts_GoFrameType(t *testing.T) {
 	cfg := &Config{
-		MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+		MetricsBuilderConfig: metadata.NewDefaultMetricsBuilderConfig(),
 	}
 	conn := &profilesToMetricsConnector{
 		config: cfg,
@@ -362,7 +362,7 @@ func TestConnector_AggregatedFrameMetrics(t *testing.T) {
 		m := new(consumertest.MetricsSink)
 		flushInterval := 10 * time.Minute
 		cfg := &Config{
-			MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
+			MetricsBuilderConfig: metadata.NewDefaultMetricsBuilderConfig(),
 			FlushInterval:        flushInterval,
 		}
 		conn, err := createProfilesToMetrics(t.Context(), connectortest.NewNopSettings(metadata.Type), cfg, m)
