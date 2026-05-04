@@ -3,10 +3,11 @@ module github.com/elastic/opentelemetry-collector-components/receiver/entityanal
 go 1.25.0
 
 require (
-	github.com/elastic/entcollect v0.0.0-20260408214411-765a9bedd20c
+	github.com/elastic/entcollect v0.0.0-20260501012805-5fd94422b104
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.55.0
 	go.opentelemetry.io/collector/component/componenttest v0.149.0
+	go.opentelemetry.io/collector/config/configopaque v1.55.0
 	go.opentelemetry.io/collector/confmap v1.55.0
 	go.opentelemetry.io/collector/consumer v1.55.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.149.0
@@ -37,6 +38,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
+	go.opentelemetry.io/collector/confmap/xconfmap v0.149.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror v0.149.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.149.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.55.0 // indirect

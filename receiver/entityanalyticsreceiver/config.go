@@ -51,5 +51,8 @@ func (cfg *Config) Validate() error {
 	if cfg.UpdateInterval <= 0 {
 		return fmt.Errorf("update_interval must be positive")
 	}
+	if cfg.SyncInterval <= cfg.UpdateInterval {
+		return fmt.Errorf("sync_interval must be greater than update_interval")
+	}
 	return nil
 }

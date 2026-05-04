@@ -67,6 +67,6 @@ distribution.
 
 ## Status
 
-This receiver is in **development** stability. The provider registry is
-currently empty — concrete provider implementations (Okta, EntraID,
-Active Directory, Jamf) will be added in subsequent work.
+This receiver is in **development** stability. The Jamf provider is
+registered. Further providers (Okta, EntraID, Active Directory) will
+be added in subsequent work.
