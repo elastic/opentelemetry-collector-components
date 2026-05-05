@@ -28,10 +28,10 @@ resourceMetrics:
                     - key: metricset.interval
                       value:
                         stringValue: 1m
-                    - key: processor.event
+                    - key: overflow
                       value:
                         stringValue: metric
-                    - key: overflow
+                    - key: processor.event
                       value:
                         stringValue: metric
           - description: Overflow metric count due to metric limit
@@ -47,10 +47,10 @@ resourceMetrics:
                     - key: metricset.interval
                       value:
                         stringValue: 10m
-                    - key: processor.event
+                    - key: overflow
                       value:
                         stringValue: metric
-                    - key: overflow
+                    - key: processor.event
                       value:
                         stringValue: metric
           - description: Overflow metric count due to metric limit
@@ -66,10 +66,10 @@ resourceMetrics:
                     - key: metricset.interval
                       value:
                         stringValue: 60m
-                    - key: processor.event
+                    - key: overflow
                       value:
                         stringValue: metric
-                    - key: overflow
+                    - key: processor.event
                       value:
                         stringValue: metric
           - name: service_summary

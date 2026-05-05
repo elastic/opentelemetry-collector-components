@@ -407,7 +407,16 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
-			Attributes:                spanDestinationAttributes,
+			Attributes: append(slices.Clone(spanDestinationAttributes),
+				signaltometricsconfig.Attribute{
+					Key:          "elasticsearch.mapping.hints",
+					DefaultValue: []any{"_doc_count"},
+				},
+				signaltometricsconfig.Attribute{
+					Key:      "elasticsearch.doc_count",
+					Optional: true,
+				},
+			),
 			Conditions: []string{
 				`attributes["span.composite.sum.us"] != nil`,
 			},
@@ -420,7 +429,10 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
-			Attributes:                spanDestinationAttributes,
+			Attributes: append(slices.Clone(spanDestinationAttributes), signaltometricsconfig.Attribute{
+				Key:          "elasticsearch.mapping.hints",
+				DefaultValue: []any{"_doc_count"},
+			}),
 			Conditions: []string{
 				`attributes["span.composite.sum.us"] == nil`,
 			},
@@ -434,7 +446,16 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
-			Attributes:                spanDestinationAttributes,
+			Attributes: append(slices.Clone(spanDestinationAttributes),
+				signaltometricsconfig.Attribute{
+					Key:          "elasticsearch.mapping.hints",
+					DefaultValue: []any{"_doc_count"},
+				},
+				signaltometricsconfig.Attribute{
+					Key:      "elasticsearch.doc_count",
+					Optional: true,
+				},
+			),
 			Conditions: []string{
 				`attributes["span.composite.count"] != nil`,
 			},
@@ -446,7 +467,10 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
-			Attributes:                spanDestinationAttributes,
+			Attributes: append(slices.Clone(spanDestinationAttributes), signaltometricsconfig.Attribute{
+				Key:          "elasticsearch.mapping.hints",
+				DefaultValue: []any{"_doc_count"},
+			}),
 			Conditions: []string{
 				`attributes["span.composite.count"] == nil`,
 			},

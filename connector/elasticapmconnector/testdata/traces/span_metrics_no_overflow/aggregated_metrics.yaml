@@ -82,6 +82,11 @@ resourceMetrics:
                     - key: data_stream.dataset
                       value:
                         stringValue: service_destination.1m
+                    - key: elasticsearch.mapping.hints
+                      value:
+                        arrayValue:
+                          values:
+                            - stringValue: _doc_count
                     - key: event.outcome
                       value:
                         stringValue: success
@@ -117,6 +122,11 @@ resourceMetrics:
                     - key: data_stream.dataset
                       value:
                         stringValue: service_destination.10m
+                    - key: elasticsearch.mapping.hints
+                      value:
+                        arrayValue:
+                          values:
+                            - stringValue: _doc_count
                     - key: event.outcome
                       value:
                         stringValue: success
@@ -152,6 +162,11 @@ resourceMetrics:
                     - key: data_stream.dataset
                       value:
                         stringValue: service_destination.60m
+                    - key: elasticsearch.mapping.hints
+                      value:
+                        arrayValue:
+                          values:
+                            - stringValue: _doc_count
                     - key: event.outcome
                       value:
                         stringValue: success
@@ -187,6 +202,11 @@ resourceMetrics:
                     - key: data_stream.dataset
                       value:
                         stringValue: service_destination.1m
+                    - key: elasticsearch.mapping.hints
+                      value:
+                        arrayValue:
+                          values:
+                            - stringValue: _doc_count
                     - key: event.outcome
                       value:
                         stringValue: success
@@ -223,6 +243,11 @@ resourceMetrics:
                     - key: data_stream.dataset
                       value:
                         stringValue: service_destination.10m
+                    - key: elasticsearch.mapping.hints
+                      value:
+                        arrayValue:
+                          values:
+                            - stringValue: _doc_count
                     - key: event.outcome
                       value:
                         stringValue: success
@@ -259,6 +284,11 @@ resourceMetrics:
                     - key: data_stream.dataset
                       value:
                         stringValue: service_destination.60m
+                    - key: elasticsearch.mapping.hints
+                      value:
+                        arrayValue:
+                          values:
+                            - stringValue: _doc_count
                     - key: event.outcome
                       value:
                         stringValue: success
