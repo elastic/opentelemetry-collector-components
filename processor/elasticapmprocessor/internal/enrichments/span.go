@@ -427,6 +427,9 @@ func (s *spanEnrichmentContext) enrichSpan(
 	if cfg.RemoveMessaging.Enabled {
 		s.removeMessagingAttrs(span)
 	}
+	if cfg.CompositeDocCount.Enabled {
+		s.setCompositeDocCount(span)
+	}
 
 	// The transaction type should not be updated if it was originally provided (s.transactionType is not empty)
 	// Prior enrichment logic may have set this value by using `s.getTxnType()`, in this
@@ -571,6 +574,15 @@ func (s *spanEnrichmentContext) setMessageQueue(span ptrace.Span) {
 // This creates results in elastic and semconv attribute mapping that is specific to messaging spans
 // that is not consistent for all span types (http, grpc, db, etc.).
 // This is another reason the attributes are deleted here to avoid special handling at export time.
+// setCompositeDocCount propagates span.composite.count to
+// elasticsearch.doc_count so the Elasticsearch exporter can write the
+// correct _doc_count field for pre-aggregated composite span metrics.
+func (s *spanEnrichmentContext) setCompositeDocCount(span ptrace.Span) {
+	if v, ok := span.Attributes().Get("span.composite.count"); ok {
+		span.Attributes().PutInt("elasticsearch.doc_count", v.Int())
+	}
+}
+
 func (s *spanEnrichmentContext) removeMessagingAttrs(span ptrace.Span) {
 	if s.isMessaging {
 		span.Attributes().Remove("message_bus.destination")

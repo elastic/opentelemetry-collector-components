@@ -100,6 +100,11 @@ type ElasticSpanConfig struct {
 	UserAgent           AttributeConfig `mapstructure:"user_agent"`
 	RemoveMessaging     AttributeConfig `mapstructure:"remove_messaging"`
 	MessageQueueName    AttributeConfig `mapstructure:"message_queue_name"`
+	// CompositeDocCount controls whether elasticsearch.doc_count is set
+	// to span.composite.count on composite spans. This enables the
+	// Elasticsearch exporter to write the correct _doc_count field for
+	// pre-aggregated composite span metrics.
+	CompositeDocCount AttributeConfig `mapstructure:"composite_doc_count"`
 }
 
 // SpanEventConfig configures enrichment attributes for the span events.
@@ -202,6 +207,7 @@ func Enabled() Config {
 			UserAgent:           AttributeConfig{Enabled: true},
 			RemoveMessaging:     AttributeConfig{Enabled: true},
 			MessageQueueName:    AttributeConfig{Enabled: true},
+			CompositeDocCount:   AttributeConfig{Enabled: true},
 		},
 		SpanEvent: SpanEventConfig{
 			TimestampUs:        AttributeConfig{Enabled: true},

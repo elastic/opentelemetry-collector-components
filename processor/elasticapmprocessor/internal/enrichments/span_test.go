@@ -2699,6 +2699,64 @@ func TestElasticSpanEnrich(t *testing.T) {
 				elasticattr.ServiceTargetName:       "",
 			},
 		},
+		{
+			name: "composite_span_sets_elasticsearch_doc_count",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.Attributes().PutInt(elasticattr.SpanCompositeCount, 5)
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				"elasticsearch.doc_count":             int64(5),
+				elasticattr.TimestampUs:               startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:            "span",
+				elasticattr.SpanRepresentativeCount:   float64(1),
+				elasticattr.SpanType:                  "unknown",
+				elasticattr.SpanDurationUs:             expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:               outcomeSuccess,
+				elasticattr.SuccessCount:               int64(1),
+			},
+		},
+		{
+			name: "non_composite_span_does_not_set_elasticsearch_doc_count",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				return span
+			}(),
+			config: config.Enabled().Span,
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:             startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:          "span",
+				elasticattr.SpanRepresentativeCount: float64(1),
+				elasticattr.SpanType:                "unknown",
+				elasticattr.SpanDurationUs:          expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:            outcomeSuccess,
+				elasticattr.SuccessCount:            int64(1),
+			},
+		},
+		{
+			name: "composite_span_doc_count_disabled",
+			input: func() ptrace.Span {
+				span := getElasticSpan()
+				span.Attributes().PutInt(elasticattr.SpanCompositeCount, 5)
+				return span
+			}(),
+			config: func() config.ElasticSpanConfig {
+				cfg := config.Enabled().Span
+				cfg.CompositeDocCount.Enabled = false
+				return cfg
+			}(),
+			enrichedAttrs: map[string]any{
+				elasticattr.TimestampUs:             startTs.AsTime().UnixMicro(),
+				elasticattr.ProcessorEvent:          "span",
+				elasticattr.SpanRepresentativeCount: float64(1),
+				elasticattr.SpanType:                "unknown",
+				elasticattr.SpanDurationUs:          expectedDuration.Microseconds(),
+				elasticattr.EventOutcome:            outcomeSuccess,
+				elasticattr.SuccessCount:            int64(1),
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			expectedSpan := ptrace.NewSpan()
