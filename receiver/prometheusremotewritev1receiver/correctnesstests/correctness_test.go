@@ -266,7 +266,7 @@ func (dr *dataReceiver) allTimeSeries() []prompb.TimeSeries {
 
 func waitForTimeSeries(t *testing.T, dr *dataReceiver, n int) {
 	t.Helper()
-	assert.Eventually(t, func() bool {
+	require.Eventually(t, func() bool {
 		return len(dr.allTimeSeries()) >= n
 	}, 10*time.Second, 20*time.Millisecond, "timed out waiting for %d time-series", n)
 }

@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/gogo/protobuf v1.3.2
-	github.com/prometheus/prometheus v0.311.2-0.20260409145810-72293ff1d2e0
+	github.com/prometheus/prometheus v0.310.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.57.0
 	go.opentelemetry.io/collector/component/componentstatus v0.151.0
