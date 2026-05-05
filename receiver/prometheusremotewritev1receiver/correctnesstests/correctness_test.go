@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package prometheusremotewritev1receiver
+package correctnesstests
 
 import (
 	"bytes"
@@ -36,6 +36,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
+	"github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver"
 	prwexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
@@ -292,8 +293,8 @@ func buildPipeline(t *testing.T, dataRecvAddr string) string {
 
 	// prwv1-receiver
 	rcvAddr := testutil.GetAvailableLocalAddress(t)
-	rcvFactory := NewFactory()
-	rcvCfg := rcvFactory.CreateDefaultConfig().(*Config)
+	rcvFactory := prometheusremotewritev1receiver.NewFactory()
+	rcvCfg := rcvFactory.CreateDefaultConfig().(*prometheusremotewritev1receiver.Config)
 	rcvCfg.ServerConfig = confighttp.ServerConfig{
 		NetAddr: confignet.AddrConfig{
 			Endpoint:  rcvAddr,
