@@ -117,6 +117,10 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 // timestamp, so the last reservation carries the largest deficit and
 // therefore the cumulative delay for the whole batch.
 func reserveAll(state *keyState, hits int) ([]*rate.Reservation, time.Duration, error) {
+	// Empty batches (hits <= 0) consume nothing and have no delay.
+	if hits <= 0 {
+		return nil, 0, nil
+	}
 	state.reserveLock.Lock()
 	defer state.reserveLock.Unlock()
 

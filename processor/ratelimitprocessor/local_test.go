@@ -125,6 +125,45 @@ func TestLocalRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	}
 }
 
+// TestLocalRateLimiter_ZeroHits verifies that empty batches (hits == 0) are
+// a no-op in both error and delay modes — they don't consume tokens, don't
+// wait, and (most importantly) don't panic. records/bytes/profiles
+// strategies legitimately produce hits=0 for empty pdata batches.
+func TestLocalRateLimiter_ZeroHits(t *testing.T) {
+	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
+		t.Run(string(behavior), func(t *testing.T) {
+			rl := newTestLocalRateLimiter(t, &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate: 10, Burst: 10, ThrottleBehavior: behavior,
+					ThrottleInterval: 100 * time.Millisecond,
+					RetryDelay:       100 * time.Millisecond,
+				},
+			})
+			start := time.Now()
+			err := rl.RateLimit(context.Background(), 0)
+			require.NoError(t, err)
+			assert.Less(t, time.Since(start), 50*time.Millisecond,
+				"hits=0 should return immediately without waiting")
+
+			// A hits=0 call must not consume tokens. Drain the bucket
+			// and verify the limit still kicks in at the same threshold.
+			for i := 0; i < 10; i++ {
+				_ = rl.RateLimit(context.Background(), 1)
+			}
+			// 11th call: error mode should reject; delay mode should wait.
+			start = time.Now()
+			err = rl.RateLimit(context.Background(), 1)
+			switch behavior {
+			case ThrottleBehaviorError:
+				assert.Error(t, err)
+			case ThrottleBehaviorDelay:
+				require.NoError(t, err)
+				assert.GreaterOrEqual(t, time.Since(start), 50*time.Millisecond)
+			}
+		})
+	}
+}
+
 // TestLocalRateLimiter_HitsExceedsBurst_Delay verifies that a single batch
 // larger than burst is handled by delay mode (split internally) instead of
 // being rejected. With rate=100/s and burst=10, a request for 100 hits
