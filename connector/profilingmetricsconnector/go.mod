@@ -4,9 +4,9 @@ go 1.25.0
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.150.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.150.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.150.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.151.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.151.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.151.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.57.0
 	go.opentelemetry.io/collector/component/componenttest v0.151.0
