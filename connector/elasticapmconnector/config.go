@@ -480,8 +480,10 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Unit: "us",
 			Histogram: configoptional.Some(signaltometricsconfig.Histogram{
 				Buckets: []float64{1},
-				Count:   "Int(AdjustedCount())",
-				Value:   "Int(AdjustedCount())",
+				// Value=1 marks one success; Count=AdjustedCount weights it by
+				// the sampling factor. Aggregator sum = value*count = AdjustedCount.
+				Count: "Int(AdjustedCount())",
+				Value: "1",
 			}),
 		}, {
 			Name:                      "event.success_count",
@@ -514,8 +516,10 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Unit: "us",
 			Histogram: configoptional.Some(signaltometricsconfig.Histogram{
 				Buckets: []float64{1},
-				Count:   "Int(AdjustedCount())",
-				Value:   "Int(AdjustedCount())",
+				// Value=1 marks one success; Count=AdjustedCount weights it by
+				// the sampling factor. Aggregator sum = value*count = AdjustedCount.
+				Count: "Int(AdjustedCount())",
+				Value: "1",
 			}),
 		}, {
 			Name:                      "event.success_count",
