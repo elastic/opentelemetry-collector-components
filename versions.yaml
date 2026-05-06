@@ -1,6 +1,6 @@
 module-sets:
   edot-base:
-    version: v0.46.0
+    version: v0.47.0
     modules:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
@@ -24,10 +24,13 @@ excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/internal/tools
   - github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent
   - github.com/elastic/opentelemetry-collector-components/internal/testutil
+  - github.com/elastic/opentelemetry-collector-components/internal/versionscheck
   - github.com/elastic/opentelemetry-collector-components/pkg/integrations
   - github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver
+  - github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver/correctnesstests
   - github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension
   - github.com/elastic/opentelemetry-collector-components/extension/configintegrationextension
   - github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor
   - github.com/elastic/opentelemetry-collector-components/processor/partitioningprocessor
   - github.com/elastic/opentelemetry-collector-components/loadgen
+  - github.com/elastic/opentelemetry-collector-components/receiver/entityanalyticsreceiver
