@@ -182,7 +182,7 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asDouble: 500000
+                - asDouble: 1e+06
                   attributes:
                     - key: data_stream.dataset
                       value:
@@ -218,7 +218,7 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asDouble: 500000
+                - asDouble: 1e+06
                   attributes:
                     - key: data_stream.dataset
                       value:
@@ -254,7 +254,7 @@ resourceMetrics:
             sum:
               aggregationTemporality: 1
               dataPoints:
-                - asDouble: 500000
+                - asDouble: 1e+06
                   attributes:
                     - key: data_stream.dataset
                       value:

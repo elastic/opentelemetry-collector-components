@@ -403,7 +403,9 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			Histogram: configoptional.Some(transactionDurationSummaryHistogram),
 		}, {
 			// For composite spans, the response time sum is the composite
-			// duration (total of all compressed sub-spans).
+			// duration (total of all compressed sub-spans), scaled by the
+			// sampling weight so the aggregate represents the unsampled
+			// population (matches apm-server's setSpanMetrics behaviour).
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
@@ -413,10 +415,11 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			},
 			Unit: "us",
 			Sum: configoptional.Some(signaltometricsconfig.Sum{
-				Value: `Double(attributes["span.composite.sum.us"])`,
+				Value: `Double(attributes["span.composite.sum.us"]) * Double(AdjustedCount())`,
 			}),
 		}, {
-			// For non-composite spans, use the span wall-clock duration.
+			// For non-composite spans, use the span wall-clock duration
+			// scaled by the sampling weight.
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
@@ -426,11 +429,11 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			},
 			Unit: "us",
 			Sum: configoptional.Some(signaltometricsconfig.Sum{
-				Value: "Double(Microseconds(end_time - start_time))",
+				Value: "Double(Microseconds(end_time - start_time)) * Double(AdjustedCount())",
 			}),
 		}, {
 			// For composite spans, the count is the number of compressed
-			// operations.
+			// operations scaled by the sampling weight.
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
@@ -439,7 +442,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				`attributes["span.composite.count"] != nil`,
 			},
 			Sum: configoptional.Some(signaltometricsconfig.Sum{
-				Value: `Int(attributes["span.composite.count"])`,
+				Value: `Int(attributes["span.composite.count"]) * Int(AdjustedCount())`,
 			}),
 		}, {
 			// For non-composite spans, count is the sampling weight.
