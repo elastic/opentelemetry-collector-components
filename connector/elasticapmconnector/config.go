@@ -227,6 +227,11 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 	return lsmConfig
 }
 
+// signaltometricsConfig configures signal_to_metrics connector to produce
+// elastic APM metric aggregations. The aggregations produced for service
+// destination metric does NOT include _doc_count field as it is not used
+// by the UI. See https://github.com/elastic/hosted-otel-collector/issues/3009
+// for more details.
 func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 	// commonResourceAttributes are resource attributes included in
 	// all aggregated metrics.
@@ -404,7 +409,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 		}, {
 			// For composite spans, the response time sum is the composite
 			// duration (total of all compressed sub-spans), scaled by the
-			// sampling weight so the aggregate represents the unsampled
+			// adjusted count so the aggregate represents the unsampled
 			// population (matches apm-server's setSpanMetrics behaviour).
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
@@ -419,7 +424,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 		}, {
 			// For non-composite spans, use the span wall-clock duration
-			// scaled by the sampling weight.
+			// scaled by the adjusted count.
 			Name:                      "span.destination.service.response_time.sum.us",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
@@ -433,7 +438,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			}),
 		}, {
 			// For composite spans, the count is the number of compressed
-			// operations scaled by the sampling weight.
+			// operations scaled by the adjusted count.
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
@@ -445,7 +450,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 				Value: `Int(attributes["span.composite.count"]) * Int(AdjustedCount())`,
 			}),
 		}, {
-			// For non-composite spans, count is the sampling weight.
+			// For non-composite spans, count is the adjusted count.
 			Name:                      "span.destination.service.response_time.count",
 			Description:               "APM span destination metrics",
 			IncludeResourceAttributes: spanDestinationResourceAttributes,
