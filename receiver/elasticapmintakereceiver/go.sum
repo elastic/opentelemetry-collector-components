@@ -42,8 +42,8 @@ github.com/elastic/apm-data v1.21.0 h1:PItHJ3q5C98te/Pnl6iD5dn7ogRoDdEr2I00+oUs7
 github.com/elastic/apm-data v1.21.0/go.mod h1:r4IkKOoOD4MjCDRT2zLK7uqg42MA+6yYJ8j5pTpnBvU=
 github.com/elastic/elastic-transport-go/v8 v8.10.0 h1:vzpe1BMLdShc7yWNV55U6aGk4UtYEOVsBJ5S4UIeY9Q=
 github.com/elastic/elastic-transport-go/v8 v8.10.0/go.mod h1:KB6jblnx4NnImxHKULFys7VQ472Av8uzrbkr6OtbOp8=
-github.com/elastic/go-elasticsearch/v8 v8.19.4 h1:QoJNc9wltptNoc4UwFvzE8u1uIeLqJeN73urPxHmXjc=
-github.com/elastic/go-elasticsearch/v8 v8.19.4/go.mod h1:jeWebApE1oFEW/hKZqx/IRYmP/aa2+WMJkOfk+AduSI=
+github.com/elastic/go-elasticsearch/v8 v8.19.5 h1:eqd6XucaNCFbHx1NkAPfljte0jyQ3DnPAyUCKswPWrI=
+github.com/elastic/go-elasticsearch/v8 v8.19.5/go.mod h1:jeWebApE1oFEW/hKZqx/IRYmP/aa2+WMJkOfk+AduSI=
 github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9 h1:/Ju7knos+GwQymH3l8aizpSgKRJVRdknWnK5kJ5sEsE=
 github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9/go.mod h1:kyvhWUk2Cdca9s2psYT7YoyQhMPSGpIt/nd05cs69rg=
 github.com/elastic/opentelemetry-lib v0.38.0 h1:qrKzJBIu9cTjE6YkaFfN/h+XL/P79bWh9TuZ3ExgoHU=
