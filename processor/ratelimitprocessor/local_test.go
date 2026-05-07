@@ -125,6 +125,264 @@ func TestLocalRateLimiter_RateLimit_MetadataKeys(t *testing.T) {
 	}
 }
 
+// TestLocalRateLimiter_ZeroHits verifies that empty batches (hits == 0) are
+// a no-op in both error and delay modes — they don't consume tokens, don't
+// wait, and (most importantly) don't panic. records/bytes/profiles
+// strategies legitimately produce hits=0 for empty pdata batches.
+func TestLocalRateLimiter_ZeroHits(t *testing.T) {
+	for _, behavior := range []ThrottleBehavior{ThrottleBehaviorError, ThrottleBehaviorDelay} {
+		t.Run(string(behavior), func(t *testing.T) {
+			rl := newTestLocalRateLimiter(t, &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate: 10, Burst: 10, ThrottleBehavior: behavior,
+					ThrottleInterval: 100 * time.Millisecond,
+					RetryDelay:       100 * time.Millisecond,
+				},
+			})
+			start := time.Now()
+			err := rl.RateLimit(context.Background(), 0)
+			require.NoError(t, err)
+			assert.Less(t, time.Since(start), 50*time.Millisecond,
+				"hits=0 should return immediately without waiting")
+
+			// A hits=0 call must not consume tokens. Drain the bucket
+			// and verify the limit still kicks in at the same threshold.
+			for i := 0; i < 10; i++ {
+				_ = rl.RateLimit(context.Background(), 1)
+			}
+			// 11th call: error mode should reject; delay mode should wait.
+			start = time.Now()
+			err = rl.RateLimit(context.Background(), 1)
+			switch behavior {
+			case ThrottleBehaviorError:
+				assert.Error(t, err)
+			case ThrottleBehaviorDelay:
+				require.NoError(t, err)
+				assert.GreaterOrEqual(t, time.Since(start), 50*time.Millisecond)
+			}
+		})
+	}
+}
+
+// TestLocalRateLimiter_HitsExceedsBurst_Delay verifies that a single batch
+// larger than burst is handled by delay mode (split internally) instead of
+// being rejected. With rate=100/s and burst=10, a request for 100 hits
+// requires ~900ms (10 immediate + 90 future tokens at 100/s).
+func TestLocalRateLimiter_HitsExceedsBurst_Delay(t *testing.T) {
+	rl := newTestLocalRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate: 100, Burst: 10, ThrottleBehavior: ThrottleBehaviorDelay,
+			ThrottleInterval: 100 * time.Millisecond,
+			RetryDelay:       100 * time.Millisecond,
+		},
+	})
+
+	start := time.Now()
+	err := rl.RateLimit(context.Background(), 100)
+	require.NoError(t, err)
+	elapsed := time.Since(start)
+
+	// 100 hits at 100/s with burst=10: ~900ms expected. Allow generous
+	// margins for CI timing jitter.
+	assert.GreaterOrEqual(t, elapsed, 800*time.Millisecond,
+		"expected at least ~900ms wait, got %v", elapsed)
+	assert.Less(t, elapsed, 1500*time.Millisecond,
+		"expected ~900ms wait, got %v (something is very slow)", elapsed)
+}
+
+// TestLocalRateLimiter_HitsExceedsBurst_Error verifies that error mode
+// continues to reject hits > burst (no behavior change vs. before the
+// chunked-reservation fix).
+func TestLocalRateLimiter_HitsExceedsBurst_Error(t *testing.T) {
+	rl := newTestLocalRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate: 100, Burst: 10, ThrottleBehavior: ThrottleBehaviorError,
+			ThrottleInterval: 100 * time.Millisecond,
+			RetryDelay:       100 * time.Millisecond,
+		},
+	})
+	err := rl.RateLimit(context.Background(), 100)
+	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+}
+
+// TestLocalRateLimiter_FIFO_HitsExceedsBurst spawns multiple concurrent
+// callers each with hits > burst, staggered by a small delay so their
+// arrival order is deterministic. With the per-key reserveLock holding
+// chunked ReserveN calls atomically, callers should complete in arrival
+// order — not at roughly the same time as a non-atomic chunked WaitN
+// loop would produce.
+func TestLocalRateLimiter_FIFO_HitsExceedsBurst(t *testing.T) {
+	rl := newTestLocalRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate: 100, Burst: 10, ThrottleBehavior: ThrottleBehaviorDelay,
+			ThrottleInterval: 100 * time.Millisecond,
+			RetryDelay:       100 * time.Millisecond,
+		},
+	})
+
+	const N = 4
+	completions := make([]time.Time, N)
+
+	var wg sync.WaitGroup
+	wg.Add(N)
+
+	// Stagger launches so callers arrive in known order. The stagger
+	// (20ms) is much smaller than the per-batch wait (~200ms per
+	// additional 20-hit caller), so arrival order survives scheduling
+	// jitter.
+	for i := 0; i < N; i++ {
+		go func(i int) {
+			defer wg.Done()
+			err := rl.RateLimit(context.Background(), 20)
+			require.NoError(t, err)
+			completions[i] = time.Now()
+		}(i)
+		time.Sleep(20 * time.Millisecond)
+	}
+	wg.Wait()
+
+	for i := 1; i < N; i++ {
+		assert.True(t, completions[i].After(completions[i-1]),
+			"goroutine %d completed at %v, before goroutine %d at %v (FIFO violated)",
+			i, completions[i], i-1, completions[i-1])
+	}
+
+	// Successive completions should be ~200ms apart (20 hits / 100 per
+	// second). Allow generous slack.
+	for i := 1; i < N; i++ {
+		gap := completions[i].Sub(completions[i-1])
+		assert.GreaterOrEqual(t, gap, 100*time.Millisecond,
+			"gap between completion %d and %d is %v, expected >= ~200ms",
+			i-1, i, gap)
+	}
+}
+
+// TestLocalRateLimiter_MixedBatchSizes verifies that small and large
+// batches both make progress under concurrent load — small batches are
+// not starved waiting for large ones, and total throughput is bounded
+// by rate*time.
+func TestLocalRateLimiter_MixedBatchSizes(t *testing.T) {
+	rl := newTestLocalRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate: 100, Burst: 10, ThrottleBehavior: ThrottleBehaviorDelay,
+			ThrottleInterval: 100 * time.Millisecond,
+			RetryDelay:       100 * time.Millisecond,
+		},
+	})
+
+	// Total tokens: 4*5 + 4*20 = 100. At 100/s with burst=10, ~900ms.
+	const smallHits, largeHits, eachKind = 5, 20, 4
+
+	start := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(eachKind * 2)
+	for i := 0; i < eachKind; i++ {
+		go func() {
+			defer wg.Done()
+			require.NoError(t, rl.RateLimit(context.Background(), smallHits))
+		}()
+		go func() {
+			defer wg.Done()
+			require.NoError(t, rl.RateLimit(context.Background(), largeHits))
+		}()
+	}
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	// Throughput invariant: total elapsed >= (totalHits - burst) / rate.
+	// The initial bucket of `burst` tokens absorbs the first burst hits
+	// for free, so minimum wait is (totalHits - burst) / rate.
+	const totalHits = eachKind * (smallHits + largeHits)
+	minExpected := time.Duration(float64(totalHits-10)/100.0*float64(time.Second)) -
+		50*time.Millisecond
+	assert.GreaterOrEqual(t, elapsed, minExpected,
+		"elapsed %v less than throughput floor %v", elapsed, minExpected)
+}
+
+// TestLocalRateLimiter_ContextCancellation_DuringDelay verifies that a
+// caller whose context is cancelled while waiting returns ctx.Err() and
+// returns its tokens via CancelAt — visible as a shorter wait for the
+// next caller.
+func TestLocalRateLimiter_ContextCancellation_DuringDelay(t *testing.T) {
+	rl := newTestLocalRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate: 10, Burst: 10, ThrottleBehavior: ThrottleBehaviorDelay,
+			ThrottleInterval: 100 * time.Millisecond,
+			RetryDelay:       100 * time.Millisecond,
+		},
+	})
+
+	// Drain the bucket with one large request, cancel its context
+	// mid-wait. The reservation must be cancelled so subsequent callers
+	// don't inherit a phantom deficit.
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- rl.RateLimit(ctx, 30) // would take ~2s
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+
+	select {
+	case err := <-errCh:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(2 * time.Second):
+		t.Fatal("RateLimit did not return after context cancellation")
+	}
+
+	// A small request after cancellation should succeed quickly because
+	// the cancelled reservation released most of its tokens.
+	start := time.Now()
+	require.NoError(t, rl.RateLimit(context.Background(), 5))
+	elapsed := time.Since(start)
+	assert.Less(t, elapsed, 500*time.Millisecond,
+		"post-cancellation request took %v; cancelled tokens may not have been released", elapsed)
+}
+
+// TestLocalRateLimiter_PerKeyIsolation_HitsExceedsBurst verifies that
+// the per-key reserveLock does not block callers using different
+// metadata keys: each key has its own keyState and its own lock.
+func TestLocalRateLimiter_PerKeyIsolation_HitsExceedsBurst(t *testing.T) {
+	rl := newTestLocalRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate: 100, Burst: 10, ThrottleBehavior: ThrottleBehaviorDelay,
+			ThrottleInterval: 100 * time.Millisecond,
+			RetryDelay:       100 * time.Millisecond,
+		},
+		MetadataKeys: []string{"tenant"},
+	})
+
+	ctx1 := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"tenant": {"a"}}),
+	})
+	ctx2 := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"tenant": {"b"}}),
+	})
+
+	start := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, rl.RateLimit(ctx1, 100))
+	}()
+	go func() {
+		defer wg.Done()
+		require.NoError(t, rl.RateLimit(ctx2, 100))
+	}()
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	// Each tenant's bucket is independent. Both 100-hit batches should
+	// finish in ~900ms in parallel — not ~1.8s as they would if they
+	// serialized.
+	assert.Less(t, elapsed, 1300*time.Millisecond,
+		"parallel calls on different keys took %v; per-key isolation may be broken", elapsed)
+	assert.GreaterOrEqual(t, elapsed, 800*time.Millisecond,
+		"calls completed in %v; rate limit may not be enforced", elapsed)
+}
+
 func TestLocalRateLimiter_MultipleRequests_Delay(t *testing.T) {
 	throttleInterval := 100 * time.Millisecond
 	rl := newTestLocalRateLimiter(t, &Config{
