@@ -237,10 +237,10 @@ func injectContextMetadata(ctx context.Context, extra map[string]string) context
 	info := client.FromContext(ctx)
 	merged := make(map[string][]string)
 	for k := range info.Metadata.Keys() {
-		merged[k] = info.Metadata.Get(k)
+		merged[strings.ToLower(k)] = info.Metadata.Get(k)
 	}
 	for k, v := range extra {
-		merged[k] = []string{v}
+		merged[strings.ToLower(k)] = []string{v}
 	}
 	info.Metadata = client.NewMetadata(merged)
 	return client.NewContext(ctx, info)
