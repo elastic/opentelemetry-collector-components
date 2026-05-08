@@ -51,23 +51,6 @@ resourceSpans:
             startTimeUnixNano: "1845000"
             status: {}
             traceId: 0123456789abcdef0123456789abcdef
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:

@@ -28,6 +28,12 @@ resourceSpans:
         - key: service.instance.id
           value:
             stringValue: special-name
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
@@ -76,12 +82,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "1.3"
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
         - key: labels.bool_error
           value:
             stringValue: "false"
@@ -159,13 +159,6 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: Array
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: foo
-                              - stringValue: bar
-                              - stringValue: baz
                       - key: User-Agent
                         value:
                           arrayValue:
@@ -186,19 +179,26 @@ resourceSpans:
                           arrayValue:
                             values:
                               - stringValue: foo
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
               - key: http.request.env
                 value:
                   kvlistValue:
                     values:
+                      - key: SERVER_SOFTWARE
+                        value:
+                          stringValue: nginx
                       - key: GATEWAY_INTERFACE
                         value:
                           stringValue: CGI/1.1
                       - key: SOME_NUMERIC_VALUE
                         value:
                           doubleValue: 123
-                      - key: SERVER_SOFTWARE
-                        value:
-                          stringValue: nginx
               - key: http.request.cookies
                 value:
                   kvlistValue:
@@ -223,12 +223,12 @@ resourceSpans:
                         value:
                           kvlistValue:
                             values:
-                              - key: bar
-                                value:
-                                  doubleValue: 123
                               - key: req
                                 value:
                                   stringValue: additional information
+                              - key: bar
+                                value:
+                                  doubleValue: 123
               - key: http.request.referrer
                 value:
                   stringValue: http://localhost:8000/test/e2e/
@@ -294,10 +294,10 @@ resourceSpans:
                         value:
                           kvlistValue:
                             values:
-                              - key: some_long
+                              - key: some_float
                                 value:
                                   doubleValue: 10
-                              - key: some_float
+                              - key: some_long
                                 value:
                                   doubleValue: 10
             endTimeUnixNano: "1496170407186592981"
@@ -336,6 +336,12 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
@@ -384,12 +390,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
         - key: labels.span_tag
           value:
             stringValue: something

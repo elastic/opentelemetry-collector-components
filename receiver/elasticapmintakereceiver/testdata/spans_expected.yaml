@@ -28,12 +28,21 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -49,6 +58,24 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
         - key: container.id
           value:
             stringValue: container-id
@@ -88,48 +115,18 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: john
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: agent.name
           value:
             stringValue: elastic-node
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
-        - key: labels.tag1
-          value:
-            stringValue: label1
         - key: labels.elastic_profiler_stack_trace_ids
           value:
             arrayValue:
@@ -137,6 +134,9 @@ resourceSpans:
                 - stringValue: foo
                 - stringValue: bar
                 - stringValue: foo
+        - key: labels.tag1
+          value:
+            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -217,12 +217,30 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: prod
+        - key: service.framework.name
+          value:
+            stringValue: Node
+        - key: service.framework.version
+          value:
+            stringValue: 1.0.0
+        - key: service.origin.id
+          value:
+            stringValue: 1234567890abcdef
+        - key: service.origin.name
+          value:
+            stringValue: origin-name
+        - key: service.origin.version
+          value:
+            stringValue: 1.0.0
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -238,6 +256,24 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
         - key: container.id
           value:
             stringValue: container-id
@@ -277,54 +313,18 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: john
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: agent.name
           value:
             stringValue: elastic-node
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Node
-        - key: service.framework.version
-          value:
-            stringValue: 1.0.0
-        - key: service.origin.id
-          value:
-            stringValue: 1234567890abcdef
-        - key: service.origin.name
-          value:
-            stringValue: origin-name
-        - key: service.origin.version
-          value:
-            stringValue: 1.0.0
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -401,12 +401,21 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -422,6 +431,24 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
         - key: container.id
           value:
             stringValue: container-id
@@ -461,226 +488,18 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: john
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: agent.name
           value:
             stringValue: elastic-node
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
-        - key: labels.tag1
-          value:
-            stringValue: value1
-        - key: labels.tag4
-          value:
-            stringValue: "true"
-        - key: numeric_labels.tag2
-          value:
-            doubleValue: 123
-        - key: numeric_labels.tag3
-          value:
-            doubleValue: 12.34
-    scopeSpans:
-      - scope: {}
-        spans:
-          - attributes:
-              - key: timestamp.us
-                value:
-                  intValue: "1532976822281000"
-              - key: event.outcome
-                value:
-                  stringValue: unknown
-              - key: processor.event
-                value:
-                  stringValue: span
-              - key: span.duration.us
-                value:
-                  intValue: "3564"
-              - key: transaction.id
-                value:
-                  stringValue: ab23456a89012345
-              - key: span.id
-                value:
-                  stringValue: 0123456a89012345
-              - key: span.name
-                value:
-                  stringValue: GET /api/types
-              - key: span.type
-                value:
-                  stringValue: request
-              - key: span.subtype
-                value:
-                  stringValue: http
-              - key: span.representative_count
-                value:
-                  doubleValue: 1
-            endTimeUnixNano: "1532976822284564298"
-            name: GET /api/types
-            parentSpanId: abcdefabcdef7890
-            spanId: 0123456a89012345
-            startTimeUnixNano: "1532976822281000000"
-            status: {}
-            traceId: abcdef0123456789abcdef9876543210
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: backendspans
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: cloud.provider
-          value:
-            stringValue: cloud_provider
-        - key: cloud.region
-          value:
-            stringValue: cloud_region
-        - key: cloud.availability_zone
-          value:
-            stringValue: cloud_availability_zone
-        - key: cloud.account.id
-          value:
-            stringValue: account_id
-        - key: cloud.platform
-          value:
-            stringValue: lambda
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: "123"
-        - key: user.email
-          value:
-            stringValue: s@test.com
-        - key: user.name
-          value:
-            stringValue: john
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
         - key: labels.tag1
           value:
             stringValue: label1
@@ -728,6 +547,57 @@ resourceSpans:
             startTimeUnixNano: "1532976822281000000"
             status: {}
             traceId: abcdef0123456789abcdef9876543210
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1625572685682272"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "378191"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
+              - key: span.id
+                value:
+                  stringValue: abcdef01234567
+              - key: span.name
+                value:
+                  stringValue: SELECT FROM p_details
+              - key: span.type
+                value:
+                  stringValue: db
+              - key: span.subtype
+                value:
+                  stringValue: postgresql
+              - key: span.action
+                value:
+                  stringValue: query
+              - key: span.composite.compression_strategy
+                value:
+                  stringValue: exact_match
+              - key: span.composite.count
+                value:
+                  intValue: "10"
+              - key: span.composite.sum.us
+                value:
+                  intValue: "359298"
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+            endTimeUnixNano: "1625572686060463200"
+            name: SELECT FROM p_details
+            parentSpanId: abcdef0123456789
+            spanId: abcdef0123456700
+            startTimeUnixNano: "1625572685682272000"
+            status:
+              code: 1
+            traceId: edcbaf0123456789abcdef9876543210
   - resource:
       attributes:
         - key: service.name
@@ -754,12 +624,21 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -775,6 +654,24 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
         - key: container.id
           value:
             stringValue: container-id
@@ -814,51 +711,24 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: john
-        - key: agent.name
-          value:
-            stringValue: elastic-ruby
-        - key: agent.version
-          value:
-            stringValue: "2.2"
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
-        - key: agent.ephemeral_id
-          value:
-            stringValue: justanid
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
         - key: destination.ip
           value:
             stringValue: ::1
+        - key: agent.name
+          value:
+            stringValue: elastic-ruby
+        - key: agent.version
+          value:
+            stringValue: "2.2"
+        - key: agent.ephemeral_id
+          value:
+            stringValue: justanid
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1000,12 +870,12 @@ resourceSpans:
                               value:
                                 kvlistValue:
                                   values:
-                                    - key: key
-                                      value:
-                                        stringValue: value
                                     - key: key2
                                       value:
                                         stringValue: value2
+                                    - key: key
+                                      value:
+                                        stringValue: value
                             - key: line.number
                               value:
                                 intValue: "547"
@@ -1053,143 +923,6 @@ resourceSpans:
             status:
               code: 1
             traceId: abcdef0123456789abcdef9876543210
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: service1
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: cloud.provider
-          value:
-            stringValue: cloud_provider
-        - key: cloud.region
-          value:
-            stringValue: cloud_region
-        - key: cloud.availability_zone
-          value:
-            stringValue: cloud_availability_zone
-        - key: cloud.account.id
-          value:
-            stringValue: account_id
-        - key: cloud.platform
-          value:
-            stringValue: lambda
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: "123"
-        - key: user.email
-          value:
-            stringValue: s@test.com
-        - key: user.name
-          value:
-            stringValue: john
-        - key: agent.name
-          value:
-            stringValue: elastic-ruby
-        - key: agent.version
-          value:
-            stringValue: "2.2"
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
-        - key: agent.ephemeral_id
-          value:
-            stringValue: justanid
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
-        - key: destination.ip
-          value:
-            stringValue: ::1
-        - key: labels.tag1
-          value:
-            stringValue: label1
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
@@ -1374,143 +1107,6 @@ resourceSpans:
             startTimeUnixNano: "1532976822281000000"
             status:
               code: 1
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: service1
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: cloud.provider
-          value:
-            stringValue: cloud_provider
-        - key: cloud.region
-          value:
-            stringValue: cloud_region
-        - key: cloud.availability_zone
-          value:
-            stringValue: cloud_availability_zone
-        - key: cloud.account.id
-          value:
-            stringValue: account_id
-        - key: cloud.platform
-          value:
-            stringValue: lambda
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: "123"
-        - key: user.email
-          value:
-            stringValue: s@test.com
-        - key: user.name
-          value:
-            stringValue: john
-        - key: agent.name
-          value:
-            stringValue: elastic-ruby
-        - key: agent.version
-          value:
-            stringValue: "2.2"
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
-        - key: agent.ephemeral_id
-          value:
-            stringValue: justanid
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
-        - key: destination.ip
-          value:
-            stringValue: ::1
-        - key: labels.tag1
-          value:
-            stringValue: label1
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
@@ -1726,12 +1322,21 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -1747,6 +1352,24 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
         - key: container.id
           value:
             stringValue: container-id
@@ -1786,48 +1409,21 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: john
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: user.domain
           value:
             stringValue: ldap://abc
         - key: destination.ip
           value:
             stringValue: ::1
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
         - key: labels.tag1
           value:
             stringValue: label1
@@ -1895,143 +1491,6 @@ resourceSpans:
             startTimeUnixNano: "1532975583584217000"
             status:
               code: 1
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: backendspans
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: cloud.provider
-          value:
-            stringValue: cloud_provider
-        - key: cloud.region
-          value:
-            stringValue: cloud_region
-        - key: cloud.availability_zone
-          value:
-            stringValue: cloud_availability_zone
-        - key: cloud.account.id
-          value:
-            stringValue: account_id
-        - key: cloud.platform
-          value:
-            stringValue: lambda
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: "123"
-        - key: user.email
-          value:
-            stringValue: s@test.com
-        - key: user.name
-          value:
-            stringValue: john
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
-        - key: destination.ip
-          value:
-            stringValue: ::1
-        - key: labels.tag1
-          value:
-            stringValue: label1
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
@@ -2142,12 +1601,21 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -2163,6 +1631,24 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
         - key: container.id
           value:
             stringValue: container-id
@@ -2202,99 +1688,68 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: john
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
         - key: agent.name
           value:
             stringValue: elastic-node
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
         - key: labels.tag1
           value:
-            stringValue: label1
+            stringValue: value1
+        - key: labels.tag4
+          value:
+            stringValue: "true"
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 123
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.34
     scopeSpans:
       - scope: {}
         spans:
           - attributes:
               - key: timestamp.us
                 value:
-                  intValue: "1625572685682272"
+                  intValue: "1532976822281000"
               - key: event.outcome
                 value:
-                  stringValue: success
+                  stringValue: unknown
               - key: processor.event
                 value:
                   stringValue: span
               - key: span.duration.us
                 value:
-                  intValue: "378191"
+                  intValue: "3564"
               - key: transaction.id
                 value:
-                  stringValue: 01af25874dec69dd
+                  stringValue: ab23456a89012345
               - key: span.id
                 value:
-                  stringValue: abcdef01234567
+                  stringValue: 0123456a89012345
               - key: span.name
                 value:
-                  stringValue: SELECT FROM p_details
+                  stringValue: GET /api/types
               - key: span.type
                 value:
-                  stringValue: db
+                  stringValue: request
               - key: span.subtype
                 value:
-                  stringValue: postgresql
-              - key: span.action
-                value:
-                  stringValue: query
-              - key: span.composite.compression_strategy
-                value:
-                  stringValue: exact_match
-              - key: span.composite.count
-                value:
-                  intValue: "10"
-              - key: span.composite.sum.us
-                value:
-                  intValue: "359298"
+                  stringValue: http
               - key: span.representative_count
                 value:
                   doubleValue: 1
-            endTimeUnixNano: "1625572686060463200"
-            name: SELECT FROM p_details
-            parentSpanId: abcdef0123456789
-            spanId: abcdef0123456700
-            startTimeUnixNano: "1625572685682272000"
-            status:
-              code: 1
-            traceId: edcbaf0123456789abcdef9876543210
+            endTimeUnixNano: "1532976822284564298"
+            name: GET /api/types
+            parentSpanId: abcdefabcdef7890
+            spanId: 0123456a89012345
+            startTimeUnixNano: "1532976822281000000"
+            status: {}
+            traceId: abcdef0123456789abcdef9876543210

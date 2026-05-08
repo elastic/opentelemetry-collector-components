@@ -28,12 +28,21 @@ resourceSpans:
         - key: service.instance.id
           value:
             stringValue: special-name
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: user_agent.original
           value:
             stringValue: Mozilla Chrome Edge
@@ -82,15 +91,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "1.3"
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: labels.bool_error
           value:
             stringValue: "false"
@@ -168,11 +168,6 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: Cookie
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -195,19 +190,24 @@ resourceSpans:
                           arrayValue:
                             values:
                               - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2,c3=3
               - key: http.request.env
                 value:
                   kvlistValue:
                     values:
+                      - key: SERVER_SOFTWARE
+                        value:
+                          stringValue: nginx
                       - key: GATEWAY_INTERFACE
                         value:
                           stringValue: CGI/1.1
                       - key: SOME_NUMERIC_VALUE
                         value:
                           doubleValue: 123
-                      - key: SERVER_SOFTWARE
-                        value:
-                          stringValue: nginx
               - key: http.request.cookies
                 value:
                   kvlistValue:
@@ -225,6 +225,9 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: str
+                        value:
+                          stringValue: hello world
                       - key: additional
                         value:
                           kvlistValue:
@@ -235,9 +238,6 @@ resourceSpans:
                               - key: bar
                                 value:
                                   doubleValue: 123
-                      - key: str
-                        value:
-                          stringValue: hello world
               - key: http.request.referrer
                 value:
                   stringValue: http://localhost:8000/test/e2e/
@@ -266,6 +266,9 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: (
+                        value:
+                          stringValue: not a valid regex and that is fine
                       - key: my_key
                         value:
                           doubleValue: 1
@@ -282,13 +285,20 @@ resourceSpans:
                                     values:
                                       - stringValue: bar
                                       - stringValue: baz
-                      - key: (
-                        value:
-                          stringValue: not a valid regex and that is fine
               - key: transaction.marks
                 value:
                   kvlistValue:
                     values:
+                      - key: another_mark
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: some_long
+                                value:
+                                  doubleValue: 10
+                              - key: some_float
+                                value:
+                                  doubleValue: 10
                       - key: navigationTiming
                         value:
                           kvlistValue:
@@ -299,16 +309,6 @@ resourceSpans:
                               - key: navigationStart
                                 value:
                                   doubleValue: -21
-                      - key: another_mark
-                        value:
-                          kvlistValue:
-                            values:
-                              - key: some_float
-                                value:
-                                  doubleValue: 10
-                              - key: some_long
-                                value:
-                                  doubleValue: 10
             endTimeUnixNano: "1496170407186592981"
             name: GET /api/types
             spanId: 945254c567a5417e
@@ -345,12 +345,21 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -393,15 +402,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: labels.span_tag
           value:
             stringValue: something
@@ -567,12 +567,21 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -615,15 +624,6 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
     scopeSpans:
       - scope: {}
         spans:
@@ -665,95 +665,6 @@ resourceSpans:
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: 123user
-        - key: user.email
-          value:
-            stringValue: foo@bar.com
-        - key: user.name
-          value:
-            stringValue: foo
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
@@ -795,95 +706,6 @@ resourceSpans:
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: 123user
-        - key: user.email
-          value:
-            stringValue: foo@bar.com
-        - key: user.name
-          value:
-            stringValue: foo
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
@@ -924,95 +746,6 @@ resourceSpans:
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 945254c567a5417eaaaaaaaaaaaaaaaa
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: 123user
-        - key: user.email
-          value:
-            stringValue: foo@bar.com
-        - key: user.name
-          value:
-            stringValue: foo
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
@@ -1050,95 +783,6 @@ resourceSpans:
             startTimeUnixNano: "1496170422281000000"
             status: {}
             traceId: 85925e55b43f4340aaaaaaaaaaaaaaaa
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: 123user
-        - key: user.email
-          value:
-            stringValue: foo@bar.com
-        - key: user.name
-          value:
-            stringValue: foo
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
@@ -1173,95 +817,6 @@ resourceSpans:
             startTimeUnixNano: "1496170422000000000"
             status: {}
             traceId: 85925e55b43f4341aaaaaaaaaaaaaaaa
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: 123user
-        - key: user.email
-          value:
-            stringValue: foo@bar.com
-        - key: user.name
-          value:
-            stringValue: foo
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
@@ -1328,12 +883,21 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: staging
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: container.id
           value:
             stringValue: container-id
@@ -1370,24 +934,15 @@ resourceSpans:
         - key: user.name
           value:
             stringValue: foo
+        - key: destination.ip
+          value:
+            stringValue: ::1
         - key: agent.name
           value:
             stringValue: js-base
         - key: agent.version
           value:
             stringValue: "1.3"
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: destination.ip
-          value:
-            stringValue: ::1
     scopeSpans:
       - scope: {}
         spans:

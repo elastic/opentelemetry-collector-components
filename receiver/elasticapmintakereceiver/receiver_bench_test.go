@@ -20,18 +20,27 @@ package elasticapmintakereceiver
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/receiver/receivertest"
+	"golang.org/x/sync/semaphore"
 
+	"github.com/elastic/apm-data/input/elasticapm"
+	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
 
 // payloadGlobalLabelsNoShadow has 10 transactions with metadata global labels
@@ -123,3 +132,217 @@ func BenchmarkProcessBatch(b *testing.B) {
 		})
 	}
 }
+
+// loadTestdata reads a testdata ndjson file for use as a benchmark payload.
+func loadTestdata(b *testing.B, name string) []byte {
+	b.Helper()
+	data, err := os.ReadFile(filepath.Join("testdata", name))
+	if err != nil {
+		b.Fatal(err)
+	}
+	return data
+}
+
+// newBenchReceiver constructs an elasticAPMIntakeReceiver wired to no-op
+// consumers for every signal type. The HTTP server is intentionally not
+// started — callers drive the receiver through the elasticapm processor
+// directly to isolate intake processing from transport overhead.
+func newBenchReceiver(b *testing.B) *elasticAPMIntakeReceiver {
+	b.Helper()
+	cfg := &Config{}
+	set := receivertest.NewNopSettings(metadata.Type)
+	rcv, err := newElasticAPMIntakeReceiver(
+		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+		cfg, set,
+	)
+	if err != nil {
+		b.Fatal(err)
+	}
+	nop := consumertest.NewNop()
+	rcv.nextLogs = nop
+	rcv.nextMetrics = nop
+	rcv.nextTraces = nop
+	return rcv
+}
+
+// runHandleStream drives the receiver's processBatch through a real
+// elasticapm.Processor. This mirrors the HTTP handler pipeline (NDJSON
+// decode → batched processBatch → consumer) without HTTP overhead.
+func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte) {
+	b.Helper()
+	const (
+		maxEventSize = 1024 * 1024 // 1MiB, matches handler default
+		batchSize    = 10          // matches handler default
+	)
+	proc := elasticapm.NewProcessor(elasticapm.Config{
+		MaxEventSize: maxEventSize,
+		Semaphore:    semaphore.NewWeighted(100),
+	})
+	batchProcessor := modelpb.ProcessBatchFunc(rcv.processBatch)
+	ctx := withECSMappingMode(context.Background(), false)
+
+	b.SetBytes(int64(len(payload)))
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	reader := bytes.NewReader(payload)
+	for i := 0; i < b.N; i++ {
+		reader.Reset(payload)
+		var result elasticapm.Result
+		baseEvent := &modelpb.APMEvent{Event: &modelpb.Event{}}
+		if err := proc.HandleStream(ctx, baseEvent, reader, batchSize, batchProcessor, &result); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkHandleStream measures intake throughput per event-type using the
+// existing testdata files as realistic payloads. HTTP layer is bypassed; the
+// bench drives the same pipeline as the HTTP handler (NDJSON decode →
+// processBatch → no-op consumer).
+func BenchmarkHandleStream(b *testing.B) {
+	cases := []struct {
+		name string
+		file string
+	}{
+		{"transactions", "transactions.ndjson"},
+		{"spans", "spans.ndjson"},
+		{"transactions_spans", "transactions_spans.ndjson"},
+		{"errors", "errors.ndjson"},
+		{"logs", "logs.ndjson"},
+		{"metricsets", "metricsets.ndjson"},
+		{"histograms", "multiple_histogram_metrics_samples.ndjson"},
+		{"metric_global_label_shadow", "metric_global_label_shadow.ndjson"},
+	}
+	for _, tc := range cases {
+		payload := loadTestdata(b, tc.file)
+		b.Run(tc.name, func(b *testing.B) {
+			rcv := newBenchReceiver(b)
+			runHandleStream(b, rcv, payload)
+		})
+	}
+}
+
+// BenchmarkHandleStreamGlobalLabels measures the cost of the global-label
+// shadowing path using the in-file synthetic payloads.
+func BenchmarkHandleStreamGlobalLabels(b *testing.B) {
+	cases := []struct {
+		name    string
+		payload []byte
+	}{
+		{"no_shadow", payloadGlobalLabelsNoShadow},
+		{"with_shadow", payloadGlobalLabelsWithShadow},
+	}
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			rcv := newBenchReceiver(b)
+			runHandleStream(b, rcv, tc.payload)
+		})
+	}
+}
+
+// BenchmarkHandleStreamSize sweeps payload size to expose per-event scaling
+// behavior: how does CPU/alloc-per-event change as batches grow? The handler's
+// internal batchSize is 10, so 10/100/1000 events exercise 1/10/100 batch
+// flushes per request.
+func BenchmarkHandleStreamSize(b *testing.B) {
+	for _, n := range []int{10, 100, 1000} {
+		payload := generateTransactionPayload(n)
+		b.Run("transactions/"+strconv.Itoa(n), func(b *testing.B) {
+			rcv := newBenchReceiver(b)
+			runHandleStream(b, rcv, payload)
+		})
+	}
+}
+
+// BenchmarkHandleStreamMixed measures a representative mixed workload
+// (transactions + spans + errors + logs + metricsets) of varying sizes,
+// repeated to reach the requested event count. This is closer to real
+// agent traffic than the per-type benchmarks.
+func BenchmarkHandleStreamMixed(b *testing.B) {
+	for _, n := range []int{50, 500} {
+		payload := generateMixedPayload(n)
+		b.Run("mixed/"+strconv.Itoa(n), func(b *testing.B) {
+			rcv := newBenchReceiver(b)
+			runHandleStream(b, rcv, payload)
+		})
+	}
+}
+
+// generateTransactionPayload builds an NDJSON payload with a fixed metadata
+// header followed by n transaction events. Each event has a unique
+// id/trace_id so downstream grouping does not deduplicate.
+func generateTransactionPayload(n int) []byte {
+	var buf bytes.Buffer
+	buf.WriteString(benchMetadataLine)
+	buf.WriteByte('\n')
+	for i := range n {
+		fmt.Fprintf(&buf,
+			`{"transaction": {"id": %q, "trace_id": %q, "name": "tx", "type": "request", "duration": 1, "timestamp": %d, "outcome": "success", "sampled": true, "span_count": {"started": 0}}}`+"\n",
+			fmt.Sprintf("aa%014x", i+1),
+			fmt.Sprintf("aa%014xaa%014x", i+1, i+1),
+			1_000_000+uint64(i)*1_000,
+		)
+	}
+	return buf.Bytes()
+}
+
+// generateMixedPayload builds an NDJSON payload with a mix of event types
+// (transaction, span, error, log, metricset), repeated to reach roughly n
+// events total. Counts within each repeat block are kept proportional to
+// typical agent traffic.
+func generateMixedPayload(n int) []byte {
+	// Each repeat block emits 20 events. Roughly: 40% transactions, 40%
+	// spans, 5% errors, 5% logs, 10% metricsets.
+	repeat := max(n/20, 1)
+	var buf bytes.Buffer
+	buf.WriteString(benchMetadataLine)
+	buf.WriteByte('\n')
+	for r := range repeat {
+		base := uint64(r * 20)
+		for i := range 8 {
+			fmt.Fprintf(&buf,
+				`{"transaction": {"id": %q, "trace_id": %q, "name": "tx", "type": "request", "duration": 1, "timestamp": %d, "outcome": "success", "sampled": true, "span_count": {"started": 1}}}`+"\n",
+				fmt.Sprintf("tx%014x", base+uint64(i)),
+				fmt.Sprintf("tx%014xtx%014x", base+uint64(i), base+uint64(i)),
+				1_000_000+(base+uint64(i))*1_000,
+			)
+		}
+		for i := range 8 {
+			fmt.Fprintf(&buf,
+				`{"span": {"id": %q, "trace_id": %q, "transaction_id": %q, "parent_id": %q, "name": "SELECT *", "type": "db.postgresql.query", "start": 1, "duration": 2, "timestamp": %d}}`+"\n",
+				fmt.Sprintf("sp%014x", base+uint64(i)),
+				fmt.Sprintf("tx%014xtx%014x", base+uint64(i), base+uint64(i)),
+				fmt.Sprintf("tx%014x", base+uint64(i)),
+				fmt.Sprintf("tx%014x", base+uint64(i)),
+				1_000_000+(base+uint64(i))*1_000+1,
+			)
+		}
+		fmt.Fprintf(&buf,
+			`{"error": {"id": %q, "trace_id": %q, "transaction_id": %q, "parent_id": %q, "timestamp": %d, "log": {"message": "boom"}}}`+"\n",
+			fmt.Sprintf("er%014x", base),
+			fmt.Sprintf("tx%014xtx%014x", base, base),
+			fmt.Sprintf("tx%014x", base),
+			fmt.Sprintf("tx%014x", base),
+			1_000_000+base*1_000+2,
+		)
+		fmt.Fprintf(&buf,
+			`{"log": {"message": "log %d", "@timestamp": %d}}`+"\n",
+			r, 1_000_000_000+base*1_000,
+		)
+		fmt.Fprintf(&buf,
+			`{"metricset": {"samples": {"system.cpu.total.norm.pct": {"value": 0.5}}, "timestamp": %d}}`+"\n",
+			1_000_000+base*1_000+3,
+		)
+		fmt.Fprintf(&buf,
+			`{"metricset": {"samples": {"transaction.duration.sum.us": {"value": 1234}, "transaction.duration.count": {"value": 2}}, "transaction": {"name": "GET /", "type": "request"}, "timestamp": %d}}`+"\n",
+			1_000_000+base*1_000+4,
+		)
+	}
+	return buf.Bytes()
+}
+
+// benchMetadataLine is a minimal but realistic metadata line including a
+// service block, an agent block, and a couple of global labels (one string,
+// one numeric) that exercise the global-label tracking path.
+const benchMetadataLine = `{"metadata": {"service": {"name": "bench-svc", "version": "1.0.0", "language": {"name": "go", "version": "1.22"}, "runtime": {"name": "gc", "version": "1.22"}, "agent": {"name": "elastic-go", "version": "1.0.0"}}, "system": {"hostname": "bench-host", "architecture": "x64", "platform": "linux"}, "labels": {"deployment": "prod", "shard": 7}}}`
