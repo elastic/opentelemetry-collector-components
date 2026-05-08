@@ -33,6 +33,7 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 
 	"github.com/gogo/protobuf/proto"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/consumer"
@@ -149,7 +150,8 @@ func (r *prometheusRWv1Receiver) handleWrite(w http.ResponseWriter, req *http.Re
 	md, isInvalid := r.translate(&wr)
 
 	if md.MetricCount() > 0 {
-		err = r.nextConsumer.ConsumeMetrics(req.Context(), md)
+		ctx := injectContextMetadata(req.Context(), r.config.Headers)
+		err = r.nextConsumer.ConsumeMetrics(ctx, md)
 		if err != nil {
 			r.obsrecv.EndMetricsOp(obsCtx, metadata.Type.String(), md.MetricCount(), err)
 			r.settings.Logger.Error("Failed to consume metrics", zap.Error(err))
@@ -223,4 +225,23 @@ func buildAttributes(labels []prompb.Label) pcommon.Map {
 		}
 	}
 	return attrs
+}
+
+// injectContextMetadata merges extra into the client.Info already present in ctx,
+// with extra values overriding any client-supplied value for the same key.
+// Returns ctx unchanged when extra is empty.
+func injectContextMetadata(ctx context.Context, extra map[string]string) context.Context {
+	if len(extra) == 0 {
+		return ctx
+	}
+	info := client.FromContext(ctx)
+	merged := make(map[string][]string)
+	for k := range info.Metadata.Keys() {
+		merged[k] = info.Metadata.Get(k)
+	}
+	for k, v := range extra {
+		merged[k] = []string{v}
+	}
+	info.Metadata = client.NewMetadata(merged)
+	return client.NewContext(ctx, info)
 }

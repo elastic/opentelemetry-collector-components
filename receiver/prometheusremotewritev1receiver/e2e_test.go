@@ -22,6 +22,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,9 +30,11 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver/receivertest"
@@ -303,6 +306,99 @@ func TestE2E_EmptyWriteRequest(t *testing.T) {
 
 	assert.Equal(t, http.StatusNoContent, resp.StatusCode)
 	assert.Empty(t, sink.AllMetrics())
+}
+
+// contextCaptureSink is a metrics consumer that records the context passed to
+// each ConsumeMetrics call alongside the metrics themselves.
+type contextCaptureSink struct {
+	mu       sync.Mutex
+	contexts []context.Context
+}
+
+func (s *contextCaptureSink) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: false}
+}
+
+func (s *contextCaptureSink) ConsumeMetrics(ctx context.Context, _ pmetric.Metrics) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.contexts = append(s.contexts, ctx)
+	return nil
+}
+
+func (s *contextCaptureSink) allContexts() []context.Context {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]context.Context, len(s.contexts))
+	copy(out, s.contexts)
+	return out
+}
+
+func TestE2E_HeadersInjectedAsContextMetadata(t *testing.T) {
+	// headers values must reach the next consumer as client.Metadata.
+	sink := &contextCaptureSink{}
+	addr := freeAddr(t)
+	cfg := &Config{
+		ServerConfig: confighttp.ServerConfig{
+			NetAddr: confignet.AddrConfig{Endpoint: addr, Transport: confignet.TransportTypeTCP},
+		},
+		Headers: map[string]string{"x-elastic-target-model": "prometheus"},
+	}
+	set := receivertest.NewNopSettings(typ)
+	rcvr, err := newReceiver(set, cfg, sink)
+	require.NoError(t, err)
+	require.NoError(t, rcvr.Start(context.Background(), componenttest.NewNopHost()))
+	t.Cleanup(func() { require.NoError(t, rcvr.Shutdown(context.Background())) })
+
+	wr := &prompb.WriteRequest{
+		Timeseries: []prompb.TimeSeries{
+			{
+				Labels:  []prompb.Label{{Name: "__name__", Value: "up"}, {Name: "job", Value: "svc"}},
+				Samples: []prompb.Sample{{Value: 1.0, Timestamp: 1000}},
+			},
+		},
+	}
+	resp := doWrite(t, addr, wr)
+	defer resp.Body.Close() //nolint:errcheck // it's a test
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	assert.Eventually(t, func() bool {
+		return len(sink.allContexts()) >= 1
+	}, 5*time.Second, 10*time.Millisecond)
+
+	info := client.FromContext(sink.allContexts()[0])
+	assert.Equal(t, []string{"prometheus"}, info.Metadata.Get("x-elastic-target-model"))
+}
+
+func TestInjectContextMetadata_OverridesExistingKey(t *testing.T) {
+	// A value already present in client.Metadata must be overridden by the
+	// configured value.
+	existing := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-target-model": {"spoofed-value"},
+			"x-elastic-target-id":    {"tenant-123"},
+		}),
+	})
+
+	result := injectContextMetadata(existing, map[string]string{"x-elastic-target-model": "prometheus"})
+
+	info := client.FromContext(result)
+	assert.Equal(t, []string{"prometheus"}, info.Metadata.Get("x-elastic-target-model"),
+		"configured value must win over existing metadata value")
+	assert.Equal(t, []string{"tenant-123"}, info.Metadata.Get("x-elastic-target-id"),
+		"unrelated keys must be preserved")
+}
+
+func TestInjectContextMetadata_EmptyExtraIsNoop(t *testing.T) {
+	// When Headers is empty the context must be returned unchanged.
+	existing := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"key": {"val"}}),
+	})
+
+	result := injectContextMetadata(existing, nil)
+
+	info := client.FromContext(result)
+	assert.Equal(t, []string{"val"}, info.Metadata.Get("key"))
 }
 
 func TestE2E_GracefulShutdown(t *testing.T) {

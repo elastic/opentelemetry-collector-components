@@ -25,6 +25,9 @@ import (
 // Config holds configuration for the Prometheus Remote Write v1 receiver.
 type Config struct {
 	confighttp.ServerConfig `mapstructure:",squash"`
+
+	// Headers that are injected into the OTel request context metadata for every request this receiver handles.
+	Headers map[string]string `mapstructure:"headers"`
 }
 
 var _ component.Config = (*Config)(nil)
