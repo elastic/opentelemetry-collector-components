@@ -324,4 +324,3 @@ func putIPAddress(v ResourceAttrVisitor, key string, ip *modelpb.IP) {
 		v.PutStr(key, s)
 	}
 }
-
