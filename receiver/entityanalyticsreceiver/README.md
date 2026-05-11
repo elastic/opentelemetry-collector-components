@@ -67,6 +67,10 @@ distribution.
 
 ## Status
 
-This receiver is in **development** stability. The Jamf provider is
-registered. Further providers (Okta, EntraID, Active Directory) will
-be added in subsequent work.
+This receiver is in **development** stability. The following providers
+are registered:
+
+- `jamf` — Jamf Pro device inventory
+- `activedirectory` — Microsoft Active Directory (users, devices, groups via LDAP)
+
+Further providers (Okta, EntraID) will be added in subsequent work.
