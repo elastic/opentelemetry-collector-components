@@ -179,6 +179,37 @@ resourceSpans:
             status:
               code: 1
             traceId: 0123456789abcdef0123456789abcdef
+          - attributes:
+              - key: elasticsearch.mapping.hints
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: _noindex
+              - key: span.destination.service.resource
+                value:
+                  stringValue: localhost:8000
+              - key: service.target.type
+                value:
+                  stringValue: http
+              - key: service.target.name
+                value:
+                  stringValue: serviceabc
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: span.composite.sum.us
+                value:
+                  intValue: "1234"
+              - key: span.composite.count
+                value:
+                  intValue: "2"
+            endTimeUnixNano: "1496170407154000000"
+            kind: 3
+            parentSpanId: 945254c567a5417e
+            spanId: 9ae5962655649961
+            startTimeUnixNano: "1496170407154000000"
+            status: {}
+            traceId: 0123456789abcdef0123456789abcdef
   - resource:
       attributes:
         - key: service.name

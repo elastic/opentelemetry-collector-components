@@ -19,6 +19,7 @@ package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-col
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cespare/xxhash"
 	"go.opentelemetry.io/collector/client"
@@ -379,6 +381,7 @@ func (r *elasticAPMIntakeReceiver) appendEvent(event *modelpb.APMEvent, ld **plo
 		isTransaction := event.Type() == modelpb.TransactionEventType
 		if isTransaction {
 			r.elasticTransactionToOtelSpan(&s, event)
+			r.appendDroppedSpansStatsSpans(&rs, &s, event.GetTransaction().GetDroppedSpansStats())
 		} else {
 			r.elasticSpanToOTelSpan(&s, event)
 		}
@@ -731,6 +734,78 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
+}
+
+// appendDroppedSpansStatsSpans synthesizes one CLIENT span per
+// transaction.dropped_spans_stats entry. The synthetic spans carry the
+// elasticsearch.mapping.hints:[_noindex] attribute so they are skipped by the
+// Elasticsearch exporter; they exist only to feed signal-to-metrics aggregation
+// of service_destination metrics, mirroring MIS's apm-aggregation behaviour.
+//
+// span.name is intentionally left empty: MIS's dropped_spans_stats aggregation
+// key does not include span name (see apm-aggregation setDroppedSpanStatsKey).
+func (r *elasticAPMIntakeReceiver) appendDroppedSpansStatsSpans(
+	rs *ptrace.ResourceSpans,
+	parent *ptrace.Span,
+	stats []*modelpb.DroppedSpanStats,
+) {
+	if len(stats) == 0 {
+		return
+	}
+	// Reuse the parent transaction's ScopeSpans: the synthetic spans share the
+	// same producer (the receiver) and the _noindex hint is sufficient to keep
+	// them out of indexed traces.
+	ss := rs.ScopeSpans().At(rs.ScopeSpans().Len() - 1)
+	parentSpanID := parent.SpanID()
+	for i, stat := range stats {
+		if stat == nil {
+			continue
+		}
+		// Derive a deterministic synthetic span ID from the parent span ID and
+		// the stat index. Uniqueness within the trace is guaranteed; the spans
+		// carry _noindex so they never collide downstream of the exporter.
+		d := xxhash.New()
+		_, _ = d.Write(parentSpanID[:])
+		var idxBuf [4]byte
+		binary.BigEndian.PutUint32(idxBuf[:], uint32(i))
+		_, _ = d.Write(idxBuf[:])
+		var spanID pcommon.SpanID
+		binary.BigEndian.PutUint64(spanID[:], d.Sum64())
+
+		s := ss.Spans().AppendEmpty()
+		s.SetTraceID(parent.TraceID())
+		s.SetParentSpanID(parent.SpanID())
+		s.SetSpanID(spanID)
+		s.SetKind(ptrace.SpanKindClient)
+		s.SetStartTimestamp(parent.StartTimestamp())
+		s.SetEndTimestamp(parent.StartTimestamp())
+		// Inherit tracestate so AdjustedCount() in the signal-to-metrics
+		// connector reflects the parent transaction's sampling weight.
+		s.TraceState().FromRaw(parent.TraceState().AsRaw())
+
+		attrs := s.Attributes()
+		// _noindex signals elasticsearchexporter to skip indexing this span.
+		attrs.PutEmptySlice("elasticsearch.mapping.hints").AppendEmpty().SetStr("_noindex")
+
+		if stat.DestinationServiceResource != "" {
+			attrs.PutStr(elasticattr.SpanDestinationServiceResource, stat.DestinationServiceResource)
+		}
+		if stat.ServiceTargetType != "" {
+			attrs.PutStr(elasticattr.ServiceTargetType, stat.ServiceTargetType)
+		}
+		if stat.ServiceTargetName != "" {
+			attrs.PutStr(elasticattr.ServiceTargetName, stat.ServiceTargetName)
+		}
+		if stat.Outcome != "" {
+			attrs.PutStr(elasticattr.EventOutcome, stat.Outcome)
+		}
+		if stat.Duration != nil {
+			// Duration.Sum is stored in nanoseconds; the span.composite.sum.us
+			// attribute is consumed in microseconds by elasticapmconnector.
+			attrs.PutInt(elasticattr.SpanCompositeSumUs, time.Duration(stat.Duration.Sum).Microseconds())
+			attrs.PutInt(elasticattr.SpanCompositeCount, int64(stat.Duration.Count))
+		}
+	}
 }
 
 func mapSpanKind(kind string) ptrace.SpanKind {

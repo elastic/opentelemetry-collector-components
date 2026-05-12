@@ -299,12 +299,11 @@ func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesM
 	setKeyValueMap(elasticattr.TransactionCustom, attributesMap, event.Transaction.Custom)
 	setProfilerStackTraceIDs(event.Transaction.ProfilerStackTraceIds, attributesMap)
 
-	// DroppedSpansStats is only indexed for metric documents. See apm-data json encoding:
-	// https://github.com/elastic/apm-data/blob/e9e8f6955fdf65ffff444db65fce745f5bbc8d43/model/modeljson/transaction.pb.json.go#L66
-	// TODO: Verify if this field should be mapped since it may not be used by any Elastic OTEL components.
-	if event.Metricset != nil {
-		setDroppedSpansStatsList(event.Transaction.DroppedSpansStats, attributesMap)
-	}
+	// transaction.dropped_spans_stats is intentionally not surfaced on the
+	// transaction span. It is instead expanded into one synthetic CLIENT
+	// span per stat by the receiver, so the signal-to-metrics connector can
+	// derive service_destination metrics for the dropped/compressed spans.
+	// See appendDroppedSpansStatsSpans in receiver.go.
 
 	setTransactionMarks(event.Transaction.Marks, attributesMap)
 	setMessage("transaction", event.Transaction.Message, attributesMap)
@@ -327,28 +326,6 @@ func setProfilerStackTraceIDs(ids []string, attributesMap pcommon.Map) {
 	slice.EnsureCapacity(len(ids))
 	for _, id := range ids {
 		slice.AppendEmpty().SetStr(id)
-	}
-}
-
-func setDroppedSpansStatsList(stats []*modelpb.DroppedSpanStats, attributesMap pcommon.Map) {
-	if len(stats) == 0 {
-		return
-	}
-
-	statsSlice := attributesMap.PutEmptySlice(elasticattr.TransactionDroppedSpansStats)
-	statsSlice.EnsureCapacity(len(stats))
-	for _, stat := range stats {
-		if stat == nil {
-			continue
-		}
-
-		statMap := statsSlice.AppendEmpty().SetEmptyMap()
-		putNonEmptyStr(statMap, elasticattr.TransactionDroppedSpansStatsDestinationServiceResource, stat.DestinationServiceResource)
-		putNonEmptyStr(statMap, elasticattr.TransactionDroppedSpansStatsOutcome, stat.Outcome)
-		if stat.Duration != nil {
-			statMap.PutInt(elasticattr.TransactionDroppedSpansStatsDurationCount, int64(stat.Duration.Count))
-			statMap.PutInt(elasticattr.TransactionDroppedSpansStatsDurationSumUs, int64(stat.Duration.Sum))
-		}
 	}
 }
 
