@@ -185,6 +185,9 @@ resourceSpans:
                   arrayValue:
                     values:
                       - stringValue: _noindex
+              - key: span.name
+                value:
+                  stringValue: ""
               - key: span.destination.service.resource
                 value:
                   stringValue: localhost:8000

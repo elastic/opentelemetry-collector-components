@@ -786,6 +786,13 @@ func (r *elasticAPMIntakeReceiver) appendDroppedSpansStatsSpans(
 		attrs := s.Attributes()
 		// _noindex signals elasticsearchexporter to skip indexing this span.
 		attrs.PutEmptySlice("elasticsearch.mapping.hints").AppendEmpty().SetStr("_noindex")
+		// span.name must be present (with any value, including empty) so that
+		// elasticapmconnector's service_destination rule passes its
+		// MatchAttributes check. MIS's dropped_spans_stats aggregation key has
+		// no span name dimension, so an empty value preserves that semantics:
+		// all dropped-stat-derived rows for a given destination/outcome/target
+		// roll up into a single span.name="" bucket.
+		attrs.PutStr(elasticattr.SpanName, "")
 
 		if stat.DestinationServiceResource != "" {
 			attrs.PutStr(elasticattr.SpanDestinationServiceResource, stat.DestinationServiceResource)
