@@ -310,6 +310,8 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 
 	serviceTransactionAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "transaction.root"},
+		// processor defaults empty transaction.type to "unknown":
+		// https://github.com/elastic/opentelemetry-collector-components/blob/cdd457b05388ca0e5090301a32292f887752911e/processor/elasticapmprocessor/internal/enrichments/span.go#L476
 		{Key: "transaction.type"},
 		{Key: "metricset.name", DefaultValue: "service_transaction"},
 	}, toSignalToMetricsAttributes(cfg.CustomSpanAttributes)...)
@@ -317,8 +319,12 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 	transactionAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "transaction.root"},
 		{Key: "transaction.name", Optional: true},
+		// processor defaults empty transaction.type to "unknown":
+		// https://github.com/elastic/opentelemetry-collector-components/blob/cdd457b05388ca0e5090301a32292f887752911e/processor/elasticapmprocessor/internal/enrichments/span.go#L476
 		{Key: "transaction.type"},
 		{Key: "transaction.result", Optional: true},
+		// receiver defaults missing event.outcome to "unknown":
+		// https://github.com/elastic/opentelemetry-collector-components/blob/cdd457b05388ca0e5090301a32292f887752911e/receiver/elasticapmintakereceiver/internal/mappers/intakeV2ToDerivedFields.go#L125
 		{Key: "event.outcome"},
 		{Key: "metricset.name", DefaultValue: "transaction"},
 	}, toSignalToMetricsAttributes(cfg.CustomSpanAttributes)...)

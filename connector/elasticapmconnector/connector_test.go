@@ -38,10 +38,8 @@ import (
 	"go.opentelemetry.io/collector/connector/connectortest"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	"go.opentelemetry.io/collector/pdata/ptrace"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 )
@@ -141,6 +139,7 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 		{name: "traces/transaction_metrics"},
 		{name: "traces/transaction_metrics_data_stream_namespace"},
 		{name: "traces/transaction_metrics_without_optional_attrs"},
+		{name: "traces/transaction_metrics_without_name"},
 		{name: "traces/transaction_metrics_custom_attrs"},
 		{name: "traces/transaction_metrics_no_overflow"},
 		{name: "traces/transaction_metrics_no_result"},
@@ -182,66 +181,6 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
 	}
-}
-
-func TestConnector_TransactionMetricsWithoutName(t *testing.T) {
-	nextMetrics := &consumertest.MetricsSink{}
-	t2m := newTracesConnector(t, connectortest.NewNopSettings(metadata.Type), &Config{}, nextMetrics)
-
-	input := ptrace.NewTraces()
-	resourceSpans := input.ResourceSpans().AppendEmpty()
-	resourceAttrs := resourceSpans.Resource().Attributes()
-	resourceAttrs.PutStr("service.name", "nameless-transaction-service")
-	resourceAttrs.PutStr("deployment.environment", "qa")
-	resourceAttrs.PutStr("telemetry.sdk.language", "go")
-	resourceAttrs.PutStr("agent.name", "otlp/go")
-
-	span := resourceSpans.ScopeSpans().AppendEmpty().Spans().AppendEmpty()
-	span.SetName("fallback-span-name")
-	span.SetStartTimestamp(pcommon.Timestamp(1_581_452_772_000_000_321))
-	span.SetEndTimestamp(pcommon.Timestamp(1_581_452_783_000_000_789))
-	spanAttrs := span.Attributes()
-	spanAttrs.PutStr("processor.event", "transaction")
-	spanAttrs.PutBool("transaction.root", true)
-	spanAttrs.PutStr("transaction.type", "request")
-	spanAttrs.PutStr("event.outcome", "success")
-	spanAttrs.PutDouble("transaction.representative_count", 1.0)
-
-	require.NoError(t, t2m.ConsumeTraces(context.Background(), input))
-	require.NoError(t, t2m.Shutdown(context.Background()))
-
-	var foundNamelessTransactionMetric bool
-	for _, metrics := range nextMetrics.AllMetrics() {
-		rms := metrics.ResourceMetrics()
-		for i := 0; i < rms.Len(); i++ {
-			sms := rms.At(i).ScopeMetrics()
-			for j := 0; j < sms.Len(); j++ {
-				ms := sms.At(j).Metrics()
-				for k := 0; k < ms.Len(); k++ {
-					metric := ms.At(k)
-					if metric.Name() != "transaction.duration.histogram" || metric.Type() != pmetric.MetricTypeExponentialHistogram {
-						continue
-					}
-					dps := metric.ExponentialHistogram().DataPoints()
-					for l := 0; l < dps.Len(); l++ {
-						attrs := dps.At(l).Attributes()
-						dataset, ok := attrs.Get("data_stream.dataset")
-						if !ok || dataset.Str() != "transaction.1m" {
-							continue
-						}
-						metricset, ok := attrs.Get("metricset.name")
-						if !ok || metricset.Str() != "transaction" {
-							continue
-						}
-						_, hasTransactionName := attrs.Get("transaction.name")
-						assert.False(t, hasTransactionName)
-						foundNamelessTransactionMetric = true
-					}
-				}
-			}
-		}
-	}
-	assert.True(t, foundNamelessTransactionMetric)
 }
 
 func TestConnector_AggregationDirectory(t *testing.T) {
