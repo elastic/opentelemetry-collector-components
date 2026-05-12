@@ -316,7 +316,7 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 
 	transactionAttributes := append([]signaltometricsconfig.Attribute{
 		{Key: "transaction.root"},
-		{Key: "transaction.name"},
+		{Key: "transaction.name", Optional: true},
 		{Key: "transaction.type"},
 		{Key: "transaction.result", Optional: true},
 		{Key: "event.outcome"},
