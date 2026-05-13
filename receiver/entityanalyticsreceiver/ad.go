@@ -39,6 +39,24 @@ func init() {
 func adProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 	ec := ecad.DefaultConfig()
 	if cfg != nil {
+		// adLocalConf mirrors ecad.Config with mapstructure tags for confmap.Conf
+		// Unmarshal. If ecad.Config gains a new field, add it here too.
+		type adLocalConf struct {
+			URL                configopaque.String     `mapstructure:"ad_url"`
+			BaseDN             configopaque.String     `mapstructure:"ad_base_dn"`
+			User               configopaque.String     `mapstructure:"ad_user"`
+			Password           configopaque.String     `mapstructure:"ad_password"`
+			Dataset            string                  `mapstructure:"dataset"`
+			UserQuery          string                  `mapstructure:"user_query"`
+			DeviceQuery        string                  `mapstructure:"device_query"`
+			IncludeEmptyGroups bool                    `mapstructure:"include_empty_groups"`
+			UserAttrs          []string                `mapstructure:"user_attributes"`
+			GrpAttrs           []string                `mapstructure:"group_attributes"`
+			PagingSize         uint32                  `mapstructure:"ad_paging_size"`
+			IDSetShards        int                     `mapstructure:"idset_shards"`
+			TLS                *configtls.ClientConfig `mapstructure:"tls"`
+		}
+
 		lc := adLocalConf{
 			PagingSize:         ec.PagingSize,
 			IDSetShards:        ec.IDSetShards,
@@ -77,7 +95,7 @@ func adProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 			ec.Dataset = v
 		}
 		if v := os.Getenv("AD_PAGING_SIZE"); v != "" {
-			n, err := strconv.Atoi(v)
+			n, err := strconv.ParseUint(v, 10, 32)
 			if err != nil {
 				return nil, fmt.Errorf("activedirectory: parse AD_PAGING_SIZE: %w", err)
 			}
@@ -112,24 +130,6 @@ func adProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 		return nil, err
 	}
 	return ecad.New(ec)
-}
-
-// adLocalConf mirrors ecad.Config with mapstructure tags for confmap.Conf
-// Unmarshal. If ecad.Config gains a new field, add it here too.
-type adLocalConf struct {
-	URL                configopaque.String     `mapstructure:"ad_url"`
-	BaseDN             configopaque.String     `mapstructure:"ad_base_dn"`
-	User               configopaque.String     `mapstructure:"ad_user"`
-	Password           configopaque.String     `mapstructure:"ad_password"`
-	Dataset            string                  `mapstructure:"dataset"`
-	UserQuery          string                  `mapstructure:"user_query"`
-	DeviceQuery        string                  `mapstructure:"device_query"`
-	IncludeEmptyGroups bool                    `mapstructure:"include_empty_groups"`
-	UserAttrs          []string                `mapstructure:"user_attributes"`
-	GrpAttrs           []string                `mapstructure:"group_attributes"`
-	PagingSize         uint32                  `mapstructure:"ad_paging_size"`
-	IDSetShards        int                     `mapstructure:"idset_shards"`
-	TLS                *configtls.ClientConfig `mapstructure:"tls"`
 }
 
 func buildADTLS(tc *configtls.ClientConfig) (*tls.Config, error) {
