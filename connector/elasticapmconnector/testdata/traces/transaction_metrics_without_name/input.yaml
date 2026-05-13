@@ -34,4 +34,6 @@ resourceSpans:
                   doubleValue: 1.0
             startTimeUnixNano: "1581452772000000321"
             endTimeUnixNano: "1581452783000000789"
+            # Because this test feeds traces straight into the connector, it bypasses the receiver/processor enrichment
+            # that would normally copy/derive transaction.name from the span name, so this input effectively has no transaction.name.
             name: http-span
