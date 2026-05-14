@@ -822,38 +822,28 @@ func (r *elasticAPMIntakeReceiver) appendDroppedSpansStatsSpans(
 		binary.BigEndian.PutUint64(spanID[:], d.Sum64())
 
 		s := ss.Spans().AppendEmpty()
-		// TraceID: kept for OTLP validity. The elasticapmconnector
+		// TraceID: kept for OTLP validity. elasticapmconnector's
 		// service_destination rule does not key on it, and elasticsearchexporter
 		// skips this span via _noindex, but zero TraceID may trigger warnings or
 		// drops in any pipeline processor that enforces OTLP correctness.
 		s.SetTraceID(parent.TraceID())
-		// ParentSpanID: kept so the synthetic span is correctly attached to its
-		// originating transaction in the trace tree. Not consumed by the
-		// connector or exporter, but preserves a coherent trace shape for any
-		// in-pipeline processor that walks the tree.
-		s.SetParentSpanID(parent.SpanID())
 		// SpanID: required by OTLP and required to be unique within the trace
 		// to avoid downstream dedup. Derived deterministically above from
 		// xxhash(parent_span_id || stat_index) so replays of the same payload
 		// produce the same IDs.
 		s.SetSpanID(spanID)
-		// SpanKind: CLIENT matches the outbound-call semantics of DSS. The
-		// connector rule does not filter by kind, but CLIENT is the
-		// semantically correct value for a "this transaction called a remote
-		// service" span.
-		s.SetKind(ptrace.SpanKindClient)
 		// Start/EndTimestamp are equal and pinned to parent.StartTimestamp.
-		// The connector's signal-to-metrics buckets data points by span
-		// timestamp into the configured aggregation interval (1m / 10m / 60m);
-		// pinning to the parent puts the derived metric in the same time
-		// bucket as the originating transaction. The wall-clock duration is
-		// zero by design — the actual aggregated duration is carried in
-		// span.composite.sum.us below.
+		// elasticapmconnector buckets data points by span timestamp into the
+		// configured aggregation interval (1m / 10m / 60m); pinning to the
+		// parent puts the derived metric in the same time bucket as the
+		// originating transaction. The wall-clock duration is zero by design
+		// — the actual aggregated duration is carried in span.composite.sum.us
+		// below.
 		s.SetStartTimestamp(parent.StartTimestamp())
 		s.SetEndTimestamp(parent.StartTimestamp())
 		// TraceState inherited from the parent transaction so AdjustedCount()
-		// in the connector applies the parent's sampling weight to the derived
-		// metric series. The transaction-event path in
+		// in elasticapmconnector applies the parent's sampling weight to the
+		// derived metric series. The transaction-event path in
 		// SetTopLevelFieldsSpan currently does NOT populate TraceState from
 		// Transaction.RepresentativeCount (see follow-up task), so today this
 		// inheritance is a no-op; once that fix lands the DSS path needs no

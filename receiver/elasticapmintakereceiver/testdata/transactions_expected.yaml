@@ -207,8 +207,6 @@ resourceSpans:
                 value:
                   intValue: "2"
             endTimeUnixNano: "1496170407154000000"
-            kind: 3
-            parentSpanId: 945254c567a5417e
             spanId: 9ae5962655649961
             startTimeUnixNano: "1496170407154000000"
             status: {}

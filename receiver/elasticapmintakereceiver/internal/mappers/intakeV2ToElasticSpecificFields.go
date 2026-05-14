@@ -301,8 +301,8 @@ func SetElasticSpecificFieldsForTransaction(event *modelpb.APMEvent, attributesM
 
 	// transaction.dropped_spans_stats is intentionally not surfaced on the
 	// transaction span. It is instead expanded into one synthetic CLIENT
-	// span per stat by the receiver, so the signal-to-metrics connector can
-	// derive service_destination metrics for the dropped/compressed spans.
+	// span per stat by the receiver, so elasticapmconnector can derive
+	// service_destination metrics for the dropped/compressed spans.
 	// See appendDroppedSpansStatsSpans in receiver.go.
 
 	setTransactionMarks(event.Transaction.Marks, attributesMap)
