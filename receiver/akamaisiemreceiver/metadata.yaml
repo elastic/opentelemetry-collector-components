@@ -1,0 +1,142 @@
+type: akamai_siem
+scope_name: github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: receiver
+  stability:
+    alpha: [logs]
+
+tests:
+  config:
+
+telemetry:
+  metrics:
+    akamai_siem.bytes_received:
+      enabled: true
+      description: Total bytes received from the Akamai SIEM API
+      unit: By
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.cursor_persists:
+      enabled: true
+      description: Total successful cursor persist operations
+      unit: "{persists}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.events_emitted:
+      enabled: true
+      description: Total events successfully forwarded to the downstream consumer via ConsumeLogs
+      unit: "{events}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.events_per_page:
+      enabled: true
+      description: Number of events received per API response page
+      unit: "{events}"
+      stability: alpha
+      histogram:
+        value_type: int
+        bucket_boundaries: [ 0, 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 600000 ]
+    akamai_siem.events_per_second:
+      enabled: true
+      description: Events per second throughput per poll cycle
+      unit: "{events}/s"
+      stability: alpha
+      histogram:
+        value_type: double
+        bucket_boundaries: [ 100, 500, 1000, 5000, 10000, 25000, 50000, 100000, 500000 ]
+    akamai_siem.events_received:
+      enabled: true
+      description: Total events received from the Akamai SIEM API
+      unit: "{events}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.invalid_timestamp_retries:
+      enabled: true
+      description: Total HMAC timestamp retries
+      unit: "{retries}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.offset_expired:
+      enabled: true
+      description: Total 416 offset out of range errors
+      unit: "{errors}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.offset_ttl_drops:
+      enabled: true
+      description: Total proactive offset TTL expirations
+      unit: "{drops}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.page_processing_time:
+      enabled: true
+      description: Time to process a page (NDJSON parse + body-map construction + ConsumeLogs)
+      unit: s
+      stability: alpha
+      histogram:
+        value_type: double
+        bucket_boundaries: [ 0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0 ]
+    akamai_siem.pages_processed:
+      enabled: true
+      description: Total API response pages processed
+      unit: "{pages}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.poll_duration:
+      enabled: true
+      description: Duration of a full poll iteration (may include multiple pages)
+      unit: s
+      stability: alpha
+      histogram:
+        value_type: double
+        bucket_boundaries: [ 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0 ]
+    akamai_siem.recovery_attempts:
+      enabled: true
+      description: Total recovery actions taken (416 replays, timestamp retries, from clamps)
+      unit: "{attempts}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.request_duration:
+      enabled: true
+      description: Duration of API requests to the Akamai SIEM API
+      unit: s
+      stability: alpha
+      histogram:
+        value_type: double
+        bucket_boundaries: [ 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0 ]
+    akamai_siem.request_errors:
+      enabled: true
+      description: Total failed API requests (non-200 responses)
+      unit: "{requests}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
+    akamai_siem.requests:
+      enabled: true
+      description: Total API requests made to the Akamai SIEM API
+      unit: "{requests}"
+      stability: alpha
+      sum:
+        value_type: int
+        monotonic: true
