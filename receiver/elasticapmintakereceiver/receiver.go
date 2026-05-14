@@ -757,37 +757,37 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 //  3. This function fires once per transaction event during intake. For
 //     each non-nil DSS entry it appends one CLIENT span under the
 //     transaction's ScopeSpans, with:
-//       - TraceID, ParentSpanID, TraceState inherited from the
-//         transaction. TraceState inheritance keeps AdjustedCount() in
-//         the elasticapmconnector aligned with the parent's sampling
-//         weight.
-//       - SpanID = xxhash(parent_span_id || stat_index): deterministic,
-//         unique within the trace, reproducible across replays.
-//       - SpanKind = CLIENT; elasticapmconnector's service_destination
-//         rule keys on CLIENT/PRODUCER spans.
-//       - StartTimestamp == EndTimestamp == parent.StartTimestamp. The
-//         duration is carried in span.composite.sum.us instead, so the
-//         wall-clock duration must be zero — the connector's
-//         non-composite fallback would otherwise double-count.
-//       - elasticsearch.mapping.hints = [_noindex]. elasticsearchexporter
-//         drops the span at write time; nothing appears in indexed traces.
-//       - span.name = "" (present but empty). The connector's
-//         service_destination rule lists span.name as a dimension, so the
-//         attribute must exist for OTTL MatchAttributes to fire. The
-//         empty value mirrors MIS apm-aggregation's setDroppedSpanStatsKey,
-//         which has no span-name dimension, and rolls all DSS rows for a
-//         given (destination, target, outcome) tuple into one
-//         span.name="" bucket.
-//       - destination.service.resource, service.target.{type,name},
-//         event.outcome are copied from the DSS entry.
-//       - span.composite.sum.us (ns→µs) and span.composite.count carry
-//         the pre-aggregated duration sum and call count.
+//     - TraceID, ParentSpanID, TraceState inherited from the
+//     transaction. TraceState inheritance keeps AdjustedCount() in
+//     the elasticapmconnector aligned with the parent's sampling
+//     weight.
+//     - SpanID = xxhash(parent_span_id || stat_index): deterministic,
+//     unique within the trace, reproducible across replays.
+//     - SpanKind = CLIENT; elasticapmconnector's service_destination
+//     rule keys on CLIENT/PRODUCER spans.
+//     - StartTimestamp == EndTimestamp == parent.StartTimestamp. The
+//     duration is carried in span.composite.sum.us instead, so the
+//     wall-clock duration must be zero — the connector's
+//     non-composite fallback would otherwise double-count.
+//     - elasticsearch.mapping.hints = [_noindex]. elasticsearchexporter
+//     drops the span at write time; nothing appears in indexed traces.
+//     - span.name = "" (present but empty). The connector's
+//     service_destination rule lists span.name as a dimension, so the
+//     attribute must exist for OTTL MatchAttributes to fire. The
+//     empty value mirrors MIS apm-aggregation's setDroppedSpanStatsKey,
+//     which has no span-name dimension, and rolls all DSS rows for a
+//     given (destination, target, outcome) tuple into one
+//     span.name="" bucket.
+//     - destination.service.resource, service.target.{type,name},
+//     event.outcome are copied from the DSS entry.
+//     - span.composite.sum.us (ns→µs) and span.composite.count carry
+//     the pre-aggregated duration sum and call count.
 //
 //  4. elasticapmconnector's service_destination rule sees the synthetic
 //     spans alongside real outbound spans, detects span.composite.sum.us
 //     != nil, and emits
-//        response_time.sum.us = composite.sum.us * AdjustedCount()
-//        response_time.count  = composite.count  * AdjustedCount()
+//     response_time.sum.us = composite.sum.us * AdjustedCount()
+//     response_time.count  = composite.count  * AdjustedCount()
 //     reproducing apm-aggregation's setSpanMetrics behaviour.
 //
 //  5. After connector aggregation the spans flow on through the pipeline.
