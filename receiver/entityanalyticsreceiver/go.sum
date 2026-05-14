@@ -7,8 +7,8 @@ github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/elastic/entcollect v0.0.0-20260513203628-91a63f788d8d h1:d/3CTVqByRM4z3bJWH7LRIuZGWAxtK4DnYP55ja5qm0=
-github.com/elastic/entcollect v0.0.0-20260513203628-91a63f788d8d/go.mod h1:geO9V37Ibo+caL/8JpeqUE5ZJd8jzHjvOcEvAGEaZgI=
+github.com/elastic/entcollect v0.0.0-20260514013106-6d4034497b3d h1:eKAtaQ8G4w9j3LctyOaSoYXnxfSGAcnix8y81esjtJs=
+github.com/elastic/entcollect v0.0.0-20260514013106-6d4034497b3d/go.mod h1:geO9V37Ibo+caL/8JpeqUE5ZJd8jzHjvOcEvAGEaZgI=
 github.com/fatih/color v1.17.0 h1:GlRw1BRJxkpqUCBKzKOw098ed57fEsKeNjpTe3cSjK4=
 github.com/fatih/color v1.17.0/go.mod h1:YZ7TlrGPkiz6ku9fK3TLD/pl3CpsiFyu8N92HLgmosI=
 github.com/foxboron/go-tpm-keyfiles v0.0.0-20250903184740-5d135037bd4d h1:EdO/NMMuCZfxhdzTZLuKAciQSnI2DV+Ppg8+vAYrnqA=
