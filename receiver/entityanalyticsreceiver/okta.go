@@ -121,6 +121,13 @@ func oktaProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 			}
 			ec.LimitWindow = d
 		}
+		if v := os.Getenv("OKTA_LIMIT_FIXED"); v != "" {
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				return nil, fmt.Errorf("okta: parse OKTA_LIMIT_FIXED: %w", err)
+			}
+			ec.LimitFixed = &n
+		}
 
 		clientID := os.Getenv("OKTA_OAUTH2_CLIENT_ID")
 		if clientID != "" {
