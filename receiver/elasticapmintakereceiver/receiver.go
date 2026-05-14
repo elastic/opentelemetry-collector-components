@@ -465,20 +465,6 @@ type globalKeyInfo struct {
 	prefixedKey string
 }
 
-// Pre-sized capacities for the pcommon.Map writes performed below. Sizes
-// track the maximum key counts observed in the testdata fixtures (resource
-// ~48, transaction span ~22, error log ~12) so a fully-populated event
-// can write its attributes without triggering append-growth, while a
-// sparser event wastes only a small constant of unused slots.
-// Outlier events that exceed these caps fall back to amortised append
-// growth — one extra realloc — which is acceptable for the long tail.
-const (
-	resourceAttrCapacity        = 48
-	spanAttrCapacity            = 24
-	logRecordAttrCapacity       = 16
-	breakdownMetricAttrCapacity = 8
-)
-
 // setResourceAttributes maps event fields to attributes.
 // Expects the attribute map to be at the resource level e.g. pmetric.ResourceMetrics.Resource().Attributes().
 //
@@ -486,7 +472,6 @@ const (
 // resourceFingerprint walks the same tree to derive a stable hash, so any
 // field added to the walker is automatically reflected in both consumers.
 func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, event *modelpb.APMEvent) {
-	attrs.EnsureCapacity(resourceAttrCapacity)
 	mappers.WalkResourceAttributes(event, pcommonResourceVisitor{m: attrs})
 }
 
@@ -714,7 +699,6 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	dp.SetTimestamp(pcommon.Timestamp(timestampNanos))
 
 	attr := dp.Attributes()
-	attr.EnsureCapacity(breakdownMetricAttrCapacity)
 	if event.Transaction != nil {
 		attr.PutStr(elasticattr.TransactionName, event.Transaction.Name)
 		attr.PutStr(elasticattr.TransactionType, event.Transaction.Type)
@@ -733,7 +717,6 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 
 func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(sl plog.ScopeLogs, event *modelpb.APMEvent, timestampNanos uint64) {
 	l := sl.LogRecords().AppendEmpty()
-	l.Attributes().EnsureCapacity(logRecordAttrCapacity)
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestampNanos, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForError(event, l.Attributes())
@@ -760,7 +743,6 @@ func (r *elasticAPMIntakeReceiver) setLogSeverity(event *modelpb.APMEvent, l plo
 
 func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(sl plog.ScopeLogs, event *modelpb.APMEvent, timestampNanos uint64) {
 	l := sl.LogRecords().AppendEmpty()
-	l.Attributes().EnsureCapacity(logRecordAttrCapacity)
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestampNanos, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForLog(event, l.Attributes())
@@ -806,7 +788,6 @@ func (r *elasticAPMIntakeReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, 
 	transaction := event.GetTransaction()
 	s.SetName(transaction.GetName())
 
-	s.Attributes().EnsureCapacity(spanAttrCapacity)
 	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
 	mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForTransaction(event, s.Attributes())
@@ -816,7 +797,6 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	span := event.GetSpan()
 	s.SetName(span.GetName())
 
-	s.Attributes().EnsureCapacity(spanAttrCapacity)
 	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
