@@ -96,10 +96,10 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestampNanos uint64, s ptr
 	s.SetEndTimestamp(pcommon.Timestamp(timestampNanos + durationNanos))
 
 	// Encode representative_count into the W3C tracestate so that
-	// AdjustedCount() in the signal-to-metrics connector returns the
-	// correct sampling weight. We only set the tracestate when the
-	// representative count differs from 1 (the AdjustedCount default)
-	// to avoid noisy tracestate on every span.
+	// AdjustedCount() in elasticapmconnector returns the correct sampling
+	// weight. We only set the tracestate when the representative count
+	// differs from 1 (the AdjustedCount default) to avoid noisy tracestate
+	// on every span.
 	// see: https://opentelemetry.io/docs/specs/otel/trace/tracestate-handling/#sampling-threshold-value-th
 	if span := event.GetSpan(); span != nil {
 		repCount := span.GetRepresentativeCount()

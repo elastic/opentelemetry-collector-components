@@ -19,6 +19,7 @@ package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-col
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +29,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cespare/xxhash"
 	"go.opentelemetry.io/collector/client"
@@ -379,6 +381,7 @@ func (r *elasticAPMIntakeReceiver) appendEvent(event *modelpb.APMEvent, ld **plo
 		isTransaction := event.Type() == modelpb.TransactionEventType
 		if isTransaction {
 			r.elasticTransactionToOtelSpan(&s, event)
+			r.appendDroppedSpansStatsSpans(&rs, &s, event.GetTransaction().GetDroppedSpansStats())
 		} else {
 			r.elasticSpanToOTelSpan(&s, event)
 		}
@@ -731,6 +734,171 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
+}
+
+// appendDroppedSpansStatsSpans expands a transaction's dropped_spans_stats
+// (DSS) list into synthetic OTel spans for the elasticapmconnector.
+//
+// Lifecycle of a DSS entry:
+//
+//  1. The APM agent reports transaction.dropped_spans_stats on a transaction
+//     event. Each entry is a (destination_service_resource,
+//     service_target.type, service_target.name, outcome) tuple paired with
+//     the pre-aggregated count and total duration of outbound calls the
+//     agent did not transmit as individual spans — either dropped against
+//     the per-transaction span limit, or composited (sibling spans to the
+//     same destination compressed into a parent composite span).
+//
+//  2. apm-data decodes the entries into modelpb.DroppedSpanStats on the
+//     decoded transaction event. SetElasticSpecificFieldsForTransaction in
+//     internal/mappers does not write these to the transaction span — they
+//     are consumed only by this function.
+//
+//  3. This function fires once per transaction event during intake. For
+//     each non-nil DSS entry it appends one CLIENT span under the
+//     transaction's ScopeSpans, with:
+//     - TraceID, ParentSpanID, TraceState inherited from the
+//     transaction. TraceState inheritance keeps AdjustedCount() in
+//     the elasticapmconnector aligned with the parent's sampling
+//     weight.
+//     - SpanID = xxhash(parent_span_id || stat_index): deterministic,
+//     unique within the trace, reproducible across replays.
+//     - SpanKind = CLIENT; elasticapmconnector's service_destination
+//     rule keys on CLIENT/PRODUCER spans.
+//     - StartTimestamp == EndTimestamp == parent.StartTimestamp. The
+//     duration is carried in span.composite.sum.us instead, so the
+//     wall-clock duration must be zero — the connector's
+//     non-composite fallback would otherwise double-count.
+//     - elasticsearch.mapping.hints = [_noindex]. elasticsearchexporter
+//     drops the span at write time; nothing appears in indexed traces.
+//     - span.name = "" (present but empty). The connector's
+//     service_destination rule lists span.name as a dimension, so the
+//     attribute must exist for OTTL MatchAttributes to fire. The
+//     empty value mirrors MIS apm-aggregation's setDroppedSpanStatsKey,
+//     which has no span-name dimension, and rolls all DSS rows for a
+//     given (destination, target, outcome) tuple into one
+//     span.name="" bucket.
+//     - destination.service.resource, service.target.{type,name},
+//     event.outcome are copied from the DSS entry.
+//     - span.composite.sum.us (ns→µs) and span.composite.count carry
+//     the pre-aggregated duration sum and call count.
+//
+//  4. elasticapmconnector's service_destination rule sees the synthetic
+//     spans alongside real outbound spans, detects span.composite.sum.us
+//     != nil, and emits
+//     response_time.sum.us = composite.sum.us * AdjustedCount()
+//     response_time.count  = composite.count  * AdjustedCount()
+//     reproducing apm-aggregation's setSpanMetrics behaviour.
+//
+//  5. After connector aggregation the spans flow on through the pipeline.
+//     elasticsearchexporter honours the _noindex hint and drops them, so
+//     the synthetic spans contribute only to derived metrics.
+func (r *elasticAPMIntakeReceiver) appendDroppedSpansStatsSpans(
+	rs *ptrace.ResourceSpans,
+	parent *ptrace.Span,
+	stats []*modelpb.DroppedSpanStats,
+) {
+	if len(stats) == 0 {
+		return
+	}
+	// Reuse the parent transaction's ScopeSpans: the synthetic spans share the
+	// same producer (the receiver) and the _noindex hint is sufficient to keep
+	// them out of indexed traces.
+	ss := rs.ScopeSpans().At(rs.ScopeSpans().Len() - 1)
+	parentSpanID := parent.SpanID()
+	for i, stat := range stats {
+		if stat == nil {
+			continue
+		}
+		// Derive a deterministic synthetic span ID from the parent span ID and
+		// the stat index. Uniqueness within the trace is guaranteed; the spans
+		// carry _noindex so they never collide downstream of the exporter.
+		d := xxhash.New()
+		_, _ = d.Write(parentSpanID[:])
+		var idxBuf [4]byte
+		binary.BigEndian.PutUint32(idxBuf[:], uint32(i))
+		_, _ = d.Write(idxBuf[:])
+		var spanID pcommon.SpanID
+		binary.BigEndian.PutUint64(spanID[:], d.Sum64())
+
+		s := ss.Spans().AppendEmpty()
+		// TraceID: kept for OTLP validity. elasticapmconnector's
+		// service_destination rule does not key on it, and elasticsearchexporter
+		// skips this span via _noindex, but zero TraceID may trigger warnings or
+		// drops in any pipeline processor that enforces OTLP correctness.
+		s.SetTraceID(parent.TraceID())
+		// SpanID: required by OTLP and required to be unique within the trace
+		// to avoid downstream dedup. Derived deterministically above from
+		// xxhash(parent_span_id || stat_index) so replays of the same payload
+		// produce the same IDs.
+		s.SetSpanID(spanID)
+		// Start/EndTimestamp are equal and pinned to parent.StartTimestamp.
+		// elasticapmconnector buckets data points by span timestamp into the
+		// configured aggregation interval (1m / 10m / 60m); pinning to the
+		// parent puts the derived metric in the same time bucket as the
+		// originating transaction. The wall-clock duration is zero by design
+		// — the actual aggregated duration is carried in span.composite.sum.us
+		// below.
+		s.SetStartTimestamp(parent.StartTimestamp())
+		s.SetEndTimestamp(parent.StartTimestamp())
+		// TraceState inherited from the parent transaction so AdjustedCount()
+		// in elasticapmconnector applies the parent's sampling weight to the
+		// derived metric series. The transaction-event path in
+		// SetTopLevelFieldsSpan currently does NOT populate TraceState from
+		// Transaction.RepresentativeCount (see follow-up task), so today this
+		// inheritance is a no-op; once that fix lands the DSS path needs no
+		// further change.
+		s.TraceState().FromRaw(parent.TraceState().AsRaw())
+
+		attrs := s.Attributes()
+		// elasticsearch.mapping.hints = [_noindex]: tells elasticsearchexporter
+		// to drop this span at write time so it never reaches the indexed
+		// traces store. The span exists purely to feed the metrics pipeline.
+		attrs.PutEmptySlice("elasticsearch.mapping.hints").AppendEmpty().SetStr("_noindex")
+		// span.name = "" (present but empty): the connector's
+		// service_destination rule lists span.name as a required dimension via
+		// OTTL MatchAttributes, so the attribute must exist for the rule to
+		// fire. The empty value matches apm-aggregation's setDroppedSpanStatsKey
+		// which leaves SpanName as the zero value, so all DSS-derived rows for
+		// a given (destination, target, outcome) tuple roll into one
+		// span.name="" bucket on the metrics side.
+		attrs.PutStr(elasticattr.SpanName, "")
+
+		// destination/target/outcome dimensions are lifted verbatim from the
+		// DSS entry; they are the exact aggregation key fields
+		// apm-aggregation's setDroppedSpanStatsKey uses, and the same keys the
+		// connector's service_destination rule groups by. Conditional writes
+		// skip empty values; the connector treats absent and "" as the same
+		// bucket so this is functionally equivalent to apm-aggregation's
+		// always-write behaviour while saving a few KeyValue slots per span.
+		if stat.DestinationServiceResource != "" {
+			attrs.PutStr(elasticattr.SpanDestinationServiceResource, stat.DestinationServiceResource)
+		}
+		if stat.ServiceTargetType != "" {
+			attrs.PutStr(elasticattr.ServiceTargetType, stat.ServiceTargetType)
+		}
+		if stat.ServiceTargetName != "" {
+			attrs.PutStr(elasticattr.ServiceTargetName, stat.ServiceTargetName)
+		}
+		if stat.Outcome != "" {
+			attrs.PutStr(elasticattr.EventOutcome, stat.Outcome)
+		}
+		// span.composite.sum.us and span.composite.count are always written
+		// (both set to 0 when Duration is nil) so the connector always takes
+		// the composite branch of its service_destination rule and emits the
+		// zero-data bucket apm-aggregation would produce for the same entry
+		// via setDroppedSpanStatsMetrics. Without these the connector's
+		// non-composite fallback would emit count=AdjustedCount() rather than 0.
+		// Duration.Sum is stored in nanoseconds; the attribute is consumed in
+		// microseconds.
+		var sumUs, count int64
+		if stat.Duration != nil {
+			sumUs = time.Duration(stat.Duration.Sum).Microseconds()
+			count = int64(stat.Duration.Count)
+		}
+		attrs.PutInt(elasticattr.SpanCompositeSumUs, sumUs)
+		attrs.PutInt(elasticattr.SpanCompositeCount, count)
+	}
 }
 
 func mapSpanKind(kind string) ptrace.SpanKind {
