@@ -40,7 +40,7 @@ receivers:
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.46.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver v0.46.0
   - gomod: github.com/elastic/opentelemetry-collector-components/receiver/entityanalyticsreceiver v0.0.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver v0.0.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver v0.1.0
 
 processors:
   - gomod: go.opentelemetry.io/collector/processor/memorylimiterprocessor v0.151.0
