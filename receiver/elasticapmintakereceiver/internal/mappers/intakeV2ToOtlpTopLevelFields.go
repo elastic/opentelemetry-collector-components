@@ -97,16 +97,19 @@ func SetTopLevelFieldsSpan(event *modelpb.APMEvent, timestampNanos uint64, s ptr
 
 	// Encode representative_count into the W3C tracestate so that
 	// AdjustedCount() in elasticapmconnector returns the correct sampling
-	// weight. We only set the tracestate when the representative count
-	// differs from 1 (the AdjustedCount default) to avoid noisy tracestate
-	// on every span.
+	// weight. We only set the tracestate when the value differs from 1
+	// (the AdjustedCount default) to avoid noisy tracestate on every span.
 	// see: https://opentelemetry.io/docs/specs/otel/trace/tracestate-handling/#sampling-threshold-value-th
-	if span := event.GetSpan(); span != nil {
-		repCount := span.GetRepresentativeCount()
-		if repCount > 0 && repCount != 1 {
-			if tvalue := probabilityToTValue(1.0 / repCount); tvalue != "" {
-				s.TraceState().FromRaw(fmt.Sprintf("ot=th:%s", tvalue))
-			}
+	var repCount float64
+	switch event.Type() {
+	case modelpb.SpanEventType:
+		repCount = event.GetSpan().GetRepresentativeCount()
+	case modelpb.TransactionEventType:
+		repCount = event.GetTransaction().GetRepresentativeCount()
+	}
+	if repCount > 0 && repCount != 1 {
+		if tvalue := probabilityToTValue(1.0 / repCount); tvalue != "" {
+			s.TraceState().FromRaw(fmt.Sprintf("ot=th:%s", tvalue))
 		}
 	}
 }

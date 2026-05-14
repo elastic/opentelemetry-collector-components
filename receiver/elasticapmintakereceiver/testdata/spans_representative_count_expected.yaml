@@ -68,3 +68,56 @@ resourceSpans:
               code: 1
             traceId: abcdef0123456789abcdef9876543210
             traceState: ot=th:c
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: rep-count-test
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 1.0.0
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1532976822281000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "100000"
+              - key: transaction.id
+                value:
+                  stringValue: ab45781d265894fe
+              - key: transaction.name
+                value:
+                  stringValue: GET /api
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.sampled
+                value:
+                  boolValue: true
+              - key: transaction.span_count.started
+                value:
+                  intValue: "1"
+            endTimeUnixNano: "1532976822381000000"
+            name: GET /api
+            spanId: ab45781d265894fe
+            startTimeUnixNano: "1532976822281000000"
+            status:
+              code: 1
+            traceId: abcdef0123456789abcdef9876543210
+            traceState: ot=th:c
