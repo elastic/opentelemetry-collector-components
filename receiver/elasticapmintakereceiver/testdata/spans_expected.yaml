@@ -870,12 +870,12 @@ resourceSpans:
                               value:
                                 kvlistValue:
                                   values:
-                                    - key: key2
-                                      value:
-                                        stringValue: value2
                                     - key: key
                                       value:
                                         stringValue: value
+                                    - key: key2
+                                      value:
+                                        stringValue: value2
                             - key: line.number
                               value:
                                 intValue: "547"

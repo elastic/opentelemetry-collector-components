@@ -168,6 +168,16 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -185,16 +195,6 @@ resourceSpans:
                           arrayValue:
                             values:
                               - stringValue: Mozilla Chrome Edge
-                      - key: Content-Type
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: text/html
-                      - key: Cookie
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: c1=v1,c2=v2,c3=3
               - key: http.request.env
                 value:
                   kvlistValue:
@@ -212,15 +212,15 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: c3
-                        value:
-                          doubleValue: 3
                       - key: c1
                         value:
                           stringValue: v1
                       - key: c2
                         value:
                           stringValue: v2
+                      - key: c3
+                        value:
+                          doubleValue: 3
               - key: http.request.body.original
                 value:
                   kvlistValue:
@@ -232,12 +232,12 @@ resourceSpans:
                         value:
                           kvlistValue:
                             values:
-                              - key: req
-                                value:
-                                  stringValue: additional information
                               - key: bar
                                 value:
                                   doubleValue: 123
+                              - key: req
+                                value:
+                                  stringValue: additional information
               - key: http.request.referrer
                 value:
                   stringValue: http://localhost:8000/test/e2e/
@@ -266,9 +266,6 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: (
-                        value:
-                          stringValue: not a valid regex and that is fine
                       - key: my_key
                         value:
                           doubleValue: 1
@@ -285,20 +282,13 @@ resourceSpans:
                                     values:
                                       - stringValue: bar
                                       - stringValue: baz
+                      - key: (
+                        value:
+                          stringValue: not a valid regex and that is fine
               - key: transaction.marks
                 value:
                   kvlistValue:
                     values:
-                      - key: another_mark
-                        value:
-                          kvlistValue:
-                            values:
-                              - key: some_long
-                                value:
-                                  doubleValue: 10
-                              - key: some_float
-                                value:
-                                  doubleValue: 10
                       - key: navigationTiming
                         value:
                           kvlistValue:
@@ -309,6 +299,16 @@ resourceSpans:
                               - key: navigationStart
                                 value:
                                   doubleValue: -21
+                      - key: another_mark
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: some_long
+                                value:
+                                  doubleValue: 10
+                              - key: some_float
+                                value:
+                                  doubleValue: 10
             endTimeUnixNano: "1496170407186592981"
             name: GET /api/types
             spanId: 945254c567a5417e

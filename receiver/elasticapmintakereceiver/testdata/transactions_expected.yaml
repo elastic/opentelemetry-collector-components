@@ -928,12 +928,6 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: User-Agent
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
-                              - stringValue: Mozilla Chrome Edge
                       - key: Content-Type
                         value:
                           arrayValue:
@@ -956,19 +950,25 @@ resourceSpans:
                               - stringValue: foo
                               - stringValue: bar
                               - stringValue: baz
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
+                              - stringValue: Mozilla Chrome Edge
               - key: http.request.env
                 value:
                   kvlistValue:
                     values:
-                      - key: SOME_NUMERIC_VALUE
-                        value:
-                          doubleValue: 123
                       - key: SERVER_SOFTWARE
                         value:
                           stringValue: nginx
                       - key: GATEWAY_INTERFACE
                         value:
                           stringValue: CGI/1.1
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
               - key: http.request.cookies
                 value:
                   kvlistValue:
@@ -986,19 +986,19 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: str
+                        value:
+                          stringValue: hello world
                       - key: additional
                         value:
                           kvlistValue:
                             values:
-                              - key: req
-                                value:
-                                  stringValue: additional information
                               - key: bar
                                 value:
                                   doubleValue: 123
-                      - key: str
-                        value:
-                          stringValue: hello world
+                              - key: req
+                                value:
+                                  stringValue: additional information
               - key: http.request.referrer
                 value:
                   stringValue: http://localhost:8000/test/e2e/
@@ -1030,6 +1030,9 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
                       - key: some_other_value
                         value:
                           stringValue: foo bar
@@ -1046,9 +1049,6 @@ resourceSpans:
                       - key: (
                         value:
                           stringValue: not a valid regex and that is fine
-                      - key: my_key
-                        value:
-                          doubleValue: 1
             endTimeUnixNano: "1496170407186592981"
             name: GET /api/types
             spanId: 4340a8e0df1906ec
