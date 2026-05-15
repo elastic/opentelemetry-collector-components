@@ -29,6 +29,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/zap"
 )
@@ -195,6 +196,7 @@ func TestUnmarshalLogs_EmptyInput(t *testing.T) {
 			logs, err := ext.UnmarshalLogs(tt.input)
 			require.NoError(t, err)
 			assert.Equal(t, 0, logs.LogRecordCount())
+			assert.Equal(t, 0, logs.ResourceLogs().Len(), "empty input must not retain resource wrappers")
 		})
 	}
 }
@@ -457,6 +459,115 @@ func TestNewLogsDecoder_SingleRecordResumption(t *testing.T) {
 
 	_, err = decoder2.DecodeLogs()
 	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestCompileMapWriter(t *testing.T) {
+	cases := []struct {
+		name              string
+		fields            map[string]any
+		expectedWriterNil bool
+		expectedRaw       map[string]any
+	}{
+		{
+			name:              "empty fields returns nil writer",
+			fields:            map[string]any{},
+			expectedWriterNil: true,
+			expectedRaw:       map[string]any{},
+		},
+		{
+			name: "supported scalar nested and slice fields",
+			fields: map[string]any{
+				"environment": "production",
+				"enabled":     true,
+				"retries":     3,
+				"latency":     float64(1.5),
+				"nested":      map[string]any{"region": "us-east-1", "zone": "a"},
+				"tags":        []any{"forwarded", int64(7), map[string]any{"name": "security"}},
+			},
+			expectedWriterNil: false,
+			expectedRaw: map[string]any{
+				"environment": "production",
+				"enabled":     true,
+				"retries":     int64(3),
+				"latency":     float64(1.5),
+				"nested":      map[string]any{"region": "us-east-1", "zone": "a"},
+				"tags":        []any{"forwarded", int64(7), map[string]any{"name": "security"}},
+			},
+		},
+		{
+			name: "unsupported values are skipped",
+			fields: map[string]any{
+				"ok":      "value",
+				"bad":     struct{ Name string }{Name: "x"},
+				"badList": []any{"kept", struct{ ID int }{ID: 1}},
+			},
+			expectedWriterNil: false,
+			expectedRaw: map[string]any{
+				"ok":      "value",
+				"badList": []any{"kept"},
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			writer := compileMapWriter(zap.NewNop(), tc.fields)
+			m := pcommon.NewMap()
+
+			if tc.expectedWriterNil {
+				require.Nil(t, writer)
+			} else {
+				require.NotNil(t, writer)
+				writer(m)
+			}
+
+			require.Equal(t, tc.expectedRaw, m.AsRaw())
+		})
+	}
+}
+
+func TestCompileSliceWriter(t *testing.T) {
+	cases := []struct {
+		name              string
+		values            []any
+		expectedWriterNil bool
+		expectedRaw       []any
+	}{
+		{
+			name:              "empty values returns nil writer",
+			values:            []any{},
+			expectedWriterNil: true,
+			expectedRaw:       []any{},
+		},
+		{
+			name:              "supported values and nested map",
+			values:            []any{"a", true, int(3), int64(4), float64(2.5), map[string]any{"k": "v"}},
+			expectedWriterNil: false,
+			expectedRaw:       []any{"a", true, int64(3), int64(4), float64(2.5), map[string]any{"k": "v"}},
+		},
+		{
+			name:              "unsupported values are skipped",
+			values:            []any{"kept", struct{ X int }{X: 1}},
+			expectedWriterNil: false,
+			expectedRaw:       []any{"kept"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			writer := compileSliceWriter(zap.NewNop(), "test", tc.values)
+			sl := pcommon.NewSlice()
+
+			if tc.expectedWriterNil {
+				require.Nil(t, writer)
+			} else {
+				require.NotNil(t, writer)
+				writer(sl)
+			}
+
+			require.Equal(t, tc.expectedRaw, sl.AsRaw())
+		})
+	}
 }
 
 // stripEventCreated removes the "event.created" key from all log record

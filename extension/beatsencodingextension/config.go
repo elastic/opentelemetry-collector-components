@@ -18,6 +18,7 @@
 package beatsencodingextension // import "github.com/elastic/opentelemetry-collector-components/extension/beatsencodingextension"
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -85,11 +86,11 @@ func (c *Config) Validate() error {
 	}
 
 	if c.DataStream.Dataset == "" {
-		return fmt.Errorf("data_stream.dataset is required")
+		return errors.New("data_stream.dataset is required")
 	}
 
 	if c.DataStream.Namespace == "" {
-		return fmt.Errorf("data_stream.namespace is required")
+		return errors.New("data_stream.namespace is required")
 	}
 
 	return nil
