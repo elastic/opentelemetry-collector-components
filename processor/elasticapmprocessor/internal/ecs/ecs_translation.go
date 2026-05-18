@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/strutil"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
 	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
@@ -160,7 +159,7 @@ func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels
 			string(semconv.TelemetrySDKLanguageKey),
 			string(semconv.TelemetrySDKNameKey),
 			string(semconv.TelemetrySDKVersionKey):
-			truncatePreservedStringAttribute(attributes, k, v)
+			truncatePreservedStringAttribute(v)
 			return false
 		default:
 			if sanitizeExistingLabels {
@@ -362,7 +361,7 @@ func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
 		case string(semconv.UserNameKey),
 			"system.filesystem.mount_point",
 			"system.process.cmdline":
-			truncatePreservedStringAttribute(attributes, k, v)
+			truncatePreservedStringAttribute(v)
 			return false
 		default:
 			if label := getLabelAttributeValue(k, v); label.k != "" {
@@ -376,13 +375,12 @@ func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
 	}
 }
 
-func truncatePreservedStringAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
+func truncatePreservedStringAttribute(value pcommon.Value) {
 	if value.Type() != pcommon.ValueTypeStr {
 		return
 	}
-	truncated := strutil.Truncate(value.Str())
-	if truncated != value.Str() {
-		attributes.PutStr(key, truncated)
+	if truncated := TruncateToECSMaxLength(value.Str()); truncated != value.Str() {
+		value.SetStr(truncated)
 	}
 }
 
@@ -390,7 +388,7 @@ func getLabelAttributeValue(key string, value pcommon.Value) kv {
 	sanitizedKey := strings.Map(replaceReservedLabelKeyRune, key)
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(strutil.Truncate(value.Str()))}
+		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(TruncateToECSMaxLength(value.Str()))}
 	case pcommon.ValueTypeBool:
 		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(strconv.FormatBool(value.Bool()))}
 	case pcommon.ValueTypeInt:
@@ -410,7 +408,7 @@ func getLabelAttributeValue(key string, value pcommon.Value) kv {
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeStr {
-					sl.AppendEmpty().SetStr(strutil.Truncate(item.Str()))
+					sl.AppendEmpty().SetStr(TruncateToECSMaxLength(item.Str()))
 				}
 			}
 			return kv{k: "labels." + sanitizedKey, v: lv}

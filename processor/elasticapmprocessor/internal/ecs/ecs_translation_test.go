@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/strutil"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
@@ -134,30 +133,30 @@ func TestTranslateResourceMetadata(t *testing.T) {
 		{
 			name:     "supported service version truncated",
 			inputKey: string(semconv.ServiceVersionKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.ServiceVersionKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported service instance id truncated",
 			inputKey: string(semconv.ServiceInstanceIDKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.ServiceInstanceIDKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported deployment environment truncated",
 			inputKey: string(semconv.DeploymentEnvironmentKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.DeploymentEnvironmentKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported telemetry sdk name truncated",
 			inputKey: string(semconv.TelemetrySDKNameKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.TelemetrySDKNameKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported telemetry sdk version",
@@ -168,58 +167,58 @@ func TestTranslateResourceMetadata(t *testing.T) {
 		{
 			name:     "supported cloud provider truncated",
 			inputKey: string(semconv.CloudProviderKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.CloudProviderKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported container name truncated",
 			inputKey: string(semconv.ContainerNameKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.ContainerNameKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported kubernetes namespace truncated",
 			inputKey: string(semconv.K8SNamespaceNameKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.K8SNamespaceNameKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported host name truncated",
 			inputKey: string(semconv.HostNameKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.HostNameKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported process command line truncated",
 			inputKey: string(semconv.ProcessCommandLineKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.ProcessCommandLineKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported process owner truncated",
 			inputKey: string(semconv.ProcessOwnerKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.ProcessOwnerKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported os description truncated",
 			inputKey: string(semconv.OSDescriptionKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.OSDescriptionKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported device model name truncated",
 			inputKey: string(semconv.DeviceModelNameKey),
-			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			wantKey:  string(semconv.DeviceModelNameKey),
-			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(ecsKeywordMaxLength)),
 		},
 		{
 			name:     "supported process runtime name",
@@ -329,7 +328,7 @@ func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 		{
 			name: "supported semantic fields are not truncated",
 			setAttrs: func(attrs pcommon.Map) {
-				longValue := strings.Repeat("a", int(strutil.StandardKeyWordLength)+1)
+				longValue := strings.Repeat("a", int(ecsKeywordMaxLength)+1)
 				attrs.PutStr(string(semconv.ExceptionMessageKey), longValue)
 				attrs.PutStr(string(semconv.ExceptionStacktraceKey), longValue)
 				attrs.PutStr(string(semconv.ExceptionTypeKey), longValue)
@@ -342,16 +341,16 @@ func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 				attrs.PutStr(elasticattr.DataStreamType, longValue)
 			},
 			want: map[string]any{
-				string(semconv.ExceptionMessageKey):      strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				string(semconv.ExceptionStacktraceKey):   strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				string(semconv.ExceptionTypeKey):         strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				"event.name":                             strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				"event.domain":                           strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				"session.id":                             strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				string(semconv.NetworkConnectionTypeKey): strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				elasticattr.DataStreamDataset:            strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				elasticattr.DataStreamNamespace:          strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				elasticattr.DataStreamType:               strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				string(semconv.ExceptionMessageKey):      strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				string(semconv.ExceptionStacktraceKey):   strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				string(semconv.ExceptionTypeKey):         strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				"event.name":                             strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				"event.domain":                           strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				"session.id":                             strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				string(semconv.NetworkConnectionTypeKey): strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				elasticattr.DataStreamDataset:            strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				elasticattr.DataStreamNamespace:          strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				elasticattr.DataStreamType:               strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			},
 		},
 		{
@@ -719,7 +718,7 @@ func TestRemapMetricDataPointAttributesToECSLabels(t *testing.T) {
 		{
 			name: "metric special cases requiring truncation are truncated in place",
 			setAttrs: func(attrs pcommon.Map) {
-				longValue := strings.Repeat("a", int(strutil.StandardKeyWordLength)+1)
+				longValue := strings.Repeat("a", int(ecsKeywordMaxLength)+1)
 				attrs.PutStr("system.process.cmdline", longValue)
 				attrs.PutStr("system.filesystem.mount_point", longValue)
 				attrs.PutStr("user.name", longValue)
@@ -727,11 +726,11 @@ func TestRemapMetricDataPointAttributesToECSLabels(t *testing.T) {
 				attrs.PutStr("system.process.state", longValue)
 			},
 			want: map[string]any{
-				"system.process.cmdline":        strings.Repeat("a", int(strutil.StandardKeyWordLength)),
-				"system.filesystem.mount_point": strings.Repeat("a", int(strutil.StandardKeyWordLength)),
-				"user.name":                     strings.Repeat("a", int(strutil.StandardKeyWordLength)),
-				"event.module":                  strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
-				"system.process.state":          strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				"system.process.cmdline":        strings.Repeat("a", int(ecsKeywordMaxLength)),
+				"system.filesystem.mount_point": strings.Repeat("a", int(ecsKeywordMaxLength)),
+				"user.name":                     strings.Repeat("a", int(ecsKeywordMaxLength)),
+				"event.module":                  strings.Repeat("a", int(ecsKeywordMaxLength)+1),
+				"system.process.state":          strings.Repeat("a", int(ecsKeywordMaxLength)+1),
 			},
 		},
 	}

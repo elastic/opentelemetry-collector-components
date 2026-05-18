@@ -29,7 +29,6 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/strutil"
 )
 
 // ecsResourceConfig returns the base ECS resource configuration shared by the
@@ -152,15 +151,15 @@ func TestResourceEnrich(t *testing.T) {
 				res.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
 				res.Attributes().PutStr(
 					string(semconv.TelemetrySDKLanguageKey),
-					strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+					strings.Repeat("a", int(1024)+1),
 				)
 				return res
 			}(),
 			config: ecsLogResourceConfig(),
 			enrichedAttrs: map[string]any{
-				elasticattr.AgentName:                      "opentelemetry/" + strings.Repeat("a", strutil.StandardKeyWordLength),
+				elasticattr.AgentName:                      "opentelemetry/" + strings.Repeat("a", 1024),
 				elasticattr.AgentVersion:                   "unknown",
-				string(semconv.TelemetrySDKLanguageKey):    strings.Repeat("a", strutil.StandardKeyWordLength),
+				string(semconv.TelemetrySDKLanguageKey):    strings.Repeat("a", 1024),
 				string(semconv25.DeploymentEnvironmentKey): "unset",
 			},
 		},

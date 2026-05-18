@@ -15,24 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package strutil // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/strutil"
+package ecs // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 
-// StandardKeyWordLength is the maximum number of runes for ECS keyword fields.
-const StandardKeyWordLength = 1024
+// ecsKeywordMaxLength is the maximum number of runes for ECS keyword fields.
+const ecsKeywordMaxLength = 1024
 
-// Truncate returns s truncated to StandardKeyWordLength runes.
-func Truncate(s string) string {
-	return TruncateTo(s, StandardKeyWordLength)
-}
-
-// TruncateTo returns s truncated to n runes.
-func TruncateTo(s string, n uint) string {
-	var j uint
-	for i := range s {
-		if j == n {
-			return s[:i]
-		}
-		j++
+// TruncateToECSMaxLength truncates s to the maximum rune length for ECS keyword fields.
+func TruncateToECSMaxLength(s string) string {
+	runes := []rune(s)
+	if len(runes) > ecsKeywordMaxLength {
+		return string(runes[:ecsKeywordMaxLength])
 	}
 	return s
 }
