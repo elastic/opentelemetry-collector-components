@@ -381,6 +381,29 @@ func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 			},
 			wantAbsent: []string{"http.request"},
 		},
+		{
+			// Regression: mutating pcommon.Map inside Range caused an index-out-of-bounds panic.
+			name: "no panic when unsupported attribute maps to a pre-existing label key",
+			setAttrs: func(attrs pcommon.Map) {
+				for _, k := range []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"} {
+					attrs.PutStr(k, "v")
+				}
+				attrs.PutStr("labels.a0", "existing")
+			},
+			want: map[string]any{
+				"labels.a0": "v",
+				"labels.a1": "v",
+				"labels.a2": "v",
+				"labels.a3": "v",
+				"labels.a4": "v",
+				"labels.a5": "v",
+				"labels.a6": "v",
+				"labels.a7": "v",
+				"labels.a8": "v",
+				"labels.a9": "v",
+			},
+			wantAbsent: []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"},
+		},
 	}
 
 	for _, tc := range tests {
