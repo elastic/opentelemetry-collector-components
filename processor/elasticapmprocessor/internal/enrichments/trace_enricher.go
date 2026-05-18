@@ -34,13 +34,14 @@ type TraceEnricher interface {
 // ecsTraceEnricher contains the shared ECS trace enrichment pipeline
 // embedded by APMTraceEnricher and OTelTraceEnricher.
 type ecsTraceEnricher struct {
-	enricher      *Enricher
-	hostIPEnabled bool
+	enricher               *Enricher
+	hostIPEnabled          bool
+	sanitizeExistingLabels bool
 }
 
 func (e *ecsTraceEnricher) enrichResourceSpans(ctx context.Context, rs ptrace.ResourceSpans) {
 	// Traces signal never need to be routed to service-specific datasets
-	ecsPreProcessResource(ctx, rs.Resource(), routing.DataStreamTypeTraces, false, e.hostIPEnabled)
+	ecsPreProcessResource(ctx, rs.Resource(), routing.DataStreamTypeTraces, false, e.hostIPEnabled, e.sanitizeExistingLabels)
 	routeErrorSpanEvents(rs)
 	e.enricher.EnrichResourceSpans(rs)
 }
@@ -85,8 +86,9 @@ func NewAPMTraceEnricher(baseCfg config.Config, hostIPEnabled bool) *APMTraceEnr
 	cfg.Transaction.Result.Enabled = false
 	return &APMTraceEnricher{
 		ecsTraceEnricher: ecsTraceEnricher{
-			enricher:      NewEnricher(cfg, false /* remapToECSLabels */),
-			hostIPEnabled: hostIPEnabled,
+			enricher:               NewEnricher(cfg, false /* remapToECSLabels */),
+			hostIPEnabled:          hostIPEnabled,
+			sanitizeExistingLabels: true,
 		},
 	}
 }
@@ -108,8 +110,9 @@ func NewOTelTraceEnricher(baseCfg config.Config, hostIPEnabled bool) *OTelTraceE
 	cfg := ecsOTelConfig(baseCfg)
 	return &OTelTraceEnricher{
 		ecsTraceEnricher: ecsTraceEnricher{
-			enricher:      NewEnricher(cfg, true /* remapToECSLabels */),
-			hostIPEnabled: hostIPEnabled,
+			enricher:               NewEnricher(cfg, true /* remapToECSLabels */),
+			hostIPEnabled:          hostIPEnabled,
+			sanitizeExistingLabels: false,
 		},
 	}
 }
