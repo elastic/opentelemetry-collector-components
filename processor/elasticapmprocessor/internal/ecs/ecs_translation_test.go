@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/strutil"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
@@ -38,50 +38,56 @@ func TestTranslateResourceMetadata(t *testing.T) {
 		wantAbsent string // if non-empty, assert this attribute key is removed after translation (e.g. sanitized key)
 	}{
 		{
-			name:     "labels no reserved chars",
-			inputKey: "labels.my_value",
-			inputVal: "bar",
-			wantKey:  "labels.my_value",
+			// labels.my_value is an unsupported attribute: the full key gets sanitized
+			// (dot→underscore) and prefixed with labels., matching replaceDots in MIS.
+			name:       "labels prefixed attr treated as unsupported",
+			inputKey:   "labels.my_value",
+			inputVal:   "bar",
+			wantKey:    "labels.labels_my_value",
+			wantAbsent: "labels.my_value",
 		},
 		{
-			name:       "labels dot replaced",
+			name:       "labels prefixed attr with dots in suffix",
 			inputKey:   "labels.other.value",
 			inputVal:   "foo",
-			wantKey:    "labels.other_value",
+			wantKey:    "labels.labels_other_value",
 			wantAbsent: "labels.other.value",
 		},
 		{
-			name:       "labels asterisk replaced",
+			name:       "labels prefixed attr with asterisk",
 			inputKey:   "labels.key*name",
 			inputVal:   "baz",
-			wantKey:    "labels.key_name",
+			wantKey:    "labels.labels_key_name",
 			wantAbsent: "labels.key*name",
 		},
 		{
-			name:       "labels double quote replaced",
+			name:       "labels prefixed attr with double quote",
 			inputKey:   `labels.key"name`,
 			inputVal:   "qux",
-			wantKey:    "labels.key_name",
+			wantKey:    "labels.labels_key_name",
 			wantAbsent: `labels.key"name`,
 		},
 		{
-			name:       "labels mixed reserved chars",
+			name:       "labels prefixed attr with mixed reserved chars",
 			inputKey:   `labels.a.b*c"d`,
 			inputVal:   "mix",
-			wantKey:    "labels.a_b_c_d",
+			wantKey:    "labels.labels_a_b_c_d",
 			wantAbsent: `labels.a.b*c"d`,
 		},
 		{
-			name:     "numeric_labels no reserved chars",
-			inputKey: "numeric_labels.clean",
-			inputVal: "42",
-			wantKey:  "numeric_labels.clean",
+			// String-valued numeric_labels.* attr: value type governs destination,
+			// so key sanitizes to labels.numeric_labels_clean (matching MIS replaceDots).
+			name:       "numeric_labels prefixed string attr treated as unsupported",
+			inputKey:   "numeric_labels.clean",
+			inputVal:   "42",
+			wantKey:    "labels.numeric_labels_clean",
+			wantAbsent: "numeric_labels.clean",
 		},
 		{
-			name:       "numeric_labels multiple dots replaced",
+			name:       "numeric_labels prefixed string attr with multiple dots",
 			inputKey:   "numeric_labels.http.status.code",
 			inputVal:   "200",
-			wantKey:    "numeric_labels.http_status_code",
+			wantKey:    "labels.numeric_labels_http_status_code",
 			wantAbsent: "numeric_labels.http.status.code",
 		},
 		{
@@ -128,30 +134,30 @@ func TestTranslateResourceMetadata(t *testing.T) {
 		{
 			name:     "supported service version truncated",
 			inputKey: string(semconv.ServiceVersionKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.ServiceVersionKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported service instance id truncated",
 			inputKey: string(semconv.ServiceInstanceIDKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.ServiceInstanceIDKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported deployment environment truncated",
 			inputKey: string(semconv.DeploymentEnvironmentKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.DeploymentEnvironmentKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported telemetry sdk name truncated",
 			inputKey: string(semconv.TelemetrySDKNameKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.TelemetrySDKNameKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported telemetry sdk version",
@@ -162,58 +168,58 @@ func TestTranslateResourceMetadata(t *testing.T) {
 		{
 			name:     "supported cloud provider truncated",
 			inputKey: string(semconv.CloudProviderKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.CloudProviderKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported container name truncated",
 			inputKey: string(semconv.ContainerNameKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.ContainerNameKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported kubernetes namespace truncated",
 			inputKey: string(semconv.K8SNamespaceNameKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.K8SNamespaceNameKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported host name truncated",
 			inputKey: string(semconv.HostNameKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.HostNameKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported process command line truncated",
 			inputKey: string(semconv.ProcessCommandLineKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.ProcessCommandLineKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported process owner truncated",
 			inputKey: string(semconv.ProcessOwnerKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.ProcessOwnerKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported os description truncated",
 			inputKey: string(semconv.OSDescriptionKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.OSDescriptionKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported device model name truncated",
 			inputKey: string(semconv.DeviceModelNameKey),
-			inputVal: strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+			inputVal: strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			wantKey:  string(semconv.DeviceModelNameKey),
-			wantVal:  strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
+			wantVal:  strings.Repeat("a", int(strutil.StandardKeyWordLength)),
 		},
 		{
 			name:     "supported process runtime name",
@@ -262,7 +268,7 @@ func TestTranslateResourceMetadata(t *testing.T) {
 			attrs := resource.Attributes()
 			attrs.PutStr(tc.inputKey, tc.inputVal)
 
-			TranslateResourceMetadata(resource)
+			TranslateResourceMetadata(resource, false)
 
 			v, ok := attrs.Get(tc.wantKey)
 			if !ok {
@@ -323,7 +329,7 @@ func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 		{
 			name: "supported semantic fields are not truncated",
 			setAttrs: func(attrs pcommon.Map) {
-				longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+				longValue := strings.Repeat("a", int(strutil.StandardKeyWordLength)+1)
 				attrs.PutStr(string(semconv.ExceptionMessageKey), longValue)
 				attrs.PutStr(string(semconv.ExceptionStacktraceKey), longValue)
 				attrs.PutStr(string(semconv.ExceptionTypeKey), longValue)
@@ -336,16 +342,16 @@ func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 				attrs.PutStr(elasticattr.DataStreamType, longValue)
 			},
 			want: map[string]any{
-				string(semconv.ExceptionMessageKey):      strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				string(semconv.ExceptionStacktraceKey):   strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				string(semconv.ExceptionTypeKey):         strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				"event.name":                             strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				"event.domain":                           strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				"session.id":                             strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				string(semconv.NetworkConnectionTypeKey): strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				elasticattr.DataStreamDataset:            strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				elasticattr.DataStreamNamespace:          strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				elasticattr.DataStreamType:               strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				string(semconv.ExceptionMessageKey):      strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				string(semconv.ExceptionStacktraceKey):   strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				string(semconv.ExceptionTypeKey):         strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				"event.name":                             strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				"event.domain":                           strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				"session.id":                             strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				string(semconv.NetworkConnectionTypeKey): strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				elasticattr.DataStreamDataset:            strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				elasticattr.DataStreamNamespace:          strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				elasticattr.DataStreamType:               strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			},
 		},
 		{
@@ -363,14 +369,16 @@ func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 			wantAbsent: []string{"http.method", "http.status_code", "custom.flag"},
 		},
 		{
-			name: "existing label keys are sanitized",
+			// labels.* / numeric_labels.* prefixed attributes are treated as unsupported:
+			// the full key is sanitized (dot→underscore) and re-prefixed, matching MIS replaceDots.
+			name: "labels prefixed attrs treated as unsupported",
 			setAttrs: func(attrs pcommon.Map) {
 				attrs.PutStr("labels.http.method", "GET")
 				attrs.PutDouble("numeric_labels.http.status_code", 200)
 			},
 			want: map[string]any{
-				"labels.http_method":              "GET",
-				"numeric_labels.http_status_code": 200.0,
+				"labels.labels_http_method":                      "GET",
+				"numeric_labels.numeric_labels_http_status_code": 200.0,
 			},
 			wantAbsent: []string{"labels.http.method", "numeric_labels.http.status_code"},
 		},
@@ -382,8 +390,65 @@ func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 			wantAbsent: []string{"http.request"},
 		},
 		{
+			// Map-typed attributes have no supported label representation and are silently dropped.
+			name: "map-typed attribute dropped",
+			setAttrs: func(attrs pcommon.Map) {
+				for _, k := range []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"} {
+					attrs.PutStr(k, "v")
+				}
+				attrs.PutEmptyMap("nested.attr")
+			},
+			want: map[string]any{
+				"labels.a0": "v", "labels.a1": "v", "labels.a2": "v",
+				"labels.a3": "v", "labels.a4": "v", "labels.a5": "v",
+				"labels.a6": "v", "labels.a7": "v", "labels.a8": "v",
+				"labels.a9": "v",
+			},
+			wantAbsent: []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "nested.attr"},
+		},
+		{
+			// Two attributes that reduce to the same sanitized key both map to the same
+			// output label; the second insertion overwrites the first (last writer wins).
+			name: "key collision last writer wins",
+			setAttrs: func(attrs pcommon.Map) {
+				for _, k := range []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"} {
+					attrs.PutStr(k, "v")
+				}
+				attrs.PutStr("foo.bar", "first")
+				attrs.PutStr("foo_bar", "second") // both sanitize to "labels.foo_bar"
+			},
+			want: map[string]any{
+				"labels.a0": "v", "labels.a1": "v", "labels.a2": "v",
+				"labels.a3": "v", "labels.a4": "v", "labels.a5": "v",
+				"labels.a6": "v", "labels.a7": "v", "labels.a8": "v",
+				"labels.foo_bar": "second",
+			},
+			wantAbsent: []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "foo.bar", "foo_bar"},
+		},
+		{
+			// "labels.foo.bar" and "labels.foo_bar" both sanitize to the same output key
+			// "labels.labels_foo_bar".  Last writer wins.
+			name: "labels-prefixed key collision last writer wins",
+			setAttrs: func(attrs pcommon.Map) {
+				for _, k := range []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"} {
+					attrs.PutStr(k, "v")
+				}
+				attrs.PutStr("labels.foo.bar", "dotted")
+				attrs.PutStr("labels.foo_bar", "plain") // both sanitize to "labels.labels_foo_bar"
+			},
+			want: map[string]any{
+				"labels.a0": "v", "labels.a1": "v", "labels.a2": "v",
+				"labels.a3": "v", "labels.a4": "v", "labels.a5": "v",
+				"labels.a6": "v", "labels.a7": "v", "labels.a8": "v",
+				"labels.labels_foo_bar": "plain",
+			},
+			wantAbsent: []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "labels.foo.bar", "labels.foo_bar"},
+		},
+		{
 			// Regression: mutating pcommon.Map inside Range caused an index-out-of-bounds panic.
-			name: "no panic when unsupported attribute maps to a pre-existing label key",
+			// With uniform key sanitization, plain "a0" → "labels.a0" and "labels.a0" →
+			// "labels.labels_a0": no collision, both produce distinct output keys.
+			name: "no panic with 11 attrs including a labels-prefixed key",
 			setAttrs: func(attrs pcommon.Map) {
 				for _, k := range []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"} {
 					attrs.PutStr(k, "v")
@@ -391,16 +456,17 @@ func TestRemapLogRecordAttributesToECSLabels(t *testing.T) {
 				attrs.PutStr("labels.a0", "existing")
 			},
 			want: map[string]any{
-				"labels.a0": "v",
-				"labels.a1": "v",
-				"labels.a2": "v",
-				"labels.a3": "v",
-				"labels.a4": "v",
-				"labels.a5": "v",
-				"labels.a6": "v",
-				"labels.a7": "v",
-				"labels.a8": "v",
-				"labels.a9": "v",
+				"labels.a0":        "v",
+				"labels.labels_a0": "existing",
+				"labels.a1":        "v",
+				"labels.a2":        "v",
+				"labels.a3":        "v",
+				"labels.a4":        "v",
+				"labels.a5":        "v",
+				"labels.a6":        "v",
+				"labels.a7":        "v",
+				"labels.a8":        "v",
+				"labels.a9":        "v",
 			},
 			wantAbsent: []string{"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9"},
 		},
@@ -513,14 +579,16 @@ func TestRemapSpanAttributesToECSLabels(t *testing.T) {
 			},
 		},
 		{
-			name: "existing span label keys are sanitized",
+			// labels.* / numeric_labels.* prefixed span attributes are treated as unsupported:
+			// the full key is sanitized (dot→underscore) and re-prefixed, matching MIS replaceDots.
+			name: "labels prefixed span attrs treated as unsupported",
 			setAttrs: func(attrs pcommon.Map) {
 				attrs.PutStr("labels.http.route", "/users")
 				attrs.PutDouble("numeric_labels.http.response_content_length", 1024)
 			},
 			want: map[string]any{
-				"labels.http_route":                           "/users",
-				"numeric_labels.http_response_content_length": 1024.0,
+				"labels.labels_http_route":                                   "/users",
+				"numeric_labels.numeric_labels_http_response_content_length": 1024.0,
 			},
 			wantAbsent: []string{
 				"labels.http.route",
@@ -606,14 +674,16 @@ func TestRemapMetricDataPointAttributesToECSLabels(t *testing.T) {
 			},
 		},
 		{
-			name: "existing metric label keys are sanitized in place",
+			// labels.* / numeric_labels.* prefixed metric attributes are treated as unsupported:
+			// the full key is sanitized (dot→underscore) and re-prefixed, matching MIS replaceDots.
+			name: "labels prefixed metric attrs treated as unsupported",
 			setAttrs: func(attrs pcommon.Map) {
 				attrs.PutStr("labels.http.request.method", "GET")
 				attrs.PutDouble("numeric_labels.http.response.status_code", 200)
 			},
 			want: map[string]any{
-				"labels.http_request_method":               "GET",
-				"numeric_labels.http_response_status_code": 200.0,
+				"labels.labels_http_request_method":                       "GET",
+				"numeric_labels.numeric_labels_http_response_status_code": 200.0,
 			},
 			wantAbsent: []string{
 				"labels.http.request.method",
@@ -649,7 +719,7 @@ func TestRemapMetricDataPointAttributesToECSLabels(t *testing.T) {
 		{
 			name: "metric special cases requiring truncation are truncated in place",
 			setAttrs: func(attrs pcommon.Map) {
-				longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+				longValue := strings.Repeat("a", int(strutil.StandardKeyWordLength)+1)
 				attrs.PutStr("system.process.cmdline", longValue)
 				attrs.PutStr("system.filesystem.mount_point", longValue)
 				attrs.PutStr("user.name", longValue)
@@ -657,11 +727,11 @@ func TestRemapMetricDataPointAttributesToECSLabels(t *testing.T) {
 				attrs.PutStr("system.process.state", longValue)
 			},
 			want: map[string]any{
-				"system.process.cmdline":        strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
-				"system.filesystem.mount_point": strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
-				"user.name":                     strings.Repeat("a", int(sanitize.StandardKeyWordLength)),
-				"event.module":                  strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
-				"system.process.state":          strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1),
+				"system.process.cmdline":        strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+				"system.filesystem.mount_point": strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+				"user.name":                     strings.Repeat("a", int(strutil.StandardKeyWordLength)),
+				"event.module":                  strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
+				"system.process.state":          strings.Repeat("a", int(strutil.StandardKeyWordLength)+1),
 			},
 		},
 	}
@@ -699,7 +769,7 @@ func TestRemapMetricDataPointAttributesToECSLabels(t *testing.T) {
 // supported value types under the correct labels.* / numeric_labels.* prefix
 // and rejects unsupported types (Map, Bytes, Empty). This matches
 // apm-data's setLabel behaviour (input/otlp/metadata.go).
-func TestSetLabelAttributeValue(t *testing.T) {
+func TestGetLabelAttributeValue(t *testing.T) {
 	tests := []struct {
 		name      string
 		key       string
@@ -870,7 +940,9 @@ func TestSetLabelAttributeValue(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			attrs := pcommon.NewMap()
-			setLabelAttributeValue(attrs, tc.key, tc.value())
+			if label := getLabelAttributeValue(tc.key, tc.value()); label.k != "" {
+				label.v.CopyTo(attrs.PutEmpty(label.k))
+			}
 
 			if !tc.isUpdated {
 				assert.Equal(t, 0, attrs.Len(), "unsupported type should not add attributes")

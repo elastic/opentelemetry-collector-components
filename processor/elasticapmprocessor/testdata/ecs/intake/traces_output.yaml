@@ -10,6 +10,15 @@ resourceSpans:
         - key: os.type
           value:
             stringValue: linux
+        - key: labels.my_value
+          value:
+            stringValue: foo
+        - key: labels.other_value
+          value:
+            stringValue: bar
+        - key: numeric_labels.http_status_code
+          value:
+            doubleValue: 200
         - key: data_stream.type
           value:
             stringValue: traces

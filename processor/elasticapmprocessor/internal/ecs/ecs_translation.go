@@ -19,9 +19,10 @@ package ecs // import "github.com/elastic/opentelemetry-collector-components/pro
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/strutil"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
 	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
@@ -37,17 +38,26 @@ const (
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
 )
 
-// TranslateResourceMetadata normalizes resource attributes.
-// Sanitizes existing labels and numeric_labels keys.
-// Moves unsupported attributes to labels with a "labels." prefix (key sanitized),
-// and leaves supported ECS attributes unchanged.
-func TranslateResourceMetadata(resource pcommon.Resource) {
-	attributes := resource.Attributes()
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitizeExistingLabelAttribute(attributes, k, v) {
-			return true
-		}
+// kv is a key-value pair for collecting deferred attribute insertions after a RemoveIf pass.
+type kv struct {
+	k string
+	v pcommon.Value
+}
 
+// TranslateResourceMetadata normalizes resource attributes.
+// Moves unsupported attributes to labels.* / numeric_labels.* (key sanitized),
+// and leaves supported ECS attributes unchanged.
+//
+// When sanitizeExistingLabels is true (APM intake path), existing labels.* /
+// numeric_labels.* keys have only their suffix sanitized (reserved characters
+// replaced). All other unsupported attributes are fully re-normalized.
+// When false (OTel path), all unsupported attributes — including any that
+// already carry a labels.* prefix — are treated as raw keys and re-normalized
+// from scratch.
+func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels bool) {
+	attributes := resource.Attributes()
+	var toAppend []kv
+	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.AgentActivationMethod,
 			elasticattr.AgentEphemeralID,
@@ -111,7 +121,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			string(semconv.UserIDKey),
 			string(semconv.UserNameKey),
 			ecsAttrOpenCensusExporterVersion:
-			return true
+			return false
 		case elasticattr.ContainerImageTag,
 			elasticattr.DeviceManufacturer,
 			string(semconv.CloudAccountIDKey),
@@ -151,12 +161,31 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			string(semconv.TelemetrySDKNameKey),
 			string(semconv.TelemetrySDKVersionKey):
 			truncatePreservedStringAttribute(attributes, k, v)
-			return true
+			return false
 		default:
-			fallbackToLabelAttribute(attributes, k, v)
+			if sanitizeExistingLabels {
+				for _, prefix := range []string{"labels.", "numeric_labels."} {
+					if strings.HasPrefix(k, prefix) {
+						sanitized, changed := sanitizeExistingLabelKey(k, prefix)
+						if changed {
+							newV := pcommon.NewValueEmpty()
+							v.CopyTo(newV)
+							toAppend = append(toAppend, kv{k: sanitized, v: newV})
+							return true
+						}
+						return false
+					}
+				}
+			}
+			if label := getLabelAttributeValue(k, v); label.k != "" {
+				toAppend = append(toAppend, label)
+			}
 			return true
 		}
 	})
+	for _, l := range toAppend {
+		l.v.CopyTo(attributes.PutEmpty(l.k))
+	}
 }
 
 // RemapLogRecordAttributesToECSLabels applies the apm-data OTLP fallback behaviour for
@@ -164,11 +193,8 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 // unsupported attributes are moved to labels.* / numeric_labels.* with a
 // sanitized key.
 func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitizeExistingLabelAttribute(attributes, k, v) {
-			return true
-		}
-
+	var toAppend []kv
+	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.DataStreamDataset,
 			elasticattr.DataStreamNamespace,
@@ -183,12 +209,17 @@ func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
 			string(semconv.NetworkConnectionTypeKey),
 			"event.domain",
 			"event.name":
-			return true
+			return false
 		default:
-			fallbackToLabelAttribute(attributes, k, v)
+			if label := getLabelAttributeValue(k, v); label.k != "" {
+				toAppend = append(toAppend, label)
+			}
 			return true
 		}
 	})
+	for _, l := range toAppend {
+		l.v.CopyTo(attributes.PutEmpty(l.k))
+	}
 }
 
 // RemapSpanAttributesToECSLabels applies the apm-data OTLP span fallback behaviour for
@@ -200,11 +231,8 @@ func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
 // preserved, while unsupported attributes are moved to labels.* /
 // numeric_labels.* with a sanitized key.
 func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitizeExistingLabelAttribute(attributes, k, v) {
-			return true
-		}
-
+	var toAppend []kv
+	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		// data_stream.*
 		case elasticattr.DataStreamDataset,
@@ -303,24 +331,25 @@ func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 			string(semconv.UserAgentNameKey),
 			string(semconv.UserAgentOriginalKey),
 			string(semconv.UserAgentVersionKey):
-			return true
+			return false
 		default:
-			fallbackToLabelAttribute(attributes, k, v)
+			if label := getLabelAttributeValue(k, v); label.k != "" {
+				toAppend = append(toAppend, label)
+			}
 			return true
 		}
 	})
+	for _, l := range toAppend {
+		l.v.CopyTo(attributes.PutEmpty(l.k))
+	}
 }
 
 // RemapMetricDataPointAttributesToECSLabels applies the apm-data OTLP metric fallback
-// for raw metric datapoint attributes in ECS mode. Existing labels.* /
-// numeric_labels.* keys are sanitized in place, metric-specific special cases
+// for raw metric datapoint attributes in ECS mode. Metric-specific special cases
 // are preserved, and everything else is moved to labels.* / numeric_labels.*.
 func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitizeExistingLabelAttribute(attributes, k, v) {
-			return true
-		}
-
+	var toAppend []kv
+	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.DataStreamDataset,
 			elasticattr.DataStreamNamespace,
@@ -329,105 +358,98 @@ func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
 			"event.module",
 			"system.process.cpu.start_time",
 			"system.process.state":
-			return true
+			return false
 		case string(semconv.UserNameKey),
 			"system.filesystem.mount_point",
 			"system.process.cmdline":
 			truncatePreservedStringAttribute(attributes, k, v)
-			return true
+			return false
 		default:
-			fallbackToLabelAttribute(attributes, k, v)
+			if label := getLabelAttributeValue(k, v); label.k != "" {
+				toAppend = append(toAppend, label)
+			}
 			return true
 		}
 	})
-}
-
-func sanitizeExistingLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) bool {
-	if !sanitize.IsLabelAttribute(key) {
-		return false
+	for _, l := range toAppend {
+		l.v.CopyTo(attributes.PutEmpty(l.k))
 	}
-	sanitized := sanitize.HandleLabelAttributeKey(key)
-	if sanitized != key {
-		value.CopyTo(attributes.PutEmpty(sanitized))
-		attributes.Remove(key)
-	}
-	return true
 }
 
 func truncatePreservedStringAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
 	if value.Type() != pcommon.ValueTypeStr {
 		return
 	}
-	truncated := sanitize.Truncate(value.Str())
+	truncated := strutil.Truncate(value.Str())
 	if truncated != value.Str() {
 		attributes.PutStr(key, truncated)
 	}
 }
 
-func fallbackToLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
-	setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(key), value)
-	attributes.Remove(key)
-}
-
-// setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
-// Elasticsearch label mappings only support flat scalar values and
-// homogeneous arrays thereof; Map, Bytes, and empty types cannot be
-// stored and are intentionally dropped. This matches the behaviour of
-// apm-data's setLabel (input/otlp/metadata.go) which also silently
-// ignores these types.
-func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
+func getLabelAttributeValue(key string, value pcommon.Value) kv {
+	sanitizedKey := strings.Map(replaceReservedLabelKeyRune, key)
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		attributes.PutStr("labels."+key, sanitize.Truncate(value.Str()))
+		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(strutil.Truncate(value.Str()))}
 	case pcommon.ValueTypeBool:
-		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
+		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(strconv.FormatBool(value.Bool()))}
 	case pcommon.ValueTypeInt:
-		attributes.PutDouble("numeric_labels."+key, float64(value.Int()))
+		return kv{k: "numeric_labels." + sanitizedKey, v: pcommon.NewValueDouble(float64(value.Int()))}
 	case pcommon.ValueTypeDouble:
-		attributes.PutDouble("numeric_labels."+key, value.Double())
+		return kv{k: "numeric_labels." + sanitizedKey, v: pcommon.NewValueDouble(value.Double())}
 	case pcommon.ValueTypeSlice:
 		slice := value.Slice()
 		if slice.Len() == 0 {
-			return
+			return kv{}
 		}
 		switch slice.At(0).Type() {
+		// TODO(lahsivjar): Can we assume all are same type and just use pcommon.Value#CopyTo?
 		case pcommon.ValueTypeStr:
-			target := attributes.PutEmptySlice("labels." + key)
+			lv := pcommon.NewValueEmpty()
+			sl := lv.SetEmptySlice()
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeStr {
-					target.AppendEmpty().SetStr(sanitize.Truncate(item.Str()))
+					sl.AppendEmpty().SetStr(strutil.Truncate(item.Str()))
 				}
 			}
+			return kv{k: "labels." + sanitizedKey, v: lv}
 		case pcommon.ValueTypeBool:
-			target := attributes.PutEmptySlice("labels." + key)
+			lv := pcommon.NewValueEmpty()
+			sl := lv.SetEmptySlice()
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeBool {
-					target.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
+					sl.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
 				}
 			}
+			return kv{k: "labels." + sanitizedKey, v: lv}
 		case pcommon.ValueTypeDouble:
-			target := attributes.PutEmptySlice("numeric_labels." + key)
+			lv := pcommon.NewValueEmpty()
+			sl := lv.SetEmptySlice()
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeDouble {
-					target.AppendEmpty().SetDouble(item.Double())
+					sl.AppendEmpty().SetDouble(item.Double())
 				}
 			}
+			return kv{k: "numeric_labels." + sanitizedKey, v: lv}
 		case pcommon.ValueTypeInt:
-			target := attributes.PutEmptySlice("numeric_labels." + key)
+			lv := pcommon.NewValueEmpty()
+			sl := lv.SetEmptySlice()
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeInt {
-					target.AppendEmpty().SetDouble(float64(item.Int()))
+					sl.AppendEmpty().SetDouble(float64(item.Int()))
 				}
 			}
-		default:
+			return kv{k: "numeric_labels." + sanitizedKey, v: lv}
 		}
 	case pcommon.ValueTypeMap, pcommon.ValueTypeBytes, pcommon.ValueTypeEmpty:
-		return
+		// ES label mappings only support flat scalars and homogeneous arrays;
+		// apm-data's setLabel also silently drops these types.
 	}
+	return kv{}
 }
 
 func ApplyResourceConventions(resource pcommon.Resource) {
@@ -459,4 +481,28 @@ func setHostnameFromKubernetes(resource pcommon.Resource) {
 	if (!hostNameExists || hostName.Str() == "") && hostHostnameExists && hostHostname.Str() != "" {
 		attrs.PutStr(string(semconv.HostNameKey), hostHostname.Str())
 	}
+}
+
+// sanitizeExistingLabelKey sanitizes reserved characters from the suffix of a
+// labels.* or numeric_labels.* key. prefix must include the trailing dot
+// (e.g. "labels." or "numeric_labels."). Returns the sanitized key and
+// whether it changed. If k does not start with prefix, k is returned unchanged.
+func sanitizeExistingLabelKey(k, prefix string) (string, bool) {
+	if !strings.HasPrefix(k, prefix) {
+		return k, false
+	}
+	suffix := k[len(prefix):]
+	sanitized := strings.Map(replaceReservedLabelKeyRune, suffix)
+	if sanitized == suffix {
+		return k, false
+	}
+	return prefix + sanitized, true
+}
+
+func replaceReservedLabelKeyRune(r rune) rune {
+	switch r {
+	case '.', '*', '"':
+		return '_'
+	}
+	return r
 }
