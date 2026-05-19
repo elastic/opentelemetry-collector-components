@@ -19,6 +19,7 @@ package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-col
 
 import (
 	"encoding/binary"
+	"math"
 
 	"github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -145,7 +146,7 @@ func (v hashResourceVisitor) PutDouble(key string, value float64) {
 	_, _ = v.h.WriteString(key)
 	_, _ = v.h.Write(fpKVSep)
 	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], uint64(int64(value*1e9))) // canonical-ish; precision loss is acceptable for grouping
+	binary.LittleEndian.PutUint64(buf[:], math.Float64bits(value))
 	_, _ = v.h.Write(buf[:])
 	_, _ = v.h.Write(fpEntrySep)
 }
