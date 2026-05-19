@@ -274,11 +274,15 @@ func walkLabelsResource(event *modelpb.APMEvent, v ResourceAttrVisitor) {
 			if k == "" || lv == nil {
 				continue
 			}
-			if lv.Value != "" {
-				v.PutStr("labels."+k, lv.Value)
-			}
+			// apm-data decode paths normally set either LabelValue.Value or
+			// LabelValue.Values for a key, not both. If both are present
+			// (e.g. from a non-standard producer), prefer Values.
 			if len(lv.Values) > 0 {
 				v.PutStrSlice("labels."+k, lv.Values)
+				continue
+			}
+			if lv.Value != "" {
+				v.PutStr("labels."+k, lv.Value)
 			}
 		}
 	}
