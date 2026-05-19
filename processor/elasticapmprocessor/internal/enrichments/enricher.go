@@ -128,8 +128,8 @@ func ecsAPMConfig(cfg config.Config) config.Config {
 // ecsPreProcessResource runs the shared ECS pre-processing pipeline on a
 // resource. This is common across all signal types (traces, logs, metrics)
 // in ECS mode.
-func ecsPreProcessResource(ctx context.Context, resource pcommon.Resource, dataStreamType string, serviceNameInDataStreamDataset bool, hostIPEnabled bool) {
-	ecs.TranslateResourceMetadata(resource)
+func ecsPreProcessResource(ctx context.Context, resource pcommon.Resource, dataStreamType string, serviceNameInDataStreamDataset bool, hostIPEnabled bool, sanitizeExistingLabels bool) {
+	ecs.TranslateResourceMetadata(resource, sanitizeExistingLabels)
 	ecs.ApplyResourceConventions(resource)
 	routing.EncodeDataStream(resource, dataStreamType, serviceNameInDataStreamDataset)
 	if hostIPEnabled {

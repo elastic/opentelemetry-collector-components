@@ -163,20 +163,20 @@ resourceMetrics:
         - key: k8s.pod.uid
           value:
             stringValue: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-        - key: labels.elastic_profiler_stack_trace_ids
+        - key: labels.faas_trigger_request_id
+          value:
+            stringValue: req-123
+        - key: labels.labels_elastic_profiler_stack_trace_ids
           value:
             arrayValue:
               values:
                 - stringValue: foo
                 - stringValue: bar
                 - stringValue: foo
-        - key: labels.faas_trigger_request_id
-          value:
-            stringValue: req-123
-        - key: labels.my_value
+        - key: labels.labels_my_value
           value:
             stringValue: foo
-        - key: labels.other_value
+        - key: labels.labels_other_value
           value:
             stringValue: foo
         - key: labels.service_language_name
@@ -215,10 +215,10 @@ resourceMetrics:
         - key: network.connection.type
           value:
             stringValue: wifi
-        - key: numeric_labels.foo
+        - key: numeric_labels.numeric_labels_foo
           value:
             doubleValue: 42
-        - key: numeric_labels.http_status_code
+        - key: numeric_labels.numeric_labels_http_status_code
           value:
             doubleValue: 200
         - key: opencensus.exporterversion

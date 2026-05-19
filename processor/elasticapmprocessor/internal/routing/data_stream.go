@@ -19,10 +19,10 @@ package routing // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/elastic/apm-data/model/modelprocessor"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
 )
@@ -64,7 +64,7 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 	}
 
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
-	attributes.PutStr(elasticattr.DataStreamDataset, "apm.app."+sanitize.NormalizeServiceName(serviceName.Str()))
+	attributes.PutStr(elasticattr.DataStreamDataset, "apm.app."+normalizeServiceName(serviceName.Str()))
 	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
 }
 
@@ -165,6 +165,17 @@ func internalIntervalMetricDataStream(attributes pcommon.Map, dataStreamType, me
 // and sets the appropriate data stream for a metric data point.
 // This implements the routing logic from apm-data's metricsetDataset function.
 // Returns true if the metric is routed to an internal data stream, false otherwise.
+func normalizeServiceName(s string) string {
+	s = strings.ToLower(s)
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case '\\', '/', '*', '?', '"', '<', '>', '|', ' ', ',', '#', ':', '.', '-':
+			return '_'
+		}
+		return r
+	}, s)
+}
+
 func EncodeDataStreamMetricDataPoint(attributes pcommon.Map, metricName string, hasServiceName bool) bool {
 	// Check for special cases: transaction/span context, no service name, or service_summary
 	if hasTransactionSpanContext(attributes) || !hasServiceName || isServiceSummary(attributes) {
