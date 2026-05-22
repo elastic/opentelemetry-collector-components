@@ -2,6 +2,8 @@ module github.com/elastic/opentelemetry-collector-components/processor/elasticap
 
 go 1.26.0
 
+toolchain go1.26.3
+
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/elastic/apm-data v1.22.0

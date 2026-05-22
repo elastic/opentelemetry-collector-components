@@ -1,6 +1,8 @@
 module github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor
 
-go 1.25.0
+go 1.26.0
+
+toolchain go1.26.3
 
 require (
 	github.com/axiomhq/hyperloglog v0.2.6

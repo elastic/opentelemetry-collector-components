@@ -1,6 +1,8 @@
 module github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor
 
-go 1.25.0
+go 1.26.0
+
+toolchain go1.26.3
 
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced

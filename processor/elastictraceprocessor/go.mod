@@ -2,6 +2,8 @@ module github.com/elastic/opentelemetry-collector-components/processor/elastictr
 
 go 1.26.0
 
+toolchain go1.26.3
+
 require (
 	github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.30.0
 	github.com/stretchr/testify v1.11.1
