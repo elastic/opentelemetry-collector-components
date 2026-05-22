@@ -24,6 +24,9 @@ import (
 // Format defines how the incoming raw bytes should be interpreted.
 type Format string
 
+// FieldType defines the supported OTel pcommon value types for field mappings.
+type FieldType string
+
 const (
 	// FormatJSON indicates the input is a JSON document that may contain
 	// wrapped records (use Unwrap to extract them).
@@ -32,6 +35,12 @@ const (
 	// FormatText indicates the input is newline-delimited text where
 	// each line becomes a separate log record.
 	FormatText Format = "text"
+
+	// FieldTypeString maps to pcommon.Map.PutStr.
+	FieldTypeString FieldType = "String"
+
+	// FieldTypeInteger maps to pcommon.Map.PutInt.
+	FieldTypeInteger FieldType = "Integer"
 )
 
 // DataStreamConfig defines the data stream routing attributes.
@@ -69,8 +78,30 @@ type Config struct {
 	// inject custom metadata (e.g., environment, team) into each event.
 	Fields map[string]any `mapstructure:"fields,omitempty"`
 
+	// Mappings defines which JSON keys to extract from each decoded JSON
+	// element and how to store them in the log record body.
+	// Only used when Format is "json" and Unwrap is set.
+	Mappings []FieldMapping `mapstructure:"mappings,omitempty"`
+
 	// prevent unkeyed literal initialization
 	_ struct{}
+}
+
+// FieldMapping defines how a single JSON key is extracted and written
+// to the log record body.
+type FieldMapping struct {
+	// Source is the JSON key to read from the decoded object.
+	Source string `mapstructure:"source"`
+
+	// Destination is the key to write to in the log body map.
+	Destination string `mapstructure:"destination"`
+
+	// Type is the OTel pcommon value type: "String" or "Integer".
+	Type FieldType `mapstructure:"type"`
+
+	// Multiplier scales the numeric value before storing.
+	// Only applies to FieldTypeInteger. A value of 0 means no scaling.
+	Multiplier int64 `mapstructure:"multiplier,omitempty"`
 }
 
 func (c *Config) Validate() error {
@@ -90,6 +121,20 @@ func (c *Config) Validate() error {
 
 	if c.DataStream.Namespace == "" {
 		return fmt.Errorf("data_stream.namespace is required")
+	}
+
+	for i, m := range c.Mappings {
+		if m.Source == "" {
+			return fmt.Errorf("mappings[%d].source is required", i)
+		}
+		if m.Destination == "" {
+			return fmt.Errorf("mappings[%d].destination is required", i)
+		}
+		switch m.Type {
+		case FieldTypeString, FieldTypeInteger:
+		default:
+			return fmt.Errorf("mappings[%d].type %q is invalid: must be %q or %q", i, m.Type, FieldTypeString, FieldTypeInteger)
+		}
 	}
 
 	return nil

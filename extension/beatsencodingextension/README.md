@@ -6,15 +6,20 @@ Each extracted record is stored as a raw string under the `message` body map key
 
 ## Configuration
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `format` | string | `json` | Input format: `json` or `text`. |
-| `unwrap` | []string | _(empty)_ | Sequence of JSON object keys to traverse to reach the target array (e.g., `["records"]` or `["data", "items"]`). Only used with `json` format. |
-| `data_stream.dataset` | string | _(required)_ | Data stream dataset (e.g., `azure.activitylogs`). |
-| `data_stream.namespace` | string | `default` | Data stream namespace. |
-| `input_type` | string | _(empty)_ | Sets the `input.type` field in the log record body (e.g., `aws-s3`, `azure-eventhub`). |
-| `tags` | []string | _(empty)_ | List of strings appended to the `tags` field in the log record body (e.g., `["forwarded", "aws-cloudtrail"]`). |
-| `fields` | map[string]any | _(empty)_ | Key-value pairs added to every log record body (e.g., `{environment: production}`). |
+| Field                   | Type           | Default      | Description                                                                                                                                    |
+|-------------------------|----------------|--------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `format`                | string         | `json`       | Input format: `json` or `text`.                                                                                                                |
+| `unwrap`                | []string       | _(empty)_    | Sequence of JSON object keys to traverse to reach the target array (e.g., `["records"]` or `["data", "items"]`). Only used with `json` format. |
+| `mappings`              | []object       | _(empty)_    | Field extraction rules for JSON array elements (see below). Only used with `json` format and `unwrap`.                                         |
+| `mappings.source`       | string         | _(required)_ | JSON key to read from the decoded object.                                                                                                      |
+| `mappings.destination`  | string         | _(required)_ | Key to write in the log body map.                                                                                                              |
+| `mappings.type`         | string         | _(required)_ | OTel value type: `String` or `Integer`.                                                                                                        |
+| `mappings.multiplier`   | int            | `0`          | Scales numeric values before storing (Integer only). `0` means no scaling.                                                                     |
+| `data_stream.dataset`   | string         | _(required)_ | Data stream dataset (e.g., `azure.activitylogs`).                                                                                              |
+| `data_stream.namespace` | string         | `default`    | Data stream namespace.                                                                                                                         |
+| `input_type`            | string         | _(empty)_    | Sets the `input.type` field in the log record body (e.g., `aws-s3`, `azure-eventhub`).                                                         |
+| `tags`                  | []string       | _(empty)_    | List of strings appended to the `tags` field in the log record body (e.g., `["forwarded", "aws-cloudtrail"]`).                                 |
+| `fields`                | map[string]any | _(empty)_    | Key-value pairs added to every log record body (e.g., `{environment: production}`).                                                            |
 
 ### Formats
 
@@ -90,3 +95,40 @@ extensions:
 service:
   extensions: [beats_encoding/text]
 ```
+
+#### JSON with field mappings
+
+Extract specific fields from each array element instead of storing the entire JSON as `message`:
+
+```yaml
+extensions:
+  beats_encoding/mapped:
+    format: json
+    unwrap:
+      - data
+      - items
+    data_stream:
+      dataset: custom
+    input_type: aws-s3
+    mappings:
+      - source: log
+        destination: message
+        type: String
+      - source: timestamp
+        destination: "@timestamp"
+        type: Integer
+        multiplier: 1000  # seconds → millis
+
+service:
+  extensions: [beats_encoding/mapped]
+```
+
+Given input:
+```json
+{"data": {"items": [{"id": 1, "log": "hello", "timestamp": 1779463864}]}}
+```
+
+The resulting log body will contain:
+- `message`: `"hello"`
+- `@timestamp`: `1779463864000`
+

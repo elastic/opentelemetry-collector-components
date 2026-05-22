@@ -44,6 +44,12 @@ var (
 	_ encoding.LogsDecoderExtension     = (*beatsEncodingExtension)(nil)
 )
 
+// MappedField pairs a FieldMapping with its extracted value.
+type MappedField struct {
+	Mapping FieldMapping
+	Value   any
+}
+
 type beatsEncodingExtension struct {
 	config *Config
 	logger *zap.Logger
@@ -112,7 +118,11 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 			line, flush, err := scanner.ScanString()
 
 			if line != "" {
-				e.appendLogRecord(sl, now, eventCreated, line)
+				// Simply add to message as a string
+				data := []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: line}}
+				if err := e.appendLogRecord(sl, now, eventCreated, data); err != nil {
+					return plog.NewLogs(), err
+				}
 			}
 
 			if errors.Is(err, io.EOF) {
@@ -180,7 +190,12 @@ func (e *beatsEncodingExtension) newSingleRecordDecoder(reader io.Reader, opts e
 		logs := plog.NewLogs()
 		sl := newScopeLogs(logs)
 		now := pcommon.NewTimestampFromTime(time.Now())
-		e.appendLogRecord(sl, now, now.AsTime().UTC().Format(time.RFC3339Nano), string(trimmed))
+
+		// Simply add to message as a string
+		data := []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: string(trimmed)}}
+		if err := e.appendLogRecord(sl, now, now.AsTime().UTC().Format(time.RFC3339Nano), data); err != nil {
+			return plog.NewLogs(), err
+		}
 		return logs, nil
 	}
 
@@ -228,6 +243,9 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 		eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
 
 		for dec.More() {
+			var n int64
+			var data []MappedField
+
 			var raw json.RawMessage
 			if err := dec.Decode(&raw); err != nil {
 				return logs, fmt.Errorf("decoding array element: %w", err)
@@ -238,10 +256,36 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 				continue
 			}
 
-			e.appendLogRecord(sl, now, eventCreated, string(trimmed))
+			n = int64(len(raw))
+
+			if len(e.config.Mappings) > 0 {
+				var asMap map[string]any
+				if err := json.Unmarshal(trimmed, &asMap); err != nil {
+					return logs, fmt.Errorf("decoding array element: %w", err)
+				}
+				if len(raw) == 0 {
+					continue
+				}
+				for _, m := range e.config.Mappings {
+					if val, ok := asMap[m.Source]; ok {
+						data = append(data, MappedField{Mapping: m, Value: val})
+					}
+				}
+			} else {
+				trimmed := bytes.TrimSpace(raw)
+				if len(trimmed) == 0 {
+					continue
+				}
+				data = []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: string(trimmed)}}
+			}
+
+			if err := e.appendLogRecord(sl, now, eventCreated, data); err != nil {
+				return plog.NewLogs(), err
+			}
+
 			recordCount++
 			batchHelper.IncrementItems(1)
-			batchHelper.IncrementBytes(int64(len(raw)))
+			batchHelper.IncrementBytes(n)
 
 			if batchHelper.ShouldFlush() {
 				batchHelper.Reset()
@@ -382,14 +426,35 @@ func newScopeLogs(logs plog.Logs) plog.ScopeLogs {
 	return sl
 }
 
-func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated string, record string) {
+func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated string, data []MappedField) error {
 	lr := sl.LogRecords().AppendEmpty()
 	lr.SetTimestamp(ts)
 	lr.SetObservedTimestamp(ts)
 
 	body := lr.Body().SetEmptyMap()
-	body.EnsureCapacity(7) // we know we'll be adding at least 7 entries to the body
-	body.PutStr("message", record)
+	body.EnsureCapacity(7)
+
+	for _, d := range data {
+		switch d.Mapping.Type {
+		case FieldTypeString:
+			s, ok := d.Value.(string)
+			if !ok {
+				return fmt.Errorf("expected string field type, got %T", d.Value)
+			}
+			body.PutStr(d.Mapping.Destination, s)
+		case FieldTypeInteger:
+			f, ok := d.Value.(float64)
+			if !ok {
+				return fmt.Errorf("expected numeric field type, got %T", d.Value)
+			}
+			val := int64(f)
+			if d.Mapping.Multiplier != 0 {
+				val *= d.Mapping.Multiplier
+			}
+			body.PutInt(d.Mapping.Destination, val)
+		}
+	}
+
 	body.PutStr("event.created", eventCreated)
 
 	// The data_stream.* should be also set on the body as some
@@ -420,4 +485,6 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 	attrs.PutStr("data_stream.type", "logs")
 	attrs.PutStr("data_stream.dataset", e.config.DataStream.Dataset)
 	attrs.PutStr("data_stream.namespace", e.config.DataStream.Namespace)
+
+	return nil
 }
