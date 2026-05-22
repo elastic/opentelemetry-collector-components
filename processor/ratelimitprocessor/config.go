@@ -233,7 +233,7 @@ func (config *Config) Validate() error {
 	}
 	for key, override := range config.Overrides {
 		if err := override.Validate(); err != nil {
-			errs = append(errs, fmt.Errorf("override %q: %w", key, err))
+			errs = append(errs, fmt.Errorf("override %d: %w", key, err))
 		}
 	}
 	return errors.Join(errs...)
