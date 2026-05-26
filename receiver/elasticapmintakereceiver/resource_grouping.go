@@ -87,9 +87,10 @@ func (g *signalGroups) recordLogScope(fp uint64, sl plog.ScopeLogs) {
 // fpKVSep separates a key from a value within a single attribute write.
 // fpEntrySep separates one attribute write from the next.
 //
-// Including the key in the hash makes write order irrelevant for fields
-// the visitor sees as Put*(key, value) — re-ordering the walker visits
-// would produce the same fingerprint for the same set of attributes.
+// Including the key prevents ambiguity between different key/value
+// sequences, but the fingerprint still depends on write order because the
+// hasher consumes a sequential byte stream. This therefore relies on
+// WalkResourceAttributes visiting attributes in deterministic order.
 var (
 	fpKVSep    = []byte{0x00}
 	fpEntrySep = []byte{0x01}
