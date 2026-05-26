@@ -301,29 +301,38 @@ func generateMixedPayload(n int) []byte {
 	for r := range repeat {
 		base := uint64(r * 20)
 		for i := range 8 {
+			txSeq := base + uint64(i) + 1
+			txID := fmt.Sprintf("%016x", txSeq)
+			traceID := fmt.Sprintf("%032x", txSeq)
 			fmt.Fprintf(&buf,
 				`{"transaction": {"id": %q, "trace_id": %q, "name": "tx", "type": "request", "duration": 1, "timestamp": %d, "outcome": "success", "sampled": true, "span_count": {"started": 1}}}`+"\n",
-				fmt.Sprintf("tx%014x", base+uint64(i)),
-				fmt.Sprintf("tx%014xtx%014x", base+uint64(i), base+uint64(i)),
-				1_000_000+(base+uint64(i))*1_000,
+				txID,
+				traceID,
+				1_000_000+txSeq*1_000,
 			)
 		}
 		for i := range 8 {
+			txSeq := base + uint64(i) + 1
+			spanSeq := base + uint64(i) + 0x1001
+			txID := fmt.Sprintf("%016x", txSeq)
 			fmt.Fprintf(&buf,
 				`{"span": {"id": %q, "trace_id": %q, "transaction_id": %q, "parent_id": %q, "name": "SELECT *", "type": "db.postgresql.query", "start": 1, "duration": 2, "timestamp": %d}}`+"\n",
-				fmt.Sprintf("sp%014x", base+uint64(i)),
-				fmt.Sprintf("tx%014xtx%014x", base+uint64(i), base+uint64(i)),
-				fmt.Sprintf("tx%014x", base+uint64(i)),
-				fmt.Sprintf("tx%014x", base+uint64(i)),
-				1_000_000+(base+uint64(i))*1_000+1,
+				fmt.Sprintf("%016x", spanSeq),
+				fmt.Sprintf("%032x", txSeq),
+				txID,
+				txID,
+				1_000_000+txSeq*1_000+1,
 			)
 		}
+		errSeq := base + 0x2001
+		errTxSeq := base + 1
+		errTxID := fmt.Sprintf("%016x", errTxSeq)
 		fmt.Fprintf(&buf,
 			`{"error": {"id": %q, "trace_id": %q, "transaction_id": %q, "parent_id": %q, "timestamp": %d, "log": {"message": "boom"}}}`+"\n",
-			fmt.Sprintf("er%014x", base),
-			fmt.Sprintf("tx%014xtx%014x", base, base),
-			fmt.Sprintf("tx%014x", base),
-			fmt.Sprintf("tx%014x", base),
+			fmt.Sprintf("%032x", errSeq),
+			fmt.Sprintf("%032x", errTxSeq),
+			errTxID,
+			errTxID,
 			1_000_000+base*1_000+2,
 		)
 		fmt.Fprintf(&buf,
