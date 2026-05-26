@@ -68,23 +68,6 @@ resourceSpans:
               code: 1
             traceId: abcdef0123456789abcdef9876543210
             traceState: ot=th:c
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: rep-count-test
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 1.0.0
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:

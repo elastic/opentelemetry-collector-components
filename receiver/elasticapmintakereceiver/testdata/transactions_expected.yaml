@@ -31,12 +31,21 @@ resourceSpans:
         - key: service.instance.id
           value:
             stringValue: node-123
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -52,6 +61,24 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
         - key: container.id
           value:
             stringValue: container-id
@@ -97,36 +124,9 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -211,357 +211,69 @@ resourceSpans:
             startTimeUnixNano: "1496170407154000000"
             status: {}
             traceId: 0123456789abcdef0123456789abcdef
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: "7.0"
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: service.instance.id
-          value:
-            stringValue: node-123
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: user_agent.original
-          value:
-            stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36, Mozilla Chrome Edge
-        - key: cloud.provider
-          value:
-            stringValue: cloud_provider
-        - key: cloud.region
-          value:
-            stringValue: cloud_region
-        - key: cloud.availability_zone
-          value:
-            stringValue: cloud_availability_zone
-        - key: cloud.account.id
-          value:
-            stringValue: account_id
-        - key: cloud.platform
-          value:
-            stringValue: lambda
-        - key: container.id
-          value:
-            stringValue: container-id
-        - key: k8s.namespace.name
-          value:
-            stringValue: namespace1
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: "99"
-        - key: user.name
-          value:
-            stringValue: foo
-        - key: client.address
-          value:
-            stringValue: 12.53.12.1
-        - key: source.address
-          value:
-            stringValue: 12.53.12.1
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: user.domain
-          value:
-            stringValue: ldap://abc
-        - key: labels.tag1
-          value:
-            stringValue: one
-        - key: labels.organization_uuid
-          value:
-            stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
-        - key: labels.tag4
-          value:
-            stringValue: "false"
-        - key: numeric_labels.tag2
-          value:
-            doubleValue: 12
-        - key: numeric_labels.tag3
-          value:
-            doubleValue: 12.45
-    scopeSpans:
-      - scope: {}
-        spans:
           - attributes:
               - key: timestamp.us
                 value:
                   intValue: "1496170407154000"
               - key: event.outcome
                 value:
-                  stringValue: success
+                  stringValue: unknown
               - key: processor.event
                 value:
                   stringValue: transaction
               - key: transaction.duration.us
                 value:
-                  intValue: "32592"
+                  intValue: "3000"
               - key: transaction.id
                 value:
-                  stringValue: 4340a8e0df1906ecbfa9
+                  stringValue: 00xxxxFFaaaa1234
               - key: transaction.name
                 value:
-                  stringValue: GET /api/types
+                  stringValue: amqp receive
               - key: transaction.type
                 value:
-                  stringValue: request
+                  stringValue: messaging
               - key: transaction.sampled
                 value:
                   boolValue: true
-              - key: transaction.result
+              - key: messaging.destination.name
                 value:
-                  stringValue: success
-              - key: http.request.method
-                value:
-                  stringValue: POST
-              - key: http.response.status_code
-                value:
-                  intValue: "200"
-              - key: http.response.body.size
-                value:
-                  intValue: "2690"
-              - key: url.original
-                value:
-                  stringValue: /p/a/t/h?query=string#hash
-              - key: url.scheme
-                value:
-                  stringValue: https
-              - key: url.full
-                value:
-                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
-              - key: url.domain
-                value:
-                  stringValue: www.example.com
-              - key: url.path
-                value:
-                  stringValue: /p/a/t/h
-              - key: url.query
-                value:
-                  stringValue: ?query=string
-              - key: url.fragment
-                value:
-                  stringValue: '#hash'
-              - key: url.port
-                value:
-                  intValue: "8080"
-              - key: http.version
-                value:
-                  stringValue: "1.1"
-              - key: http.request.headers
-                value:
-                  kvlistValue:
-                    values:
-                      - key: User-Agent
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
-                              - stringValue: Mozilla Chrome Edge
-                      - key: Content-Type
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: text/html
-                      - key: Cookie
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: c1=v1,c2=v2,c3=3
-                      - key: Some-Other-Header
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: foo
-                      - key: Array
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: foo
-                              - stringValue: bar
-                              - stringValue: baz
-              - key: http.request.env
-                value:
-                  kvlistValue:
-                    values:
-                      - key: SERVER_SOFTWARE
-                        value:
-                          stringValue: nginx
-                      - key: GATEWAY_INTERFACE
-                        value:
-                          stringValue: CGI/1.1
-                      - key: SOME_NUMERIC_VALUE
-                        value:
-                          doubleValue: 123
-              - key: http.request.cookies
-                value:
-                  kvlistValue:
-                    values:
-                      - key: c1
-                        value:
-                          stringValue: v1
-                      - key: c2
-                        value:
-                          stringValue: v2
-                      - key: c3
-                        value:
-                          doubleValue: 3
-              - key: http.request.body.original
-                value:
-                  kvlistValue:
-                    values:
-                      - key: str
-                        value:
-                          stringValue: hello world
-                      - key: additional
-                        value:
-                          kvlistValue:
-                            values:
-                              - key: bar
-                                value:
-                                  doubleValue: 123
-                              - key: req
-                                value:
-                                  stringValue: additional information
-              - key: http.request.referrer
-                value:
-                  stringValue: http://localhost:8000/test/e2e/
-              - key: http.response.headers
-                value:
-                  kvlistValue:
-                    values:
-                      - key: Content-Type
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: application/json
-              - key: http.response.finished
-                value:
-                  boolValue: true
-              - key: http.response.headers_sent
-                value:
-                  boolValue: true
-              - key: http.response.decoded_body_size
-                value:
-                  intValue: "2990"
-              - key: http.response.transfer_size
-                value:
-                  intValue: "258"
+                  stringValue: new_users
               - key: transaction.span_count.started
                 value:
-                  intValue: "17"
-              - key: transaction.custom
+                  intValue: "1"
+              - key: transaction.message.routing_key
                 value:
-                  kvlistValue:
+                  stringValue: user-created-transaction
+              - key: transaction.message.body
+                value:
+                  stringValue: user created
+              - key: transaction.message.age.ms
+                value:
+                  intValue: "1577958057123"
+              - key: transaction.message.headers.User_id
+                value:
+                  arrayValue:
                     values:
-                      - key: my_key
-                        value:
-                          doubleValue: 1
-                      - key: some_other_value
-                        value:
-                          stringValue: foo bar
-                      - key: and_objects
-                        value:
-                          kvlistValue:
-                            values:
-                              - key: foo
-                                value:
-                                  arrayValue:
-                                    values:
-                                      - stringValue: bar
-                                      - stringValue: baz
-                      - key: (
-                        value:
-                          stringValue: not a valid regex and that is fine
-            endTimeUnixNano: "1496170407186592981"
-            name: GET /api/types
-            spanId: 4340a8e0df1906ec
+                      - stringValue: 1ax3
+              - key: transaction.message.headers.Involved_services
+                value:
+                  arrayValue:
+                    values:
+                      - stringValue: user
+                      - stringValue: auth
+              - key: session.id
+                value:
+                  stringValue: sunday
+              - key: session.sequence
+                value:
+                  intValue: "123"
+            endTimeUnixNano: "1496170407157000000"
+            name: amqp receive
+            parentSpanId: abcdefabcdef0123
             startTimeUnixNano: "1496170407154000000"
-            status:
-              code: 1
-            traceId: 0acd456789abcdef0123456789abcdef
+            status: {}
+            traceId: 0123456789abcdef0123456789abcdef
   - resource:
       attributes:
         - key: service.name
@@ -594,12 +306,21 @@ resourceSpans:
         - key: service.instance.id
           value:
             stringValue: node-ABC
+        - key: service.framework.name
+          value:
+            stringValue: Rails
+        - key: service.framework.version
+          value:
+            stringValue: "5.0"
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -615,6 +336,24 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
         - key: container.id
           value:
             stringValue: container-id
@@ -660,39 +399,12 @@ resourceSpans:
         - key: agent.version
           value:
             stringValue: "2.2"
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
         - key: agent.ephemeral_id
           value:
             stringValue: justanid
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Rails
-        - key: service.framework.version
-          value:
-            stringValue: "5.0"
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -812,12 +524,30 @@ resourceSpans:
         - key: service.instance.id
           value:
             stringValue: node-123
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: service.origin.id
+          value:
+            stringValue: abc123
+        - key: service.origin.name
+          value:
+            stringValue: service-name
+        - key: service.origin.version
+          value:
+            stringValue: "1.0"
         - key: host.arch
           value:
             stringValue: x64
         - key: os.type
           value:
             stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
         - key: cloud.provider
           value:
             stringValue: cloud_provider
@@ -833,51 +563,18 @@ resourceSpans:
         - key: cloud.platform
           value:
             stringValue: lambda
-        - key: container.id
+        - key: cloud.origin.account.id
           value:
-            stringValue: container-id
-        - key: k8s.namespace.name
+            stringValue: abc123
+        - key: cloud.origin.provider
           value:
-            stringValue: namespace1
-        - key: k8s.node.name
+            stringValue: aws
+        - key: cloud.origin.region
           value:
-            stringValue: node-name
-        - key: k8s.pod.name
+            stringValue: us-east-1
+        - key: cloud.origin.service.name
           value:
-            stringValue: pod-name
-        - key: k8s.pod.uid
-          value:
-            stringValue: pod-uid
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "6789"
-        - key: process.executable.name
-          value:
-            stringValue: node
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: node
-                - stringValue: server.js
-        - key: user.id
-          value:
-            stringValue: 123user
-        - key: user.email
-          value:
-            stringValue: bar@user.com
-        - key: user.name
-          value:
-            stringValue: bar
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
+            stringValue: serviceName
         - key: cloud.account.name
           value:
             stringValue: account_name
@@ -896,143 +593,6 @@ resourceSpans:
         - key: cloud.project.name
           value:
             stringValue: project_name
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
-        - key: labels.tag1
-          value:
-            stringValue: one
-        - key: numeric_labels.tag2
-          value:
-            doubleValue: 2
-    scopeSpans:
-      - scope: {}
-        spans:
-          - attributes:
-              - key: timestamp.us
-                value:
-                  intValue: "1496170407154000"
-              - key: event.outcome
-                value:
-                  stringValue: unknown
-              - key: processor.event
-                value:
-                  stringValue: transaction
-              - key: transaction.duration.us
-                value:
-                  intValue: "3000"
-              - key: transaction.id
-                value:
-                  stringValue: 00xxxxFFaaaa1234
-              - key: transaction.name
-                value:
-                  stringValue: amqp receive
-              - key: transaction.type
-                value:
-                  stringValue: messaging
-              - key: transaction.sampled
-                value:
-                  boolValue: true
-              - key: messaging.destination.name
-                value:
-                  stringValue: new_users
-              - key: transaction.span_count.started
-                value:
-                  intValue: "1"
-              - key: transaction.message.routing_key
-                value:
-                  stringValue: user-created-transaction
-              - key: transaction.message.body
-                value:
-                  stringValue: user created
-              - key: transaction.message.age.ms
-                value:
-                  intValue: "1577958057123"
-              - key: transaction.message.headers.User_id
-                value:
-                  arrayValue:
-                    values:
-                      - stringValue: 1ax3
-              - key: transaction.message.headers.Involved_services
-                value:
-                  arrayValue:
-                    values:
-                      - stringValue: user
-                      - stringValue: auth
-              - key: session.id
-                value:
-                  stringValue: sunday
-              - key: session.sequence
-                value:
-                  intValue: "123"
-            endTimeUnixNano: "1496170407157000000"
-            name: amqp receive
-            parentSpanId: abcdefabcdef0123
-            startTimeUnixNano: "1496170407154000000"
-            status: {}
-            traceId: 0123456789abcdef0123456789abcdef
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 5.1.3
-        - key: telemetry.sdk.language
-          value:
-            stringValue: ecmascript
-        - key: telemetry.sdk.version
-          value:
-            stringValue: "8"
-        - key: process.runtime.name
-          value:
-            stringValue: node
-        - key: process.runtime.version
-          value:
-            stringValue: 8.0.0
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: staging
-        - key: deployment.environment.name
-          value:
-            stringValue: staging
-        - key: service.instance.id
-          value:
-            stringValue: node-123
-        - key: host.arch
-          value:
-            stringValue: x64
-        - key: os.type
-          value:
-            stringValue: darwin
-        - key: cloud.provider
-          value:
-            stringValue: cloud_provider
-        - key: cloud.region
-          value:
-            stringValue: cloud_region
-        - key: cloud.availability_zone
-          value:
-            stringValue: cloud_availability_zone
-        - key: cloud.account.id
-          value:
-            stringValue: account_id
-        - key: cloud.platform
-          value:
-            stringValue: lambda
         - key: container.id
           value:
             stringValue: container-id
@@ -1084,69 +644,21 @@ resourceSpans:
         - key: faas.coldstart
           value:
             boolValue: false
-        - key: agent.name
-          value:
-            stringValue: elastic-node
-        - key: agent.version
-          value:
-            stringValue: 3.14.0
-        - key: cloud.origin.account.id
-          value:
-            stringValue: abc123
-        - key: cloud.origin.provider
-          value:
-            stringValue: aws
-        - key: cloud.origin.region
-          value:
-            stringValue: us-east-1
-        - key: cloud.origin.service.name
-          value:
-            stringValue: serviceName
-        - key: cloud.account.name
-          value:
-            stringValue: account_name
-        - key: cloud.instance.id
-          value:
-            stringValue: instance_id
-        - key: cloud.instance.name
-          value:
-            stringValue: instance_name
-        - key: cloud.machine.type
-          value:
-            stringValue: machine_type
-        - key: cloud.project.id
-          value:
-            stringValue: project_id
-        - key: cloud.project.name
-          value:
-            stringValue: project_name
         - key: faas.trigger.request_id
           value:
             stringValue: FuH2Cir_vHcEMUA=
         - key: faas.execution
           value:
             stringValue: 2e13b309-23e1-417f-8bf7-074fc96bc683
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: Express
-        - key: service.framework.version
-          value:
-            stringValue: 1.2.3
-        - key: service.origin.id
-          value:
-            stringValue: abc123
-        - key: service.origin.name
-          value:
-            stringValue: service-name
-        - key: service.origin.version
-          value:
-            stringValue: "1.0"
-        - key: host.hostname
-          value:
-            stringValue: prod1.example.com
         - key: labels.tag1
           value:
             stringValue: one
@@ -1193,3 +705,354 @@ resourceSpans:
             startTimeUnixNano: "1631736666365048000"
             status: {}
             traceId: eb56529a1f461c5e7e2f66ecb075e983
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: 1234_service-12a3
+        - key: service.version
+          value:
+            stringValue: 5.1.3
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: "7.0"
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: staging
+        - key: deployment.environment.name
+          value:
+            stringValue: staging
+        - key: service.instance.id
+          value:
+            stringValue: node-123
+        - key: service.framework.name
+          value:
+            stringValue: Express
+        - key: service.framework.version
+          value:
+            stringValue: 1.2.3
+        - key: host.arch
+          value:
+            stringValue: x64
+        - key: os.type
+          value:
+            stringValue: darwin
+        - key: host.hostname
+          value:
+            stringValue: prod1.example.com
+        - key: user_agent.original
+          value:
+            stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36, Mozilla Chrome Edge
+        - key: cloud.provider
+          value:
+            stringValue: cloud_provider
+        - key: cloud.region
+          value:
+            stringValue: cloud_region
+        - key: cloud.availability_zone
+          value:
+            stringValue: cloud_availability_zone
+        - key: cloud.account.id
+          value:
+            stringValue: account_id
+        - key: cloud.platform
+          value:
+            stringValue: lambda
+        - key: cloud.account.name
+          value:
+            stringValue: account_name
+        - key: cloud.instance.id
+          value:
+            stringValue: instance_id
+        - key: cloud.instance.name
+          value:
+            stringValue: instance_name
+        - key: cloud.machine.type
+          value:
+            stringValue: machine_type
+        - key: cloud.project.id
+          value:
+            stringValue: project_id
+        - key: cloud.project.name
+          value:
+            stringValue: project_name
+        - key: container.id
+          value:
+            stringValue: container-id
+        - key: k8s.namespace.name
+          value:
+            stringValue: namespace1
+        - key: k8s.node.name
+          value:
+            stringValue: node-name
+        - key: k8s.pod.name
+          value:
+            stringValue: pod-name
+        - key: k8s.pod.uid
+          value:
+            stringValue: pod-uid
+        - key: process.pid
+          value:
+            intValue: "1234"
+        - key: process.parent_pid
+          value:
+            intValue: "6789"
+        - key: process.executable.name
+          value:
+            stringValue: node
+        - key: process.command_line
+          value:
+            arrayValue:
+              values:
+                - stringValue: node
+                - stringValue: server.js
+        - key: user.id
+          value:
+            stringValue: "99"
+        - key: user.name
+          value:
+            stringValue: foo
+        - key: user.domain
+          value:
+            stringValue: ldap://abc
+        - key: client.address
+          value:
+            stringValue: 12.53.12.1
+        - key: source.address
+          value:
+            stringValue: 12.53.12.1
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: agent.activation_method
+          value:
+            stringValue: some_activation_method
+        - key: labels.organization_uuid
+          value:
+            stringValue: 9f0e9d64-c185-4d21-a6f4-4673ed561ec8
+        - key: labels.tag1
+          value:
+            stringValue: one
+        - key: labels.tag4
+          value:
+            stringValue: "false"
+        - key: numeric_labels.tag2
+          value:
+            doubleValue: 12
+        - key: numeric_labels.tag3
+          value:
+            doubleValue: 12.45
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1496170407154000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "32592"
+              - key: transaction.id
+                value:
+                  stringValue: 4340a8e0df1906ecbfa9
+              - key: transaction.name
+                value:
+                  stringValue: GET /api/types
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.sampled
+                value:
+                  boolValue: true
+              - key: transaction.result
+                value:
+                  stringValue: success
+              - key: http.request.method
+                value:
+                  stringValue: POST
+              - key: http.response.status_code
+                value:
+                  intValue: "200"
+              - key: http.response.body.size
+                value:
+                  intValue: "2690"
+              - key: url.original
+                value:
+                  stringValue: /p/a/t/h?query=string#hash
+              - key: url.scheme
+                value:
+                  stringValue: https
+              - key: url.full
+                value:
+                  stringValue: https://www.example.com/p/a/t/h?query=string#hash
+              - key: url.domain
+                value:
+                  stringValue: www.example.com
+              - key: url.path
+                value:
+                  stringValue: /p/a/t/h
+              - key: url.query
+                value:
+                  stringValue: ?query=string
+              - key: url.fragment
+                value:
+                  stringValue: '#hash'
+              - key: url.port
+                value:
+                  intValue: "8080"
+              - key: http.version
+                value:
+                  stringValue: "1.1"
+              - key: http.request.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2,c3=3
+                      - key: Some-Other-Header
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                      - key: Array
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: foo
+                              - stringValue: bar
+                              - stringValue: baz
+                      - key: User-Agent
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36
+                              - stringValue: Mozilla Chrome Edge
+              - key: http.request.env
+                value:
+                  kvlistValue:
+                    values:
+                      - key: SERVER_SOFTWARE
+                        value:
+                          stringValue: nginx
+                      - key: GATEWAY_INTERFACE
+                        value:
+                          stringValue: CGI/1.1
+                      - key: SOME_NUMERIC_VALUE
+                        value:
+                          doubleValue: 123
+              - key: http.request.cookies
+                value:
+                  kvlistValue:
+                    values:
+                      - key: c1
+                        value:
+                          stringValue: v1
+                      - key: c2
+                        value:
+                          stringValue: v2
+                      - key: c3
+                        value:
+                          doubleValue: 3
+              - key: http.request.body.original
+                value:
+                  kvlistValue:
+                    values:
+                      - key: str
+                        value:
+                          stringValue: hello world
+                      - key: additional
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: bar
+                                value:
+                                  doubleValue: 123
+                              - key: req
+                                value:
+                                  stringValue: additional information
+              - key: http.request.referrer
+                value:
+                  stringValue: http://localhost:8000/test/e2e/
+              - key: http.response.headers
+                value:
+                  kvlistValue:
+                    values:
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: application/json
+              - key: http.response.finished
+                value:
+                  boolValue: true
+              - key: http.response.headers_sent
+                value:
+                  boolValue: true
+              - key: http.response.decoded_body_size
+                value:
+                  intValue: "2990"
+              - key: http.response.transfer_size
+                value:
+                  intValue: "258"
+              - key: transaction.span_count.started
+                value:
+                  intValue: "17"
+              - key: transaction.custom
+                value:
+                  kvlistValue:
+                    values:
+                      - key: my_key
+                        value:
+                          doubleValue: 1
+                      - key: some_other_value
+                        value:
+                          stringValue: foo bar
+                      - key: and_objects
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: foo
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: bar
+                                      - stringValue: baz
+                      - key: (
+                        value:
+                          stringValue: not a valid regex and that is fine
+            endTimeUnixNano: "1496170407186592981"
+            name: GET /api/types
+            spanId: 4340a8e0df1906ec
+            startTimeUnixNano: "1496170407154000000"
+            status:
+              code: 1
+            traceId: 0acd456789abcdef0123456789abcdef

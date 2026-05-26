@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash"
+	xxhashv2 "github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componentstatus"
@@ -231,6 +232,8 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	var ld *plog.Logs
 	var md *pmetric.Metrics
 	var td *ptrace.Traces
+	var mainGroups signalGroups
+	fpHasher := xxhashv2.New()
 
 	processors := modelprocessor.Chained{
 		modelprocessor.SetGroupingKey{
@@ -284,7 +287,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	for _, event := range *batch {
 		mask, shadowed := eventShadowMask(event, keyIndex)
 		if !shadowed {
-			if err := r.appendEvent(event, &ld, &md, &td); err != nil {
+			if err := r.appendEvent(event, &ld, &md, &td, &mainGroups, fpHasher); err != nil {
 				return err
 			}
 			continue
@@ -295,18 +298,17 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 			shadowIndex = make(map[string]int)
 		}
 		if idx, ok := shadowIndex[maskKey]; ok {
-			if err := r.appendEvent(event, &shadowedBatches[idx].ld, &shadowedBatches[idx].md, &shadowedBatches[idx].td); err != nil {
+			sb := &shadowedBatches[idx]
+			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
 				return err
 			}
 		} else {
 			shadowIndex[maskKey] = len(shadowedBatches)
-			sb := shadowedBatch{
-				globalKeyMask: mask,
-			}
-			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td); err != nil {
+			shadowedBatches = append(shadowedBatches, shadowedBatch{globalKeyMask: mask})
+			sb := &shadowedBatches[len(shadowedBatches)-1]
+			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
 				return err
 			}
-			shadowedBatches = append(shadowedBatches, sb)
 		}
 	}
 
@@ -329,8 +331,18 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 
 // appendEvent converts an APM event to its OTel representation and appends
 // it to the appropriate pdata structure. The pdata pointers are lazily
-// initialized on first use.
-func (r *elasticAPMIntakeReceiver) appendEvent(event *modelpb.APMEvent, ld **plog.Logs, md **pmetric.Metrics, td **ptrace.Traces) error {
+// initialized on first use. groups caches per-resource ScopeSpans / ScopeLogs
+// across events in the same batch so events sharing a resource fingerprint
+// share a single ResourceSpans / ResourceLogs entry. Metrics events are not
+// grouped — see the comment on signalGroups for the rationale.
+func (r *elasticAPMIntakeReceiver) appendEvent(
+	event *modelpb.APMEvent,
+	ld **plog.Logs,
+	md **pmetric.Metrics,
+	td **ptrace.Traces,
+	groups *signalGroups,
+	fpHasher *xxhashv2.Digest,
+) error {
 	timestampNanos := event.GetTimestamp()
 
 	// TODO record metrics about events processed by type?
@@ -348,40 +360,18 @@ func (r *elasticAPMIntakeReceiver) appendEvent(event *modelpb.APMEvent, ld **plo
 			return err
 		}
 	case modelpb.ErrorEventType:
-		if *ld == nil {
-			l := plog.NewLogs()
-			*ld = &l
-		}
-		rl := (*ld).ResourceLogs().AppendEmpty()
-
-		r.setResourceAttributes(rl.Resource().Attributes(), event)
-
-		r.elasticErrorToOtelLogRecord(&rl, event, timestampNanos)
+		sl := r.getOrCreateLogScope(event, ld, groups, fpHasher)
+		r.elasticErrorToOtelLogRecord(sl, event, timestampNanos)
 	case modelpb.LogEventType:
-		if *ld == nil {
-			l := plog.NewLogs()
-			*ld = &l
-		}
-		rl := (*ld).ResourceLogs().AppendEmpty()
-
-		r.setResourceAttributes(rl.Resource().Attributes(), event)
-
-		r.elasticLogToOtelLogRecord(&rl, event, timestampNanos)
+		sl := r.getOrCreateLogScope(event, ld, groups, fpHasher)
+		r.elasticLogToOtelLogRecord(sl, event, timestampNanos)
 	case modelpb.SpanEventType, modelpb.TransactionEventType:
-		if *td == nil {
-			tr := ptrace.NewTraces()
-			*td = &tr
-		}
-		rs := (*td).ResourceSpans().AppendEmpty()
+		ss := r.getOrCreateTraceScope(event, td, groups, fpHasher)
+		s := r.elasticEventToOtelSpan(ss, event, timestampNanos)
 
-		r.setResourceAttributes(rs.Resource().Attributes(), event)
-
-		s := r.elasticEventToOtelSpan(&rs, event, timestampNanos)
-
-		isTransaction := event.Type() == modelpb.TransactionEventType
-		if isTransaction {
+		if event.Type() == modelpb.TransactionEventType {
 			r.elasticTransactionToOtelSpan(&s, event)
-			r.appendDroppedSpansStatsSpans(&rs, &s, event.GetTransaction().GetDroppedSpansStats())
+			r.appendDroppedSpansStatsSpans(ss, &s, event.GetTransaction().GetDroppedSpansStats())
 		} else {
 			r.elasticSpanToOTelSpan(&s, event)
 		}
@@ -389,6 +379,52 @@ func (r *elasticAPMIntakeReceiver) appendEvent(event *modelpb.APMEvent, ld **plo
 		return fmt.Errorf("unhandled event type %q", event.Type())
 	}
 	return nil
+}
+
+// getOrCreateTraceScope returns the ScopeSpans for the event's resource,
+// creating a new ResourceSpans + ScopeSpans (and populating the resource
+// attributes) on a cache miss.
+func (r *elasticAPMIntakeReceiver) getOrCreateTraceScope(
+	event *modelpb.APMEvent,
+	td **ptrace.Traces,
+	groups *signalGroups,
+	fpHasher *xxhashv2.Digest,
+) ptrace.ScopeSpans {
+	fp := resourceFingerprint(event, fpHasher)
+	if ss, ok := groups.traceScope(fp); ok {
+		return ss
+	}
+	if *td == nil {
+		tr := ptrace.NewTraces()
+		*td = &tr
+	}
+	rs := (*td).ResourceSpans().AppendEmpty()
+	r.setResourceAttributes(rs.Resource().Attributes(), event)
+	ss := rs.ScopeSpans().AppendEmpty()
+	groups.recordTraceScope(fp, ss)
+	return ss
+}
+
+// getOrCreateLogScope is the log counterpart of getOrCreateTraceScope.
+func (r *elasticAPMIntakeReceiver) getOrCreateLogScope(
+	event *modelpb.APMEvent,
+	ld **plog.Logs,
+	groups *signalGroups,
+	fpHasher *xxhashv2.Digest,
+) plog.ScopeLogs {
+	fp := resourceFingerprint(event, fpHasher)
+	if sl, ok := groups.logScope(fp); ok {
+		return sl
+	}
+	if *ld == nil {
+		l := plog.NewLogs()
+		*ld = &l
+	}
+	rl := (*ld).ResourceLogs().AppendEmpty()
+	r.setResourceAttributes(rl.Resource().Attributes(), event)
+	sl := rl.ScopeLogs().AppendEmpty()
+	groups.recordLogScope(fp, sl)
+	return sl
 }
 
 // consumeOTel sends the populated pdata structures to downstream consumers.
@@ -431,10 +467,43 @@ type globalKeyInfo struct {
 
 // setResourceAttributes maps event fields to attributes.
 // Expects the attribute map to be at the resource level e.g. pmetric.ResourceMetrics.Resource().Attributes().
+//
+// The set of fields written here is defined by mappers.WalkResourceAttributes;
+// resourceFingerprint walks the same tree to derive a stable hash, so any
+// field added to the walker is automatically reflected in both consumers.
 func (r *elasticAPMIntakeReceiver) setResourceAttributes(attrs pcommon.Map, event *modelpb.APMEvent) {
-	mappers.TranslateToOtelResourceAttributes(event, attrs)
-	mappers.SetDerivedResourceAttributes(event, attrs)
-	mappers.SetElasticSpecificResourceAttributes(event, attrs)
+	mappers.WalkResourceAttributes(event, pcommonResourceVisitor{m: attrs})
+}
+
+// pcommonResourceVisitor adapts mappers.ResourceAttrVisitor onto a
+// pcommon.Map. The wrapper has no state besides the map; method calls
+// inline trivially under the optimizer.
+type pcommonResourceVisitor struct {
+	m pcommon.Map
+}
+
+func (v pcommonResourceVisitor) PutStr(key, value string) {
+	v.m.PutStr(key, value)
+}
+
+func (v pcommonResourceVisitor) PutInt(key string, value int64) {
+	v.m.PutInt(key, value)
+}
+
+func (v pcommonResourceVisitor) PutBool(key string, value bool) {
+	v.m.PutBool(key, value)
+}
+
+func (v pcommonResourceVisitor) PutDouble(key string, value float64) {
+	v.m.PutDouble(key, value)
+}
+
+func (v pcommonResourceVisitor) PutStrSlice(key string, values []string) {
+	slice := v.m.PutEmptySlice(key)
+	slice.EnsureCapacity(len(values))
+	for _, s := range values {
+		slice.AppendEmpty().SetStr(s)
+	}
 }
 
 func (r *elasticAPMIntakeReceiver) elasticMetricsToOtelMetrics(rm *pmetric.ResourceMetrics, event *modelpb.APMEvent, timestampNanos uint64) error {
@@ -646,8 +715,7 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	return dp
 }
 
-func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestampNanos uint64) {
-	sl := rl.ScopeLogs().AppendEmpty()
+func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(sl plog.ScopeLogs, event *modelpb.APMEvent, timestampNanos uint64) {
 	l := sl.LogRecords().AppendEmpty()
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestampNanos, l, r.settings.Logger)
@@ -673,8 +741,7 @@ func (r *elasticAPMIntakeReceiver) setLogSeverity(event *modelpb.APMEvent, l plo
 	}
 }
 
-func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLogs, event *modelpb.APMEvent, timestampNanos uint64) {
-	sl := rl.ScopeLogs().AppendEmpty()
+func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(sl plog.ScopeLogs, event *modelpb.APMEvent, timestampNanos uint64) {
 	l := sl.LogRecords().AppendEmpty()
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestampNanos, l, r.settings.Logger)
@@ -687,8 +754,7 @@ func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(rl *plog.ResourceLo
 	r.setLogSeverity(event, l)
 }
 
-func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(rs *ptrace.ResourceSpans, event *modelpb.APMEvent, timestampNanos uint64) ptrace.Span {
-	ss := rs.ScopeSpans().AppendEmpty()
+func (r *elasticAPMIntakeReceiver) elasticEventToOtelSpan(ss ptrace.ScopeSpans, event *modelpb.APMEvent, timestampNanos uint64) ptrace.Span {
 	s := ss.Spans().AppendEmpty()
 
 	mappers.SetTopLevelFieldsSpan(event, timestampNanos, s, r.settings.Logger)
@@ -794,17 +860,13 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 //     elasticsearchexporter honours the _noindex hint and drops them, so
 //     the synthetic spans contribute only to derived metrics.
 func (r *elasticAPMIntakeReceiver) appendDroppedSpansStatsSpans(
-	rs *ptrace.ResourceSpans,
+	ss ptrace.ScopeSpans,
 	parent *ptrace.Span,
 	stats []*modelpb.DroppedSpanStats,
 ) {
 	if len(stats) == 0 {
 		return
 	}
-	// Reuse the parent transaction's ScopeSpans: the synthetic spans share the
-	// same producer (the receiver) and the _noindex hint is sufficient to keep
-	// them out of indexed traces.
-	ss := rs.ScopeSpans().At(rs.ScopeSpans().Len() - 1)
 	parentSpanID := parent.SpanID()
 	for i, stat := range stats {
 		if stat == nil {
@@ -960,11 +1022,13 @@ func withDynamicResourceAttributes(ctx context.Context, globalLabelKeys []string
 // shadowedBatch holds events that shadow at least one global label key
 // and share the same effective global key set (represented as a bitmask).
 // The pdata fields are lazily initialized by appendEvent on first use.
+// groups is the per-batch resource-grouping cache (see signalGroups).
 type shadowedBatch struct {
 	globalKeyMask big.Int
 	ld            *plog.Logs
 	md            *pmetric.Metrics
 	td            *ptrace.Traces
+	groups        signalGroups
 }
 
 // eventShadowMask checks whether the event shadows any global label key

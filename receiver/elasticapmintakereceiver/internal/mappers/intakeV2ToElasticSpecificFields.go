@@ -22,7 +22,6 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"fmt"
-	"net/netip"
 	"time"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -348,110 +347,6 @@ func setTransactionMarks(marks map[string]*modelpb.TransactionMark, attributesMa
 		for measurementName, measurement := range mark.Measurements {
 			markMap.PutDouble(measurementName, measurement)
 		}
-	}
-}
-
-// SetElasticSpecificResourceAttributes maps APM event fields to OTel attributes at the resource level.
-// The majority of the APM event fields are from the APM metadata model, so this mapping is applicable
-// to all event types (OTel  signals).
-// Some APM events may contain fields that are APM metadata e.g error.context.service.framework will override
-// the framework provided in the metadata. The apm-data library handles the override, so this function simply
-// sets the resource attribute.
-// These fields are not defined by OTel.
-// Unlike fields from IntakeV2ToDerivedFields.go, these fields are not used by the UI.
-func SetElasticSpecificResourceAttributes(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	if event.Cloud != nil {
-		if event.Cloud.Origin != nil {
-			putNonEmptyStr(attributesMap, elasticattr.CloudOriginAccountID, event.Cloud.Origin.AccountId)
-			putNonEmptyStr(attributesMap, elasticattr.CloudOriginProvider, event.Cloud.Origin.Provider)
-			putNonEmptyStr(attributesMap, elasticattr.CloudOriginRegion, event.Cloud.Origin.Region)
-			putNonEmptyStr(attributesMap, elasticattr.CloudOriginServiceName, event.Cloud.Origin.ServiceName)
-		}
-		putNonEmptyStr(attributesMap, elasticattr.CloudAccountName, event.Cloud.AccountName)
-		putNonEmptyStr(attributesMap, elasticattr.CloudInstanceID, event.Cloud.InstanceId)
-		putNonEmptyStr(attributesMap, elasticattr.CloudInstanceName, event.Cloud.InstanceName)
-		putNonEmptyStr(attributesMap, elasticattr.CloudMachineType, event.Cloud.MachineType)
-		putNonEmptyStr(attributesMap, elasticattr.CloudProjectID, event.Cloud.ProjectId)
-		putNonEmptyStr(attributesMap, elasticattr.CloudProjectName, event.Cloud.ProjectName)
-	}
-
-	if event.Faas != nil {
-		putNonEmptyStr(attributesMap, elasticattr.FaaSTriggerRequestID, event.Faas.TriggerRequestId)
-		putNonEmptyStr(attributesMap, elasticattr.FaaSExecution, event.Faas.Execution)
-	}
-
-	if event.Agent != nil {
-		putNonEmptyStr(attributesMap, elasticattr.AgentEphemeralID, event.Agent.EphemeralId)
-		putNonEmptyStr(attributesMap, elasticattr.AgentActivationMethod, event.Agent.ActivationMethod)
-	}
-
-	if event.Service != nil {
-		if event.Service.Framework != nil {
-			putNonEmptyStr(attributesMap, elasticattr.ServiceFrameworkName, event.Service.Framework.Name)
-			putNonEmptyStr(attributesMap, elasticattr.ServiceFrameworkVersion, event.Service.Framework.Version)
-		}
-		if event.Service.Origin != nil {
-			putNonEmptyStr(attributesMap, elasticattr.ServiceOriginID, event.Service.Origin.Id)
-			putNonEmptyStr(attributesMap, elasticattr.ServiceOriginName, event.Service.Origin.Name)
-			putNonEmptyStr(attributesMap, elasticattr.ServiceOriginVersion, event.Service.Origin.Version)
-		}
-	}
-
-	if event.Host != nil {
-		putNonEmptyStr(attributesMap, elasticattr.HostHostName, event.Host.Hostname)
-	}
-
-	if event.Source != nil {
-		if event.Source.Nat != nil && event.Source.Nat.Ip != nil {
-			ip := modelpb.IP2Addr(event.Source.Nat.Ip)
-			putNonEmptyStr(attributesMap, elasticattr.SourceNATIP, ip.String())
-		}
-	}
-
-	if event.User != nil {
-		putNonEmptyStr(attributesMap, elasticattr.UserDomain, event.User.Domain)
-	}
-
-	if event.Destination != nil {
-		if event.Destination.Address != "" {
-			if ip, err := netip.ParseAddr(event.Destination.Address); err == nil {
-				attributesMap.PutStr(elasticattr.DestinationIP, ip.String())
-			}
-		}
-	}
-
-	setLabels(event, attributesMap)
-}
-
-// setLabels sets single value label fields from the APMEvent Labels and NumericLabels fields.
-// Labels are added as attributes with appropriate key prefixes: "labels." and "numeric_labels.".
-// Allows key names with spaces to match existing behavior.
-// Ignored empty keys and values.
-//
-// The apm data library logic will take care of overwriting metadata labels with event labels when decoding
-// the input to modelpb.APMEvent, so we simply copy all labels from the event here.
-func setLabels(event *modelpb.APMEvent, attributesMap pcommon.Map) {
-	for key, labelValue := range event.Labels {
-		if key == "" || labelValue == nil {
-			continue
-		}
-		if labelValue.Value != "" {
-			attributesMap.PutStr("labels."+key, labelValue.Value)
-		}
-		if len(labelValue.Values) > 0 {
-			labelValues := attributesMap.PutEmptySlice("labels." + key)
-			labelValues.EnsureCapacity(len(labelValue.Values))
-			for _, v := range labelValue.Values {
-				labelValues.AppendEmpty().SetStr(v)
-			}
-		}
-	}
-
-	for key, numericLabelValue := range event.NumericLabels {
-		if key == "" || numericLabelValue == nil {
-			continue
-		}
-		attributesMap.PutDouble("numeric_labels."+key, numericLabelValue.Value)
 	}
 }
 
