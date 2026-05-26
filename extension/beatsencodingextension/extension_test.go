@@ -153,9 +153,9 @@ func TestUnmarshalLogs(t *testing.T) {
 					},
 					{
 						Source:      "seconds",
-						Destination: "milliseconds",
+						Destination: "Nano",
 						Type:        "Integer",
-						Multiplier:  1000000,
+						Multiplier:  1000,
 					},
 				},
 				DataStream: DataStreamConfig{Dataset: "custom", Namespace: "default"},

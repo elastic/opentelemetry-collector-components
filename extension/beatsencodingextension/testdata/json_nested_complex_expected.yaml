@@ -18,9 +18,9 @@ resourceLogs:
                   - key: message
                     value:
                       stringValue: log1
-                  - key: milliseconds
+                  - key: Nano
                     value:
-                      intValue: "10000000"
+                      intValue: "1779801400123456000"
                   - key: input.type
                     value:
                       stringValue: aws-s3
@@ -36,8 +36,8 @@ resourceLogs:
                   - key: event.dataset
                     value:
                       stringValue: custom
-            observedTimeUnixNano: "1779469455005671000"
-            timeUnixNano: "1779469455005671000"
+            observedTimeUnixNano: "1779817241863875000"
+            timeUnixNano: "1779817241863875000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -54,9 +54,9 @@ resourceLogs:
                   - key: message
                     value:
                       stringValue: log2
-                  - key: milliseconds
+                  - key: Nano
                     value:
-                      intValue: "20000000"
+                      intValue: "1779801500123456000"
                   - key: input.type
                     value:
                       stringValue: aws-s3
@@ -72,8 +72,8 @@ resourceLogs:
                   - key: event.dataset
                     value:
                       stringValue: custom
-            observedTimeUnixNano: "1779469455005671000"
-            timeUnixNano: "1779469455005671000"
+            observedTimeUnixNano: "1779817241863875000"
+            timeUnixNano: "1779817241863875000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -90,9 +90,9 @@ resourceLogs:
                   - key: message
                     value:
                       stringValue: log3
-                  - key: milliseconds
+                  - key: Nano
                     value:
-                      intValue: "30000000"
+                      intValue: "1779801600123456000"
                   - key: input.type
                     value:
                       stringValue: aws-s3
@@ -108,8 +108,8 @@ resourceLogs:
                   - key: event.dataset
                     value:
                       stringValue: custom
-            observedTimeUnixNano: "1779469455005671000"
-            timeUnixNano: "1779469455005671000"
+            observedTimeUnixNano: "1779817241863875000"
+            timeUnixNano: "1779817241863875000"
         scope:
           attributes:
             - key: elastic.mapping.mode

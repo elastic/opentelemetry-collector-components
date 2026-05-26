@@ -259,8 +259,12 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 			n = int64(len(raw))
 
 			if len(e.config.Mappings) > 0 {
+				// Use Number to preserve numeric types
+				numDec := json.NewDecoder(bytes.NewReader(raw))
+				numDec.UseNumber()
+
 				var asMap map[string]any
-				if err := json.Unmarshal(trimmed, &asMap); err != nil {
+				if err := numDec.Decode(&asMap); err != nil {
 					return logs, fmt.Errorf("decoding array element: %w", err)
 				}
 				if len(raw) == 0 {
@@ -272,10 +276,6 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 					}
 				}
 			} else {
-				trimmed := bytes.TrimSpace(raw)
-				if len(trimmed) == 0 {
-					continue
-				}
 				data = []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: string(trimmed)}}
 			}
 
@@ -443,15 +443,19 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 			}
 			body.PutStr(d.Mapping.Destination, s)
 		case FieldTypeInteger:
-			f, ok := d.Value.(float64)
+			num, ok := d.Value.(json.Number)
 			if !ok {
-				return fmt.Errorf("expected numeric field type, got %T", d.Value)
+				return fmt.Errorf("field %q: expected numeric (json.Number), got %T", d.Mapping.Destination, d.Value)
 			}
-			val := int64(f)
+			base, err := num.Int64()
+			if err != nil {
+				return fmt.Errorf("field %q: expected integer, got %q: %w", d.Mapping.Destination, num.String(), err)
+			}
+
 			if d.Mapping.Multiplier != 0 {
-				val *= d.Mapping.Multiplier
+				base *= d.Mapping.Multiplier
 			}
-			body.PutInt(d.Mapping.Destination, val)
+			body.PutInt(d.Mapping.Destination, base)
 		}
 	}
 
