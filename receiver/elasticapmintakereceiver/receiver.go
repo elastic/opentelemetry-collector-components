@@ -430,31 +430,57 @@ func (r *elasticAPMIntakeReceiver) getOrCreateLogScope(
 // consumeOTel sends the populated pdata structures to downstream consumers.
 // Nil pointers are skipped.
 func (r *elasticAPMIntakeReceiver) consumeOTel(ctx context.Context, ld *plog.Logs, md *pmetric.Metrics, td *ptrace.Traces) []error {
-	var errs []error
+	var consumeFns []func() error
 	if ld != nil {
 		if numRecords := ld.LogRecordCount(); numRecords != 0 && r.nextLogs != nil {
-			obsCtx := r.obsreport.StartLogsOp(ctx)
-			err := r.nextLogs.ConsumeLogs(obsCtx, *ld)
-			r.obsreport.EndLogsOp(obsCtx, dataFormatElasticAPM, numRecords, err)
-			errs = append(errs, err)
+			consumeFns = append(consumeFns, func() error {
+				obsCtx := r.obsreport.StartLogsOp(ctx)
+				err := r.nextLogs.ConsumeLogs(obsCtx, *ld)
+				r.obsreport.EndLogsOp(obsCtx, dataFormatElasticAPM, numRecords, err)
+				return err
+			})
 		}
 	}
 	if md != nil {
 		if numDataPoints := md.DataPointCount(); numDataPoints != 0 && r.nextMetrics != nil {
-			obsCtx := r.obsreport.StartMetricsOp(ctx)
-			err := r.nextMetrics.ConsumeMetrics(obsCtx, *md)
-			r.obsreport.EndMetricsOp(obsCtx, dataFormatElasticAPM, numDataPoints, err)
-			errs = append(errs, err)
+			consumeFns = append(consumeFns, func() error {
+				obsCtx := r.obsreport.StartMetricsOp(ctx)
+				err := r.nextMetrics.ConsumeMetrics(obsCtx, *md)
+				r.obsreport.EndMetricsOp(obsCtx, dataFormatElasticAPM, numDataPoints, err)
+				return err
+			})
 		}
 	}
 	if td != nil {
 		if numSpans := td.SpanCount(); numSpans != 0 && r.nextTraces != nil {
-			obsCtx := r.obsreport.StartTracesOp(ctx)
-			err := r.nextTraces.ConsumeTraces(obsCtx, *td)
-			r.obsreport.EndTracesOp(obsCtx, dataFormatElasticAPM, numSpans, err)
-			errs = append(errs, err)
+			consumeFns = append(consumeFns, func() error {
+				obsCtx := r.obsreport.StartTracesOp(ctx)
+				err := r.nextTraces.ConsumeTraces(obsCtx, *td)
+				r.obsreport.EndTracesOp(obsCtx, dataFormatElasticAPM, numSpans, err)
+				return err
+			})
 		}
 	}
+
+	if len(consumeFns) == 0 {
+		return nil
+	}
+
+	errs := make([]error, len(consumeFns))
+	if len(consumeFns) == 1 {
+		errs[0] = consumeFns[0]()
+		return errs
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(consumeFns))
+	for i, consume := range consumeFns {
+		go func(i int, consume func() error) {
+			defer wg.Done()
+			errs[i] = consume()
+		}(i, consume)
+	}
+	wg.Wait()
 	return errs
 }
 
