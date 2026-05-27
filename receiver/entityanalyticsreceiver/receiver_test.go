@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
@@ -166,6 +167,36 @@ func TestCommitFailureAfterSuccessfulSync(t *testing.T) {
 
 	assert.Equal(t, 3, sink.LogRecordCount(), "docs should have been consumed despite commit failure")
 	assert.Empty(t, base.data, "store should be empty — commit could not persist state")
+}
+
+// TestSelfHealingAfterFailedFullSync verifies that when the initial
+// full sync fails, the next tick retries a full sync rather than
+// silently calling IncrementalSync against unestablished state.
+func TestSelfHealingAfterFailedFullSync(t *testing.T) {
+	const name = "test_selfheal"
+
+	prov := &recordingProvider{failFullN: 1}
+	Register(name, func(_ *confmap.Conf) (entcollect.Provider, error) { return prov, nil })
+	t.Cleanup(func() { unregister(name) })
+
+	cfg := &Config{
+		Provider:       name,
+		StorageID:      "elasticsearch_storage",
+		SyncInterval:   10 * time.Millisecond,
+		UpdateInterval: 10 * time.Millisecond,
+	}
+	rcvr := newReceiver(nopSettings(), cfg, &consumertest.LogsSink{})
+	require.NoError(t, rcvr.Start(context.Background(), testHost(name, newMemoryStore())))
+	t.Cleanup(func() { require.NoError(t, rcvr.Shutdown(context.Background())) })
+
+	require.Eventually(t, func() bool {
+		return prov.callCount() >= 2
+	}, 5*time.Second, 5*time.Millisecond)
+
+	calls := prov.calls()
+	require.GreaterOrEqual(t, len(calls), 2)
+	assert.Equal(t, "full", calls[0], "first call must be full")
+	assert.Equal(t, "full", calls[1], "second call must also be full because the first full sync failed")
 }
 
 func TestShutdownCancelsSync(t *testing.T) {
@@ -385,3 +416,44 @@ type notRegistryExtension struct{}
 
 func (n *notRegistryExtension) Start(context.Context, component.Host) error { return nil }
 func (n *notRegistryExtension) Shutdown(context.Context) error              { return nil }
+
+// recordingProvider records the kind of each sync call ("full" or
+// "incremental") and fails the first failFullN full sync calls.
+type recordingProvider struct {
+	mu         sync.Mutex
+	callsLog   []string
+	fullErrors int
+	failFullN  int
+}
+
+func (p *recordingProvider) FullSync(context.Context, entcollect.Store, entcollect.Publisher, *slog.Logger) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.callsLog = append(p.callsLog, "full")
+	if p.fullErrors < p.failFullN {
+		p.fullErrors++
+		return errors.New("full sync failed")
+	}
+	return nil
+}
+
+func (p *recordingProvider) IncrementalSync(context.Context, entcollect.Store, entcollect.Publisher, *slog.Logger) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.callsLog = append(p.callsLog, "incremental")
+	return nil
+}
+
+func (p *recordingProvider) callCount() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.callsLog)
+}
+
+func (p *recordingProvider) calls() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]string, len(p.callsLog))
+	copy(out, p.callsLog)
+	return out
+}
