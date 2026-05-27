@@ -140,6 +140,31 @@ func TestUnmarshalLogs(t *testing.T) {
 			goldenFile: "aws_vpcflow_input_type_tags_expected.yaml",
 			wantLogs:   3,
 		},
+		{
+			name: "JSON handling with mappings",
+			config: Config{
+				Format: FormatJSON,
+				Unwrap: []string{"items"},
+				Mappings: []FieldMapping{
+					{
+						Source:      "log",
+						Destination: "message",
+						Type:        "String",
+					},
+					{
+						Source:      "seconds",
+						Destination: "Nano",
+						Type:        "Integer",
+						Multiplier:  1000,
+					},
+				},
+				DataStream: DataStreamConfig{Dataset: "custom", Namespace: "default"},
+				InputType:  "aws-s3",
+			},
+			inputFile:  "json_nested_complex.json",
+			goldenFile: "json_nested_complex_expected.yaml",
+			wantLogs:   3,
+		},
 	}
 
 	for _, tt := range tests {

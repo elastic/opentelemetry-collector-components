@@ -1,0 +1,117 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: custom
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: log1
+                  - key: Nano
+                    value:
+                      intValue: "1779801400123456000"
+                  - key: input.type
+                    value:
+                      stringValue: aws-s3
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: custom
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+                  - key: event.dataset
+                    value:
+                      stringValue: custom
+            observedTimeUnixNano: "1779817241863875000"
+            timeUnixNano: "1779817241863875000"
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: custom
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: log2
+                  - key: Nano
+                    value:
+                      intValue: "1779801500123456000"
+                  - key: input.type
+                    value:
+                      stringValue: aws-s3
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: custom
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+                  - key: event.dataset
+                    value:
+                      stringValue: custom
+            observedTimeUnixNano: "1779817241863875000"
+            timeUnixNano: "1779817241863875000"
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: custom
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: log3
+                  - key: Nano
+                    value:
+                      intValue: "1779801600123456000"
+                  - key: input.type
+                    value:
+                      stringValue: aws-s3
+                  - key: data_stream.type
+                    value:
+                      stringValue: logs
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: custom
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: default
+                  - key: event.dataset
+                    value:
+                      stringValue: custom
+            observedTimeUnixNano: "1779817241863875000"
+            timeUnixNano: "1779817241863875000"
+        scope:
+          attributes:
+            - key: elastic.mapping.mode
+              value:
+                stringValue: bodymap
