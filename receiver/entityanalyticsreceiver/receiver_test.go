@@ -211,6 +211,72 @@ func TestShutdownCancelsSync(t *testing.T) {
 	require.NoError(t, rcvr.Shutdown(context.Background()))
 }
 
+// TestProviderConfigWiring verifies that provider-specific keys set on the
+// receiver Config (captured via mapstructure:",remain") are forwarded to
+// the ProviderFactory as a confmap.Conf during Start.
+func TestProviderConfigWiring(t *testing.T) {
+	const name = "test_wiring"
+
+	var received *confmap.Conf
+	Register(name, func(cfg *confmap.Conf) (entcollect.Provider, error) {
+		received = cfg
+		return &fakeProvider{}, nil
+	})
+	t.Cleanup(func() { unregister(name) })
+
+	rcvr := newReceiver(nopSettings(), &Config{
+		Provider:       name,
+		StorageID:      "elasticsearch_storage",
+		SyncInterval:   24 * time.Hour,
+		UpdateInterval: time.Hour,
+		ProviderConfig: map[string]any{
+			"jamf_tenant":   "test.example.com",
+			"jamf_username": "user",
+			"jamf_password": "pass",
+		},
+	}, &consumertest.LogsSink{})
+
+	store := newMemoryStore()
+	require.NoError(t, rcvr.Start(context.Background(), testHost(name, store)))
+	t.Cleanup(func() { require.NoError(t, rcvr.Shutdown(context.Background())) })
+
+	require.NotNil(t, received, "factory should receive non-nil config when provider keys are set")
+
+	type provConf struct {
+		Tenant   string `mapstructure:"jamf_tenant"`
+		Username string `mapstructure:"jamf_username"`
+		Password string `mapstructure:"jamf_password"`
+	}
+	var pc provConf
+	require.NoError(t, received.Unmarshal(&pc), "unmarshalling provider config")
+	assert.Equal(t, "test.example.com", pc.Tenant, "jamf_tenant should flow from receiver to factory")
+	assert.Equal(t, "user", pc.Username, "jamf_username should flow from receiver to factory")
+	assert.Equal(t, "pass", pc.Password, "jamf_password should flow from receiver to factory")
+}
+
+// TestProviderConfigWiring_NilWhenEmpty verifies that when no provider-specific
+// keys are set, the factory receives nil (preserving the env-var fallback path).
+func TestProviderConfigWiring_NilWhenEmpty(t *testing.T) {
+	const name = "test_wiring_nil"
+
+	var received *confmap.Conf
+	called := false
+	Register(name, func(cfg *confmap.Conf) (entcollect.Provider, error) {
+		called = true
+		received = cfg
+		return &fakeProvider{}, nil
+	})
+	t.Cleanup(func() { unregister(name) })
+
+	rcvr := newReceiver(nopSettings(), testConfig(name), &consumertest.LogsSink{})
+	store := newMemoryStore()
+	require.NoError(t, rcvr.Start(context.Background(), testHost(name, store)))
+	t.Cleanup(func() { require.NoError(t, rcvr.Shutdown(context.Background())) })
+
+	require.True(t, called, "factory should have been called")
+	assert.Nil(t, received, "factory should receive nil config when no provider-specific keys are set")
+}
+
 func TestMissingStorageExtension(t *testing.T) {
 	const name = "test_noext"
 	Register(name, fakeFactory(nil, nil, 0))
