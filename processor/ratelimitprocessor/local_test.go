@@ -75,22 +75,28 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 				result, err := rateLimiter.RateLimit(context.Background(), 1) // should pass
 				assert.NoError(t, err)
 				assert.Equal(t, DecisionAccepted, result.Decision)
+				assert.Zero(t, result.Delay)
+				assert.Equal(t, float64(10), result.ConfigRate)
 			}
 
 			result, err := rateLimiter.RateLimit(context.Background(), 1) // should fail/delay
+			assert.Equal(t, float64(10), result.ConfigRate)
 			switch behavior {
 			case ThrottleBehaviorError:
 				assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
 				assert.Equal(t, DecisionThrottled, result.Decision)
+				assert.Zero(t, result.Delay)
 				// retry every 20ms to ensure that RateLimit will recover from error when bucket refills after 1 second
 				assert.EventuallyWithT(t, func(collect *assert.CollectT) {
 					r, e := rateLimiter.RateLimit(context.Background(), 1)
 					assert.NoError(collect, e)
 					assert.Equal(collect, DecisionAccepted, r.Decision)
+					assert.Zero(collect, r.Delay)
 				}, 2*time.Second, 20*time.Millisecond)
 			case ThrottleBehaviorDelay:
 				assert.NoError(t, err)
 				assert.Equal(t, DecisionDelayed, result.Decision)
+				assert.Greater(t, result.Delay, time.Duration(0))
 				assert.GreaterOrEqual(t, time.Now(), startTime.Add(100*time.Millisecond))
 			}
 		})
@@ -145,10 +151,12 @@ func TestLocalRateLimiter_ZeroHits(t *testing.T) {
 				},
 			})
 			start := time.Now()
-			_, err := rl.RateLimit(context.Background(), 0)
+			zeroResult, err := rl.RateLimit(context.Background(), 0)
 			require.NoError(t, err)
 			assert.Less(t, time.Since(start), 50*time.Millisecond,
 				"hits=0 should return immediately without waiting")
+			assert.Equal(t, DecisionAccepted, zeroResult.Decision)
+			assert.Zero(t, zeroResult.Delay)
 
 			// A hits=0 call must not consume tokens. Drain the bucket
 			// and verify the limit still kicks in at the same threshold.
@@ -157,12 +165,16 @@ func TestLocalRateLimiter_ZeroHits(t *testing.T) {
 			}
 			// 11th call: error mode should reject; delay mode should wait.
 			start = time.Now()
-			_, err = rl.RateLimit(context.Background(), 1)
+			limitResult, err := rl.RateLimit(context.Background(), 1)
 			switch behavior {
 			case ThrottleBehaviorError:
 				assert.Error(t, err)
+				assert.Equal(t, DecisionThrottled, limitResult.Decision)
+				assert.Zero(t, limitResult.Delay)
 			case ThrottleBehaviorDelay:
 				require.NoError(t, err)
+				assert.Equal(t, DecisionDelayed, limitResult.Decision)
+				assert.Greater(t, limitResult.Delay, time.Duration(0))
 				assert.GreaterOrEqual(t, time.Since(start), 50*time.Millisecond)
 			}
 		})
@@ -183,9 +195,13 @@ func TestLocalRateLimiter_HitsExceedsBurst_Delay(t *testing.T) {
 	})
 
 	start := time.Now()
-	_, err := rl.RateLimit(context.Background(), 100)
+	result, err := rl.RateLimit(context.Background(), 100)
 	require.NoError(t, err)
 	elapsed := time.Since(start)
+
+	assert.Equal(t, DecisionDelayed, result.Decision)
+	assert.Greater(t, result.Delay, time.Duration(0))
+	assert.Equal(t, float64(100), result.ConfigRate)
 
 	// 100 hits at 100/s with burst=10: ~900ms expected. Allow generous
 	// margins for CI timing jitter.
@@ -206,8 +222,11 @@ func TestLocalRateLimiter_HitsExceedsBurst_Error(t *testing.T) {
 			RetryDelay:       100 * time.Millisecond,
 		},
 	})
-	_, err := rl.RateLimit(context.Background(), 100)
+	result, err := rl.RateLimit(context.Background(), 100)
 	assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
+	assert.Equal(t, DecisionThrottled, result.Decision)
+	assert.Zero(t, result.Delay)
+	assert.Equal(t, float64(100), result.ConfigRate)
 }
 
 // TestLocalRateLimiter_FIFO_HitsExceedsBurst spawns multiple concurrent
