@@ -1,5 +1,11 @@
 elasticapmintake:
 
+elasticapmintake/custom_batch_size:
+  batch_size: 25
+
+elasticapmintake/invalid_batch_size:
+  batch_size: 0
+
 elasticapmintake/elasticsearch_agentcfg:
   agent_config:
     enabled: true

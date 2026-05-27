@@ -44,6 +44,7 @@ func TestLoadConfig(t *testing.T) {
 					Transport: confignet.TransportTypeTCP,
 				},
 			},
+			BatchSize: defaultBatchSize,
 			AgentConfig: AgentConfig{
 				Enabled:       false,
 				CacheDuration: 30 * time.Second,
@@ -65,6 +66,18 @@ func TestLoadConfig(t *testing.T) {
 		{
 			id:       component.NewID(metadata.Type),
 			expected: expectedDefaultConfig(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_batch_size"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.BatchSize = 25
+				return cfg
+			}(),
+		},
+		{
+			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_size"),
+			validateErrorMessage: "batch_size must be positive",
 		},
 		{
 			id: component.NewIDWithName(metadata.Type, "elasticsearch_agentcfg"),

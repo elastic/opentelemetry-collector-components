@@ -18,6 +18,7 @@
 package elasticapmintakereceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver"
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
@@ -28,6 +29,9 @@ import (
 type Config struct {
 	// When using APM agent configuration, information fetched from Elasticsearch will be cached in memory for some time.
 	AgentConfig AgentConfig `mapstructure:"agent_config"`
+
+	// BatchSize is the number of intake v2 events decoded and processed together.
+	BatchSize int `mapstructure:"batch_size"`
 
 	confighttp.ServerConfig `mapstructure:",squash"`
 }
@@ -48,5 +52,15 @@ type AgentConfig struct {
 
 // Validate checks the receiver configuration is valid.
 func (cfg *Config) Validate() error {
+	if cfg.BatchSize <= 0 {
+		return fmt.Errorf("batch_size must be positive")
+	}
 	return cfg.AgentConfig.Elasticsearch.Validate()
+}
+
+func (cfg *Config) batchSize() int {
+	if cfg.BatchSize <= 0 {
+		return defaultBatchSize
+	}
+	return cfg.BatchSize
 }

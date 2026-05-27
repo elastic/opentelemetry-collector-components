@@ -171,10 +171,9 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 
 		// TODO make event size configurable
 		maxEventSize = 1024 * 1024 // 1MiB
-
-		// TODO make batch size configurable?
-		batchSize = 10
 	)
+
+	batchSize := r.cfg.batchSize()
 
 	batchProcessor := modelpb.ProcessBatchFunc(r.processBatch)
 	elasticapmProcessor := elasticapm.NewProcessor(elasticapm.Config{

@@ -24,6 +24,7 @@ All that is required to enable the elasticapmintake receiver is to include it in
 ```
 receivers:
   elasticapmintake:
+    batch_size: 10
     agent_config:
       enabled: false
 ```
@@ -31,6 +32,8 @@ receivers:
 ## Advanced configuration
 
 The elasticapmintake receiver embeds the [confighttp.ServerConfig](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/confighttp/README.md), which means it supports standard HTTP server configuration, including TLS/mTLS and authentication.
+
+`batch_size` controls how many intake v2 events are decoded and processed together before the receiver sends the resulting pdata to the next component. The default is `10`.
 
 ### TLS and mTLS settings
 

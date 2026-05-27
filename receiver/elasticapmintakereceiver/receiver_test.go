@@ -25,6 +25,7 @@ import (
 	"flag"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -803,6 +804,35 @@ func TestConsumeOTelConsumesSignalsConcurrently(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for consumers to finish")
 	}
+}
+
+func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
+	rcvr, err := newElasticAPMIntakeReceiver(
+		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+		&Config{BatchSize: 2},
+		receivertest.NewNopSettings(metadata.Type),
+	)
+	require.NoError(t, err)
+
+	nextTraces := new(consumertest.TracesSink)
+	rcvr.nextTraces = nextTraces
+
+	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+		return withECSMappingMode(req.Context(), false)
+	})
+	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(5)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	allTraces := nextTraces.AllTraces()
+	require.Len(t, allTraces, 3)
+	require.Equal(t, []int{2, 2, 1}, []int{
+		allTraces[0].SpanCount(),
+		allTraces[1].SpanCount(),
+		allTraces[2].SpanCount(),
+	})
 }
 
 func TestGlobalLabelsMetadataPropagation(t *testing.T) {
