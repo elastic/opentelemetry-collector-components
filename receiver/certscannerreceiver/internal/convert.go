@@ -40,6 +40,7 @@ func ConvertToLogs(result *scanner.ScanResult, hostname string) plog.Logs {
 	resAttrs := resourceLogs.Resource().Attributes()
 	resAttrs.PutStr("observer.type", "certscanner")
 	resAttrs.PutStr("observer.hostname", hostname)
+	resAttrs.PutStr("host.name", hostname)
 
 	// Create scope logs
 	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
@@ -98,6 +99,7 @@ func ConvertToLogs(result *scanner.ScanResult, hostname string) plog.Logs {
 		// Certificate identifiers
 		attrs.PutStr("tls.server.x509.serial_number", cert.SerialNumber)
 		attrs.PutStr("tls.server.hash.sha256", cert.FingerprintSHA256)
+		attrs.PutStr("tls.server.hash.sha1", cert.FingerprintSHA1)
 
 		// Validity dates
 		attrs.PutStr("tls.server.x509.not_before", cert.NotBefore.Format(time.RFC3339))

@@ -102,6 +102,13 @@ func TestTLSScanner_ScanPort(t *testing.T) {
 	if len(result.LeafCertificate.DNSNames) != 2 {
 		t.Errorf("expected 2 DNS SANs, got %d", len(result.LeafCertificate.DNSNames))
 	}
+
+	if result.LeafCertificate.FingerprintSHA1 == "" {
+		t.Error("expected SHA1 fingerprint to be set")
+	}
+	if result.LeafCertificate.FingerprintSHA256 == "" {
+		t.Error("expected SHA256 fingerprint to be set")
+	}
 }
 
 func TestTLSScanner_ScanPort_ConnectionRefused(t *testing.T) {

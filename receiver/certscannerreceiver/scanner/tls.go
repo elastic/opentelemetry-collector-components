@@ -19,6 +19,7 @@ package scanner // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
@@ -39,6 +40,7 @@ type CertificateInfo struct {
 	NotBefore         time.Time
 	NotAfter          time.Time
 	FingerprintSHA256 string
+	FingerprintSHA1   string
 	DNSNames          []string
 	IPAddresses       []string
 	EmailAddresses    []string
@@ -147,9 +149,11 @@ func extractCertInfo(cert *x509.Certificate) *CertificateInfo {
 		EmailAddresses: cert.EmailAddresses,
 	}
 
-	// Compute SHA256 fingerprint
-	fingerprint := sha256.Sum256(cert.Raw)
-	info.FingerprintSHA256 = formatFingerprint(fingerprint[:])
+	// Compute fingerprints
+	sha256sum := sha256.Sum256(cert.Raw)
+	info.FingerprintSHA256 = formatFingerprint(sha256sum[:])
+	sha1sum := sha1.Sum(cert.Raw)
+	info.FingerprintSHA1 = formatFingerprint(sha1sum[:])
 
 	// Extract IP SANs
 	info.IPAddresses = make([]string, 0, len(cert.IPAddresses))

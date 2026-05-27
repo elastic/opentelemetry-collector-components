@@ -46,6 +46,7 @@ func newTestScanResult() *scanner.ScanResult {
 			NotBefore:         time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 			NotAfter:          time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 			FingerprintSHA256: "AA:BB:CC",
+			FingerprintSHA1:   "DD:EE:FF",
 			DNSNames:          []string{"*.example.com", "example.com"},
 			IPAddresses:       []string{"1.2.3.4"},
 			EmailAddresses:    []string{"admin@example.com"},
@@ -91,6 +92,7 @@ func TestConvertToLogs(t *testing.T) {
 	resAttrs := rl.Resource().Attributes()
 	assertAttrStr(t, resAttrs, "observer.type", "certscanner")
 	assertAttrStr(t, resAttrs, "observer.hostname", "test-host")
+	assertAttrStr(t, resAttrs, "host.name", "test-host")
 
 	// Check scope
 	require.Equal(t, 1, rl.ScopeLogs().Len())
@@ -126,6 +128,7 @@ func TestConvertToLogs(t *testing.T) {
 	assertAttrStr(t, attrs, "tls.server.x509.issuer.common_name", "DigiCert CA")
 	assertAttrStr(t, attrs, "tls.server.x509.serial_number", "01:02:03")
 	assertAttrStr(t, attrs, "tls.server.hash.sha256", "AA:BB:CC")
+	assertAttrStr(t, attrs, "tls.server.hash.sha1", "DD:EE:FF")
 	assertAttrInt(t, attrs, "tls.server.certificate.chain_depth", 2)
 
 	// SANs — stored by X.509 SAN type
