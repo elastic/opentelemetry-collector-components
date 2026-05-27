@@ -73,5 +73,4 @@ are registered:
 - `jamf` — Jamf Pro device inventory
 - `activedirectory` — Microsoft Active Directory (users, devices, groups via LDAP)
 - `okta` — Okta (users, devices, groups with bulk-fetch enrichment)
-
-Further providers (EntraID) will be added in subsequent work.
+- `azure-ad` — Microsoft Entra ID (users, devices, groups via Graph API delta queries)
