@@ -25,6 +25,7 @@ import (
 	"flag"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -41,6 +42,7 @@ import (
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -63,6 +65,58 @@ type fetcherMock struct {
 
 func (f *fetcherMock) Fetch(ctx context.Context, query agentcfg.Query) (agentcfg.Result, error) {
 	return f.fetchFn(ctx, query)
+}
+
+type blockingSignalConsumer struct {
+	signal  string
+	started chan<- string
+	release <-chan struct{}
+}
+
+func (c blockingSignalConsumer) wait(ctx context.Context) error {
+	c.started <- c.signal
+	select {
+	case <-c.release:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+type blockingLogsConsumer struct {
+	blockingSignalConsumer
+}
+
+func (blockingLogsConsumer) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{}
+}
+
+func (c blockingLogsConsumer) ConsumeLogs(ctx context.Context, _ plog.Logs) error {
+	return c.wait(ctx)
+}
+
+type blockingMetricsConsumer struct {
+	blockingSignalConsumer
+}
+
+func (blockingMetricsConsumer) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{}
+}
+
+func (c blockingMetricsConsumer) ConsumeMetrics(ctx context.Context, _ pmetric.Metrics) error {
+	return c.wait(ctx)
+}
+
+type blockingTracesConsumer struct {
+	blockingSignalConsumer
+}
+
+func (blockingTracesConsumer) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{}
+}
+
+func (c blockingTracesConsumer) ConsumeTraces(ctx context.Context, _ ptrace.Traces) error {
+	return c.wait(ctx)
 }
 
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
@@ -679,6 +733,106 @@ func TestMetadataPropagation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConsumeOTelConsumesSignalsConcurrently(t *testing.T) {
+	rcvr, err := newElasticAPMIntakeReceiver(
+		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+		&Config{},
+		receivertest.NewNopSettings(metadata.Type),
+	)
+	require.NoError(t, err)
+
+	started := make(chan string, 3)
+	release := make(chan struct{})
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+	}()
+
+	rcvr.nextLogs = blockingLogsConsumer{blockingSignalConsumer{
+		signal:  "logs",
+		started: started,
+		release: release,
+	}}
+	rcvr.nextMetrics = blockingMetricsConsumer{blockingSignalConsumer{
+		signal:  "metrics",
+		started: started,
+		release: release,
+	}}
+	rcvr.nextTraces = blockingTracesConsumer{blockingSignalConsumer{
+		signal:  "traces",
+		started: started,
+		release: release,
+	}}
+
+	ld := plog.NewLogs()
+	ld.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
+
+	md := pmetric.NewMetrics()
+	metric := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+	metric.SetName("test.metric")
+	metric.SetEmptyGauge().DataPoints().AppendEmpty()
+
+	td := ptrace.NewTraces()
+	td.ResourceSpans().AppendEmpty().ScopeSpans().AppendEmpty().Spans().AppendEmpty()
+
+	done := make(chan []error, 1)
+	go func() {
+		done <- rcvr.consumeOTel(context.Background(), &ld, &md, &td)
+	}()
+
+	seen := make(map[string]struct{})
+	timeout := time.After(time.Second)
+	for len(seen) < 3 {
+		select {
+		case signal := <-started:
+			seen[signal] = struct{}{}
+		case <-timeout:
+			t.Fatalf("expected all signal consumers to start before any returned, got %v", seen)
+		}
+	}
+
+	close(release)
+	released = true
+
+	select {
+	case errs := <-done:
+		require.NoError(t, errors.Join(errs...))
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for consumers to finish")
+	}
+}
+
+func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
+	rcvr, err := newElasticAPMIntakeReceiver(
+		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+		&Config{BatchSize: 2},
+		receivertest.NewNopSettings(metadata.Type),
+	)
+	require.NoError(t, err)
+
+	nextTraces := new(consumertest.TracesSink)
+	rcvr.nextTraces = nextTraces
+
+	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+		return withECSMappingMode(req.Context(), false)
+	})
+	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(5)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	allTraces := nextTraces.AllTraces()
+	require.Len(t, allTraces, 3)
+	require.Equal(t, []int{2, 2, 1}, []int{
+		allTraces[0].SpanCount(),
+		allTraces[1].SpanCount(),
+		allTraces[2].SpanCount(),
+	})
 }
 
 func TestGlobalLabelsMetadataPropagation(t *testing.T) {
