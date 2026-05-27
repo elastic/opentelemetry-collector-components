@@ -31,6 +31,7 @@ const (
 	limitThresholdKey = "limit_threshold"
 
 	StatusUnderLimit Reason = "under_limit"
+	StatusOverLimit  Reason = "over_limit"
 
 	RequestErr Reason = "request_error"
 )

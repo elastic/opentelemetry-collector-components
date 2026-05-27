@@ -14,6 +14,14 @@ Number of in-flight requests at any given time
 | ---- | ----------- | ---------- | --------- | --------- |
 | {requests} | Sum | Int | false | Development |
 
+### otelcol_ratelimit.delay_duration
+
+Time (in seconds) a request spent waiting due to rate limiting. Only recorded when a delay occurs.
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {seconds} | Histogram | Double | Development |
+
 ### otelcol_ratelimit.request_duration
 
 Time(in seconds) taken to process a rate limit request
@@ -44,3 +52,11 @@ Number of rate-limiting requests
 | ---- | ----------- | ------ | ------------------- |
 | decision | rate limit decision | Any Str | - |
 | reason | rate limit reason | Any Str | - |
+
+### otelcol_ratelimit.tokens
+
+Current token level in the rate limiter bucket per key. Negative values indicate active throttling.
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {tokens} | Gauge | Double | Development |

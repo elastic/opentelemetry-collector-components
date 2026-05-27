@@ -197,6 +197,7 @@ func TestConsume_Logs(t *testing.T) {
 			Sum:   1,
 			Attributes: attribute.NewSet(
 				telemetry.WithDecision("throttled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
@@ -272,6 +273,7 @@ func TestConsume_Metrics(t *testing.T) {
 			Sum:   1,
 			Attributes: attribute.NewSet(
 				telemetry.WithDecision("throttled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
@@ -347,6 +349,7 @@ func TestConsume_Traces(t *testing.T) {
 			Sum:   1,
 			Attributes: attribute.NewSet(
 				telemetry.WithDecision("throttled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
@@ -423,6 +426,7 @@ func TestConsume_Profiles(t *testing.T) {
 			Sum:   1,
 			Attributes: attribute.NewSet(
 				telemetry.WithDecision("throttled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
@@ -533,6 +537,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 			Attributes: attribute.NewSet(
 				[]attribute.KeyValue{
 					telemetry.WithDecision("throttled"),
+					telemetry.WithReason(telemetry.StatusOverLimit),
 					attribute.String("x-tenant-id", "TestProjectID"),
 				}...),
 		},
@@ -550,6 +555,15 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 			Value: 1,
 			Attributes: attribute.NewSet(
 				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+
+	metadatatest.AssertEqualRatelimitTokens(t, tel, []metricdata.DataPoint[float64]{
+		{
+			Attributes: attribute.NewSet(
+				attribute.String("x-tenant-id", "TestProjectID"),
+				telemetry.WithLimitThreshold(1),
 			),
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
@@ -572,6 +586,147 @@ func testRatelimitLogMetadata(t *testing.T, logEntries []observer.LoggedEntry) {
 
 	assert.Equal(t, "TestProjectID", fields["x-tenant-id"])
 	assert.Equal(t, int64(1), fields["hits"])
+}
+
+func TestConsume_Logs_DelayMode(t *testing.T) {
+	// Rate=10/Burst=1: the second request waits ~100ms, which is far above any
+	// inter-statement timing jitter under -race.
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate:             10,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorDelay,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
+		},
+	})
+	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
+	require.NoError(t, err)
+
+	rl := rateLimiterProcessor{
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
+		logger:           zap.NewNop(),
+		metadataKeys:     []string{"x-tenant-id"},
+		strategy:         StrategyRateLimitRequests,
+	}
+	p := &LogsRateLimiterProcessor{
+		rateLimiterProcessor: rl,
+		count:                func(plog.Logs) int { return 1 },
+		next:                 func(context.Context, plog.Logs) error { return nil },
+	}
+
+	logs := plog.NewLogs()
+
+	// First request: within burst, no delay → decision=accepted
+	require.NoError(t, p.ConsumeLogs(clientContext, logs))
+
+	// Second request: burst exhausted → delayed, no error returned
+	require.NoError(t, p.ConsumeLogs(clientContext, logs))
+
+	metadatatest.AssertEqualRatelimitRequests(t, tt, []metricdata.DataPoint[int64]{
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("accepted"),
+				telemetry.WithReason(telemetry.StatusUnderLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("delayed"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreTimestamp())
+
+	metadatatest.AssertEqualRatelimitDelayDuration(t, tt, []metricdata.HistogramDataPoint[float64]{
+		{
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("delayed"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+
+	metadatatest.AssertEqualRatelimitTokens(t, tt, []metricdata.DataPoint[float64]{
+		{
+			Attributes: attribute.NewSet(
+				attribute.String("x-tenant-id", "TestProjectID"),
+				telemetry.WithLimitThreshold(10),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+}
+
+func TestConsume_Logs_CancelledMode(t *testing.T) {
+	// Rate=1/Burst=1: second request requires a ~1s wait, long enough to cancel reliably.
+	rateLimiter := newTestLocalRateLimiter(t, &Config{
+		RateLimitSettings: RateLimitSettings{
+			Rate:             1,
+			Burst:            1,
+			ThrottleBehavior: ThrottleBehaviorDelay,
+			RetryDelay:       1 * time.Second,
+			ThrottleInterval: 1 * time.Second,
+		},
+	})
+	err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+
+	tt := componenttest.NewTelemetry()
+	telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
+	require.NoError(t, err)
+
+	rl := rateLimiterProcessor{
+		rl:               rateLimiter,
+		telemetryBuilder: telemetryBuilder,
+		logger:           zap.NewNop(),
+		metadataKeys:     []string{"x-tenant-id"},
+		strategy:         StrategyRateLimitRequests,
+	}
+	p := &LogsRateLimiterProcessor{
+		rateLimiterProcessor: rl,
+		count:                func(plog.Logs) int { return 1 },
+		next:                 func(context.Context, plog.Logs) error { return nil },
+	}
+
+	logs := plog.NewLogs()
+
+	// First request: within burst, no delay.
+	require.NoError(t, p.ConsumeLogs(clientContext, logs))
+
+	// Second request: burst exhausted, would wait ~1s. Cancel the context immediately.
+	ctx, cancel := context.WithCancel(clientContext)
+	cancel()
+	err = p.ConsumeLogs(ctx, logs)
+	require.ErrorIs(t, err, context.Canceled)
+
+	metadatatest.AssertEqualRatelimitRequests(t, tt, []metricdata.DataPoint[int64]{
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("accepted"),
+				telemetry.WithReason(telemetry.StatusUnderLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+		{
+			Value: 1,
+			Attributes: attribute.NewSet(
+				telemetry.WithDecision("cancelled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
+				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreTimestamp())
 }
 
 func testError(t *testing.T, err error) {

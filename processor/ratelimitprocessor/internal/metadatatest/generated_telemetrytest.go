@@ -54,6 +54,21 @@ func AssertEqualRatelimitConcurrentRequests(t *testing.T, tt *componenttest.Tele
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
 
+func AssertEqualRatelimitDelayDuration(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[float64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.delay_duration",
+		Description: "Time (in seconds) a request spent waiting due to rate limiting. Only recorded when a delay occurs. [Development]",
+		Unit:        "{seconds}",
+		Data: metricdata.Histogram[float64]{
+			Temporality: metricdata.CumulativeTemporality,
+			DataPoints:  dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.delay_duration")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
 func AssertEqualRatelimitRequestDuration(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.HistogramDataPoint[float64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.request_duration",
@@ -96,6 +111,20 @@ func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps
 		},
 	}
 	got, err := tt.GetMetric("otelcol_ratelimit.requests")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualRatelimitTokens(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[float64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.tokens",
+		Description: "Current token level in the rate limiter bucket per key. Negative values indicate active throttling. [Development]",
+		Unit:        "{tokens}",
+		Data: metricdata.Gauge[float64]{
+			DataPoints: dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.tokens")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }

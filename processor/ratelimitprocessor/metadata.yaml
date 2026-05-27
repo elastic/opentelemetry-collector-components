@@ -21,6 +21,14 @@ telemetry:
       sum:
         value_type: int
         monotonic: false
+    ratelimit.delay_duration:
+      enabled: true
+      description: Time (in seconds) a request spent waiting due to rate limiting. Only recorded when a delay occurs.
+      unit: "{seconds}"
+      stability: development
+      histogram:
+        value_type: double
+        bucket_boundaries: [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0 ]
     ratelimit.request_duration:
       enabled: true
       description: Time(in seconds) taken to process a rate limit request
@@ -79,6 +87,13 @@ telemetry:
         value_type: int
         monotonic: true
       attributes: ["decision", "reason"]
+    ratelimit.tokens:
+      enabled: true
+      description: Current token level in the rate limiter bucket per key. Negative values indicate active throttling.
+      unit: "{tokens}"
+      stability: development
+      gauge:
+        value_type: double
 attributes:
   decision:
     description: rate limit decision

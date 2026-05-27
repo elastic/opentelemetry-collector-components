@@ -65,43 +65,55 @@ func (r *localRateLimiter) Shutdown(_ context.Context) error {
 	return nil
 }
 
-func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
-	metadata := client.FromContext(ctx).Metadata
+func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) (RateLimitResult, error) {
+	clientMetadata := client.FromContext(ctx).Metadata
 	// Each (shared) processor gets its own rate limiter,
 	// so it's enough to use client metadata-based unique key.
-	key := getUniqueKey(metadata, r.cfg.MetadataKeys)
-	cfg := resolveRateLimit(r.cfg, metadata)
+	key := getUniqueKey(clientMetadata, r.cfg.MetadataKeys)
+	cfg := resolveRateLimit(r.cfg, clientMetadata)
 
 	v, _ := r.limiters.LoadOrStore(key, &keyState{
 		limiter: rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst),
 	})
 	state := v.(*keyState)
-	limiter := state.limiter
+
+	// makeResult captures the current token level and config for telemetry.
+	makeResult := func(decision Decision, delay time.Duration) RateLimitResult {
+		return RateLimitResult{
+			Decision:   decision,
+			Delay:      delay,
+			Tokens:     state.limiter.Tokens(),
+			ConfigRate: float64(cfg.Rate),
+		}
+	}
 
 	switch cfg.ThrottleBehavior {
 	case ThrottleBehaviorError:
-		if ok := limiter.AllowN(time.Now(), hits); !ok {
-			return errorWithDetails(errTooManyRequests, cfg)
+		if ok := state.limiter.AllowN(time.Now(), hits); !ok {
+			return makeResult(DecisionThrottled, 0), errorWithDetails(errTooManyRequests, cfg)
 		}
+		return makeResult(DecisionAccepted, 0), nil
+
 	case ThrottleBehaviorDelay:
 		reservations, delay, err := reserveAll(state, hits)
 		if err != nil {
-			return errorWithDetails(err, cfg)
+			return makeResult(DecisionThrottled, 0), errorWithDetails(err, cfg)
 		}
 		if delay <= 0 {
-			return nil
+			return makeResult(DecisionAccepted, 0), nil
 		}
 		timer := time.NewTimer(delay)
 		defer timer.Stop()
 		select {
 		case <-ctx.Done():
 			cancelReservations(reservations)
-			return ctx.Err()
+			return makeResult(DecisionCancelled, 0), ctx.Err()
 		case <-timer.C:
+			return makeResult(DecisionDelayed, delay), nil
 		}
 	}
 
-	return nil
+	return makeResult(DecisionAccepted, 0), nil
 }
 
 // reserveAll books all chunks for one caller atomically under
