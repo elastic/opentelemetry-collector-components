@@ -44,7 +44,8 @@ func TestLoadConfig(t *testing.T) {
 					Transport: confignet.TransportTypeTCP,
 				},
 			},
-			BatchSize: defaultBatchSize,
+			BatchSize:             defaultBatchSize,
+			MaxConcurrentDecoders: int(defaultMaxConcurrentDecoders),
 			AgentConfig: AgentConfig{
 				Enabled:       false,
 				CacheDuration: 30 * time.Second,
@@ -76,8 +77,20 @@ func TestLoadConfig(t *testing.T) {
 			}(),
 		},
 		{
+			id: component.NewIDWithName(metadata.Type, "custom_max_concurrent_decoders"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.MaxConcurrentDecoders = 256
+				return cfg
+			}(),
+		},
+		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_size"),
 			validateErrorMessage: "batch_size must be positive",
+		},
+		{
+			id:                   component.NewIDWithName(metadata.Type, "invalid_max_concurrent_decoders"),
+			validateErrorMessage: "max_concurrent_decoders must be positive",
 		},
 		{
 			id: component.NewIDWithName(metadata.Type, "elasticsearch_agentcfg"),

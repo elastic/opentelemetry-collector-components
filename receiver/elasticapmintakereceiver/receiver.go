@@ -165,9 +165,8 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errMsg string, statusC
 
 func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http.Request) context.Context) http.HandlerFunc {
 	var (
-		// TODO make semaphore size configurable and/or find a different way
-		// to limit concurrency that fits better with OTel Collector.
-		sem = semaphore.NewWeighted(100)
+		// Limit concurrent intake request decoding.
+		sem = semaphore.NewWeighted(r.cfg.maxConcurrentDecoders())
 
 		// TODO make event size configurable
 		maxEventSize = 1024 * 1024 // 1MiB
