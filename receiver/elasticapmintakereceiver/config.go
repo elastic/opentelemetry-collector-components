@@ -33,6 +33,10 @@ type Config struct {
 	// BatchSize is the number of intake v2 events decoded and processed together.
 	BatchSize int `mapstructure:"batch_size"`
 
+	// MaxConcurrentDecoders is the maximum number of intake requests whose bodies
+	// can be decoded concurrently.
+	MaxConcurrentDecoders int `mapstructure:"max_concurrent_decoders"`
+
 	confighttp.ServerConfig `mapstructure:",squash"`
 }
 
@@ -55,6 +59,9 @@ func (cfg *Config) Validate() error {
 	if cfg.BatchSize <= 0 {
 		return fmt.Errorf("batch_size must be positive")
 	}
+	if cfg.MaxConcurrentDecoders <= 0 {
+		return fmt.Errorf("max_concurrent_decoders must be positive")
+	}
 	return cfg.AgentConfig.Elasticsearch.Validate()
 }
 
@@ -63,4 +70,11 @@ func (cfg *Config) batchSize() int {
 		return defaultBatchSize
 	}
 	return cfg.BatchSize
+}
+
+func (cfg *Config) maxConcurrentDecoders() int64 {
+	if cfg.MaxConcurrentDecoders <= 0 {
+		return int64(defaultMaxConcurrentDecoders)
+	}
+	return int64(cfg.MaxConcurrentDecoders)
 }

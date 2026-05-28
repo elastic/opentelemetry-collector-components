@@ -3,8 +3,14 @@ elasticapmintake:
 elasticapmintake/custom_batch_size:
   batch_size: 25
 
+elasticapmintake/custom_max_concurrent_decoders:
+  max_concurrent_decoders: 256
+
 elasticapmintake/invalid_batch_size:
   batch_size: 0
+
+elasticapmintake/invalid_max_concurrent_decoders:
+  max_concurrent_decoders: 0
 
 elasticapmintake/elasticsearch_agentcfg:
   agent_config:

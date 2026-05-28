@@ -34,9 +34,10 @@ import (
 )
 
 const (
-	defaultEndpoint   = "localhost:8200"
-	defaultESEndpoint = "http://localhost:9200"
-	defaultBatchSize  = 10
+	defaultEndpoint              = "localhost:8200"
+	defaultESEndpoint            = "http://localhost:9200"
+	defaultBatchSize             = 10
+	defaultMaxConcurrentDecoders = 100
 )
 
 // NewFactory creates a new factory for the elasticapm receiver.
@@ -65,6 +66,7 @@ func createDefaultConfig() component.Config {
 	return &Config{
 		ServerConfig: defaultServerConfig,
 		BatchSize:    defaultBatchSize,
+		MaxConcurrentDecoders: defaultMaxConcurrentDecoders,
 		AgentConfig: AgentConfig{
 			Enabled:       false,
 			Elasticsearch: defaultESClientConfig,
