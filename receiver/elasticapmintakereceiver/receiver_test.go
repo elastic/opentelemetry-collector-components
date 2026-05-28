@@ -49,6 +49,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
+	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
@@ -1041,4 +1042,19 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 		// so we need to ignore order when comparing.
 		pmetrictest.IgnoreResourceMetricsOrder(),
 	))
+}
+
+func TestProcessBatchReturnsOnCanceledContext(t *testing.T) {
+	r := &elasticAPMIntakeReceiver{
+		settings: receivertest.NewNopSettings(metadata.Type),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	batch := modelpb.Batch{
+		&modelpb.APMEvent{},
+	}
+	err := r.processBatch(ctx, &batch)
+	require.ErrorIs(t, err, context.Canceled)
 }

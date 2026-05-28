@@ -184,12 +184,18 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 
 	return func(w http.ResponseWriter, req *http.Request) {
 		statusCode := http.StatusAccepted
+		ctx := ctxFunc(req)
+		// Ensure stream decoding unblocks quickly once request context is canceled.
+		stopBodyClose := context.AfterFunc(ctx, func() {
+			_ = req.Body.Close()
+		})
+		defer stopBodyClose()
 
 		var elasticapmResult elasticapm.Result
 		baseEvent := &modelpb.APMEvent{}
 		baseEvent.Event = &modelpb.Event{}
 		streamErr := elasticapmProcessor.HandleStream(
-			ctxFunc(req),
+			ctx,
 			baseEvent,
 			req.Body,
 			batchSize,
@@ -214,7 +220,10 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 			result.Errors = append(result.Errors, streamErr.Error())
 		}
 
-		if len(result.Errors) > 0 {
+		if errors.Is(streamErr, context.Canceled) || errors.Is(streamErr, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			statusCode = http.StatusRequestTimeout
+			w.Header().Set("Connection", "close")
+		} else if len(result.Errors) > 0 {
 			statusCode = http.StatusBadRequest
 		} else if streamErr != nil {
 			statusCode = http.StatusInternalServerError
@@ -228,6 +237,10 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 }
 
 func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	var ld *plog.Logs
 	var md *pmetric.Metrics
 	var td *ptrace.Traces
@@ -280,33 +293,84 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		}
 	}
 
-	var shadowedBatches []shadowedBatch
-	var shadowIndex map[string]int // mask.String() → index, created lazily
-
-	for _, event := range *batch {
-		mask, shadowed := eventShadowMask(event, keyIndex)
-		if !shadowed {
+	// Fast path: no metadata-global keys were discovered in the batch.
+	// Skip shadow-mask computation and shadowed-batch bookkeeping entirely.
+	if len(keyIndex) == 0 {
+		for _, event := range *batch {
 			if err := r.appendEvent(event, &ld, &md, &td, &mainGroups, fpHasher); err != nil {
 				return err
 			}
-			continue
 		}
+		return errors.Join(r.consumeOTel(ctx, ld, md, td)...)
+	}
 
-		maskKey := mask.String()
-		if shadowIndex == nil {
-			shadowIndex = make(map[string]int)
-		}
-		if idx, ok := shadowIndex[maskKey]; ok {
-			sb := &shadowedBatches[idx]
-			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+	var shadowedBatches []shadowedBatch
+	if len(keyIndex) <= 64 {
+		// Most real payloads carry a small number of metadata-global keys.
+		// Use uint64 masks to avoid big.Int.String() allocations in grouping.
+		var shadowIndex map[uint64]int // mask -> index, created lazily
+		for _, event := range *batch {
+			if err := ctx.Err(); err != nil {
 				return err
 			}
-		} else {
-			shadowIndex[maskKey] = len(shadowedBatches)
-			shadowedBatches = append(shadowedBatches, shadowedBatch{globalKeyMask: mask})
-			sb := &shadowedBatches[len(shadowedBatches)-1]
-			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+			mask, shadowed := eventShadowMaskUint64(event, keyIndex)
+			if !shadowed {
+				if err := r.appendEvent(event, &ld, &md, &td, &mainGroups, fpHasher); err != nil {
+					return err
+				}
+				continue
+			}
+			if shadowIndex == nil {
+				shadowIndex = make(map[uint64]int)
+			}
+			if idx, ok := shadowIndex[mask]; ok {
+				sb := &shadowedBatches[idx]
+				if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+					return err
+				}
+			} else {
+				shadowIndex[mask] = len(shadowedBatches)
+				shadowedBatches = append(shadowedBatches, shadowedBatch{
+					useSmallMask:    true,
+					globalKeyMask64: mask,
+				})
+				sb := &shadowedBatches[len(shadowedBatches)-1]
+				if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		// Fallback for unusually large key sets.
+		var shadowIndex map[string]int // mask.String() -> index, created lazily
+		for _, event := range *batch {
+			if err := ctx.Err(); err != nil {
 				return err
+			}
+			mask, shadowed := eventShadowMaskBigInt(event, keyIndex)
+			if !shadowed {
+				if err := r.appendEvent(event, &ld, &md, &td, &mainGroups, fpHasher); err != nil {
+					return err
+				}
+				continue
+			}
+
+			maskKey := mask.String()
+			if shadowIndex == nil {
+				shadowIndex = make(map[string]int)
+			}
+			if idx, ok := shadowIndex[maskKey]; ok {
+				sb := &shadowedBatches[idx]
+				if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+					return err
+				}
+			} else {
+				shadowIndex[maskKey] = len(shadowedBatches)
+				shadowedBatches = append(shadowedBatches, shadowedBatch{globalKeyMask: mask})
+				sb := &shadowedBatches[len(shadowedBatches)-1]
+				if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -314,7 +378,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	// Consume the main batch with the full set of global keys.
 	mainCtx := ctx
 	if len(keyIndex) > 0 {
-		mainCtx = withDynamicResourceAttributes(ctx, resolveGlobalKeys(nil, keyIndex))
+		mainCtx = withDynamicResourceAttributes(ctx, resolveGlobalKeysBigInt(nil, keyIndex))
 	}
 
 	var errs []error
@@ -322,7 +386,16 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 
 	// Consume shadowed batches, each with its own global key set.
 	for _, sb := range shadowedBatches {
-		sbCtx := withDynamicResourceAttributes(ctx, resolveGlobalKeys(&sb.globalKeyMask, keyIndex))
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		var dynamicAttrs []string
+		if sb.useSmallMask {
+			dynamicAttrs = resolveGlobalKeysUint64(sb.globalKeyMask64, keyIndex)
+		} else {
+			dynamicAttrs = resolveGlobalKeysBigInt(&sb.globalKeyMask, keyIndex)
+		}
+		sbCtx := withDynamicResourceAttributes(ctx, dynamicAttrs)
 		errs = append(errs, r.consumeOTel(sbCtx, sb.ld, sb.md, sb.td)...)
 	}
 	return errors.Join(errs...)
@@ -1049,14 +1122,16 @@ func withDynamicResourceAttributes(ctx context.Context, globalLabelKeys []string
 // The pdata fields are lazily initialized by appendEvent on first use.
 // groups is the per-batch resource-grouping cache (see signalGroups).
 type shadowedBatch struct {
-	globalKeyMask big.Int
-	ld            *plog.Logs
-	md            *pmetric.Metrics
-	td            *ptrace.Traces
-	groups        signalGroups
+	useSmallMask    bool
+	globalKeyMask64 uint64
+	globalKeyMask   big.Int
+	ld              *plog.Logs
+	md              *pmetric.Metrics
+	td              *ptrace.Traces
+	groups          signalGroups
 }
 
-// eventShadowMask checks whether the event shadows any global label key
+// eventShadowMaskBigInt checks whether the event shadows any global label key
 // and returns a bitmask of the global keys that are still Global: true
 // on this event along with a bool indicating whether shadowing was
 // detected. When shadowed is false, the mask has all bits set (i.e. all
@@ -1064,9 +1139,35 @@ type shadowedBatch struct {
 // need to compare the mask against a full mask for this common case.
 // Events with identical masks need the same set of keys in their
 // x-elastic-dynamic-resource-attributes context and can share a batch.
-func eventShadowMask(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo) (big.Int, bool) {
+func eventShadowMaskBigInt(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo) (big.Int, bool) {
 	var mask big.Int
 	var shadowed bool
+	forEachShadowBit(event, keyIndex, func(bitPos int, global bool) {
+		if global {
+			mask.SetBit(&mask, bitPos, 1)
+		} else {
+			shadowed = true
+		}
+	})
+	return mask, shadowed
+}
+
+// eventShadowMaskUint64 is the compact-mask variant of eventShadowMaskBigInt used when
+// len(keyIndex) <= 64. It avoids big.Int and mask.String allocations.
+func eventShadowMaskUint64(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo) (uint64, bool) {
+	var mask uint64
+	var shadowed bool
+	forEachShadowBit(event, keyIndex, func(bitPos int, global bool) {
+		if global {
+			mask |= 1 << uint(bitPos)
+		} else {
+			shadowed = true
+		}
+	})
+	return mask, shadowed
+}
+
+func forEachShadowBit(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo, visit func(bitPos int, global bool)) {
 	for key, lv := range event.Labels {
 		if lv == nil {
 			continue
@@ -1075,11 +1176,7 @@ func eventShadowMask(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo)
 		if !ok {
 			continue
 		}
-		if lv.Global {
-			mask.SetBit(&mask, info.bitPos, 1)
-		} else {
-			shadowed = true
-		}
+		visit(info.bitPos, lv.Global)
 	}
 	for key, nv := range event.NumericLabels {
 		if nv == nil {
@@ -1089,21 +1186,27 @@ func eventShadowMask(event *modelpb.APMEvent, keyIndex map[string]globalKeyInfo)
 		if !ok {
 			continue
 		}
-		if nv.Global {
-			mask.SetBit(&mask, info.bitPos, 1)
-		} else {
-			shadowed = true
-		}
+		visit(info.bitPos, nv.Global)
 	}
-	return mask, shadowed
 }
 
-// resolveGlobalKeys converts a bitmask back to prefixed global label key
+// resolveGlobalKeysBigInt converts a bitmask back to prefixed global label key
 // names. If mask is nil, all keys in keyIndex are included.
-func resolveGlobalKeys(mask *big.Int, keyIndex map[string]globalKeyInfo) []string {
+func resolveGlobalKeysBigInt(mask *big.Int, keyIndex map[string]globalKeyInfo) []string {
 	keys := make([]string, 0, len(keyIndex))
 	for _, info := range keyIndex {
 		if mask != nil && mask.Bit(info.bitPos) == 0 {
+			continue
+		}
+		keys = append(keys, info.prefixedKey)
+	}
+	return keys
+}
+
+func resolveGlobalKeysUint64(mask uint64, keyIndex map[string]globalKeyInfo) []string {
+	keys := make([]string, 0, len(keyIndex))
+	for _, info := range keyIndex {
+		if mask&(1<<uint(info.bitPos)) == 0 {
 			continue
 		}
 		keys = append(keys, info.prefixedKey)
