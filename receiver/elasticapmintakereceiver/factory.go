@@ -64,8 +64,8 @@ func createDefaultConfig() component.Config {
 	defaultESClientConfig.Endpoint = defaultESEndpoint
 
 	return &Config{
-		ServerConfig: defaultServerConfig,
-		BatchSize:    defaultBatchSize,
+		ServerConfig:          defaultServerConfig,
+		BatchSize:             defaultBatchSize,
 		MaxConcurrentDecoders: defaultMaxConcurrentDecoders,
 		AgentConfig: AgentConfig{
 			Enabled:       false,
