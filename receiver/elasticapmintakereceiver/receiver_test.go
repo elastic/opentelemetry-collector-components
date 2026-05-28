@@ -427,7 +427,7 @@ func TestInvalidInput(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
@@ -491,7 +491,7 @@ func TestErrors(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextLog := new(consumertest.LogsSink)
@@ -525,7 +525,7 @@ func TestMetrics(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextMetrics := new(consumertest.MetricsSink)
@@ -565,7 +565,7 @@ func TestLogs(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextLogs := new(consumertest.LogsSink)
@@ -615,7 +615,7 @@ func TestTransactionsAndSpans(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
@@ -667,8 +667,8 @@ func TestMetadataPropagation(t *testing.T) {
 			factory := NewFactory()
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			cfg := factory.CreateDefaultConfig().(*Config)
-			cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
-			cfg.ServerConfig.IncludeMetadata = tcase.includeMetadata
+			cfg.NetAddr.Endpoint = testEndpoint
+			cfg.IncludeMetadata = tcase.includeMetadata
 
 			set := receivertest.NewNopSettings(metadata.Type)
 			nextTrace := new(consumertest.TracesSink)
@@ -848,7 +848,7 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			factory := NewFactory()
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			cfg := factory.CreateDefaultConfig().(*Config)
-			cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+			cfg.NetAddr.Endpoint = testEndpoint
 			set := receivertest.NewNopSettings(metadata.Type)
 
 			var rcv component.Component
