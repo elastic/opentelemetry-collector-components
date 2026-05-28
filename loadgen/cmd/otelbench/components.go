@@ -31,6 +31,7 @@ import (
 	"go.opentelemetry.io/collector/receiver/nopreceiver"
 	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 
+	"github.com/elastic/opentelemetry-collector-components/exporter/prometheusremotewriteexporter"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
@@ -63,6 +64,7 @@ func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenrece
 		otlphttpexporter.NewFactory(),
 		debugexporter.NewFactory(),
 		nopexporter.NewFactory(),
+		prometheusremotewriteexporter.NewFactory(),
 	)
 	if err != nil {
 		return otelcol.Factories{}, err
