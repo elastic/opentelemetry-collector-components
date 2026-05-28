@@ -73,17 +73,3 @@ processors:
 | `over_limit` | Bucket was empty or in deficit. Applies to `delayed`, `throttled`, and `cancelled` decisions. |
 
 **`limit_threshold`** — the configured token refill rate (tokens/second) for the key. Appears only on `otelcol_ratelimit.tokens`.
-
-#### Example: what to look for
-
-**Is any tenant being rate-limited?**
-Query `otelcol_ratelimit.requests` filtered to `decision != "accepted"`. A non-zero count for `decision="throttled"` means requests are being dropped. A count for `decision="delayed"` means they are being queued.
-
-**How long are delayed requests waiting?**
-`otelcol_ratelimit.delay_duration` shows the distribution of wait times. P99 above a few hundred milliseconds may indicate the rate is set too low relative to incoming traffic.
-
-**Is the bucket currently in debt?**
-`otelcol_ratelimit.tokens` going negative means the processor is actively throttling. How negative it is reflects how far behind the bucket is.
-
-**Are clients timing out while waiting?**
-`otelcol_ratelimit.requests` filtered to `decision="cancelled"` shows requests that started waiting (delay mode) but whose client gave up before the wait completed.
