@@ -353,24 +353,9 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 				}
 				continue
 			}
-			if shadowIndex == nil {
-				shadowIndex = make(map[uint64]int)
-			}
-			if idx, ok := shadowIndex[mask]; ok {
-				sb := &shadowedBatches[idx]
-				if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
-					return err
-				}
-			} else {
-				shadowIndex[mask] = len(shadowedBatches)
-				shadowedBatches = append(shadowedBatches, shadowedBatch{
-					useSmallMask:    true,
-					globalKeyMask64: mask,
-				})
-				sb := &shadowedBatches[len(shadowedBatches)-1]
-				if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
-					return err
-				}
+			sb := getOrCreateShadowedBatchUint64(mask, &shadowIndex, &shadowedBatches)
+			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+				return err
 			}
 		}
 	} else {
@@ -387,23 +372,9 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 				}
 				continue
 			}
-
-			maskKey := mask.String()
-			if shadowIndex == nil {
-				shadowIndex = make(map[string]int)
-			}
-			if idx, ok := shadowIndex[maskKey]; ok {
-				sb := &shadowedBatches[idx]
-				if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
-					return err
-				}
-			} else {
-				shadowIndex[maskKey] = len(shadowedBatches)
-				shadowedBatches = append(shadowedBatches, shadowedBatch{globalKeyMask: mask})
-				sb := &shadowedBatches[len(shadowedBatches)-1]
-				if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
-					return err
-				}
+			sb := getOrCreateShadowedBatchBigInt(mask, &shadowIndex, &shadowedBatches)
+			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+				return err
 			}
 		}
 	}
@@ -432,6 +403,44 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 		errs = append(errs, r.consumeOTel(sbCtx, sb.ld, sb.md, sb.td)...)
 	}
 	return errors.Join(errs...)
+}
+
+func getOrCreateShadowedBatchUint64(
+	mask uint64,
+	shadowIndex *map[uint64]int,
+	shadowedBatches *[]shadowedBatch,
+) *shadowedBatch {
+	if *shadowIndex == nil {
+		*shadowIndex = make(map[uint64]int)
+	}
+	if idx, ok := (*shadowIndex)[mask]; ok {
+		return &(*shadowedBatches)[idx]
+	}
+
+	(*shadowIndex)[mask] = len(*shadowedBatches)
+	*shadowedBatches = append(*shadowedBatches, shadowedBatch{
+		useSmallMask:    true,
+		globalKeyMask64: mask,
+	})
+	return &(*shadowedBatches)[len(*shadowedBatches)-1]
+}
+
+func getOrCreateShadowedBatchBigInt(
+	mask big.Int,
+	shadowIndex *map[string]int,
+	shadowedBatches *[]shadowedBatch,
+) *shadowedBatch {
+	maskKey := mask.String()
+	if *shadowIndex == nil {
+		*shadowIndex = make(map[string]int)
+	}
+	if idx, ok := (*shadowIndex)[maskKey]; ok {
+		return &(*shadowedBatches)[idx]
+	}
+
+	(*shadowIndex)[maskKey] = len(*shadowedBatches)
+	*shadowedBatches = append(*shadowedBatches, shadowedBatch{globalKeyMask: mask})
+	return &(*shadowedBatches)[len(*shadowedBatches)-1]
 }
 
 // appendEvent converts an APM event to its OTel representation and appends
