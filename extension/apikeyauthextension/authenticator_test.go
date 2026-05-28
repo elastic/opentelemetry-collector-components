@@ -854,6 +854,21 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 				},
 			},
 		},
+		// elastic-transport-go emits "APIKey"
+		"APIKey_scheme": {
+			headers: map[string][]string{
+				"Authorization": {
+					"APIKey " + base64.StdEncoding.EncodeToString([]byte("id:secret")),
+				},
+			},
+		},
+		"apikey_scheme_lowercase": {
+			headers: map[string][]string{
+				"Authorization": {
+					"apikey " + base64.StdEncoding.EncodeToString([]byte("id:secret")),
+				},
+			},
+		},
 		"missing_header": {
 			headers:     map[string][]string{},
 			expectedErr: `rpc error: code = Unauthenticated desc = missing header "Authorization", expected "ApiKey <value>"`,
