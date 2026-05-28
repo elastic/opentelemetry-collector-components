@@ -61,6 +61,7 @@ const dataFormatElasticAPM = "elasticapm"
 const (
 	agentConfigPath    = "/config/v1/agents"
 	intakeV2EventsPath = "/intake/v2/events"
+	statusClientClosed = 499
 )
 
 type agentCfgFetcherFactory = func(context.Context, component.Host) (agentcfg.Fetcher, error)
@@ -205,7 +206,6 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 			batchProcessor,
 			&elasticapmResult,
 		)
-		_ = streamErr
 		// TODO record metrics about errors?
 
 		var result struct {
@@ -213,30 +213,60 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 			Errors   []string `json:"errors,omitempty"`
 		}
 		result.Accepted = elasticapmResult.Accepted
-		result.Errors = make([]string, 0, len(elasticapmResult.Errors))
-		for _, err := range elasticapmResult.Errors {
+		result.Errors = make([]string, 0, len(elasticapmResult.Errors)+2)
+		processError := func(err error, isRequestContextErr bool) {
 			result.Errors = append(result.Errors, err.Error())
+			// Mirror MIS precedence: once we detect a client-canceled request
+			// (499), keep that status to avoid masking it with downstream errors.
+			if statusCode != statusClientClosed {
+				if errStatusCode := intakeStatusCodeFromErr(err, isRequestContextErr); errStatusCode > statusCode {
+					statusCode = errStatusCode
+				}
+			}
 		}
+		for _, err := range elasticapmResult.Errors {
+			processError(err, false)
+		}
+
+		requestContextErr := ctx.Err()
 
 		if streamErr != nil {
 			r.settings.Logger.Error("failed to process APM events stream", zap.Error(streamErr))
-			result.Errors = append(result.Errors, streamErr.Error())
+			// If request context is done and streamErr is context.Canceled, treat
+			// streamErr as a client canceled request context error (MIS behavior).
+			processError(streamErr, requestContextErr != nil && errors.Is(streamErr, context.Canceled))
+		}
+		if requestContextErr != nil {
+			processError(requestContextErr, true)
 		}
 
-		if errors.Is(streamErr, context.Canceled) || errors.Is(streamErr, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			statusCode = http.StatusRequestTimeout
+		if statusCode >= http.StatusBadRequest {
 			w.Header().Set("Connection", "close")
-		} else if len(result.Errors) > 0 {
-			statusCode = http.StatusBadRequest
-		} else if streamErr != nil {
-			statusCode = http.StatusInternalServerError
 		}
-
-		// TODO process r.Context().Err(), conditionally add to result
 
 		w.WriteHeader(statusCode)
 		_ = json.NewEncoder(w).Encode(&result)
 	}
+}
+
+func intakeStatusCodeFromErr(err error, isRequestContextErr bool) int {
+	code := http.StatusInternalServerError
+
+	var invalidInput *elasticapm.InvalidInputError
+	if errors.As(err, &invalidInput) {
+		code = http.StatusBadRequest
+		if invalidInput.TooLarge {
+			code = http.StatusRequestEntityTooLarge
+		}
+	}
+
+	if isRequestContextErr && errors.Is(err, context.Canceled) {
+		return statusClientClosed
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return http.StatusServiceUnavailable
+	}
+	return code
 }
 
 func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
