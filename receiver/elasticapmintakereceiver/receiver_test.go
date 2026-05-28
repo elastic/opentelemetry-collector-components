@@ -428,14 +428,8 @@ func TestInvalidInput(t *testing.T) {
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	cfg := &Config{
-		ServerConfig: confighttp.ServerConfig{
-			NetAddr: confignet.AddrConfig{
-				Endpoint:  testEndpoint,
-				Transport: confignet.TransportTypeTCP,
-			},
-		},
-	}
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
@@ -498,14 +492,8 @@ func TestErrors(t *testing.T) {
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	cfg := &Config{
-		ServerConfig: confighttp.ServerConfig{
-			NetAddr: confignet.AddrConfig{
-				Endpoint:  testEndpoint,
-				Transport: confignet.TransportTypeTCP,
-			},
-		},
-	}
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextLog := new(consumertest.LogsSink)
@@ -538,14 +526,8 @@ func TestMetrics(t *testing.T) {
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	cfg := &Config{
-		ServerConfig: confighttp.ServerConfig{
-			NetAddr: confignet.AddrConfig{
-				Endpoint:  testEndpoint,
-				Transport: confignet.TransportTypeTCP,
-			},
-		},
-	}
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextMetrics := new(consumertest.MetricsSink)
@@ -584,14 +566,8 @@ func TestLogs(t *testing.T) {
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	cfg := &Config{
-		ServerConfig: confighttp.ServerConfig{
-			NetAddr: confignet.AddrConfig{
-				Endpoint:  testEndpoint,
-				Transport: confignet.TransportTypeTCP,
-			},
-		},
-	}
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextLogs := new(consumertest.LogsSink)
@@ -640,14 +616,8 @@ var inputFiles = []struct {
 func TestTransactionsAndSpans(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
-	cfg := &Config{
-		ServerConfig: confighttp.ServerConfig{
-			NetAddr: confignet.AddrConfig{
-				Endpoint:  testEndpoint,
-				Transport: confignet.TransportTypeTCP,
-			},
-		},
-	}
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.NetAddr.Endpoint = testEndpoint
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
@@ -698,15 +668,9 @@ func TestMetadataPropagation(t *testing.T) {
 		t.Run(tname, func(t *testing.T) {
 			factory := NewFactory()
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
-			cfg := &Config{
-				ServerConfig: confighttp.ServerConfig{
-					NetAddr: confignet.AddrConfig{
-						Endpoint:  testEndpoint,
-						Transport: confignet.TransportTypeTCP,
-					},
-					IncludeMetadata: tcase.includeMetadata,
-				},
-			}
+			cfg := factory.CreateDefaultConfig().(*Config)
+			cfg.NetAddr.Endpoint = testEndpoint
+			cfg.IncludeMetadata = tcase.includeMetadata
 
 			set := receivertest.NewNopSettings(metadata.Type)
 			nextTrace := new(consumertest.TracesSink)
@@ -809,9 +773,12 @@ func TestConsumeOTelConsumesSignalsConcurrently(t *testing.T) {
 }
 
 func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.BatchSize = 2
+
 	rcvr, err := newElasticAPMIntakeReceiver(
 		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
-		&Config{BatchSize: 2},
+		cfg,
 		receivertest.NewNopSettings(metadata.Type),
 	)
 	require.NoError(t, err)
@@ -890,14 +857,8 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			factory := NewFactory()
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
-			cfg := &Config{
-				ServerConfig: confighttp.ServerConfig{
-					NetAddr: confignet.AddrConfig{
-						Endpoint:  testEndpoint,
-						Transport: confignet.TransportTypeTCP,
-					},
-				},
-			}
+			cfg := factory.CreateDefaultConfig().(*Config)
+			cfg.NetAddr.Endpoint = testEndpoint
 			set := receivertest.NewNopSettings(metadata.Type)
 
 			var rcv component.Component

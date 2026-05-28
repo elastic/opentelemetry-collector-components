@@ -37,6 +37,9 @@ type Config struct {
 	// can be decoded concurrently.
 	MaxConcurrentDecoders int `mapstructure:"max_concurrent_decoders"`
 
+	// MaxEventSize is the maximum allowed event size, in bytes.
+	MaxEventSize int `mapstructure:"max_event_size"`
+
 	confighttp.ServerConfig `mapstructure:",squash"`
 }
 
@@ -62,19 +65,8 @@ func (cfg *Config) Validate() error {
 	if cfg.MaxConcurrentDecoders <= 0 {
 		return fmt.Errorf("max_concurrent_decoders must be positive")
 	}
+	if cfg.MaxEventSize <= 0 {
+		return fmt.Errorf("max_event_size must be positive")
+	}
 	return cfg.AgentConfig.Elasticsearch.Validate()
-}
-
-func (cfg *Config) batchSize() int {
-	if cfg.BatchSize <= 0 {
-		return defaultBatchSize
-	}
-	return cfg.BatchSize
-}
-
-func (cfg *Config) maxConcurrentDecoders() int64 {
-	if cfg.MaxConcurrentDecoders <= 0 {
-		return int64(defaultMaxConcurrentDecoders)
-	}
-	return int64(cfg.MaxConcurrentDecoders)
 }

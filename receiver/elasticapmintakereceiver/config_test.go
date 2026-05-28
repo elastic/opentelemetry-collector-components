@@ -46,6 +46,7 @@ func TestLoadConfig(t *testing.T) {
 			},
 			BatchSize:             defaultBatchSize,
 			MaxConcurrentDecoders: int(defaultMaxConcurrentDecoders),
+			MaxEventSize:          defaultMaxEventSize,
 			AgentConfig: AgentConfig{
 				Enabled:       false,
 				CacheDuration: 30 * time.Second,
@@ -85,12 +86,24 @@ func TestLoadConfig(t *testing.T) {
 			}(),
 		},
 		{
+			id: component.NewIDWithName(metadata.Type, "custom_max_event_size"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.MaxEventSize = 2048
+				return cfg
+			}(),
+		},
+		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_size"),
 			validateErrorMessage: "batch_size must be positive",
 		},
 		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_max_concurrent_decoders"),
 			validateErrorMessage: "max_concurrent_decoders must be positive",
+		},
+		{
+			id:                   component.NewIDWithName(metadata.Type, "invalid_max_event_size"),
+			validateErrorMessage: "max_event_size must be positive",
 		},
 		{
 			id: component.NewIDWithName(metadata.Type, "elasticsearch_agentcfg"),
