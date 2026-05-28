@@ -164,21 +164,11 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errMsg string, statusC
 }
 
 func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http.Request) context.Context) http.HandlerFunc {
-	var (
-		// Limit concurrent intake request decoding.
-		sem = semaphore.NewWeighted(r.cfg.maxConcurrentDecoders())
-
-		// TODO make event size configurable
-		maxEventSize = 1024 * 1024 // 1MiB
-	)
-
-	batchSize := r.cfg.batchSize()
-
 	batchProcessor := modelpb.ProcessBatchFunc(r.processBatch)
 	elasticapmProcessor := elasticapm.NewProcessor(elasticapm.Config{
 		Logger:       r.settings.Logger,
-		MaxEventSize: maxEventSize,
-		Semaphore:    sem,
+		MaxEventSize: r.cfg.MaxEventSize,
+		Semaphore:    semaphore.NewWeighted(int64(r.cfg.MaxConcurrentDecoders)),
 	})
 
 	return func(w http.ResponseWriter, req *http.Request) {
@@ -191,7 +181,7 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 			ctxFunc(req),
 			baseEvent,
 			req.Body,
-			batchSize,
+			r.cfg.BatchSize,
 			batchProcessor,
 			&elasticapmResult,
 		)
