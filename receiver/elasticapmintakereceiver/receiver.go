@@ -186,6 +186,9 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 		statusCode := http.StatusAccepted
 		ctx := ctxFunc(req)
 		// Ensure stream decoding unblocks quickly once request context is canceled.
+		// In this net/http server handler, Request.Body.Close is safe to call
+		// even if the server later closes it as part of normal request teardown:
+		// the server body Close path is idempotent and concurrent Close unblocks Read.
 		stopBodyClose := context.AfterFunc(ctx, func() {
 			_ = req.Body.Close()
 		})
