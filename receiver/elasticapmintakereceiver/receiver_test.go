@@ -28,6 +28,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -855,6 +856,14 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			expectedDynamicAttrs: []string{"labels.tag1", "numeric_labels.tag2"},
 		},
 		{
+			// Force the >64 global-label-key path, which uses big.Int masking.
+			name:      "metadata global labels propagated more than 64 keys",
+			inputFile: "transactions_70_global_labels.ndjson",
+			signal:    "traces",
+			// g0 is shadowed so will be excluded from the expected dynamic attributes
+			expectedDynamicAttrs: expectedStringGlobalLabelAttrsExcept(70, "g0"),
+		},
+		{
 			// The apm-data library marks metadata labels as Global: true and
 			// clones them onto every event. When an event has a tag with the
 			// same key as a metadata label, Labels.Set() replaces the value
@@ -949,6 +958,20 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			}
 		})
 	}
+}
+
+// utility function to generate expected dynamic attributes for global labels except for the given key
+// The function assumes the keys are prefixed with "g" followed by a sequential number.
+func expectedStringGlobalLabelAttrsExcept(n int, excludeKey string) []string {
+	attrs := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		key := "g" + strconv.Itoa(i)
+		if key == excludeKey {
+			continue
+		}
+		attrs = append(attrs, "labels."+key)
+	}
+	return attrs
 }
 
 func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
