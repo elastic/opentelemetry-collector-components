@@ -28,6 +28,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -49,6 +50,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 
+	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
@@ -854,6 +856,14 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			expectedDynamicAttrs: []string{"labels.tag1", "numeric_labels.tag2"},
 		},
 		{
+			// Force the >64 global-label-key path, which uses big.Int masking.
+			name:      "metadata global labels propagated more than 64 keys",
+			inputFile: "transactions_70_global_labels.ndjson",
+			signal:    "traces",
+			// g0 is shadowed so will be excluded from the expected dynamic attributes
+			expectedDynamicAttrs: expectedStringGlobalLabelAttrsExcept(70, "g0"),
+		},
+		{
 			// The apm-data library marks metadata labels as Global: true and
 			// clones them onto every event. When an event has a tag with the
 			// same key as a metadata label, Labels.Set() replaces the value
@@ -950,6 +960,20 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 	}
 }
 
+// utility function to generate expected dynamic attributes for global labels except for the given key
+// The function assumes the keys are prefixed with "g" followed by a sequential number.
+func expectedStringGlobalLabelAttrsExcept(n int, excludeKey string) []string {
+	attrs := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		key := "g" + strconv.Itoa(i)
+		if key == excludeKey {
+			continue
+		}
+		attrs = append(attrs, "labels."+key)
+	}
+	return attrs
+}
+
 func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
@@ -1041,4 +1065,19 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 		// so we need to ignore order when comparing.
 		pmetrictest.IgnoreResourceMetricsOrder(),
 	))
+}
+
+func TestProcessBatchReturnsOnCanceledContext(t *testing.T) {
+	r := &elasticAPMIntakeReceiver{
+		settings: receivertest.NewNopSettings(metadata.Type),
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	batch := modelpb.Batch{
+		&modelpb.APMEvent{},
+	}
+	err := r.processBatch(ctx, &batch)
+	require.ErrorIs(t, err, context.Canceled)
 }

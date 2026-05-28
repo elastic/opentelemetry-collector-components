@@ -230,8 +230,9 @@ func BenchmarkHandleStreamGlobalLabels(b *testing.B) {
 		name    string
 		payload []byte
 	}{
-		{"no_shadow", payloadGlobalLabelsNoShadow},
-		{"with_shadow", payloadGlobalLabelsWithShadow},
+		{name: "no_shadow", payload: payloadGlobalLabelsNoShadow},
+		{name: "with_shadow", payload: payloadGlobalLabelsWithShadow},
+		{name: "70_global_labels_with_shadow", payload: loadTestdata(b, "transactions_70_global_labels.ndjson")},
 	}
 	for _, tc := range cases {
 		b.Run(tc.name, func(b *testing.B) {
