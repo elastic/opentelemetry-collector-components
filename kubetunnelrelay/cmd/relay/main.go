@@ -36,6 +36,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/kubetunnel/tunnelpb"
 	"github.com/elastic/opentelemetry-collector-components/kubetunnelrelay/internal/relay"
@@ -67,8 +68,20 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// gRPC tunnel server.
-	var grpcOpts []grpc.ServerOption
+	// gRPC tunnel server. Probes hold a mostly-idle long-lived stream and send
+	// keepalive pings; relax the server's enforcement so it does not GOAWAY them
+	// with ENHANCE_YOUR_CALM ("too_many_pings"), and send our own keepalives so
+	// dead tunnels are detected and evicted.
+	grpcOpts := []grpc.ServerOption{
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             10 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    30 * time.Second,
+			Timeout: 10 * time.Second,
+		}),
+	}
 	if *tlsCert != "" && *tlsKey != "" {
 		creds, err := credentials.NewServerTLSFromFile(*tlsCert, *tlsKey)
 		if err != nil {
