@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
@@ -80,7 +81,11 @@ func (r *entityAnalyticsReceiver) Start(_ context.Context, host component.Host) 
 	if !ok {
 		return fmt.Errorf("unknown provider %q", r.cfg.Provider)
 	}
-	provider, err := factory(nil)
+	var provCfg *confmap.Conf
+	if len(r.cfg.ProviderConfig) > 0 {
+		provCfg = confmap.NewFromStringMap(r.cfg.ProviderConfig)
+	}
+	provider, err := factory(provCfg)
 	if err != nil {
 		return fmt.Errorf("creating provider %q: %w", r.cfg.Provider, err)
 	}
