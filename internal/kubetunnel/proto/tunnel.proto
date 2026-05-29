@@ -1,0 +1,64 @@
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+syntax = "proto3";
+
+package kubetunnel.v1;
+
+option go_package = "github.com/elastic/opentelemetry-collector-components/internal/kubetunnel/tunnelpb";
+
+// Tunnel is the reverse-tunnel transport. The in-cluster collector dials this
+// RPC and keeps the stream open; the relay pushes read requests down it and the
+// collector pushes results back up. The message payloads themselves are
+// deliberately opaque bytes (JSON-encoded ReadRequest/ReadResult) so the command
+// schema can evolve without regenerating protobuf.
+service Tunnel {
+  rpc Connect(stream ClientFrame) returns (stream ServerFrame);
+}
+
+// ClientFrame flows collector -> relay.
+message ClientFrame {
+  // register is sent exactly once, as the very first frame.
+  Register register = 1;
+  // request_id correlates a result with a request the relay sent down the stream.
+  string request_id = 2;
+  // result_json is a JSON-marshaled ReadResult.
+  bytes result_json = 3;
+}
+
+// ServerFrame flows relay -> collector.
+message ServerFrame {
+  string request_id = 1;
+  // request_json is a JSON-marshaled ReadRequest.
+  bytes request_json = 2;
+}
+
+// Register carries the identifying metadata used for discovery (GET /targets).
+// Each registered collector is a "probe": an in-cluster, read-only investigative
+// endpoint. "agent" is intentionally avoided here to leave that word for the
+// external AI investigation agent.
+message Register {
+  string token = 1; // stubbed auth
+  string probe_id = 2; // unique per collector (probe) instance
+  string cluster_id = 3;
+  string node_name = 4;
+  string pod_name = 5;
+  string namespace = 6;
+  string collector_version = 7;
+  string k8s_version = 8;
+  map<string, string> labels = 9;
+}
