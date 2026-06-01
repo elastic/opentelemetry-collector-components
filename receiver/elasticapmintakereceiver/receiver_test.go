@@ -49,6 +49,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver/receivertest"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 
 	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
@@ -119,6 +121,20 @@ func (blockingTracesConsumer) Capabilities() consumer.Capabilities {
 
 func (c blockingTracesConsumer) ConsumeTraces(ctx context.Context, _ ptrace.Traces) error {
 	return c.wait(ctx)
+}
+
+type cancelingUnknownTracesConsumer struct {
+	cancel context.CancelFunc
+}
+
+func (cancelingUnknownTracesConsumer) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{}
+}
+
+func (c cancelingUnknownTracesConsumer) ConsumeTraces(ctx context.Context, _ ptrace.Traces) error {
+	c.cancel()
+	<-ctx.Done()
+	return grpcstatus.Error(codes.Unknown, context.Canceled.Error())
 }
 
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
@@ -802,6 +818,32 @@ func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
 		allTraces[1].SpanCount(),
 		allTraces[2].SpanCount(),
 	})
+}
+
+func TestEventsHandler_ContextCanceledWithUnknownRPCError(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.BatchSize = 1
+
+	rcvr, err := newElasticAPMIntakeReceiver(
+		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+		cfg,
+		receivertest.NewNopSettings(metadata.Type),
+	)
+	require.NoError(t, err)
+
+	reqCtx, cancelReq := context.WithCancel(context.Background())
+	defer cancelReq()
+
+	rcvr.nextTraces = cancelingUnknownTracesConsumer{cancel: cancelReq}
+	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+		return withECSMappingMode(req.Context(), false)
+	})
+	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1))).WithContext(reqCtx)
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, statusClientClosed, rec.Code)
 }
 
 func TestGlobalLabelsMetadataPropagation(t *testing.T) {

@@ -46,6 +46,8 @@ import (
 	"go.opentelemetry.io/collector/receiver/receiverhelper"
 	"go.uber.org/zap"
 	"golang.org/x/sync/semaphore"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 
 	"github.com/elastic/apm-data/input/elasticapm"
 	"github.com/elastic/apm-data/model/modelpb"
@@ -218,12 +220,16 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 		}
 
 		requestContextErr := ctx.Err()
+		if errors.Is(requestContextErr, context.Canceled) {
+			// Request-context cancellation is authoritative. Preserve 499 even
+			// when downstream returns a wrapped/non-canonical cancellation shape
+			// (e.g. gRPC Unknown with "context canceled").
+			statusCode = statusClientClosed
+		}
 
 		if streamErr != nil {
 			r.settings.Logger.Error("failed to process APM events stream", zap.Error(streamErr))
-			// If request context is done and streamErr is context.Canceled, treat
-			// streamErr as a client canceled request context error (MIS behavior).
-			processError(streamErr, requestContextErr != nil && errors.Is(streamErr, context.Canceled))
+			processError(streamErr, false)
 		}
 		if requestContextErr != nil {
 			processError(requestContextErr, true)
@@ -238,6 +244,9 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 	}
 }
 
+// intakeStatusCodeFromErr maps a processing error to an HTTP status code.
+// Context outcomes are evaluated after invalid-input detection so cancellation
+// and deadline semantics can take precedence in the final mapping.
 func intakeStatusCodeFromErr(err error, isRequestContextErr bool) int {
 	code := http.StatusInternalServerError
 
@@ -249,13 +258,31 @@ func intakeStatusCodeFromErr(err error, isRequestContextErr bool) int {
 		}
 	}
 
-	if isRequestContextErr && errors.Is(err, context.Canceled) {
-		return statusClientClosed
-	}
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	// Evaluate final context/grpc outcome here (instead of early-returning above)
+	// so request cancellation/deadline can override a provisional invalid-input
+	// status when both signals are present.
+	switch contextCodeFromErr(err) {
+	case codes.Canceled:
+		if isRequestContextErr {
+			return statusClientClosed
+		}
+		return http.StatusServiceUnavailable
+	case codes.DeadlineExceeded:
 		return http.StatusServiceUnavailable
 	}
 	return code
+}
+
+func contextCodeFromErr(err error) codes.Code {
+	// Handles context errors and wrapped context errors.
+	if contextCode := grpcstatus.FromContextError(err).Code(); contextCode == codes.Canceled || contextCode == codes.DeadlineExceeded {
+		return contextCode
+	}
+	// Handles canonical gRPC status errors.
+	if grpcCode := grpcstatus.Code(err); grpcCode == codes.Canceled || grpcCode == codes.DeadlineExceeded {
+		return grpcCode
+	}
+	return codes.OK
 }
 
 func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
