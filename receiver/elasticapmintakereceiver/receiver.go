@@ -166,8 +166,17 @@ func errorHandler(w http.ResponseWriter, r *http.Request, errMsg string, statusC
 	// TODO
 }
 
+// streamState holds per-stream mutable state that is shared across all
+// processBatch calls for a single HandleStream invocation (one HTTP request).
+// It must not be used concurrently; HandleStream calls processBatch
+// sequentially, so no synchronisation is needed.
+type streamState struct {
+	rcv      *elasticAPMIntakeReceiver
+	groups   signalGroups
+	fpHasher *xxhashv2.Digest
+}
+
 func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http.Request) context.Context) http.HandlerFunc {
-	batchProcessor := modelpb.ProcessBatchFunc(r.processBatch)
 	elasticapmProcessor := elasticapm.NewProcessor(elasticapm.Config{
 		Logger:       r.settings.Logger,
 		MaxEventSize: r.cfg.MaxEventSize,
@@ -185,6 +194,13 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 			_ = req.Body.Close()
 		})
 		defer stopBodyClose()
+
+		// Allocate per-stream state here so signalGroups and fpHasher are
+		// shared across all processBatch calls for this request, eliminating
+		// repeated resource fingerprinting and attribute-map population for
+		// events that share the same resource within a stream.
+		ss := &streamState{rcv: r, fpHasher: xxhashv2.New()}
+		batchProcessor := modelpb.ProcessBatchFunc(ss.processBatch)
 
 		var elasticapmResult elasticapm.Result
 		baseEvent := &modelpb.APMEvent{}
@@ -285,16 +301,20 @@ func contextCodeFromErr(err error) codes.Code {
 	return codes.OK
 }
 
-func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *modelpb.Batch) error {
+func (s *streamState) processBatch(ctx context.Context, batch *modelpb.Batch) error {
+	r := s.rcv
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
+	// Reset the resource-grouping cache on every exit path so that stale
+	// ScopeSpans/ScopeLogs references from this batch are never visible to
+	// the next processBatch call in the same stream.
+	defer s.groups.reset()
+
 	var ld *plog.Logs
 	var md *pmetric.Metrics
 	var td *ptrace.Traces
-	var mainGroups signalGroups
-	fpHasher := xxhashv2.New()
 
 	processors := modelprocessor.Chained{
 		modelprocessor.SetGroupingKey{
@@ -346,7 +366,7 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 	// Skip shadow-mask computation and shadowed-batch bookkeeping entirely.
 	if len(keyIndex) == 0 {
 		for _, event := range *batch {
-			if err := r.appendEvent(event, &ld, &md, &td, &mainGroups, fpHasher); err != nil {
+			if err := r.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
 				return err
 			}
 		}
@@ -364,13 +384,13 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 			}
 			mask, shadowed := eventShadowMaskUint64(event, keyIndex)
 			if !shadowed {
-				if err := r.appendEvent(event, &ld, &md, &td, &mainGroups, fpHasher); err != nil {
+				if err := r.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
 					return err
 				}
 				continue
 			}
 			sb := getOrCreateShadowedBatchUint64(mask, &shadowIndex, &shadowedBatches)
-			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, s.fpHasher); err != nil {
 				return err
 			}
 		}
@@ -383,13 +403,13 @@ func (r *elasticAPMIntakeReceiver) processBatch(ctx context.Context, batch *mode
 			}
 			mask, shadowed := eventShadowMaskBigInt(event, keyIndex)
 			if !shadowed {
-				if err := r.appendEvent(event, &ld, &md, &td, &mainGroups, fpHasher); err != nil {
+				if err := r.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
 					return err
 				}
 				continue
 			}
 			sb := getOrCreateShadowedBatchBigInt(mask, &shadowIndex, &shadowedBatches)
-			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, fpHasher); err != nil {
+			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, s.fpHasher); err != nil {
 				return err
 			}
 		}

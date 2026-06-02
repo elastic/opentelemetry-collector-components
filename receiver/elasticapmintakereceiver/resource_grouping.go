@@ -84,6 +84,23 @@ func (g *signalGroups) recordLogScope(fp uint64, sl plog.ScopeLogs) {
 	g.logs = append(g.logs, logGroup{fp: fp, sl: sl})
 }
 
+// reset clears the cache so the stored ScopeSpans/ScopeLogs references
+// are no longer held after the pdata structures have been handed off to
+// consumeOTel. Entries are zeroed before the slice is truncated so that
+// the backing array does not retain pdata pointers, allowing the
+// consumed pdata to be garbage collected promptly. The backing slices
+// themselves are retained to avoid re-allocation on the next batch.
+func (g *signalGroups) reset() {
+	for i := range g.traces {
+		g.traces[i] = traceGroup{}
+	}
+	g.traces = g.traces[:0]
+	for i := range g.logs {
+		g.logs[i] = logGroup{}
+	}
+	g.logs = g.logs[:0]
+}
+
 // fpKVSep separates a key from a value within a single attribute write.
 // fpEntrySep separates one attribute write from the next.
 //
