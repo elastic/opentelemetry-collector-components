@@ -32,6 +32,7 @@ import (
 	"testing"
 	"time"
 
+	xxhashv2 "github.com/cespare/xxhash/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
@@ -1081,6 +1082,7 @@ func TestProcessBatchReturnsOnCanceledContext(t *testing.T) {
 	batch := modelpb.Batch{
 		&modelpb.APMEvent{},
 	}
-	err := r.processBatch(ctx, &batch)
+	ss := &streamState{rcv: r, fpHasher: xxhashv2.New()}
+	err := ss.processBatch(ctx, &batch)
 	require.ErrorIs(t, err, context.Canceled)
 }
