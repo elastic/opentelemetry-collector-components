@@ -91,13 +91,9 @@ func (g *signalGroups) recordLogScope(fp uint64, sl plog.ScopeLogs) {
 // consumed pdata to be garbage collected promptly. The backing slices
 // themselves are retained to avoid re-allocation on the next batch.
 func (g *signalGroups) reset() {
-	for i := range g.traces {
-		g.traces[i] = traceGroup{}
-	}
+	clear(g.traces)
 	g.traces = g.traces[:0]
-	for i := range g.logs {
-		g.logs[i] = logGroup{}
-	}
+	clear(g.logs)
 	g.logs = g.logs[:0]
 }
 
