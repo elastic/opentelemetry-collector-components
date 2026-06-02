@@ -855,6 +855,7 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 	dp.SetTimestamp(pcommon.Timestamp(timestampNanos))
 
 	attr := dp.Attributes()
+	attr.EnsureCapacity(5)
 	if event.Transaction != nil {
 		attr.PutStr(elasticattr.TransactionName, event.Transaction.Name)
 		attr.PutStr(elasticattr.TransactionType, event.Transaction.Type)
@@ -873,6 +874,7 @@ func createBreakdownMetricsCommon(metric pmetric.Metric, event *modelpb.APMEvent
 
 func (r *elasticAPMIntakeReceiver) elasticErrorToOtelLogRecord(sl plog.ScopeLogs, event *modelpb.APMEvent, timestampNanos uint64) {
 	l := sl.LogRecords().AppendEmpty()
+	l.Attributes().EnsureCapacity(4)
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestampNanos, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForError(event, l.Attributes())
@@ -899,6 +901,7 @@ func (r *elasticAPMIntakeReceiver) setLogSeverity(event *modelpb.APMEvent, l plo
 
 func (r *elasticAPMIntakeReceiver) elasticLogToOtelLogRecord(sl plog.ScopeLogs, event *modelpb.APMEvent, timestampNanos uint64) {
 	l := sl.LogRecords().AppendEmpty()
+	l.Attributes().EnsureCapacity(4)
 
 	mappers.SetTopLevelFieldsLogRecord(event, timestampNanos, l, r.settings.Logger)
 	mappers.SetDerivedFieldsForLog(event, l.Attributes())
@@ -944,6 +947,7 @@ func (r *elasticAPMIntakeReceiver) elasticTransactionToOtelSpan(s *ptrace.Span, 
 	transaction := event.GetTransaction()
 	s.SetName(transaction.GetName())
 
+	s.Attributes().EnsureCapacity(4)
 	mappers.SetDerivedFieldsForTransaction(event, s.Attributes())
 	mappers.TranslateIntakeV2TransactionToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForTransaction(event, s.Attributes())
@@ -953,6 +957,7 @@ func (r *elasticAPMIntakeReceiver) elasticSpanToOTelSpan(s *ptrace.Span, event *
 	span := event.GetSpan()
 	s.SetName(span.GetName())
 
+	s.Attributes().EnsureCapacity(6)
 	mappers.SetDerivedFieldsForSpan(event, s.Attributes())
 	mappers.TranslateIntakeV2SpanToOTelAttributes(event, s.Attributes())
 	mappers.SetElasticSpecificFieldsForSpan(event, s.Attributes())
