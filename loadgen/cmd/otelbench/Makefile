@@ -1,6 +1,6 @@
 include ../../../Makefile.Common
 
-VERSION := v0.8.0
+VERSION := v0.7.0
 
 .PHONY: get-version
 get-version:
