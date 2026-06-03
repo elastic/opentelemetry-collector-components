@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/loadgen
 go 1.25.0
 
 require (
-	github.com/elastic/go-elasticsearch/v8 v8.19.4
+	github.com/elastic/go-elasticsearch/v8 v8.19.6
 	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0-00010101000000-000000000000
 	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.152.0
