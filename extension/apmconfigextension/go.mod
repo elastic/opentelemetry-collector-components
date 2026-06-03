@@ -1,6 +1,7 @@
 module github.com/elastic/opentelemetry-collector-components/extension/apmconfigextension
 
 go 1.25.0
+toolchain go1.26.4
 
 require (
 	github.com/cespare/xxhash v1.1.0

@@ -1,6 +1,7 @@
 module github.com/elastic/opentelemetry-collector-components/internal/testutil
 
 go 1.23.8
+toolchain go1.26.4
 
 require github.com/stretchr/testify v1.11.1
 

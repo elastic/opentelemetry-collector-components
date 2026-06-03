@@ -1,6 +1,7 @@
 module github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor
 
 go 1.25.0
+toolchain go1.26.4
 
 require (
 	github.com/elastic/opentelemetry-lib v0.39.0

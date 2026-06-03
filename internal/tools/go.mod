@@ -1,6 +1,7 @@
 module github.com/elastic/opentelemetry-collector-components/internal/tools
 
 go 1.25.0
+toolchain go1.26.4
 
 require (
 	github.com/client9/misspell v0.3.4
