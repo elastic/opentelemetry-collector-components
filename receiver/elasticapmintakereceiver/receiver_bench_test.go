@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"testing"
 
+	xxhashv2 "github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -178,7 +179,8 @@ func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte
 		MaxEventSize: maxEventSize,
 		Semaphore:    semaphore.NewWeighted(100),
 	})
-	batchProcessor := modelpb.ProcessBatchFunc(rcv.processBatch)
+	ss := &streamState{rcv: rcv, fpHasher: xxhashv2.New()}
+	batchProcessor := modelpb.ProcessBatchFunc(ss.processBatch)
 	ctx := withECSMappingMode(context.Background(), false)
 
 	b.SetBytes(int64(len(payload)))
