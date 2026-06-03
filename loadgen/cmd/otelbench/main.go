@@ -66,6 +66,9 @@ func getExporters() (exporters []string) {
 	if Config.ExporterOTLPHTTP {
 		exporters = append(exporters, "otlphttp")
 	}
+	if Config.ExporterPRW {
+		exporters = append(exporters, "prometheusremotewrite")
+	}
 	return
 }
 

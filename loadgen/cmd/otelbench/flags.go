@@ -48,6 +48,7 @@ var Config struct {
 
 	ExporterOTLP     bool
 	ExporterOTLPHTTP bool
+	ExporterPRW      bool
 
 	ConcurrencyList  []int
 	Shuffle          bool
@@ -134,6 +135,7 @@ func Init() error {
 
 	flag.BoolVar(&Config.ExporterOTLP, "exporter-otlp", true, "benchmark exporter otlp")
 	flag.BoolVar(&Config.ExporterOTLPHTTP, "exporter-otlphttp", true, "benchmark exporter otlphttp")
+	flag.BoolVar(&Config.ExporterPRW, "exporter-prometheusremotewrite", false, "benchmark exporter prometheusremotewrite")
 
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")

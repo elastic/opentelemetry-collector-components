@@ -1,11 +1,13 @@
 change_type: enhancement
 
-note: "Add `prometheusremotewrite` exporter to the otelbench component registry"
+note: "Add `--exporter-prometheusremotewrite` benchmark flag for Prometheus Remote Write load testing"
 
 component: otelbench
 
 issues: [1250]
 
 subtext: |
-  The Prometheus Remote Write exporter is now registered in otelbench,
-  enabling load tests that send metrics directly via Prometheus Remote Write.
+  Adds a new `--exporter-prometheusremotewrite` flag (default: false) to benchmark the
+  `prometheusremotewrite` exporter. When enabled, otelbench iterates over the
+  `prometheusremotewrite` exporter name in addition to (or instead of) `otlp`/`otlphttp`,
+  allowing load tests that send metrics directly via PRW to any Prometheus-compatible endpoint.
