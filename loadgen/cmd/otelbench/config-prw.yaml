@@ -1,0 +1,40 @@
+receivers:
+  loadgen:
+    disable_pdata_reuse: true
+  nop: # required: otelbench uses nop to disable non-benchmarked pipelines
+
+exporters:
+  prometheusremotewrite:
+    endpoint: "https://local.ingest.127.0.0.1.ip.es.io:8443/api/v1/write"
+    headers:
+      Authorization: "ApiKey Y2NRM2paNEJsOExfV01qSW1nZUY6MzFvQWVNYXR1b0dlbEowbnRpdVNTQQ=="
+    tls:
+      insecure_skip_verify: true
+    timeout: 60s
+    max_batch_size_bytes: 3000000
+    max_batch_request_parallelism: 5
+    remote_write_queue:
+      enabled: true
+      queue_size: 10000
+      num_consumers: 10
+  nop: # required: otelbench uses nop to disable non-benchmarked pipelines
+
+service:
+  pipelines:
+    logs:
+      receivers: [nop]
+      exporters: [nop]
+    metrics:
+      receivers: [loadgen]
+      exporters: [prometheusremotewrite]
+    traces:
+      receivers: [nop]
+      exporters: [nop]
+    profiles:
+      receivers: [nop]
+      exporters: [nop]
+  telemetry:
+    logs:
+      level: ERROR
+    metrics:
+      level: none
