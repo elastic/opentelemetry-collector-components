@@ -4,6 +4,12 @@
 
 <!-- next version -->
 
+## v0.7.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add Prometheus Remote Write Exporter to the otelbench component registry.
+
 ## v0.6.0
 
 ### 💡 Enhancements 💡
