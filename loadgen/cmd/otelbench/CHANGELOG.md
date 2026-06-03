@@ -10,7 +10,7 @@
 
 - `otelbench`: Add `--exporter-prometheusremotewrite` benchmark flag for Prometheus Remote Write load testing (#1250)
   Adds a new `--exporter-prometheusremotewrite` flag (default: false) to benchmark the
-  `prometheusremotewrite` exporter. When enabled, otelbench allows load tests t send metrics directly via PRW to any Prometheus-compatible endpoint.
+  `prometheusremotewrite` exporter. When enabled, otelbench allows load tests to send metrics directly via PRW to any Prometheus-compatible endpoint.
 
 ## v0.7.0
 
