@@ -6,6 +6,7 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.4
 	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0-00010101000000-000000000000
 	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0-00010101000000-000000000000
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.152.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.152.0
 	go.opentelemetry.io/collector/component v1.58.0
 	go.opentelemetry.io/collector/confmap v1.58.0
@@ -108,7 +109,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.152.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.152.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.152.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.152.0 // indirect
