@@ -2,7 +2,6 @@ module github.com/elastic/opentelemetry-collector-components/connector/elasticap
 
 go 1.25.0
 
-toolchain go1.26.4
 
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced

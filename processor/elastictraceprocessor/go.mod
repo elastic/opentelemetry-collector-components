@@ -1,7 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
 
 go 1.26.0
-toolchain go1.26.4
 
 require (
 	github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.30.0

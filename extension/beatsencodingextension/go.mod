@@ -1,7 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/extension/beatsencodingextension
 
 go 1.25.0
-toolchain go1.26.4
 
 require (
 	github.com/goccy/go-json v0.10.6

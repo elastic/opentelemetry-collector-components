@@ -2,7 +2,6 @@ module github.com/elastic/opentelemetry-collector-components/connector/dynamicro
 
 go 1.25.0
 
-toolchain go1.26.4
 
 require (
 	github.com/axiomhq/hyperloglog v0.2.6

@@ -1,7 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
 
 go 1.26.0
-toolchain go1.26.4
 
 require (
 	github.com/cespare/xxhash v1.1.0
