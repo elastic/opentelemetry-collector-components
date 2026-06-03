@@ -2,6 +2,7 @@ bin/
 .tools/
 .release/
 _build/
+*.test
 
 ### IntelliJ IDEA ###
 .idea/

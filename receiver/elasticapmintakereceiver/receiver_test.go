@@ -138,6 +138,34 @@ func (c cancelingUnknownTracesConsumer) ConsumeTraces(ctx context.Context, _ ptr
 	return grpcstatus.Error(codes.Unknown, context.Canceled.Error())
 }
 
+func TestRootHandler(t *testing.T) {
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	rcvr, err := newElasticAPMIntakeReceiver(func(_ context.Context, _ component.Host) (agentcfg.Fetcher, error) {
+		return nil, nil
+	}, &Config{
+		ServerConfig: confighttp.ServerConfig{
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  testEndpoint,
+				Transport: confignet.TransportTypeTCP,
+			},
+		},
+	}, receivertest.NewNopSettings(metadata.Type))
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	require.NoError(t, rcvr.Start(ctx, componenttest.NewNopHost()))
+	defer func() { require.NoError(t, rcvr.Shutdown(ctx)) }()
+
+	res, err := http.Get("http://" + testEndpoint + rootPath)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"version":"8.9.0"}`, string(body))
+}
+
 func TestAgentCfgHandlerNoFetcher(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	rcvr, err := newElasticAPMIntakeReceiver(func(ctx context.Context, h component.Host) (agentcfg.Fetcher, error) {

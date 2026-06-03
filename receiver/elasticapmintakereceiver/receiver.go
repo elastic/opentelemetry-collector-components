@@ -63,7 +63,13 @@ const dataFormatElasticAPM = "elasticapm"
 const (
 	agentConfigPath    = "/config/v1/agents"
 	intakeV2EventsPath = "/intake/v2/events"
+	rootPath           = "/"
 	statusClientClosed = 499
+
+	// fakeVersion is returned by the root handler to satisfy APM agent version
+	// checks without exposing internal server details. Matches the value used
+	// by MIS so agents see consistent behaviour during migration.
+	fakeVersion = "8.9.0"
 )
 
 type agentCfgFetcherFactory = func(context.Context, component.Host) (agentcfg.Fetcher, error)
@@ -118,6 +124,7 @@ func (r *elasticAPMIntakeReceiver) Start(ctx context.Context, host component.Hos
 func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host component.Host) error {
 	httpMux := http.NewServeMux()
 
+	httpMux.HandleFunc("GET /{$}", r.newRootHandler())
 	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
 		return withECSMappingMode(req.Context(), r.cfg.IncludeMetadata)
 	}))
@@ -174,6 +181,17 @@ type streamState struct {
 	rcv      *elasticAPMIntakeReceiver
 	groups   signalGroups
 	fpHasher *xxhashv2.Digest
+}
+
+// newRootHandler returns an unauthenticated handler for GET /. It mirrors the
+// MIS behaviour: return HTTP 200 with a JSON version payload so that APM
+// agents can confirm they are talking to a compatible server.
+func (r *elasticAPMIntakeReceiver) newRootHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set(ContentType, "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"version": fakeVersion})
+	}
 }
 
 func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http.Request) context.Context) http.HandlerFunc {
