@@ -158,7 +158,7 @@ func TestRootHandler(t *testing.T) {
 
 	res, err := http.Get("http://" + testEndpoint + rootPath)
 	require.NoError(t, err)
-	defer res.Body.Close()
+	defer func() { require.NoError(t, res.Body.Close()) }()
 
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	body, err := io.ReadAll(res.Body)
