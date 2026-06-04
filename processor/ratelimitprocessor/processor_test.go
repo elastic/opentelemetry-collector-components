@@ -55,6 +55,60 @@ var (
 	})
 )
 
+// signalCase abstracts the signal-type differences (pdata type, count func, Consume method)
+// so delay-mode tests can range over all four signal types without duplication.
+type signalCase struct {
+	name        string
+	newConsumer func(rl rateLimiterProcessor) func(ctx context.Context) error
+}
+
+var signalCases = []signalCase{
+	{
+		name: "logs",
+		newConsumer: func(rl rateLimiterProcessor) func(ctx context.Context) error {
+			p := &LogsRateLimiterProcessor{
+				rateLimiterProcessor: rl,
+				count:                func(plog.Logs) int { return 1 },
+				next:                 func(context.Context, plog.Logs) error { return nil },
+			}
+			return func(ctx context.Context) error { return p.ConsumeLogs(ctx, plog.NewLogs()) }
+		},
+	},
+	{
+		name: "metrics",
+		newConsumer: func(rl rateLimiterProcessor) func(ctx context.Context) error {
+			p := &MetricsRateLimiterProcessor{
+				rateLimiterProcessor: rl,
+				count:                func(pmetric.Metrics) int { return 1 },
+				next:                 func(context.Context, pmetric.Metrics) error { return nil },
+			}
+			return func(ctx context.Context) error { return p.ConsumeMetrics(ctx, pmetric.NewMetrics()) }
+		},
+	},
+	{
+		name: "traces",
+		newConsumer: func(rl rateLimiterProcessor) func(ctx context.Context) error {
+			p := &TracesRateLimiterProcessor{
+				rateLimiterProcessor: rl,
+				count:                func(ptrace.Traces) int { return 1 },
+				next:                 func(context.Context, ptrace.Traces) error { return nil },
+			}
+			return func(ctx context.Context) error { return p.ConsumeTraces(ctx, ptrace.NewTraces()) }
+		},
+	},
+	{
+		name: "profiles",
+		newConsumer: func(rl rateLimiterProcessor) func(ctx context.Context) error {
+			p := &ProfilesRateLimiterProcessor{
+				rateLimiterProcessor: rl,
+				count:                func(pprofile.Profiles) int { return 1 },
+				next:                 func(context.Context, pprofile.Profiles) error { return nil },
+			}
+			return func(ctx context.Context) error { return p.ConsumeProfiles(ctx, pprofile.NewProfiles()) }
+		},
+	},
+}
+
 func TestGetCountFunc_Logs(t *testing.T) {
 	logs := plog.NewLogs()
 	resourceLogs := logs.ResourceLogs().AppendEmpty()
@@ -197,6 +251,7 @@ func TestConsume_Logs(t *testing.T) {
 			Sum:   1,
 			Attributes: attribute.NewSet(
 				telemetry.WithDecision("throttled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
@@ -272,6 +327,7 @@ func TestConsume_Metrics(t *testing.T) {
 			Sum:   1,
 			Attributes: attribute.NewSet(
 				telemetry.WithDecision("throttled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
@@ -347,6 +403,7 @@ func TestConsume_Traces(t *testing.T) {
 			Sum:   1,
 			Attributes: attribute.NewSet(
 				telemetry.WithDecision("throttled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
@@ -423,6 +480,7 @@ func TestConsume_Profiles(t *testing.T) {
 			Sum:   1,
 			Attributes: attribute.NewSet(
 				telemetry.WithDecision("throttled"),
+				telemetry.WithReason(telemetry.StatusOverLimit),
 				attribute.String("x-tenant-id", "TestProjectID"),
 			),
 		},
@@ -533,6 +591,7 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 			Attributes: attribute.NewSet(
 				[]attribute.KeyValue{
 					telemetry.WithDecision("throttled"),
+					telemetry.WithReason(telemetry.StatusOverLimit),
 					attribute.String("x-tenant-id", "TestProjectID"),
 				}...),
 		},
@@ -550,6 +609,35 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 			Value: 1,
 			Attributes: attribute.NewSet(
 				attribute.String("x-tenant-id", "TestProjectID"),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+
+	metadatatest.AssertEqualRatelimitTokensAfter(t, tel, []metricdata.DataPoint[float64]{
+		{
+			Attributes: attribute.NewSet(
+				attribute.String("x-tenant-id", "TestProjectID"),
+				telemetry.WithLimitThreshold(1),
+			),
+		},
+	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+
+	// TokensBefore >= 0 for both requests (bucket drained to 0, never in debt), so is_throttled=0.
+	metadatatest.AssertEqualRatelimitIsThrottled(t, tel, []metricdata.DataPoint[int64]{
+		{
+			Value: 0,
+			Attributes: attribute.NewSet(
+				attribute.String("x-tenant-id", "TestProjectID"),
+				telemetry.WithLimitThreshold(1),
+			),
+		},
+	}, metricdatatest.IgnoreTimestamp())
+
+	metadatatest.AssertEqualRatelimitTokensBefore(t, tel, []metricdata.DataPoint[float64]{
+		{
+			Attributes: attribute.NewSet(
+				attribute.String("x-tenant-id", "TestProjectID"),
+				telemetry.WithLimitThreshold(1),
 			),
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
@@ -572,6 +660,183 @@ func testRatelimitLogMetadata(t *testing.T, logEntries []observer.LoggedEntry) {
 
 	assert.Equal(t, "TestProjectID", fields["x-tenant-id"])
 	assert.Equal(t, int64(1), fields["hits"])
+}
+
+func TestConsume_DelayMode(t *testing.T) {
+	for _, sig := range signalCases {
+		t.Run(sig.name, func(t *testing.T) {
+			// Rate=10/Burst=1: the second request waits ~100ms, which is far above any
+			// inter-statement timing jitter under -race.
+			rateLimiter := newTestLocalRateLimiter(t, &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             10,
+					Burst:            1,
+					ThrottleBehavior: ThrottleBehaviorDelay,
+					RetryDelay:       1 * time.Second,
+					ThrottleInterval: 1 * time.Second,
+				},
+			})
+			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(t, err)
+
+			tt := componenttest.NewTelemetry()
+			telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
+			require.NoError(t, err)
+
+			consume := sig.newConsumer(rateLimiterProcessor{
+				rl:               rateLimiter,
+				telemetryBuilder: telemetryBuilder,
+				logger:           zap.NewNop(),
+				metadataKeys:     []string{"x-tenant-id"},
+				strategy:         StrategyRateLimitRequests,
+			})
+
+			// First request: within burst, no delay → decision=accepted
+			require.NoError(t, consume(clientContext))
+
+			// Second request: burst exhausted → delayed, no error returned
+			require.NoError(t, consume(clientContext))
+
+			metadatatest.AssertEqualRatelimitRequests(t, tt, []metricdata.DataPoint[int64]{
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						telemetry.WithDecision("accepted"),
+						telemetry.WithReason(telemetry.StatusUnderLimit),
+						attribute.String("x-tenant-id", "TestProjectID"),
+					),
+				},
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						telemetry.WithDecision("delayed"),
+						telemetry.WithReason(telemetry.StatusOverLimit),
+						attribute.String("x-tenant-id", "TestProjectID"),
+					),
+				},
+			}, metricdatatest.IgnoreTimestamp())
+
+			metadatatest.AssertEqualRatelimitDelayDuration(t, tt, []metricdata.HistogramDataPoint[float64]{
+				{
+					Attributes: attribute.NewSet(
+						telemetry.WithDecision("delayed"),
+						telemetry.WithReason(telemetry.StatusOverLimit),
+						attribute.String("x-tenant-id", "TestProjectID"),
+					),
+				},
+			}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+
+			metadatatest.AssertEqualRatelimitTokensAfter(t, tt, []metricdata.DataPoint[float64]{
+				{
+					Attributes: attribute.NewSet(
+						attribute.String("x-tenant-id", "TestProjectID"),
+						telemetry.WithLimitThreshold(10),
+					),
+				},
+			}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+
+			// TokensBefore >= 0 for both requests (bucket drains to 0, not into debt), so is_throttled=0.
+			metadatatest.AssertEqualRatelimitIsThrottled(t, tt, []metricdata.DataPoint[int64]{
+				{
+					Value: 0,
+					Attributes: attribute.NewSet(
+						attribute.String("x-tenant-id", "TestProjectID"),
+						telemetry.WithLimitThreshold(10),
+					),
+				},
+			}, metricdatatest.IgnoreTimestamp())
+
+			metadatatest.AssertEqualRatelimitTokensBefore(t, tt, []metricdata.DataPoint[float64]{
+				{
+					Attributes: attribute.NewSet(
+						attribute.String("x-tenant-id", "TestProjectID"),
+						telemetry.WithLimitThreshold(10),
+					),
+				},
+			}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+		})
+	}
+}
+
+func TestConsume_DelayMode_ContextCancelled(t *testing.T) {
+	for _, sig := range signalCases {
+		t.Run(sig.name, func(t *testing.T) {
+			// Rate=1/Burst=1: second request requires a ~1s wait. The context is
+			// pre-cancelled so the select in local.go fires immediately — no actual sleep.
+			rateLimiter := newTestLocalRateLimiter(t, &Config{
+				RateLimitSettings: RateLimitSettings{
+					Rate:             1,
+					Burst:            1,
+					ThrottleBehavior: ThrottleBehaviorDelay,
+					RetryDelay:       1 * time.Second,
+					ThrottleInterval: 1 * time.Second,
+				},
+			})
+			err := rateLimiter.Start(context.Background(), componenttest.NewNopHost())
+			require.NoError(t, err)
+
+			tt := componenttest.NewTelemetry()
+			telemetryBuilder, err := metadata.NewTelemetryBuilder(tt.NewTelemetrySettings())
+			require.NoError(t, err)
+
+			consume := sig.newConsumer(rateLimiterProcessor{
+				rl:               rateLimiter,
+				telemetryBuilder: telemetryBuilder,
+				logger:           zap.NewNop(),
+				metadataKeys:     []string{"x-tenant-id"},
+				strategy:         StrategyRateLimitRequests,
+			})
+
+			// First request: within burst, no delay.
+			require.NoError(t, consume(clientContext))
+
+			// Second request: burst exhausted, would wait ~1s. Pre-cancel the context
+			// so the select fires immediately without sleeping.
+			ctx, cancel := context.WithCancel(clientContext)
+			cancel()
+			err = consume(ctx)
+			require.ErrorIs(t, err, context.Canceled)
+
+			metadatatest.AssertEqualRatelimitRequests(t, tt, []metricdata.DataPoint[int64]{
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						telemetry.WithDecision("accepted"),
+						telemetry.WithReason(telemetry.StatusUnderLimit),
+						attribute.String("x-tenant-id", "TestProjectID"),
+					),
+				},
+				{
+					Value: 1,
+					Attributes: attribute.NewSet(
+						telemetry.WithDecision("cancelled"),
+						telemetry.WithReason(telemetry.StatusOverLimit),
+						attribute.String("x-tenant-id", "TestProjectID"),
+					),
+				},
+			}, metricdatatest.IgnoreTimestamp())
+
+			// TokensBefore >= 0 for both requests (bucket drains to 0, not into debt), so is_throttled=0.
+			metadatatest.AssertEqualRatelimitIsThrottled(t, tt, []metricdata.DataPoint[int64]{
+				{
+					Value: 0,
+					Attributes: attribute.NewSet(
+						attribute.String("x-tenant-id", "TestProjectID"),
+						telemetry.WithLimitThreshold(1),
+					),
+				},
+			}, metricdatatest.IgnoreTimestamp())
+
+			metadatatest.AssertEqualRatelimitTokensBefore(t, tt, []metricdata.DataPoint[float64]{
+				{
+					Attributes: attribute.NewSet(
+						attribute.String("x-tenant-id", "TestProjectID"),
+						telemetry.WithLimitThreshold(1),
+					),
+				},
+			}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
+		})
+	}
 }
 
 func testError(t *testing.T, err error) {

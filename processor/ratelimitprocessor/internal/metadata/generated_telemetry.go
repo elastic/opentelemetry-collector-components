@@ -44,9 +44,13 @@ type TelemetryBuilder struct {
 	mu                          sync.Mutex
 	registrations               []metric.Registration
 	RatelimitConcurrentRequests metric.Int64UpDownCounter
+	RatelimitDelayDuration      metric.Float64Histogram
+	RatelimitIsThrottled        metric.Int64Gauge
 	RatelimitRequestDuration    metric.Float64Histogram
 	RatelimitRequestSize        metric.Int64Histogram
 	RatelimitRequests           metric.Int64Counter
+	RatelimitTokensAfter        metric.Float64Gauge
+	RatelimitTokensBefore       metric.Float64Gauge
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -84,6 +88,19 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		metric.WithUnit("{requests}"),
 	)
 	errs = errors.Join(errs, err)
+	builder.RatelimitDelayDuration, err = builder.meter.Float64Histogram(
+		"otelcol_ratelimit.delay_duration",
+		metric.WithDescription("Time (in seconds) a request spent waiting due to rate limiting. Only recorded when a delay occurs. [Development]"),
+		metric.WithUnit("{seconds}"),
+		metric.WithExplicitBucketBoundaries([]float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1, 5, 10, 30}...),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitIsThrottled, err = builder.meter.Int64Gauge(
+		"otelcol_ratelimit.is_throttled",
+		metric.WithDescription("1 if the token bucket was already in deficit when this request arrived (genuine sustained throttling), 0 otherwise. Most meaningful with throttle_behavior=delay. [Development]"),
+		metric.WithUnit("{state}"),
+	)
+	errs = errors.Join(errs, err)
 	builder.RatelimitRequestDuration, err = builder.meter.Float64Histogram(
 		"otelcol_ratelimit.request_duration",
 		metric.WithDescription("Time(in seconds) taken to process a rate limit request [Development]"),
@@ -102,6 +119,18 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		"otelcol_ratelimit.requests",
 		metric.WithDescription("Number of rate-limiting requests [Development]"),
 		metric.WithUnit("{requests}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitTokensAfter, err = builder.meter.Float64Gauge(
+		"otelcol_ratelimit.tokens_after",
+		metric.WithDescription("Token bucket level after this request was served. Negative values indicate the bucket is in debt. [Development]"),
+		metric.WithUnit("{tokens}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitTokensBefore, err = builder.meter.Float64Gauge(
+		"otelcol_ratelimit.tokens_before",
+		metric.WithDescription("Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). [Development]"),
+		metric.WithUnit("{tokens}"),
 	)
 	errs = errors.Join(errs, err)
 	return &builder, errs

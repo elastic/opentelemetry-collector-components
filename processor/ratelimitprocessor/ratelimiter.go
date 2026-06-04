@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
@@ -35,10 +36,35 @@ var (
 	errTooManyRequests = status.Error(codes.ResourceExhausted, "too many requests")
 )
 
+// Decision is the outcome of a RateLimit call, used as a metric label value.
+type Decision string
+
+const (
+	// DecisionAccepted means the request passed through with no wait.
+	DecisionAccepted Decision = "accepted"
+	// DecisionDelayed means the request waited in delay mode before continuing.
+	DecisionDelayed Decision = "delayed"
+	// DecisionThrottled means the request was rejected in error mode.
+	DecisionThrottled Decision = "throttled"
+	// DecisionCancelled means the context was cancelled while waiting for a delayed request.
+	DecisionCancelled Decision = "cancelled"
+)
+
+// RateLimitResult carries the outcome of a RateLimit call plus the data
+// needed by the processor layer to record telemetry without any OTel
+// dependencies inside the limiter itself.
+type RateLimitResult struct {
+	Decision     Decision
+	Delay        time.Duration // non-zero only when Decision == DecisionDelayed
+	TokensBefore float64       // bucket level before this request consumed any tokens
+	TokensAfter  float64       // bucket level after the call; negative means in debt
+	ConfigRate   float64       // effective configured rate (tokens/sec) for the key
+}
+
 // RateLimiter provides an interface for rate limiting by some number
 // of things: requests, records, or bytes.
 type RateLimiter interface {
-	RateLimit(ctx context.Context, n int) error
+	RateLimit(ctx context.Context, n int) (RateLimitResult, error)
 }
 
 // getUniqueKey returns a unique key based on client metadata stored

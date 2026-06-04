@@ -21,6 +21,21 @@ telemetry:
       sum:
         value_type: int
         monotonic: false
+    ratelimit.delay_duration:
+      enabled: true
+      description: Time (in seconds) a request spent waiting due to rate limiting. Only recorded when a delay occurs.
+      unit: "{seconds}"
+      stability: development
+      histogram:
+        value_type: double
+        bucket_boundaries: [ 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0 ]
+    ratelimit.is_throttled:
+      enabled: true
+      description: 1 if the token bucket was already in deficit when this request arrived (genuine sustained throttling), 0 otherwise. Most meaningful with throttle_behavior=delay.
+      unit: "{state}"
+      stability: development
+      gauge:
+        value_type: int
     ratelimit.request_duration:
       enabled: true
       description: Time(in seconds) taken to process a rate limit request
@@ -79,6 +94,20 @@ telemetry:
         value_type: int
         monotonic: true
       attributes: ["decision", "reason"]
+    ratelimit.tokens_after:
+      enabled: true
+      description: Token bucket level after this request was served. Negative values indicate the bucket is in debt.
+      unit: "{tokens}"
+      stability: development
+      gauge:
+        value_type: double
+    ratelimit.tokens_before:
+      enabled: true
+      description: Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling).
+      unit: "{tokens}"
+      stability: development
+      gauge:
+        value_type: double
 attributes:
   decision:
     description: rate limit decision
