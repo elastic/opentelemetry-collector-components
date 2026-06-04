@@ -233,7 +233,9 @@ func withRateLimit[T any](ctx context.Context,
 		tb.RatelimitDelayDuration.Record(ctx, result.Delay.Seconds(), metric.WithAttributeSet(attrRequestsSet))
 	}
 	tokenAttrs := attribute.NewSet(append(attrsCommon, telemetry.WithLimitThreshold(result.ConfigRate))...)
-	tb.RatelimitTokens.Record(ctx, result.Tokens, metric.WithAttributeSet(tokenAttrs))
+	tb.RatelimitTokensAfter.Record(ctx, result.TokensAfter, metric.WithAttributeSet(tokenAttrs))
+	tb.RatelimitTokensBefore.Record(ctx, result.TokensBefore, metric.WithAttributeSet(tokenAttrs))
+
 	if err != nil {
 		if result.Decision != DecisionCancelled {
 			// enhance error logging with metadata keys

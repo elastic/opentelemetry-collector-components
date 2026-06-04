@@ -77,10 +77,12 @@ func TestLocalRateLimiter_RateLimit(t *testing.T) {
 				assert.Equal(t, DecisionAccepted, result.Decision)
 				assert.Zero(t, result.Delay)
 				assert.Equal(t, float64(10), result.ConfigRate)
+				assert.Greater(t, result.TokensBefore, float64(0))
 			}
 
 			result, err := rateLimiter.RateLimit(context.Background(), 1) // should fail/delay
 			assert.Equal(t, float64(10), result.ConfigRate)
+			assert.GreaterOrEqual(t, result.TokensBefore, float64(0)) // bucket drained to 0, not in debt
 			switch behavior {
 			case ThrottleBehaviorError:
 				assert.EqualError(t, err, "rpc error: code = ResourceExhausted desc = too many requests")
@@ -202,6 +204,7 @@ func TestLocalRateLimiter_HitsExceedsBurst_Delay(t *testing.T) {
 	assert.Equal(t, DecisionDelayed, result.Decision)
 	assert.Greater(t, result.Delay, time.Duration(0))
 	assert.Equal(t, float64(100), result.ConfigRate)
+	assert.Greater(t, result.TokensBefore, float64(0)) // fresh limiter, bucket was full on arrival
 
 	// 100 hits at 100/s with burst=10: ~900ms expected. Allow generous
 	// margins for CI timing jitter.
@@ -227,6 +230,7 @@ func TestLocalRateLimiter_HitsExceedsBurst_Error(t *testing.T) {
 	assert.Equal(t, DecisionThrottled, result.Decision)
 	assert.Zero(t, result.Delay)
 	assert.Equal(t, float64(100), result.ConfigRate)
+	assert.Greater(t, result.TokensBefore, float64(0)) // fresh limiter, bucket was full on arrival
 }
 
 // TestLocalRateLimiter_FIFO_HitsExceedsBurst spawns multiple concurrent

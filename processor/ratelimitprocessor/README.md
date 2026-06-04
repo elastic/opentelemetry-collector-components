@@ -52,11 +52,12 @@ processors:
 | `otelcol_ratelimit.request_size` | Histogram | Size (bytes) of the request. Only recorded when `strategy: bytes`. Labelled with `decision` and `reason`. |
 | `otelcol_ratelimit.concurrent_requests` | UpDownCounter | Number of requests currently being processed (in-flight). Labelled by metadata keys only. |
 | `otelcol_ratelimit.delay_duration` | Histogram | Time (seconds) a request spent waiting due to rate limiting. Only recorded when `throttle_behavior: delay` and a delay actually occurred (`decision: delayed`). Labelled with `decision` and `reason`. |
-| `otelcol_ratelimit.tokens` | Gauge | Current token level in the rate limiter bucket. Negative values mean the bucket is in debt (active throttling). Labelled by metadata keys and `limit_threshold`. |
+| `otelcol_ratelimit.tokens_after` | Gauge | Token bucket level after this request was served. Negative values indicate the bucket is in debt. Labelled by metadata keys and `limit_threshold`. |
+| `otelcol_ratelimit.tokens_before` | Gauge | Token bucket level when the request arrived, before any tokens were consumed. Negative means the bucket was already in deficit on arrival (sustained throttling). Labelled by metadata keys and `limit_threshold`. |
 
 #### Attributes
 
-**`decision`** — the outcome of the rate limit check:
+**`ratelimit_decision`** — the outcome of the rate limit check:
 
 | Value | Meaning |
 |-------|---------|
@@ -72,4 +73,4 @@ processors:
 | `under_limit` | Bucket had enough tokens; request accepted immediately. |
 | `over_limit` | Bucket was empty or in deficit. Applies to `delayed`, `throttled`, and `cancelled` decisions. |
 
-**`limit_threshold`** — the configured token refill rate (tokens/second) for the key. Appears only on `otelcol_ratelimit.tokens`.
+**`limit_threshold`** — the configured token refill rate (tokens/second) for the key. Appears on `otelcol_ratelimit.tokens_after` and `otelcol_ratelimit.tokens_before`.

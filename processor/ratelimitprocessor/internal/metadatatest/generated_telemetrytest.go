@@ -115,16 +115,30 @@ func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }
 
-func AssertEqualRatelimitTokens(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[float64], opts ...metricdatatest.Option) {
+func AssertEqualRatelimitTokensAfter(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[float64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
-		Name:        "otelcol_ratelimit.tokens",
-		Description: "Current token level in the rate limiter bucket per key. Negative values indicate active throttling. [Development]",
+		Name:        "otelcol_ratelimit.tokens_after",
+		Description: "Token bucket level after this request was served. Negative values indicate the bucket is in debt. [Development]",
 		Unit:        "{tokens}",
 		Data: metricdata.Gauge[float64]{
 			DataPoints: dps,
 		},
 	}
-	got, err := tt.GetMetric("otelcol_ratelimit.tokens")
+	got, err := tt.GetMetric("otelcol_ratelimit.tokens_after")
+	require.NoError(t, err)
+	metricdatatest.AssertEqual(t, want, got, opts...)
+}
+
+func AssertEqualRatelimitTokensBefore(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[float64], opts ...metricdatatest.Option) {
+	want := metricdata.Metrics{
+		Name:        "otelcol_ratelimit.tokens_before",
+		Description: "Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). [Development]",
+		Unit:        "{tokens}",
+		Data: metricdata.Gauge[float64]{
+			DataPoints: dps,
+		},
+	}
+	got, err := tt.GetMetric("otelcol_ratelimit.tokens_before")
 	require.NoError(t, err)
 	metricdatatest.AssertEqual(t, want, got, opts...)
 }

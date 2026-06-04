@@ -48,7 +48,8 @@ type TelemetryBuilder struct {
 	RatelimitRequestDuration    metric.Float64Histogram
 	RatelimitRequestSize        metric.Int64Histogram
 	RatelimitRequests           metric.Int64Counter
-	RatelimitTokens             metric.Float64Gauge
+	RatelimitTokensAfter        metric.Float64Gauge
+	RatelimitTokensBefore       metric.Float64Gauge
 }
 
 // TelemetryBuilderOption applies changes to default builder.
@@ -113,9 +114,15 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		metric.WithUnit("{requests}"),
 	)
 	errs = errors.Join(errs, err)
-	builder.RatelimitTokens, err = builder.meter.Float64Gauge(
-		"otelcol_ratelimit.tokens",
-		metric.WithDescription("Current token level in the rate limiter bucket per key. Negative values indicate active throttling. [Development]"),
+	builder.RatelimitTokensAfter, err = builder.meter.Float64Gauge(
+		"otelcol_ratelimit.tokens_after",
+		metric.WithDescription("Token bucket level after this request was served. Negative values indicate the bucket is in debt. [Development]"),
+		metric.WithUnit("{tokens}"),
+	)
+	errs = errors.Join(errs, err)
+	builder.RatelimitTokensBefore, err = builder.meter.Float64Gauge(
+		"otelcol_ratelimit.tokens_before",
+		metric.WithDescription("Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). [Development]"),
 		metric.WithUnit("{tokens}"),
 	)
 	errs = errors.Join(errs, err)

@@ -77,13 +77,20 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) (RateLimitRe
 	})
 	state := v.(*keyState)
 
+	// preTokens is the bucket level before this request consumes anything.
+	// PreTokens < 0 means the bucket was already in deficit on arrival —
+	// a reliable signal for genuine sustained throttling (vs. a transient
+	// batching spike that clears before the next request).
+	preTokens := state.limiter.Tokens()
+
 	// makeResult captures the current token level and config for telemetry.
 	makeResult := func(decision Decision, delay time.Duration) RateLimitResult {
 		return RateLimitResult{
-			Decision:   decision,
-			Delay:      delay,
-			Tokens:     state.limiter.Tokens(),
-			ConfigRate: float64(cfg.Rate),
+			Decision:     decision,
+			Delay:        delay,
+			TokensBefore: preTokens,
+			TokensAfter:  state.limiter.Tokens(),
+			ConfigRate:   float64(cfg.Rate),
 		}
 	}
 

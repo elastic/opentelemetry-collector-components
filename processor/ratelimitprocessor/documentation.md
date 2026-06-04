@@ -53,9 +53,17 @@ Number of rate-limiting requests
 | decision | rate limit decision | Any Str | - |
 | reason | rate limit reason | Any Str | - |
 
-### otelcol_ratelimit.tokens
+### otelcol_ratelimit.tokens_after
 
-Current token level in the rate limiter bucket per key. Negative values indicate active throttling.
+Token bucket level after this request was served. Negative values indicate the bucket is in debt.
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {tokens} | Gauge | Double | Development |
+
+### otelcol_ratelimit.tokens_before
+
+Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling).
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
