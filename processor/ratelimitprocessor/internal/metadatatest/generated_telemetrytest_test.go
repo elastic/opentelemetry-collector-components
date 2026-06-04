@@ -38,6 +38,7 @@ func TestSetupTelemetry(t *testing.T) {
 	defer tb.Shutdown()
 	tb.RatelimitConcurrentRequests.Add(context.Background(), 1)
 	tb.RatelimitDelayDuration.Record(context.Background(), 1)
+	tb.RatelimitIsThrottled.Record(context.Background(), 1)
 	tb.RatelimitRequestDuration.Record(context.Background(), 1)
 	tb.RatelimitRequestSize.Record(context.Background(), 1)
 	tb.RatelimitRequests.Add(context.Background(), 1)
@@ -48,6 +49,9 @@ func TestSetupTelemetry(t *testing.T) {
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualRatelimitDelayDuration(t, testTel,
 		[]metricdata.HistogramDataPoint[float64]{{}}, metricdatatest.IgnoreValue(),
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualRatelimitIsThrottled(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualRatelimitRequestDuration(t, testTel,
 		[]metricdata.HistogramDataPoint[float64]{{}}, metricdatatest.IgnoreValue(),

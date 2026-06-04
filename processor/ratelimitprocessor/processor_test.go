@@ -622,6 +622,17 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
 
+	// TokensBefore >= 0 for both requests (bucket drained to 0, never in debt), so is_throttled=0.
+	metadatatest.AssertEqualRatelimitIsThrottled(t, tel, []metricdata.DataPoint[int64]{
+		{
+			Value: 0,
+			Attributes: attribute.NewSet(
+				attribute.String("x-tenant-id", "TestProjectID"),
+				telemetry.WithLimitThreshold(1),
+			),
+		},
+	}, metricdatatest.IgnoreTimestamp())
+
 	metadatatest.AssertEqualRatelimitTokensBefore(t, tel, []metricdata.DataPoint[float64]{
 		{
 			Attributes: attribute.NewSet(
@@ -724,6 +735,17 @@ func TestConsume_DelayMode(t *testing.T) {
 				},
 			}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
 
+			// TokensBefore >= 0 for both requests (bucket drains to 0, not into debt), so is_throttled=0.
+			metadatatest.AssertEqualRatelimitIsThrottled(t, tt, []metricdata.DataPoint[int64]{
+				{
+					Value: 0,
+					Attributes: attribute.NewSet(
+						attribute.String("x-tenant-id", "TestProjectID"),
+						telemetry.WithLimitThreshold(10),
+					),
+				},
+			}, metricdatatest.IgnoreTimestamp())
+
 			metadatatest.AssertEqualRatelimitTokensBefore(t, tt, []metricdata.DataPoint[float64]{
 				{
 					Attributes: attribute.NewSet(
@@ -790,6 +812,17 @@ func TestConsume_DelayMode_ContextCancelled(t *testing.T) {
 						telemetry.WithDecision("cancelled"),
 						telemetry.WithReason(telemetry.StatusOverLimit),
 						attribute.String("x-tenant-id", "TestProjectID"),
+					),
+				},
+			}, metricdatatest.IgnoreTimestamp())
+
+			// TokensBefore >= 0 for both requests (bucket drains to 0, not into debt), so is_throttled=0.
+			metadatatest.AssertEqualRatelimitIsThrottled(t, tt, []metricdata.DataPoint[int64]{
+				{
+					Value: 0,
+					Attributes: attribute.NewSet(
+						attribute.String("x-tenant-id", "TestProjectID"),
+						telemetry.WithLimitThreshold(1),
 					),
 				},
 			}, metricdatatest.IgnoreTimestamp())

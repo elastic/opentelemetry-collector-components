@@ -22,6 +22,14 @@ Time (in seconds) a request spent waiting due to rate limiting. Only recorded wh
 | ---- | ----------- | ---------- | --------- |
 | {seconds} | Histogram | Double | Development |
 
+### otelcol_ratelimit.is_throttled
+
+1 if the token bucket was already in deficit when this request arrived (genuine sustained throttling), 0 otherwise. Most meaningful with throttle_behavior=delay.
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {state} | Gauge | Int | Development |
+
 ### otelcol_ratelimit.request_duration
 
 Time(in seconds) taken to process a rate limit request

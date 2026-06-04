@@ -45,6 +45,12 @@ type rateLimiterProcessor struct {
 	tracerProvider   trace.TracerProvider
 	logger           *zap.Logger
 	strategy         Strategy
+	statusReporter   *throttleStatusReporter
+}
+
+func (r *rateLimiterProcessor) Start(ctx context.Context, host component.Host) error {
+	r.statusReporter.setHost(host)
+	return r.Component.Start(ctx, host)
 }
 
 type LogsRateLimiterProcessor struct {
@@ -89,6 +95,7 @@ func NewLogsRateLimiterProcessor(
 			logger:           logger,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
+			statusReporter:   newThrottleStatusReporter(),
 		},
 		count: getLogsCountFunc(strategy),
 		next:  next,
@@ -113,6 +120,7 @@ func NewMetricsRateLimiterProcessor(
 			logger:           logger,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
+			statusReporter:   newThrottleStatusReporter(),
 		},
 		count: getMetricsCountFunc(strategy),
 		next:  next,
@@ -137,6 +145,7 @@ func NewTracesRateLimiterProcessor(
 			logger:           logger,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
+			statusReporter:   newThrottleStatusReporter(),
 		},
 		count: getTracesCountFunc(strategy),
 		next:  next,
@@ -161,6 +170,7 @@ func NewProfilesRateLimiterProcessor(
 			logger:           logger,
 			metadataKeys:     metadataKeys,
 			strategy:         strategy,
+			statusReporter:   newThrottleStatusReporter(),
 		},
 		count: getProfilesCountFunc(strategy),
 		next:  next,
@@ -210,6 +220,7 @@ func withRateLimit[T any](ctx context.Context,
 	metadataKeys []string,
 	tb *metadata.TelemetryBuilder,
 	logger *zap.Logger,
+	sr *throttleStatusReporter,
 	next func(ctx context.Context, data T) error,
 	data T,
 ) error {
@@ -236,6 +247,11 @@ func withRateLimit[T any](ctx context.Context,
 	tb.RatelimitTokensAfter.Record(ctx, result.TokensAfter, metric.WithAttributeSet(tokenAttrs))
 	tb.RatelimitTokensBefore.Record(ctx, result.TokensBefore, metric.WithAttributeSet(tokenAttrs))
 
+	var isThrottledVal int64
+	if sr.observe(result.TokensBefore < 0) {
+		isThrottledVal = 1
+	}
+	tb.RatelimitIsThrottled.Record(ctx, isThrottledVal, metric.WithAttributeSet(tokenAttrs))
 	if err != nil {
 		if result.Decision != DecisionCancelled {
 			// enhance error logging with metadata keys
@@ -267,6 +283,7 @@ func (r *LogsRateLimiterProcessor) ConsumeLogs(ctx context.Context, ld plog.Logs
 		r.metadataKeys,
 		r.telemetryBuilder,
 		r.logger,
+		r.statusReporter,
 		r.next, ld,
 	)
 }
@@ -279,6 +296,7 @@ func (r *MetricsRateLimiterProcessor) ConsumeMetrics(ctx context.Context, md pme
 		r.metadataKeys,
 		r.telemetryBuilder,
 		r.logger,
+		r.statusReporter,
 		r.next, md,
 	)
 }
@@ -291,6 +309,7 @@ func (r *TracesRateLimiterProcessor) ConsumeTraces(ctx context.Context, td ptrac
 		r.metadataKeys,
 		r.telemetryBuilder,
 		r.logger,
+		r.statusReporter,
 		r.next, td,
 	)
 }
@@ -303,6 +322,7 @@ func (r *ProfilesRateLimiterProcessor) ConsumeProfiles(ctx context.Context, pd p
 		r.metadataKeys,
 		r.telemetryBuilder,
 		r.logger,
+		r.statusReporter,
 		r.next, pd,
 	)
 }

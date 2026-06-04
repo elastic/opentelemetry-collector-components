@@ -52,6 +52,7 @@ processors:
 | `otelcol_ratelimit.request_size` | Histogram | Size (bytes) of the request. Only recorded when `strategy: bytes`. Labelled with `decision` and `reason`. |
 | `otelcol_ratelimit.concurrent_requests` | UpDownCounter | Number of requests currently being processed (in-flight). Labelled by metadata keys only. |
 | `otelcol_ratelimit.delay_duration` | Histogram | Time (seconds) a request spent waiting due to rate limiting. Only recorded when `throttle_behavior: delay` and a delay actually occurred (`decision: delayed`). Labelled with `decision` and `reason`. |
+| `otelcol_ratelimit.is_throttled` | Gauge | `1` when the component considers this key genuinely throttled (debounced signal, maps 1:1 to DEGRADED/OK component status), `0` otherwise. Labelled by metadata keys and `limit_threshold`. |
 | `otelcol_ratelimit.tokens_after` | Gauge | Token bucket level after this request was served. Negative values indicate the bucket is in debt. Labelled by metadata keys and `limit_threshold`. |
 | `otelcol_ratelimit.tokens_before` | Gauge | Token bucket level when the request arrived, before any tokens were consumed. Negative means the bucket was already in deficit on arrival (sustained throttling). Labelled by metadata keys and `limit_threshold`. |
 
