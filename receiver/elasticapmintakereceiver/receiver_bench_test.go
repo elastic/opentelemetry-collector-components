@@ -87,12 +87,11 @@ func BenchmarkProcessBatch(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			factory := NewFactory()
 			endpoint := testutil.GetAvailableLocalAddress(b)
-			cfg := &Config{
-				ServerConfig: confighttp.ServerConfig{
-					NetAddr: confignet.AddrConfig{
-						Endpoint:  endpoint,
-						Transport: confignet.TransportTypeTCP,
-					},
+			cfg := createDefaultConfig().(*Config)
+			cfg.ServerConfig = confighttp.ServerConfig{
+				NetAddr: confignet.AddrConfig{
+					Endpoint:  endpoint,
+					Transport: confignet.TransportTypeTCP,
 				},
 			}
 
