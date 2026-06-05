@@ -28,7 +28,6 @@ import (
 	"strconv"
 	"testing"
 
-	xxhashv2 "github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -88,12 +87,11 @@ func BenchmarkProcessBatch(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			factory := NewFactory()
 			endpoint := testutil.GetAvailableLocalAddress(b)
-			cfg := &Config{
-				ServerConfig: confighttp.ServerConfig{
-					NetAddr: confignet.AddrConfig{
-						Endpoint:  endpoint,
-						Transport: confignet.TransportTypeTCP,
-					},
+			cfg := createDefaultConfig().(*Config)
+			cfg.ServerConfig = confighttp.ServerConfig{
+				NetAddr: confignet.AddrConfig{
+					Endpoint:  endpoint,
+					Transport: confignet.TransportTypeTCP,
 				},
 			}
 
@@ -179,8 +177,6 @@ func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte
 		MaxEventSize: maxEventSize,
 		Semaphore:    semaphore.NewWeighted(100),
 	})
-	ss := &streamState{rcv: rcv, fpHasher: xxhashv2.New()}
-	batchProcessor := modelpb.ProcessBatchFunc(ss.processBatch)
 	ctx := withECSMappingMode(context.Background(), false)
 
 	b.SetBytes(int64(len(payload)))
@@ -191,8 +187,9 @@ func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte
 	for i := 0; i < b.N; i++ {
 		reader.Reset(payload)
 		var result elasticapm.Result
-		baseEvent := &modelpb.APMEvent{Event: &modelpb.Event{}}
-		if err := proc.HandleStream(ctx, baseEvent, reader, batchSize, batchProcessor, &result); err != nil {
+		ss := rcv.newStreamState()
+		batchProcessor := modelpb.ProcessBatchFunc(ss.processBatch)
+		if err := proc.HandleStream(ctx, ss.baseEvent, reader, batchSize, batchProcessor, &result); err != nil {
 			b.Fatal(err)
 		}
 	}
