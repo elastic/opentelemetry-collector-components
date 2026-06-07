@@ -1,4 +1,16 @@
 extensions:
+  kubetunnelprobe:
+    relay:
+      endpoint: ${env:RELAY_ENDPOINT:-localhost:4317}
+      tls:
+        insecure: true
+    auth_token: ${env:RELAY_TOKEN:-}
+    cluster_id: ${env:CLUSTER_ID:-local}
+    node_name: ${env:NODE_NAME:-}
+    pod_name: ${env:POD_NAME:-}
+    namespace: ${env:POD_NAMESPACE:-}
+    # Empty = in-cluster config; set for out-of-cluster runs (e.g. local testing).
+    kubeconfig: ${env:KUBECONFIG_PATH:-}
 
 receivers:
   nop:
@@ -14,6 +26,7 @@ exporters:
 connectors:
 
 service:
+  extensions: [kubetunnelprobe]
   pipelines:
     logs:
       exporters: [nop]
