@@ -506,7 +506,7 @@ docker run -d --name es-local \
   -e "ELASTIC_PASSWORD=changeme" \
   -e "xpack.security.enabled=true" \
   -p 9200:9200 \
-  docker.elastic.co/elasticsearch/elasticsearch:8.19.16
+  docker.elastic.co/elasticsearch/elasticsearch:9.4.2
 
 until curl -s -u elastic:changeme https://localhost:9200/_cluster/health \
   --cacert /tmp/es-certs/ca.crt | jq -e '.status != "red"' > /dev/null; do
