@@ -414,7 +414,7 @@ The example pipelines compose standard Collector components. Each one is indepen
 
 **`file_storage` extension** (optional) — `extensions.file_storage`
 
-- `directory` — where the BoltDB-backed key-value file lives. Used by both the receiver's cursor and the exporter's persistent sending queue. Both live in the same DB but in separate keyspaces — no conflict.
+- `directory` — where the BoltDB-backed key-value file lives. Used by both the receiver's cursor and the exporter's persistent sending queue. Both live in the same DB but in separate keyspaces — no conflict. **The directory must be writable by the collector process**: `file_storage` fails at service initialization when it cannot create or write the directory (even with `create_directory: true`, e.g. a non-root container user and a path outside any writable mount), and an extension that fails to start takes the whole collector down — no receiver-side handling can degrade gracefully around it, because the failure happens before receivers start.
 - `compaction.on_rebound` — when enabled, BoltDB is compacted after a spike (queue drained from large to small). Without this, the file only grows. Strongly recommended for long-running deployments.
 - `fsync` — fsync each write. Trades throughput for durability. Set to `true` if a power loss must not lose the last few queued events; leave default for higher-throughput-but-eventually-durable setups.
 
@@ -664,11 +664,81 @@ The `_id` (`1774777751-zW7QLk7MmGNbuha8XEVw2iitcJc=`) is set by the ingest pipel
 | `batch_size` | int | `1000` | Events per ConsumeLogs call. Controls memory per batch. |
 | `stream_buffer_size` | int | `4` | Bounded channel capacity between NDJSON scanner and batch consumer. Controls back-pressure. |
 | `timeout` | duration | `60s` | HTTP request timeout. Plus other `confighttp.ClientConfig` fields (`tls`, `headers`, `compression`, `proxy_url`, …) at the receiver root. |
-| `storage` | component.ID | (nil) | Storage extension for cursor persistence (e.g., `file_storage`). Optional — when unset the receiver still tracks chain state in memory and runs without errors, but every collector restart re-fetches from `initial_lookback` since the cursor doesn't survive the process. |
+| `storage` | component.ID | (nil) | Storage extension for cursor persistence (e.g., `file_storage`). Optional — when unset the receiver still tracks chain state in memory and runs without errors, but every collector restart re-fetches from `initial_lookback` since the cursor doesn't survive the process. See [Storage Extension Resolution](#storage-extension-resolution) for how the reference resolves. |
 
 > **Note on `http.auth`**: configuring an `auth` authenticator on the HTTP client is rejected at validation time. The receiver wraps the configured transport with the EdgeGrid signer, so a chained authenticator would run after EdgeGrid signs the request and silently invalidate the signature. Use the top-level `authentication` block (`client_token`, `client_secret`, `access_token`) for EdgeGrid HMAC-SHA256 credentials — that is the only supported auth mechanism for this receiver.
 
 The receiver also embeds [`confighttp.ClientConfig`](https://github.com/open-telemetry/opentelemetry-collector/blob/main/config/confighttp/README.md) for TLS, proxy, and advanced HTTP settings.
+
+### Storage Extension Resolution
+
+Fleet-managed Elastic Agent configurations rename every component declared in
+a policy stream to `<type>/<stream-suffix>` (receiver and extension get the
+**same** suffix) without rewriting the receiver's `storage:` reference, which
+would leave that reference dangling. The receiver therefore resolves storage
+with the following precedence:
+
+1. **Exact match** of the configured component ID (standalone behavior,
+   unchanged).
+2. For **bare type references only** (e.g. `storage: file_storage`):
+   the extension of that type whose instance name equals the receiver's own
+   instance name, then — if that fails — the only extension of that type.
+   Ambiguity (multiple candidates, none name-matched) fails `Start` with the
+   candidate list.
+3. Explicit `type/name` references (e.g. `storage: file_storage/foo`) never
+   fall back — a missing named reference is a hard error.
+
+When `storage:` is **not** configured and the receiver has a non-empty
+instance name, exactly one storage-capable extension sharing that instance
+name is **auto-bound** (logged at info). This lets a Fleet integration package
+enable persistence by declaring a `file_storage` extension in the stream
+without any receiver-body reference. Unnamed receivers — the standalone
+shape — never auto-bind: keep using the explicit `storage:` reference.
+
+Auto-bind failures (no candidate, multiple candidates, client creation error)
+only disable persistence — a config without `storage:` never fails to start
+because of them. Note the limit of that guarantee: it covers receiver-side
+resolution only. A declared `file_storage` extension that cannot start —
+typically an unwritable `directory` — fails the collector at service
+initialization, before any receiver runs (see the `file_storage` notes in the
+components section).
+
+#### Verifying and resetting persistence
+
+**Is persistence active?** The startup log line tells you directly — its
+`storage` field carries the resolved extension ID, or `disabled`:
+
+```
+info  akamai SIEM receiver started  {..., "storage": "file_storage"}
+```
+
+When a fallback or auto-bind was involved, an info line precedes it naming
+the rule and the resolved ID: `resolved storage extension via instance-name
+match`, `resolved storage extension via unique type match`, or `auto-bound
+storage extension declared in this stream`.
+
+**Is the cursor surviving restarts?** After a restart you should see:
+
+```
+info  loaded persisted cursor  {"chain_from": ..., "chain_to": ..., "caught_up": ..., "last_offset": "..."}
+```
+
+If that line is absent on a restart, the receiver started fresh and will
+re-fetch the `initial_lookback` window.
+
+**Where the state lives.** The `file_storage` extension creates one
+BoltDB file per component inside its `directory`, named
+`receiver_akamai_siem_<instance name>` — e.g. `receiver_akamai_siem_` for an
+unnamed `akamai_siem:` receiver (note the trailing underscore), or
+`receiver_akamai_siem_prod` for `akamai_siem/prod:`. Its existence and a
+recent mtime are the on-disk confirmation that the cursor is being written.
+
+**Forcing a replay.** Stop the collector, delete that state file, and start
+it again: the next run has no cursor and re-fetches `initial_lookback` of
+history. When shipping to the Akamai integration's data stream, replayed
+events are deduplicated by the ingest pipeline's fingerprint-based `_id`
+(replays surface as benign `version_conflict_engine_exception` bulk errors in
+the exporter logs).
 
 ### Tuning Guide
 

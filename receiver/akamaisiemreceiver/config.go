@@ -90,8 +90,21 @@ type Config struct {
 	DataStream DataStreamConfig `mapstructure:"data_stream"`
 
 	// StorageID references a storage extension for persisting cursor state across
-	// restarts. If nil, cursor persistence is disabled and the receiver starts fresh.
-	// Use with the file_storage extension for file-based persistence.
+	// restarts. Use with the file_storage extension for file-based persistence.
+	//
+	// A configured reference resolves to, in order: the exact component ID; and
+	// for bare type references only (e.g. `file_storage`), the extension of that
+	// type whose instance name equals this receiver's own instance name, then
+	// the only extension of that type. The fallbacks exist for Fleet-managed
+	// configurations, which rename every component declared in a policy stream
+	// to <type>/<stream-suffix> without rewriting the receiver's storage
+	// reference. Explicit <type>/<name> references never fall back.
+	//
+	// If nil, cursor persistence is disabled and the receiver starts fresh —
+	// unless the receiver has a non-empty instance name and exactly one
+	// storage-capable extension shares that instance name, in which case it is
+	// auto-bound (the Fleet-managed shape, where the stream-declared extension
+	// carries the receiver's suffix). Unnamed receivers never auto-bind.
 	StorageID *component.ID `mapstructure:"storage"`
 }
 

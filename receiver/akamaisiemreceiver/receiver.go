@@ -21,6 +21,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -69,12 +71,50 @@ func newAkamaiReceiver(cfg *Config, settings receiver.Settings, cons consumer.Lo
 func (r *akamaiReceiver) Start(ctx context.Context, host component.Host) error {
 	// Create cursor store for state persistence via storage extension.
 	var cursorStore *cursor.CursorStore
+	storageInfo := "disabled"
 	if r.cfg.StorageID != nil {
-		storageClient, err := getStorageClient(ctx, host, r.cfg.StorageID, r.settings.ID)
+		se, resolvedID, rule, err := resolveStorageExtension(host, *r.cfg.StorageID, r.settings.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get storage client: %w", err)
+		}
+		if rule != "" {
+			r.log.Info("resolved storage extension via "+rule,
+				zap.String("configured", r.cfg.StorageID.String()),
+				zap.String("resolved", resolvedID.String()),
+			)
+		}
+		storageClient, err := se.GetClient(ctx, component.KindReceiver, r.settings.ID, "")
 		if err != nil {
 			return fmt.Errorf("failed to get storage client: %w", err)
 		}
 		cursorStore = cursor.NewCursorStore(storageClient)
+		storageInfo = resolvedID.String()
+	} else if candidates := autoBindStorageExtension(host, r.settings.ID); len(candidates) == 1 {
+		// Opt-in persistence for Fleet-managed configurations, which cannot
+		// carry a storage reference (Kibana renames stream-declared extensions
+		// without rewriting receiver-body references): a single storage-capable
+		// extension sharing this receiver's instance name was necessarily
+		// declared in the same policy stream, so bind to it. Failures here only
+		// disable persistence — a config without `storage:` must never fail.
+		id := candidates[0]
+		se := host.GetExtensions()[id].(storage.Extension)
+		storageClient, err := se.GetClient(ctx, component.KindReceiver, r.settings.ID, "")
+		if err != nil {
+			r.log.Warn("failed to get client from auto-bound storage extension, cursor persistence disabled",
+				zap.String("storage", id.String()),
+				zap.Error(err),
+			)
+		} else {
+			r.log.Info("auto-bound storage extension declared in this stream",
+				zap.String("storage", id.String()),
+			)
+			cursorStore = cursor.NewCursorStore(storageClient)
+			storageInfo = id.String()
+		}
+	} else if len(candidates) > 1 {
+		r.log.Warn("multiple storage extensions match this receiver's instance name, cursor persistence disabled; reference one explicitly via the storage setting",
+			zap.Strings("candidates", idStrings(candidates)),
+		)
 	}
 
 	// Load persisted cursor.
@@ -183,10 +223,6 @@ func (r *akamaiReceiver) Start(ctx context.Context, host component.Host) error {
 		r.pollLoop(pollCtx, poll)
 	}()
 
-	storageInfo := "disabled"
-	if r.cfg.StorageID != nil {
-		storageInfo = r.cfg.StorageID.String()
-	}
 	r.log.Info("akamai SIEM receiver started",
 		zap.String("endpoint", r.cfg.HTTP.Endpoint),
 		zap.String("config_ids", r.cfg.ConfigIDs),
@@ -301,18 +337,114 @@ func (r *akamaiReceiver) emitEvents(ctx context.Context, events []string) error 
 	return r.consumer.ConsumeLogs(ctx, logs)
 }
 
-// getStorageClient retrieves a storage.Client from the configured storage extension.
-func getStorageClient(ctx context.Context, host component.Host, id *component.ID, componentID component.ID) (storage.Client, error) {
-	if id == nil {
-		return nil, fmt.Errorf("storage extension ID is nil")
+// resolveStorageExtension finds the storage extension for the configured
+// reference. An exact component-ID match always wins. A bare type reference
+// (no instance name, e.g. `file_storage`) additionally tolerates the
+// per-stream component renaming applied by Fleet-managed OTel configurations,
+// which suffix every component declared in a policy stream
+// (file_storage -> file_storage/<stream-suffix>) without rewriting the
+// receiver's storage reference: the reference falls back to the extension of
+// the configured type whose instance name equals the receiver's own (Fleet
+// gives both the same suffix), then to the only extension of that type.
+// Explicit type/name references never fall back.
+//
+// The returned rule is non-empty when a fallback step resolved the reference,
+// for caller logging.
+func resolveStorageExtension(host component.Host, configured, self component.ID) (storage.Extension, component.ID, string, error) {
+	exts := host.GetExtensions()
+	if ext, ok := exts[configured]; ok {
+		se, ok := ext.(storage.Extension)
+		if !ok {
+			return nil, component.ID{}, "", fmt.Errorf("extension %q is not a storage extension", configured)
+		}
+		return se, configured, "", nil
 	}
-	ext, ok := host.GetExtensions()[*id]
-	if !ok {
-		return nil, fmt.Errorf("storage extension %q not found", id)
+	if configured.Name() != "" {
+		return nil, component.ID{}, "", fmt.Errorf("storage extension %q not found%s", configured, availableStorageHint(exts))
 	}
-	se, ok := ext.(storage.Extension)
-	if !ok {
-		return nil, fmt.Errorf("extension %q is not a storage extension", id)
+
+	var sameType []component.ID
+	for id := range exts {
+		if id.Type() == configured.Type() {
+			sameType = append(sameType, id)
+		}
 	}
-	return se.GetClient(ctx, component.KindReceiver, componentID, "")
+	sortIDs(sameType)
+
+	for _, id := range sameType {
+		if id.Name() == self.Name() {
+			se, ok := exts[id].(storage.Extension)
+			if !ok {
+				return nil, component.ID{}, "", fmt.Errorf("extension %q is not a storage extension", id)
+			}
+			return se, id, "instance-name match", nil
+		}
+	}
+	if len(sameType) == 1 {
+		se, ok := exts[sameType[0]].(storage.Extension)
+		if !ok {
+			return nil, component.ID{}, "", fmt.Errorf("extension %q is not a storage extension", sameType[0])
+		}
+		return se, sameType[0], "unique type match", nil
+	}
+	if len(sameType) > 1 {
+		return nil, component.ID{}, "", fmt.Errorf("storage extension %q is ambiguous: matches [%s]; use an explicit type/name reference", configured, strings.Join(idStrings(sameType), ", "))
+	}
+	return nil, component.ID{}, "", fmt.Errorf("storage extension %q not found%s", configured, availableStorageHint(exts))
+}
+
+// autoBindStorageExtension returns the storage-capable extensions whose
+// instance name equals the receiver's own. Under Fleet-managed configurations
+// every component declared in a policy stream shares one instance-name suffix,
+// so such an extension was necessarily declared alongside this receiver; a
+// package template can therefore enable cursor persistence by declaring a
+// storage extension without any receiver-body reference (which Fleet cannot
+// rewrite). Unnamed receivers (the standalone shape) never auto-bind — they
+// keep requiring an explicit storage reference.
+func autoBindStorageExtension(host component.Host, self component.ID) []component.ID {
+	if self.Name() == "" {
+		return nil
+	}
+	var candidates []component.ID
+	for id, ext := range host.GetExtensions() {
+		if id.Name() != self.Name() {
+			continue
+		}
+		if _, ok := ext.(storage.Extension); !ok {
+			continue
+		}
+		candidates = append(candidates, id)
+	}
+	sortIDs(candidates)
+	return candidates
+}
+
+// availableStorageHint renders the storage-capable extension IDs present on
+// the host for not-found error messages.
+func availableStorageHint(exts map[component.ID]component.Component) string {
+	var ids []component.ID
+	for id, ext := range exts {
+		if _, ok := ext.(storage.Extension); ok {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return " (no storage extensions are available)"
+	}
+	sortIDs(ids)
+	return fmt.Sprintf(" (available storage extensions: [%s])", strings.Join(idStrings(ids), ", "))
+}
+
+func sortIDs(ids []component.ID) {
+	slices.SortFunc(ids, func(a, b component.ID) int {
+		return strings.Compare(a.String(), b.String())
+	})
+}
+
+func idStrings(ids []component.ID) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
 }
