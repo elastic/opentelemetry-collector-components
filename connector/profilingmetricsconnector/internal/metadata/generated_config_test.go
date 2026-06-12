@@ -43,52 +43,58 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "all_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
-					SamplesBeamCount: MetricConfig{
+					SamplesBeamCount: SamplesBeamCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesClassification: MetricConfig{
+					SamplesClassification: SamplesClassificationMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SamplesClassificationMetricAttributeKey{SamplesClassificationMetricAttributeKeyClassification, SamplesClassificationMetricAttributeKeyFrameType, SamplesClassificationMetricAttributeKeyProfileTypeUnit},
+					},
+					SamplesCpythonCount: SamplesCpythonCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesCpythonCount: MetricConfig{
+					SamplesCustomAggregation: SamplesCustomAggregationMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SamplesCustomAggregationMetricAttributeKey{SamplesCustomAggregationMetricAttributeKeyFrameType, SamplesCustomAggregationMetricAttributeKeyProfileTypeUnit},
+					},
+					SamplesDotnetCount: SamplesDotnetCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesCustomAggregation: MetricConfig{
+					SamplesFrameType: SamplesFrameTypeMetricConfig{
+						Enabled:             true,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SamplesFrameTypeMetricAttributeKey{SamplesFrameTypeMetricAttributeKeyFrameType, SamplesFrameTypeMetricAttributeKeyProfileTypeUnit},
+					},
+					SamplesGoCount: SamplesGoCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesDotnetCount: MetricConfig{
+					SamplesJvmCount: SamplesJvmCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesFrameType: MetricConfig{
+					SamplesKernelCount: SamplesKernelCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesGoCount: MetricConfig{
+					SamplesNativeCount: SamplesNativeCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesJvmCount: MetricConfig{
+					SamplesPerlCount: SamplesPerlCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesKernelCount: MetricConfig{
+					SamplesPhpCount: SamplesPhpCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesNativeCount: MetricConfig{
+					SamplesRubyCount: SamplesRubyCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesPerlCount: MetricConfig{
+					SamplesRustCount: SamplesRustCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesPhpCount: MetricConfig{
+					SamplesUserCount: SamplesUserCountMetricConfig{
 						Enabled: true,
 					},
-					SamplesRubyCount: MetricConfig{
-						Enabled: true,
-					},
-					SamplesRustCount: MetricConfig{
-						Enabled: true,
-					},
-					SamplesUserCount: MetricConfig{
-						Enabled: true,
-					},
-					SamplesV8jsCount: MetricConfig{
+					SamplesV8jsCount: SamplesV8jsCountMetricConfig{
 						Enabled: true,
 					},
 				},
@@ -98,52 +104,58 @@ func TestMetricsBuilderConfig(t *testing.T) {
 			name: "none_set",
 			want: MetricsBuilderConfig{
 				Metrics: MetricsConfig{
-					SamplesBeamCount: MetricConfig{
+					SamplesBeamCount: SamplesBeamCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesClassification: MetricConfig{
+					SamplesClassification: SamplesClassificationMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SamplesClassificationMetricAttributeKey{SamplesClassificationMetricAttributeKeyClassification, SamplesClassificationMetricAttributeKeyFrameType, SamplesClassificationMetricAttributeKeyProfileTypeUnit},
+					},
+					SamplesCpythonCount: SamplesCpythonCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesCpythonCount: MetricConfig{
+					SamplesCustomAggregation: SamplesCustomAggregationMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SamplesCustomAggregationMetricAttributeKey{SamplesCustomAggregationMetricAttributeKeyFrameType, SamplesCustomAggregationMetricAttributeKeyProfileTypeUnit},
+					},
+					SamplesDotnetCount: SamplesDotnetCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesCustomAggregation: MetricConfig{
+					SamplesFrameType: SamplesFrameTypeMetricConfig{
+						Enabled:             false,
+						AggregationStrategy: AggregationStrategyAvg,
+						EnabledAttributes:   []SamplesFrameTypeMetricAttributeKey{SamplesFrameTypeMetricAttributeKeyFrameType, SamplesFrameTypeMetricAttributeKeyProfileTypeUnit},
+					},
+					SamplesGoCount: SamplesGoCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesDotnetCount: MetricConfig{
+					SamplesJvmCount: SamplesJvmCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesFrameType: MetricConfig{
+					SamplesKernelCount: SamplesKernelCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesGoCount: MetricConfig{
+					SamplesNativeCount: SamplesNativeCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesJvmCount: MetricConfig{
+					SamplesPerlCount: SamplesPerlCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesKernelCount: MetricConfig{
+					SamplesPhpCount: SamplesPhpCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesNativeCount: MetricConfig{
+					SamplesRubyCount: SamplesRubyCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesPerlCount: MetricConfig{
+					SamplesRustCount: SamplesRustCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesPhpCount: MetricConfig{
+					SamplesUserCount: SamplesUserCountMetricConfig{
 						Enabled: false,
 					},
-					SamplesRubyCount: MetricConfig{
-						Enabled: false,
-					},
-					SamplesRustCount: MetricConfig{
-						Enabled: false,
-					},
-					SamplesUserCount: MetricConfig{
-						Enabled: false,
-					},
-					SamplesV8jsCount: MetricConfig{
+					SamplesV8jsCount: SamplesV8jsCountMetricConfig{
 						Enabled: false,
 					},
 				},
@@ -153,7 +165,7 @@ func TestMetricsBuilderConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := loadMetricsBuilderConfig(t, tt.name)
-			diff := cmp.Diff(tt.want, cfg, cmpopts.IgnoreUnexported(MetricConfig{}))
+			diff := cmp.Diff(tt.want, cfg, cmpopts.IgnoreUnexported(SamplesBeamCountMetricConfig{}, SamplesClassificationMetricConfig{}, SamplesCpythonCountMetricConfig{}, SamplesCustomAggregationMetricConfig{}, SamplesDotnetCountMetricConfig{}, SamplesFrameTypeMetricConfig{}, SamplesGoCountMetricConfig{}, SamplesJvmCountMetricConfig{}, SamplesKernelCountMetricConfig{}, SamplesNativeCountMetricConfig{}, SamplesPerlCountMetricConfig{}, SamplesPhpCountMetricConfig{}, SamplesRubyCountMetricConfig{}, SamplesRustCountMetricConfig{}, SamplesUserCountMetricConfig{}, SamplesV8jsCountMetricConfig{}))
 			require.Emptyf(t, diff, "Config mismatch (-expected +actual):\n%s", diff)
 		})
 	}

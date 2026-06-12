@@ -5,14 +5,54 @@ all_set:
       enabled: true
     samples.classification:
       enabled: true
+      attributes: ["classification","frame_type","profile.type_unit"]
     samples.cpython.count:
       enabled: true
     samples.custom_aggregation:
       enabled: true
+      attributes: ["frame_type","profile.type_unit"]
     samples.dotnet.count:
       enabled: true
     samples.frame_type:
       enabled: true
+      attributes: ["frame_type","profile.type_unit"]
+    samples.go.count:
+      enabled: true
+    samples.jvm.count:
+      enabled: true
+    samples.kernel.count:
+      enabled: true
+    samples.native.count:
+      enabled: true
+    samples.perl.count:
+      enabled: true
+    samples.php.count:
+      enabled: true
+    samples.ruby.count:
+      enabled: true
+    samples.rust.count:
+      enabled: true
+    samples.user.count:
+      enabled: true
+    samples.v8js.count:
+      enabled: true
+reaggregate_set:
+  metrics:
+    samples.beam.count:
+      enabled: true
+    samples.classification:
+      enabled: true
+      attributes: []
+    samples.cpython.count:
+      enabled: true
+    samples.custom_aggregation:
+      enabled: true
+      attributes: []
+    samples.dotnet.count:
+      enabled: true
+    samples.frame_type:
+      enabled: true
+      attributes: []
     samples.go.count:
       enabled: true
     samples.jvm.count:
@@ -39,14 +79,17 @@ none_set:
       enabled: false
     samples.classification:
       enabled: false
+      attributes: ["classification","frame_type","profile.type_unit"]
     samples.cpython.count:
       enabled: false
     samples.custom_aggregation:
       enabled: false
+      attributes: ["frame_type","profile.type_unit"]
     samples.dotnet.count:
       enabled: false
     samples.frame_type:
       enabled: false
+      attributes: ["frame_type","profile.type_unit"]
     samples.go.count:
       enabled: false
     samples.jvm.count:
