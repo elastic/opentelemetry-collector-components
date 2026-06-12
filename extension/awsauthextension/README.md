@@ -20,11 +20,10 @@ At least one of `credentials`, `assume_role`, or `profile` must be set.
 
 | Parameter       | Type   | Description |
 | --------------- | ------ | ----------- |
-| `region`        | String | Region hint for credential resolution, and default region for the STS client when assuming a role. |
 | `profile`       | String | Narrows the default chain to a named shared-config profile. Mutually exclusive with `credentials`. |
 | `imds_endpoint` | String | Custom EC2 IMDS endpoint for the default chain. |
 | `credentials`   | Object | Static credentials: `access_key_id`, `secret_access_key` (both required), `session_token` (optional). The secret fields are redacted in config dumps. |
-| `assume_role`   | Object | STS role assumption: `arn` (required), `external_id`, `session_name`, `sts_region`. |
+| `assume_role`   | Object | STS role assumption: `arn` (required), `external_id`, `session_name`, `sts_region` (region for the STS call; falls back to the SDK's default region resolution, e.g. `AWS_REGION`). |
 
 Static credentials and role assumption compose: when both are set, the static credentials
 are the base identity used to assume the role. When only `assume_role` is set, the default
@@ -37,7 +36,6 @@ assumed role.
 ```yaml
 extensions:
   awsauth:
-    region: us-east-1
     credentials:
       access_key_id: ${env:AWS_ACCESS_KEY_ID}
       secret_access_key: ${env:AWS_SECRET_ACCESS_KEY}

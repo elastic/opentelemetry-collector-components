@@ -36,10 +36,6 @@ import (
 // identity used to assume the role. When only assume_role is set, the default chain
 // provides the base identity for the AssumeRole call.
 type Config struct {
-	// Region is the region hint for credential resolution and the default region for
-	// the STS client when assuming a role. Optional; the SDK's own region resolution
-	// applies when empty.
-	Region string `mapstructure:"region"`
 	// Profile narrows the default credential chain to a named shared-config profile.
 	// Mutually exclusive with static credentials.
 	Profile string `mapstructure:"profile"`
@@ -68,8 +64,8 @@ type AssumeRoleConfig struct {
 	ExternalID string `mapstructure:"external_id"`
 	// SessionName for the assumed-role session. Optional.
 	SessionName string `mapstructure:"session_name"`
-	// STSRegion is the region for the STS client used to assume the role.
-	// Defaults to the extension-level region.
+	// STSRegion is the region for the STS client used to assume the role. When empty,
+	// the SDK's default region resolution applies (e.g. AWS_REGION, shared config).
 	STSRegion string `mapstructure:"sts_region"`
 }
 

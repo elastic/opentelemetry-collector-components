@@ -37,8 +37,8 @@ func TestConfigValidate(t *testing.T) {
 			expectedErr: errNoCredentialSource,
 		},
 		{
-			name:        "region only is rejected",
-			config:      Config{Region: "us-east-1"},
+			name:        "imds endpoint only is rejected",
+			config:      Config{IMDSEndpoint: "https://169.254.169.254"},
 			expectedErr: errNoCredentialSource,
 		},
 		{
@@ -67,10 +67,10 @@ func TestConfigValidate(t *testing.T) {
 		{
 			name: "assume role",
 			config: Config{
-				Region: "us-east-1",
 				AssumeRole: configoptional.Some(AssumeRoleConfig{
 					ARN:        "arn:aws:iam::123456789012:role/monitoring",
 					ExternalID: "my-external-id",
+					STSRegion:  "us-east-1",
 				}),
 			},
 		},

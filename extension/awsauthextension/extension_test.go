@@ -28,7 +28,6 @@ import (
 
 func TestStartStaticCredentials(t *testing.T) {
 	ext := newAWSAuthExtension(&Config{
-		Region: "us-west-2",
 		Credentials: configoptional.Some(CredentialsConfig{
 			AccessKeyID:     "AKID",
 			SecretAccessKey: "SECRET",
@@ -51,7 +50,6 @@ func TestStartStaticCredentials(t *testing.T) {
 
 func TestStartAssumeRole(t *testing.T) {
 	ext := newAWSAuthExtension(&Config{
-		Region: "us-west-2",
 		Credentials: configoptional.Some(CredentialsConfig{
 			AccessKeyID:     "AKID",
 			SecretAccessKey: "SECRET",
@@ -75,7 +73,6 @@ func TestStartAssumeRoleWithDefaultChainBase(t *testing.T) {
 	// assume_role without static credentials: the default chain provides the base
 	// identity for the AssumeRole call.
 	ext := newAWSAuthExtension(&Config{
-		Region: "eu-west-1",
 		AssumeRole: configoptional.Some(AssumeRoleConfig{
 			ARN: "arn:aws:iam::123456789012:role/monitoring",
 		}),

@@ -73,9 +73,6 @@ func (e *awsAuthExtension) GetCredentialsProvider() aws.CredentialsProvider {
 // profile), with STS role assumption layered on top when configured.
 func buildCredentialsProvider(ctx context.Context, cfg *Config) (aws.CredentialsProvider, error) {
 	opts := []func(*awsconfig.LoadOptions) error{}
-	if cfg.Region != "" {
-		opts = append(opts, awsconfig.WithRegion(cfg.Region))
-	}
 	if cfg.IMDSEndpoint != "" {
 		opts = append(opts, awsconfig.WithEC2IMDSEndpoint(cfg.IMDSEndpoint))
 	}
