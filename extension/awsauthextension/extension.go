@@ -93,10 +93,12 @@ func buildCredentialsProvider(ctx context.Context, cfg *Config) (aws.Credentials
 	}
 
 	if role := cfg.AssumeRole.Get(); role != nil {
-		if role.STSRegion != "" {
-			awsCfg.Region = role.STSRegion
-		}
-		provider := stscreds.NewAssumeRoleProvider(sts.NewFromConfig(awsCfg), role.ARN,
+		stsClient := sts.NewFromConfig(awsCfg, func(o *sts.Options) {
+			if role.STSRegion != "" {
+				o.Region = role.STSRegion
+			}
+		})
+		provider := stscreds.NewAssumeRoleProvider(stsClient, role.ARN,
 			func(o *stscreds.AssumeRoleOptions) {
 				if role.ExternalID != "" {
 					o.ExternalID = aws.String(role.ExternalID)
