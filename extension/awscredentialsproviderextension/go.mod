@@ -1,4 +1,4 @@
-module github.com/elastic/opentelemetry-collector-components/extension/awsauthextension
+module github.com/elastic/opentelemetry-collector-components/extension/awscredentialsproviderextension
 
 go 1.25.0
 

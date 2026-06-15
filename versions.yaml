@@ -19,7 +19,7 @@ module-sets:
       - github.com/elastic/opentelemetry-collector-components/extension/clientaddrmiddlewareextension
       - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
       - github.com/elastic/opentelemetry-collector-components/internal/elasticattr
-      - github.com/elastic/opentelemetry-collector-components/extension/awsauthextension
+      - github.com/elastic/opentelemetry-collector-components/extension/awscredentialsproviderextension
 
 excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/internal/tools

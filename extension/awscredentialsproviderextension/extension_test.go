@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package awsauthextension
+package awscredentialsproviderextension
 
 import (
 	"testing"
@@ -27,7 +27,7 @@ import (
 )
 
 func TestStartStaticCredentials(t *testing.T) {
-	ext := newAWSAuthExtension(&Config{
+	ext := newAWSCredentialsProviderExtension(&Config{
 		Credentials: configoptional.Some(CredentialsConfig{
 			AccessKeyID:     "AKID",
 			SecretAccessKey: "SECRET",
@@ -49,7 +49,7 @@ func TestStartStaticCredentials(t *testing.T) {
 }
 
 func TestStartAssumeRole(t *testing.T) {
-	ext := newAWSAuthExtension(&Config{
+	ext := newAWSCredentialsProviderExtension(&Config{
 		Credentials: configoptional.Some(CredentialsConfig{
 			AccessKeyID:     "AKID",
 			SecretAccessKey: "SECRET",
@@ -72,7 +72,7 @@ func TestStartAssumeRole(t *testing.T) {
 func TestStartAssumeRoleWithDefaultChainBase(t *testing.T) {
 	// assume_role without static credentials: the default chain provides the base
 	// identity for the AssumeRole call.
-	ext := newAWSAuthExtension(&Config{
+	ext := newAWSCredentialsProviderExtension(&Config{
 		AssumeRole: configoptional.Some(AssumeRoleConfig{
 			ARN: "arn:aws:iam::123456789012:role/monitoring",
 		}),

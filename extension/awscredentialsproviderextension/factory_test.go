@@ -15,26 +15,27 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package awsauthextension // import "github.com/elastic/opentelemetry-collector-components/extension/awsauthextension"
+package awscredentialsproviderextension
 
 import (
-	"context"
+	"testing"
 
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/extension"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/extension/extensiontest"
 
-	"github.com/elastic/opentelemetry-collector-components/extension/awsauthextension/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/extension/awscredentialsproviderextension/internal/metadata"
 )
 
-// NewFactory creates a factory for the AWS Authenticator extension.
-func NewFactory() extension.Factory {
-	return extension.NewFactory(metadata.Type, createDefaultConfig, createExtension, metadata.ExtensionStability)
-}
+func TestNewFactory(t *testing.T) {
+	factory := NewFactory()
+	require.Equal(t, metadata.Type, factory.Type())
 
-func createDefaultConfig() component.Config {
-	return &Config{}
-}
+	cfg := factory.CreateDefaultConfig()
+	// The default config is intentionally not valid: the user must configure an
+	// explicit credential source.
+	require.ErrorIs(t, cfg.(*Config).Validate(), errNoCredentialSource)
 
-func createExtension(_ context.Context, _ extension.Settings, cfg component.Config) (extension.Extension, error) {
-	return newAWSAuthExtension(cfg.(*Config)), nil
+	ext, err := factory.Create(t.Context(), extensiontest.NewNopSettings(metadata.Type), cfg)
+	require.NoError(t, err)
+	require.NotNil(t, ext)
 }

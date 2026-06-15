@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package awsauthextension // import "github.com/elastic/opentelemetry-collector-components/extension/awsauthextension"
+package awscredentialsproviderextension // import "github.com/elastic/opentelemetry-collector-components/extension/awscredentialsproviderextension"
 
 import (
 	"context"
@@ -39,7 +39,7 @@ type Provider interface {
 	GetCredentialsProvider() aws.CredentialsProvider
 }
 
-type awsAuthExtension struct {
+type awsCredentialsProviderExtension struct {
 	cfg   *Config
 	creds aws.CredentialsProvider
 
@@ -47,15 +47,15 @@ type awsAuthExtension struct {
 }
 
 var (
-	_ extension.Extension = (*awsAuthExtension)(nil)
-	_ Provider            = (*awsAuthExtension)(nil)
+	_ extension.Extension = (*awsCredentialsProviderExtension)(nil)
+	_ Provider            = (*awsCredentialsProviderExtension)(nil)
 )
 
-func newAWSAuthExtension(cfg *Config) *awsAuthExtension {
-	return &awsAuthExtension{cfg: cfg}
+func newAWSCredentialsProviderExtension(cfg *Config) *awsCredentialsProviderExtension {
+	return &awsCredentialsProviderExtension{cfg: cfg}
 }
 
-func (e *awsAuthExtension) Start(ctx context.Context, _ component.Host) error {
+func (e *awsCredentialsProviderExtension) Start(ctx context.Context, _ component.Host) error {
 	creds, err := buildCredentialsProvider(ctx, e.cfg)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (e *awsAuthExtension) Start(ctx context.Context, _ component.Host) error {
 	return nil
 }
 
-func (e *awsAuthExtension) GetCredentialsProvider() aws.CredentialsProvider {
+func (e *awsCredentialsProviderExtension) GetCredentialsProvider() aws.CredentialsProvider {
 	return e.creds
 }
 

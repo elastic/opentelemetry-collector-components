@@ -1,5 +1,5 @@
-type: awsauth
-scope_name: github.com/elastic/opentelemetry-collector-components/extension/awsauthextension
+type: awscredentialsprovider
+scope_name: github.com/elastic/opentelemetry-collector-components/extension/awscredentialsproviderextension
 github_project: elastic/opentelemetry-collector-components
 
 description: |
