@@ -34,7 +34,7 @@ is automated and should not be performed manually unless there are specific reas
    - Manually update the version to be released in the [versions.yaml file](../versions.yaml)
    - Run `make genelasticcol`
    - Commit the changes
-   - Run `make update-otel OTEL_VERSION=vX.Y.Z OTEL_STABLE_VERSION=vA.B.C`
+   - Run `make update-otel OTEL_VERSION=v0.154.0 OTEL_STABLE_VERSION=v1.60.0 UPSTREAM_REPO_BRANCH=v0.154.0`
      - If there is no new stable version released in the core collector, use the current stable module version in contrib as `OTEL_STABLE_VERSION`.
    - If you were unable to run `make update-otel` before releasing core, fix any errors from breaking changes.
    - Commit the changes
