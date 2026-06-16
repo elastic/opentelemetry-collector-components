@@ -148,41 +148,11 @@ sync-upstream-release-repo: $(RELEASE_REPO_DIR)
 	git reset --hard "origin/$(UPSTREAM_REPO_BRANCH)" && \
 	git clean -fd
 
-# Patched multimod skips go-git VerifyWorkingTreeClean when MULTIMOD_SKIP_WORKING_TREE_CHECK=1
-# (stock multimod often fails with "working tree not clean" even when git status is clean).
-BUILD_TOOLS_REPO_URL := https://github.com/open-telemetry/opentelemetry-go-build-tools.git
-BUILD_TOOLS_CLONE_DIR := $(SRC_ROOT)/_build/opentelemetry-go-build-tools
-BUILD_TOOLS_MULTIMOD_TAG := v0.29.0
-PATCH_MULTIMOD_SCRIPT := $(SRC_ROOT)/scripts/patch-multimod-skip-worktree-check.sh
-GIT_GO := $(BUILD_TOOLS_CLONE_DIR)/multimod/internal/shared/git.go
-PATCHED_MULTIMOD := $(TOOLS_BIN_DIR)/multimod-patched
-GO_MOD_PATCHED := $(TOOLS_MOD_DIR)/go.patched.mod
-
-.PHONY: setup-patched-multimod
-setup-patched-multimod:
-	@if [ ! -d "$(BUILD_TOOLS_CLONE_DIR)/.git" ]; then \
-		echo "Cloning opentelemetry-go-build-tools into $(BUILD_TOOLS_CLONE_DIR)..."; \
-		mkdir -p $(dir $(BUILD_TOOLS_CLONE_DIR)); \
-		git clone --depth 1 --branch $(BUILD_TOOLS_MULTIMOD_TAG) $(BUILD_TOOLS_REPO_URL) $(BUILD_TOOLS_CLONE_DIR); \
-	fi
-	@if ! grep -q MULTIMOD_SKIP_WORKING_TREE_CHECK "$(GIT_GO)" 2>/dev/null; then \
-		echo "Patching multimod (skip working tree check when MULTIMOD_SKIP_WORKING_TREE_CHECK=1)..."; \
-		bash $(PATCH_MULTIMOD_SCRIPT) "$(GIT_GO)"; \
-	fi
-
-.PHONY: build-patched-multimod
-build-patched-multimod: setup-patched-multimod
-	@cp $(TOOLS_MOD_DIR)/go.mod $(GO_MOD_PATCHED)
-	@grep -q 'replace go.opentelemetry.io/build-tools' $(GO_MOD_PATCHED) || \
-		printf '\nreplace go.opentelemetry.io/build-tools => ../../_build/opentelemetry-go-build-tools\nreplace go.opentelemetry.io/build-tools/multimod => ../../_build/opentelemetry-go-build-tools/multimod\n' >> $(GO_MOD_PATCHED)
-	cd $(TOOLS_MOD_DIR) && $(GOCMD) mod tidy -modfile=go.patched.mod
-	cd $(TOOLS_MOD_DIR) && $(GOCMD) build -modfile=go.patched.mod -o $(PATCHED_MULTIMOD) -trimpath go.opentelemetry.io/build-tools/multimod
-
 .PHONY: update-otel
-update-otel: build-patched-multimod sync-upstream-release-repo
-	MULTIMOD_SKIP_WORKING_TREE_CHECK=1 $(PATCHED_MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m stable --commit-hash "$(OTEL_STABLE_VERSION)"
+update-otel: $(MULTIMOD) sync-upstream-release-repo
+	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m stable --commit-hash "$(OTEL_STABLE_VERSION)"
 	git add . && git commit -s -m "[chore] multimod update stable modules" ; \
-	MULTIMOD_SKIP_WORKING_TREE_CHECK=1 $(PATCHED_MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m beta --commit-hash "$(OTEL_VERSION)"
+	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m beta --commit-hash "$(OTEL_VERSION)"
 	git add . && git commit -s -m "[chore] multimod update beta modules" ; \
 	$(MAKE) gotidy
 	$(MAKE) -B install-tools
