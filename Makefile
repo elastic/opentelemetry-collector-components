@@ -142,10 +142,10 @@ $(RELEASE_REPO_DIR):
 # Plain git pull fails if that clone was modified (e.g. by gotidy before .release was excluded).
 .PHONY: sync-upstream-release-repo
 sync-upstream-release-repo: $(RELEASE_REPO_DIR)
-	@echo "Syncing $(RELEASE_REPO_DIR) to origin/$(UPSTREAM_REPO_BRANCH) (fetch + reset --hard + clean)..."; \
+	@echo "Syncing $(RELEASE_REPO_DIR) to $(UPSTREAM_REPO_BRANCH) (fetch + reset --hard + clean)..."; \
 	cd $(RELEASE_REPO_DIR) && \
 	git fetch origin "$(UPSTREAM_REPO_BRANCH)" && \
-	git reset --hard "origin/$(UPSTREAM_REPO_BRANCH)" && \
+	git reset --hard FETCH_HEAD && \
 	git clean -fd
 
 .PHONY: update-otel
