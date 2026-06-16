@@ -2,6 +2,8 @@
 * @elastic/otel-devs
 
 # Per-component owners
+.github/workflows/bump_otelbench.yaml    @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+.github/workflows/changelog_otelbench.yaml @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 .github/workflows/release_otelbench.yaml @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 internal/elasticattr                   @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 loadgen                                @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
