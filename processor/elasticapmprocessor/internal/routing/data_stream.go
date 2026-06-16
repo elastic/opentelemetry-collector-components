@@ -35,7 +35,7 @@ const (
 
 	ServiceNameAttributeKey = "service.name"
 
-	NamespaceDefault = "default" //TODO: make this configurable
+	NamespaceDefault = "default"
 
 	ServiceNameUnknownAttributeUnknonw = "unknown"
 )
@@ -52,7 +52,9 @@ func encodeDataStreamDefault(resource pcommon.Resource, dataStreamType string) {
 	attributes := resource.Attributes()
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, "apm")
-	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	if _, exists := attributes.Get(elasticattr.DataStreamNamespace); !exists {
+		attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	}
 }
 
 func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType string) {
@@ -65,7 +67,9 @@ func encodeDataStreamWithServiceName(resource pcommon.Resource, dataStreamType s
 
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, "apm.app."+normalizeServiceName(serviceName.Str()))
-	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	if _, exists := attributes.Get(elasticattr.DataStreamNamespace); !exists {
+		attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	}
 }
 
 // IsErrorEvent checks if a log record or span event represents an APM error event.
@@ -96,7 +100,9 @@ func IsErrorEvent(attributes pcommon.Map) bool {
 func EncodeErrorDataStream(attributes pcommon.Map, dataStreamType string) {
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, "apm.error")
-	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	if _, exists := attributes.Get(elasticattr.DataStreamNamespace); !exists {
+		attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	}
 }
 
 // hasTransactionSpanContext checks if the attributes contain transaction or span context.
@@ -151,14 +157,18 @@ func isServiceSummary(attributes pcommon.Map) bool {
 func internalMetricDataStream(attributes pcommon.Map, dataStreamType string) {
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, "apm.internal")
-	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	if _, exists := attributes.Get(elasticattr.DataStreamNamespace); !exists {
+		attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	}
 }
 
 // Data stream formatted as: apm.${metricset.name}.${metricset.interval}
 func internalIntervalMetricDataStream(attributes pcommon.Map, dataStreamType, metricsetName, interval string) {
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, fmt.Sprintf("apm.%s.%s", metricsetName, interval))
-	attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	if _, exists := attributes.Get(elasticattr.DataStreamNamespace); !exists {
+		attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+	}
 }
 
 // EncodeDataStreamMetricDataPoint determines if the metric represents an internal metric

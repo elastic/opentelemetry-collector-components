@@ -294,21 +294,108 @@ func TestIsErrorEvent(t *testing.T) {
 	}
 }
 
-func TestEncodeErrorDataStream(t *testing.T) {
-	attrs := pcommon.NewMap()
-	routing.EncodeErrorDataStream(attrs, "logs")
+func TestDataStreamEncodersNamespaceBehavior(t *testing.T) {
+	tests := []struct {
+		name              string
+		run               func() pcommon.Map
+		expectedType      string
+		expectedDataset   string
+		expectedNamespace string
+	}{
+		{
+			name: "EncodeDataStream preserves namespace without service name dataset",
+			run: func() pcommon.Map {
+				resource := pcommon.NewResource()
+				attributes := resource.Attributes()
+				attributes.PutStr("data_stream.namespace", "custom-ns")
+				routing.EncodeDataStream(resource, "traces", false)
+				return attributes
+			},
+			expectedType:      "traces",
+			expectedDataset:   "apm",
+			expectedNamespace: "custom-ns",
+		},
+		{
+			name: "EncodeDataStream preserves namespace with service name dataset",
+			run: func() pcommon.Map {
+				resource := pcommon.NewResource()
+				attributes := resource.Attributes()
+				attributes.PutStr("service.name", "my-svc")
+				attributes.PutStr("data_stream.namespace", "prod")
+				routing.EncodeDataStream(resource, "logs", true)
+				return attributes
+			},
+			expectedType:      "logs",
+			expectedDataset:   "apm.app.my_svc",
+			expectedNamespace: "prod",
+		},
+		{
+			name: "EncodeErrorDataStream preserves namespace",
+			run: func() pcommon.Map {
+				attributes := pcommon.NewMap()
+				attributes.PutStr("data_stream.namespace", "staging")
+				routing.EncodeErrorDataStream(attributes, "logs")
+				return attributes
+			},
+			expectedType:      "logs",
+			expectedDataset:   "apm.error",
+			expectedNamespace: "staging",
+		},
+		{
+			name: "EncodeDataStream defaults namespace without service name dataset",
+			run: func() pcommon.Map {
+				resource := pcommon.NewResource()
+				attributes := resource.Attributes()
+				routing.EncodeDataStream(resource, "traces", false)
+				return attributes
+			},
+			expectedType:      "traces",
+			expectedDataset:   "apm",
+			expectedNamespace: "default",
+		},
+		{
+			name: "EncodeDataStream defaults namespace with service name dataset",
+			run: func() pcommon.Map {
+				resource := pcommon.NewResource()
+				attributes := resource.Attributes()
+				attributes.PutStr("service.name", "my-svc")
+				routing.EncodeDataStream(resource, "logs", true)
+				return attributes
+			},
+			expectedType:      "logs",
+			expectedDataset:   "apm.app.my_svc",
+			expectedNamespace: "default",
+		},
+		{
+			name: "EncodeErrorDataStream defaults namespace",
+			run: func() pcommon.Map {
+				attributes := pcommon.NewMap()
+				routing.EncodeErrorDataStream(attributes, "logs")
+				return attributes
+			},
+			expectedType:      "logs",
+			expectedDataset:   "apm.error",
+			expectedNamespace: "default",
+		},
+	}
 
-	dataStreamType, ok := attrs.Get("data_stream.type")
-	assert.True(t, ok)
-	assert.Equal(t, "logs", dataStreamType.Str())
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			attributes := tt.run()
 
-	dataStreamDataset, ok := attrs.Get("data_stream.dataset")
-	assert.True(t, ok)
-	assert.Equal(t, "apm.error", dataStreamDataset.Str())
+			dataStreamType, ok := attributes.Get("data_stream.type")
+			assert.True(t, ok)
+			assert.Equal(t, tt.expectedType, dataStreamType.Str())
 
-	dataStreamNamespace, ok := attrs.Get("data_stream.namespace")
-	assert.True(t, ok)
-	assert.Equal(t, "default", dataStreamNamespace.Str())
+			dataStreamDataset, ok := attributes.Get("data_stream.dataset")
+			assert.True(t, ok)
+			assert.Equal(t, tt.expectedDataset, dataStreamDataset.Str())
+
+			dataStreamNamespace, ok := attributes.Get("data_stream.namespace")
+			assert.True(t, ok)
+			assert.Equal(t, tt.expectedNamespace, dataStreamNamespace.Str())
+		})
+	}
 }
 
 func TestRouteMetricDataPoint(t *testing.T) {

@@ -1326,3 +1326,161 @@ func TestIsIntakeECS(t *testing.T) {
 		})
 	}
 }
+
+func TestECSMappingModeTriggersDataStreamRouting(t *testing.T) {
+	type consumeFn func(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config) pcommon.Map
+
+	tests := []struct {
+		name               string
+		consume            consumeFn
+		mappingMode        string
+		expectedType       string
+		expectedDataset    string
+		expectedNamespace  string
+		expectDataStream   bool
+	}{
+		{
+			name:              "traces with ecs mapping mode",
+			consume:           consumeTraceResourceAttrs,
+			mappingMode:       "ecs",
+			expectedType:      "traces",
+			expectedDataset:   "apm",
+			expectedNamespace: "custom-ns",
+			expectDataStream:  true,
+		},
+		{
+			name:             "traces without mapping mode",
+			consume:          consumeTraceResourceAttrs,
+			expectedNamespace: "custom-ns",
+			expectDataStream: false,
+		},
+		{
+			name:              "logs with ecs mapping mode",
+			consume:           consumeLogResourceAttrs,
+			mappingMode:       "ecs",
+			expectedType:      "logs",
+			expectedDataset:   "apm",
+			expectedNamespace: "custom-ns",
+			expectDataStream:  true,
+		},
+		{
+			name:             "logs without mapping mode",
+			consume:          consumeLogResourceAttrs,
+			expectedNamespace: "custom-ns",
+			expectDataStream: false,
+		},
+		{
+			name:              "metrics with ecs mapping mode",
+			consume:           consumeMetricResourceAttrs,
+			mappingMode:       "ecs",
+			expectedType:      "metrics",
+			expectedDataset:   "apm",
+			expectedNamespace: "custom-ns",
+			expectDataStream:  true,
+		},
+		{
+			name:             "metrics without mapping mode",
+			consume:          consumeMetricResourceAttrs,
+			expectedNamespace: "custom-ns",
+			expectDataStream: false,
+		},
+	}
+
+	factory := NewFactory()
+	settings := processortest.NewNopSettings(metadata.Type)
+	cfg := NewDefaultConfig().(*Config)
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.mappingMode != "" {
+				ctx = client.NewContext(ctx, client.Info{
+					Metadata: client.NewMetadata(map[string][]string{
+						"x-elastic-mapping-mode": {tc.mappingMode},
+					}),
+				})
+			}
+
+			attrs := tc.consume(t, ctx, factory, settings, cfg)
+			dataStreamType, hasType := attrs.Get("data_stream.type")
+			dataStreamDataset, hasDataset := attrs.Get("data_stream.dataset")
+			dataStreamNamespace, hasNamespace := attrs.Get("data_stream.namespace")
+			require.True(t, hasNamespace)
+			assert.Equal(t, tc.expectedNamespace, dataStreamNamespace.Str())
+
+			if tc.expectDataStream {
+				require.True(t, hasType)
+				require.True(t, hasDataset)
+				assert.Equal(t, tc.expectedType, dataStreamType.Str())
+				assert.Equal(t, tc.expectedDataset, dataStreamDataset.Str())
+				return
+			}
+
+			assert.False(t, hasType)
+			assert.False(t, hasDataset)
+		})
+	}
+}
+
+func consumeTraceResourceAttrs(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config) pcommon.Map {
+	t.Helper()
+
+	next := &consumertest.TracesSink{}
+	tp, err := factory.CreateTraces(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	traces := ptrace.NewTraces()
+	resourceSpan := traces.ResourceSpans().AppendEmpty()
+	resource := resourceSpan.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr("data_stream.namespace", "custom-ns")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+	scopeSpans := resourceSpan.ScopeSpans().AppendEmpty()
+	span := scopeSpans.Spans().AppendEmpty()
+	span.SetName("test-span")
+	span.SetStartTimestamp(pcommon.Timestamp(1_000_000_000))
+	span.SetEndTimestamp(pcommon.Timestamp(2_000_000_000))
+
+	require.NoError(t, tp.ConsumeTraces(ctx, traces))
+	return next.AllTraces()[0].ResourceSpans().At(0).Resource().Attributes()
+}
+
+func consumeLogResourceAttrs(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config) pcommon.Map {
+	t.Helper()
+
+	next := &consumertest.LogsSink{}
+	lp, err := factory.CreateLogs(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	logs := plog.NewLogs()
+	resourceLog := logs.ResourceLogs().AppendEmpty()
+	resource := resourceLog.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr("data_stream.namespace", "custom-ns")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+	resourceLog.ScopeLogs().AppendEmpty().LogRecords().AppendEmpty().Body().SetStr("test-log")
+
+	require.NoError(t, lp.ConsumeLogs(ctx, logs))
+	return next.AllLogs()[0].ResourceLogs().At(0).Resource().Attributes()
+}
+
+func consumeMetricResourceAttrs(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config) pcommon.Map {
+	t.Helper()
+
+	next := &consumertest.MetricsSink{}
+	mp, err := factory.CreateMetrics(ctx, settings, cfg, next)
+	require.NoError(t, err)
+
+	metrics := pmetric.NewMetrics()
+	resourceMetric := metrics.ResourceMetrics().AppendEmpty()
+	resource := resourceMetric.Resource()
+	resource.Attributes().PutStr("service.name", "test-service")
+	resource.Attributes().PutStr("data_stream.namespace", "custom-ns")
+	resource.Attributes().PutStr(string(semconv.TelemetrySDKNameKey), "opentelemetry")
+	metric := resourceMetric.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+	metric.SetName("custom.metric")
+	metric.SetEmptyGauge().DataPoints().AppendEmpty().SetIntValue(1)
+
+	require.NoError(t, mp.ConsumeMetrics(ctx, metrics))
+	return next.AllMetrics()[0].ResourceMetrics().At(0).Resource().Attributes()
+}
