@@ -60,6 +60,10 @@ Components resolve the extension from the host at start and type-assert it to th
 local interface to avoid the module dependency):
 
 ```go
+if cfg.CredentialsProvider == (component.ID{}) {
+    // no extension configured; AWS SDK default credential chain applies
+    return nil
+}
 ext, ok := host.GetExtensions()[cfg.CredentialsProvider]
 if !ok {
     return fmt.Errorf("unknown credentials_provider extension %q", cfg.CredentialsProvider)
