@@ -62,6 +62,8 @@ func oktaProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 			IDSetShards int                 `mapstructure:"idset_shards"`
 			LimitWindow time.Duration       `mapstructure:"limit_window"`
 			LimitFixed  *int                `mapstructure:"limit_fixed"`
+
+			ScratchDir string `mapstructure:"scratch_dir"`
 		}
 
 		lc := oktaLocalConf{
@@ -81,6 +83,7 @@ func oktaProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 		ec.IDSetShards = lc.IDSetShards
 		ec.LimitWindow = lc.LimitWindow
 		ec.LimitFixed = lc.LimitFixed
+		ec.ScratchDir = lc.ScratchDir
 
 		if lc.OAuth2 != nil {
 			ec.OAuth2 = &ecokta.OAuth2Config{
