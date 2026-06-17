@@ -56,24 +56,19 @@ service:
 ## Consuming the extension from a component
 
 Components resolve the extension from the host at start and type-assert it to the
-`awsCredentialsProvider` interface (importing this package, or declaring a structurally
-identical local interface to avoid the module dependency):
+`Provider` interface (importing this package, or declaring a structurally identical
+local interface to avoid the module dependency):
 
 ```go
-// resolveCredentialsProvider returns the credentials provider from the
-// awscredentialsprovider extension referenced by id, or nil when none is configured.
-func resolveCredentialsProvider(host component.Host, id *component.ID) (aws.CredentialsProvider, error) {
-    if id == nil {
-        return nil, nil
-    }
-    ext, ok := host.GetExtensions()[*id]
-    if !ok {
-        return nil, fmt.Errorf("unknown credentials_provider extension %q", id)
-    }
-    provider, ok := ext.(awsCredentialsProvider)
-    if !ok {
-        return nil, fmt.Errorf("extension %q does not provide AWS credentials", id)
-    }
-    return provider.GetCredentialsProvider(), nil
+ext, ok := host.GetExtensions()[cfg.CredentialsProvider]
+if !ok {
+    return fmt.Errorf("unknown credentials_provider extension %q", cfg.CredentialsProvider)
 }
+provider, ok := ext.(interface {
+    GetCredentialsProvider() aws.CredentialsProvider
+})
+if !ok {
+    return fmt.Errorf("extension %q does not provide AWS credentials", cfg.CredentialsProvider)
+}
+awsCfg.Credentials = provider.GetCredentialsProvider()
 ```
