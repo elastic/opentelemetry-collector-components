@@ -57,6 +57,8 @@ func entraidProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 			SelectUsers   []string `mapstructure:"select_users"`
 			SelectGroups  []string `mapstructure:"select_groups"`
 			SelectDevices []string `mapstructure:"select_devices"`
+
+			ScratchDir string `mapstructure:"scratch_dir"`
 		}
 
 		lc := entraidLocalConf{
@@ -84,6 +86,7 @@ func entraidProvider(cfg *confmap.Conf) (entcollect.Provider, error) {
 		ec.SelectUsers = lc.SelectUsers
 		ec.SelectGroups = lc.SelectGroups
 		ec.SelectDevices = lc.SelectDevices
+		ec.ScratchDir = lc.ScratchDir
 	} else {
 		ec.TenantID = os.Getenv("ENTRAID_TENANT_ID")
 		ec.ClientID = os.Getenv("ENTRAID_CLIENT_ID")
