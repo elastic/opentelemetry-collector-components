@@ -46,7 +46,7 @@ extensions:
 receivers:
   awscloudwatch:
     region: us-west-2
-    auth: awscredentialsprovider
+    credentials_provider: awscredentialsprovider
     ...
 
 service:
@@ -60,15 +60,19 @@ Components resolve the extension from the host at start and type-assert it to th
 local interface to avoid the module dependency):
 
 ```go
-ext, ok := host.GetExtensions()[cfg.Auth]
+if cfg.CredentialsProvider == (component.ID{}) {
+    // no extension configured; AWS SDK default credential chain applies
+    return nil
+}
+ext, ok := host.GetExtensions()[cfg.CredentialsProvider]
 if !ok {
-    return fmt.Errorf("unknown auth extension %q", cfg.Auth)
+    return fmt.Errorf("unknown credentials_provider extension %q", cfg.CredentialsProvider)
 }
 provider, ok := ext.(interface {
     GetCredentialsProvider() aws.CredentialsProvider
 })
 if !ok {
-    return fmt.Errorf("extension %q is not an AWS credentials provider", cfg.Auth)
+    return fmt.Errorf("extension %q does not provide AWS credentials", cfg.CredentialsProvider)
 }
 awsCfg.Credentials = provider.GetCredentialsProvider()
 ```
