@@ -322,9 +322,6 @@ resourceMetrics:
           value:
             stringValue: exec-456
         # data_stream.* attributes
-        - key: data_stream.dataset
-          value:
-            stringValue: default
         - key: data_stream.namespace
           value:
             stringValue: default

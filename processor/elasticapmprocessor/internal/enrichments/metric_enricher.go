@@ -21,6 +21,7 @@ import (
 	"context"
 
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
@@ -46,7 +47,7 @@ func (e *ecsMetricEnricher) enrichResourceMetrics(ctx context.Context, rm pmetri
 
 	// Check if resource has a service name for routing decisions
 	hasServiceName := false
-	if serviceName, ok := resource.Attributes().Get(routing.ServiceNameAttributeKey); ok && serviceName.Str() != "" {
+	if serviceName, ok := resource.Attributes().Get(string(semconv.ServiceNameKey)); ok && serviceName.Str() != "" {
 		hasServiceName = true
 	}
 

@@ -20,195 +20,12 @@ package routing_test
 import (
 	"testing"
 
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.38.0"
 )
-
-func TestDataStremaEncoderDefault(t *testing.T) {
-	resource := pcommon.NewResource()
-	routing.EncodeDataStream(resource, "logs", false)
-
-	attributes := resource.Attributes()
-
-	dataStreamType, ok := attributes.Get("data_stream.type")
-	assert.True(t, ok)
-	assert.Equal(t, "logs", dataStreamType.Str())
-
-	dataStreamDataset, ok := attributes.Get("data_stream.dataset")
-	assert.True(t, ok)
-	assert.Equal(t, "apm", dataStreamDataset.Str())
-
-	dataStreamNamespace, ok := attributes.Get("data_stream.namespace")
-	assert.True(t, ok)
-	assert.Equal(t, "default", dataStreamNamespace.Str())
-}
-
-func TestEncodeDataStreamWithServiceName(t *testing.T) {
-	// The normalizeServiceName function lowercases the input and then applies
-	// the regex [^a-zA-Z0-9_] to replace disallowed characters with "_".
-	// This aligns with apm-data's normalizeServiceName: hyphens, spaces,
-	// dots, and all other non-alphanumeric/non-underscore characters are
-	// replaced with "_".
-	tests := []struct {
-		name            string
-		serviceName     string
-		dataStreamType  string
-		expectedDataset string
-	}{
-		{
-			name:            "simple alphanumeric",
-			serviceName:     "myservice",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.myservice",
-		},
-		{
-			name:            "hyphen replaced",
-			serviceName:     "my-service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "dot replaced",
-			serviceName:     "my.service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "uppercase lowercased with hyphen replaced",
-			serviceName:     "My-Service",
-			dataStreamType:  "logs",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "backslash replaced",
-			serviceName:     `my\service`,
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "forward slash replaced",
-			serviceName:     "my/service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "asterisk replaced",
-			serviceName:     "my*service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "question mark replaced",
-			serviceName:     "my?service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "double quote replaced",
-			serviceName:     `my"service`,
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "angle brackets replaced",
-			serviceName:     "my<service>name",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service_name",
-		},
-		{
-			name:            "pipe replaced",
-			serviceName:     "my|service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "space replaced",
-			serviceName:     "my service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "comma replaced",
-			serviceName:     "my,service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "hash replaced",
-			serviceName:     "my#service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "colon replaced",
-			serviceName:     "my:service",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service",
-		},
-		{
-			name:            "multiple special characters",
-			serviceName:     "My Service.v2-beta/rc#1",
-			dataStreamType:  "logs",
-			expectedDataset: "apm.app.my_service_v2_beta_rc_1",
-		},
-		{
-			name:            "all disallowed characters replaced",
-			serviceName:     `a\b/c*d?e"f<g>h|i,j#k:l.m`,
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.a_b_c_d_e_f_g_h_i_j_k_l_m",
-		},
-		{
-			name:            "only alphanumeric and underscore preserved",
-			serviceName:     `a b-c_d0`,
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.a_b_c_d0",
-		},
-		{
-			name:            "empty service name falls back to unknown",
-			serviceName:     "",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.unknown",
-		},
-		{
-			name:            "underscores preserved",
-			serviceName:     "my_service_name",
-			dataStreamType:  "metrics",
-			expectedDataset: "apm.app.my_service_name",
-		},
-		{
-			name:            "traces type",
-			serviceName:     "my-service",
-			dataStreamType:  "traces",
-			expectedDataset: "apm.app.my_service",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resource := pcommon.NewResource()
-			attributes := resource.Attributes()
-			if tt.serviceName != "" {
-				attributes.PutStr("service.name", tt.serviceName)
-			}
-
-			routing.EncodeDataStream(resource, tt.dataStreamType, true)
-
-			dataStreamType, ok := attributes.Get("data_stream.type")
-			assert.True(t, ok)
-			assert.Equal(t, tt.dataStreamType, dataStreamType.Str())
-
-			dataStreamDataset, ok := attributes.Get("data_stream.dataset")
-			assert.True(t, ok)
-			assert.Equal(t, tt.expectedDataset, dataStreamDataset.Str())
-
-			dataStreamNamespace, ok := attributes.Get("data_stream.namespace")
-			assert.True(t, ok)
-			assert.Equal(t, "default", dataStreamNamespace.Str())
-		})
-	}
-}
 
 func TestIsErrorEvent(t *testing.T) {
 	tests := []struct {
@@ -294,106 +111,348 @@ func TestIsErrorEvent(t *testing.T) {
 	}
 }
 
-func TestDataStreamEncodersNamespaceBehavior(t *testing.T) {
+func TestDataStreamEncoders(t *testing.T) {
 	tests := []struct {
-		name              string
-		run               func() pcommon.Map
-		expectedType      string
-		expectedDataset   string
-		expectedNamespace string
+		name                string
+		attrs               map[string]any
+		svcInDataset        bool
+		isErrorEncode       bool
+		expectedType        string
+		expectedDataset     string
+		expectedNamespace   string
+		expectedServiceName string
 	}{
 		{
-			name: "EncodeDataStream preserves namespace without service name dataset",
-			run: func() pcommon.Map {
-				resource := pcommon.NewResource()
-				attributes := resource.Attributes()
-				attributes.PutStr("data_stream.namespace", "custom-ns")
-				routing.EncodeDataStream(resource, "traces", false)
-				return attributes
-			},
+			name:              "EncodeDataStream default encoder behavior",
+			expectedType:      "logs",
+			expectedDataset:   "apm",
+			expectedNamespace: "default",
+		},
+		{
+			name:              "EncodeDataStream preserves namespace without service name dataset",
+			attrs:             map[string]any{"data_stream.namespace": "custom-ns"},
 			expectedType:      "traces",
 			expectedDataset:   "apm",
 			expectedNamespace: "custom-ns",
 		},
 		{
-			name: "EncodeDataStream preserves namespace with service name dataset",
-			run: func() pcommon.Map {
-				resource := pcommon.NewResource()
-				attributes := resource.Attributes()
-				attributes.PutStr("service.name", "my-svc")
-				attributes.PutStr("data_stream.namespace", "prod")
-				routing.EncodeDataStream(resource, "logs", true)
-				return attributes
-			},
-			expectedType:      "logs",
-			expectedDataset:   "apm.app.my_svc",
-			expectedNamespace: "prod",
+			name:                "EncodeDataStream preserves namespace with service name dataset",
+			attrs:               map[string]any{"service.name": "my-svc", "data_stream.namespace": "prod"},
+			svcInDataset:        true,
+			expectedType:        "logs",
+			expectedDataset:     "apm.app.my_svc",
+			expectedNamespace:   "prod",
+			expectedServiceName: "my-svc",
 		},
 		{
-			name: "EncodeErrorDataStream preserves namespace",
-			run: func() pcommon.Map {
-				attributes := pcommon.NewMap()
-				attributes.PutStr("data_stream.namespace", "staging")
-				routing.EncodeErrorDataStream(attributes, "logs")
-				return attributes
-			},
+			name:              "EncodeErrorDataStream preserves namespace",
+			attrs:             map[string]any{"data_stream.namespace": "staging"},
+			isErrorEncode:     true,
 			expectedType:      "logs",
 			expectedDataset:   "apm.error",
 			expectedNamespace: "staging",
 		},
 		{
-			name: "EncodeDataStream defaults namespace without service name dataset",
-			run: func() pcommon.Map {
-				resource := pcommon.NewResource()
-				attributes := resource.Attributes()
-				routing.EncodeDataStream(resource, "traces", false)
-				return attributes
-			},
+			name:              "EncodeDataStream preserves existing type and dataset when both are already set",
+			attrs:             map[string]any{"data_stream.type": "custom-type", "data_stream.dataset": "custom-dataset"},
+			expectedType:      "custom-type",
+			expectedDataset:   "custom-dataset",
+			expectedNamespace: "default",
+		},
+		{
+			name:              "EncodeDataStream overwrites existing type when dataset is missing",
+			attrs:             map[string]any{"data_stream.type": "custom-type"},
 			expectedType:      "traces",
 			expectedDataset:   "apm",
 			expectedNamespace: "default",
 		},
 		{
-			name: "EncodeDataStream defaults namespace with service name dataset",
-			run: func() pcommon.Map {
-				resource := pcommon.NewResource()
-				attributes := resource.Attributes()
-				attributes.PutStr("service.name", "my-svc")
-				routing.EncodeDataStream(resource, "logs", true)
-				return attributes
-			},
-			expectedType:      "logs",
-			expectedDataset:   "apm.app.my_svc",
+			name:              "EncodeDataStream preserves existing dataset without service name dataset",
+			attrs:             map[string]any{"data_stream.dataset": "custom-dataset"},
+			expectedType:      "traces",
+			expectedDataset:   "custom-dataset",
 			expectedNamespace: "default",
 		},
 		{
-			name: "EncodeErrorDataStream defaults namespace",
-			run: func() pcommon.Map {
-				attributes := pcommon.NewMap()
-				routing.EncodeErrorDataStream(attributes, "logs")
-				return attributes
-			},
+			name:                "EncodeDataStream preserves existing dataset with service name dataset",
+			attrs:               map[string]any{"service.name": "my-svc", "data_stream.dataset": "custom-logs"},
+			svcInDataset:        true,
+			expectedType:        "logs",
+			expectedDataset:     "custom-logs",
+			expectedNamespace:   "default",
+			expectedServiceName: "my-svc",
+		},
+		{
+			name:              "EncodeErrorDataStream always overwrites existing dataset",
+			attrs:             map[string]any{"data_stream.dataset": "something-else"},
+			isErrorEncode:     true,
 			expectedType:      "logs",
 			expectedDataset:   "apm.error",
 			expectedNamespace: "default",
+		},
+		{
+			name:              "EncodeDataStream defaults namespace without service name dataset",
+			expectedType:      "traces",
+			expectedDataset:   "apm",
+			expectedNamespace: "default",
+		},
+		{
+			name:                "EncodeDataStream defaults namespace with service name dataset",
+			attrs:               map[string]any{"service.name": "my-svc"},
+			svcInDataset:        true,
+			expectedType:        "logs",
+			expectedDataset:     "apm.app.my_svc",
+			expectedNamespace:   "default",
+			expectedServiceName: "my-svc",
+		},
+		{
+			name:              "EncodeErrorDataStream defaults namespace",
+			isErrorEncode:     true,
+			expectedType:      "logs",
+			expectedDataset:   "apm.error",
+			expectedNamespace: "default",
+		},
+		{
+			name:              "EncodeDataStream defaults dataset without service name dataset when absent",
+			expectedType:      "traces",
+			expectedDataset:   "apm",
+			expectedNamespace: "default",
+		},
+		{
+			name:                "EncodeDataStream defaults dataset with service name dataset when absent",
+			attrs:               map[string]any{"service.name": "my-svc"},
+			svcInDataset:        true,
+			expectedType:        "logs",
+			expectedDataset:     "apm.app.my_svc",
+			expectedNamespace:   "default",
+			expectedServiceName: "my-svc",
+		},
+		{
+			name:                "EncodeDataStream with service name simple alphanumeric",
+			attrs:               map[string]any{"service.name": "myservice"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.myservice",
+			expectedNamespace:   "default",
+			expectedServiceName: "myservice",
+		},
+		{
+			name:                "EncodeDataStream with service name hyphen replaced",
+			attrs:               map[string]any{"service.name": "my-service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my-service",
+		},
+		{
+			name:                "EncodeDataStream with service name dot replaced",
+			attrs:               map[string]any{"service.name": "my.service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my.service",
+		},
+		{
+			name:                "EncodeDataStream with service name uppercase lowercased",
+			attrs:               map[string]any{"service.name": "My-Service"},
+			svcInDataset:        true,
+			expectedType:        "logs",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "My-Service",
+		},
+		{
+			name:                "EncodeDataStream with service name backslash replaced",
+			attrs:               map[string]any{"service.name": `my\service`},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: `my\service`,
+		},
+		{
+			name:                "EncodeDataStream with service name forward slash replaced",
+			attrs:               map[string]any{"service.name": "my/service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my/service",
+		},
+		{
+			name:                "EncodeDataStream with service name asterisk replaced",
+			attrs:               map[string]any{"service.name": "my*service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my*service",
+		},
+		{
+			name:                "EncodeDataStream with service name question mark replaced",
+			attrs:               map[string]any{"service.name": "my?service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my?service",
+		},
+		{
+			name:                "EncodeDataStream with service name double quote replaced",
+			attrs:               map[string]any{"service.name": `my"service`},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: `my"service`,
+		},
+		{
+			name:                "EncodeDataStream with service name angle brackets replaced",
+			attrs:               map[string]any{"service.name": "my<service>name"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service_name",
+			expectedNamespace:   "default",
+			expectedServiceName: "my<service>name",
+		},
+		{
+			name:                "EncodeDataStream with service name pipe replaced",
+			attrs:               map[string]any{"service.name": "my|service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my|service",
+		},
+		{
+			name:                "EncodeDataStream with service name space replaced",
+			attrs:               map[string]any{"service.name": "my service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my service",
+		},
+		{
+			name:                "EncodeDataStream with service name comma replaced",
+			attrs:               map[string]any{"service.name": "my,service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my,service",
+		},
+		{
+			name:                "EncodeDataStream with service name hash replaced",
+			attrs:               map[string]any{"service.name": "my#service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my#service",
+		},
+		{
+			name:                "EncodeDataStream with service name colon replaced",
+			attrs:               map[string]any{"service.name": "my:service"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my:service",
+		},
+		{
+			name:                "EncodeDataStream with service name multiple special characters",
+			attrs:               map[string]any{"service.name": "My Service.v2-beta/rc#1"},
+			svcInDataset:        true,
+			expectedType:        "logs",
+			expectedDataset:     "apm.app.my_service_v2_beta_rc_1",
+			expectedNamespace:   "default",
+			expectedServiceName: "My Service.v2-beta/rc#1",
+		},
+		{
+			name:                "EncodeDataStream with service name all disallowed characters replaced",
+			attrs:               map[string]any{"service.name": `a\b/c*d?e"f<g>h|i,j#k:l.m`},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.a_b_c_d_e_f_g_h_i_j_k_l_m",
+			expectedNamespace:   "default",
+			expectedServiceName: `a\b/c*d?e"f<g>h|i,j#k:l.m`,
+		},
+		{
+			name:                "EncodeDataStream with service name alphanumeric and underscore preserved",
+			attrs:               map[string]any{"service.name": "a b-c_d0"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.a_b_c_d0",
+			expectedNamespace:   "default",
+			expectedServiceName: "a b-c_d0",
+		},
+		{
+			name:              "EncodeDataStream with service name empty falls back to unknown",
+			svcInDataset:      true,
+			expectedType:      "metrics",
+			expectedDataset:   "apm.app.unknown",
+			expectedNamespace: "default",
+		},
+		{
+			name:                "EncodeDataStream with service name underscores preserved",
+			attrs:               map[string]any{"service.name": "my_service_name"},
+			svcInDataset:        true,
+			expectedType:        "metrics",
+			expectedDataset:     "apm.app.my_service_name",
+			expectedNamespace:   "default",
+			expectedServiceName: "my_service_name",
+		},
+		{
+			name:                "EncodeDataStream with service name traces type",
+			attrs:               map[string]any{"service.name": "my-service"},
+			svcInDataset:        true,
+			expectedType:        "traces",
+			expectedDataset:     "apm.app.my_service",
+			expectedNamespace:   "default",
+			expectedServiceName: "my-service",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			attributes := tt.run()
+			testResource := pcommon.NewResource()
+			if len(tt.attrs) > 0 {
+				assert.NoError(t, testResource.Attributes().FromRaw(tt.attrs))
+			}
 
-			dataStreamType, ok := attributes.Get("data_stream.type")
+			if tt.isErrorEncode {
+				routing.EncodeErrorDataStream(testResource.Attributes(), tt.expectedType)
+			} else {
+				routing.EncodeDataStream(
+					testResource,
+					tt.expectedType,
+					tt.svcInDataset,
+					ecs.TranslateResourceMetadata(testResource, true),
+				)
+			}
+
+			resultAttrs := testResource.Attributes()
+
+			dataStreamType, ok := resultAttrs.Get("data_stream.type")
 			assert.True(t, ok)
 			assert.Equal(t, tt.expectedType, dataStreamType.Str())
 
-			dataStreamDataset, ok := attributes.Get("data_stream.dataset")
+			dataStreamDataset, ok := resultAttrs.Get("data_stream.dataset")
 			assert.True(t, ok)
 			assert.Equal(t, tt.expectedDataset, dataStreamDataset.Str())
 
-			dataStreamNamespace, ok := attributes.Get("data_stream.namespace")
+			dataStreamNamespace, ok := resultAttrs.Get("data_stream.namespace")
 			assert.True(t, ok)
 			assert.Equal(t, tt.expectedNamespace, dataStreamNamespace.Str())
+
+			if tt.expectedServiceName != "" {
+				serviceName, ok := resultAttrs.Get("service.name")
+				assert.True(t, ok)
+				assert.Equal(t, tt.expectedServiceName, serviceName.Str())
+			}
 		})
 	}
 }
@@ -426,6 +485,36 @@ func TestRouteMetricDataPoint(t *testing.T) {
 			hasServiceName:   true,
 			expectedDataset:  "",
 			expectedInternal: false,
+		},
+		{
+			name: "internal metric with otel_remapped is not routed to internal dataset",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr("otel_remapped", "true")
+			},
+			metricName:       "golang.heap.allocations.active",
+			hasServiceName:   true,
+			expectedDataset:  "",
+			expectedInternal: false,
+		},
+		{
+			name: "internal metric with labels.otel_remapped is not routed to internal dataset",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr("labels.otel_remapped", "true")
+			},
+			metricName:       "golang.heap.allocations.active",
+			hasServiceName:   true,
+			expectedDataset:  "",
+			expectedInternal: false,
+		},
+		{
+			name: "metric without service name still routes internal even when otel_remapped",
+			setupFn: func(attrs pcommon.Map) {
+				attrs.PutStr("otel_remapped", "true")
+			},
+			metricName:       "golang.heap.allocations.active",
+			hasServiceName:   false,
+			expectedDataset:  "apm.internal",
+			expectedInternal: true,
 		},
 		{
 			name: "metric without service name",
