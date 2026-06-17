@@ -241,6 +241,7 @@ func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels
 		context.K8SPodUID != "" ||
 		context.K8SNamespaceName != "" {
 		// kubernetes.* is set but kubernetes.node.name is not: don't set host.hostname
+		context.HostHostName = ""
 		attributes.Remove(elasticattr.HostHostName)
 	}
 	// Mirror host.hostname into host.name when host.name is missing so downstream
