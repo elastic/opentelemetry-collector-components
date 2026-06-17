@@ -1,0 +1,31 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: ElasticAPM
+        - key: agent.version
+          value:
+            stringValue: 1.0.0
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: data_stream.dataset
+          value:
+            stringValue: custom-metrics
+        - key: data_stream.namespace
+          value:
+            stringValue: custom-ns
+    scopeMetrics:
+      - scope: {}
+        metrics:
+          - name: system.cpu.time
+            sum:
+              aggregationTemporality: 2
+              dataPoints:
+                - asDouble: 1.5
+                  attributes:
+                    - key: state
+                      value:
+                        stringValue: user
+                  timeUnixNano: "1581452773000000789"

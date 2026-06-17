@@ -129,9 +129,8 @@ func ecsAPMConfig(cfg config.Config) config.Config {
 // resource. This is common across all signal types (traces, logs, metrics)
 // in ECS mode.
 func ecsPreProcessResource(ctx context.Context, resource pcommon.Resource, dataStreamType string, serviceNameInDataStreamDataset bool, hostIPEnabled bool, sanitizeExistingLabels bool) {
-	ecs.TranslateResourceMetadata(resource, sanitizeExistingLabels)
-	ecs.ApplyResourceConventions(resource)
-	routing.EncodeDataStream(resource, dataStreamType, serviceNameInDataStreamDataset)
+	resourceContext := ecs.TranslateResourceMetadata(resource, sanitizeExistingLabels)
+	routing.EncodeDataStream(resource, dataStreamType, serviceNameInDataStreamDataset, resourceContext)
 	if hostIPEnabled {
 		ecs.SetHostIP(ctx, resource.Attributes())
 	}
