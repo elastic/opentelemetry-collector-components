@@ -1331,13 +1331,13 @@ func TestECSMappingModeTriggersDataStreamRouting(t *testing.T) {
 	type consumeFn func(t *testing.T, ctx context.Context, factory processor.Factory, settings processor.Settings, cfg *Config) pcommon.Map
 
 	tests := []struct {
-		name               string
-		consume            consumeFn
-		mappingMode        string
-		expectedType       string
-		expectedDataset    string
-		expectedNamespace  string
-		expectDataStream   bool
+		name              string
+		consume           consumeFn
+		mappingMode       string
+		expectedType      string
+		expectedDataset   string
+		expectedNamespace string
+		expectDataStream  bool
 	}{
 		{
 			name:              "traces with ecs mapping mode",
@@ -1349,10 +1349,10 @@ func TestECSMappingModeTriggersDataStreamRouting(t *testing.T) {
 			expectDataStream:  true,
 		},
 		{
-			name:             "traces without mapping mode",
-			consume:          consumeTraceResourceAttrs,
+			name:              "traces without mapping mode",
+			consume:           consumeTraceResourceAttrs,
 			expectedNamespace: "custom-ns",
-			expectDataStream: false,
+			expectDataStream:  false,
 		},
 		{
 			name:              "logs with ecs mapping mode",
@@ -1364,10 +1364,10 @@ func TestECSMappingModeTriggersDataStreamRouting(t *testing.T) {
 			expectDataStream:  true,
 		},
 		{
-			name:             "logs without mapping mode",
-			consume:          consumeLogResourceAttrs,
+			name:              "logs without mapping mode",
+			consume:           consumeLogResourceAttrs,
 			expectedNamespace: "custom-ns",
-			expectDataStream: false,
+			expectDataStream:  false,
 		},
 		{
 			name:              "metrics with ecs mapping mode",
@@ -1379,10 +1379,10 @@ func TestECSMappingModeTriggersDataStreamRouting(t *testing.T) {
 			expectDataStream:  true,
 		},
 		{
-			name:             "metrics without mapping mode",
-			consume:          consumeMetricResourceAttrs,
+			name:              "metrics without mapping mode",
+			consume:           consumeMetricResourceAttrs,
 			expectedNamespace: "custom-ns",
-			expectDataStream: false,
+			expectDataStream:  false,
 		},
 	}
 
