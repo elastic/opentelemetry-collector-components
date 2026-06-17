@@ -4,6 +4,12 @@
 
 <!-- next version -->
 
+## v0.9.0
+
+### 💡 Enhancements 💡
+- `otelbench`: Release a multi-arch image
+
+- Release 
 ## v0.8.0
 
 ### 💡 Enhancements 💡
