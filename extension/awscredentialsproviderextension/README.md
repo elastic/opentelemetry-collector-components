@@ -46,7 +46,7 @@ extensions:
 receivers:
   awscloudwatch:
     region: us-west-2
-    auth: awscredentialsprovider
+    credentials_provider: awscredentialsprovider
     ...
 
 service:
