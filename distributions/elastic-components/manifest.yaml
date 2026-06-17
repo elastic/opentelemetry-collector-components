@@ -53,7 +53,7 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.154.0
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.154.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor v0.59.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.59.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.59.1
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/integrationprocessor v0.59.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.59.0
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.59.0
