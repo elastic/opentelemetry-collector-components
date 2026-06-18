@@ -4,6 +4,13 @@
 
 <!-- next version -->
 
+## v0.10.1
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add `--exporter-elasticsearch` benchmark flag. (#1287)
+  Allows otelbench to benchmark collector configs that route generated telemetry through the Elasticsearch exporter.
+
 ## v0.10.0
 
 ### 💡 Enhancements 💡

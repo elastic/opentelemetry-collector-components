@@ -1,9 +1,0 @@
-change_type: enhancement
-
-note: Add `--exporter-elasticsearch` benchmark flag.
-
-component: otelbench
-
-issues: [1287]
-
-subtext: Allows otelbench to benchmark collector configs that route generated telemetry through the Elasticsearch exporter.
