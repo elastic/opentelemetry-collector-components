@@ -4,6 +4,12 @@
 
 <!-- next version -->
 
+## v0.10.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add Elasticsearch exporter to the list of exporter components. (#1283)
+
 ## v0.9.0
 
 ### 💡 Enhancements 💡
