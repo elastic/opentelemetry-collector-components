@@ -60,14 +60,18 @@ func getSignals() (signals []string) {
 
 // getExporters returns a slice of exporter names to be benchmarked according to Config
 func getExporters() (exporters []string) {
-	if Config.ExporterOTLP {
-		exporters = append(exporters, "otlp")
+	exporterNames, err := benchmarkExporterNames()
+	if err != nil {
+		panic(err)
 	}
-	if Config.ExporterOTLPHTTP {
-		exporters = append(exporters, "otlphttp")
-	}
-	if Config.ExporterPRW {
-		exporters = append(exporters, "prometheusremotewrite")
+	for _, name := range exporterNames {
+		enabled := defaultBenchmarkExporters[name]
+		if Config.Exporters != nil {
+			enabled = Config.Exporters[name]
+		}
+		if enabled {
+			exporters = append(exporters, name)
+		}
 	}
 	return
 }

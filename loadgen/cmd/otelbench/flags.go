@@ -46,9 +46,7 @@ var Config struct {
 	Profiles bool
 	Mixed    bool
 
-	ExporterOTLP     bool
-	ExporterOTLPHTTP bool
-	ExporterPRW      bool
+	Exporters map[string]bool
 
 	ConcurrencyList  []int
 	Shuffle          bool
@@ -58,6 +56,24 @@ var Config struct {
 	ProfilesDataPath string
 
 	Telemetry TelemetryConfig
+}
+
+type exporterFlagValue struct {
+	exporters map[string]bool
+	name      string
+}
+
+func (f exporterFlagValue) String() string {
+	return strconv.FormatBool(f.exporters[f.name])
+}
+
+func (f exporterFlagValue) Set(value string) error {
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return err
+	}
+	f.exporters[f.name] = enabled
+	return nil
 }
 
 type TelemetryConfig struct {
@@ -133,9 +149,22 @@ func Init() error {
 
 	flag.StringVar(&Config.CollectorConfigPath, "config", "", "path to collector config yaml. If empty, the config.yaml embedded in the binary will be used.")
 
-	flag.BoolVar(&Config.ExporterOTLP, "exporter-otlp", true, "benchmark exporter otlp")
-	flag.BoolVar(&Config.ExporterOTLPHTTP, "exporter-otlphttp", true, "benchmark exporter otlphttp")
-	flag.BoolVar(&Config.ExporterPRW, "exporter-prometheusremotewrite", false, "benchmark exporter prometheusremotewrite")
+	exporters, err := benchmarkExporterNames()
+	if err != nil {
+		return err
+	}
+	Config.Exporters = make(map[string]bool, len(exporters))
+	for _, name := range exporters {
+		Config.Exporters[name] = defaultBenchmarkExporters[name]
+		flag.Var(
+			exporterFlagValue{
+				exporters: Config.Exporters,
+				name:      name,
+			},
+			"exporter-"+name,
+			"benchmark exporter "+name,
+		)
+	}
 
 	flag.BoolVar(&Config.Logs, "logs", true, "benchmark logs")
 	flag.BoolVar(&Config.Metrics, "metrics", true, "benchmark metrics")
