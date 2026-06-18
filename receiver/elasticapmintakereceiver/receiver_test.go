@@ -880,6 +880,7 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 		name                 string
 		inputFile            string
 		signal               string // "traces" or "metrics"
+		batchSize            int    // 0 means use default
 		expectedDynamicAttrs []string
 		// expectedPerGroupDynamicAttrs, if set, verifies each group's
 		// context independently (one entry per ConsumeX call, in order).
@@ -922,6 +923,42 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			},
 			expectedYamlFile: "metric_global_label_shadow_expected.yaml",
 		},
+		{
+			// Global label keys are fixed at metadata-read time and must
+			// appear in x-elastic-dynamic-resource-attributes for any event
+			// that has not shadowed them, regardless of which batch that
+			// event lands in.
+			//
+			// The first event shadows tag1 via context.tags (batch 1).
+			// The second event does not shadow tag1 (batch 2).
+			// batch 2's context must still carry tag1 in its dynamic attrs.
+			name:      "cross-batch: first event shadows global label, second batch must still see it",
+			inputFile: "global_label_cross_batch_shadow_first_event.ndjson",
+			signal:    "traces",
+			batchSize: 1, // one event per batch to isolate the shadow in batch 1
+			expectedPerGroupDynamicAttrs: [][]string{
+				{"labels.tag2"},                // batch 1: tag1 shadowed → only tag2
+				{"labels.tag1", "labels.tag2"}, // batch 2: no shadow → both globals
+			},
+		},
+		{
+			// Global label keys are fixed at metadata-read time. Even when
+			// every event in a batch shadows the same key, subsequent batches
+			// must still see that key in x-elastic-dynamic-resource-attributes
+			// for events that do not shadow it.
+			//
+			// Events 0 and 1 both shadow tag1 (batch 1, all events shadow).
+			// Event 2 does not shadow tag1 (batch 2).
+			// batch 2's context must still carry tag1 in its dynamic attrs.
+			name:      "cross-batch: all events in first batch shadow global label, second batch must still see it",
+			inputFile: "global_label_cross_batch_shadow_all_events.ndjson",
+			signal:    "traces",
+			batchSize: 2, // two events per batch → events 0,1 in batch 1; event 2 in batch 2
+			expectedPerGroupDynamicAttrs: [][]string{
+				{"labels.tag2"},                // batch 1: both events shadow tag1 → only tag2
+				{"labels.tag1", "labels.tag2"}, // batch 2: no shadow → both globals
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -930,6 +967,9 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			cfg := factory.CreateDefaultConfig().(*Config)
 			cfg.NetAddr.Endpoint = testEndpoint
+			if tc.batchSize > 0 {
+				cfg.BatchSize = tc.batchSize
+			}
 			set := receivertest.NewNopSettings(metadata.Type)
 
 			var rcv component.Component

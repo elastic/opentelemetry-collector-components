@@ -89,6 +89,7 @@ type elasticAPMIntakeReceiver struct {
 
 	fetcherFactory agentCfgFetcherFactory
 	cancelFn       context.CancelFunc
+	processors     modelprocessor.Chained
 }
 
 // newElasticAPMIntakeReceiver just creates the OpenTelemetry receiver services. It is the caller's
@@ -109,6 +110,14 @@ func newElasticAPMIntakeReceiver(fetcher agentCfgFetcherFactory, cfg *Config, se
 		settings:       set,
 		obsreport:      obsreport,
 		fetcherFactory: fetcher,
+		processors: modelprocessor.Chained{
+			modelprocessor.SetGroupingKey{
+				NewHash: func() hash.Hash {
+					return xxhash.New()
+				},
+			},
+			modelprocessor.SetErrorMessage{},
+		},
 	}, nil
 }
 
@@ -181,6 +190,45 @@ type streamState struct {
 	rcv      *elasticAPMIntakeReceiver
 	groups   signalGroups
 	fpHasher *xxhashv2.Digest
+
+	// baseEvent is the APMEvent populated by HandleStream after readMetadata.
+	// It is the authoritative source of metadata-global labels for the stream.
+	baseEvent *modelpb.APMEvent
+
+	// keyIndex caches the set of metadata-global label keys for this stream.
+	// It is built once from baseEvent on the first processBatch call and
+	// reused for all subsequent batches without rescanning.
+	//
+	// Invariants that make this safe:
+	//   - Global=true labels originate exclusively from intake-v2 metadata.
+	//   - Events can only shadow a global key (resetting Global to false on
+	//     their own clone via Labels.Set); they cannot introduce new Global=true
+	//     keys. Therefore the complete key set is fixed at metadata-read time
+	//     and baseEvent is the authoritative source.
+	//   - Shadow-batch processing reads keyIndex but never writes to it, so
+	//     caching across batches is safe.
+	//
+	// nil means the index has not been built yet; a non-nil (possibly empty)
+	// map means it has been built and is ready to use.
+	keyIndex map[string]globalKeyInfo
+
+	// allGlobalKeys holds the prefixed names of all metadata-global label keys
+	// (e.g. "labels.env", "numeric_labels.count"). It is the pre-resolved form
+	// of resolveGlobalKeysBigInt(nil, keyIndex) and is built in the same pass
+	// as keyIndex, eliminating a per-batch allocation and map iteration.
+	allGlobalKeys []string
+}
+
+// newStreamState creates per-stream state for a single HandleStream invocation.
+// ss.baseEvent must be passed to HandleStream; it is populated by readMetadata
+// before the first processBatch call and provides the authoritative set of
+// metadata-global labels used to build keyIndex.
+func (r *elasticAPMIntakeReceiver) newStreamState() *streamState {
+	return &streamState{
+		rcv:       r,
+		fpHasher:  xxhashv2.New(),
+		baseEvent: &modelpb.APMEvent{Event: &modelpb.Event{}},
+	}
 }
 
 // newRootHandler returns an unauthenticated handler for GET /. It mirrors the
@@ -217,15 +265,13 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 		// shared across all processBatch calls for this request, eliminating
 		// repeated resource fingerprinting and attribute-map population for
 		// events that share the same resource within a stream.
-		ss := &streamState{rcv: r, fpHasher: xxhashv2.New()}
+		ss := r.newStreamState()
 		batchProcessor := modelpb.ProcessBatchFunc(ss.processBatch)
 
 		var elasticapmResult elasticapm.Result
-		baseEvent := &modelpb.APMEvent{}
-		baseEvent.Event = &modelpb.Event{}
 		streamErr := elasticapmProcessor.HandleStream(
 			ctx,
-			baseEvent,
+			ss.baseEvent,
 			req.Body,
 			r.cfg.BatchSize,
 			batchProcessor,
@@ -320,7 +366,6 @@ func contextCodeFromErr(err error) codes.Code {
 }
 
 func (s *streamState) processBatch(ctx context.Context, batch *modelpb.Batch) error {
-	r := s.rcv
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -330,26 +375,9 @@ func (s *streamState) processBatch(ctx context.Context, batch *modelpb.Batch) er
 	// the next processBatch call in the same stream.
 	defer s.groups.reset()
 
-	var ld *plog.Logs
-	var md *pmetric.Metrics
-	var td *ptrace.Traces
-
-	processors := modelprocessor.Chained{
-		modelprocessor.SetGroupingKey{
-			NewHash: func() hash.Hash {
-				return xxhash.New()
-			},
-		},
-		modelprocessor.SetErrorMessage{},
-	}
-
-	if err := processors.ProcessBatch(ctx, batch); err != nil {
-		r.settings.Logger.Error("failed to process batch", zap.Error(err))
-	}
-
-	// Collect label keys marked as Global across all events, assigning each
-	// unique key a bit position. Global labels originate from the intake v2
-	// metadata and are cloned onto every event by the apm-data library.
+	// Build the global-label key index from the first batch and cache it on
+	// streamState for all subsequent batches. See streamState.keyIndex for the
+	// invariants that make this safe.
 	//
 	// When an event has a tag with the same key as a metadata label,
 	// Labels.Set() replaces the value and resets Global to false on that
@@ -359,40 +387,54 @@ func (s *streamState) processBatch(ctx context.Context, batch *modelpb.Batch) er
 	// set (represented as a bitmask). Each shadowed batch is consumed with
 	// its own context so that the shadowed key is excluded from
 	// "x-elastic-dynamic-resource-attributes" for those events.
-	keyIndex := make(map[string]globalKeyInfo)
-	var bitPos int
-	for _, event := range *batch {
-		for key, lv := range event.Labels {
+	if s.keyIndex == nil {
+		s.keyIndex = make(map[string]globalKeyInfo)
+		var bitPos int
+		for key, lv := range s.baseEvent.Labels {
 			if lv != nil && lv.Global {
-				if _, ok := keyIndex[key]; !ok {
-					keyIndex[key] = globalKeyInfo{bitPos: bitPos, prefixedKey: "labels." + key}
-					bitPos++
-				}
+				s.keyIndex[key] = globalKeyInfo{bitPos: bitPos, prefixedKey: "labels." + key}
+				bitPos++
 			}
 		}
-		for key, nv := range event.NumericLabels {
+		for key, nv := range s.baseEvent.NumericLabels {
 			if nv != nil && nv.Global {
-				if _, ok := keyIndex[key]; !ok {
-					keyIndex[key] = globalKeyInfo{bitPos: bitPos, prefixedKey: "numeric_labels." + key}
-					bitPos++
-				}
+				s.keyIndex[key] = globalKeyInfo{bitPos: bitPos, prefixedKey: "numeric_labels." + key}
+				bitPos++
+			}
+		}
+		// Pre-size allGlobalKeys exactly once keyIndex size is known,
+		// guaranteeing a single backing-array allocation regardless of key count.
+		if len(s.keyIndex) > 0 {
+			s.allGlobalKeys = make([]string, 0, len(s.keyIndex))
+			for _, info := range s.keyIndex {
+				s.allGlobalKeys = append(s.allGlobalKeys, info.prefixedKey)
 			}
 		}
 	}
+
+	if err := s.rcv.processors.ProcessBatch(ctx, batch); err != nil {
+		s.rcv.settings.Logger.Error("failed to process batch", zap.Error(err))
+	}
+
+	var (
+		ld *plog.Logs
+		md *pmetric.Metrics
+		td *ptrace.Traces
+	)
 
 	// Fast path: no metadata-global keys were discovered in the batch.
 	// Skip shadow-mask computation and shadowed-batch bookkeeping entirely.
-	if len(keyIndex) == 0 {
+	if len(s.keyIndex) == 0 {
 		for _, event := range *batch {
-			if err := r.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
+			if err := s.rcv.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
 				return err
 			}
 		}
-		return errors.Join(r.consumeOTel(ctx, ld, md, td)...)
+		return errors.Join(s.rcv.consumeOTel(ctx, ld, md, td)...)
 	}
 
 	var shadowedBatches []shadowedBatch
-	if len(keyIndex) <= 64 {
+	if len(s.keyIndex) <= 64 {
 		// Most real payloads carry a small number of metadata-global keys.
 		// Use uint64 masks to avoid big.Int.String() allocations in grouping.
 		var shadowIndex map[uint64]int // mask -> index, created lazily
@@ -400,15 +442,15 @@ func (s *streamState) processBatch(ctx context.Context, batch *modelpb.Batch) er
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			mask, shadowed := eventShadowMaskUint64(event, keyIndex)
+			mask, shadowed := eventShadowMaskUint64(event, s.keyIndex)
 			if !shadowed {
-				if err := r.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
+				if err := s.rcv.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
 					return err
 				}
 				continue
 			}
 			sb := getOrCreateShadowedBatchUint64(mask, &shadowIndex, &shadowedBatches)
-			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, s.fpHasher); err != nil {
+			if err := s.rcv.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, s.fpHasher); err != nil {
 				return err
 			}
 		}
@@ -419,15 +461,15 @@ func (s *streamState) processBatch(ctx context.Context, batch *modelpb.Batch) er
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			mask, shadowed := eventShadowMaskBigInt(event, keyIndex)
+			mask, shadowed := eventShadowMaskBigInt(event, s.keyIndex)
 			if !shadowed {
-				if err := r.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
+				if err := s.rcv.appendEvent(event, &ld, &md, &td, &s.groups, s.fpHasher); err != nil {
 					return err
 				}
 				continue
 			}
 			sb := getOrCreateShadowedBatchBigInt(mask, &shadowIndex, &shadowedBatches)
-			if err := r.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, s.fpHasher); err != nil {
+			if err := s.rcv.appendEvent(event, &sb.ld, &sb.md, &sb.td, &sb.groups, s.fpHasher); err != nil {
 				return err
 			}
 		}
@@ -435,12 +477,12 @@ func (s *streamState) processBatch(ctx context.Context, batch *modelpb.Batch) er
 
 	// Consume the main batch with the full set of global keys.
 	mainCtx := ctx
-	if len(keyIndex) > 0 {
-		mainCtx = withDynamicResourceAttributes(ctx, resolveGlobalKeysBigInt(nil, keyIndex))
+	if len(s.allGlobalKeys) > 0 {
+		mainCtx = withDynamicResourceAttributes(ctx, s.allGlobalKeys)
 	}
 
 	var errs []error
-	errs = append(errs, r.consumeOTel(mainCtx, ld, md, td)...)
+	errs = append(errs, s.rcv.consumeOTel(mainCtx, ld, md, td)...)
 
 	// Consume shadowed batches, each with its own global key set.
 	for _, sb := range shadowedBatches {
@@ -449,12 +491,12 @@ func (s *streamState) processBatch(ctx context.Context, batch *modelpb.Batch) er
 		}
 		var dynamicAttrs []string
 		if sb.useSmallMask {
-			dynamicAttrs = resolveGlobalKeysUint64(sb.globalKeyMask64, keyIndex)
+			dynamicAttrs = resolveGlobalKeysUint64(sb.globalKeyMask64, s.keyIndex)
 		} else {
-			dynamicAttrs = resolveGlobalKeysBigInt(&sb.globalKeyMask, keyIndex)
+			dynamicAttrs = resolveGlobalKeysBigInt(&sb.globalKeyMask, s.keyIndex)
 		}
 		sbCtx := withDynamicResourceAttributes(ctx, dynamicAttrs)
-		errs = append(errs, r.consumeOTel(sbCtx, sb.ld, sb.md, sb.td)...)
+		errs = append(errs, s.rcv.consumeOTel(sbCtx, sb.ld, sb.md, sb.td)...)
 	}
 	return errors.Join(errs...)
 }
