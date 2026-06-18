@@ -38,7 +38,7 @@ import (
 //     sentinel values via a confmap.Conf; oktaProvider must return no error,
 //     confirming that credentials and optional fields are wired through.
 func TestOktaProviderConfigRoundTrip(t *testing.T) {
-	const wantTotal = 11
+	const wantTotal = 12
 	if got := reflect.TypeOf(ecokta.Config{}).NumField(); got != wantTotal {
 		t.Fatalf("ecokta.Config has %d exported fields, want %d; "+
 			"update oktaLocalConf inside oktaProvider and this test", got, wantTotal)
@@ -53,6 +53,7 @@ func TestOktaProviderConfigRoundTrip(t *testing.T) {
 		"idset_shards": 32,
 		"limit_window": "2m",
 		"limit_fixed":  50,
+		"scratch_dir":  "/scratch",
 	})
 
 	_, err := oktaProvider(cfg)

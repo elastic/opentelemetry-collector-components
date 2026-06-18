@@ -40,7 +40,7 @@ import (
 //     must return no error, confirming that credentials and optional
 //     fields are wired through.
 func TestEntraidProviderConfigRoundTrip(t *testing.T) {
-	const wantTotal = 13
+	const wantTotal = 14
 	if got := reflect.TypeOf(ecentraid.Config{}).NumField(); got != wantTotal {
 		t.Fatalf("ecentraid.Config has %d exported fields, want %d; "+
 			"update entraidLocalConf inside entraidProvider and this test", got, wantTotal)
@@ -58,6 +58,7 @@ func TestEntraidProviderConfigRoundTrip(t *testing.T) {
 		"select_users":   []string{"displayName", "mail"},
 		"select_groups":  []string{"displayName"},
 		"select_devices": []string{"displayName", "operatingSystem"},
+		"scratch_dir":    "/scratch",
 	})
 
 	_, err := entraidProvider(cfg)

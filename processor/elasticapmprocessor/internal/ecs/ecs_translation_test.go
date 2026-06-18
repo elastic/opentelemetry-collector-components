@@ -965,7 +965,8 @@ func TestGetLabelAttributeValue(t *testing.T) {
 		})
 	}
 }
-func TestApplyResourceConventions(t *testing.T) {
+
+func TestTranslateResourceMetadataAppliesHostnameConventions(t *testing.T) {
 	testdata := map[string]struct {
 		inputAttrs    map[string]string
 		expectedAttrs map[string]string
@@ -1027,6 +1028,15 @@ func TestApplyResourceConventions(t *testing.T) {
 				"host.hostname": "host.hostname",
 			},
 		},
+		"host.name and host.hostname conventions": {
+			inputAttrs: map[string]string{
+				string(semconv.K8SNodeNameKey): "node-1",
+			},
+			expectedAttrs: map[string]string{
+				elasticattr.HostHostName:    "node-1",
+				string(semconv.HostNameKey): "node-1",
+			},
+		},
 	}
 
 	for _, td := range testdata {
@@ -1036,7 +1046,7 @@ func TestApplyResourceConventions(t *testing.T) {
 			attrs.PutStr(k, v)
 		}
 
-		ApplyResourceConventions(resource)
+		TranslateResourceMetadata(resource, false)
 
 		for k, expectedV := range td.expectedAttrs {
 			actualV, ok := attrs.Get(k)

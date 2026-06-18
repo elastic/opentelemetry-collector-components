@@ -18,6 +18,9 @@
 package main
 
 import (
+	"sort"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/connector"
@@ -35,6 +38,16 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
+
+var defaultBenchmarkExporters = map[string]bool{
+	"otlp":     true,
+	"otlphttp": true,
+}
+
+var nonBenchmarkExporters = map[string]struct{}{
+	"debug": {},
+	"nop":   {},
+}
 
 func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenreceiver.Stats) (otelcol.Factories, error) {
 	var err error
@@ -60,6 +73,7 @@ func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenrece
 
 	// Exporters
 	factories.Exporters, err = otelcol.MakeFactoryMap(
+		elasticsearchexporter.NewFactory(),
 		otlpexporter.NewFactory(),
 		otlphttpexporter.NewFactory(),
 		prometheusremotewriteexporter.NewFactory(),
@@ -84,4 +98,22 @@ func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenrece
 	factories.Telemetry = otelconftelemetry.NewFactory()
 
 	return factories, err
+}
+
+func benchmarkExporterNames() ([]string, error) {
+	factories, err := components(nil, nil, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	exporterNames := make([]string, 0, len(factories.Exporters))
+	for exporterType := range factories.Exporters {
+		name := exporterType.String()
+		if _, skip := nonBenchmarkExporters[name]; skip {
+			continue
+		}
+		exporterNames = append(exporterNames, name)
+	}
+	sort.Strings(exporterNames)
+	return exporterNames, nil
 }

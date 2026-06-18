@@ -43,6 +43,21 @@ type kv struct {
 	v pcommon.Value
 }
 
+// ResourceAttrContext is collected while translating resource attributes and
+// reused by data stream routing.
+type ResourceAttrContext struct {
+	ServiceName         string
+	HostName            string
+	HostHostName        string
+	K8SNodeName         string
+	K8SPodName          string
+	K8SPodUID           string
+	K8SNamespaceName    string
+	DataStreamType      string
+	DataStreamDataset   string
+	DataStreamNamespace string
+}
+
 // TranslateResourceMetadata normalizes resource attributes.
 // Moves unsupported attributes to labels.* / numeric_labels.* (key sanitized),
 // and leaves supported ECS attributes unchanged.
@@ -53,11 +68,51 @@ type kv struct {
 // When false (OTel path), all unsupported attributes — including any that
 // already carry a labels.* prefix — are treated as raw keys and re-normalized
 // from scratch.
-func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels bool) {
+//
+// It also applies resource-level conventions (for example host.hostname
+// derivation from kubernetes metadata) and returns the resulting
+// ResourceAttrContext.
+func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels bool) ResourceAttrContext {
 	attributes := resource.Attributes()
+	var context ResourceAttrContext
 	var toAppend []kv
 	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
+		case elasticattr.DataStreamType:
+			context.DataStreamType = v.Str()
+			return false
+		case elasticattr.DataStreamDataset:
+			context.DataStreamDataset = v.Str()
+			return false
+		case elasticattr.DataStreamNamespace:
+			context.DataStreamNamespace = v.Str()
+			return false
+		case elasticattr.HostHostName:
+			context.HostHostName = v.Str()
+			return false
+		case string(semconv.ServiceNameKey):
+			context.ServiceName = v.Str()
+			return false
+		case string(semconv.HostNameKey):
+			truncatePreservedStringAttribute(v)
+			context.HostName = v.Str()
+			return false
+		case string(semconv.K8SNodeNameKey):
+			truncatePreservedStringAttribute(v)
+			context.K8SNodeName = v.Str()
+			return false
+		case string(semconv.K8SPodNameKey):
+			truncatePreservedStringAttribute(v)
+			context.K8SPodName = v.Str()
+			return false
+		case string(semconv.K8SPodUIDKey):
+			truncatePreservedStringAttribute(v)
+			context.K8SPodUID = v.Str()
+			return false
+		case string(semconv.K8SNamespaceNameKey):
+			truncatePreservedStringAttribute(v)
+			context.K8SNamespaceName = v.Str()
+			return false
 		case elasticattr.AgentActivationMethod,
 			elasticattr.AgentEphemeralID,
 			elasticattr.AgentName,
@@ -72,13 +127,9 @@ func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels
 			elasticattr.CloudOriginServiceName,
 			elasticattr.CloudProjectID,
 			elasticattr.CloudProjectName,
-			elasticattr.DataStreamDataset,
-			elasticattr.DataStreamNamespace,
-			elasticattr.DataStreamType,
 			elasticattr.DestinationIP,
 			elasticattr.FaaSExecution,
 			elasticattr.FaaSTriggerRequestID,
-			elasticattr.HostHostName,
 			elasticattr.HostOSType,
 			elasticattr.MetricsetName,
 			elasticattr.ServiceFrameworkName,
@@ -108,7 +159,6 @@ func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels
 			string(semconv.ProcessExecutableNameKey),
 			string(semconv.ProcessParentPIDKey),
 			string(semconv.ProcessPIDKey),
-			string(semconv.ServiceNameKey),
 			string(semconv.ServiceNamespaceKey),
 			string(semconv.SourceAddressKey),
 			string(semconv.SourcePortKey),
@@ -139,12 +189,7 @@ func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels
 			string(semconv.DeviceModelNameKey),
 			string(semconv.HostArchKey),
 			string(semconv.HostIDKey),
-			string(semconv.HostNameKey),
 			string(semconv.HostTypeKey),
-			string(semconv.K8SNamespaceNameKey),
-			string(semconv.K8SNodeNameKey),
-			string(semconv.K8SPodNameKey),
-			string(semconv.K8SPodUIDKey),
 			string(semconv.OSDescriptionKey),
 			string(semconv.OSNameKey),
 			string(semconv.OSTypeKey),
@@ -185,6 +230,27 @@ func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels
 	for _, l := range toAppend {
 		l.v.CopyTo(attributes.PutEmpty(l.k))
 	}
+
+	// set host.name and host.hostname
+	if context.K8SNodeName != "" {
+		// Keep legacy MIS/APM-server hostname behavior for kubernetes workloads:
+		// when node.name is present, host.hostname must resolve to the node name.
+		context.HostHostName = context.K8SNodeName
+		attributes.PutStr(elasticattr.HostHostName, context.K8SNodeName)
+	} else if context.K8SPodName != "" ||
+		context.K8SPodUID != "" ||
+		context.K8SNamespaceName != "" {
+		// kubernetes.* is set but kubernetes.node.name is not: don't set host.hostname
+		context.HostHostName = ""
+		attributes.Remove(elasticattr.HostHostName)
+	}
+	// Mirror host.hostname into host.name when host.name is missing so downstream
+	// enrichment and routing keep the same fallback semantics as before.
+	if context.HostName == "" && context.HostHostName != "" {
+		context.HostName = context.HostHostName
+		attributes.PutStr(string(semconv.HostNameKey), context.HostHostName)
+	}
+	return context
 }
 
 // RemapLogRecordAttributesToECSLabels applies the apm-data OTLP fallback behaviour for
@@ -448,37 +514,6 @@ func getLabelAttributeValue(key string, value pcommon.Value) kv {
 		// apm-data's setLabel also silently drops these types.
 	}
 	return kv{}
-}
-
-func ApplyResourceConventions(resource pcommon.Resource) {
-	setHostnameFromKubernetes(resource)
-}
-
-// setHostnameFromKubernetes sets the host.hostname attribute based on kubernetes attributes for backwards compatibility with MIS and APM Server.
-func setHostnameFromKubernetes(resource pcommon.Resource) {
-	attrs := resource.Attributes()
-
-	hostName, hostNameExists := attrs.Get(string(semconv.HostNameKey))
-	k8sNodeName, k8sNodeNameExists := attrs.Get(string(semconv.K8SNodeNameKey))
-	k8sPodName, k8sPodNameExists := attrs.Get(string(semconv.K8SPodNameKey))
-	k8sPodUID, k8sPodUIDExists := attrs.Get(string(semconv.K8SPodUIDKey))
-	k8sNamespace, k8sNamespaceExists := attrs.Get(string(semconv.K8SNamespaceNameKey))
-
-	if k8sNodeNameExists && k8sNodeName.Str() != "" {
-		// kubernetes.node.name is set: set host.hostname to its value
-		attrs.PutStr(elasticattr.HostHostName, k8sNodeName.Str())
-	} else if (k8sPodNameExists && k8sPodName.Str() != "") ||
-		(k8sPodUIDExists && k8sPodUID.Str() != "") ||
-		(k8sNamespaceExists && k8sNamespace.Str() != "") {
-		// kubernetes.* is set but kubernetes.node.name is not: don't set host.hostname
-		attrs.Remove(elasticattr.HostHostName)
-	}
-
-	// If host.name is not set but host.hostname is, use hostname as name
-	hostHostname, hostHostnameExists := attrs.Get(elasticattr.HostHostName)
-	if (!hostNameExists || hostName.Str() == "") && hostHostnameExists && hostHostname.Str() != "" {
-		attrs.PutStr(string(semconv.HostNameKey), hostHostname.Str())
-	}
 }
 
 // sanitizeExistingLabelKey sanitizes reserved characters from the suffix of a

@@ -20,12 +20,20 @@
 package metadata
 
 import (
+	"slices"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+)
+
+const (
+	AggregationStrategySum = "sum"
+	AggregationStrategyAvg = "avg"
+	AggregationStrategyMin = "min"
+	AggregationStrategyMax = "max"
 )
 
 var MetricsInfo = metricsInfo{
@@ -143,9 +151,9 @@ func WithSyscallNameMetricAttribute(syscallNameAttributeValue string) MetricAttr
 }
 
 type metricSamplesBeamCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric               // data buffer for generated metric.
+	config   SamplesBeamCountMetricConfig // metric config provided by user.
+	capacity int                          // max observed number of data points added to the metric.
 }
 
 // init fills samples.beam.count metric with initial data.
@@ -184,7 +192,7 @@ func (m *metricSamplesBeamCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesBeamCount(cfg MetricConfig) metricSamplesBeamCount {
+func newMetricSamplesBeamCount(cfg SamplesBeamCountMetricConfig) metricSamplesBeamCount {
 	m := metricSamplesBeamCount{config: cfg}
 
 	if cfg.Enabled {
@@ -195,9 +203,10 @@ func newMetricSamplesBeamCount(cfg MetricConfig) metricSamplesBeamCount {
 }
 
 type metricSamplesClassification struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                    // data buffer for generated metric.
+	config        SamplesClassificationMetricConfig // metric config provided by user.
+	capacity      int                               // max observed number of data points added to the metric.
+	aggDataPoints []int64                           // slice containing number of aggregated datapoints at each index
 }
 
 // init fills samples.classification metric with initial data.
@@ -207,19 +216,54 @@ func (m *metricSamplesClassification) init() {
 	m.data.SetUnit("1")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
 }
 
 func (m *metricSamplesClassification) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, classificationAttributeValue string, frameTypeAttributeValue string, profileTypeUnitAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, SamplesClassificationMetricAttributeKeyClassification) {
+		dp.Attributes().PutStr("classification", classificationAttributeValue)
+	}
+	if slices.Contains(m.config.EnabledAttributes, SamplesClassificationMetricAttributeKeyFrameType) {
+		dp.Attributes().PutStr("frame_type", frameTypeAttributeValue)
+	}
+	if slices.Contains(m.config.EnabledAttributes, SamplesClassificationMetricAttributeKeyProfileTypeUnit) {
+		dp.Attributes().PutStr("profile.type_unit", profileTypeUnitAttributeValue)
+	}
+
+	var s string
+	dps := m.data.Gauge().DataPoints()
+	for i := 0; i < dps.Len(); i++ {
+		dpi := dps.At(i)
+		if dp.Attributes().Equal(dpi.Attributes()) && dp.StartTimestamp() == dpi.StartTimestamp() && dp.Timestamp() == dpi.Timestamp() {
+			switch s = m.config.AggregationStrategy; s {
+			case AggregationStrategySum, AggregationStrategyAvg:
+				dpi.SetIntValue(dpi.IntValue() + val)
+				m.aggDataPoints[i] += 1
+				return
+			case AggregationStrategyMin:
+				if dpi.IntValue() > val {
+					dpi.SetIntValue(val)
+				}
+				return
+			case AggregationStrategyMax:
+				if dpi.IntValue() < val {
+					dpi.SetIntValue(val)
+				}
+				return
+			}
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("classification", classificationAttributeValue)
-	dp.Attributes().PutStr("frame_type", frameTypeAttributeValue)
-	dp.Attributes().PutStr("profile.type_unit", profileTypeUnitAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -232,13 +276,18 @@ func (m *metricSamplesClassification) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricSamplesClassification) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricSamplesClassification(cfg MetricConfig) metricSamplesClassification {
+func newMetricSamplesClassification(cfg SamplesClassificationMetricConfig) metricSamplesClassification {
 	m := metricSamplesClassification{config: cfg}
 
 	if cfg.Enabled {
@@ -249,9 +298,9 @@ func newMetricSamplesClassification(cfg MetricConfig) metricSamplesClassificatio
 }
 
 type metricSamplesCpythonCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric                  // data buffer for generated metric.
+	config   SamplesCpythonCountMetricConfig // metric config provided by user.
+	capacity int                             // max observed number of data points added to the metric.
 }
 
 // init fills samples.cpython.count metric with initial data.
@@ -290,7 +339,7 @@ func (m *metricSamplesCpythonCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesCpythonCount(cfg MetricConfig) metricSamplesCpythonCount {
+func newMetricSamplesCpythonCount(cfg SamplesCpythonCountMetricConfig) metricSamplesCpythonCount {
 	m := metricSamplesCpythonCount{config: cfg}
 
 	if cfg.Enabled {
@@ -301,9 +350,10 @@ func newMetricSamplesCpythonCount(cfg MetricConfig) metricSamplesCpythonCount {
 }
 
 type metricSamplesCustomAggregation struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric                       // data buffer for generated metric.
+	config        SamplesCustomAggregationMetricConfig // metric config provided by user.
+	capacity      int                                  // max observed number of data points added to the metric.
+	aggDataPoints []int64                              // slice containing number of aggregated datapoints at each index
 }
 
 // init fills samples.custom_aggregation metric with initial data.
@@ -313,18 +363,51 @@ func (m *metricSamplesCustomAggregation) init() {
 	m.data.SetUnit("1")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
 }
 
 func (m *metricSamplesCustomAggregation) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, frameTypeAttributeValue string, profileTypeUnitAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, SamplesCustomAggregationMetricAttributeKeyFrameType) {
+		dp.Attributes().PutStr("frame_type", frameTypeAttributeValue)
+	}
+	if slices.Contains(m.config.EnabledAttributes, SamplesCustomAggregationMetricAttributeKeyProfileTypeUnit) {
+		dp.Attributes().PutStr("profile.type_unit", profileTypeUnitAttributeValue)
+	}
+
+	var s string
+	dps := m.data.Gauge().DataPoints()
+	for i := 0; i < dps.Len(); i++ {
+		dpi := dps.At(i)
+		if dp.Attributes().Equal(dpi.Attributes()) && dp.StartTimestamp() == dpi.StartTimestamp() && dp.Timestamp() == dpi.Timestamp() {
+			switch s = m.config.AggregationStrategy; s {
+			case AggregationStrategySum, AggregationStrategyAvg:
+				dpi.SetIntValue(dpi.IntValue() + val)
+				m.aggDataPoints[i] += 1
+				return
+			case AggregationStrategyMin:
+				if dpi.IntValue() > val {
+					dpi.SetIntValue(val)
+				}
+				return
+			case AggregationStrategyMax:
+				if dpi.IntValue() < val {
+					dpi.SetIntValue(val)
+				}
+				return
+			}
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("frame_type", frameTypeAttributeValue)
-	dp.Attributes().PutStr("profile.type_unit", profileTypeUnitAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -337,13 +420,18 @@ func (m *metricSamplesCustomAggregation) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricSamplesCustomAggregation) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricSamplesCustomAggregation(cfg MetricConfig) metricSamplesCustomAggregation {
+func newMetricSamplesCustomAggregation(cfg SamplesCustomAggregationMetricConfig) metricSamplesCustomAggregation {
 	m := metricSamplesCustomAggregation{config: cfg}
 
 	if cfg.Enabled {
@@ -354,9 +442,9 @@ func newMetricSamplesCustomAggregation(cfg MetricConfig) metricSamplesCustomAggr
 }
 
 type metricSamplesDotnetCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric                 // data buffer for generated metric.
+	config   SamplesDotnetCountMetricConfig // metric config provided by user.
+	capacity int                            // max observed number of data points added to the metric.
 }
 
 // init fills samples.dotnet.count metric with initial data.
@@ -395,7 +483,7 @@ func (m *metricSamplesDotnetCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesDotnetCount(cfg MetricConfig) metricSamplesDotnetCount {
+func newMetricSamplesDotnetCount(cfg SamplesDotnetCountMetricConfig) metricSamplesDotnetCount {
 	m := metricSamplesDotnetCount{config: cfg}
 
 	if cfg.Enabled {
@@ -406,9 +494,10 @@ func newMetricSamplesDotnetCount(cfg MetricConfig) metricSamplesDotnetCount {
 }
 
 type metricSamplesFrameType struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data          pmetric.Metric               // data buffer for generated metric.
+	config        SamplesFrameTypeMetricConfig // metric config provided by user.
+	capacity      int                          // max observed number of data points added to the metric.
+	aggDataPoints []int64                      // slice containing number of aggregated datapoints at each index
 }
 
 // init fills samples.frame_type metric with initial data.
@@ -418,18 +507,51 @@ func (m *metricSamplesFrameType) init() {
 	m.data.SetUnit("1")
 	m.data.SetEmptyGauge()
 	m.data.Gauge().DataPoints().EnsureCapacity(m.capacity)
+	m.aggDataPoints = m.aggDataPoints[:0]
 }
 
 func (m *metricSamplesFrameType) recordDataPoint(start pcommon.Timestamp, ts pcommon.Timestamp, val int64, frameTypeAttributeValue string, profileTypeUnitAttributeValue string) {
 	if !m.config.Enabled {
 		return
 	}
-	dp := m.data.Gauge().DataPoints().AppendEmpty()
+
+	dp := pmetric.NewNumberDataPoint()
 	dp.SetStartTimestamp(start)
 	dp.SetTimestamp(ts)
+	if slices.Contains(m.config.EnabledAttributes, SamplesFrameTypeMetricAttributeKeyFrameType) {
+		dp.Attributes().PutStr("frame_type", frameTypeAttributeValue)
+	}
+	if slices.Contains(m.config.EnabledAttributes, SamplesFrameTypeMetricAttributeKeyProfileTypeUnit) {
+		dp.Attributes().PutStr("profile.type_unit", profileTypeUnitAttributeValue)
+	}
+
+	var s string
+	dps := m.data.Gauge().DataPoints()
+	for i := 0; i < dps.Len(); i++ {
+		dpi := dps.At(i)
+		if dp.Attributes().Equal(dpi.Attributes()) && dp.StartTimestamp() == dpi.StartTimestamp() && dp.Timestamp() == dpi.Timestamp() {
+			switch s = m.config.AggregationStrategy; s {
+			case AggregationStrategySum, AggregationStrategyAvg:
+				dpi.SetIntValue(dpi.IntValue() + val)
+				m.aggDataPoints[i] += 1
+				return
+			case AggregationStrategyMin:
+				if dpi.IntValue() > val {
+					dpi.SetIntValue(val)
+				}
+				return
+			case AggregationStrategyMax:
+				if dpi.IntValue() < val {
+					dpi.SetIntValue(val)
+				}
+				return
+			}
+		}
+	}
+
 	dp.SetIntValue(val)
-	dp.Attributes().PutStr("frame_type", frameTypeAttributeValue)
-	dp.Attributes().PutStr("profile.type_unit", profileTypeUnitAttributeValue)
+	m.aggDataPoints = append(m.aggDataPoints, 1)
+	dp.MoveTo(dps.AppendEmpty())
 }
 
 // updateCapacity saves max length of data point slices that will be used for the slice capacity.
@@ -442,13 +564,18 @@ func (m *metricSamplesFrameType) updateCapacity() {
 // emit appends recorded metric data to a metrics slice and prepares it for recording another set of data points.
 func (m *metricSamplesFrameType) emit(metrics pmetric.MetricSlice) {
 	if m.config.Enabled && m.data.Gauge().DataPoints().Len() > 0 {
+		if m.config.AggregationStrategy == AggregationStrategyAvg {
+			for i, aggCount := range m.aggDataPoints {
+				m.data.Gauge().DataPoints().At(i).SetIntValue(m.data.Gauge().DataPoints().At(i).IntValue() / aggCount)
+			}
+		}
 		m.updateCapacity()
 		m.data.MoveTo(metrics.AppendEmpty())
 		m.init()
 	}
 }
 
-func newMetricSamplesFrameType(cfg MetricConfig) metricSamplesFrameType {
+func newMetricSamplesFrameType(cfg SamplesFrameTypeMetricConfig) metricSamplesFrameType {
 	m := metricSamplesFrameType{config: cfg}
 
 	if cfg.Enabled {
@@ -459,9 +586,9 @@ func newMetricSamplesFrameType(cfg MetricConfig) metricSamplesFrameType {
 }
 
 type metricSamplesGoCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric             // data buffer for generated metric.
+	config   SamplesGoCountMetricConfig // metric config provided by user.
+	capacity int                        // max observed number of data points added to the metric.
 }
 
 // init fills samples.go.count metric with initial data.
@@ -500,7 +627,7 @@ func (m *metricSamplesGoCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesGoCount(cfg MetricConfig) metricSamplesGoCount {
+func newMetricSamplesGoCount(cfg SamplesGoCountMetricConfig) metricSamplesGoCount {
 	m := metricSamplesGoCount{config: cfg}
 
 	if cfg.Enabled {
@@ -511,9 +638,9 @@ func newMetricSamplesGoCount(cfg MetricConfig) metricSamplesGoCount {
 }
 
 type metricSamplesJvmCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric              // data buffer for generated metric.
+	config   SamplesJvmCountMetricConfig // metric config provided by user.
+	capacity int                         // max observed number of data points added to the metric.
 }
 
 // init fills samples.jvm.count metric with initial data.
@@ -552,7 +679,7 @@ func (m *metricSamplesJvmCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesJvmCount(cfg MetricConfig) metricSamplesJvmCount {
+func newMetricSamplesJvmCount(cfg SamplesJvmCountMetricConfig) metricSamplesJvmCount {
 	m := metricSamplesJvmCount{config: cfg}
 
 	if cfg.Enabled {
@@ -563,9 +690,9 @@ func newMetricSamplesJvmCount(cfg MetricConfig) metricSamplesJvmCount {
 }
 
 type metricSamplesKernelCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric                 // data buffer for generated metric.
+	config   SamplesKernelCountMetricConfig // metric config provided by user.
+	capacity int                            // max observed number of data points added to the metric.
 }
 
 // init fills samples.kernel.count metric with initial data.
@@ -608,7 +735,7 @@ func (m *metricSamplesKernelCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesKernelCount(cfg MetricConfig) metricSamplesKernelCount {
+func newMetricSamplesKernelCount(cfg SamplesKernelCountMetricConfig) metricSamplesKernelCount {
 	m := metricSamplesKernelCount{config: cfg}
 
 	if cfg.Enabled {
@@ -619,9 +746,9 @@ func newMetricSamplesKernelCount(cfg MetricConfig) metricSamplesKernelCount {
 }
 
 type metricSamplesNativeCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric                 // data buffer for generated metric.
+	config   SamplesNativeCountMetricConfig // metric config provided by user.
+	capacity int                            // max observed number of data points added to the metric.
 }
 
 // init fills samples.native.count metric with initial data.
@@ -664,7 +791,7 @@ func (m *metricSamplesNativeCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesNativeCount(cfg MetricConfig) metricSamplesNativeCount {
+func newMetricSamplesNativeCount(cfg SamplesNativeCountMetricConfig) metricSamplesNativeCount {
 	m := metricSamplesNativeCount{config: cfg}
 
 	if cfg.Enabled {
@@ -675,9 +802,9 @@ func newMetricSamplesNativeCount(cfg MetricConfig) metricSamplesNativeCount {
 }
 
 type metricSamplesPerlCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric               // data buffer for generated metric.
+	config   SamplesPerlCountMetricConfig // metric config provided by user.
+	capacity int                          // max observed number of data points added to the metric.
 }
 
 // init fills samples.perl.count metric with initial data.
@@ -716,7 +843,7 @@ func (m *metricSamplesPerlCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesPerlCount(cfg MetricConfig) metricSamplesPerlCount {
+func newMetricSamplesPerlCount(cfg SamplesPerlCountMetricConfig) metricSamplesPerlCount {
 	m := metricSamplesPerlCount{config: cfg}
 
 	if cfg.Enabled {
@@ -727,9 +854,9 @@ func newMetricSamplesPerlCount(cfg MetricConfig) metricSamplesPerlCount {
 }
 
 type metricSamplesPhpCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric              // data buffer for generated metric.
+	config   SamplesPhpCountMetricConfig // metric config provided by user.
+	capacity int                         // max observed number of data points added to the metric.
 }
 
 // init fills samples.php.count metric with initial data.
@@ -768,7 +895,7 @@ func (m *metricSamplesPhpCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesPhpCount(cfg MetricConfig) metricSamplesPhpCount {
+func newMetricSamplesPhpCount(cfg SamplesPhpCountMetricConfig) metricSamplesPhpCount {
 	m := metricSamplesPhpCount{config: cfg}
 
 	if cfg.Enabled {
@@ -779,9 +906,9 @@ func newMetricSamplesPhpCount(cfg MetricConfig) metricSamplesPhpCount {
 }
 
 type metricSamplesRubyCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric               // data buffer for generated metric.
+	config   SamplesRubyCountMetricConfig // metric config provided by user.
+	capacity int                          // max observed number of data points added to the metric.
 }
 
 // init fills samples.ruby.count metric with initial data.
@@ -820,7 +947,7 @@ func (m *metricSamplesRubyCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesRubyCount(cfg MetricConfig) metricSamplesRubyCount {
+func newMetricSamplesRubyCount(cfg SamplesRubyCountMetricConfig) metricSamplesRubyCount {
 	m := metricSamplesRubyCount{config: cfg}
 
 	if cfg.Enabled {
@@ -831,9 +958,9 @@ func newMetricSamplesRubyCount(cfg MetricConfig) metricSamplesRubyCount {
 }
 
 type metricSamplesRustCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric               // data buffer for generated metric.
+	config   SamplesRustCountMetricConfig // metric config provided by user.
+	capacity int                          // max observed number of data points added to the metric.
 }
 
 // init fills samples.rust.count metric with initial data.
@@ -872,7 +999,7 @@ func (m *metricSamplesRustCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesRustCount(cfg MetricConfig) metricSamplesRustCount {
+func newMetricSamplesRustCount(cfg SamplesRustCountMetricConfig) metricSamplesRustCount {
 	m := metricSamplesRustCount{config: cfg}
 
 	if cfg.Enabled {
@@ -883,9 +1010,9 @@ func newMetricSamplesRustCount(cfg MetricConfig) metricSamplesRustCount {
 }
 
 type metricSamplesUserCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric               // data buffer for generated metric.
+	config   SamplesUserCountMetricConfig // metric config provided by user.
+	capacity int                          // max observed number of data points added to the metric.
 }
 
 // init fills samples.user.count metric with initial data.
@@ -924,7 +1051,7 @@ func (m *metricSamplesUserCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesUserCount(cfg MetricConfig) metricSamplesUserCount {
+func newMetricSamplesUserCount(cfg SamplesUserCountMetricConfig) metricSamplesUserCount {
 	m := metricSamplesUserCount{config: cfg}
 
 	if cfg.Enabled {
@@ -935,9 +1062,9 @@ func newMetricSamplesUserCount(cfg MetricConfig) metricSamplesUserCount {
 }
 
 type metricSamplesV8jsCount struct {
-	data     pmetric.Metric // data buffer for generated metric.
-	config   MetricConfig   // metric config provided by user.
-	capacity int            // max observed number of data points added to the metric.
+	data     pmetric.Metric               // data buffer for generated metric.
+	config   SamplesV8jsCountMetricConfig // metric config provided by user.
+	capacity int                          // max observed number of data points added to the metric.
 }
 
 // init fills samples.v8js.count metric with initial data.
@@ -976,7 +1103,7 @@ func (m *metricSamplesV8jsCount) emit(metrics pmetric.MetricSlice) {
 	}
 }
 
-func newMetricSamplesV8jsCount(cfg MetricConfig) metricSamplesV8jsCount {
+func newMetricSamplesV8jsCount(cfg SamplesV8jsCountMetricConfig) metricSamplesV8jsCount {
 	m := metricSamplesV8jsCount{config: cfg}
 
 	if cfg.Enabled {
