@@ -116,13 +116,13 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 	errs = errors.Join(errs, err)
 	builder.RatelimitTokensAfter, err = builder.meter.Float64Gauge(
 		"otelcol_ratelimit.tokens_after",
-		metric.WithDescription("Token bucket level after this request was served. Negative values indicate the bucket is in debt. [Development]"),
+		metric.WithDescription("Token bucket level after this request was served. Negative values indicate the bucket is in debt. Only emitted for throttle_behavior=delay. [Development]"),
 		metric.WithUnit("{tokens}"),
 	)
 	errs = errors.Join(errs, err)
 	builder.RatelimitTokensBefore, err = builder.meter.Float64Gauge(
 		"otelcol_ratelimit.tokens_before",
-		metric.WithDescription("Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). [Development]"),
+		metric.WithDescription("Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). Only emitted for throttle_behavior=delay. [Development]"),
 		metric.WithUnit("{tokens}"),
 	)
 	errs = errors.Join(errs, err)

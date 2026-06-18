@@ -613,23 +613,6 @@ func testRateLimitTelemetry(t *testing.T, tel *componenttest.Telemetry) {
 		},
 	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
 
-	metadatatest.AssertEqualRatelimitTokensAfter(t, tel, []metricdata.DataPoint[float64]{
-		{
-			Attributes: attribute.NewSet(
-				attribute.String("x-tenant-id", "TestProjectID"),
-				telemetry.WithLimitThreshold(1),
-			),
-		},
-	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
-
-	metadatatest.AssertEqualRatelimitTokensBefore(t, tel, []metricdata.DataPoint[float64]{
-		{
-			Attributes: attribute.NewSet(
-				attribute.String("x-tenant-id", "TestProjectID"),
-				telemetry.WithLimitThreshold(1),
-			),
-		},
-	}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
 }
 
 func testRatelimitLogMetadata(t *testing.T, logEntries []observer.LoggedEntry) {
@@ -793,6 +776,15 @@ func TestConsume_DelayMode_ContextCancelled(t *testing.T) {
 					),
 				},
 			}, metricdatatest.IgnoreTimestamp())
+
+			metadatatest.AssertEqualRatelimitTokensAfter(t, tt, []metricdata.DataPoint[float64]{
+				{
+					Attributes: attribute.NewSet(
+						attribute.String("x-tenant-id", "TestProjectID"),
+						telemetry.WithLimitThreshold(1),
+					),
+				},
+			}, metricdatatest.IgnoreValue(), metricdatatest.IgnoreTimestamp())
 
 			metadatatest.AssertEqualRatelimitTokensBefore(t, tt, []metricdata.DataPoint[float64]{
 				{

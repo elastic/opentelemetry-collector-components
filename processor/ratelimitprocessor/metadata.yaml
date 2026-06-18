@@ -89,14 +89,14 @@ telemetry:
       attributes: ["decision", "reason"]
     ratelimit.tokens_after:
       enabled: true
-      description: Token bucket level after this request was served. Negative values indicate the bucket is in debt.
+      description: Token bucket level after this request was served. Negative values indicate the bucket is in debt. Only emitted for throttle_behavior=delay.
       unit: "{tokens}"
       stability: development
       gauge:
         value_type: double
     ratelimit.tokens_before:
       enabled: true
-      description: Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling).
+      description: Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). Only emitted for throttle_behavior=delay.
       unit: "{tokens}"
       stability: development
       gauge:

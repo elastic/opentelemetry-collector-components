@@ -54,11 +54,12 @@ const (
 // needed by the processor layer to record telemetry without any OTel
 // dependencies inside the limiter itself.
 type RateLimitResult struct {
-	Decision     Decision
-	Delay        time.Duration // non-zero only when Decision == DecisionDelayed
-	TokensBefore float64       // bucket level before this request consumed any tokens
-	TokensAfter  float64       // bucket level after the call; negative means in debt
-	ConfigRate   float64       // effective configured rate (tokens/sec) for the key
+	Decision         Decision
+	Delay            time.Duration // non-zero only when Decision == DecisionDelayed
+	TokensBefore     float64       // bucket level before this request consumed any tokens; delay mode only
+	TokensAfter      float64       // bucket level after the call; negative means in debt; delay mode only
+	ConfigRate       float64       // effective configured rate (tokens/sec) for the key
+	EmitTokenMetrics bool          // true only for delay mode, where token metrics are meaningful and accurate
 }
 
 // RateLimiter provides an interface for rate limiting by some number

@@ -52,8 +52,10 @@ processors:
 | `otelcol_ratelimit.request_size` | Histogram | Size (bytes) of the request. Only recorded when `strategy: bytes`. Labelled with `decision` and `reason`. |
 | `otelcol_ratelimit.concurrent_requests` | UpDownCounter | Number of requests currently being processed (in-flight). Labelled by metadata keys only. |
 | `otelcol_ratelimit.delay_duration` | Histogram | Time (seconds) a request spent waiting due to rate limiting. Only recorded when `throttle_behavior: delay` and a delay actually occurred (`decision: delayed`). Labelled with `decision` and `reason`. |
-| `otelcol_ratelimit.tokens_after` | Gauge | Token bucket level after this request was served. Negative values indicate the bucket is in debt. Labelled by metadata keys and `limit_threshold`. |
-| `otelcol_ratelimit.tokens_before` | Gauge | Token bucket level when the request arrived, before any tokens were consumed. Negative means the bucket was already in deficit on arrival (sustained throttling). Labelled by metadata keys and `limit_threshold`. |
+| `otelcol_ratelimit.tokens_after` | Gauge | Token bucket level after this request was served. Negative values indicate the bucket is in debt. Only emitted for `throttle_behavior: delay`. Labelled by metadata keys and `limit_threshold`. |
+| `otelcol_ratelimit.tokens_before` | Gauge | Token bucket level when the request arrived, before any tokens were consumed. Negative means the bucket was already in deficit on arrival (sustained throttling). Only emitted for `throttle_behavior: delay`. Labelled by metadata keys and `limit_threshold`. |
+
+`tokens_before` and `tokens_after` answer different questions: `tokens_before` shows whether the bucket was already in deficit when the request arrived — a negative value is a reliable signal of sustained overload rather than a transient burst. `tokens_after` shows how deep in debt the bucket is after serving the request, reflecting committed future debt from the reservation. Together they give a before→after trajectory that neither metric provides on its own.
 
 #### Attributes
 
@@ -73,4 +75,4 @@ processors:
 | `under_limit` | Bucket had enough tokens; request accepted immediately. |
 | `over_limit` | Bucket was empty or in deficit. Applies to `delayed`, `throttled`, and `cancelled` decisions. |
 
-**`limit_threshold`** — the configured token refill rate (tokens/second) for the key. Appears on `otelcol_ratelimit.tokens_after` and `otelcol_ratelimit.tokens_before`.
+**`limit_threshold`** — the configured token refill rate (tokens/second) for the key. Appears on `otelcol_ratelimit.tokens_after` and `otelcol_ratelimit.tokens_before` (delay mode only).

@@ -55,7 +55,7 @@ Number of rate-limiting requests
 
 ### otelcol_ratelimit.tokens_after
 
-Token bucket level after this request was served. Negative values indicate the bucket is in debt.
+Token bucket level after this request was served. Negative values indicate the bucket is in debt. Only emitted for throttle_behavior=delay.
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |
@@ -63,7 +63,7 @@ Token bucket level after this request was served. Negative values indicate the b
 
 ### otelcol_ratelimit.tokens_before
 
-Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling).
+Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). Only emitted for throttle_behavior=delay.
 
 | Unit | Metric Type | Value Type | Stability |
 | ---- | ----------- | ---------- | --------- |

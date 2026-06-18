@@ -118,7 +118,7 @@ func AssertEqualRatelimitRequests(t *testing.T, tt *componenttest.Telemetry, dps
 func AssertEqualRatelimitTokensAfter(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[float64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.tokens_after",
-		Description: "Token bucket level after this request was served. Negative values indicate the bucket is in debt. [Development]",
+		Description: "Token bucket level after this request was served. Negative values indicate the bucket is in debt. Only emitted for throttle_behavior=delay. [Development]",
 		Unit:        "{tokens}",
 		Data: metricdata.Gauge[float64]{
 			DataPoints: dps,
@@ -132,7 +132,7 @@ func AssertEqualRatelimitTokensAfter(t *testing.T, tt *componenttest.Telemetry, 
 func AssertEqualRatelimitTokensBefore(t *testing.T, tt *componenttest.Telemetry, dps []metricdata.DataPoint[float64], opts ...metricdatatest.Option) {
 	want := metricdata.Metrics{
 		Name:        "otelcol_ratelimit.tokens_before",
-		Description: "Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). [Development]",
+		Description: "Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). Only emitted for throttle_behavior=delay. [Development]",
 		Unit:        "{tokens}",
 		Data: metricdata.Gauge[float64]{
 			DataPoints: dps,
