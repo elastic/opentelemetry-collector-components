@@ -22,6 +22,8 @@ Usage of ./otelbench:
         benchmark exporter otlp (default true)
   -exporter-otlphttp
         benchmark exporter otlphttp (default true)
+  -exporter-elasticsearch
+        benchmark exporter elasticsearch
   -header value
         extra headers in key=value format when sending data to the server. Can be repeated. e.g. -header X-FIRST-HEADER=foo -header X-SECOND-HEADER=bar
   -insecure
