@@ -18,6 +18,7 @@
 package main
 
 import (
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/connector"
@@ -60,6 +61,7 @@ func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenrece
 
 	// Exporters
 	factories.Exporters, err = otelcol.MakeFactoryMap(
+		elasticsearchexporter.NewFactory(),
 		otlpexporter.NewFactory(),
 		otlphttpexporter.NewFactory(),
 		prometheusremotewriteexporter.NewFactory(),
