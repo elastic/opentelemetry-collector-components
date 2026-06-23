@@ -20,9 +20,11 @@ package beatsencodingextension // import "github.com/elastic/opentelemetry-colle
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -95,9 +97,128 @@ func (e *beatsEncodingExtension) NewLogsDecoder(reader io.Reader, options ...enc
 		return e.newLineDecoder(reader, options...)
 	case FormatJSON:
 		return e.newJSONDecoder(reader, options...)
+	case FormatCSV:
+		return e.newCSVDecoder(reader, options...)
 	default:
 		return nil, fmt.Errorf("unsupported format: %q", e.config.Format)
 	}
+}
+
+// newCSVDecoder returns a streaming decoder that reads CSV records. The first
+// record is the header (unless CSV.FieldNames is set); each subsequent record
+// becomes a log record whose "message" is a JSON object keyed by the header.
+// This mirrors the Beats aws-s3 input's decoding.codec.csv behaviour so the
+// documents match what an Elastic Agent would produce.
+func (e *beatsEncodingExtension) newCSVDecoder(reader io.Reader, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
+	opts := encoding.NewDecoderOptions(options...)
+	batchHelper := xstreamencoding.NewBatchHelper(options...)
+
+	r := csv.NewReader(reader)
+	r.ReuseRecord = true
+	r.LazyQuotes = e.config.CSV.LazyQuotes
+	r.TrimLeadingSpace = e.config.CSV.TrimLeadingSpace
+	if e.config.CSV.Comma != "" {
+		r.Comma = []rune(e.config.CSV.Comma)[0]
+	}
+
+	// Establish the header. With FieldNames set, lock the field count to it;
+	// otherwise the first record is the header and csv.Reader enforces that
+	// subsequent records have the same field count.
+	var header []string
+	if len(e.config.CSV.FieldNames) != 0 {
+		header = e.config.CSV.FieldNames
+		r.FieldsPerRecord = len(header)
+	} else {
+		h, err := r.Read()
+		if errors.Is(err, io.EOF) {
+			// Empty input: nothing to decode.
+			return newEOFDecoder(opts.Offset), nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("reading CSV header: %w", err)
+		}
+		header = slices.Clone(h)
+	}
+
+	// Skip records already processed in a previous decoder session.
+	recordCount := int64(0)
+	for recordCount < opts.Offset {
+		if _, err := r.Read(); err != nil {
+			return nil, fmt.Errorf("skipping CSV record %d: %w", recordCount, err)
+		}
+		recordCount++
+	}
+
+	decodeF := func() (plog.Logs, error) {
+		logs := plog.NewLogs()
+		sl := newScopeLogs(logs)
+		now := pcommon.NewTimestampFromTime(time.Now())
+		eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
+
+		for {
+			record, err := r.Read()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				return logs, fmt.Errorf("reading CSV record: %w", err)
+			}
+
+			msg, err := csvRecordToJSON(header, record)
+			if err != nil {
+				return plog.NewLogs(), err
+			}
+
+			data := []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: msg}}
+			if err := e.appendLogRecord(sl, now, eventCreated, data); err != nil {
+				return plog.NewLogs(), err
+			}
+
+			recordCount++
+			batchHelper.IncrementItems(1)
+			batchHelper.IncrementBytes(int64(len(msg)))
+
+			if batchHelper.ShouldFlush() {
+				batchHelper.Reset()
+				return logs, nil
+			}
+		}
+
+		if logs.LogRecordCount() == 0 {
+			return logs, io.EOF
+		}
+		return logs, nil
+	}
+
+	offsetF := func() int64 { return recordCount }
+	return xstreamencoding.NewLogsDecoderAdapter(decodeF, offsetF), nil
+}
+
+// newEOFDecoder returns a decoder that yields no records (io.EOF). Used when
+// the CSV input is empty so callers get empty logs rather than an error.
+func newEOFDecoder(offset int64) encoding.LogsDecoder {
+	decodeF := func() (plog.Logs, error) { return plog.NewLogs(), io.EOF }
+	offsetF := func() int64 { return offset }
+	return xstreamencoding.NewLogsDecoderAdapter(decodeF, offsetF)
+}
+
+// csvRecordToJSON encodes a CSV record as a JSON object keyed by header.
+// Values are kept as strings (matching the Beats csv codec), and JSON
+// encoding handles escaping. Missing trailing fields are written as "".
+func csvRecordToJSON(header, record []string) (string, error) {
+	m := make(map[string]string, len(header))
+	for i, name := range header {
+		if i < len(record) {
+			m[name] = record[i]
+		} else {
+			m[name] = ""
+		}
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "", fmt.Errorf("encoding CSV record to JSON: %w", err)
+	}
+	return string(b), nil
 }
 
 // newLineDecoder returns a streaming decoder that reads newline-delimited
@@ -460,6 +581,15 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 	}
 
 	body.PutStr("event.created", eventCreated)
+
+	// Always set @timestamp on the body, like a Beats document. Some
+	// integration ingest pipelines only derive @timestamp on certain code
+	// paths (e.g. Netskope sets it inside per-record-type sub-pipelines) and
+	// otherwise rely on the input having stamped it. Without a baseline here,
+	// such documents reach a data stream with no @timestamp and are rejected.
+	// When the pipeline does derive @timestamp from the event it overrides
+	// this value.
+	body.PutStr("@timestamp", eventCreated)
 
 	// The data_stream.* should be also set on the body as some
 	// integrations expect them.

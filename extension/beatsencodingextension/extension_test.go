@@ -494,6 +494,7 @@ func stripEventCreated(logs plog.Logs) {
 			for k := 0; k < sl.LogRecords().Len(); k++ {
 				lr := sl.LogRecords().At(k)
 				lr.Body().Map().Remove("event.created")
+				lr.Body().Map().Remove("@timestamp")
 			}
 		}
 	}
