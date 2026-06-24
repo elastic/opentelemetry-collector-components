@@ -88,7 +88,7 @@ func IsErrorEvent(attributes pcommon.Map) bool {
 func EncodeErrorDataStream(attributes pcommon.Map, dataStreamType, namespace string) {
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, "apm.error")
-	if isStrKeyInAttributes(attributes, elasticattr.DataStreamNamespace) {
+	if isStrKeyMissingOrEmpty(attributes, elasticattr.DataStreamNamespace) {
 		if namespace == "" {
 			namespace = NamespaceDefault
 		}
@@ -179,7 +179,7 @@ func isServiceSummary(attributes pcommon.Map) bool {
 func internalMetricDataStream(attributes pcommon.Map, dataStreamType string) {
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, "apm.internal")
-	if isStrKeyInAttributes(attributes, elasticattr.DataStreamNamespace) {
+	if isStrKeyMissingOrEmpty(attributes, elasticattr.DataStreamNamespace) {
 		attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
 	}
 }
@@ -188,7 +188,7 @@ func internalMetricDataStream(attributes pcommon.Map, dataStreamType string) {
 func internalIntervalMetricDataStream(attributes pcommon.Map, dataStreamType, metricsetName, interval string) {
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, fmt.Sprintf("apm.%s.%s", metricsetName, interval))
-	if isStrKeyInAttributes(attributes, elasticattr.DataStreamNamespace) {
+	if isStrKeyMissingOrEmpty(attributes, elasticattr.DataStreamNamespace) {
 		attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
 	}
 }
@@ -222,7 +222,7 @@ func isOTelRemapped(attributes pcommon.Map) bool {
 	return false
 }
 
-func isStrKeyInAttributes(attributes pcommon.Map, key string) bool {
+func isStrKeyMissingOrEmpty(attributes pcommon.Map, key string) bool {
 	value, exists := attributes.Get(key)
 	return !exists || (value.Type() == pcommon.ValueTypeStr && value.Str() == "")
 }
