@@ -1,15 +1,9 @@
 resourceSpans:
   - resource:
       attributes:
-        - key: labels.resource_required
-          value:
-            stringValue: foo
-        - key: labels.resource_optional
-          value:
-            stringValue: bar
         - key: service.name
           value:
-            stringValue: unknown
+            stringValue: test-service
         - key: data_stream.type
           value:
             stringValue: traces
@@ -19,9 +13,6 @@ resourceSpans:
         - key: data_stream.dataset
           value:
             stringValue: apm
-        - key: host.ip
-          value:
-            stringValue: 1.2.3.4
         - key: agent.name
           value:
             stringValue: otlp
@@ -35,30 +26,28 @@ resourceSpans:
           value:
             stringValue: unknown
     scopeSpans:
-      - scope: {}
+      - scope:
+          attributes:
+            - key: data_stream.namespace
+              value:
+                stringValue: scope-ns
         spans:
           - attributes:
-              - key: db.name
-                value:
-                  stringValue: main
-              - key: db.system
-                value:
-                  stringValue: mysql
               - key: timestamp.us
                 value:
-                  intValue: "1581452772000000"
+                  intValue: "1000000"
               - key: transaction.sampled
                 value:
                   boolValue: true
               - key: transaction.id
                 value:
-                  stringValue: abcdef0123456700
+                  stringValue: 1234567890abcdef
               - key: transaction.root
                 value:
                   boolValue: true
               - key: transaction.name
                 value:
-                  stringValue: db-elastic-txn
+                  stringValue: process-order
               - key: processor.event
                 value:
                   stringValue: transaction
@@ -80,40 +69,53 @@ resourceSpans:
               - key: event.success_count
                 value:
                   intValue: "1"
-            endTimeUnixNano: "1581452773000000789"
+            endTimeUnixNano: "2000000000"
             events:
               - attributes:
-                  - key: event.attr1
+                  - key: exception.message
                     value:
-                      stringValue: foo1
-                  - key: event.attr2
+                      stringValue: Null pointer exception
+                  - key: exception.type
                     value:
-                      stringValue: bar1
+                      stringValue: java.lang.NullPointerException
+                  - key: error.id
+                    value:
+                      stringValue: abcdef1234567890abcdef1234567891
+                  - key: data_stream.type
+                    value:
+                      stringValue: traces
+                  - key: data_stream.dataset
+                    value:
+                      stringValue: apm.error
+                  - key: data_stream.namespace
+                    value:
+                      stringValue: scope-ns
                   - key: timestamp.us
                     value:
-                      intValue: "1581452773000000"
-                name: event1
-                timeUnixNano: "1581452773000000123"
-              - attributes:
-                  - key: event.attr1
+                      intValue: "1500000"
+                  - key: processor.event
                     value:
-                      stringValue: foo2
-                  - key: event.attr2
+                      stringValue: error
+                  - key: error.exception.handled
                     value:
-                      stringValue: bar2
-                  - key: timestamp.us
+                      boolValue: true
+                  - key: error.grouping_key
                     value:
-                      intValue: "1581452773000000"
-                name: event2
-                timeUnixNano: "1581452773000000123"
-              - attributes:
-                  - key: timestamp.us
+                      stringValue: 6e0443a38c7580540e896d8960390713
+                  - key: error.grouping_name
                     value:
-                      intValue: "1581452773000000"
-                name: event-with-no-attrs
-                timeUnixNano: "1581452773000000123"
-            name: db-elastic-txn
-            spanId: abcdef0123456700
-            startTimeUnixNano: "1581452772000000321"
+                      stringValue: Null pointer exception
+                  - key: transaction.sampled
+                    value:
+                      boolValue: true
+                  - key: transaction.type
+                    value:
+                      stringValue: unknown
+                name: exception
+                timeUnixNano: "1500000000"
+            kind: 1
+            name: process-order
+            spanId: 1234567890abcdef
+            startTimeUnixNano: "1000000000"
             status: {}
-            traceId: fdedef0123456789abcdef9876543210
+            traceId: fedcba0987654321fedcba0987654321

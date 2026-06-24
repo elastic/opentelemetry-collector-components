@@ -21,7 +21,6 @@ import (
 	"context"
 
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
@@ -43,13 +42,8 @@ type ecsMetricEnricher struct {
 
 func (e *ecsMetricEnricher) enrichResourceMetrics(ctx context.Context, rm pmetric.ResourceMetrics) {
 	resource := rm.Resource()
-	ecsPreProcessResource(ctx, resource, routing.DataStreamTypeMetrics, e.serviceNameInDataStreamDataset, e.hostIPEnabled, e.sanitizeExistingLabels)
-
-	// Check if resource has a service name for routing decisions
-	hasServiceName := false
-	if serviceName, ok := resource.Attributes().Get(string(semconv.ServiceNameKey)); ok && serviceName.Str() != "" {
-		hasServiceName = true
-	}
+	resCtx := ecsPreProcessResource(ctx, resource, routing.DataStreamTypeMetrics, e.serviceNameInDataStreamDataset, e.hostIPEnabled, e.sanitizeExistingLabels)
+	hasServiceName := resCtx.ServiceName != ""
 
 	// Route internal metrics to appropriate data streams if needed.
 	routeMetricsToDataStream(rm.ScopeMetrics(), hasServiceName)
