@@ -231,6 +231,27 @@ func TestProcessor(t *testing.T) {
 			testType:    "traces",
 			cfg:         defaultCfg,
 		},
+		"ecs_log_exception_scope_namespace": {
+			input:       "testdata/ecs/elastic_error/logs_otlp_exception_scope_namespace_input.yaml",
+			output:      "testdata/ecs/elastic_error/logs_otlp_exception_scope_namespace_output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
+		"ecs_span_exception_scope_namespace": {
+			input:       "testdata/ecs/elastic_error/span_otlp_exception_scope_namespace_input.yaml",
+			output:      "testdata/ecs/elastic_error/span_otlp_exception_scope_namespace_output.yaml",
+			mappingMode: "ecs",
+			testType:    "traces",
+			cfg:         defaultCfg,
+		},
+		"ecs_log_exception_record_beats_scope": {
+			input:       "testdata/ecs/elastic_error/logs_otlp_exception_record_beats_scope_input.yaml",
+			output:      "testdata/ecs/elastic_error/logs_otlp_exception_record_beats_scope_output.yaml",
+			mappingMode: "ecs",
+			testType:    "logs",
+			cfg:         apmConfig,
+		},
 		"ecs_log_custom_dataset": {
 			input:       "testdata/ecs/elastic_log_custom_dataset/input.yaml",
 			output:      "testdata/ecs/elastic_log_custom_dataset/output.yaml",

@@ -1,0 +1,80 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: data_stream.type
+          value:
+            stringValue: logs
+        - key: data_stream.namespace
+          value:
+            stringValue: default
+        - key: data_stream.dataset
+          value:
+            stringValue: apm.app.test_service
+        - key: host.ip
+          value:
+            stringValue: 1.2.3.4
+        - key: agent.name
+          value:
+            stringValue: otlp
+        - key: agent.version
+          value:
+            stringValue: unknown
+        - key: deployment.environment
+          value:
+            stringValue: unset
+        - key: telemetry.sdk.language
+          value:
+            stringValue: unknown
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: exception.message
+                value:
+                  stringValue: Null pointer exception
+              - key: exception.type
+                value:
+                  stringValue: java.lang.NullPointerException
+              - key: error.id
+                value:
+                  stringValue: error-record-beats-scope-123
+              - key: data_stream.namespace
+                value:
+                  stringValue: record-ns
+              - key: error.exception.handled
+                value:
+                  boolValue: true
+              - key: error.exception.message
+                value:
+                  stringValue: Null pointer exception
+              - key: error.exception.type
+                value:
+                  stringValue: java.lang.NullPointerException
+              - key: error.grouping_key
+                value:
+                  stringValue: 4c6181a8cf51525c92c036b3d01f6338
+              - key: timestamp.us
+                value:
+                  intValue: "1000000"
+              - key: event.kind
+                value:
+                  stringValue: event
+              - key: event.type
+                value:
+                  stringValue: error
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: apm.error
+            body:
+              stringValue: Application error occurred
+            timeUnixNano: "1000000000"
+        scope:
+          attributes:
+            - key: data_stream.namespace
+              value:
+                stringValue: scope-ns

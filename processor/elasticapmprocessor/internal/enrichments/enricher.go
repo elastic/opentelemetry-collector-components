@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
@@ -81,9 +82,13 @@ func (e *Enricher) EnrichResourceLogs(resLog plog.ResourceLogs, resourceNamespac
 	for j := 0; j < scopeLogs.Len(); j++ {
 		scopeLog := scopeLogs.At(j)
 		EnrichScope(scopeLog.Scope(), e.Config)
+		ns := resourceNamespace
+		if v, ok := scopeLog.Scope().Attributes().Get(elasticattr.DataStreamNamespace); ok && v.Str() != "" {
+			ns = v.Str()
+		}
 		logRecords := scopeLog.LogRecords()
 		for k := 0; k < logRecords.Len(); k++ {
-			EnrichLog(resourceAttrs, logRecords.At(k), e.Config, e.remapToECSLabels, resourceNamespace)
+			EnrichLog(resourceAttrs, logRecords.At(k), e.Config, e.remapToECSLabels, ns)
 		}
 	}
 }
