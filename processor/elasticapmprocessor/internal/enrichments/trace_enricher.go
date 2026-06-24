@@ -41,14 +41,15 @@ type ecsTraceEnricher struct {
 
 func (e *ecsTraceEnricher) enrichResourceSpans(ctx context.Context, rs ptrace.ResourceSpans) {
 	// Traces signal never need to be routed to service-specific datasets
-	ecsPreProcessResource(ctx, rs.Resource(), routing.DataStreamTypeTraces, false, e.hostIPEnabled, e.sanitizeExistingLabels)
-	routeErrorSpanEvents(rs)
+	resCtx := ecsPreProcessResource(ctx, rs.Resource(), routing.DataStreamTypeTraces, false, e.hostIPEnabled, e.sanitizeExistingLabels)
+	routeErrorSpanEvents(rs, resCtx.DataStreamNamespace)
 	e.enricher.EnrichResourceSpans(rs)
 }
 
 // routeErrorSpanEvents iterates through spans to find errors in span
 // events and overrides the resource-level data stream for error events.
-func routeErrorSpanEvents(rs ptrace.ResourceSpans) {
+// resourceNamespace is propagated to events that have no explicit namespace set.
+func routeErrorSpanEvents(rs ptrace.ResourceSpans, resourceNamespace string) {
 	scopeSpans := rs.ScopeSpans()
 	for j := 0; j < scopeSpans.Len(); j++ {
 		spans := scopeSpans.At(j).Spans()
@@ -57,7 +58,7 @@ func routeErrorSpanEvents(rs ptrace.ResourceSpans) {
 			for l := 0; l < events.Len(); l++ {
 				event := events.At(l)
 				if routing.IsErrorEvent(event.Attributes()) {
-					routing.EncodeErrorDataStream(event.Attributes(), routing.DataStreamTypeTraces)
+					routing.EncodeErrorDataStream(event.Attributes(), routing.DataStreamTypeTraces, resourceNamespace)
 				}
 			}
 		}

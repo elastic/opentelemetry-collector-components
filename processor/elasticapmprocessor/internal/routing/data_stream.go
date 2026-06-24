@@ -83,11 +83,16 @@ func IsErrorEvent(attributes pcommon.Map) bool {
 // EncodeErrorDataStream sets the data stream attributes for error logs and span events.
 // Error logs should always be routed to the "apm.error" dataset regardless of service name.
 // Error span events should also be routed to the "apm.error" dataset.
-func EncodeErrorDataStream(attributes pcommon.Map, dataStreamType string) {
+// namespace is used as the fallback when no namespace is already set on attributes;
+// if empty, NamespaceDefault is used.
+func EncodeErrorDataStream(attributes pcommon.Map, dataStreamType, namespace string) {
 	attributes.PutStr(elasticattr.DataStreamType, dataStreamType)
 	attributes.PutStr(elasticattr.DataStreamDataset, "apm.error")
 	if isStrKeyInAttributes(attributes, elasticattr.DataStreamNamespace) {
-		attributes.PutStr(elasticattr.DataStreamNamespace, NamespaceDefault)
+		if namespace == "" {
+			namespace = NamespaceDefault
+		}
+		attributes.PutStr(elasticattr.DataStreamNamespace, namespace)
 	}
 }
 
