@@ -12,6 +12,8 @@ Usage of ./otelbench:
         comma-separated list of concurrency (number of simulated agents) to run each benchmark with. Supports numeric values (e.g., "1,4,8"), "auto" to use available CPU cores, or "auto:Nx" for multipliers (e.g., "auto:2x" for double, "auto:0.5x" for half)
   -config string
         path to collector config yaml. If empty, the config.yaml embedded in the binary will be used.
+  -duration-metrics duration
+        optional safety cap for -metrics-generator; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)
   -endpoint value
         target server endpoint for both otlp and otlphttp exporters (default to value in config yaml), equivalent to setting both -endpoint-otlp and -endpoint-otlphttp
   -endpoint-otlp value
@@ -38,6 +40,8 @@ Usage of ./otelbench:
         benchmark metrics (default true)
   -metrics-data-path string
         path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.
+  -metrics-generator
+        run as a metricsgen-based load generator (plain collector run reading -config) instead of the default benchmark
   -profiles
         benchmark profiles (default false)
   -profiles-data-path string
@@ -173,6 +177,24 @@ For the full list of reported metrics see https://opentelemetry.io/docs/collecto
 ```shell
 ./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
 ```
+
+## Metrics generator mode
+
+With the use of flag `-metrics-generator`, otelbench runs the collector defined by `-config` directly as a load generator. This is intended
+for `metricsgen`-based metrics pipelines (e.g. Prometheus Remote Write) and the `loadgenreceiver` is not used.
+Read more information for [metricsgenreceiver](https://github.com/elastic/metricsgenreceiver)
+
+The run continues until the collector exits on its own. With `metricsgen` configured with `exit_after_end: true`, the collector terminates once the backfill is generated and otelbench exits `0`. Use `-duration-metrics` as an optional safety cap (a Go duration like `90s`, `2m`, `1h`); when it elapses, the collector is shut down. Leaving it at `0` (the default) means no cap.
+
+```shell
+./otelbench -metrics-generator=true -config=./config-prw.yaml
+./otelbench -metrics-generator=true -config=./config-prw.yaml -duration-metrics=120s
+```
+
+> Note: if the exporter is configured to retry forever (`retry_on_failure.max_elapsed_time: 0`) together with
+> `sending_queue.block_on_overflow: true` and the endpoint is unreachable, shutdown can block draining the queue,
+> so even `-duration-metrics` will not free the process. Use a finite `max_elapsed_time` for load tests against
+> flaky or local endpoints.
 
 ## Example usage with Docker image
 

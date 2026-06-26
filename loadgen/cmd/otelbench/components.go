@@ -22,6 +22,7 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/exporter/debugexporter"
@@ -31,10 +32,12 @@ import (
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/nopreceiver"
 	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 
+	"github.com/elastic/metricsgenreceiver/metricsgenreceiver"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
@@ -57,6 +60,7 @@ func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenrece
 	factories.Receivers, err = otelcol.MakeFactoryMap[receiver.Factory](
 		loadgenreceiver.NewFactoryWithDone(logsDone, metricsDone, tracesDone, profilesDone),
 		nopreceiver.NewFactory(),
+		metricsgenreceiver.NewFactory(),
 	)
 	if err != nil {
 		return otelcol.Factories{}, err
@@ -66,6 +70,7 @@ func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenrece
 	factories.Processors, err = otelcol.MakeFactoryMap[processor.Factory](
 		ratelimitprocessor.NewFactory(),
 		transformprocessor.NewFactory(),
+		batchprocessor.NewFactory(),
 	)
 	if err != nil {
 		return otelcol.Factories{}, err
@@ -89,7 +94,9 @@ func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenrece
 		return otelcol.Factories{}, err
 	}
 
-	factories.Extensions, err = otelcol.MakeFactoryMap[extension.Factory]()
+	factories.Extensions, err = otelcol.MakeFactoryMap[extension.Factory](
+		pprofextension.NewFactory(),
+	)
 	if err != nil {
 		return otelcol.Factories{}, err
 	}
