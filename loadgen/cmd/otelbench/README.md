@@ -184,7 +184,7 @@ With the use of flag `-metrics-generator`, otelbench runs the collector defined 
 for `metricsgen`-based metrics pipelines (e.g. Prometheus Remote Write) and the `loadgenreceiver` is not used.
 Read more information for [metricsgenreceiver](https://github.com/elastic/metricsgenreceiver)
 
-The run continues until the collector exits on its own. With `metricsgen` configured with `exit_after_end: true`, the collector terminates once the backfill is generated and otelbench exits `0`. Use `-duration-metrics` as an optional safety cap (a Go duration like `90s`, `2m`, `1h`); when it elapses, the collector is shut down. Leaving it at `0` (the default) means no cap.
+The run continues until the collector exits, for example when metricsgen reaches `exit_after_end`. You can interrupt the run manually, or use -duration-metrics as a safety cap to shut the collector down after a fixed time. Use `-duration-metrics` as an optional safety cap (a Go duration like `90s`, `2m`, `1h`); when it elapses, the collector is shut down. Leaving it at `0` (the default) means no cap.
 
 ```shell
 ./otelbench -metrics-generator=true -config=./config-prw.yaml

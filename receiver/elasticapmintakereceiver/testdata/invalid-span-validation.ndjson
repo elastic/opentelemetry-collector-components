@@ -1,0 +1,2 @@
+{"metadata": {"service": {"name": "svc", "agent": {"name": "elastic-node", "version": "1.0.0"}}}}
+{"span": {"id": "abcdef0123456789", "trace_id": "0123456789abcdef0123456789abcdef", "parent_id": "abcdef0123456789", "name": "test span", "type": "db", "start": 0}}

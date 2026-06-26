@@ -125,7 +125,7 @@ func TestMetricsGenerator_MaxBufferSizeAttr(t *testing.T) {
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(nil, doneCh, nil, nil)
 			cfg.(*Config).Metrics.MaxBufferSize = maxBufferSize
-			cfg.(*Config).Metrics.JsonlFile = JsonlFile(filePath)
+			cfg.(*Config).Metrics.JsonlFile = JsonlFile{Path: filePath}
 
 			_, err := createMetricsReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
