@@ -105,11 +105,6 @@ type ProfilesConfig struct {
 
 var _ component.Config = (*Config)(nil)
 
-func validCompression(file JsonlFile) bool {
-
-	return true
-}
-
 func validateSignal(sigConfig SignalConfig, file JsonlFile) error {
 	if sigConfig.MaxReplay < 0 {
 		return fmt.Errorf("max_replay must be >= 0")
