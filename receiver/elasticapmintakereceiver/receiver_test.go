@@ -464,11 +464,14 @@ func TestInvalidInput(t *testing.T) {
 		{"invalid-event.ndjson", "invalid-event-expected.txt"},
 		{"invalid-event-type.ndjson", "invalid-event-type-expected.txt"},
 		{"invalid-json-event.ndjson", "invalid-json-event-expected.txt"},
+		{"typeless-event.ndjson", "typeless-event-expected.txt"},
 		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.txt"},
 		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.txt"},
 		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
 		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
 		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.txt"},
+		{"invalid-span-validation.ndjson", "invalid-span-validation-expected.txt"},
+		{"invalid-transaction-validation.ndjson", "invalid-transaction-validation-expected.txt"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -656,6 +659,7 @@ var inputFiles = []struct {
 	{"hostdata.ndjson", "hostdata_expected.yaml", nil},
 	{"spans_representative_count.ndjson", "spans_representative_count_expected.yaml", nil},
 	{"dropped_spans_stats_no_duration.ndjson", "dropped_spans_stats_no_duration_expected.yaml", nil},
+	{"transactions_xff_nat_ip.ndjson", "transactions_xff_nat_ip_expected.yaml", nil},
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -959,6 +963,21 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 				{"labels.tag1", "labels.tag2"}, // batch 2: no shadow → both globals
 			},
 		},
+		{
+			// Log events with per-event labels that shadow metadata global labels
+			// must be routed to shadow batches, not always to main.
+			//   - Log 1: no labels → both globals retained → main batch
+			//   - Logs 2,3: labels.global_tag shadows → same mask → shadowed batch A
+			//   - Log 4: labels.num_tag shadows → different mask → shadowed batch B
+			name:      "log event-level label shadows metadata global label",
+			inputFile: "log_global_label_shadow.ndjson",
+			signal:    "logs",
+			expectedPerGroupDynamicAttrs: [][]string{
+				{"labels.global_tag", "numeric_labels.num_tag"}, // main: log 1
+				{"numeric_labels.num_tag"},                      // shadowed batch A: logs 2,3
+				{"labels.global_tag"},                           // shadowed batch B: log 4
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -986,6 +1005,10 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 				metricsSink = new(consumertest.MetricsSink)
 				rcv, err = factory.CreateMetrics(context.Background(), set, cfg, metricsSink)
 				ctxsFn = metricsSink.Contexts
+			case "logs":
+				logsSink := new(consumertest.LogsSink)
+				rcv, err = factory.CreateLogs(context.Background(), set, cfg, logsSink)
+				ctxsFn = logsSink.Contexts
 			}
 			require.NoError(t, err)
 
@@ -1137,6 +1160,27 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 		// so we need to ignore order when comparing.
 		pmetrictest.IgnoreResourceMetricsOrder(),
 	))
+}
+
+func TestHandleStreamTypelessAndMalformedEvents(t *testing.T) {
+	metadataLine := `{"metadata": {"service": {"name": "test", "agent": {"name": "test", "version": "1.0"}}}}` + "\n"
+	logger := receivertest.NewNopSettings(metadata.Type).Logger
+	noop := func(_ context.Context, _ *plog.Logs, _ *pmetric.Metrics, _ *ptrace.Traces) error { return nil }
+
+	for _, tc := range []struct {
+		name string
+		line string
+	}{
+		{"typeless valid JSON", "{}"},
+		{"malformed JSON no event type", "{"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := bytes.NewBufferString(metadataLine + tc.line + "\n")
+			accepted, errs := ndjsondecoder.HandleStream(context.Background(), body, 10, 1<<20, logger, noop)
+			require.Equal(t, 0, accepted)
+			require.Len(t, errs, 1, "expected one error for typeless/malformed input, got none")
+		})
+	}
 }
 
 func TestHandleStreamReturnsOnCanceledContext(t *testing.T) {

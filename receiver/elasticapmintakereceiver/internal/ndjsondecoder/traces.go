@@ -46,6 +46,9 @@ func DecodeSpan(dec *NDJSONStreamDecoder) (*span, error) {
 	if err := dec.Decode(&root); err != nil {
 		return nil, err
 	}
+	if err := root.validate(); err != nil {
+		return nil, fmt.Errorf("validation error: %w", err)
+	}
 	return &root.Span, nil
 }
 
@@ -54,6 +57,9 @@ func DecodeTransaction(dec *NDJSONStreamDecoder) (*transaction, error) {
 	var root transactionRoot
 	if err := dec.Decode(&root); err != nil {
 		return nil, err
+	}
+	if err := root.validate(); err != nil {
+		return nil, fmt.Errorf("validation error: %w", err)
 	}
 	return &root.Transaction, nil
 }
@@ -87,7 +93,12 @@ func AppendSpan(ss ptrace.ScopeSpans, sp *span, txStart pcommon.Timestamp, logge
 	if sp.Timestamp.IsSet() {
 		startNano = uint64(sp.Timestamp.Val.UnixNano())
 	} else {
-		// sp.Start is relative to txStart in milliseconds
+		// sp.Start is relative to txStart in milliseconds (RUM only).
+		// Non-RUM agents always set an explicit timestamp, so txStart=0 has no
+		// practical effect today. If RUM support is added, the caller must pass
+		// the request-receive time as txStart (matching apm-data's approach of
+		// baseEvent.Timestamp + start*ms) rather than the parent transaction
+		// timestamp, since that is not tracked in the stream.
 		startNano = uint64(txStart) + uint64(sp.Start.Val*1e6)
 	}
 	durationNano := uint64(sp.Duration.Val * 1e6)

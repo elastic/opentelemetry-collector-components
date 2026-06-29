@@ -18,6 +18,8 @@
 package ndjsondecoder // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 
 import (
+	"fmt"
+
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
@@ -30,6 +32,9 @@ func DecodeMetricset(dec *NDJSONStreamDecoder) (*metricset, error) {
 	var root metricsetRoot
 	if err := dec.Decode(&root); err != nil {
 		return nil, err
+	}
+	if err := root.validate(); err != nil {
+		return nil, fmt.Errorf("validation error: %w", err)
 	}
 	return &root.Metricset, nil
 }

@@ -142,8 +142,9 @@ func HandleStream(
 				l, appendErr = DecodeLog(dec)
 				if appendErr == nil {
 					svc := LogContextService(l)
+					target := routeTarget(&main, &shadows, l.Labels, keyIndex, useBig)
 					fp := fingerprintLog(meta, svc, &l.FAAS, l.Labels, h)
-					sl, newAttrs := getOrCreateLogScope(fp, &main, meta, svc, nil, nil, nil)
+					sl, newAttrs := getOrCreateLogScope(fp, target, meta, svc, nil, nil, nil)
 					if newAttrs != nil {
 						writeFAASAttrs(&l.FAAS, *newAttrs)
 						writeTagLabels(l.Labels, *newAttrs)
@@ -161,8 +162,9 @@ func HandleStream(
 				}
 			default:
 				var raw json.RawMessage
-				_ = dec.Decode(&raw)
-				if eventType != "" {
+				if decErr := dec.Decode(&raw); decErr != nil && eventType == "" {
+					appendErr = decErr
+				} else {
 					appendErr = fmt.Errorf("did not recognize object type: %q", eventType)
 				}
 			}
@@ -478,9 +480,15 @@ func fingerprintLog(meta *metadata, svc *contextService, f *faas, labels map[str
 
 func hashEventResourceExtras(extras *eventResourceExtras, h *xxhash.Digest) {
 	hw := hashWriter{h: h}
-	clientIP, _, _ := extractRequestIPs(extras.request)
+	clientIP, sourceIP, natIP := extractRequestIPs(extras.request)
 	if clientIP != "" {
 		hw.putStr(string(semconv.ClientAddressKey), clientIP)
+	}
+	if sourceIP != "" {
+		hw.putStr(string(semconv.SourceAddressKey), sourceIP)
+	}
+	if natIP != "" {
+		hw.putStr(elasticattr.SourceNATIP, natIP)
 	}
 	if ua := userAgentOriginal(extras.request); ua != "" {
 		hw.putStr(string(semconv.UserAgentOriginalKey), ua)
