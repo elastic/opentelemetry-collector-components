@@ -67,8 +67,8 @@ func createTracesReceiver(
 	var err error
 	sampleTraces := demoTraces
 
-	if genConfig.Traces.JsonlFile != "" {
-		sampleTraces, err = os.ReadFile(string(genConfig.Traces.JsonlFile))
+	if genConfig.Traces.JsonlFile.Path != "" {
+		sampleTraces, err = os.ReadFile(string(genConfig.Traces.JsonlFile.Path))
 		if err != nil {
 			return nil, err
 		}

@@ -18,16 +18,26 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
+	"errors"
 	"fmt"
 
 	"go.opentelemetry.io/collector/component"
 )
 
-const maxScannerBufSize = 1024 * 1024
-
-type (
-	JsonlFile string
+const (
+	maxScannerBufSize = 1024 * 1024
+	// the type of compression codec
+	compressionZSTD = "zstd"
 )
+
+// JsonlFile is an optional configuration option to specify the path to
+// get the base generated signals from.
+type JsonlFile struct {
+	Path string `mapstructure:"jsonl_file"`
+	// Compression Codec used to extract telemetry data
+	// Supported compression algorithms:`zstd`
+	Compression string `mapstructure:"file_compression"`
+}
 
 // Config defines configuration for loadgen receiver.
 type Config struct {
@@ -63,9 +73,7 @@ type SignalConfig struct {
 }
 
 type MetricsConfig struct {
-	// JsonlFile is an optional configuration option to specify the path to
-	// get the base generated signals from.
-	JsonlFile `mapstructure:"jsonl_file"`
+	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
 
@@ -78,56 +86,65 @@ type MetricsConfig struct {
 }
 
 type LogsConfig struct {
-	// JsonlFile is an optional configuration option to specify the path to
-	// get the base generated signals from.
-	JsonlFile `mapstructure:"jsonl_file"`
+	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
 }
 
 type TracesConfig struct {
-	// JsonlFile is an optional configuration option to specify the path to
-	// get the base generated signals from.
-	JsonlFile `mapstructure:"jsonl_file"`
+	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
 }
 
 type ProfilesConfig struct {
-	// JsonlFile is an optional configuration option to specify the path to
-	// get the base generated signals from.
-	JsonlFile `mapstructure:"jsonl_file"`
+	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
 }
 
 var _ component.Config = (*Config)(nil)
 
+func validCompression(file JsonlFile) bool {
+
+	return true
+}
+
+func validateSignal(sigConfig SignalConfig, file JsonlFile) error {
+	if sigConfig.MaxReplay < 0 {
+		return fmt.Errorf("max_replay must be >= 0")
+	}
+	if sigConfig.MaxBufferSize < 0 {
+		return fmt.Errorf("max_buffer_size must be >= 0")
+	}
+
+	if file.Path != "" && file.Compression != "" && file.Compression != compressionZSTD {
+		return errors.New("compression is not supported")
+	}
+	return nil
+}
+
 // Validate checks the receiver configuration is valid
 func (cfg *Config) Validate() error {
-	if cfg.Logs.MaxReplay < 0 {
-		return fmt.Errorf("logs::max_replay must be >= 0")
+	err := validateSignal(cfg.Logs.SignalConfig, cfg.Logs.JsonlFile)
+	if err != nil {
+		return fmt.Errorf("logs::%w", err)
 	}
-	if cfg.Metrics.MaxReplay < 0 {
-		return fmt.Errorf("metrics::max_replay must be >= 0")
+
+	err = validateSignal(cfg.Metrics.SignalConfig, cfg.Metrics.JsonlFile)
+	if err != nil {
+		return fmt.Errorf("metrics::%w", err)
 	}
-	if cfg.Traces.MaxReplay < 0 {
-		return fmt.Errorf("traces::max_replay must be >= 0")
+
+	err = validateSignal(cfg.Traces.SignalConfig, cfg.Traces.JsonlFile)
+	if err != nil {
+		return fmt.Errorf("traces::%w", err)
 	}
-	if cfg.Profiles.MaxReplay < 0 {
-		return fmt.Errorf("profiles::max_replay must be >= 0")
+
+	err = validateSignal(cfg.Profiles.SignalConfig, cfg.Profiles.JsonlFile)
+	if err != nil {
+		return fmt.Errorf("profiles::%w", err)
 	}
-	if cfg.Logs.MaxBufferSize < 0 {
-		return fmt.Errorf("logs::max_buffer_size must be >= 0")
-	}
-	if cfg.Metrics.MaxBufferSize < 0 {
-		return fmt.Errorf("metrics::max_buffer_size must be >= 0")
-	}
-	if cfg.Traces.MaxBufferSize < 0 {
-		return fmt.Errorf("traces::max_buffer_size must be >= 0")
-	}
-	if cfg.Profiles.MaxBufferSize < 0 {
-		return fmt.Errorf("profiles::max_buffer_size must be >= 0")
-	}
+
 	return nil
 }

@@ -23,6 +23,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -36,6 +37,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/list"
+	"github.com/klauspost/compress/zstd"
 )
 
 //go:embed testdata/profiles.jsonl
@@ -66,22 +68,29 @@ func createProfilesReceiver(
 
 	parser := pprofile.JSONUnmarshaler{}
 	var err error
-	sampleProfiles := demoProfiles
+	var sampleProfiles io.Reader = bytes.NewReader(demoProfiles)
 
-	if genConfig.Profiles.JsonlFile != "" {
-		sampleProfiles, err = os.ReadFile(string(genConfig.Profiles.JsonlFile))
+	if genConfig.Profiles.JsonlFile.Path != "" {
+		sampleProfiles, err = os.Open(string(genConfig.Profiles.JsonlFile.Path))
 		if err != nil {
 			return nil, err
+		}
+		if genConfig.Profiles.Compression != "" {
+			sampleProfiles, err = zstd.NewReader(sampleProfiles)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	maxBufferSize := genConfig.Profiles.MaxBufferSize
 	if maxBufferSize == 0 {
-		maxBufferSize = len(sampleProfiles) + 10 // add some margin
+		// Create a buffer of 1 megabyte (bufio.Scanner can only process items that are up to 65,536 bytes)
+		maxBufferSize = 1024 * 1024
 	}
 
 	var items []pprofile.Profiles
-	scanner := bufio.NewScanner(bytes.NewReader(sampleProfiles))
+	scanner := bufio.NewScanner(sampleProfiles)
 	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		profileBytes := scanner.Bytes()
