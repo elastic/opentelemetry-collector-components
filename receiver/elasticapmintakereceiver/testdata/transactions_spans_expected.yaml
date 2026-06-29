@@ -168,16 +168,6 @@ resourceSpans:
                 value:
                   kvlistValue:
                     values:
-                      - key: Content-Type
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: text/html
-                      - key: Cookie
-                        value:
-                          arrayValue:
-                            values:
-                              - stringValue: c1=v1,c2=v2,c3=3
                       - key: Some-Other-Header
                         value:
                           arrayValue:
@@ -195,6 +185,16 @@ resourceSpans:
                           arrayValue:
                             values:
                               - stringValue: Mozilla Chrome Edge
+                      - key: Content-Type
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: text/html
+                      - key: Cookie
+                        value:
+                          arrayValue:
+                            values:
+                              - stringValue: c1=v1,c2=v2,c3=3
               - key: http.request.env
                 value:
                   kvlistValue:

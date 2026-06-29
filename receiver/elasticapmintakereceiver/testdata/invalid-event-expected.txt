@@ -1,1 +1,1 @@
-{"accepted":1,"errors":["decode error: data read error: v2.transactionRoot.Transaction: v2.transaction.ID: ReadString: expects \" or n,"]}
+{"accepted":1,"errors":["data read error: ndjsondecoder.transactionRoot.Transaction: ndjsondecoder.transaction.ID: ReadString: expects \" or n, but found 1, error found in #10 byte of ...| { \"id\": 12345, \"tra|..., bigger context ...|{ \"transaction\": { \"id\": 12345, \"trace_id\": \"0123456789abcdef0123456789abcde|..."]}

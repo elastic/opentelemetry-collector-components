@@ -1,1 +1,1 @@
-{"accepted":0,"errors":["cannot read metadata in stream: \"metadata\" or \"m\" required"]}
+{"accepted":0,"errors":["validation error: 'metadata' required"]}

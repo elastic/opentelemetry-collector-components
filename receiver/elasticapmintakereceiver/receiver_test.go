@@ -32,7 +32,6 @@ import (
 	"testing"
 	"time"
 
-	xxhashv2 "github.com/cespare/xxhash/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
@@ -53,10 +52,10 @@ import (
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
 
-	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
 
@@ -608,6 +607,7 @@ func TestLogs(t *testing.T) {
 		expectedDynamicAttrs       []string
 	}{
 		{"logs.ndjson", "logs_expected.yaml", []string{"labels.ab_testing", "labels.group", "numeric_labels.segment"}},
+		{"comprehensive_log_fields.ndjson", "comprehensive_log_fields_expected.yaml", []string{"numeric_labels.tier", "labels.team"}},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -1139,18 +1139,18 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 	))
 }
 
-func TestProcessBatchReturnsOnCanceledContext(t *testing.T) {
-	r := &elasticAPMIntakeReceiver{
-		settings: receivertest.NewNopSettings(metadata.Type),
-	}
-
+func TestHandleStreamReturnsOnCanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	batch := modelpb.Batch{
-		&modelpb.APMEvent{},
-	}
-	ss := &streamState{rcv: r, fpHasher: xxhashv2.New()}
-	err := ss.processBatch(ctx, &batch)
-	require.ErrorIs(t, err, context.Canceled)
+	body := bytes.NewBufferString(
+		`{"metadata": {"service": {"name": "test", "agent": {"name": "test", "version": "1.0"}}}}` + "\n" +
+			`{"transaction": {"id": "aa00000000000001", "trace_id": "aa00000000000001aa00000000000001", "name": "tx", "type": "request", "duration": 1, "timestamp": 1000000, "outcome": "success", "sampled": true, "span_count": {"started": 0}}}` + "\n",
+	)
+	logger := receivertest.NewNopSettings(metadata.Type).Logger
+	accepted, errs := ndjsondecoder.HandleStream(ctx, body, 10, 1<<20, logger, func(_ context.Context, _ *plog.Logs, _ *pmetric.Metrics, _ *ptrace.Traces) error {
+		return nil
+	})
+	require.Equal(t, 0, accepted)
+	require.True(t, errors.Is(errors.Join(errs...), context.Canceled))
 }
