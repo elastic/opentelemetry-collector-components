@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package ndjsondecoder
+package ndjsondecoder // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 
 import (
 	"encoding/hex"

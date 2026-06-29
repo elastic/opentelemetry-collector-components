@@ -18,7 +18,7 @@
 // Adapted from github.com/elastic/apm-data/input/elasticapm/internal/modeldecoder/nullable.
 // Package name changed so jsoniter registration keys match this package's type names.
 
-package ndjsondecoder
+package ndjsondecoder // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 
 import (
 	"errors"

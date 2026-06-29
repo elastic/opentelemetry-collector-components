@@ -18,7 +18,7 @@
 // Adapted from github.com/elastic/apm-data/input/elasticapm/internal/decoder.
 // Consolidates decoder.go, line_reader.go, limited_reader.go, stream_decoder.go.
 
-package ndjsondecoder
+package ndjsondecoder // import "github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 
 import (
 	"bufio"
