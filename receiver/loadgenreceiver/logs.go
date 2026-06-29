@@ -60,18 +60,23 @@ func createLogsReceiver(
 	set receiver.Settings,
 	config component.Config,
 	consumer consumer.Logs,
-) (receiver.Logs, error) {
+) (_ receiver.Logs, err error) {
 	genConfig := config.(*Config)
 
 	parser := plog.JSONUnmarshaler{}
 	var sampleLogs io.Reader = bytes.NewReader(demoLogs)
 
-	if genConfig.Logs.JsonlFile.Path != "" {
-		rc, err := openJSONLFile(genConfig.Logs.JsonlFile)
+	if genConfig.Logs.Path != "" {
+		var rc io.ReadCloser
+		rc, err = openJSONLFile(genConfig.Logs.JsonlFile)
 		if err != nil {
 			return nil, err
 		}
-		defer rc.Close()
+		defer func() {
+			if closeErr := rc.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
 		sampleLogs = rc
 	}
 

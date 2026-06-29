@@ -44,7 +44,7 @@ func openJSONLFile(fileConfig JsonlFile) (io.ReadCloser, error) {
 	if fileConfig.Compression == compressionZSTD {
 		r, err := zstd.NewReader(f)
 		if err != nil {
-			f.Close()
+			_ = f.Close()
 			return nil, err
 		}
 		return &zstdReadCloser{Decoder: r, f: f}, nil

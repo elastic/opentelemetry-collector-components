@@ -60,18 +60,23 @@ func createTracesReceiver(
 	set receiver.Settings,
 	config component.Config,
 	consumer consumer.Traces,
-) (receiver.Traces, error) {
+) (_ receiver.Traces, err error) {
 	genConfig := config.(*Config)
 
 	parser := ptrace.JSONUnmarshaler{}
 	var sampleTraces io.Reader = bytes.NewReader(demoTraces)
 
-	if genConfig.Traces.JsonlFile.Path != "" {
-		rc, err := openJSONLFile(genConfig.Traces.JsonlFile)
+	if genConfig.Traces.Path != "" {
+		var rc io.ReadCloser
+		rc, err = openJSONLFile(genConfig.Traces.JsonlFile)
 		if err != nil {
 			return nil, err
 		}
-		defer rc.Close()
+		defer func() {
+			if closeErr := rc.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
 		sampleTraces = rc
 	}
 

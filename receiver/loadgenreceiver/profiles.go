@@ -61,18 +61,23 @@ func createProfilesReceiver(
 	set receiver.Settings,
 	config component.Config,
 	consumer xconsumer.Profiles,
-) (xreceiver.Profiles, error) {
+) (_ xreceiver.Profiles, err error) {
 	genConfig := config.(*Config)
 
 	parser := pprofile.JSONUnmarshaler{}
 	var sampleProfiles io.Reader = bytes.NewReader(demoProfiles)
 
-	if genConfig.Profiles.JsonlFile.Path != "" {
-		rc, err := openJSONLFile(genConfig.Profiles.JsonlFile)
+	if genConfig.Profiles.Path != "" {
+		var rc io.ReadCloser
+		rc, err = openJSONLFile(genConfig.Profiles.JsonlFile)
 		if err != nil {
 			return nil, err
 		}
-		defer rc.Close()
+		defer func() {
+			if closeErr := rc.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
 		sampleProfiles = rc
 	}
 

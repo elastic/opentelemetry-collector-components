@@ -67,18 +67,23 @@ func createMetricsReceiver(
 	set receiver.Settings,
 	config component.Config,
 	consumer consumer.Metrics,
-) (receiver.Metrics, error) {
+) (_ receiver.Metrics, err error) {
 	genConfig := config.(*Config)
 
 	parser := pmetric.JSONUnmarshaler{}
 	var sampleMetrics io.Reader = bytes.NewReader(demoMetrics)
 
-	if genConfig.Metrics.JsonlFile.Path != "" {
-		rc, err := openJSONLFile(genConfig.Metrics.JsonlFile)
+	if genConfig.Metrics.Path != "" {
+		var rc io.ReadCloser
+		rc, err = openJSONLFile(genConfig.Metrics.JsonlFile)
 		if err != nil {
 			return nil, err
 		}
-		defer rc.Close()
+		defer func() {
+			if closeErr := rc.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
 		sampleMetrics = rc
 	}
 
