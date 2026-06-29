@@ -78,7 +78,7 @@ func TestTracesGenerator_MaxBufferSizeAttr(t *testing.T) {
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(nil, nil, doneCh, nil)
 			cfg.(*Config).Traces.MaxBufferSize = maxBufferSize
-			cfg.(*Config).Traces.JsonlFile = JsonlFile(filePath)
+			cfg.(*Config).Traces.JsonlFile = JsonlFile{Path: filePath}
 
 			_, err := createTracesReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},

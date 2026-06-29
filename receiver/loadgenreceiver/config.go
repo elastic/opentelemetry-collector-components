@@ -36,7 +36,7 @@ type JsonlFile struct {
 	Path string `mapstructure:"jsonl_file"`
 	// Compression Codec used to extract telemetry data
 	// Supported compression algorithms:`zstd`
-	Compression string `mapstructure:"file_compression"`
+	Compression string `mapstructure:"compression"`
 }
 
 // Config defines configuration for loadgen receiver.

@@ -23,7 +23,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"os"
+	"io"
 	"sync"
 	"time"
 
@@ -64,23 +64,24 @@ func createTracesReceiver(
 	genConfig := config.(*Config)
 
 	parser := ptrace.JSONUnmarshaler{}
-	var err error
-	sampleTraces := demoTraces
+	var sampleTraces io.Reader = bytes.NewReader(demoTraces)
 
 	if genConfig.Traces.JsonlFile.Path != "" {
-		sampleTraces, err = os.ReadFile(string(genConfig.Traces.JsonlFile.Path))
+		rc, err := openJSONLFile(genConfig.Traces.JsonlFile)
 		if err != nil {
 			return nil, err
 		}
+		defer rc.Close()
+		sampleTraces = rc
 	}
 
 	maxBufferSize := genConfig.Traces.MaxBufferSize
 	if maxBufferSize == 0 {
-		maxBufferSize = len(sampleTraces) + 10 // add some margin
+		maxBufferSize = maxScannerBufSize
 	}
 
 	var items []ptrace.Traces
-	scanner := bufio.NewScanner(bytes.NewReader(sampleTraces))
+	scanner := bufio.NewScanner(sampleTraces)
 	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		traceBytes := scanner.Bytes()

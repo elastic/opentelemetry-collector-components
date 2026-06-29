@@ -23,7 +23,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"os"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -71,23 +71,24 @@ func createMetricsReceiver(
 	genConfig := config.(*Config)
 
 	parser := pmetric.JSONUnmarshaler{}
-	var err error
-	sampleMetrics := demoMetrics
+	var sampleMetrics io.Reader = bytes.NewReader(demoMetrics)
 
 	if genConfig.Metrics.JsonlFile.Path != "" {
-		sampleMetrics, err = os.ReadFile(string(genConfig.Metrics.JsonlFile.Path))
+		rc, err := openJSONLFile(genConfig.Metrics.JsonlFile)
 		if err != nil {
 			return nil, err
 		}
+		defer rc.Close()
+		sampleMetrics = rc
 	}
 
 	maxBufferSize := genConfig.Metrics.MaxBufferSize
 	if maxBufferSize == 0 {
-		maxBufferSize = len(sampleMetrics) + 10 // add some margin
+		maxBufferSize = maxScannerBufSize
 	}
 
 	var items []pmetric.Metrics
-	scanner := bufio.NewScanner(bytes.NewReader(sampleMetrics))
+	scanner := bufio.NewScanner(sampleMetrics)
 	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		metricBytes := scanner.Bytes()
