@@ -3,7 +3,6 @@ module github.com/elastic/opentelemetry-collector-components/receiver/elasticapm
 go 1.26.0
 
 require (
-	github.com/cespare/xxhash v1.1.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/elastic/apm-data v1.22.0
 	github.com/elastic/go-elasticsearch/v8 v8.19.6
