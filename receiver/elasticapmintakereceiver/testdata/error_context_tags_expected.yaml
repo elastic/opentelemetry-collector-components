@@ -1,0 +1,64 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: labels.env
+          value:
+            stringValue: production
+        - key: labels.region
+          value:
+            stringValue: us-east-1
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: processor.event
+                value:
+                  stringValue: error
+              - key: error.id
+                value:
+                  stringValue: aa00000000000001
+              - key: error.grouping_key
+                value:
+                  stringValue: 60b29d2f9dafe754
+              - key: timestamp.us
+                value:
+                  intValue: "1494342245999999"
+              - key: error.exception
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: message
+                              value:
+                                stringValue: connection refused
+                            - key: type
+                              value:
+                                stringValue: DbError
+            body:
+              stringValue: connection refused
+            timeUnixNano: "1494342245999999000"
+        scope: {}
