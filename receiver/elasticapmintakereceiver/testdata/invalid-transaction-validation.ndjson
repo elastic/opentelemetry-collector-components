@@ -1,0 +1,2 @@
+{"metadata": {"service": {"name": "svc", "agent": {"name": "elastic-node", "version": "1.0.0"}}}}
+{"transaction": {"id": "abcdef0123456789", "trace_id": "0123456789abcdef0123456789abcdef", "type": "request", "span_count": {"started": 0}}}

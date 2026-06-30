@@ -3,13 +3,13 @@ module github.com/elastic/opentelemetry-collector-components/receiver/elasticapm
 go 1.26.0
 
 require (
-	github.com/cespare/xxhash v1.1.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/elastic/apm-data v1.22.0
 	github.com/elastic/go-elasticsearch/v8 v8.19.6
 	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.40.0
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250220144628-323275205ce9
 	github.com/elastic/opentelemetry-lib v0.39.0
+	github.com/json-iterator/go v1.1.12
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.152.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.152.0
 	github.com/stretchr/testify v1.11.1
@@ -64,7 +64,6 @@ require (
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
