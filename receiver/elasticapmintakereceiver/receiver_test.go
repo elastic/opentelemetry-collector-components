@@ -536,7 +536,7 @@ func TestErrors(t *testing.T) {
 		{"errors.ndjson", "errors_expected.yaml"},
 		{"error_context_tags.ndjson", "error_context_tags_expected.yaml"},                           // context.tags written as resource labels.*
 		{"error_transaction_sampled_false.ndjson", "error_transaction_sampled_false_expected.yaml"}, // error.transaction.sampled=false parity
-		{"error_empty_stacktrace_strings.ndjson", "error_empty_stacktrace_strings_expected.yaml"},   // Bug 3: empty-string stacktrace fields must not be written
+		{"error_empty_stacktrace_strings.ndjson", "error_empty_stacktrace_strings_expected.yaml"},   // empty-string stacktrace fields must not be written
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -663,10 +663,10 @@ var inputFiles = []struct {
 	{"dropped_spans_stats_no_duration.ndjson", "dropped_spans_stats_no_duration_expected.yaml", nil},
 	{"transactions_xff_nat_ip.ndjson", "transactions_xff_nat_ip_expected.yaml", nil},
 	{"transaction_sampled_false.ndjson", "transaction_sampled_false_expected.yaml", nil},         // transaction.sampled=false parity
-	{"span_otel_custom_attrs.ndjson", "span_otel_custom_attrs_expected.yaml", nil},               // Bug 1: non-elastic.* OTel attrs on spans must propagate to labels.*
-	{"transaction_otel_custom_attrs.ndjson", "transaction_otel_custom_attrs_expected.yaml", nil}, // Bug 1: non-elastic.* OTel attrs on transactions must propagate to labels.*
-	{"span_empty_string_label.ndjson", "span_empty_string_label_expected.yaml", nil},             // Bug 2: empty-string tag value parity
-	{"span_empty_stacktrace_strings.ndjson", "span_empty_stacktrace_strings_expected.yaml", nil}, // Bug 3: empty-string stacktrace frame fields must not be written
+	{"span_otel_custom_attrs.ndjson", "span_otel_custom_attrs_expected.yaml", nil},               // OTel attrs on spans must propagate to labels.*
+	{"transaction_otel_custom_attrs.ndjson", "transaction_otel_custom_attrs_expected.yaml", nil}, // OTel attrs on transactions must propagate to labels.*
+	{"span_empty_string_label.ndjson", "span_empty_string_label_expected.yaml", nil},             // empty-string tag values are omitted from labels.*
+	{"span_empty_stacktrace_strings.ndjson", "span_empty_stacktrace_strings_expected.yaml", nil}, // empty-string stacktrace frame fields must not be written
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
