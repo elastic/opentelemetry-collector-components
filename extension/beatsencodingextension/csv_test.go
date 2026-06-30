@@ -294,6 +294,25 @@ func TestConfigValidate_CSV(t *testing.T) {
 			wantErr: "csv.comment must be a single character",
 		},
 		{
+			name: "comment equals comma",
+			config: Config{
+				Format:     FormatCSV,
+				CSV:        CSVConfig{Comma: ",", Comment: ","},
+				DataStream: DataStreamConfig{Dataset: "test.ds", Namespace: "default"},
+			},
+			wantErr: "csv.comment must differ from csv.comma",
+		},
+		{
+			name: "comment equals default comma",
+			config: Config{
+				Format: FormatCSV,
+				// Comma unset defaults to ","; comment "," collides with it.
+				CSV:        CSVConfig{Comment: ","},
+				DataStream: DataStreamConfig{Dataset: "test.ds", Namespace: "default"},
+			},
+			wantErr: "csv.comment must differ from csv.comma",
+		},
+		{
 			name: "valid csv with comment",
 			config: Config{
 				Format:     FormatCSV,

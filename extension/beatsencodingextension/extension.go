@@ -207,7 +207,14 @@ func newEOFDecoder(offset int64) encoding.LogsDecoder {
 
 // csvRecordToJSON encodes a CSV record as a JSON object keyed by header.
 // Values are kept as strings (matching the Beats csv codec), and JSON
-// encoding handles escaping. Missing trailing fields are written as "".
+// encoding handles escaping.
+//
+// csv.Reader enforces that every record has the same field count as the header
+// (FieldsPerRecord), so a row with too few or too many fields fails the read
+// with ErrFieldCount before reaching here — matching the Beats codec's strict
+// behaviour. The length guard below is therefore defensive only (it never pads
+// in practice) and exists solely to avoid an index panic if that invariant
+// ever changes.
 func csvRecordToJSON(header, record []string) (string, error) {
 	m := make(map[string]string, len(header))
 	for i, name := range header {

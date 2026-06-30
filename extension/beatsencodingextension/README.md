@@ -2,7 +2,9 @@
 
 The Beats encoding extension converts raw log bytes into OpenTelemetry log records formatted for Elastic Beats/Agent integration compatibility. It implements the `encoding.LogsUnmarshalerExtension` and `encoding.LogsDecoderExtension` (streaming) interfaces and is intended for use with receivers that accept raw payloads (e.g., `httpreceiver`).
 
-Each extracted record is stored as a raw string under the `message` body map key. Data stream routing attributes (`data_stream.type`, `data_stream.dataset`, `data_stream.namespace`) are set on each log record so that mOTLP routes the document to the correct integration data stream. Every record also gets a baseline `@timestamp` (the decode time, like a Beats document); integration ingest pipelines that derive `@timestamp` from the event override it.
+Each extracted record is stored as a raw string under the `message` body map key. Data stream routing attributes (`data_stream.type`, `data_stream.dataset`, `data_stream.namespace`) are set on each log record so that mOTLP routes the document to the correct integration data stream.
+
+Every record also gets a baseline `@timestamp` (the decode time, like a Beats document); integration ingest pipelines that derive `@timestamp` from the event override it.
 
 ## Configuration
 

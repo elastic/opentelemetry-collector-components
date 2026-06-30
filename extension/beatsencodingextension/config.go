@@ -164,6 +164,18 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("csv.comment must be a single character, got %q", c.CSV.Comment)
 	}
 
+	// csv.Reader rejects comment == comma at decode time; fail fast here with a
+	// clear message. Comma defaults to "," when unset.
+	if c.CSV.Comment != "" {
+		comma := c.CSV.Comma
+		if comma == "" {
+			comma = ","
+		}
+		if c.CSV.Comment == comma {
+			return fmt.Errorf("csv.comment must differ from csv.comma (both %q)", comma)
+		}
+	}
+
 	if c.DataStream.Dataset == "" {
 		return fmt.Errorf("data_stream.dataset is required")
 	}
