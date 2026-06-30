@@ -461,17 +461,17 @@ func TestInvalidInput(t *testing.T) {
 		inputNdJsonFileName          string
 		expectedErrorMessageFileName string
 	}{
-		{"invalid-event.ndjson", "invalid-event-expected.txt"},
-		{"invalid-event-type.ndjson", "invalid-event-type-expected.txt"},
-		{"invalid-json-event.ndjson", "invalid-json-event-expected.txt"},
-		{"typeless-event.ndjson", "typeless-event-expected.txt"},
-		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.txt"},
-		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.txt"},
-		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
-		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
-		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.txt"},
-		{"invalid-span-validation.ndjson", "invalid-span-validation-expected.txt"},
-		{"invalid-transaction-validation.ndjson", "invalid-transaction-validation-expected.txt"},
+		{"invalid-event.ndjson", "invalid-event-expected.json"},
+		{"invalid-event-type.ndjson", "invalid-event-type-expected.json"},
+		{"invalid-json-event.ndjson", "invalid-json-event-expected.json"},
+		{"typeless-event.ndjson", "typeless-event-expected.json"},
+		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.json"},
+		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.json"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.json"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.json"},
+		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.json"},
+		{"invalid-span-validation.ndjson", "invalid-span-validation-expected.json"},
+		{"invalid-transaction-validation.ndjson", "invalid-transaction-validation-expected.json"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
