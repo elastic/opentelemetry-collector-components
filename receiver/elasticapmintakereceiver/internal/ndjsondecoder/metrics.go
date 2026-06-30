@@ -34,7 +34,7 @@ func DecodeMetricset(dec *NDJSONStreamDecoder) (*metricset, error) {
 		return nil, err
 	}
 	if err := root.validate(); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
+		return nil, ValidationError{err: fmt.Errorf("validation error: %w", err)}
 	}
 	return &root.Metricset, nil
 }

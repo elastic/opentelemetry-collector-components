@@ -39,10 +39,10 @@ func DecodeMetadata(dec *NDJSONStreamDecoder) (*metadata, error) {
 		return nil, err
 	}
 	if err := root.validate(); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
+		return nil, ValidationError{err: fmt.Errorf("validation error: %w", err)}
 	}
 	if err := root.processNestedSource(); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
+		return nil, ValidationError{err: fmt.Errorf("validation error: %w", err)}
 	}
 	return &root.Metadata, nil
 }

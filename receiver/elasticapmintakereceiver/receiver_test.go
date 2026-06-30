@@ -523,9 +523,7 @@ func TestInvalidInput(t *testing.T) {
 				t.Fatalf("unexpected response body: got %q, want %q", bodyStr, expectedError)
 			}
 
-			if resp.StatusCode < http.StatusBadRequest {
-				t.Fatalf("unexpected status code - this request is invalid and should not be accepted. Status code: %v", resp.StatusCode)
-			}
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		})
 	}
 }

@@ -165,7 +165,7 @@ func HandleStream(
 				if decErr := dec.Decode(&raw); decErr != nil && eventType == "" {
 					appendErr = decErr
 				} else {
-					appendErr = fmt.Errorf("did not recognize object type: %q", eventType)
+					appendErr = ValidationError{err: fmt.Errorf("did not recognize object type: %q", eventType)}
 				}
 			}
 

@@ -47,7 +47,7 @@ func DecodeSpan(dec *NDJSONStreamDecoder) (*span, error) {
 		return nil, err
 	}
 	if err := root.validate(); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
+		return nil, ValidationError{err: fmt.Errorf("validation error: %w", err)}
 	}
 	return &root.Span, nil
 }
@@ -59,7 +59,7 @@ func DecodeTransaction(dec *NDJSONStreamDecoder) (*transaction, error) {
 		return nil, err
 	}
 	if err := root.validate(); err != nil {
-		return nil, fmt.Errorf("validation error: %w", err)
+		return nil, ValidationError{err: fmt.Errorf("validation error: %w", err)}
 	}
 	return &root.Transaction, nil
 }

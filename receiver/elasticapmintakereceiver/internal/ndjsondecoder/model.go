@@ -35,7 +35,7 @@ type errorRoot struct {
 	Error errorEvent `json:"error" validate:"required"`
 }
 
-// metadatatRoot requires a metadata event to be present
+// metadataRoot requires a metadata event to be present
 type metadataRoot struct {
 	Metadata metadata `json:"metadata" validate:"required"`
 }

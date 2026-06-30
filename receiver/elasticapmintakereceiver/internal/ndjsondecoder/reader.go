@@ -37,10 +37,17 @@ var jsonConfig = jsoniter.Config{
 	UseNumber:              true,
 }.Froze()
 
-// JSONDecodeError is a custom error that can occur during JSON decoding.
-type JSONDecodeError string
+// JSONDecodeError is returned when JSON parsing fails. It is a client error (HTTP 400).
+type JSONDecodeError struct{ err error }
 
-func (s JSONDecodeError) Error() string { return string(s) }
+func (e JSONDecodeError) Error() string { return "data read error: " + e.err.Error() }
+func (e JSONDecodeError) Unwrap() error { return e.err }
+
+// ValidationError is returned when a decoded event fails schema validation. It is a client error (HTTP 400).
+type ValidationError struct{ err error }
+
+func (e ValidationError) Error() string { return e.err.Error() }
+func (e ValidationError) Unwrap() error { return e.err }
 
 // ErrLineTooLong is returned when a line exceeds the maximum permitted length.
 var ErrLineTooLong = errors.New("line exceeded permitted length")
@@ -168,7 +175,7 @@ func (dec *NDJSONStreamDecoder) Decode(v interface{}) error {
 	defer jsonConfig.ReturnIterator(iter)
 	iter.ReadVal(v)
 	if iter.Error != nil && iter.Error != io.EOF {
-		return JSONDecodeError("data read error: " + iter.Error.Error())
+		return JSONDecodeError{err: iter.Error}
 	}
 	return nil // successful decode; EOF state is tracked via ReadAhead/isEOF
 }

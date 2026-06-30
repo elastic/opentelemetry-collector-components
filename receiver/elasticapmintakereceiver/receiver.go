@@ -234,7 +234,8 @@ func intakeStatusCodeFromErr(err error, isRequestContextErr bool) int {
 	code := http.StatusInternalServerError
 
 	var jsonErr ndjsondecoder.JSONDecodeError
-	if errors.As(err, &jsonErr) {
+	var validErr ndjsondecoder.ValidationError
+	if errors.As(err, &jsonErr) || errors.As(err, &validErr) {
 		code = http.StatusBadRequest
 	} else if errors.Is(err, ndjsondecoder.ErrLineTooLong) {
 		code = http.StatusRequestEntityTooLarge
