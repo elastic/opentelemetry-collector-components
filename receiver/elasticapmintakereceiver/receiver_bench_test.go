@@ -44,7 +44,6 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
-	"github.com/stretchr/testify/require"
 )
 
 // payloadGlobalLabelsNoShadow has 10 transactions with metadata global labels
@@ -183,7 +182,9 @@ func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte
 	for i := 0; i < b.N; i++ {
 		reader.Reset(payload)
 		_, streamErrs := ndjsondecoder.HandleStream(ctx, reader, rcv.cfg.BatchSize, rcv.cfg.MaxEventSize, rcv.settings.Logger, consumer)
-		require.Empty(b, streamErrs)
+		if len(streamErrs) != 0 {
+			b.Fatalf("unexpected stream errors: %v", streamErrs)
+		}
 	}
 }
 
