@@ -37,7 +37,7 @@ const (
 	FormatText Format = "text"
 
 	// FormatCSV indicates the input is CSV: the first record is the header
-	// (unless CSV.FieldNames is set) and each subsequent record becomes a
+	// (unless CSV.FieldsNames is set) and each subsequent record becomes a
 	// log record whose "message" is a JSON object keyed by the header. This
 	// mirrors the Beats aws-s3 input's decoding.codec.csv behaviour.
 	FormatCSV Format = "csv"
@@ -55,15 +55,23 @@ type DataStreamConfig struct {
 	Namespace string `mapstructure:"namespace"`
 }
 
-// CSVConfig configures CSV decoding. Only used when Format is "csv".
+// CSVConfig configures CSV decoding. Only used when Format is "csv". The
+// option names mirror the Beats aws-s3 input's decoding.codec.csv settings so
+// configurations are consistent across the Agent and forwarder paths.
 type CSVConfig struct {
 	// Comma is the field separator, a single character. Defaults to ",".
 	// Netskope Log Streaming, for example, uses a single space.
 	Comma string `mapstructure:"comma,omitempty"`
 
-	// FieldNames overrides the header. When empty, the first CSV record is
-	// read and used as the header.
-	FieldNames []string `mapstructure:"field_names,omitempty"`
+	// Comment, if set, is the comment character. Lines beginning with it
+	// (before the first non-comment record) are skipped. A single character;
+	// must differ from Comma.
+	Comment string `mapstructure:"comment,omitempty"`
+
+	// FieldsNames overrides the header. When empty, the first non-comment CSV
+	// record is read and used as the header. Named "fields_names" to match the
+	// Beats csv codec option.
+	FieldsNames []string `mapstructure:"fields_names,omitempty"`
 
 	// LazyQuotes, if true, allows a quote to appear in an unquoted field and
 	// a non-doubled quote in a quoted field.
@@ -142,12 +150,18 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("unwrap is only supported when format is %q", FormatJSON)
 	}
 
-	if (c.CSV.Comma != "" || len(c.CSV.FieldNames) > 0) && c.Format != FormatCSV {
+	if c.Format != FormatCSV &&
+		(c.CSV.Comma != "" || c.CSV.Comment != "" || len(c.CSV.FieldsNames) > 0 ||
+			c.CSV.LazyQuotes || c.CSV.TrimLeadingSpace) {
 		return fmt.Errorf("csv options are only supported when format is %q", FormatCSV)
 	}
 
 	if c.CSV.Comma != "" && len([]rune(c.CSV.Comma)) != 1 {
 		return fmt.Errorf("csv.comma must be a single character, got %q", c.CSV.Comma)
+	}
+
+	if c.CSV.Comment != "" && len([]rune(c.CSV.Comment)) != 1 {
+		return fmt.Errorf("csv.comment must be a single character, got %q", c.CSV.Comment)
 	}
 
 	if c.DataStream.Dataset == "" {

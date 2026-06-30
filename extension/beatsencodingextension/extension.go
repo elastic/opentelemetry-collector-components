@@ -105,7 +105,7 @@ func (e *beatsEncodingExtension) NewLogsDecoder(reader io.Reader, options ...enc
 }
 
 // newCSVDecoder returns a streaming decoder that reads CSV records. The first
-// record is the header (unless CSV.FieldNames is set); each subsequent record
+// record is the header (unless CSV.FieldsNames is set); each subsequent record
 // becomes a log record whose "message" is a JSON object keyed by the header.
 // This mirrors the Beats aws-s3 input's decoding.codec.csv behaviour so the
 // documents match what an Elastic Agent would produce.
@@ -120,13 +120,16 @@ func (e *beatsEncodingExtension) newCSVDecoder(reader io.Reader, options ...enco
 	if e.config.CSV.Comma != "" {
 		r.Comma = []rune(e.config.CSV.Comma)[0]
 	}
+	if e.config.CSV.Comment != "" {
+		r.Comment = []rune(e.config.CSV.Comment)[0]
+	}
 
-	// Establish the header. With FieldNames set, lock the field count to it;
-	// otherwise the first record is the header and csv.Reader enforces that
-	// subsequent records have the same field count.
+	// Establish the header. With FieldsNames set, lock the field count to it;
+	// otherwise the first non-comment record is the header and csv.Reader
+	// enforces that subsequent records have the same field count.
 	var header []string
-	if len(e.config.CSV.FieldNames) != 0 {
-		header = e.config.CSV.FieldNames
+	if len(e.config.CSV.FieldsNames) != 0 {
+		header = e.config.CSV.FieldsNames
 		r.FieldsPerRecord = len(header)
 	} else {
 		h, err := r.Read()
