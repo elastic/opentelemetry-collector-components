@@ -98,7 +98,17 @@ func HandleStream(
 				tx, appendErr = DecodeTransaction(dec)
 				if appendErr == nil {
 					svc := TransactionContextService(tx)
-					tags := tx.Context.Tags
+					// elastic.profiler_stack_trace_ids is extracted by AppendTransaction; exclude it from labels.
+					txOTelAttrs := tx.OTel.Attributes
+					if _, ok := txOTelAttrs["elastic.profiler_stack_trace_ids"]; ok {
+						txOTelAttrs = make(map[string]any, len(tx.OTel.Attributes)-1)
+						for k, v := range tx.OTel.Attributes {
+							if k != "elastic.profiler_stack_trace_ids" {
+								txOTelAttrs[k] = v
+							}
+						}
+					}
+					tags := mergeOTelLabels(tx.Context.Tags, txOTelAttrs)
 					target := routeTarget(&main, &shadows, tags, keyIndex, useBig)
 					extras := &eventResourceExtras{
 						request:     &tx.Context.Request,
@@ -115,7 +125,7 @@ func HandleStream(
 				sp, appendErr = DecodeSpan(dec)
 				if appendErr == nil {
 					svc := SpanContextService(sp)
-					tags := mergeOTelElasticLabels(sp.Context.Tags, sp.OTel.Attributes)
+					tags := mergeOTelLabels(sp.Context.Tags, sp.OTel.Attributes)
 					target := routeTarget(&main, &shadows, tags, keyIndex, useBig)
 					var extras *eventResourceExtras
 					if ip := validateIP(sp.Context.Destination.Address.Val); ip != "" {
@@ -812,26 +822,19 @@ func hashCloudOriginFields(o *contextCloudOrigin, h *xxhash.Digest) {
 	}
 }
 
-// mergeOTelElasticLabels returns a merged tags map that includes OTel attributes
-// whose keys start with "elastic.", transforming dots to underscores
-// (e.g. "elastic.foo.bar" → "elastic_foo_bar"). Returns tags unchanged when no
-// elastic.* OTel attributes exist; otherwise returns a new merged map.
-func mergeOTelElasticLabels(tags map[string]any, otelAttrs map[string]any) map[string]any {
-	var merged map[string]any
-	for k, v := range otelAttrs {
-		if !strings.HasPrefix(k, "elastic.") {
-			continue
-		}
-		if merged == nil {
-			merged = make(map[string]any, len(tags)+1)
-			for tk, tv := range tags {
-				merged[tk] = tv
-			}
-		}
-		merged[strings.ReplaceAll(k, ".", "_")] = v
-	}
-	if merged == nil {
+// mergeOTelLabels merges OTel attributes into tags, sanitizing keys by replacing
+// dots with underscores to match apm-data label key sanitization. Returns tags
+// unchanged when otelAttrs is empty; otherwise returns a new merged map.
+func mergeOTelLabels(tags map[string]any, otelAttrs map[string]any) map[string]any {
+	if len(otelAttrs) == 0 {
 		return tags
+	}
+	merged := make(map[string]any, len(tags)+len(otelAttrs))
+	for k, v := range tags {
+		merged[k] = v
+	}
+	for k, v := range otelAttrs {
+		merged[strings.ReplaceAll(k, ".", "_")] = v
 	}
 	return merged
 }
