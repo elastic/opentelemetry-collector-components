@@ -180,8 +180,26 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 		stopBodyClose := context.AfterFunc(ctx, func() { _ = req.Body.Close() })
 		defer stopBodyClose()
 
+		var result struct {
+			Accepted int      `json:"accepted"`
+			Errors   []string `json:"errors,omitempty"`
+		}
+		processError := func(err error, isRequestContextErr bool) {
+			result.Errors = append(result.Errors, err.Error())
+			if statusCode != statusClientClosed {
+				if errStatusCode := intakeStatusCodeFromErr(err, isRequestContextErr); errStatusCode > statusCode {
+					statusCode = errStatusCode
+				}
+			}
+		}
+
 		if err := sem.Acquire(ctx, 1); err != nil {
-			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			processError(err, true)
+			if statusCode >= http.StatusBadRequest {
+				w.Header().Set("Connection", "close")
+			}
+			w.WriteHeader(statusCode)
+			_ = json.NewEncoder(w).Encode(&result)
 			return
 		}
 		defer sem.Release(1)
@@ -192,20 +210,8 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 
 		accepted, streamErrs := ndjsondecoder.HandleStream(ctx, req.Body, r.cfg.BatchSize, r.cfg.MaxEventSize, r.settings.Logger, consumer)
 
-		var result struct {
-			Accepted int      `json:"accepted"`
-			Errors   []string `json:"errors,omitempty"`
-		}
 		result.Accepted = accepted
 		result.Errors = make([]string, 0, len(streamErrs)+2)
-		processError := func(err error, isRequestContextErr bool) {
-			result.Errors = append(result.Errors, err.Error())
-			if statusCode != statusClientClosed {
-				if errStatusCode := intakeStatusCodeFromErr(err, isRequestContextErr); errStatusCode > statusCode {
-					statusCode = errStatusCode
-				}
-			}
-		}
 		for _, err := range streamErrs {
 			processError(err, false)
 		}
