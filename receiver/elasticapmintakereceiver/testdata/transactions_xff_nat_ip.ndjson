@@ -1,0 +1,3 @@
+{"metadata": {"service": {"name": "ip-test", "agent": {"name": "elastic-node", "version": "1.0.0"}}}}
+{"transaction": {"id": "aaaaaaaaaaaaaaaa", "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "type": "request", "duration": 10, "timestamp": 1496170407154000, "span_count": {"started": 0}, "context": {"request": {"socket": {"remote_address": "10.0.0.1"}, "method": "GET", "headers": {"X-Forwarded-For": "1.2.3.4"}}}}}
+{"transaction": {"id": "bbbbbbbbbbbbbbbb", "trace_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "type": "request", "duration": 10, "timestamp": 1496170407154001, "span_count": {"started": 0}, "context": {"request": {"socket": {"remote_address": "10.0.0.2"}, "method": "GET", "headers": {"X-Forwarded-For": "1.2.3.4"}}}}}
