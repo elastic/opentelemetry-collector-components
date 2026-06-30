@@ -274,7 +274,6 @@ func contextCodeFromErr(err error) codes.Code {
 	return codes.OK
 }
 
-
 // consumeOTel sends the populated pdata structures to downstream consumers.
 // Nil pointers are skipped.
 func (r *elasticAPMIntakeReceiver) consumeOTel(ctx context.Context, ld *plog.Logs, md *pmetric.Metrics, td *ptrace.Traces) []error {
@@ -332,7 +331,6 @@ func (r *elasticAPMIntakeReceiver) consumeOTel(ctx context.Context, ld *plog.Log
 	return errs
 }
 
-
 func withECSMappingMode(ctx context.Context, includeMetadata bool) context.Context {
 	return client.NewContext(ctx, withMappingMode(client.FromContext(ctx), "ecs", includeMetadata))
 }
@@ -351,5 +349,3 @@ func withMappingMode(info client.Info, mode string, includeMetadata bool) client
 		Metadata: client.NewMetadata(newMeta),
 	}
 }
-
-
