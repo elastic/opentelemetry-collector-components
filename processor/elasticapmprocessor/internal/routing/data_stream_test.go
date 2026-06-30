@@ -424,7 +424,7 @@ func TestDataStreamEncoders(t *testing.T) {
 			}
 
 			if tt.isErrorEncode {
-				routing.EncodeErrorDataStream(testResource.Attributes(), tt.expectedType)
+				routing.EncodeErrorDataStream(testResource.Attributes(), tt.expectedType, "")
 			} else {
 				routing.EncodeDataStream(
 					testResource,

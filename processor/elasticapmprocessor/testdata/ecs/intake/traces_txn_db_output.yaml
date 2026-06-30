@@ -10,15 +10,18 @@ resourceSpans:
         - key: labels.resource_optional
           value:
             stringValue: bar
+        - key: service.name
+          value:
+            stringValue: unknown
         - key: data_stream.type
           value:
             stringValue: traces
-        - key: data_stream.dataset
-          value:
-            stringValue: apm
         - key: data_stream.namespace
           value:
             stringValue: default
+        - key: data_stream.dataset
+          value:
+            stringValue: apm
         - key: host.ip
           value:
             stringValue: 1.2.3.4
