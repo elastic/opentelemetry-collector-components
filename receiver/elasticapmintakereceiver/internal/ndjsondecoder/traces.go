@@ -380,7 +380,9 @@ func AppendTransaction(ss ptrace.ScopeSpans, tx *transaction, logger *zap.Logger
 	// OTel: span kind from transaction type, outcome/result defaults when outcome is unknown
 	kind := mapSpanKind(tx.OTel.SpanKind.Val)
 	if tx.OTel.IsSet() {
-		if kind == ptrace.SpanKindUnspecified {
+		// Only derive kind from transaction type when span_kind was absent; an unrecognised
+		// value must not be overridden (mirrors apm-data mapOTelAttributesTransaction).
+		if !tx.OTel.SpanKind.IsSet() {
 			switch tx.Type.Val {
 			case "request":
 				kind = ptrace.SpanKindServer
