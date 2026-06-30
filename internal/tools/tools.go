@@ -34,5 +34,6 @@ import (
 	_ "go.opentelemetry.io/collector/cmd/builder"
 	_ "go.opentelemetry.io/collector/cmd/mdatagen"
 	_ "golang.org/x/tools/cmd/goimports"
+	_ "github.com/itchyny/gojq/cmd/gojq"
 	_ "golang.org/x/vuln/cmd/govulncheck"
 )

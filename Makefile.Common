@@ -23,11 +23,21 @@ LINT         := $(TOOLS_BIN_DIR)/golangci-lint
 MISSPELL     := $(TOOLS_BIN_DIR)/misspell
 MDATAGEN     := $(TOOLS_BIN_DIR)/mdatagen
 GOVULNCHECK  := $(TOOLS_BIN_DIR)/govulncheck
+GOJQ         := $(TOOLS_BIN_DIR)/gojq
 PORTO        := $(TOOLS_BIN_DIR)/porto
 BUILDER      := $(TOOLS_BIN_DIR)/builder
 LICENSER     := $(TOOLS_BIN_DIR)/go-licenser
 CHLOGGEN     := $(TOOLS_BIN_DIR)/chloggen
 MULTIMOD     := $(TOOLS_BIN_DIR)/multimod
+
+# Ignored vulnerabilities with justification:
+# - GO-2026-5662: False positive, we use `github.com/prometheus/prometheus`
+#   >= 0.312.0, which has the fix for this vulnerability. Besides, this doesn't
+#   affect the Collector in any way, only the Prometheus UI.
+IGNORED_VULNS = GO-2026-5662
+
+# Ignore all golang-related vulnerabilities (stdlib, golang.org/x/*, google.golang.org/*, etc.)
+IGNORE_GOLANG_VULNS ?=
 
 .PHONY: install-tools
 install-tools: $(TOOLS_BIN_NAMES)
@@ -85,9 +95,32 @@ moddownload:
 porto: $(PORTO)
 	$(PORTO) -w --include-internal --skip-dirs "^cmd$$" ./
 
+# jq filter: Build OSV lookup map {id: {withdrawn, summary, pkg}}
+_GOVUL_MAP = reduce (.[] | select(.osv)) as $$osv ({}; . + {($$osv.osv.id): {summary: $$osv.osv.summary, withdrawn: $$osv.osv.withdrawn, pkg: ($$osv.osv.affected[0].package.name // "")}}) as $$osv_data
+# jq filter: Check if vulnerability should be skipped (withdrawn, golang+IGNORE_GOLANG_VULNS, or has no position/symbol in trace)
+_GOVUL_SKIP = ($$osv_data[.finding.osv].withdrawn | . != null and . != "") or ("$(IGNORE_GOLANG_VULNS)" == "1" and ($$osv_data[.finding.osv].pkg | test("^(stdlib|golang\\.org|google\\.golang\\.org)"))) or (.finding.trace | length == 0 or (all(.position == null and .symbol == null)))
 .PHONY: govulncheck
-govulncheck: $(GOVULNCHECK)
-	$(GOVULNCHECK) ./...
+govulncheck: $(GOVULNCHECK) $(GOJQ)
+	@set -e; \
+	$(GOVULNCHECK) -format json ./... > govulncheck-output.json; \
+	FOUND="$$( $(GOJQ) -r -s '$(_GOVUL_MAP) | [.[] | select(.finding != null and ($(_GOVUL_SKIP) | not)) | .finding.osv] | unique | .[]' govulncheck-output.json | sort -u )"; \
+	[ -z "$$FOUND" ] && echo "No vulnerabilities found" && rm -f govulncheck-output.json && exit 0; \
+	echo "Found: $$FOUND"; \
+	\
+	UNIGNORED=""; \
+	for id in $$FOUND; do \
+		echo "$(IGNORED_VULNS)" | grep -qw "$$id" || UNIGNORED="$$UNIGNORED $$id"; \
+	done; \
+	UNIGNORED="$$(echo $$UNIGNORED | xargs)"; \
+	[ -z "$$UNIGNORED" ] && echo "All vulnerabilities ignored" && rm -f govulncheck-output.json && exit 0; \
+	\
+	echo "Vulnerabilities need attention: $$UNIGNORED"; \
+	echo ""; \
+	echo "Vulnerability Summary:"; \
+	echo "ID/LINK    SUMMARY    POSITION"; \
+	$(GOJQ) -r -s '$(_GOVUL_MAP) | [.[] | select(.finding != null and ($(_GOVUL_SKIP) | not)) | ["https://pkg.go.dev/vuln/" + .finding.osv, $$osv_data[.finding.osv].summary, (.finding.trace | map(select(.position != null or .symbol != null) | (.position // .symbol | tostring)) | join("; "))] ] | unique_by(.[0]) | .[] | @tsv' govulncheck-output.json; \
+	rm -f govulncheck-output.json; \
+	exit 1
 
 .PHONY: toolchain
 toolchain:
