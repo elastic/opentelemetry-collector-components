@@ -171,6 +171,42 @@ func TestMetricsBuilderConfig(t *testing.T) {
 	}
 }
 
+func TestSamplesClassificationMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().SamplesClassification
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []SamplesClassificationMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric samples.classification doesn't have an attribute invalid, valid attributes: [classification, frame_type, profile.type_unit]")
+
+	cfg = DefaultMetricsConfig().SamplesClassification
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestSamplesCustomAggregationMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().SamplesCustomAggregation
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []SamplesCustomAggregationMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric samples.custom_aggregation doesn't have an attribute invalid, valid attributes: [frame_type, profile.type_unit]")
+
+	cfg = DefaultMetricsConfig().SamplesCustomAggregation
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
+func TestSamplesFrameTypeMetricsConfig_Validate(t *testing.T) {
+	cfg := DefaultMetricsConfig().SamplesFrameType
+	require.NoError(t, cfg.Validate())
+
+	cfg.EnabledAttributes = []SamplesFrameTypeMetricAttributeKey{"invalid"}
+	require.ErrorContains(t, cfg.Validate(), "metric samples.frame_type doesn't have an attribute invalid, valid attributes: [frame_type, profile.type_unit]")
+
+	cfg = DefaultMetricsConfig().SamplesFrameType
+	cfg.AggregationStrategy = "invalid"
+	require.ErrorContains(t, cfg.Validate(), "invalid aggregation strategy")
+}
+
 func loadMetricsBuilderConfig(t *testing.T, name string) MetricsBuilderConfig {
 	cm, err := confmaptest.LoadConf(filepath.Join("testdata", "config.yaml"))
 	require.NoError(t, err)

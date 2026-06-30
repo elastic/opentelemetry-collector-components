@@ -86,7 +86,6 @@ func TestMetricsBuilder(t *testing.T) {
 
 			defaultMetricsCount := 0
 			allMetricsCount := 0
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesBeamCountDataPoint(ts, 1)
@@ -96,18 +95,15 @@ func TestMetricsBuilder(t *testing.T) {
 			if tt.name == "reaggregate_set" {
 				mb.RecordSamplesClassificationDataPoint(ts, 3, "classification-val-2", "frame_type-val-2", "profile.type_unit-val-2")
 			}
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesCpythonCountDataPoint(ts, 1)
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesCustomAggregationDataPoint(ts, 1, "frame_type-val", "profile.type_unit-val")
 			if tt.name == "reaggregate_set" {
 				mb.RecordSamplesCustomAggregationDataPoint(ts, 3, "frame_type-val-2", "profile.type_unit-val-2")
 			}
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesDotnetCountDataPoint(ts, 1)
@@ -117,43 +113,33 @@ func TestMetricsBuilder(t *testing.T) {
 			if tt.name == "reaggregate_set" {
 				mb.RecordSamplesFrameTypeDataPoint(ts, 3, "frame_type-val-2", "profile.type_unit-val-2")
 			}
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesGoCountDataPoint(ts, 1)
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesJvmCountDataPoint(ts, 1)
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesKernelCountDataPoint(ts, 1, WithKernelAreaMetricAttribute("kernel_area-val"), WithKernelIoMetricAttribute("kernel_io-val"), WithKernelProtoMetricAttribute("kernel_proto-val"), WithSyscallNameMetricAttribute("syscall_name-val"))
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesNativeCountDataPoint(ts, 1, WithShlibNameMetricAttribute("shlib_name-val"))
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesPerlCountDataPoint(ts, 1)
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesPhpCountDataPoint(ts, 1)
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesRubyCountDataPoint(ts, 1)
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesRustCountDataPoint(ts, 1)
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesUserCountDataPoint(ts, 1)
-
 			defaultMetricsCount++
 			allMetricsCount++
 			mb.RecordSamplesV8jsCountDataPoint(ts, 1)
