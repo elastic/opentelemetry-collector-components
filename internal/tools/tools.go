@@ -28,12 +28,12 @@ import (
 	_ "github.com/client9/misspell/cmd/misspell"
 	_ "github.com/elastic/go-licenser"
 	_ "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
+	_ "github.com/itchyny/gojq/cmd/gojq"
 	_ "github.com/jcchavezs/porto/cmd/porto"
 	_ "go.opentelemetry.io/build-tools/chloggen"
 	_ "go.opentelemetry.io/build-tools/multimod"
 	_ "go.opentelemetry.io/collector/cmd/builder"
 	_ "go.opentelemetry.io/collector/cmd/mdatagen"
 	_ "golang.org/x/tools/cmd/goimports"
-	_ "github.com/itchyny/gojq/cmd/gojq"
 	_ "golang.org/x/vuln/cmd/govulncheck"
 )
