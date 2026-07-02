@@ -1,12 +1,3 @@
-While we don't have an issue for this, I will add this comment here.
-
-Once API keys are source-granular (one key per source), `apikeyauth` can't cache them all: the keyspace becomes the number of active sources, thousands per deployment, so the in-memory LRU thrashes and most lookups fall through to a `_has_privileges` call to Elasticsearch.
-
-The routing caches are unaffected: `source_resolver_middleware` strips the source label before routing, so they stay keyed on the deployment and their cardinality is unchanged. (If you are lost when I mention `source_resolver_middleware`, this is just the middleware that handles the source ID proposed in https://github.com/elastic/ingest-dev/issues/8130#issuecomment-4861004948, and tested in https://github.com/elastic/hosted-otel-collector/pull/3381).
-
-
-
-
 # cachebench: source-auth cache backend comparison
 
 Benchmarks three backends for the `apikeyauthextension` source-auth cache.
