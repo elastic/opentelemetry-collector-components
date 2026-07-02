@@ -6,6 +6,9 @@ elasticapmintake/custom_batch_size:
 elasticapmintake/custom_max_concurrent_decoders:
   max_concurrent_decoders: 256
 
+elasticapmintake/disabled_max_concurrent_decoders:
+  max_concurrent_decoders: 0
+
 elasticapmintake/custom_max_event_size:
   max_event_size: 2048
 
@@ -13,7 +16,7 @@ elasticapmintake/invalid_batch_size:
   batch_size: 0
 
 elasticapmintake/invalid_max_concurrent_decoders:
-  max_concurrent_decoders: 0
+  max_concurrent_decoders: -1
 
 elasticapmintake/invalid_max_event_size:
   max_event_size: 0

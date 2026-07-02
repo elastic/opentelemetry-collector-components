@@ -86,6 +86,14 @@ func TestLoadConfig(t *testing.T) {
 			}(),
 		},
 		{
+			id: component.NewIDWithName(metadata.Type, "disabled_max_concurrent_decoders"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.MaxConcurrentDecoders = 0
+				return cfg
+			}(),
+		},
+		{
 			id: component.NewIDWithName(metadata.Type, "custom_max_event_size"),
 			expected: func() *Config {
 				cfg := expectedDefaultConfig()
@@ -99,7 +107,7 @@ func TestLoadConfig(t *testing.T) {
 		},
 		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_max_concurrent_decoders"),
-			validateErrorMessage: "max_concurrent_decoders must be positive",
+			validateErrorMessage: "max_concurrent_decoders must not be negative",
 		},
 		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_max_event_size"),
