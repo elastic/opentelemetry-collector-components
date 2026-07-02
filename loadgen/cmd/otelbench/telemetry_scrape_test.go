@@ -253,6 +253,8 @@ func TestReportMetricsGenBenchmarkUsesMetricPointUnits(t *testing.T) {
 	output, err := io.ReadAll(r)
 	require.NoError(t, err)
 
+	assert.Contains(t, string(output), "BenchmarkOTelbench/metricsgen")
+	assert.NotContains(t, string(output), "BenchmarkOTelbench/metricsgen-prw")
 	assert.Contains(t, string(output), "metric_points/s")
 	assert.Contains(t, string(output), "failed_metric_points/s")
 	assert.NotContains(t, string(output), "samples/s")

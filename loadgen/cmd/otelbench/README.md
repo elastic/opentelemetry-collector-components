@@ -207,7 +207,7 @@ and prints one go-benchmark-style line once the run completes, derived from the 
 `otelcol_exporter_sent_metric_points` / `otelcol_exporter_send_failed_metric_points` counters:
 
 ```shell
-BenchmarkOTelbench/metricsgen-prw	1	<elapsed> ns/op	<metric_points/s> metric_points/s	<failed>  failed_metric_points/s
+BenchmarkOTelbench/metricsgen	1	<elapsed> ns/op	<metric_points/s> metric_points/s	<failed>  failed_metric_points/s
 ```
 
 The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench picks a random

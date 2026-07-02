@@ -177,5 +177,5 @@ func reportMetricsGenBenchmark(poller *telemetryPoller, elapsed time.Duration) {
 		},
 	}
 	// Match the harness output format used in main.go.
-	fmt.Printf("%s\t%s\n", "BenchmarkOTelbench/metricsgen-prw", res.String())
+	fmt.Printf("%s\t%s\n", "BenchmarkOTelbench/metricsgen", res.String())
 }
