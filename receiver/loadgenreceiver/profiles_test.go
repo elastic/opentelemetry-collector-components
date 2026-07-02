@@ -78,7 +78,7 @@ func TestProfilesGenerator_MaxBufferSizeAttr(t *testing.T) {
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(nil, nil, nil, doneCh)
 			cfg.(*Config).Profiles.MaxBufferSize = maxBufferSize
-			cfg.(*Config).Profiles.JsonlFile = JsonlFile(filePath)
+			cfg.(*Config).Profiles.JsonlFile = JsonlFile{Path: filePath}
 
 			_, err := createProfilesReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
@@ -94,4 +94,38 @@ func TestProfilesGenerator_MaxBufferSizeAttr(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProfilesGenerator_ZSTDFile(t *testing.T) {
+	const maxReplay = 1
+	doneCh := make(chan Stats)
+	sink := &consumertest.ProfilesSink{}
+	cfg := createDefaultReceiverConfig(nil, nil, nil, doneCh)
+	cfg.(*Config).Profiles.MaxReplay = maxReplay
+	cfg.(*Config).Profiles.JsonlFile = JsonlFile{
+		// testdata/profiles.jsonl.zstd was compressed from
+		// testdata/profiles.jsonl using zstd cli
+		Path:        filepath.Join("testdata", "profiles.jsonl.zstd"),
+		Compression: compressionZSTD,
+	}
+
+	r, err := createProfilesReceiver(context.Background(), receiver.Settings{
+		ID: component.ID{},
+		TelemetrySettings: component.TelemetrySettings{
+			Logger: zap.NewNop(),
+		},
+		BuildInfo: component.BuildInfo{},
+	}, cfg, sink)
+	require.NoError(t, err)
+
+	err = r.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, r.Shutdown(context.Background()))
+	}()
+
+	stats := <-doneCh
+	want := maxReplay * bytes.Count(demoProfiles, []byte("\n"))
+	assert.Equal(t, want, stats.Requests)
+	assert.Equal(t, want, len(sink.AllProfiles()))
 }

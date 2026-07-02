@@ -32,7 +32,6 @@ import (
 	"testing"
 	"time"
 
-	xxhashv2 "github.com/cespare/xxhash/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
@@ -53,10 +52,10 @@ import (
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
 
-	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
 
@@ -462,14 +461,17 @@ func TestInvalidInput(t *testing.T) {
 		inputNdJsonFileName          string
 		expectedErrorMessageFileName string
 	}{
-		{"invalid-event.ndjson", "invalid-event-expected.txt"},
-		{"invalid-event-type.ndjson", "invalid-event-type-expected.txt"},
-		{"invalid-json-event.ndjson", "invalid-json-event-expected.txt"},
-		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.txt"},
-		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.txt"},
-		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
-		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
-		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.txt"},
+		{"invalid-event.ndjson", "invalid-event-expected.json"},
+		{"invalid-event-type.ndjson", "invalid-event-type-expected.json"},
+		{"invalid-json-event.ndjson", "invalid-json-event-expected.json"},
+		{"typeless-event.ndjson", "typeless-event-expected.json"},
+		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.json"},
+		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.json"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.json"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.json"},
+		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.json"},
+		{"invalid-span-validation.ndjson", "invalid-span-validation-expected.json"},
+		{"invalid-transaction-validation.ndjson", "invalid-transaction-validation-expected.json"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -521,9 +523,7 @@ func TestInvalidInput(t *testing.T) {
 				t.Fatalf("unexpected response body: got %q, want %q", bodyStr, expectedError)
 			}
 
-			if resp.StatusCode < http.StatusBadRequest {
-				t.Fatalf("unexpected status code - this request is invalid and should not be accepted. Status code: %v", resp.StatusCode)
-			}
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		})
 	}
 }
@@ -534,6 +534,9 @@ func TestErrors(t *testing.T) {
 		outputExpectedYamlFileName string
 	}{
 		{"errors.ndjson", "errors_expected.yaml"},
+		{"error_context_tags.ndjson", "error_context_tags_expected.yaml"},                           // context.tags written as resource labels.*
+		{"error_transaction_sampled_false.ndjson", "error_transaction_sampled_false_expected.yaml"}, // error.transaction.sampled=false parity
+		{"error_empty_stacktrace_strings.ndjson", "error_empty_stacktrace_strings_expected.yaml"},   // empty-string stacktrace fields must not be written
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -568,6 +571,7 @@ func TestMetrics(t *testing.T) {
 	}{
 		{"metricsets.ndjson", "metricsets_expected.yaml", []string{"labels.tag1", "numeric_labels.tag2"}},
 		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml", nil},
+		{"metricset_summary_type.ndjson", "metricset_summary_type_expected.yaml", nil}, // "summary" metric type parity
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -608,6 +612,7 @@ func TestLogs(t *testing.T) {
 		expectedDynamicAttrs       []string
 	}{
 		{"logs.ndjson", "logs_expected.yaml", []string{"labels.ab_testing", "labels.group", "numeric_labels.segment"}},
+		{"comprehensive_log_fields.ndjson", "comprehensive_log_fields_expected.yaml", []string{"numeric_labels.tier", "labels.team"}},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -656,6 +661,12 @@ var inputFiles = []struct {
 	{"hostdata.ndjson", "hostdata_expected.yaml", nil},
 	{"spans_representative_count.ndjson", "spans_representative_count_expected.yaml", nil},
 	{"dropped_spans_stats_no_duration.ndjson", "dropped_spans_stats_no_duration_expected.yaml", nil},
+	{"transactions_xff_nat_ip.ndjson", "transactions_xff_nat_ip_expected.yaml", nil},
+	{"transaction_sampled_false.ndjson", "transaction_sampled_false_expected.yaml", nil},         // transaction.sampled=false parity
+	{"span_otel_custom_attrs.ndjson", "span_otel_custom_attrs_expected.yaml", nil},               // OTel attrs on spans must propagate to labels.*
+	{"transaction_otel_custom_attrs.ndjson", "transaction_otel_custom_attrs_expected.yaml", nil}, // OTel attrs on transactions must propagate to labels.*
+	{"span_empty_string_label.ndjson", "span_empty_string_label_expected.yaml", nil},             // empty-string tag values are omitted from labels.*
+	{"span_empty_stacktrace_strings.ndjson", "span_empty_stacktrace_strings_expected.yaml", nil}, // empty-string stacktrace frame fields must not be written
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -959,6 +970,21 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 				{"labels.tag1", "labels.tag2"}, // batch 2: no shadow → both globals
 			},
 		},
+		{
+			// Log events with per-event labels that shadow metadata global labels
+			// must be routed to shadow batches, not always to main.
+			//   - Log 1: no labels → both globals retained → main batch
+			//   - Logs 2,3: labels.global_tag shadows → same mask → shadowed batch A
+			//   - Log 4: labels.num_tag shadows → different mask → shadowed batch B
+			name:      "log event-level label shadows metadata global label",
+			inputFile: "log_global_label_shadow.ndjson",
+			signal:    "logs",
+			expectedPerGroupDynamicAttrs: [][]string{
+				{"labels.global_tag", "numeric_labels.num_tag"}, // main: log 1
+				{"numeric_labels.num_tag"},                      // shadowed batch A: logs 2,3
+				{"labels.global_tag"},                           // shadowed batch B: log 4
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -986,6 +1012,10 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 				metricsSink = new(consumertest.MetricsSink)
 				rcv, err = factory.CreateMetrics(context.Background(), set, cfg, metricsSink)
 				ctxsFn = metricsSink.Contexts
+			case "logs":
+				logsSink := new(consumertest.LogsSink)
+				rcv, err = factory.CreateLogs(context.Background(), set, cfg, logsSink)
+				ctxsFn = logsSink.Contexts
 			}
 			require.NoError(t, err)
 
@@ -1139,18 +1169,39 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 	))
 }
 
-func TestProcessBatchReturnsOnCanceledContext(t *testing.T) {
-	r := &elasticAPMIntakeReceiver{
-		settings: receivertest.NewNopSettings(metadata.Type),
-	}
+func TestHandleStreamTypelessAndMalformedEvents(t *testing.T) {
+	metadataLine := `{"metadata": {"service": {"name": "test", "agent": {"name": "test", "version": "1.0"}}}}` + "\n"
+	logger := receivertest.NewNopSettings(metadata.Type).Logger
+	noop := func(_ context.Context, _ *plog.Logs, _ *pmetric.Metrics, _ *ptrace.Traces) error { return nil }
 
+	for _, tc := range []struct {
+		name string
+		line string
+	}{
+		{"typeless valid JSON", "{}"},
+		{"malformed JSON no event type", "{"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := bytes.NewBufferString(metadataLine + tc.line + "\n")
+			accepted, errs := ndjsondecoder.HandleStream(context.Background(), body, 10, 1<<20, logger, noop)
+			require.Equal(t, 0, accepted)
+			require.Len(t, errs, 1, "expected one error for typeless/malformed input, got none")
+		})
+	}
+}
+
+func TestHandleStreamReturnsOnCanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	batch := modelpb.Batch{
-		&modelpb.APMEvent{},
-	}
-	ss := &streamState{rcv: r, fpHasher: xxhashv2.New()}
-	err := ss.processBatch(ctx, &batch)
-	require.ErrorIs(t, err, context.Canceled)
+	body := bytes.NewBufferString(
+		`{"metadata": {"service": {"name": "test", "agent": {"name": "test", "version": "1.0"}}}}` + "\n" +
+			`{"transaction": {"id": "aa00000000000001", "trace_id": "aa00000000000001aa00000000000001", "name": "tx", "type": "request", "duration": 1, "timestamp": 1000000, "outcome": "success", "sampled": true, "span_count": {"started": 0}}}` + "\n",
+	)
+	logger := receivertest.NewNopSettings(metadata.Type).Logger
+	accepted, errs := ndjsondecoder.HandleStream(ctx, body, 10, 1<<20, logger, func(_ context.Context, _ *plog.Logs, _ *pmetric.Metrics, _ *ptrace.Traces) error {
+		return nil
+	})
+	require.Equal(t, 0, accepted)
+	require.True(t, errors.Is(errors.Join(errs...), context.Canceled))
 }
