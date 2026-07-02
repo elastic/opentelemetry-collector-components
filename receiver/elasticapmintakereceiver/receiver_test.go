@@ -860,6 +860,32 @@ func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
 	})
 }
 
+func TestEventsHandlerZeroMaxConcurrentDecodersDisablesLimit(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.MaxConcurrentDecoders = 0
+
+	rcvr, err := newElasticAPMIntakeReceiver(
+		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+		cfg,
+		receivertest.NewNopSettings(metadata.Type),
+	)
+	require.NoError(t, err)
+
+	nextTraces := new(consumertest.TracesSink)
+	rcvr.nextTraces = nextTraces
+
+	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+		return withECSMappingMode(req.Context(), false)
+	})
+	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	require.Len(t, nextTraces.AllTraces(), 1)
+}
+
 func TestEventsHandler_ContextCanceledWithUnknownRPCError(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
 	cfg.BatchSize = 1
