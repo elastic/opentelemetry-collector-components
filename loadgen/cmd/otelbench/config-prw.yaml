@@ -17,12 +17,12 @@ processors:
 
 exporters:
   prometheusremotewrite/elasticsearch:
-    endpoint: https://test-e405e7.ingest.us-central1.gcp.staging.elastic.cloud/api/v1/write
+    endpoint: https://local.ingest.127.0.0.1.ip.es.io:8443/api/v1/write
     timeout: 15s
     tls:
       insecure_skip_verify: true
     headers:
-      Authorization: "ApiKey cDlSWklwOEI0UGlDczNJQ0dzUUc6ZXdyTVpTV0lrT3dGc0w5cE9wa3BHZw=="
+      Authorization: "ApiKey <your-base64-api-key>"
     resource_to_telemetry_conversion:
       enabled: true
     target_info:
