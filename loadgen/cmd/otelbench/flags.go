@@ -53,6 +53,13 @@ var Config struct {
 	// When 0, the run continues until the collector exits on its own (e.g.
 	// metricsgen exit_after_end).
 	DurationMetrics time.Duration
+	// MetricsTelemetryEndpoint is the collector's own Prometheus telemetry
+	// host that otelbench scrapes during a -metrics-generator run to derive
+	// throughput. Empty disables benchmark output.
+	MetricsTelemetryEndpoint string
+	// MetricsTelemetryPortRange is the port range otelbench searches for an
+	// available collector self-telemetry Prometheus port.
+	MetricsTelemetryPortRange portRange
 
 	Exporters map[string]bool
 
@@ -103,6 +110,11 @@ var defaultTelemetryMetrics = []string{
 	"otelcol_process_runtime_total_sys_memory_bytes",
 	"otelcol_process_uptime",
 }
+
+const (
+	defaultMetricsTelemetryEndpoint  = "127.0.0.1"
+	defaultMetricsTelemetryPortRange = "8889-8999"
+)
 
 func Init() error {
 	// Server config
@@ -182,6 +194,23 @@ func Init() error {
 
 	flag.BoolVar(&Config.MetricsGenerator, "metrics-generator", false, "run as a metricsgen-based load generator (plain collector run reading -config) instead of the benchmark harness")
 	flag.DurationVar(&Config.DurationMetrics, "duration-metrics", 0, "optional safety cap for -metrics-generator; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)")
+	flag.StringVar(&Config.MetricsTelemetryEndpoint, "metrics-telemetry-endpoint", defaultMetricsTelemetryEndpoint, "collector self-telemetry Prometheus host to scrape for -metrics-generator benchmark output; empty disables it")
+	r, err := parsePortRange(defaultMetricsTelemetryPortRange)
+	if err != nil {
+		return fmt.Errorf("invalid default metrics telemetry port range: %w", err)
+	}
+	Config.MetricsTelemetryPortRange = r
+	flag.Func("metrics-telemetry-port-range", "port `range` to search for a free collector self-telemetry Prometheus port (START-END)",
+		func(input string) error {
+			r, err := parsePortRange(input)
+			if err != nil {
+				return err
+			}
+			Config.MetricsTelemetryPortRange = r
+			return nil
+		},
+	)
+	flag.Lookup("metrics-telemetry-port-range").DefValue = defaultMetricsTelemetryPortRange
 
 	flag.StringVar(&Config.TracesDataPath, "traces-data-path", "", "path to traces data file (e.g. traces.json). If empty, embedded data will be used.")
 	flag.StringVar(&Config.MetricsDataPath, "metrics-data-path", "", "path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.")

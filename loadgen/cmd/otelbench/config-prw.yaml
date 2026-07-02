@@ -17,12 +17,12 @@ processors:
 
 exporters:
   prometheusremotewrite/elasticsearch:
-    endpoint: https://local.ingest.127.0.0.1.ip.es.io:8443/api/v1/write
+    endpoint: https://test-e405e7.ingest.us-central1.gcp.staging.elastic.cloud/api/v1/write
     timeout: 15s
     tls:
       insecure_skip_verify: true
     headers:
-      Authorization: "ApiKey <your-base64-api-key>"
+      Authorization: "ApiKey cDlSWklwOEI0UGlDczNJQ0dzUUc6ZXdyTVpTV0lrT3dGc0w5cE9wa3BHZw=="
     resource_to_telemetry_conversion:
       enabled: true
     target_info:
@@ -44,4 +44,13 @@ service:
       processors: [batch]
       exporters: [prometheusremotewrite/elasticsearch]
   telemetry:
-    metrics: {level: none}
+    # Expose the collector's own telemetry so otelbench can derive throughput
+    # (metric_points/s) by scraping otelcol_exporter_* counters.
+    metrics:
+      level: basic
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '127.0.0.1'
+                port: 8889

@@ -20,9 +20,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"net"
+	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
+	"testing"
 	"time"
 )
 
@@ -30,9 +35,18 @@ import (
 // once a backfill completes with exit_after_end. It must not be reported as a failure, so we ignore it.
 const exitAfterEndMarker = "exit_after_end"
 
+// telemetryPollInterval is how often otelbench scrapes the collector's own
+// Prometheus telemetry endpoint while a metricsgen runs.
+const telemetryPollInterval = 250 * time.Millisecond
+
+var findAvailableMetricsTelemetryPort = randomAvailablePort
+
 // runMetricsGenerator runs otelbench as a plain metricsgen-based load generator
 // metricsgen receiver normally terminates the collector via exit_after_end; the
-// optional -duration-metrics flag acts as a safety cap. It returns the process exit code.
+// optional -duration-metrics flag acts as a safety cap. When
+// -metrics-telemetry-endpoint is set, it scrapes the collector's own telemetry
+// during the run and prints go-benchmark-style throughput once it completes. It
+// returns the process exit code.
 func runMetricsGenerator(parent context.Context) int {
 	if Config.CollectorConfigPath == "" {
 		fmt.Fprintln(os.Stderr, "metrics-generator requires -config with a metricsgen pipeline")
@@ -53,12 +67,115 @@ func runMetricsGenerator(parent context.Context) int {
 		defer timer.Stop()
 	}
 
+	telemetryEndpoint, configFiles, err := metricsGeneratorConfigFiles(
+		Config.CollectorConfigPath,
+		Config.MetricsTelemetryEndpoint,
+		Config.MetricsTelemetryPortRange,
+	)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	// Poll the collector's self-telemetry during the run so we still have the
+	// last counter values after exit_after_end tears the endpoint down.
+	var poller *telemetryPoller
+	if telemetryEndpoint != "" {
+		printMetricsTelemetryEndpoint(os.Stderr, telemetryEndpoint)
+		pollCtx, pollCancel := context.WithCancel(ctx)
+		defer pollCancel()
+		poller = startTelemetryPoller(pollCtx, telemetryEndpoint, telemetryPollInterval)
+	}
+
 	// The loadgen Stats channels are unused because the metricsgen config does
 	// not make use of the loadgen receiver. So we pass nil values.
-	err := RunCollector(ctx, stop, []string{Config.CollectorConfigPath}, nil, nil, nil, nil)
+	start := time.Now()
+	err = RunCollector(ctx, stop, configFiles, nil, nil, nil, nil)
+	elapsed := time.Since(start)
 	if err != nil && !strings.Contains(err.Error(), exitAfterEndMarker) {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+
+	if poller != nil {
+		reportMetricsGenBenchmark(poller, elapsed)
+	}
 	return 0
+}
+
+func metricsGeneratorConfigFiles(configPath, telemetryEndpoint string, ports portRange) (string, []string, error) {
+	configFiles := []string{configPath}
+	if telemetryEndpoint == "" {
+		return "", configFiles, nil
+	}
+
+	host, err := metricsTelemetryHost(telemetryEndpoint)
+	if err != nil {
+		return "", nil, err
+	}
+	port, err := findAvailableMetricsTelemetryPort(host, ports)
+	if err != nil {
+		return "", nil, err
+	}
+	configFiles = append(configFiles, metricsTelemetryConfigFiles(host, port)...)
+	return net.JoinHostPort(host, strconv.Itoa(port)), configFiles, nil
+}
+
+func printMetricsTelemetryEndpoint(w io.Writer, endpoint string) {
+	fmt.Fprintf(w, "metrics-generator: scraping collector telemetry from %s\n", endpoint)
+}
+
+func metricsTelemetryHost(endpoint string) (string, error) {
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		u, err := url.Parse(endpoint)
+		if err != nil {
+			return "", err
+		}
+		if host := u.Hostname(); host != "" {
+			return host, nil
+		}
+		return "", fmt.Errorf("metrics telemetry endpoint %q is missing a host", endpoint)
+	}
+	if host, _, err := net.SplitHostPort(endpoint); err == nil {
+		return host, nil
+	}
+	return endpoint, nil
+}
+
+func metricsTelemetryConfigFiles(host string, port int) []string {
+	return setsToConfigs([]string{
+		fmt.Sprintf(`service.telemetry.metrics.readers=[{pull: {exporter: {prometheus: {host: %q, port: %d}}}}]`, host, port),
+	})
+}
+
+// reportMetricsGenBenchmark prints a go-benchmark-style line derived from the
+// collector's scraped self-telemetry. Throughput is computed over the active
+// send window (first observed sample to last scrape) when available, otherwise
+// over the full run duration.
+func reportMetricsGenBenchmark(poller *telemetryPoller, elapsed time.Duration) {
+	snap, firstSeen := poller.snapshot()
+	if !snap.valid {
+		fmt.Fprintln(os.Stderr, "metrics-generator: no telemetry samples scraped; skipping benchmark output")
+		return
+	}
+
+	elapsedSeconds := elapsed.Seconds()
+	if !firstSeen.IsZero() && snap.at.After(firstSeen) {
+		elapsedSeconds = snap.at.Sub(firstSeen).Seconds()
+	}
+	if elapsedSeconds <= 0 {
+		fmt.Fprintln(os.Stderr, "metrics-generator: run too short to compute throughput; skipping benchmark output")
+		return
+	}
+
+	res := testing.BenchmarkResult{
+		N: 1,
+		T: elapsed,
+		Extra: map[string]float64{
+			"metric_points/s":        snap.sent / elapsedSeconds,
+			"failed_metric_points/s": snap.failed / elapsedSeconds,
+		},
+	}
+	// Match the harness output format used in main.go.
+	fmt.Printf("%s\t%s\n", "BenchmarkOTelbench/metricsgen-prw", res.String())
 }
