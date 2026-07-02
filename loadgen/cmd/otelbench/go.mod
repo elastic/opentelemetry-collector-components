@@ -4,11 +4,15 @@ go 1.25.0
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.4
+	github.com/elastic/metricsgenreceiver/metricsgenreceiver v0.0.0-20260619100109-5151cd4d2928
 	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0-00010101000000-000000000000
 	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.154.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.152.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.152.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.154.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.154.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.154.0
+	github.com/prometheus/client_model v0.6.2
+	github.com/prometheus/common v0.68.1
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.61.0
 	go.opentelemetry.io/collector/confmap v1.61.0
@@ -26,6 +30,7 @@ require (
 	go.opentelemetry.io/collector/featuregate v1.61.0
 	go.opentelemetry.io/collector/otelcol v0.155.0
 	go.opentelemetry.io/collector/processor v1.61.0
+	go.opentelemetry.io/collector/processor/batchprocessor v0.155.0
 	go.opentelemetry.io/collector/receiver v1.61.0
 	go.opentelemetry.io/collector/receiver/nopreceiver v0.155.0
 	go.opentelemetry.io/collector/service v0.155.0
@@ -120,21 +125,19 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.154.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.154.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.152.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.152.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.152.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter v0.154.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/internal/pdatautil v0.154.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.154.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil v0.154.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.152.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.152.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.152.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.154.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.154.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheusremotewrite v0.154.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.27 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_golang/exp v0.0.0-20260518105423-c9d5bc4c50a9 // indirect
-	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.68.1 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/prometheus/prometheus v0.312.0 // indirect
@@ -202,6 +205,7 @@ require (
 	go.opentelemetry.io/collector/processor/processorhelper/xprocessorhelper v0.155.0 // indirect
 	go.opentelemetry.io/collector/processor/processortest v0.155.0 // indirect
 	go.opentelemetry.io/collector/processor/xprocessor v0.155.0 // indirect
+	go.opentelemetry.io/collector/receiver/receiverhelper v0.154.0 // indirect
 	go.opentelemetry.io/collector/receiver/receivertest v0.155.0 // indirect
 	go.opentelemetry.io/collector/receiver/xreceiver v0.155.0 // indirect
 	go.opentelemetry.io/collector/service/hostcapabilities v0.155.0 // indirect
@@ -260,4 +264,5 @@ replace (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent => ../../../internal/sharedcomponent
 	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../../../processor/ratelimitprocessor
 	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ../../../receiver/loadgenreceiver
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter => ../../../internal/exporter/prometheusremotewriteexporter
 )

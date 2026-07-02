@@ -217,6 +217,12 @@ func main() {
 	}
 	flag.Parse()
 
+	// In metrics-generator mode, otelbench runs the collector defined by -config
+	// (a metricsgen pipeline) directly instead of running the benchmark harness.
+	if Config.MetricsGenerator {
+		os.Exit(runMetricsGenerator(context.Background()))
+	}
+
 	// default to embedded collector config
 	if Config.CollectorConfigPath == "" {
 		url, srv, err := serveEmbeddedConf()

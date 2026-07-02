@@ -71,3 +71,21 @@ func TestInitRegistersBenchmarkExporterFlags(t *testing.T) {
 	require.NoError(t, flag.Set("exporter-elasticsearch", "true"))
 	require.True(t, Config.Exporters["elasticsearch"])
 }
+
+func TestInitRegistersMetricsTelemetryPortRangeFlag(t *testing.T) {
+	oldCommandLine := flag.CommandLine
+	flag.CommandLine = flag.NewFlagSet(t.Name(), flag.ContinueOnError)
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+	})
+
+	require.NoError(t, Init())
+
+	f := flag.Lookup("metrics-telemetry-port-range")
+	require.NotNil(t, f)
+	require.Equal(t, defaultMetricsTelemetryPortRange, f.DefValue)
+	require.Equal(t, portRange{Start: 8889, End: 8999}, Config.MetricsTelemetryPortRange)
+
+	require.NoError(t, flag.Set("metrics-telemetry-port-range", "9000-9010"))
+	require.Equal(t, portRange{Start: 9000, End: 9010}, Config.MetricsTelemetryPortRange)
+}

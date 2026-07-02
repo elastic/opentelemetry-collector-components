@@ -12,6 +12,8 @@ Usage of ./otelbench:
         comma-separated list of concurrency (number of simulated agents) to run each benchmark with. Supports numeric values (e.g., "1,4,8"), "auto" to use available CPU cores, or "auto:Nx" for multipliers (e.g., "auto:2x" for double, "auto:0.5x" for half)
   -config string
         path to collector config yaml. If empty, the config.yaml embedded in the binary will be used.
+  -duration-metrics duration
+        optional safety cap for -metrics-generator; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)
   -endpoint value
         target server endpoint for both otlp and otlphttp exporters (default to value in config yaml), equivalent to setting both -endpoint-otlp and -endpoint-otlphttp
   -endpoint-otlp value
@@ -38,6 +40,12 @@ Usage of ./otelbench:
         benchmark metrics (default true)
   -metrics-data-path string
         path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.
+  -metrics-generator
+        run as a metricsgen-based load generator (plain collector run reading -config) instead of the default benchmark
+  -metrics-telemetry-endpoint string
+        collector self-telemetry Prometheus host to scrape for -metrics-generator benchmark output; empty disables it (default "127.0.0.1")
+  -metrics-telemetry-port-range range
+        port range to search for a free collector self-telemetry Prometheus port (START-END) (default "8889-8999")
   -profiles
         benchmark profiles (default false)
   -profiles-data-path string
@@ -172,6 +180,67 @@ For the full list of reported metrics see https://opentelemetry.io/docs/collecto
 
 ```shell
 ./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
+```
+
+## Metrics generator mode
+
+With the use of flag `-metrics-generator`, otelbench runs the collector defined by `-config` directly as a load generator. This is intended
+for `metricsgen`-based metrics pipelines (e.g. Prometheus Remote Write) and the `loadgenreceiver` is not used.
+Read more information for [metricsgenreceiver](https://github.com/elastic/metricsgenreceiver)
+
+The run continues until the collector exits, for example when metricsgen reaches `exit_after_end`. You can interrupt the run manually, or use -duration-metrics as a safety cap to shut the collector down after a fixed time. Use `-duration-metrics` as an optional safety cap (a Go duration like `90s`, `2m`, `1h`); when it elapses, the collector is shut down. Leaving it at `0` (the default) means no cap.
+
+```shell
+./otelbench -metrics-generator=true -config=./config-prw.yaml
+./otelbench -metrics-generator=true -config=./config-prw.yaml -duration-metrics=120s
+```
+
+> Note: if the exporter is configured to retry forever (`retry_on_failure.max_elapsed_time: 0`) together with
+> `sending_queue.block_on_overflow: true` and the endpoint is unreachable, shutdown can block draining the queue,
+> so even `-duration-metrics` will not free the process. Use a finite `max_elapsed_time` for load tests against
+> flaky or local endpoints.
+
+### Benchmark output
+
+If the collector config exposes its own telemetry via a Prometheus pull reader, otelbench scrapes it during the run
+and prints one go-benchmark-style line once the run completes, derived from the collector's
+`otelcol_exporter_sent_metric_points` / `otelcol_exporter_send_failed_metric_points` counters:
+
+```shell
+BenchmarkOTelbench/metricsgen	1	<elapsed> ns/op	<metric_points/s> metric_points/s	<failed>  failed_metric_points/s
+```
+
+The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench picks a random
+available port from `-metrics-telemetry-port-range` (default `8889-8999`), prints the selected host:port, and overrides the collector's
+`service.telemetry.metrics` pull reader to expose Prometheus telemetry on the selected port. The bundled
+`config-prw.yaml` includes the telemetry reader that otelbench overrides:
+
+```yaml
+service:
+  telemetry:
+    metrics:
+      level: basic
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '127.0.0.1'
+                port: 8889
+```
+
+Setting `-metrics-telemetry-endpoint=""` disables benchmark output, keeping the pure soak behavior. Because the
+counters are scraped off the data path, enabling telemetry does not change the generated load. `metric_points/s` is
+a saturation/ingest throughput (generator-driven), not a per-iteration latency like the default OTLP `loadgen` numbers.
+
+The default host and port range work with the bundled config, so no flag is needed for benchmark output. Pass the
+flags only to override the host or port range, or set the endpoint empty to disable benchmark output (pure soak):
+
+```shell
+# Benchmark output on (default).
+./otelbench -metrics-generator=true -config=./config-prw.yaml
+
+# Disable benchmark output, soak only.
+./otelbench -metrics-generator=true -config=./config-prw.yaml -metrics-telemetry-endpoint=""
 ```
 
 ## Example usage with Docker image
