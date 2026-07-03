@@ -56,9 +56,6 @@ var Config struct {
 	// host that otelbench scrapes during a -soak run to derive
 	// throughput. Empty disables benchmark output.
 	MetricsTelemetryEndpoint string
-	// MetricsTelemetryPortRange is the port range otelbench searches for an
-	// available collector self-telemetry Prometheus port.
-	MetricsTelemetryPortRange portRange
 
 	Exporters map[string]bool
 
@@ -111,8 +108,7 @@ var defaultTelemetryMetrics = []string{
 }
 
 const (
-	defaultMetricsTelemetryEndpoint  = "127.0.0.1"
-	defaultMetricsTelemetryPortRange = "8889-8999"
+	defaultMetricsTelemetryEndpoint = "127.0.0.1"
 )
 
 func Init() error {
@@ -194,11 +190,6 @@ func Init() error {
 	flag.BoolVar(&Config.Soak, "soak", false, "run as a collector soak test (plain collector run reading -config) instead of the benchmark harness")
 	flag.DurationVar(&Config.DurationMetrics, "duration-metrics", 0, "optional safety cap for -soak; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)")
 	flag.StringVar(&Config.MetricsTelemetryEndpoint, "metrics-telemetry-endpoint", defaultMetricsTelemetryEndpoint, "collector self-telemetry Prometheus host to scrape for -soak benchmark output; empty disables it")
-	r, err := parsePortRange(defaultMetricsTelemetryPortRange)
-	if err != nil {
-		return fmt.Errorf("invalid default metrics telemetry port range: %w", err)
-	}
-	Config.MetricsTelemetryPortRange = r
 
 	flag.StringVar(&Config.TracesDataPath, "traces-data-path", "", "path to traces data file (e.g. traces.json). If empty, embedded data will be used.")
 	flag.StringVar(&Config.MetricsDataPath, "metrics-data-path", "", "path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.")

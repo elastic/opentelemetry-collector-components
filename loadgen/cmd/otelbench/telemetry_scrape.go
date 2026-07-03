@@ -21,10 +21,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand/v2"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -43,17 +41,6 @@ const (
 	metricAcceptedMetricPoints = "otelcol_receiver_accepted_metric_points"
 )
 
-type portRange struct {
-	Start int
-	End   int
-}
-
-var shufflePorts = func(ports []int) {
-	rand.Shuffle(len(ports), func(i, j int) {
-		ports[i], ports[j] = ports[j], ports[i]
-	})
-}
-
 var telemetryScrapeClient = &http.Client{
 	Transport: &http.Transport{
 		Proxy:             http.ProxyFromEnvironment,
@@ -61,54 +48,13 @@ var telemetryScrapeClient = &http.Client{
 	},
 }
 
-func parsePortRange(input string) (portRange, error) {
-	parts := strings.Split(input, "-")
-	if len(parts) != 2 {
-		return portRange{}, fmt.Errorf("invalid port range %q, expected START-END", input)
-	}
-	start, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+func ephemeralPort(host string) (int, error) {
+	ln, err := net.Listen("tcp", net.JoinHostPort(host, "0"))
 	if err != nil {
-		return portRange{}, fmt.Errorf("invalid port range start %q: %w", parts[0], err)
+		return 0, err
 	}
-	end, err := strconv.Atoi(strings.TrimSpace(parts[1]))
-	if err != nil {
-		return portRange{}, fmt.Errorf("invalid port range end %q: %w", parts[1], err)
-	}
-	if start < 1 || end > 65535 || start > end {
-		return portRange{}, fmt.Errorf("invalid port range %q, expected 1 <= START <= END <= 65535", input)
-	}
-	return portRange{Start: start, End: end}, nil
-}
-
-func randomAvailablePort(host string, ports portRange) (int, error) {
-	candidates := make([]int, 0, ports.End-ports.Start+1)
-	for port := ports.Start; port <= ports.End; port++ {
-		candidates = append(candidates, port)
-	}
-	shufflePorts(candidates)
-	return firstAvailablePortInOrder(host, candidates, ports)
-}
-
-func firstAvailablePort(host string, ports portRange) (int, error) {
-	candidates := make([]int, 0, ports.End-ports.Start+1)
-	for port := ports.Start; port <= ports.End; port++ {
-		candidates = append(candidates, port)
-	}
-	return firstAvailablePortInOrder(host, candidates, ports)
-}
-
-func firstAvailablePortInOrder(host string, candidates []int, ports portRange) (int, error) {
-	for _, port := range candidates {
-		ln, err := net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
-		if err != nil {
-			continue
-		}
-		if err := ln.Close(); err != nil {
-			return 0, err
-		}
-		return port, nil
-	}
-	return 0, fmt.Errorf("no available port found in range %d-%d", ports.Start, ports.End)
+	defer ln.Close()
+	return ln.Addr().(*net.TCPAddr).Port, nil
 }
 
 // telemetrySnapshot holds cumulative counter totals scraped once from the

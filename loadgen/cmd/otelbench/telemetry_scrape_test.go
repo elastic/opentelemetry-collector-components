@@ -128,91 +128,27 @@ func TestMetricsScrapeURL(t *testing.T) {
 	}
 }
 
-func TestParsePortRange(t *testing.T) {
-	r, err := parsePortRange("8889-8999")
+func TestEphemeralPortReleasesSelectedPort(t *testing.T) {
+	port, err := ephemeralPort("127.0.0.1")
 	require.NoError(t, err)
-	assert.Equal(t, portRange{Start: 8889, End: 8999}, r)
+	require.Positive(t, port)
 
-	_, err = parsePortRange("8999-8889")
-	require.Error(t, err)
-}
-
-func TestFirstAvailablePortSkipsOccupiedPorts(t *testing.T) {
-	occupied, occupiedPort := listenOnFirstPortWithFreeNeighbor(t)
-	defer occupied.Close()
-
-	port, err := firstAvailablePort("127.0.0.1", portRange{Start: occupiedPort, End: occupiedPort + 1})
+	ln, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
 	require.NoError(t, err)
-	assert.Equal(t, occupiedPort+1, port)
-}
-
-func TestRandomAvailablePortUsesShuffledOrder(t *testing.T) {
-	start := firstTwoAvailablePorts(t)
-	original := shufflePorts
-	shufflePorts = func(ports []int) {
-		ports[0], ports[1] = ports[1], ports[0]
-	}
-	t.Cleanup(func() {
-		shufflePorts = original
-	})
-
-	port, err := randomAvailablePort("127.0.0.1", portRange{Start: start, End: start + 1})
-	require.NoError(t, err)
-	assert.Equal(t, start+1, port)
-}
-
-func listenOnFirstPortWithFreeNeighbor(t *testing.T) (net.Listener, int) {
-	t.Helper()
-	for port := 30000; port < 65535; port++ {
-		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
-		occupied, err := net.Listen("tcp", addr)
-		if err != nil {
-			continue
-		}
-		nextAddr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port+1))
-		next, err := net.Listen("tcp", nextAddr)
-		if err == nil {
-			require.NoError(t, next.Close())
-			return occupied, port
-		}
-		require.NoError(t, occupied.Close())
-	}
-	t.Fatal("could not find consecutive available ports")
-	return nil, 0
-}
-
-func firstTwoAvailablePorts(t *testing.T) int {
-	t.Helper()
-	for port := 30000; port < 65535; port++ {
-		firstAddr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
-		first, err := net.Listen("tcp", firstAddr)
-		if err != nil {
-			continue
-		}
-		secondAddr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port+1))
-		second, err := net.Listen("tcp", secondAddr)
-		require.NoError(t, first.Close())
-		if err == nil {
-			require.NoError(t, second.Close())
-			return port
-		}
-	}
-	t.Fatal("could not find consecutive available ports")
-	return 0
+	require.NoError(t, ln.Close())
 }
 
 func TestMetricsGeneratorConfigFilesSelectsTelemetryPort(t *testing.T) {
 	original := findAvailableMetricsTelemetryPort
-	findAvailableMetricsTelemetryPort = func(host string, ports portRange) (int, error) {
+	findAvailableMetricsTelemetryPort = func(host string) (int, error) {
 		assert.Equal(t, "127.0.0.1", host)
-		assert.Equal(t, portRange{Start: 8889, End: 8999}, ports)
 		return 8891, nil
 	}
 	t.Cleanup(func() {
 		findAvailableMetricsTelemetryPort = original
 	})
 
-	endpoint, configFiles, err := metricsGeneratorConfigFiles("config-prw.yaml", "127.0.0.1", portRange{Start: 8889, End: 8999})
+	endpoint, configFiles, err := metricsGeneratorConfigFiles("config-prw.yaml", "127.0.0.1")
 	require.NoError(t, err)
 
 	assert.Equal(t, "127.0.0.1:8891", endpoint)

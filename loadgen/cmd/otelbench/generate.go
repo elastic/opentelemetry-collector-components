@@ -39,7 +39,7 @@ const exitAfterEndMarker = "exit_after_end"
 // Prometheus telemetry endpoint while a metricsgen runs.
 const telemetryPollInterval = 250 * time.Millisecond
 
-var findAvailableMetricsTelemetryPort = randomAvailablePort
+var findAvailableMetricsTelemetryPort = ephemeralPort
 
 // runMetricsGenerator runs otelbench as a plain collector soak test.
 // metricsgen receiver normally terminates the collector via exit_after_end; the
@@ -70,7 +70,6 @@ func runMetricsGenerator(parent context.Context) int {
 	telemetryEndpoint, configFiles, err := metricsGeneratorConfigFiles(
 		Config.CollectorConfigPath,
 		Config.MetricsTelemetryEndpoint,
-		Config.MetricsTelemetryPortRange,
 	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -103,7 +102,7 @@ func runMetricsGenerator(parent context.Context) int {
 	return 0
 }
 
-func metricsGeneratorConfigFiles(configPath, telemetryEndpoint string, ports portRange) (string, []string, error) {
+func metricsGeneratorConfigFiles(configPath, telemetryEndpoint string) (string, []string, error) {
 	configFiles := []string{configPath}
 	if telemetryEndpoint == "" {
 		return "", configFiles, nil
@@ -113,7 +112,7 @@ func metricsGeneratorConfigFiles(configPath, telemetryEndpoint string, ports por
 	if err != nil {
 		return "", nil, err
 	}
-	port, err := findAvailableMetricsTelemetryPort(host, ports)
+	port, err := findAvailableMetricsTelemetryPort(host)
 	if err != nil {
 		return "", nil, err
 	}

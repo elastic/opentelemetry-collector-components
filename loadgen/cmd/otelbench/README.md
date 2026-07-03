@@ -218,23 +218,8 @@ Soak mode reports a single observed collector run, not a repititive Go benchmark
 observed exporter attempt count (`sent + failed`) from collector self-telemetry, and `duration_s` is the active
 telemetry window used for the throughput calculation.
 
-The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench picks a random
-available internal telemetry port, prints the selected host:port, and overrides the collector's
-`service.telemetry.metrics` pull reader to expose Prometheus telemetry on the selected port. The example
-`config-prw.yaml` includes the telemetry reader that otelbench overrides:
-
-```yaml
-service:
-  telemetry:
-    metrics:
-      level: basic
-      readers:
-        - pull:
-            exporter:
-              prometheus:
-                host: '127.0.0.1'
-                port: 8889
-```
+The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench asks the OS for an
+available internal telemetry port using `:0`, releases it, prints the selected host:port. This overrides the collector's `service.telemetry.metrics` pull reader to expose Prometheus telemetry on the selected port.
 
 Setting `-metrics-telemetry-endpoint=""` disables benchmark output, keeping the pure soak behavior. Because the
 counters are scraped off the data path, enabling telemetry does not change the generated load. `metric_points/s` is
