@@ -1,5 +1,4 @@
-# Example metricsgen -> Prometheus Remote Write config for otelbench's
-# metricsgen mode. Run with:
+# Example metricsgen -> Prometheus Remote Write config for otelbench's metricsgen mode. Run with:
 #   ./otelbench -metricsgen -config ./config-prw.yaml
 receivers:
   metricsgen:
