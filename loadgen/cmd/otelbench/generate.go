@@ -152,30 +152,31 @@ func metricsGenSeedConfigFiles(seed int) []string {
 	})
 }
 
+func metricsGenStartNowMinusConfigFiles(minutes int) []string {
+	return setsToConfigs([]string{
+		fmt.Sprintf("receivers.metricsgen.start_now_minus=%dm", minutes),
+	})
+}
+
 func runMetricsGenBench(ctx context.Context, configFiles []string, baseSeed int, run metricsGenRunFunc) (testing.BenchmarkResult, error) {
 	var finalStats metricsGenRunStats
 	var benchErr error
 	var runIndex int
 
 	result := benchmarkMetricsGen(func(b *testing.B) {
-		stats := metricsGenRunStats{}
-		for i := 0; i < b.N; i++ {
-			seed := baseSeed + runIndex
-			runIndex++
+		seed := baseSeed + runIndex
+		runIndex++
 
-			iterationConfigFiles := append([]string{}, configFiles...)
-			iterationConfigFiles = append(iterationConfigFiles, metricsGenSeedConfigFiles(seed)...)
+		benchConfigFiles := append([]string{}, configFiles...)
+		benchConfigFiles = append(benchConfigFiles, metricsGenSeedConfigFiles(seed)...)
+		benchConfigFiles = append(benchConfigFiles, metricsGenStartNowMinusConfigFiles(b.N)...)
 
-			runStats, err := run(ctx, iterationConfigFiles)
-			if err != nil {
-				benchErr = err
-				b.Fatal(err)
-			}
-			stats.sent += runStats.sent
-			stats.failed += runStats.failed
-			stats.activeDuration += runStats.activeDuration
+		runStats, err := run(ctx, benchConfigFiles)
+		if err != nil {
+			benchErr = err
+			b.Fatal(err)
 		}
-		finalStats = stats
+		finalStats = runStats
 	})
 
 	if benchErr != nil {

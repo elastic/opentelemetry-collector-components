@@ -164,7 +164,13 @@ func TestMetricsGenSeedConfigFiles(t *testing.T) {
 	}, metricsGenSeedConfigFiles(124))
 }
 
-func TestRunMetricsGenBenchRepeatsRunsWithIncreasingSeedsAndAggregatesTelemetry(t *testing.T) {
+func TestMetricsGenStartNowMinusConfigFiles(t *testing.T) {
+	assert.Equal(t, []string{
+		"yaml:receivers::metricsgen::start_now_minus: 3m",
+	}, metricsGenStartNowMinusConfigFiles(3))
+}
+
+func TestRunMetricsGenBenchPassesBenchmarkNAsStartNowMinus(t *testing.T) {
 	original := benchmarkMetricsGen
 	benchmarkMetricsGen = func(f func(*testing.B)) testing.BenchmarkResult {
 		f(&testing.B{N: 1})
@@ -176,13 +182,13 @@ func TestRunMetricsGenBenchRepeatsRunsWithIncreasingSeedsAndAggregatesTelemetry(
 		benchmarkMetricsGen = original
 	})
 
-	var seeds []string
+	var overrides [][]string
 	result, err := runMetricsGenBench(
 		context.Background(),
 		[]string{"config-prw.yaml"},
 		defaultMetricsGenSeed,
 		func(ctx context.Context, configFiles []string) (metricsGenRunStats, error) {
-			seeds = append(seeds, configFiles[len(configFiles)-1])
+			overrides = append(overrides, configFiles[len(configFiles)-2:])
 			return metricsGenRunStats{
 				sent:           100,
 				failed:         10,
@@ -192,16 +198,21 @@ func TestRunMetricsGenBenchRepeatsRunsWithIncreasingSeedsAndAggregatesTelemetry(
 	)
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{
-		"yaml:receivers::metricsgen::seed: 123",
-		"yaml:receivers::metricsgen::seed: 124",
-		"yaml:receivers::metricsgen::seed: 125",
-	}, seeds)
+	assert.Equal(t, [][]string{
+		{
+			"yaml:receivers::metricsgen::seed: 123",
+			"yaml:receivers::metricsgen::start_now_minus: 1m",
+		},
+		{
+			"yaml:receivers::metricsgen::seed: 124",
+			"yaml:receivers::metricsgen::start_now_minus: 2m",
+		},
+	}, overrides)
 	assert.Equal(t, 2, result.N)
-	assert.Equal(t, 4*time.Second, result.T)
+	assert.Equal(t, 2*time.Second, result.T)
 	assert.Equal(t, 50.0, result.Extra["metric_points/s"])
 	assert.Equal(t, 5.0, result.Extra["failed_metric_points/s"])
-	assert.Equal(t, 4.0, result.Extra["duration_s"])
+	assert.Equal(t, 2.0, result.Extra["duration_s"])
 	assert.NotContains(t, result.Extra, "attempted_metric_points")
 }
 

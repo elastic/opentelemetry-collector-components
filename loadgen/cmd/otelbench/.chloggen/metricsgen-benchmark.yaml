@@ -16,5 +16,6 @@ issues: [1294]
 subtext: |
   When `--metricsgen`, otelbench starts load testing from the collector config and prints a
   `BenchmarkOTelbench/metricsgen` line with `metric_points/s` and `failed_metric_points/s`, derived from the
-  `otelcol_exporter_sent/send_failed_metric_points` counters. Metricsgen mode uses Go's benchmark runner to repeat
-  full collector runs until the result stabilizes. Use `--config` to provide the collector config.
+  `otelcol_exporter_sent/send_failed_metric_points` counters. Metricsgen mode uses Go's benchmark runner to choose
+  the metricsgen backfill window by overriding `receivers.metricsgen.start_now_minus=<N>m`, where `N` is the
+  benchmark iteration count. Use `--config` to provide the collector config.
