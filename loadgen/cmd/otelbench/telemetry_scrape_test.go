@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -254,8 +255,11 @@ func TestReportMetricsGenBenchmarkUsesMetricPointUnits(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, string(output), "BenchmarkOTelbench/metricsgen")
+	assert.Regexp(t, regexp.MustCompile(`BenchmarkOTelbench/metricsgen\s+110\s+`), string(output))
+	assert.Contains(t, string(output), "duration_s")
 	assert.Contains(t, string(output), "metric_points/s")
 	assert.Contains(t, string(output), "failed_metric_points/s")
+	assert.NotContains(t, string(output), "attempted_metric_points")
 	assert.NotContains(t, string(output), "samples/s")
 	assert.NotContains(t, string(output), "failed_samples/s")
 }

@@ -16,7 +16,8 @@ issues: [1294]
 subtext: |
   When `--soak`, otelbench starts load testing from the collector config and prints a
   `BenchmarkOTelbench/metricsgen` line with `metric_points/s` and `failed_metric_points/s`, derived from the
-  `otelcol_exporter_sent/send_failed_metric_points` counters. Use `--config` to provide the collector config.
+  `otelcol_exporter_sent/send_failed_metric_points` counters. The benchmark `N` is the observed sent+failed
+  metric point count, and the output includes the observed duration in `duration_s`. Use `--config` to provide the collector config.
   The scrape host is configurable via
   `--metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench chooses a random available internal telemetry
   port and prints the selected host:port; an empty endpoint value disables benchmark output and keeps soak-only behavior.

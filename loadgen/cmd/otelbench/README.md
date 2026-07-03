@@ -208,8 +208,15 @@ and prints one go-benchmark-style line once the run completes, derived from the 
 `otelcol_exporter_sent_metric_points` / `otelcol_exporter_send_failed_metric_points` counters:
 
 ```shell
-BenchmarkOTelbench/metricsgen	1	<elapsed> ns/op	<metric_points/s> metric_points/s	<failed>  failed_metric_points/s
+BenchmarkOTelbench/metricsgen <sent+failed>     <ns/op> ns/op     <duration> duration_s   <sent/s> metric_points/s      <failed/s> failed_metric_points/s
+
+#Example
+BenchmarkOTelbench/metricsgen     633440     294036 ns/op       186.3 duration_s     0 failed_metric_points/s        3401 metric_points/s
 ```
+
+Soak mode reports a single observed collector run, not a repititive Go benchmark loop. The benchmark `N` is the
+observed exporter attempt count (`sent + failed`) from collector self-telemetry, and `duration_s` is the active
+telemetry window used for the throughput calculation.
 
 The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench picks a random
 available internal telemetry port, prints the selected host:port, and overrides the collector's

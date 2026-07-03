@@ -159,23 +159,30 @@ func reportMetricsGenBenchmark(poller *telemetryPoller, elapsed time.Duration) {
 		return
 	}
 
-	elapsedSeconds := elapsed.Seconds()
-	if !firstSeen.IsZero() && snap.at.After(firstSeen) {
-		elapsedSeconds = snap.at.Sub(firstSeen).Seconds()
-	}
-	if elapsedSeconds <= 0 {
+	activeDuration := metricsGenActiveDuration(elapsed, snap, firstSeen)
+	if activeDuration <= 0 {
 		fmt.Fprintln(os.Stderr, "soak: run too short to compute throughput; skipping benchmark output")
 		return
 	}
+	elapsedSeconds := activeDuration.Seconds()
+	attempted := snap.sent + snap.failed
 
 	res := testing.BenchmarkResult{
-		N: 1,
-		T: elapsed,
+		N: int(attempted),
+		T: activeDuration,
 		Extra: map[string]float64{
+			"duration_s":             elapsedSeconds,
 			"metric_points/s":        snap.sent / elapsedSeconds,
 			"failed_metric_points/s": snap.failed / elapsedSeconds,
 		},
 	}
 	// Match the harness output format used in main.go.
 	fmt.Printf("%s\t%s\n", "BenchmarkOTelbench/metricsgen", res.String())
+}
+
+func metricsGenActiveDuration(elapsed time.Duration, snap telemetrySnapshot, firstSeen time.Time) time.Duration {
+	if !firstSeen.IsZero() && snap.at.After(firstSeen) {
+		return snap.at.Sub(firstSeen)
+	}
+	return elapsed
 }
