@@ -23,7 +23,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"os"
+	"io"
 	"sync"
 	"time"
 
@@ -61,27 +61,33 @@ func createProfilesReceiver(
 	set receiver.Settings,
 	config component.Config,
 	consumer xconsumer.Profiles,
-) (xreceiver.Profiles, error) {
+) (_ xreceiver.Profiles, err error) {
 	genConfig := config.(*Config)
 
 	parser := pprofile.JSONUnmarshaler{}
-	var err error
-	sampleProfiles := demoProfiles
+	var sampleProfiles io.Reader = bytes.NewReader(demoProfiles)
 
-	if genConfig.Profiles.JsonlFile != "" {
-		sampleProfiles, err = os.ReadFile(string(genConfig.Profiles.JsonlFile))
+	if genConfig.Profiles.Path != "" {
+		var rc io.ReadCloser
+		rc, err = openJSONLFile(genConfig.Profiles.JsonlFile)
 		if err != nil {
 			return nil, err
 		}
+		defer func() {
+			if closeErr := rc.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
+		sampleProfiles = rc
 	}
 
 	maxBufferSize := genConfig.Profiles.MaxBufferSize
 	if maxBufferSize == 0 {
-		maxBufferSize = len(sampleProfiles) + 10 // add some margin
+		maxBufferSize = maxScannerBufSize
 	}
 
 	var items []pprofile.Profiles
-	scanner := bufio.NewScanner(bytes.NewReader(sampleProfiles))
+	scanner := bufio.NewScanner(sampleProfiles)
 	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		profileBytes := scanner.Bytes()

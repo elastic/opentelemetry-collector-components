@@ -116,6 +116,8 @@ func AppendMetricset(sm pmetric.ScopeMetrics, ms *metricset) {
 			dp.SetTimestamp(ts)
 			dp.Attributes().PutStr(elasticattr.ProcessorEvent, "metric")
 			populateHistogramDP(dp, sample)
+		case "summary":
+			// apm-data maps "summary" to MetricType_METRIC_TYPE_SUMMARY (pdata Empty — no data points)
 		case "counter":
 			dp := m.SetEmptySum().DataPoints().AppendEmpty()
 			dp.SetTimestamp(ts)

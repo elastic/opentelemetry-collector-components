@@ -157,6 +157,10 @@ func AppendSpan(ss ptrace.ScopeSpans, sp *span, txStart pcommon.Timestamp, logge
 		} else {
 			outcome = "unknown"
 		}
+		// OTel spans without explicit failure default to success (mirrors transaction OTel handling)
+		if sp.OTel.IsSet() && outcome == "unknown" {
+			outcome = "success"
+		}
 	}
 
 	// Status
@@ -376,7 +380,9 @@ func AppendTransaction(ss ptrace.ScopeSpans, tx *transaction, logger *zap.Logger
 	// OTel: span kind from transaction type, outcome/result defaults when outcome is unknown
 	kind := mapSpanKind(tx.OTel.SpanKind.Val)
 	if tx.OTel.IsSet() {
-		if kind == ptrace.SpanKindUnspecified {
+		// Only derive kind from transaction type when span_kind was absent; an unrecognised
+		// value must not be overridden (mirrors apm-data mapOTelAttributesTransaction).
+		if !tx.OTel.SpanKind.IsSet() {
 			switch tx.Type.Val {
 			case "request":
 				kind = ptrace.SpanKindServer
@@ -789,22 +795,22 @@ func appendStacktraceFrame(fm pcommon.Map, f stacktraceFrame) {
 	if f.ColumnNumber.IsSet() {
 		fm.PutInt(elasticattr.SpanStacktraceFrameLineColumn, int64(f.ColumnNumber.Val))
 	}
-	if f.Filename.IsSet() {
+	if f.Filename.IsSet() && f.Filename.Val != "" {
 		fm.PutStr(elasticattr.SpanStacktraceFrameFilename, f.Filename.Val)
 	}
-	if f.Classname.IsSet() {
+	if f.Classname.IsSet() && f.Classname.Val != "" {
 		fm.PutStr(elasticattr.SpanStacktraceFrameClassname, f.Classname.Val)
 	}
-	if f.ContextLine.IsSet() {
+	if f.ContextLine.IsSet() && f.ContextLine.Val != "" {
 		fm.PutStr(elasticattr.SpanStacktraceFrameLineContext, f.ContextLine.Val)
 	}
-	if f.Module.IsSet() {
+	if f.Module.IsSet() && f.Module.Val != "" {
 		fm.PutStr(elasticattr.SpanStacktraceFrameModule, f.Module.Val)
 	}
-	if f.Function.IsSet() {
+	if f.Function.IsSet() && f.Function.Val != "" {
 		fm.PutStr(elasticattr.SpanStacktraceFrameFunction, f.Function.Val)
 	}
-	if f.AbsPath.IsSet() {
+	if f.AbsPath.IsSet() && f.AbsPath.Val != "" {
 		fm.PutStr(elasticattr.SpanStacktraceFrameAbsPath, f.AbsPath.Val)
 	}
 	if len(f.PreContext) > 0 {

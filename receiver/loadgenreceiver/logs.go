@@ -23,7 +23,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"os"
+	"io"
 	"sync"
 	"time"
 
@@ -60,27 +60,33 @@ func createLogsReceiver(
 	set receiver.Settings,
 	config component.Config,
 	consumer consumer.Logs,
-) (receiver.Logs, error) {
+) (_ receiver.Logs, err error) {
 	genConfig := config.(*Config)
 
 	parser := plog.JSONUnmarshaler{}
-	var err error
-	sampleLogs := demoLogs
+	var sampleLogs io.Reader = bytes.NewReader(demoLogs)
 
-	if genConfig.Logs.JsonlFile != "" {
-		sampleLogs, err = os.ReadFile(string(genConfig.Logs.JsonlFile))
+	if genConfig.Logs.Path != "" {
+		var rc io.ReadCloser
+		rc, err = openJSONLFile(genConfig.Logs.JsonlFile)
 		if err != nil {
 			return nil, err
 		}
+		defer func() {
+			if closeErr := rc.Close(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}()
+		sampleLogs = rc
 	}
 
 	maxBufferSize := genConfig.Logs.MaxBufferSize
 	if maxBufferSize == 0 {
-		maxBufferSize = len(sampleLogs) + 10 // add some margin
+		maxBufferSize = maxScannerBufSize
 	}
 
 	var items []plog.Logs
-	scanner := bufio.NewScanner(bytes.NewReader(sampleLogs))
+	scanner := bufio.NewScanner(sampleLogs)
 	scanner.Buffer(make([]byte, 0, maxBufferSize), maxBufferSize)
 	for scanner.Scan() {
 		logBytes := scanner.Bytes()
