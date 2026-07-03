@@ -4,7 +4,7 @@ otelbench wraps the collector inside a Go test benchmark. It outputs throughput 
 
 ## Usage
 
-```
+```text
 Usage of ./otelbench:
   -api-key string
         API key for target server
@@ -174,7 +174,7 @@ It is possible to run with a customized config to avoid passing in command line 
 
 Optional remote OTel collector metrics will be reported as bench stats when additional telemetry flags are provided.
 Gauge metrics will be aggregated to average, while Counter and Histogram will be aggregated to sum.
-For the full list of reported metrics see https://opentelemetry.io/docs/collector/internal-telemetry/#basic-level-metrics.
+For the full list of reported metrics see [Collector internal telemetry](https://opentelemetry.io/docs/collector/internal-telemetry/#basic-level-metrics).
 
 ```shell
 ./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
@@ -208,15 +208,19 @@ and prints one go-benchmark-style line once the run completes, derived from the 
 `otelcol_exporter_sent_metric_points` / `otelcol_exporter_send_failed_metric_points` counters:
 
 ```shell
-BenchmarkOTelbench/metricsgen <sent+failed>     <ns/op> ns/op     <duration> duration_s   <sent/s> metric_points/s      <failed/s> failed_metric_points/s
+BenchmarkOTelbench/metricsgen <runs>     <ns/op> ns/op     <duration> duration_s   <sent/s> metric_points/s      <failed/s> failed_metric_points/s
 
 #Example
-BenchmarkOTelbench/metricsgen     633440     294036 ns/op       186.3 duration_s     0 failed_metric_points/s        3401 metric_points/s
+BenchmarkOTelbench/metricsgen          3     62000000000 ns/op       186.3 duration_s     0 failed_metric_points/s        3401 metric_points/s
 ```
 
-Soak mode reports a single observed collector run, not a repititive Go benchmark loop. The benchmark `N` is the
-observed exporter attempt count (`sent + failed`) from collector self-telemetry, and `duration_s` is the active
-telemetry window used for the throughput calculation.
+Soak mode uses Go's benchmark runner to repeat full collector runs until the benchmark result stabilizes. The
+benchmark `N` is the number of completed collector runs in the final benchmark iteration, and `duration_s` is the
+sum of the active telemetry windows used for the throughput calculation across those runs.
+
+For each collector run, otelbench overrides `receivers.metricsgen.seed` with the base seed plus a monotonically
+increasing run index. For the example config above, the first runs use seeds `123`, `124`, `125`, and so on. This
+keeps generated time series distinct across repeated benchmark runs and avoids `version_conflict_exception` conflicts.
 
 The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench asks the OS for an
 available internal telemetry port using `:0`, releases it, prints the selected host:port. This overrides the collector's `service.telemetry.metrics` pull reader to expose Prometheus telemetry on the selected port.

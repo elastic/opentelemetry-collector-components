@@ -39,7 +39,18 @@ const exitAfterEndMarker = "exit_after_end"
 // Prometheus telemetry endpoint while a metricsgen runs.
 const telemetryPollInterval = 250 * time.Millisecond
 
+const defaultMetricsGenSeed = 123
+
 var findAvailableMetricsTelemetryPort = ephemeralPort
+var benchmarkMetricsGen = testing.Benchmark
+
+type metricsGenRunStats struct {
+	sent           float64
+	failed         float64
+	activeDuration time.Duration
+}
+
+type metricsGenRunFunc func(context.Context, []string) (metricsGenRunStats, error)
 
 // runMetricsGenerator runs otelbench as a plain collector soak test.
 // metricsgen receiver normally terminates the collector via exit_after_end; the
@@ -56,17 +67,6 @@ func runMetricsGenerator(parent context.Context) int {
 	ctx, cancel := signal.NotifyContext(parent, os.Interrupt)
 	defer cancel()
 
-	// RunCollector cancels the collector context when stop is closed. With
-	// -duration-metrics unset, stop is never closed and the run continues until
-	// the collector returns on its own (e.g. metricsgen exit_after_end).
-	stop := make(chan struct{})
-	if Config.DurationMetrics > 0 {
-		timer := time.AfterFunc(Config.DurationMetrics, func() {
-			close(stop)
-		})
-		defer timer.Stop()
-	}
-
 	telemetryEndpoint, configFiles, err := metricsGeneratorConfigFiles(
 		Config.CollectorConfigPath,
 		Config.MetricsTelemetryEndpoint,
@@ -76,29 +76,28 @@ func runMetricsGenerator(parent context.Context) int {
 		return 1
 	}
 
-	// Poll the collector's self-telemetry during the run so we still have the
-	// last counter values after exit_after_end tears the endpoint down.
-	var poller *telemetryPoller
 	if telemetryEndpoint != "" {
 		printMetricsTelemetryEndpoint(os.Stderr, telemetryEndpoint)
-		pollCtx, pollCancel := context.WithCancel(ctx)
-		defer pollCancel()
-		poller = startTelemetryPoller(pollCtx, telemetryEndpoint, telemetryPollInterval)
 	}
 
-	// The loadgen Stats channels are unused because the metricsgen config does
-	// not make use of the loadgen receiver. So we pass nil values.
-	start := time.Now()
-	err = RunCollector(ctx, stop, configFiles, nil, nil, nil, nil)
-	elapsed := time.Since(start)
-	if err != nil && !strings.Contains(err.Error(), exitAfterEndMarker) {
+	run := func(ctx context.Context, configFiles []string) (metricsGenRunStats, error) {
+		return runMetricsGenCollector(ctx, configFiles, telemetryEndpoint, Config.DurationMetrics)
+	}
+
+	if telemetryEndpoint == "" {
+		if _, err := run(ctx, configFiles); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		return 0
+	}
+
+	result, err := runMetricsGenBench(ctx, configFiles, defaultMetricsGenSeed, run)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-
-	if poller != nil {
-		reportMetricsGenBenchmark(poller, elapsed)
-	}
+	reportMetricsGenBenchmark(result)
 	return 0
 }
 
@@ -147,34 +146,104 @@ func metricsTelemetryConfigFiles(host string, port int) []string {
 	})
 }
 
-// reportMetricsGenBenchmark prints a go-benchmark-style line derived from the
-// collector's scraped self-telemetry. Throughput is computed over the active
-// send window (first observed sample to last scrape) when available, otherwise
-// over the full run duration.
-func reportMetricsGenBenchmark(poller *telemetryPoller, elapsed time.Duration) {
+func metricsGenSeedConfigFiles(seed int) []string {
+	return setsToConfigs([]string{
+		fmt.Sprintf("receivers.metricsgen.seed=%d", seed),
+	})
+}
+
+func runMetricsGenBench(ctx context.Context, configFiles []string, baseSeed int, run metricsGenRunFunc) (testing.BenchmarkResult, error) {
+	var finalStats metricsGenRunStats
+	var benchErr error
+	var runIndex int
+
+	result := benchmarkMetricsGen(func(b *testing.B) {
+		stats := metricsGenRunStats{}
+		for i := 0; i < b.N; i++ {
+			seed := baseSeed + runIndex
+			runIndex++
+
+			iterationConfigFiles := append([]string{}, configFiles...)
+			iterationConfigFiles = append(iterationConfigFiles, metricsGenSeedConfigFiles(seed)...)
+
+			runStats, err := run(ctx, iterationConfigFiles)
+			if err != nil {
+				benchErr = err
+				b.Fatal(err)
+			}
+			stats.sent += runStats.sent
+			stats.failed += runStats.failed
+			stats.activeDuration += runStats.activeDuration
+		}
+		finalStats = stats
+	})
+
+	if benchErr != nil {
+		return result, benchErr
+	}
+	if finalStats.activeDuration <= 0 {
+		return result, fmt.Errorf("soak: run too short to compute throughput")
+	}
+
+	elapsedSeconds := finalStats.activeDuration.Seconds()
+	result.T = finalStats.activeDuration
+	result.Extra = map[string]float64{
+		"duration_s":             elapsedSeconds,
+		"metric_points/s":        finalStats.sent / elapsedSeconds,
+		"failed_metric_points/s": finalStats.failed / elapsedSeconds,
+	}
+	return result, nil
+}
+
+func runMetricsGenCollector(ctx context.Context, configFiles []string, telemetryEndpoint string, duration time.Duration) (metricsGenRunStats, error) {
+	// RunCollector cancels the collector context when stop is closed. With
+	// -duration-metrics unset, stop is never closed and the run continues until
+	// the collector returns on its own (e.g. metricsgen exit_after_end).
+	stop := make(chan struct{})
+	if duration > 0 {
+		timer := time.AfterFunc(duration, func() {
+			close(stop)
+		})
+		defer timer.Stop()
+	}
+
+	var poller *telemetryPoller
+	if telemetryEndpoint != "" {
+		pollCtx, pollCancel := context.WithCancel(ctx)
+		defer pollCancel()
+		// Poll the collector's self-telemetry during the run so we still have
+		// the last counter values after exit_after_end tears the endpoint down.
+		poller = startTelemetryPoller(pollCtx, telemetryEndpoint, telemetryPollInterval)
+	}
+
+	// The loadgen Stats channels are unused because the metricsgen config does
+	// not make use of the loadgen receiver. So we pass nil values.
+	start := time.Now()
+	err := RunCollector(ctx, stop, configFiles, nil, nil, nil, nil)
+	elapsed := time.Since(start)
+	if err != nil && !strings.Contains(err.Error(), exitAfterEndMarker) {
+		return metricsGenRunStats{}, err
+	}
+
+	if poller == nil {
+		return metricsGenRunStats{}, nil
+	}
 	snap, firstSeen := poller.snapshot()
 	if !snap.valid {
-		fmt.Fprintln(os.Stderr, "soak: no telemetry samples scraped; skipping benchmark output")
-		return
+		return metricsGenRunStats{}, fmt.Errorf("soak: no telemetry samples scraped")
 	}
-
 	activeDuration := metricsGenActiveDuration(elapsed, snap, firstSeen)
 	if activeDuration <= 0 {
-		fmt.Fprintln(os.Stderr, "soak: run too short to compute throughput; skipping benchmark output")
-		return
+		return metricsGenRunStats{}, fmt.Errorf("soak: run too short to compute throughput")
 	}
-	elapsedSeconds := activeDuration.Seconds()
-	attempted := snap.sent + snap.failed
+	return metricsGenRunStats{
+		sent:           snap.sent,
+		failed:         snap.failed,
+		activeDuration: activeDuration,
+	}, nil
+}
 
-	res := testing.BenchmarkResult{
-		N: int(attempted),
-		T: activeDuration,
-		Extra: map[string]float64{
-			"duration_s":             elapsedSeconds,
-			"metric_points/s":        snap.sent / elapsedSeconds,
-			"failed_metric_points/s": snap.failed / elapsedSeconds,
-		},
-	}
+func reportMetricsGenBenchmark(res testing.BenchmarkResult) {
 	// Match the harness output format used in main.go.
 	fmt.Printf("%s\t%s\n", "BenchmarkOTelbench/metricsgen", res.String())
 }

@@ -158,6 +158,53 @@ func TestMetricsGeneratorConfigFilesSelectsTelemetryPort(t *testing.T) {
 	}, configFiles)
 }
 
+func TestMetricsGenSeedConfigFiles(t *testing.T) {
+	assert.Equal(t, []string{
+		"yaml:receivers::metricsgen::seed: 124",
+	}, metricsGenSeedConfigFiles(124))
+}
+
+func TestRunMetricsGenBenchRepeatsRunsWithIncreasingSeedsAndAggregatesTelemetry(t *testing.T) {
+	original := benchmarkMetricsGen
+	benchmarkMetricsGen = func(f func(*testing.B)) testing.BenchmarkResult {
+		f(&testing.B{N: 1})
+		final := &testing.B{N: 2}
+		f(final)
+		return testing.BenchmarkResult{N: final.N}
+	}
+	t.Cleanup(func() {
+		benchmarkMetricsGen = original
+	})
+
+	var seeds []string
+	result, err := runMetricsGenBench(
+		context.Background(),
+		[]string{"config-prw.yaml"},
+		defaultMetricsGenSeed,
+		func(ctx context.Context, configFiles []string) (metricsGenRunStats, error) {
+			seeds = append(seeds, configFiles[len(configFiles)-1])
+			return metricsGenRunStats{
+				sent:           100,
+				failed:         10,
+				activeDuration: 2 * time.Second,
+			}, nil
+		},
+	)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"yaml:receivers::metricsgen::seed: 123",
+		"yaml:receivers::metricsgen::seed: 124",
+		"yaml:receivers::metricsgen::seed: 125",
+	}, seeds)
+	assert.Equal(t, 2, result.N)
+	assert.Equal(t, 4*time.Second, result.T)
+	assert.Equal(t, 50.0, result.Extra["metric_points/s"])
+	assert.Equal(t, 5.0, result.Extra["failed_metric_points/s"])
+	assert.Equal(t, 4.0, result.Extra["duration_s"])
+	assert.NotContains(t, result.Extra, "attempted_metric_points")
+}
+
 func TestPrintMetricsTelemetryEndpoint(t *testing.T) {
 	var out bytes.Buffer
 	printMetricsTelemetryEndpoint(&out, "127.0.0.1:8891")
@@ -165,17 +212,6 @@ func TestPrintMetricsTelemetryEndpoint(t *testing.T) {
 }
 
 func TestReportMetricsGenBenchmarkUsesMetricPointUnits(t *testing.T) {
-	now := time.Now()
-	poller := &telemetryPoller{
-		latest: telemetrySnapshot{
-			sent:   100,
-			failed: 10,
-			at:     now.Add(time.Second),
-			valid:  true,
-		},
-		firstSeen: now,
-	}
-
 	stdout := os.Stdout
 	r, w, err := os.Pipe()
 	require.NoError(t, err)
@@ -184,14 +220,22 @@ func TestReportMetricsGenBenchmarkUsesMetricPointUnits(t *testing.T) {
 	})
 	os.Stdout = w
 
-	reportMetricsGenBenchmark(poller, time.Second)
+	reportMetricsGenBenchmark(testing.BenchmarkResult{
+		N: 3,
+		T: 6 * time.Second,
+		Extra: map[string]float64{
+			"duration_s":             6,
+			"metric_points/s":        50,
+			"failed_metric_points/s": 5,
+		},
+	})
 
 	require.NoError(t, w.Close())
 	output, err := io.ReadAll(r)
 	require.NoError(t, err)
 
 	assert.Contains(t, string(output), "BenchmarkOTelbench/metricsgen")
-	assert.Regexp(t, regexp.MustCompile(`BenchmarkOTelbench/metricsgen\s+110\s+`), string(output))
+	assert.Regexp(t, regexp.MustCompile(`BenchmarkOTelbench/metricsgen\s+3\s+`), string(output))
 	assert.Contains(t, string(output), "duration_s")
 	assert.Contains(t, string(output), "metric_points/s")
 	assert.Contains(t, string(output), "failed_metric_points/s")
