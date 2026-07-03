@@ -264,5 +264,6 @@ replace (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent => ../../../internal/sharedcomponent
 	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor => ../../../processor/ratelimitprocessor
 	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver => ../../../receiver/loadgenreceiver
+	// https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33137 TODO: Remove this once the issue is fixed.
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter => ../../../internal/exporter/prometheusremotewriteexporter
 )
