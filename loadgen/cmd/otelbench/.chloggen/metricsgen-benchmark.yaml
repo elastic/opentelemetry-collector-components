@@ -1,0 +1,21 @@
+# One of 'breaking', 'deprecation', 'enhancement', 'bug_fix'
+change_type: enhancement
+
+# A brief description of the change.  Surround your text with quotes ("") if it needs to start with a backtick (`).
+note: Emit go-benchmark-style throughput for `--metricsgen` runs by scraping the collector's self-telemetry
+
+# It is mandatory to specify the component. Do not change this.
+component: otelbench
+
+# Mandatory: One or more tracking issues related to the change. You can use the PR number here if no issue exists.
+issues: [1294]
+
+# (Optional) One or more lines of additional information to render under the primary note.
+# These lines will be padded with 2 spaces and then inserted directly into the document.
+# Use pipe (|) for multiline entries.
+subtext: |
+  When `--metricsgen`, otelbench starts load testing from the collector config and prints a
+  `BenchmarkOTelbench/metricsgen` line with `metric_points/s` and `failed_metric_points/s`, derived from the
+  `otelcol_exporter_sent/send_failed_metric_points` counters. Metricsgen mode uses Go's benchmark runner to choose
+  the metricsgen backfill window by overriding `receivers.metricsgen.start_now_minus=<N>m`, where `N` is the
+  benchmark iteration count. Use `--config` to provide the collector config.

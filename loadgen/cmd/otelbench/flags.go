@@ -46,6 +46,17 @@ var Config struct {
 	Profiles bool
 	Mixed    bool
 
+	// MetricsGen runs otelbench as a metricsgen collector benchmark instead of the benchmark harness.
+	MetricsGen bool
+	// DurationMetrics is an optional safety cap for the metricsgen run.
+	// When 0, the run continues until the collector exits on its own (e.g.
+	// metricsgen exit_after_end).
+	DurationMetrics time.Duration
+	// MetricsTelemetryEndpoint is the collector's own Prometheus telemetry
+	// host that otelbench scrapes during a -metricsgen run to derive
+	// throughput. Empty disables benchmark output.
+	MetricsTelemetryEndpoint string
+
 	Exporters map[string]bool
 
 	ConcurrencyList  []int
@@ -95,6 +106,10 @@ var defaultTelemetryMetrics = []string{
 	"otelcol_process_runtime_total_sys_memory_bytes",
 	"otelcol_process_uptime",
 }
+
+const (
+	defaultMetricsTelemetryEndpoint = "127.0.0.1"
+)
 
 func Init() error {
 	// Server config
@@ -171,6 +186,10 @@ func Init() error {
 	flag.BoolVar(&Config.Traces, "traces", true, "benchmark traces")
 	flag.BoolVar(&Config.Profiles, "profiles", false, "benchmark profiles")
 	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics, traces and profiles (only of -profiles flag enabled) at the same time")
+
+	flag.BoolVar(&Config.MetricsGen, "metricsgen", false, "run as a metricsgen collector benchmark (plain collector run reading -config) instead of the benchmark harness")
+	flag.DurationVar(&Config.DurationMetrics, "duration-metrics", 0, "optional safety cap for -metricsgen; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)")
+	flag.StringVar(&Config.MetricsTelemetryEndpoint, "metrics-telemetry-endpoint", defaultMetricsTelemetryEndpoint, "collector self-telemetry Prometheus host to scrape for -metricsgen benchmark output; empty disables it")
 
 	flag.StringVar(&Config.TracesDataPath, "traces-data-path", "", "path to traces data file (e.g. traces.json). If empty, embedded data will be used.")
 	flag.StringVar(&Config.MetricsDataPath, "metrics-data-path", "", "path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.")

@@ -71,3 +71,21 @@ func TestInitRegistersBenchmarkExporterFlags(t *testing.T) {
 	require.NoError(t, flag.Set("exporter-elasticsearch", "true"))
 	require.True(t, Config.Exporters["elasticsearch"])
 }
+
+func TestInitRegistersMetricsGenFlag(t *testing.T) {
+	oldCommandLine := flag.CommandLine
+	flag.CommandLine = flag.NewFlagSet(t.Name(), flag.ContinueOnError)
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+		Config.MetricsGen = false
+	})
+
+	require.NoError(t, Init())
+
+	require.NotNil(t, flag.Lookup("metricsgen"))
+	require.Nil(t, flag.Lookup("config-prw"))
+	require.Nil(t, flag.Lookup("metrics-generator"))
+
+	require.NoError(t, flag.Set("metricsgen", "true"))
+	require.True(t, Config.MetricsGen)
+}
