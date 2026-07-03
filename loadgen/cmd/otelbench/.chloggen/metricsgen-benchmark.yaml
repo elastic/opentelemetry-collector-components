@@ -17,5 +17,5 @@ subtext: |
   When `--metrics-generator`, the otelbench starts loadtesting and prints a `BenchmarkOTelbench/metricsgen` line with `metric_points/s`
   and `failed_metric_points/s`, derived from the `otelcol_exporter_sent/send_failed_metric_points` counters. The
   scrape host is configurable via `--metrics-telemetry-endpoint` (default `127.0.0.1`). The otelbench chooses
-  a random available port from `--metrics-telemetry-port-range` (default `8889-8999`) and prints the selected host:port; an empty endpoint value
+  a random available internal telemetry port and prints the selected host:port; an empty endpoint value
   disables benchmark output and keeps the previous soak-only behavior.

@@ -44,8 +44,6 @@ Usage of ./otelbench:
         run as a metricsgen-based load generator (plain collector run reading -config) instead of the default benchmark
   -metrics-telemetry-endpoint string
         collector self-telemetry Prometheus host to scrape for -metrics-generator benchmark output; empty disables it (default "127.0.0.1")
-  -metrics-telemetry-port-range range
-        port range to search for a free collector self-telemetry Prometheus port (START-END) (default "8889-8999")
   -profiles
         benchmark profiles (default false)
   -profiles-data-path string
@@ -211,7 +209,7 @@ BenchmarkOTelbench/metricsgen	1	<elapsed> ns/op	<metric_points/s> metric_points/
 ```
 
 The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench picks a random
-available port from `-metrics-telemetry-port-range` (default `8889-8999`), prints the selected host:port, and overrides the collector's
+available internal telemetry port, prints the selected host:port, and overrides the collector's
 `service.telemetry.metrics` pull reader to expose Prometheus telemetry on the selected port. The bundled
 `config-prw.yaml` includes the telemetry reader that otelbench overrides:
 
@@ -232,8 +230,8 @@ Setting `-metrics-telemetry-endpoint=""` disables benchmark output, keeping the 
 counters are scraped off the data path, enabling telemetry does not change the generated load. `metric_points/s` is
 a saturation/ingest throughput (generator-driven), not a per-iteration latency like the default OTLP `loadgen` numbers.
 
-The default host and port range work with the bundled config, so no flag is needed for benchmark output. Pass the
-flags only to override the host or port range, or set the endpoint empty to disable benchmark output (pure soak):
+The default host works with the bundled config, so no flag is needed for benchmark output. Pass
+`-metrics-telemetry-endpoint` only to override the host, or set it empty to disable benchmark output (pure soak):
 
 ```shell
 # Benchmark output on (default).

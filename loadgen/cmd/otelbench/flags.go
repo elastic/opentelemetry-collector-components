@@ -200,17 +200,6 @@ func Init() error {
 		return fmt.Errorf("invalid default metrics telemetry port range: %w", err)
 	}
 	Config.MetricsTelemetryPortRange = r
-	flag.Func("metrics-telemetry-port-range", "port `range` to search for a free collector self-telemetry Prometheus port (START-END)",
-		func(input string) error {
-			r, err := parsePortRange(input)
-			if err != nil {
-				return err
-			}
-			Config.MetricsTelemetryPortRange = r
-			return nil
-		},
-	)
-	flag.Lookup("metrics-telemetry-port-range").DefValue = defaultMetricsTelemetryPortRange
 
 	flag.StringVar(&Config.TracesDataPath, "traces-data-path", "", "path to traces data file (e.g. traces.json). If empty, embedded data will be used.")
 	flag.StringVar(&Config.MetricsDataPath, "metrics-data-path", "", "path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.")
