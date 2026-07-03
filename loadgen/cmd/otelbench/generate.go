@@ -52,7 +52,7 @@ type metricsGenRunStats struct {
 
 type metricsGenRunFunc func(context.Context, []string) (metricsGenRunStats, error)
 
-// runMetricsGenerator runs otelbench as a plain collector soak test.
+// runMetricsGenerator runs otelbench as a plain metricsgen collector benchmark.
 // metricsgen receiver normally terminates the collector via exit_after_end; the
 // optional -duration-metrics flag acts as a safety cap. When
 // -metrics-telemetry-endpoint is set, it scrapes the collector's own telemetry
@@ -60,7 +60,7 @@ type metricsGenRunFunc func(context.Context, []string) (metricsGenRunStats, erro
 // returns the process exit code.
 func runMetricsGenerator(parent context.Context) int {
 	if Config.CollectorConfigPath == "" {
-		fmt.Fprintln(os.Stderr, "soak mode requires -config with a collector pipeline")
+		fmt.Fprintln(os.Stderr, "metricsgen mode requires -config with a collector pipeline")
 		return 2
 	}
 
@@ -120,7 +120,7 @@ func metricsGeneratorConfigFiles(configPath, telemetryEndpoint string) (string, 
 }
 
 func printMetricsTelemetryEndpoint(w io.Writer, endpoint string) {
-	fmt.Fprintf(w, "soak: scraping collector telemetry from %s\n", endpoint)
+	fmt.Fprintf(w, "metricsgen: scraping collector telemetry from %s\n", endpoint)
 }
 
 func metricsTelemetryHost(endpoint string) (string, error) {
@@ -182,7 +182,7 @@ func runMetricsGenBench(ctx context.Context, configFiles []string, baseSeed int,
 		return result, benchErr
 	}
 	if finalStats.activeDuration <= 0 {
-		return result, fmt.Errorf("soak: run too short to compute throughput")
+		return result, fmt.Errorf("metricsgen: run too short to compute throughput")
 	}
 
 	elapsedSeconds := finalStats.activeDuration.Seconds()
@@ -230,11 +230,11 @@ func runMetricsGenCollector(ctx context.Context, configFiles []string, telemetry
 	}
 	snap, firstSeen := poller.snapshot()
 	if !snap.valid {
-		return metricsGenRunStats{}, fmt.Errorf("soak: no telemetry samples scraped")
+		return metricsGenRunStats{}, fmt.Errorf("metricsgen: no telemetry samples scraped")
 	}
 	activeDuration := metricsGenActiveDuration(elapsed, snap, firstSeen)
 	if activeDuration <= 0 {
-		return metricsGenRunStats{}, fmt.Errorf("soak: run too short to compute throughput")
+		return metricsGenRunStats{}, fmt.Errorf("metricsgen: run too short to compute throughput")
 	}
 	return metricsGenRunStats{
 		sent:           snap.sent,

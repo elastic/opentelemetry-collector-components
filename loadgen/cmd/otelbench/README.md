@@ -13,7 +13,7 @@ Usage of ./otelbench:
   -config string
         path to collector config yaml. If empty, the config.yaml embedded in the binary will be used.
   -duration-metrics duration
-        optional safety cap for -soak; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)
+        optional safety cap for -metricsgen; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)
   -endpoint value
         target server endpoint for both otlp and otlphttp exporters (default to value in config yaml), equivalent to setting both -endpoint-otlp and -endpoint-otlphttp
   -endpoint-otlp value
@@ -41,7 +41,7 @@ Usage of ./otelbench:
   -metrics-data-path string
         path to metrics data file (e.g. metrics.json). If empty, embedded data will be used.
   -metrics-telemetry-endpoint string
-        collector self-telemetry Prometheus host to scrape for -soak benchmark output; empty disables it (default "127.0.0.1")
+        collector self-telemetry Prometheus host to scrape for -metricsgen benchmark output; empty disables it (default "127.0.0.1")
   -profiles
         benchmark profiles (default false)
   -profiles-data-path string
@@ -52,8 +52,8 @@ Usage of ./otelbench:
         secret token for target server
   -shuffle
         shuffle the order of benchmarks. This is useful for concurrent runs.
-  -soak
-        run as a collector soak test (plain collector run reading -config) instead of the benchmark harness
+  -metricsgen
+        run as a metricsgen collector benchmark (plain collector run reading -config) instead of the benchmark harness
   -telemetry-elasticsearch-api-key string
         optional remote Elasticsearch telemetry API key
   -telemetry-elasticsearch-index string
@@ -180,20 +180,20 @@ For the full list of reported metrics see [Collector internal telemetry](https:/
 ./otelbench -config=./config.yaml -endpoint-otlp=localhost:4317 -endpoint-otlphttp=https://localhost:4318/prefix -api-key some_api_key -telemetry-elasticsearch-url=localhost:9200 -telemetry-elasticsearch-api-key telemetry_api_key -telemetry-elasticsearch-index "metrics*" -telemetry-filter-cluster-name cluster_name
 ```
 
-## Soak Mode
+## Metricsgen Mode
 
-With the use of flag `-soak`, otelbench runs the collector defined by `-config` directly as a load generator. This is intended
+With the use of flag `-metricsgen`, otelbench runs the collector defined by `-config` directly as a load generator. This is intended
 for `metricsgen`-based metrics pipelines (e.g. Prometheus Remote Write) and the `loadgenreceiver` is not used.
 Read more information for [metricsgenreceiver](https://github.com/elastic/metricsgenreceiver)
 
 The run continues until the collector exits, for example when metricsgen reaches `exit_after_end`. You can interrupt the run manually, or use -duration-metrics as a safety cap to shut the collector down after a fixed time. Use `-duration-metrics` as an optional safety cap (a Go duration like `90s`, `2m`, `1h`); when it elapses, the collector is shut down. Leaving it at `0` (the default) means no cap.
 
 ```shell
-# Run soak mode with an explicit metricsgen PRW config.
-./otelbench -soak -config ./config-prw.yaml
+# Run metricsgen mode with an explicit metricsgen PRW config.
+./otelbench -metricsgen -config ./config-prw.yaml
 
 # Add a safety cap.
-./otelbench -soak -config ./config-prw.yaml -duration-metrics=120s
+./otelbench -metricsgen -config ./config-prw.yaml -duration-metrics=120s
 ```
 
 > Note: if the exporter is configured to retry forever (`retry_on_failure.max_elapsed_time: 0`) together with
@@ -214,7 +214,7 @@ BenchmarkOTelbench/metricsgen <runs>     <ns/op> ns/op     <duration> duration_s
 BenchmarkOTelbench/metricsgen          3     62000000000 ns/op       186.3 duration_s     0 failed_metric_points/s        3401 metric_points/s
 ```
 
-Soak mode uses Go's benchmark runner to repeat full collector runs until the benchmark result stabilizes. The
+Metricsgen mode uses Go's benchmark runner to repeat full collector runs until the benchmark result stabilizes. The
 benchmark `N` is the number of completed collector runs in the final benchmark iteration, and `duration_s` is the
 sum of the active telemetry windows used for the throughput calculation across those runs.
 
@@ -225,19 +225,19 @@ keeps generated time series distinct across repeated benchmark runs and avoids `
 The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench asks the OS for an
 available internal telemetry port using `:0`, releases it, prints the selected host:port. This overrides the collector's `service.telemetry.metrics` pull reader to expose Prometheus telemetry on the selected port.
 
-Setting `-metrics-telemetry-endpoint=""` disables benchmark output, keeping the pure soak behavior. Because the
+Setting `-metrics-telemetry-endpoint=""` disables benchmark output, keeping the pure metricsgen behavior. Because the
 counters are scraped off the data path, enabling telemetry does not change the generated load. `metric_points/s` is
 a saturation/ingest throughput (generator-driven), not a per-iteration latency like the default OTLP `loadgen` numbers.
 
 The default host works with the bundled config, so no flag is needed for benchmark output. Pass
-`-metrics-telemetry-endpoint` only to override the host, or set it empty to disable benchmark output (pure soak):
+`-metrics-telemetry-endpoint` only to override the host, or set it empty to disable benchmark output (pure metricsgen):
 
 ```shell
 # Benchmark output on (default).
-./otelbench -soak -config ./config-prw.yaml
+./otelbench -metricsgen -config ./config-prw.yaml
 
-# Disable benchmark output, soak only.
-./otelbench -soak -config ./config-prw.yaml -metrics-telemetry-endpoint=""
+# Disable benchmark output, metricsgen only.
+./otelbench -metricsgen -config ./config-prw.yaml -metrics-telemetry-endpoint=""
 ```
 
 ## Example usage with Docker image

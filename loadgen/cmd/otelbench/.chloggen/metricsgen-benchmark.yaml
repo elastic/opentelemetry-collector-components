@@ -2,7 +2,7 @@
 change_type: enhancement
 
 # A brief description of the change.  Surround your text with quotes ("") if it needs to start with a backtick (`).
-note: Emit go-benchmark-style throughput for `--soak` runs by scraping the collector's self-telemetry
+note: Emit go-benchmark-style throughput for `--metricsgen` runs by scraping the collector's self-telemetry
 
 # It is mandatory to specify the component. Do not change this.
 component: otelbench
@@ -14,7 +14,7 @@ issues: [1294]
 # These lines will be padded with 2 spaces and then inserted directly into the document.
 # Use pipe (|) for multiline entries.
 subtext: |
-  When `--soak`, otelbench starts load testing from the collector config and prints a
+  When `--metricsgen`, otelbench starts load testing from the collector config and prints a
   `BenchmarkOTelbench/metricsgen` line with `metric_points/s` and `failed_metric_points/s`, derived from the
-  `otelcol_exporter_sent/send_failed_metric_points` counters. Soak mode now uses Go's benchmark runner to repeat
+  `otelcol_exporter_sent/send_failed_metric_points` counters. Metricsgen mode uses Go's benchmark runner to repeat
   full collector runs until the result stabilizes. Use `--config` to provide the collector config.

@@ -192,8 +192,8 @@ func serveEmbeddedConf(config []byte) (string, *http.Server, error) {
 	return fmt.Sprintf("http://%s/", listener.Addr().String()), s, nil
 }
 
-func isSoakMode() bool {
-	return Config.Soak
+func isMetricsGenMode() bool {
+	return Config.MetricsGen
 }
 
 // getBenchCount returns the value of -test.count flag or 1 if not set
@@ -221,9 +221,9 @@ func main() {
 	}
 	flag.Parse()
 
-	// In soak mode, otelbench runs the collector defined by -config
+	// In metricsgen mode, otelbench runs the collector defined by -config
 	// directly instead of running the benchmark harness.
-	if isSoakMode() {
+	if isMetricsGenMode() {
 		os.Exit(runMetricsGenerator(context.Background()))
 	}
 

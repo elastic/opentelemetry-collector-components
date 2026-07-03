@@ -72,20 +72,20 @@ func TestInitRegistersBenchmarkExporterFlags(t *testing.T) {
 	require.True(t, Config.Exporters["elasticsearch"])
 }
 
-func TestInitRegistersSoakFlag(t *testing.T) {
+func TestInitRegistersMetricsGenFlag(t *testing.T) {
 	oldCommandLine := flag.CommandLine
 	flag.CommandLine = flag.NewFlagSet(t.Name(), flag.ContinueOnError)
 	t.Cleanup(func() {
 		flag.CommandLine = oldCommandLine
-		Config.Soak = false
+		Config.MetricsGen = false
 	})
 
 	require.NoError(t, Init())
 
-	require.NotNil(t, flag.Lookup("soak"))
+	require.NotNil(t, flag.Lookup("metricsgen"))
 	require.Nil(t, flag.Lookup("config-prw"))
 	require.Nil(t, flag.Lookup("metrics-generator"))
 
-	require.NoError(t, flag.Set("soak", "true"))
-	require.True(t, Config.Soak)
+	require.NoError(t, flag.Set("metricsgen", "true"))
+	require.True(t, Config.MetricsGen)
 }

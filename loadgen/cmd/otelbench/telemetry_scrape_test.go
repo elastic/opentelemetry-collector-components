@@ -208,7 +208,7 @@ func TestRunMetricsGenBenchRepeatsRunsWithIncreasingSeedsAndAggregatesTelemetry(
 func TestPrintMetricsTelemetryEndpoint(t *testing.T) {
 	var out bytes.Buffer
 	printMetricsTelemetryEndpoint(&out, "127.0.0.1:8891")
-	assert.Equal(t, "soak: scraping collector telemetry from 127.0.0.1:8891\n", out.String())
+	assert.Equal(t, "metricsgen: scraping collector telemetry from 127.0.0.1:8891\n", out.String())
 }
 
 func TestReportMetricsGenBenchmarkUsesMetricPointUnits(t *testing.T) {
