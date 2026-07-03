@@ -46,15 +46,14 @@ var Config struct {
 	Profiles bool
 	Mixed    bool
 
-	// MetricsGenerator runs otelbench as a metricsgen-based load generator
-	// (a plain collector run) instead of the benchmark harness.
-	MetricsGenerator bool
-	// DurationMetrics is an optional safety cap for the metrics generator run.
+	// Soak runs otelbench as a plain collector run instead of the benchmark harness.
+	Soak bool
+	// DurationMetrics is an optional safety cap for the soak run.
 	// When 0, the run continues until the collector exits on its own (e.g.
 	// metricsgen exit_after_end).
 	DurationMetrics time.Duration
 	// MetricsTelemetryEndpoint is the collector's own Prometheus telemetry
-	// host that otelbench scrapes during a -metrics-generator run to derive
+	// host that otelbench scrapes during a -soak run to derive
 	// throughput. Empty disables benchmark output.
 	MetricsTelemetryEndpoint string
 	// MetricsTelemetryPortRange is the port range otelbench searches for an
@@ -192,9 +191,9 @@ func Init() error {
 	flag.BoolVar(&Config.Profiles, "profiles", false, "benchmark profiles")
 	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics, traces and profiles (only of -profiles flag enabled) at the same time")
 
-	flag.BoolVar(&Config.MetricsGenerator, "metrics-generator", false, "run as a metricsgen-based load generator (plain collector run reading -config) instead of the benchmark harness")
-	flag.DurationVar(&Config.DurationMetrics, "duration-metrics", 0, "optional safety cap for -metrics-generator; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)")
-	flag.StringVar(&Config.MetricsTelemetryEndpoint, "metrics-telemetry-endpoint", defaultMetricsTelemetryEndpoint, "collector self-telemetry Prometheus host to scrape for -metrics-generator benchmark output; empty disables it")
+	flag.BoolVar(&Config.Soak, "soak", false, "run as a collector soak test (plain collector run reading -config) instead of the benchmark harness")
+	flag.DurationVar(&Config.DurationMetrics, "duration-metrics", 0, "optional safety cap for -soak; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)")
+	flag.StringVar(&Config.MetricsTelemetryEndpoint, "metrics-telemetry-endpoint", defaultMetricsTelemetryEndpoint, "collector self-telemetry Prometheus host to scrape for -soak benchmark output; empty disables it")
 	r, err := parsePortRange(defaultMetricsTelemetryPortRange)
 	if err != nil {
 		return fmt.Errorf("invalid default metrics telemetry port range: %w", err)

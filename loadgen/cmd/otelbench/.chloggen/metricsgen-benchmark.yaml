@@ -2,7 +2,7 @@
 change_type: enhancement
 
 # A brief description of the change.  Surround your text with quotes ("") if it needs to start with a backtick (`).
-note: Emit go-benchmark-style throughput for `--metrics-generator` runs by scraping the collector's self-telemetry
+note: Emit go-benchmark-style throughput for `--soak` runs by scraping the collector's self-telemetry
 
 # It is mandatory to specify the component. Do not change this.
 component: otelbench
@@ -14,8 +14,9 @@ issues: [1294]
 # These lines will be padded with 2 spaces and then inserted directly into the document.
 # Use pipe (|) for multiline entries.
 subtext: |
-  When `--metrics-generator`, the otelbench starts loadtesting and prints a `BenchmarkOTelbench/metricsgen` line with `metric_points/s`
-  and `failed_metric_points/s`, derived from the `otelcol_exporter_sent/send_failed_metric_points` counters. The
-  scrape host is configurable via `--metrics-telemetry-endpoint` (default `127.0.0.1`). The otelbench chooses
-  a random available internal telemetry port and prints the selected host:port; an empty endpoint value
-  disables benchmark output and keeps the previous soak-only behavior.
+  When `--soak`, otelbench starts load testing from the collector config and prints a
+  `BenchmarkOTelbench/metricsgen` line with `metric_points/s` and `failed_metric_points/s`, derived from the
+  `otelcol_exporter_sent/send_failed_metric_points` counters. Use `--config` to provide the collector config.
+  The scrape host is configurable via
+  `--metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench chooses a random available internal telemetry
+  port and prints the selected host:port; an empty endpoint value disables benchmark output and keeps soak-only behavior.

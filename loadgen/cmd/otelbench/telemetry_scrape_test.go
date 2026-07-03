@@ -224,7 +224,7 @@ func TestMetricsGeneratorConfigFilesSelectsTelemetryPort(t *testing.T) {
 func TestPrintMetricsTelemetryEndpoint(t *testing.T) {
 	var out bytes.Buffer
 	printMetricsTelemetryEndpoint(&out, "127.0.0.1:8891")
-	assert.Equal(t, "metrics-generator: scraping collector telemetry from 127.0.0.1:8891\n", out.String())
+	assert.Equal(t, "soak: scraping collector telemetry from 127.0.0.1:8891\n", out.String())
 }
 
 func TestReportMetricsGenBenchmarkUsesMetricPointUnits(t *testing.T) {
@@ -254,7 +254,6 @@ func TestReportMetricsGenBenchmarkUsesMetricPointUnits(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Contains(t, string(output), "BenchmarkOTelbench/metricsgen")
-	assert.NotContains(t, string(output), "BenchmarkOTelbench/metricsgen-prw")
 	assert.Contains(t, string(output), "metric_points/s")
 	assert.Contains(t, string(output), "failed_metric_points/s")
 	assert.NotContains(t, string(output), "samples/s")

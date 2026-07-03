@@ -41,7 +41,7 @@ const telemetryPollInterval = 250 * time.Millisecond
 
 var findAvailableMetricsTelemetryPort = randomAvailablePort
 
-// runMetricsGenerator runs otelbench as a plain metricsgen-based load generator
+// runMetricsGenerator runs otelbench as a plain collector soak test.
 // metricsgen receiver normally terminates the collector via exit_after_end; the
 // optional -duration-metrics flag acts as a safety cap. When
 // -metrics-telemetry-endpoint is set, it scrapes the collector's own telemetry
@@ -49,7 +49,7 @@ var findAvailableMetricsTelemetryPort = randomAvailablePort
 // returns the process exit code.
 func runMetricsGenerator(parent context.Context) int {
 	if Config.CollectorConfigPath == "" {
-		fmt.Fprintln(os.Stderr, "metrics-generator requires -config with a metricsgen pipeline")
+		fmt.Fprintln(os.Stderr, "soak mode requires -config with a collector pipeline")
 		return 2
 	}
 
@@ -122,7 +122,7 @@ func metricsGeneratorConfigFiles(configPath, telemetryEndpoint string, ports por
 }
 
 func printMetricsTelemetryEndpoint(w io.Writer, endpoint string) {
-	fmt.Fprintf(w, "metrics-generator: scraping collector telemetry from %s\n", endpoint)
+	fmt.Fprintf(w, "soak: scraping collector telemetry from %s\n", endpoint)
 }
 
 func metricsTelemetryHost(endpoint string) (string, error) {
@@ -155,7 +155,7 @@ func metricsTelemetryConfigFiles(host string, port int) []string {
 func reportMetricsGenBenchmark(poller *telemetryPoller, elapsed time.Duration) {
 	snap, firstSeen := poller.snapshot()
 	if !snap.valid {
-		fmt.Fprintln(os.Stderr, "metrics-generator: no telemetry samples scraped; skipping benchmark output")
+		fmt.Fprintln(os.Stderr, "soak: no telemetry samples scraped; skipping benchmark output")
 		return
 	}
 
@@ -164,7 +164,7 @@ func reportMetricsGenBenchmark(poller *telemetryPoller, elapsed time.Duration) {
 		elapsedSeconds = snap.at.Sub(firstSeen).Seconds()
 	}
 	if elapsedSeconds <= 0 {
-		fmt.Fprintln(os.Stderr, "metrics-generator: run too short to compute throughput; skipping benchmark output")
+		fmt.Fprintln(os.Stderr, "soak: run too short to compute throughput; skipping benchmark output")
 		return
 	}
 

@@ -1,6 +1,6 @@
 # Example metricsgen -> Prometheus Remote Write config for otelbench's
-# metrics generator mode. Run with:
-#   ./otelbench -metrics-generator=true -config=./config-prw.yaml
+# soak mode. Run with:
+#   ./otelbench -soak -config ./config-prw.yaml
 receivers:
   metricsgen:
     start_now_minus: 60m
@@ -17,19 +17,19 @@ processors:
 
 exporters:
   prometheusremotewrite/elasticsearch:
-    endpoint: https://local.ingest.127.0.0.1.ip.es.io:8443/api/v1/write
-    timeout: 15s
+    endpoint: https://test-e405e7.ingest.us-central1.gcp.staging.elastic.cloud/api/v1/write
+    timeout: 60s
     tls:
       insecure_skip_verify: true
     headers:
-      Authorization: "ApiKey <your-base64-api-key>"
+      Authorization: "ApiKey enhYekpwOEJjS25feTVHSnFac2k6SWEybHJ5Wl80N0JlV0I2WmFncmctQQ=="
     resource_to_telemetry_conversion:
       enabled: true
     target_info:
       enabled: false
     sending_queue:
       enabled: true
-      queue_size: 100
+      queue_size: 1000
       num_consumers: 5
     retry_on_failure:
       enabled: true

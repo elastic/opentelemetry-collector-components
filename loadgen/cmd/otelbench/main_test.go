@@ -84,3 +84,21 @@ func TestInitKeepsMetricsTelemetryPortRangeInternal(t *testing.T) {
 	require.Nil(t, flag.Lookup("metrics-telemetry-port-range"))
 	require.Equal(t, portRange{Start: 8889, End: 8999}, Config.MetricsTelemetryPortRange)
 }
+
+func TestInitRegistersSoakFlag(t *testing.T) {
+	oldCommandLine := flag.CommandLine
+	flag.CommandLine = flag.NewFlagSet(t.Name(), flag.ContinueOnError)
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+		Config.Soak = false
+	})
+
+	require.NoError(t, Init())
+
+	require.NotNil(t, flag.Lookup("soak"))
+	require.Nil(t, flag.Lookup("config-prw"))
+	require.Nil(t, flag.Lookup("metrics-generator"))
+
+	require.NoError(t, flag.Set("soak", "true"))
+	require.True(t, Config.Soak)
+}
