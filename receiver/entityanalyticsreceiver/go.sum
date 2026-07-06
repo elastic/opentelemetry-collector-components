@@ -41,8 +41,8 @@ github.com/ebitengine/purego v0.10.0 h1:QIw4xfpWT6GWTzaW5XEKy3HXoqrJGx1ijYHzTF0/
 github.com/ebitengine/purego v0.10.0/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
 github.com/elastic/elastic-transport-go/v8 v8.9.0 h1:KeT/2P54F0xS0S8Y3Pf+tFDg4HmBgReQMB+BMz8dDAs=
 github.com/elastic/elastic-transport-go/v8 v8.9.0/go.mod h1:ssMTvNS2hwf7CaiGsRRsx4gQHFZ/jS/DkLcISxekWzc=
-github.com/elastic/entcollect v0.0.0-20260617022524-00a42d67f0df h1:SVO1bpxnpZmVkgzqcLImLkVVWWfFZASPdTYrJ9hWZ6k=
-github.com/elastic/entcollect v0.0.0-20260617022524-00a42d67f0df/go.mod h1:ZcfSL3oNJg0mhiYrWNJnf/NeetQHr7HlkY4iWCjSGWo=
+github.com/elastic/entcollect v0.0.0-20260706024408-4a12ea00f54d h1:Xt7wszp8UIYLhuMIvl4oTA22QGrsjzfxcKVUn59o8QM=
+github.com/elastic/entcollect v0.0.0-20260706024408-4a12ea00f54d/go.mod h1:ZcfSL3oNJg0mhiYrWNJnf/NeetQHr7HlkY4iWCjSGWo=
 github.com/elastic/go-elasticsearch/v8 v8.19.6 h1:4qa7ecJkr5rLsoHKIVGbaqcFt2o57CnOHQJi9Pts/rk=
 github.com/elastic/go-elasticsearch/v8 v8.19.6/go.mod h1:jeWebApE1oFEW/hKZqx/IRYmP/aa2+WMJkOfk+AduSI=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
