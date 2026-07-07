@@ -68,7 +68,12 @@ func HandleStream(
 	} else {
 		dec = NewNDJSONStreamDecoder(body, maxLineLength)
 	}
-	defer decoderPool.Put(dec)
+	defer func() {
+		// Drop the request body reference so pooled decoders do not pin the
+		// previous request's body (and any wrapping gzip reader) until reuse.
+		dec.Reset(nil)
+		decoderPool.Put(dec)
+	}()
 	meta, err := DecodeMetadata(dec)
 	if err != nil {
 		return 0, []error{err}
