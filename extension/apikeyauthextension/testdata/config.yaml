@@ -20,7 +20,39 @@ apikeyauth/dynamic_resources:
           format: "resource:%s"
         - metadata: X-Resource-Name-Default-Format
   cache:
-    key_metadata: [X-Resource-Name, X-Resource-Name-Default-Format]
+    key_metadata:
+      - metadata: X-Resource-Name
+      - metadata: X-Resource-Name-Default-Format
+apikeyauth/optional_dynamic_resources:
+  application_privileges:
+    - application: my_app
+      privileges: [write]
+      resources: ['static-resource']
+      dynamic_resources:
+        - metadata: X-Resource-Name
+          format: "resource:%s"
+          required: false
+  cache:
+    key_metadata:
+      - metadata: X-Resource-Name
+        required: false
+apikeyauth/conditional_application_privileges:
+  application_privileges:
+    - exclude_metadata: [X-Resource-Name]
+      application: apm
+      privileges: [event:write]
+      resources: ['-']
+    - require_metadata: [X-Resource-Name]
+      application: ingest
+      privileges: [write]
+      dynamic_resources:
+        - metadata: X-Resource-Name
+          format: "source:%s"
+  cache:
+    key_metadata:
+      - metadata: X-Tenant-Id
+      - metadata: X-Resource-Name
+        required: false
 apikeyauth/dynamic_resources_missing_metadata:
   application_privileges:
     - application: my_app
@@ -42,7 +74,8 @@ apikeyauth/dynamic_resources_invalid_format:
         - metadata: X-Resource-Name
           format: "resource"
   cache:
-    key_metadata: [X-Resource-Name]
+    key_metadata:
+      - metadata: X-Resource-Name
 apikeyauth/dynamic_resources_multiple_format:
   application_privileges:
     - application: my_app
@@ -51,7 +84,8 @@ apikeyauth/dynamic_resources_multiple_format:
         - metadata: X-Resource-Name
           format: "resource:%s:%s"
   cache:
-    key_metadata: [X-Resource-Name]
+    key_metadata:
+      - metadata: X-Resource-Name
 apikeyauth/dynamic_resources_empty_metadata:
   application_privileges:
     - application: my_app
@@ -60,7 +94,12 @@ apikeyauth/dynamic_resources_empty_metadata:
         - metadata: ""
           format: "%s"
   cache:
-    key_metadata: [X-Resource-Name]
+    key_metadata:
+      - metadata: X-Resource-Name
+apikeyauth/cache_key_metadata_empty:
+  cache:
+    key_metadata:
+      - metadata: ""
 apikeyauth/custom_retry:
   elasticsearch_retry:
     enabled: true

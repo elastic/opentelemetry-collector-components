@@ -271,8 +271,12 @@ func getHeader(headers map[string][]string, titlecase, lowercase string) (string
 // hasPrivileges checks if the API Key is valid and has the required privileges.
 func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue string) (bool, string, error) {
 	clientMetadata := client.FromContext(ctx).Metadata
-	applications := make([]types.ApplicationPrivilegesCheck, len(a.config.ApplicationPrivileges))
-	for i, app := range a.config.ApplicationPrivileges {
+	applications := make([]types.ApplicationPrivilegesCheck, 0, len(a.config.ApplicationPrivileges))
+	for _, app := range a.config.ApplicationPrivileges {
+		if !applicationPrivilegesApplies(clientMetadata, app) {
+			continue
+		}
+
 		// Start with static resources
 		resources := make([]string, len(app.Resources))
 		copy(resources, app.Resources)
@@ -281,6 +285,9 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 		for _, dr := range app.DynamicResources {
 			values := clientMetadata.Get(dr.Metadata)
 			if len(values) == 0 {
+				if !dr.required() {
+					continue
+				}
 				return false, "", &metadataValidationError{
 					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
 				}
@@ -290,11 +297,14 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 			}
 		}
 
-		applications[i] = types.ApplicationPrivilegesCheck{
+		if len(resources) == 0 {
+			continue
+		}
+		applications = append(applications, types.ApplicationPrivilegesCheck{
 			Application: app.Application,
 			Privileges:  app.Privileges,
 			Resources:   resources,
-		}
+		})
 	}
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
@@ -322,6 +332,32 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	return resp.HasAllRequested, resp.Username, nil
 }
 
+// applicationPrivilegesApplies reports whether an application privilege check
+// should be included for the given client metadata. A check applies only when
+// every key in app.RequireMetadata is present and every key in
+// app.ExcludeMetadata is absent from clientMetadata.
+//
+// For example, given:
+//
+//	app.RequireMetadata = []string{"x-tenant-id"}
+//	app.ExcludeMetadata = []string{"x-internal"}
+//
+// the check applies to a request carrying "x-tenant-id" but not "x-internal",
+// and is skipped for a request that omits "x-tenant-id" or carries "x-internal".
+func applicationPrivilegesApplies(clientMetadata client.Metadata, app ApplicationPrivilegesConfig) bool {
+	for _, metadataKey := range app.RequireMetadata {
+		if len(clientMetadata.Get(metadataKey)) == 0 {
+			return false
+		}
+	}
+	for _, metadataKey := range app.ExcludeMetadata {
+		if len(clientMetadata.Get(metadataKey)) != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // getCacheKey computes a cache key for the given API Key ID and headers.
 func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[string][]string) (string, error) {
 	var clientMetadata client.Metadata
@@ -337,9 +373,12 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 		key += " " + value
 	}
 	for _, metadataKey := range a.config.Cache.KeyMetadata {
-		values := clientMetadata.Get(metadataKey)
+		values := clientMetadata.Get(metadataKey.Metadata)
 		if len(values) == 0 {
-			return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
+			if metadataKey.required() {
+				return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey.Metadata)
+			}
+			continue
 		}
 		key += " " + values[0]
 	}

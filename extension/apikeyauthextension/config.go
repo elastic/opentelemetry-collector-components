@@ -103,6 +103,14 @@ type ClientRetryConfig struct {
 }
 
 type ApplicationPrivilegesConfig struct {
+	// RequireMetadata lists client metadata keys that must be present for
+	// this application privilege check to apply.
+	RequireMetadata []string `mapstructure:"require_metadata,omitempty"`
+
+	// ExcludeMetadata lists client metadata keys that must be absent for
+	// this application privilege check to apply.
+	ExcludeMetadata []string `mapstructure:"exclude_metadata,omitempty"`
+
 	// Application holds the name of the application for which
 	// privileges are defined, e.g. "apm".
 	Application string `mapstructure:"application"`
@@ -134,6 +142,17 @@ type DynamicResource struct {
 	// the metadata value. Must contain exactly one %s placeholder.
 	// Defaults to "%s" if empty.
 	Format string `mapstructure:"format"`
+
+	// Required controls whether missing Metadata is an error. Defaults to true.
+	Required *bool `mapstructure:"required,omitempty"`
+}
+
+type MetadataKeyConfig struct {
+	// Metadata holds the client metadata key to include in the cache key.
+	Metadata string `mapstructure:"metadata"`
+
+	// Required controls whether missing Metadata is an error. Defaults to true.
+	Required *bool `mapstructure:"required,omitempty"`
 }
 
 type CacheConfig struct {
@@ -144,9 +163,9 @@ type CacheConfig struct {
 
 	// KeyMetadata holds an optional set of client metadata keys to
 	// include in the cache key, for partitioning the API Key space.
-	// If any keys are missing from the client metadata, an error
+	// If any required keys are missing from the client metadata, an error
 	// will be returned.
-	KeyMetadata []string `mapstructure:"key_metadata,omitempty"`
+	KeyMetadata []MetadataKeyConfig `mapstructure:"key_metadata,omitempty"`
 
 	// PBKDF2Iterations defines the iteration count for PBKDF2
 	// for key derivation in cached API Keys.
@@ -223,6 +242,10 @@ func (cfg *ClientRetryConfig) Validate() error {
 	return nil
 }
 
+func (dr *DynamicResource) required() bool {
+	return dr.Required == nil || *dr.Required
+}
+
 // Unmarshal unmarshals the DynamicResource configuration.
 func (dr *DynamicResource) Unmarshal(conf *confmap.Conf) error {
 	if err := conf.Unmarshal(dr); err != nil {
@@ -261,18 +284,33 @@ func (dr *DynamicResource) Validate() error {
 	return nil
 }
 
+func (mk *MetadataKeyConfig) required() bool {
+	return mk.Required == nil || *mk.Required
+}
+
+// Validate validates the MetadataKeyConfig.
+func (mk *MetadataKeyConfig) Validate() error {
+	if mk.Metadata == "" {
+		return fmt.Errorf("metadata must be non-empty")
+	}
+	return nil
+}
+
 // Validate validates the Config.
 func (cfg *Config) Validate() error {
 	// Build a set of metadata keys in cache.key_metadata for quick lookup
 	keyMetadataSet := make(map[string]bool)
 	for _, key := range cfg.Cache.KeyMetadata {
-		keyMetadataSet[key] = true
+		keyMetadataSet[key.Metadata] = true
 	}
 	// Validate each application privilege config
 	for i, app := range cfg.ApplicationPrivileges {
 		// Check that dynamic resource metadata keys are in cache.key_metadata
 		for j, dr := range app.DynamicResources {
-			if dr.Metadata != "" && !keyMetadataSet[dr.Metadata] {
+			if dr.Metadata == "" {
+				continue
+			}
+			if !keyMetadataSet[dr.Metadata] {
 				return fmt.Errorf(""+
 					"application_privileges::%d::dynamic_resources::%d: "+
 					"dynamic resource metadata %q must be included in cache.key_metadata",

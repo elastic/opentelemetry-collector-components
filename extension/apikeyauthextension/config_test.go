@@ -80,9 +80,58 @@ func TestLoadConfig(t *testing.T) {
 						Format:   "%s",
 					}},
 				}}
-				config.Cache.KeyMetadata = []string{
-					"X-Resource-Name",
-					"X-Resource-Name-Default-Format",
+				config.Cache.KeyMetadata = []MetadataKeyConfig{
+					{Metadata: "X-Resource-Name"},
+					{Metadata: "X-Resource-Name-Default-Format"},
+				}
+				return config
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "optional_dynamic_resources"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+					Application: "my_app",
+					Privileges:  []string{"write"},
+					Resources:   []string{"static-resource"},
+					DynamicResources: []DynamicResource{{
+						Metadata: "X-Resource-Name",
+						Format:   "resource:%s",
+						Required: ptr(false),
+					}},
+				}}
+				config.Cache.KeyMetadata = []MetadataKeyConfig{{
+					Metadata: "X-Resource-Name",
+					Required: ptr(false),
+				}}
+				return config
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "conditional_application_privileges"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.ApplicationPrivileges = []ApplicationPrivilegesConfig{
+					{
+						ExcludeMetadata: []string{"X-Resource-Name"},
+						Application:     "apm",
+						Privileges:      []string{"event:write"},
+						Resources:       []string{"-"},
+					},
+					{
+						RequireMetadata: []string{"X-Resource-Name"},
+						Application:     "ingest",
+						Privileges:      []string{"write"},
+						DynamicResources: []DynamicResource{{
+							Metadata: "X-Resource-Name",
+							Format:   "source:%s",
+						}},
+					},
+				}
+				config.Cache.KeyMetadata = []MetadataKeyConfig{
+					{Metadata: "X-Tenant-Id"},
+					{Metadata: "X-Resource-Name", Required: ptr(false)},
 				}
 				return config
 			}(),
@@ -106,6 +155,10 @@ func TestLoadConfig(t *testing.T) {
 		{
 			id:                 component.NewIDWithName(metadata.Type, "dynamic_resources_empty_metadata"),
 			expectedErrMessage: `application_privileges::0::dynamic_resources::0: metadata must be non-empty`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "cache_key_metadata_empty"),
+			expectedErrMessage: `cache::key_metadata::0: metadata must be non-empty`,
 		},
 		{
 			id: component.NewIDWithName(metadata.Type, "custom_retry"),
@@ -244,4 +297,8 @@ func TestLoadConfig(t *testing.T) {
 		})
 	}
 
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
