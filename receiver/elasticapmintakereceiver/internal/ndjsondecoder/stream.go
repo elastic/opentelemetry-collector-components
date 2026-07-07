@@ -61,9 +61,8 @@ func HandleStream(
 	logger *zap.Logger,
 	consumer BatchConsumer,
 ) (int, []error) {
-	var dec *NDJSONStreamDecoder
-	if v := decoderPool.Get(); v != nil && v.(*NDJSONStreamDecoder).lineReader.maxLineLength == maxLineLength {
-		dec = v.(*NDJSONStreamDecoder)
+	dec, ok := decoderPool.Get().(*NDJSONStreamDecoder)
+	if ok && dec.lineReader.maxLineLength == maxLineLength {
 		dec.Reset(body)
 	} else {
 		dec = NewNDJSONStreamDecoder(body, maxLineLength)
