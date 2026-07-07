@@ -477,7 +477,9 @@ func (prwe *prwExporter) execute(ctx context.Context, buf []byte) error {
 		}
 		defer func() {
 			_, _ = io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
+			if err := resp.Body.Close(); err != nil {
+				prwe.settings.Logger.Warn("failed to close response body", zap.Error(err))
+			}
 		}()
 
 		// Per the Prometheus remote write 2.0 specification, the response should contain
