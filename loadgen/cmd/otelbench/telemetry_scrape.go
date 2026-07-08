@@ -53,7 +53,7 @@ func ephemeralPort(host string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	return ln.Addr().(*net.TCPAddr).Port, nil
 }
 
@@ -81,7 +81,7 @@ func scrapeMetricsEndpoint(ctx context.Context, endpoint string) (telemetrySnaps
 	if err != nil {
 		return telemetrySnapshot{}, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return telemetrySnapshot{}, fmt.Errorf("scrape %s: unexpected status %d", url, resp.StatusCode)
