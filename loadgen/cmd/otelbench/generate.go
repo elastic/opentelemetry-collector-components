@@ -120,7 +120,7 @@ func metricsGeneratorConfigFiles(configPath, telemetryEndpoint string) (string, 
 }
 
 func printMetricsTelemetryEndpoint(w io.Writer, endpoint string) {
-	fmt.Fprintf(w, "metricsgen: scraping collector telemetry from %s\n", endpoint)
+	_, _ = fmt.Fprintf(w, "metricsgen: scraping collector telemetry from %s\n", endpoint)
 }
 
 func metricsTelemetryHost(endpoint string) (string, error) {
