@@ -3,6 +3,15 @@
 # Changelog
 
 <!-- next version -->
+## v0.11.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add `--metricsgen` benchmark flag. (#1294)
+  Adds the metricsgenreceiver support inside otelbench.
+  Allows otelbench to start load testing from the collector config and prints a
+  `BenchmarkOTelbench/metricsgen` line with `metric_points/s` and `failed_metric_points/s`, derived from the
+  `otelcol_exporter_sent/send_failed_metric_points` counters. Use `--config` to provide the collector config.
 
 ## v0.10.1
 
