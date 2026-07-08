@@ -28,6 +28,7 @@ import (
 	"net/netip"
 	"sort"
 	"strings"
+	"sync"
 
 	xxhash "github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/client"
@@ -40,6 +41,10 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 )
+
+// decoderPool reuses NDJSONStreamDecoders across requests to avoid allocating
+// the maxLineLength-sized bufio buffer (1MiB by default) per request.
+var decoderPool sync.Pool
 
 // BatchConsumer is called once per logical batch with the decoded events.
 // Any of the three pdata arguments may be nil if no events of that type were
@@ -56,7 +61,18 @@ func HandleStream(
 	logger *zap.Logger,
 	consumer BatchConsumer,
 ) (int, []error) {
-	dec := NewNDJSONStreamDecoder(body, maxLineLength)
+	dec, ok := decoderPool.Get().(*NDJSONStreamDecoder)
+	if ok && dec.lineReader.maxLineLength == maxLineLength {
+		dec.Reset(body)
+	} else {
+		dec = NewNDJSONStreamDecoder(body, maxLineLength)
+	}
+	defer func() {
+		// Drop the request body reference so pooled decoders do not pin the
+		// previous request's body (and any wrapping gzip reader) until reuse.
+		dec.Reset(nil)
+		decoderPool.Put(dec)
+	}()
 	meta, err := DecodeMetadata(dec)
 	if err != nil {
 		return 0, []error{err}
