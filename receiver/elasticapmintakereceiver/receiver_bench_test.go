@@ -181,7 +181,7 @@ func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte
 	reader := bytes.NewReader(payload)
 	for i := 0; i < b.N; i++ {
 		reader.Reset(payload)
-		_, streamErrs := ndjsondecoder.HandleStream(ctx, reader, rcv.cfg.BatchSize, rcv.cfg.MaxEventSize, rcv.settings.Logger, consumer)
+		_, streamErrs := ndjsondecoder.HandleStream(ctx, reader, rcv.cfg.streamConfig(), rcv.settings.Logger, consumer)
 		if len(streamErrs) != 0 {
 			b.Fatalf("unexpected stream errors: %v", streamErrs)
 		}
@@ -275,9 +275,9 @@ func BenchmarkHandleStreamGlobalLabels(b *testing.B) {
 }
 
 // BenchmarkHandleStreamSize sweeps payload size to expose per-event scaling
-// behavior: how does CPU/alloc-per-event change as batches grow? The handler's
-// internal batchSize is 10, so 10/100/1000 events exercise 1/10/100 batch
-// flushes per request.
+// behavior: how does CPU/alloc-per-event change as batches grow? Batches are
+// bounded by batch_bytes (default 1MiB), so these payloads accumulate into a
+// single growing batch flushed at end of stream.
 func BenchmarkHandleStreamSize(b *testing.B) {
 	for _, n := range []int{10, 100, 1000} {
 		payload := generateTransactionPayload(n)
