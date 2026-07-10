@@ -242,9 +242,10 @@ func (cfg Config) signaltometricsConfig() *signaltometricsconfig.Config {
 			{Key: "telemetry.sdk.language"}, // service.language.name
 			{Key: "data_stream.namespace", Optional: true},
 
-			// agent.name is set via elasticapmprocessor for traces,
-			// but not for other signals. Default to "unknown" for the
-			// others.
+			// agent.name is set via elasticapmprocessor for traces. For
+			// metrics and logs it is derived in connector.go from
+			// telemetry.sdk.* attributes (see setAgentName), so this
+			// default is only reached when neither has run.
 			{
 				Key:          "agent.name",
 				DefaultValue: "unknown",
