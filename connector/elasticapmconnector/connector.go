@@ -181,9 +181,13 @@ func (e *logsResourceEnricher) Capabilities() consumer.Capabilities {
 
 // setAgentName derives the agent.name resource attribute from
 // telemetry.sdk.name, telemetry.sdk.language and telemetry.distro.name,
-// the same way elasticapmprocessor does for traces. It is a no-op if
-// agent.name is already set, e.g. by a classic Elastic APM agent, or if
-// none of the telemetry.* attributes are present.
+// the same way elasticapmprocessor does for traces (see setAgentName in
+// processor/elasticapmprocessor/internal/enrichments/resource.go; keep the
+// two in sync). It is a no-op if agent.name is already set, e.g. by a
+// classic Elastic APM agent. Otherwise it always sets a value, defaulting
+// to "otlp" when no telemetry.* attributes are present, so that a service
+// never ends up with a different agent.name on its traces than on its
+// metrics/logs-derived aggregates.
 func setAgentName(resource pcommon.Resource) {
 	attrs := resource.Attributes()
 	if _, ok := attrs.Get("agent.name"); ok {
@@ -202,9 +206,6 @@ func setAgentName(resource pcommon.Resource) {
 		}
 		return true
 	})
-	if sdkName == "" && sdkLanguage == "" && distroName == "" {
-		return
-	}
 
 	agentName := "otlp"
 	if sdkName != "" {

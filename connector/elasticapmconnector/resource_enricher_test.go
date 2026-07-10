@@ -18,10 +18,15 @@
 package elasticapmconnector
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
 func TestSetAgentName(t *testing.T) {
@@ -57,6 +62,23 @@ func TestSetAgentName(t *testing.T) {
 			},
 			expected: "opentelemetry/unknown/elastic",
 		},
+		"distro name without sdk name": {
+			attrs: map[string]string{
+				"telemetry.sdk.language": "java",
+				"telemetry.distro.name":  "elastic",
+			},
+			expected: "otlp/java/elastic",
+		},
+		"sdk name only": {
+			attrs: map[string]string{
+				"telemetry.sdk.name": "opentelemetry",
+			},
+			expected: "opentelemetry",
+		},
+		"no telemetry attributes defaults to otlp": {
+			attrs:    map[string]string{},
+			expected: "otlp",
+		},
 		"already set is preserved": {
 			attrs: map[string]string{
 				"agent.name":             "my-custom-agent",
@@ -64,8 +86,11 @@ func TestSetAgentName(t *testing.T) {
 			},
 			expected: "my-custom-agent",
 		},
-		"no telemetry attributes is a no-op": {
-			attrs:    map[string]string{},
+		"already set to empty string is preserved": {
+			attrs: map[string]string{
+				"agent.name":             "",
+				"telemetry.sdk.language": "go",
+			},
 			expected: "",
 		},
 	} {
@@ -78,12 +103,82 @@ func TestSetAgentName(t *testing.T) {
 			setAgentName(resource)
 
 			got, ok := resource.Attributes().Get("agent.name")
-			if tc.expected == "" {
-				assert.False(t, ok)
-				return
-			}
-			assert.True(t, ok)
+			assert.True(t, ok, "agent.name should always be set")
 			assert.Equal(t, tc.expected, got.Str())
 		})
 	}
+}
+
+func TestMetricsResourceEnricher_MultipleResources(t *testing.T) {
+	md := pmetric.NewMetrics()
+	rm1 := md.ResourceMetrics().AppendEmpty()
+	rm1.Resource().Attributes().PutStr("telemetry.sdk.language", "go")
+	rm2 := md.ResourceMetrics().AppendEmpty()
+	rm2.Resource().Attributes().PutStr("agent.name", "my-custom-agent")
+
+	var got pmetric.Metrics
+	sink := &metricsSinkFunc{fn: func(_ context.Context, md pmetric.Metrics) error {
+		got = md
+		return nil
+	}}
+	enricher := &metricsResourceEnricher{next: sink}
+	require.NoError(t, enricher.ConsumeMetrics(context.Background(), md))
+
+	rms := got.ResourceMetrics()
+	require.Equal(t, 2, rms.Len())
+	name1, ok := rms.At(0).Resource().Attributes().Get("agent.name")
+	require.True(t, ok)
+	assert.Equal(t, "otlp/go", name1.Str())
+	name2, ok := rms.At(1).Resource().Attributes().Get("agent.name")
+	require.True(t, ok)
+	assert.Equal(t, "my-custom-agent", name2.Str())
+}
+
+func TestLogsResourceEnricher_MultipleResources(t *testing.T) {
+	ld := plog.NewLogs()
+	rl1 := ld.ResourceLogs().AppendEmpty()
+	rl1.Resource().Attributes().PutStr("telemetry.sdk.language", "go")
+	rl2 := ld.ResourceLogs().AppendEmpty()
+	rl2.Resource().Attributes().PutStr("agent.name", "my-custom-agent")
+
+	var got plog.Logs
+	sink := &logsSinkFunc{fn: func(_ context.Context, ld plog.Logs) error {
+		got = ld
+		return nil
+	}}
+	enricher := &logsResourceEnricher{next: sink}
+	require.NoError(t, enricher.ConsumeLogs(context.Background(), ld))
+
+	rls := got.ResourceLogs()
+	require.Equal(t, 2, rls.Len())
+	name1, ok := rls.At(0).Resource().Attributes().Get("agent.name")
+	require.True(t, ok)
+	assert.Equal(t, "otlp/go", name1.Str())
+	name2, ok := rls.At(1).Resource().Attributes().Get("agent.name")
+	require.True(t, ok)
+	assert.Equal(t, "my-custom-agent", name2.Str())
+}
+
+type metricsSinkFunc struct {
+	fn func(context.Context, pmetric.Metrics) error
+}
+
+func (s *metricsSinkFunc) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	return s.fn(ctx, md)
+}
+
+func (s *metricsSinkFunc) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: false}
+}
+
+type logsSinkFunc struct {
+	fn func(context.Context, plog.Logs) error
+}
+
+func (s *logsSinkFunc) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	return s.fn(ctx, ld)
+}
+
+func (s *logsSinkFunc) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: false}
 }
