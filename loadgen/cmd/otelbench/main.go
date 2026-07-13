@@ -171,7 +171,7 @@ var collectorConfig []byte
 // The url will be resolved by collector's confmap http provider.
 // The benefit is that the otelbench binary can function without dependency
 // on a collector config in the file system.
-func serveEmbeddedConf() (string, *http.Server, error) {
+func serveEmbeddedConf(config []byte) (string, *http.Server, error) {
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return "", nil, err
@@ -179,7 +179,7 @@ func serveEmbeddedConf() (string, *http.Server, error) {
 
 	s := &http.Server{
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if _, err := w.Write(collectorConfig); err != nil {
+			if _, err := w.Write(config); err != nil {
 				fmt.Fprintln(os.Stderr, fmt.Errorf("embedded config: error writing http response: %w", err))
 			}
 		}),
@@ -190,6 +190,10 @@ func serveEmbeddedConf() (string, *http.Server, error) {
 		}
 	}()
 	return fmt.Sprintf("http://%s/", listener.Addr().String()), s, nil
+}
+
+func isMetricsGenMode() bool {
+	return Config.MetricsGen
 }
 
 // getBenchCount returns the value of -test.count flag or 1 if not set
@@ -217,15 +221,15 @@ func main() {
 	}
 	flag.Parse()
 
-	// In metrics-generator mode, otelbench runs the collector defined by -config
-	// (a metricsgen pipeline) directly instead of running the benchmark harness.
-	if Config.MetricsGenerator {
+	// In metricsgen mode, otelbench runs the collector defined by -config
+	// directly instead of running the benchmark harness.
+	if isMetricsGenMode() {
 		os.Exit(runMetricsGenerator(context.Background()))
 	}
 
 	// default to embedded collector config
 	if Config.CollectorConfigPath == "" {
-		url, srv, err := serveEmbeddedConf()
+		url, srv, err := serveEmbeddedConf(collectorConfig)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, fmt.Errorf("error serving embedded collector config: %w", err))
 			flag.Usage()

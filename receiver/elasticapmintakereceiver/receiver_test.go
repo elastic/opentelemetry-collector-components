@@ -534,6 +534,9 @@ func TestErrors(t *testing.T) {
 		outputExpectedYamlFileName string
 	}{
 		{"errors.ndjson", "errors_expected.yaml"},
+		{"error_context_tags.ndjson", "error_context_tags_expected.yaml"},                           // context.tags written as resource labels.*
+		{"error_transaction_sampled_false.ndjson", "error_transaction_sampled_false_expected.yaml"}, // error.transaction.sampled=false parity
+		{"error_empty_stacktrace_strings.ndjson", "error_empty_stacktrace_strings_expected.yaml"},   // empty-string stacktrace fields must not be written
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -568,6 +571,7 @@ func TestMetrics(t *testing.T) {
 	}{
 		{"metricsets.ndjson", "metricsets_expected.yaml", []string{"labels.tag1", "numeric_labels.tag2"}},
 		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml", nil},
+		{"metricset_summary_type.ndjson", "metricset_summary_type_expected.yaml", nil}, // "summary" metric type parity
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
@@ -658,6 +662,11 @@ var inputFiles = []struct {
 	{"spans_representative_count.ndjson", "spans_representative_count_expected.yaml", nil},
 	{"dropped_spans_stats_no_duration.ndjson", "dropped_spans_stats_no_duration_expected.yaml", nil},
 	{"transactions_xff_nat_ip.ndjson", "transactions_xff_nat_ip_expected.yaml", nil},
+	{"transaction_sampled_false.ndjson", "transaction_sampled_false_expected.yaml", nil},         // transaction.sampled=false parity
+	{"span_otel_custom_attrs.ndjson", "span_otel_custom_attrs_expected.yaml", nil},               // OTel attrs on spans must propagate to labels.*
+	{"transaction_otel_custom_attrs.ndjson", "transaction_otel_custom_attrs_expected.yaml", nil}, // OTel attrs on transactions must propagate to labels.*
+	{"span_empty_string_label.ndjson", "span_empty_string_label_expected.yaml", nil},             // empty-string tag values are omitted from labels.*
+	{"span_empty_stacktrace_strings.ndjson", "span_empty_stacktrace_strings_expected.yaml", nil}, // empty-string stacktrace frame fields must not be written
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -849,6 +858,32 @@ func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
 		allTraces[1].SpanCount(),
 		allTraces[2].SpanCount(),
 	})
+}
+
+func TestEventsHandlerZeroMaxConcurrentDecodersDisablesLimit(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.MaxConcurrentDecoders = 0
+
+	rcvr, err := newElasticAPMIntakeReceiver(
+		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+		cfg,
+		receivertest.NewNopSettings(metadata.Type),
+	)
+	require.NoError(t, err)
+
+	nextTraces := new(consumertest.TracesSink)
+	rcvr.nextTraces = nextTraces
+
+	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+		return withECSMappingMode(req.Context(), false)
+	})
+	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	require.Len(t, nextTraces.AllTraces(), 1)
 }
 
 func TestEventsHandler_ContextCanceledWithUnknownRPCError(t *testing.T) {

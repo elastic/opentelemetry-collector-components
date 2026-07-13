@@ -34,7 +34,8 @@ type Config struct {
 	BatchSize int `mapstructure:"batch_size"`
 
 	// MaxConcurrentDecoders is the maximum number of intake requests whose bodies
-	// can be decoded concurrently.
+	// can be decoded concurrently. Zero disables the limit entirely (no
+	// concurrency gating).
 	MaxConcurrentDecoders int `mapstructure:"max_concurrent_decoders"`
 
 	// MaxEventSize is the maximum allowed event size, in bytes.
@@ -62,8 +63,8 @@ func (cfg *Config) Validate() error {
 	if cfg.BatchSize <= 0 {
 		return fmt.Errorf("batch_size must be positive")
 	}
-	if cfg.MaxConcurrentDecoders <= 0 {
-		return fmt.Errorf("max_concurrent_decoders must be positive")
+	if cfg.MaxConcurrentDecoders < 0 {
+		return fmt.Errorf("max_concurrent_decoders must not be negative (0 disables the limit)")
 	}
 	if cfg.MaxEventSize <= 0 {
 		return fmt.Errorf("max_event_size must be positive")

@@ -172,7 +172,12 @@ func (r *elasticAPMIntakeReceiver) newRootHandler() http.HandlerFunc {
 }
 
 func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http.Request) context.Context) http.HandlerFunc {
-	sem := semaphore.NewWeighted(int64(r.cfg.MaxConcurrentDecoders))
+	// A zero MaxConcurrentDecoders disables the limit: sem stays nil and the
+	// per-request acquire/release below is skipped entirely.
+	var sem *semaphore.Weighted
+	if r.cfg.MaxConcurrentDecoders > 0 {
+		sem = semaphore.NewWeighted(int64(r.cfg.MaxConcurrentDecoders))
+	}
 
 	return func(w http.ResponseWriter, req *http.Request) {
 		statusCode := http.StatusAccepted
@@ -193,16 +198,18 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 			}
 		}
 
-		if err := sem.Acquire(ctx, 1); err != nil {
-			processError(err, true)
-			if statusCode >= http.StatusBadRequest {
-				w.Header().Set("Connection", "close")
+		if sem != nil {
+			if err := sem.Acquire(ctx, 1); err != nil {
+				processError(err, true)
+				if statusCode >= http.StatusBadRequest {
+					w.Header().Set("Connection", "close")
+				}
+				w.WriteHeader(statusCode)
+				_ = json.NewEncoder(w).Encode(&result)
+				return
 			}
-			w.WriteHeader(statusCode)
-			_ = json.NewEncoder(w).Encode(&result)
-			return
+			defer sem.Release(1)
 		}
-		defer sem.Release(1)
 
 		consumer := ndjsondecoder.BatchConsumer(func(ctx context.Context, ld *plog.Logs, md *pmetric.Metrics, td *ptrace.Traces) error {
 			return errors.Join(r.consumeOTel(ctx, ld, md, td)...)
