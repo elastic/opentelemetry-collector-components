@@ -158,6 +158,32 @@ func TestMetricsGeneratorConfigFilesSelectsTelemetryPort(t *testing.T) {
 	}, configFiles)
 }
 
+func TestTelemetryPollerFinalScrapeUpdatesLatestSnapshot(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/metrics", r.URL.Path)
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+		_, _ = w.Write([]byte(telemetryFixture))
+	}))
+	defer srv.Close()
+
+	poller := &telemetryPoller{
+		latest: telemetrySnapshot{
+			accepted: 200,
+			at:       time.Now().Add(-time.Second),
+			valid:    true,
+		},
+		firstSeen: time.Now().Add(-time.Second),
+	}
+
+	poller.scrapeNow(context.Background(), srv.URL)
+	snap, firstSeen := poller.snapshot()
+
+	assert.Equal(t, float64(150), snap.sent)
+	assert.Equal(t, float64(3), snap.failed)
+	assert.Equal(t, float64(200), snap.accepted)
+	assert.False(t, firstSeen.IsZero())
+}
+
 func TestMetricsGenSeedConfigFiles(t *testing.T) {
 	assert.Equal(t, []string{
 		"yaml:receivers::metricsgen::seed: 124",

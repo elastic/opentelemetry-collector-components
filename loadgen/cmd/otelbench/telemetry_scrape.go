@@ -177,6 +177,19 @@ func startTelemetryPoller(ctx context.Context, endpoint string, interval time.Du
 	return p
 }
 
+func (p *telemetryPoller) scrapeNow(ctx context.Context, endpoint string) {
+	snap, err := scrapeMetricsEndpoint(ctx, endpoint)
+	if err != nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.latest = snap
+	if p.firstSeen.IsZero() && (snap.sent > 0 || snap.accepted > 0) {
+		p.firstSeen = snap.at
+	}
+}
+
 // snapshot returns the latest retained snapshot and the time the first non-zero
 // sample was observed.
 func (p *telemetryPoller) snapshot() (telemetrySnapshot, time.Time) {

@@ -253,6 +253,7 @@ func runMetricsGenCollector(ctx context.Context, configFiles []string, telemetry
 	if poller == nil {
 		return metricsGenRunStats{}, nil
 	}
+	poller.scrapeNow(ctx, telemetryEndpoint)
 	snap, firstSeen := poller.snapshot()
 	if !snap.valid {
 		return metricsGenRunStats{}, fmt.Errorf("metricsgen: no telemetry samples scraped")
