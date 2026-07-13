@@ -1,0 +1,10 @@
+change_type: enhancement
+
+note: Add `-metricsgen-benchmark=false` to report metricsgen throughput without overriding `start_now_minus`
+
+component: otelbench
+
+issues: [1294]
+
+subtext: |
+  Introduce `-metricsgen-benchmark=false` when `receivers.metricsgen.start_now_minus` should come from the config instead of Go benchmark `N`.

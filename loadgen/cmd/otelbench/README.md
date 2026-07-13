@@ -214,13 +214,16 @@ BenchmarkOTelbench/metricsgen <backfill_minutes>     <ns/op> ns/op     <duration
 BenchmarkOTelbench/metricsgen          3     62000000000 ns/op       186.3 duration_s     0 failed_metric_points/s        3401 metric_points/s
 ```
 
-Metricsgen mode uses Go's benchmark runner to choose the backfill size. The benchmark `N` is passed into the
-collector config as `receivers.metricsgen.start_now_minus=<N>m`, so `N=3` means the final benchmark run generated
+By default, metricsgen mode uses Go's benchmark runner to choose the backfill size. The benchmark `N` is passed into
+the collector config as `receivers.metricsgen.start_now_minus=<N>m`, so `N=3` means the final benchmark run generated
 three minutes of historical metrics. `duration_s` is the active telemetry window used for the throughput calculation.
 
 For each benchmark calibration run, otelbench overrides `receivers.metricsgen.seed` with the base seed plus a
 monotonically increasing run index. This keeps generated time series distinct across repeated benchmark calibration
 runs and avoids `version_conflict_exception` conflicts.
+
+Set `-metricsgen-benchmark=false` to keep telemetry reporting enabled but run the rendered metricsgen config once
+without overriding `receivers.metricsgen.start_now_minus`.
 
 The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench asks the OS for an
 available internal telemetry port using `:0`, releases it, prints the selected host:port. This overrides the collector's `service.telemetry.metrics` pull reader to expose Prometheus telemetry on the selected port.
@@ -235,6 +238,9 @@ The default host works with the bundled config, so no flag is needed for benchma
 ```shell
 # Benchmark output on (default).
 ./otelbench -metricsgen -config ./config-prw.yaml
+
+# Benchmark output on, but use start_now_minus from the config.
+./otelbench -metricsgen -metricsgen-benchmark=false -config ./config-prw.yaml
 
 # Disable benchmark output, metricsgen only.
 ./otelbench -metricsgen -config ./config-prw.yaml -metrics-telemetry-endpoint=""

@@ -216,6 +216,30 @@ func TestRunMetricsGenBenchPassesBenchmarkNAsStartNowMinus(t *testing.T) {
 	assert.NotContains(t, result.Extra, "attempted_metric_points")
 }
 
+func TestRunMetricsGenOnceReportsTelemetryWithoutStartNowMinusBN(t *testing.T) {
+	var gotConfigFiles []string
+	result, err := runMetricsGenOnce(
+		context.Background(),
+		[]string{"config-prw.yaml"},
+		func(ctx context.Context, configFiles []string) (metricsGenRunStats, error) {
+			gotConfigFiles = append([]string{}, configFiles...)
+			return metricsGenRunStats{
+				sent:           100,
+				failed:         10,
+				activeDuration: 2 * time.Second,
+			}, nil
+		},
+	)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"config-prw.yaml"}, gotConfigFiles)
+	assert.Equal(t, 1, result.N)
+	assert.Equal(t, 2*time.Second, result.T)
+	assert.Equal(t, 50.0, result.Extra["metric_points/s"])
+	assert.Equal(t, 5.0, result.Extra["failed_metric_points/s"])
+	assert.Equal(t, 2.0, result.Extra["duration_s"])
+}
+
 func TestPrintMetricsTelemetryEndpoint(t *testing.T) {
 	var out bytes.Buffer
 	printMetricsTelemetryEndpoint(&out, "127.0.0.1:8891")

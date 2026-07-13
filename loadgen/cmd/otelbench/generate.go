@@ -92,9 +92,15 @@ func runMetricsGenerator(parent context.Context) int {
 		return 0
 	}
 
-	result, err := runMetricsGenBench(ctx, configFiles, defaultMetricsGenSeed, run)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	var result testing.BenchmarkResult
+	var runErr error
+	if Config.MetricsGenBenchmark {
+		result, runErr = runMetricsGenBench(ctx, configFiles, defaultMetricsGenSeed, run)
+	} else {
+		result, runErr = runMetricsGenOnce(ctx, configFiles, run)
+	}
+	if runErr != nil {
+		fmt.Fprintln(os.Stderr, runErr)
 		return 1
 	}
 	reportMetricsGenBenchmark(result)
@@ -185,15 +191,33 @@ func runMetricsGenBench(ctx context.Context, configFiles []string, baseSeed int,
 	if finalStats.activeDuration <= 0 {
 		return result, fmt.Errorf("metricsgen: run too short to compute throughput")
 	}
-
-	elapsedSeconds := finalStats.activeDuration.Seconds()
 	result.T = finalStats.activeDuration
-	result.Extra = map[string]float64{
-		"duration_s":             elapsedSeconds,
-		"metric_points/s":        finalStats.sent / elapsedSeconds,
-		"failed_metric_points/s": finalStats.failed / elapsedSeconds,
-	}
+	result.Extra = metricsGenBenchmarkExtras(finalStats)
 	return result, nil
+}
+
+func runMetricsGenOnce(ctx context.Context, configFiles []string, run metricsGenRunFunc) (testing.BenchmarkResult, error) {
+	runStats, err := run(ctx, configFiles)
+	if err != nil {
+		return testing.BenchmarkResult{}, err
+	}
+	if runStats.activeDuration <= 0 {
+		return testing.BenchmarkResult{}, fmt.Errorf("metricsgen: run too short to compute throughput")
+	}
+	return testing.BenchmarkResult{
+		N:     1,
+		T:     runStats.activeDuration,
+		Extra: metricsGenBenchmarkExtras(runStats),
+	}, nil
+}
+
+func metricsGenBenchmarkExtras(stats metricsGenRunStats) map[string]float64 {
+	elapsedSeconds := stats.activeDuration.Seconds()
+	return map[string]float64{
+		"duration_s":             elapsedSeconds,
+		"metric_points/s":        stats.sent / elapsedSeconds,
+		"failed_metric_points/s": stats.failed / elapsedSeconds,
+	}
 }
 
 func runMetricsGenCollector(ctx context.Context, configFiles []string, telemetryEndpoint string, duration time.Duration) (metricsGenRunStats, error) {

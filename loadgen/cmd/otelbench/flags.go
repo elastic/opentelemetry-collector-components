@@ -48,6 +48,10 @@ var Config struct {
 
 	// MetricsGen runs otelbench as a metricsgen collector benchmark instead of the benchmark harness.
 	MetricsGen bool
+	// MetricsGenBenchmark uses Go's benchmark runner to choose the metricsgen
+	// start_now_minus override. When false, metricsgen runs the provided config
+	// once while and respects the provided start_now_minus still reporting telemetry-derived throughput.
+	MetricsGenBenchmark bool
 	// DurationMetrics is an optional safety cap for the metricsgen run.
 	// When 0, the run continues until the collector exits on its own (e.g.
 	// metricsgen exit_after_end).
@@ -188,6 +192,7 @@ func Init() error {
 	flag.BoolVar(&Config.Mixed, "mixed", true, "benchmark mixed signals, i.e. logs, metrics, traces and profiles (only of -profiles flag enabled) at the same time")
 
 	flag.BoolVar(&Config.MetricsGen, "metricsgen", false, "run as a metricsgen collector benchmark (plain collector run reading -config) instead of the benchmark harness")
+	flag.BoolVar(&Config.MetricsGenBenchmark, "metricsgen-benchmark", true, "use Go benchmark N to override metricsgen start_now_minus; false runs the rendered metricsgen config once while still reporting telemetry")
 	flag.DurationVar(&Config.DurationMetrics, "duration-metrics", 0, "optional safety cap for -metricsgen; 0 means run until the collector exits on its own (e.g. via metricsgen exit_after_end)")
 	flag.StringVar(&Config.MetricsTelemetryEndpoint, "metrics-telemetry-endpoint", defaultMetricsTelemetryEndpoint, "collector self-telemetry Prometheus host to scrape for -metricsgen benchmark output; empty disables it")
 
