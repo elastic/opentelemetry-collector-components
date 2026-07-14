@@ -1,0 +1,410 @@
+{
+  "config": {
+    "protocol_version": "v1.0.0",
+    "scanner_name": "govulncheck",
+    "scanner_version": "v1.5.0",
+    "db": "https://vuln.go.dev",
+    "go_version": "go1.25.0",
+    "scan_level": "symbol",
+    "scan_mode": "source"
+  }
+}
+{
+  "SBOM": {
+    "go_version": "go1.25.0",
+    "modules": [
+      {
+        "path": "github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector"
+      },
+      {
+        "path": "../../internal/sharedcomponent"
+      },
+      {
+        "path": "../../internal/sharedcomponent"
+      },
+      {
+        "path": "../../processor/lsmintervalprocessor"
+      },
+      {
+        "path": "../../processor/lsmintervalprocessor"
+      },
+      {
+        "path": "github.com/DataDog/zstd",
+        "version": "v1.5.6"
+      },
+      {
+        "path": "github.com/alecthomas/participle/v2",
+        "version": "v2.1.4"
+      },
+      {
+        "path": "github.com/antchfx/xmlquery",
+        "version": "v1.5.1"
+      },
+      {
+        "path": "github.com/antchfx/xpath",
+        "version": "v1.3.6"
+      },
+      {
+        "path": "github.com/axiomhq/hyperloglog",
+        "version": "v0.2.6"
+      },
+      {
+        "path": "github.com/beorn7/perks",
+        "version": "v1.0.1"
+      },
+      {
+        "path": "github.com/cespare/xxhash/v2",
+        "version": "v2.3.0"
+      },
+      {
+        "path": "github.com/cockroachdb/errors",
+        "version": "v1.11.3"
+      },
+      {
+        "path": "github.com/cockroachdb/fifo",
+        "version": "v0.0.0-20240816210425-c5d0cb0b6fc0"
+      },
+      {
+        "path": "github.com/cockroachdb/logtags",
+        "version": "v0.0.0-20241215232642-bb51bb14a506"
+      },
+      {
+        "path": "github.com/cockroachdb/pebble",
+        "version": "v1.1.5"
+      },
+      {
+        "path": "github.com/cockroachdb/redact",
+        "version": "v1.1.6"
+      },
+      {
+        "path": "github.com/cockroachdb/tokenbucket",
+        "version": "v0.0.0-20230807174530-cc333fc44b06"
+      },
+      {
+        "path": "github.com/davecgh/go-spew",
+        "version": "v1.1.2-0.20180830191138-d8f796af33cc"
+      },
+      {
+        "path": "github.com/dgryski/go-metro",
+        "version": "v0.0.0-20250106013310-edb8663e5e33"
+      },
+      {
+        "path": "github.com/elastic/go-grok",
+        "version": "v0.3.1"
+      },
+      {
+        "path": "github.com/elastic/lunes",
+        "version": "v0.2.2"
+      },
+      {
+        "path": "github.com/getsentry/sentry-go",
+        "version": "v0.31.1"
+      },
+      {
+        "path": "github.com/go-viper/mapstructure/v2",
+        "version": "v2.5.0"
+      },
+      {
+        "path": "github.com/gobwas/glob",
+        "version": "v0.2.3"
+      },
+      {
+        "path": "github.com/goccy/go-json",
+        "version": "v0.10.6"
+      },
+      {
+        "path": "github.com/gogo/protobuf",
+        "version": "v1.3.2"
+      },
+      {
+        "path": "github.com/golang/groupcache",
+        "version": "v0.0.0-20241129210726-2c02b8208cf8"
+      },
+      {
+        "path": "github.com/golang/snappy",
+        "version": "v0.0.4"
+      },
+      {
+        "path": "github.com/google/uuid",
+        "version": "v1.6.0"
+      },
+      {
+        "path": "github.com/hashicorp/go-version",
+        "version": "v1.9.0"
+      },
+      {
+        "path": "github.com/hashicorp/golang-lru",
+        "version": "v1.0.2"
+      },
+      {
+        "path": "github.com/hashicorp/golang-lru/v2",
+        "version": "v2.0.7"
+      },
+      {
+        "path": "github.com/iancoleman/strcase",
+        "version": "v0.3.0"
+      },
+      {
+        "path": "github.com/json-iterator/go",
+        "version": "v1.1.12"
+      },
+      {
+        "path": "github.com/kamstrup/intmap",
+        "version": "v0.5.2"
+      },
+      {
+        "path": "github.com/klauspost/cpuid/v2",
+        "version": "v2.3.0"
+      },
+      {
+        "path": "github.com/knadh/koanf/maps",
+        "version": "v0.1.2"
+      },
+      {
+        "path": "github.com/knadh/koanf/providers/confmap",
+        "version": "v1.0.0"
+      },
+      {
+        "path": "github.com/knadh/koanf/v2",
+        "version": "v2.3.5"
+      },
+      {
+        "path": "github.com/kr/pretty",
+        "version": "v0.3.1"
+      },
+      {
+        "path": "github.com/kr/text",
+        "version": "v0.2.0"
+      },
+      {
+        "path": "github.com/lightstep/go-expohisto",
+        "version": "v1.0.0"
+      },
+      {
+        "path": "github.com/mitchellh/copystructure",
+        "version": "v1.2.0"
+      },
+      {
+        "path": "github.com/mitchellh/reflectwalk",
+        "version": "v1.0.2"
+      },
+      {
+        "path": "github.com/modern-go/concurrent",
+        "version": "v0.0.0-20180306012644-bacd9c7ef1dd"
+      },
+      {
+        "path": "github.com/modern-go/reflect2",
+        "version": "v1.0.3-0.20250322232337-35a7c28c31ee"
+      },
+      {
+        "path": "github.com/munnerz/goautoneg",
+        "version": "v0.0.0-20191010083416-a7dc8b61c822"
+      },
+      {
+        "path": "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "github.com/open-telemetry/opentelemetry-collector-contrib/internal/filter",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "github.com/pkg/errors",
+        "version": "v0.9.1"
+      },
+      {
+        "path": "github.com/pmezard/go-difflib",
+        "version": "v1.0.1-0.20181226105442-5d4384ee4fb2"
+      },
+      {
+        "path": "github.com/prometheus/client_golang",
+        "version": "v1.20.5"
+      },
+      {
+        "path": "github.com/prometheus/client_model",
+        "version": "v0.6.1"
+      },
+      {
+        "path": "github.com/prometheus/common",
+        "version": "v0.62.0"
+      },
+      {
+        "path": "github.com/prometheus/procfs",
+        "version": "v0.15.1"
+      },
+      {
+        "path": "github.com/rogpeppe/go-internal",
+        "version": "v1.14.1"
+      },
+      {
+        "path": "github.com/stretchr/testify",
+        "version": "v1.11.1"
+      },
+      {
+        "path": "github.com/twmb/murmur3",
+        "version": "v1.1.8"
+      },
+      {
+        "path": "github.com/ua-parser/uap-go",
+        "version": "v0.0.0-20251207011819-db9adb27a0b8"
+      },
+      {
+        "path": "github.com/zeebo/xxh3",
+        "version": "v1.1.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/client",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/component",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/component/componentstatus",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/config/configoptional",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/confmap",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/confmap/xconfmap",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/connector",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/connector/xconnector",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/consumer",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/consumer/xconsumer",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/featuregate",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/internal/componentalias",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/internal/fanoutconsumer",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/pdata",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/pdata/pprofile",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/pipeline",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/pipeline/xpipeline",
+        "version": "v0.155.0"
+      },
+      {
+        "path": "go.opentelemetry.io/collector/processor",
+        "version": "v1.61.0"
+      },
+      {
+        "path": "go.opentelemetry.io/otel",
+        "version": "v1.44.0"
+      },
+      {
+        "path": "go.opentelemetry.io/otel/metric",
+        "version": "v1.44.0"
+      },
+      {
+        "path": "go.opentelemetry.io/otel/trace",
+        "version": "v1.44.0"
+      },
+      {
+        "path": "go.uber.org/multierr",
+        "version": "v1.11.0"
+      },
+      {
+        "path": "go.uber.org/zap",
+        "version": "v1.28.0"
+      },
+      {
+        "path": "go.yaml.in/yaml/v3",
+        "version": "v3.0.4"
+      },
+      {
+        "path": "golang.org/x/exp",
+        "version": "v0.0.0-20250215185904-eff6e970281f"
+      },
+      {
+        "path": "golang.org/x/net",
+        "version": "v0.55.0"
+      },
+      {
+        "path": "golang.org/x/sys",
+        "version": "v0.45.0"
+      },
+      {
+        "path": "golang.org/x/text",
+        "version": "v0.38.0"
+      },
+      {
+        "path": "google.golang.org/grpc",
+        "version": "v1.81.1"
+      },
+      {
+        "path": "google.golang.org/protobuf",
+        "version": "v1.36.11"
+      },
+      {
+        "path": "gopkg.in/yaml.v3",
+        "version": "v3.0.1"
+      },
+      {
+        "path": "stdlib",
+        "version": "v1.25.0"
+      }
+    ],
+    "roots": [
+      "github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata",
+      "github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector"
+    ]
+  }
+}
+{
+  "progress": {
+    "message": "Fetching vulnerabilities from the database..."
+  }
+}
