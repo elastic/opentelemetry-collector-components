@@ -29,6 +29,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/zap"
 )
@@ -273,11 +274,15 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 		require.True(t, ok, "log record %d: body should have 'message' key", i)
 		assert.NotEmpty(t, msgVal.Str(), "log record %d: message should not be empty", i)
 
-		eventCreated, ok := lr.Body().Map().Get("event.created")
-		require.True(t, ok, "log record %d: body should have 'event.created' key", i)
+		eventMap, ok := lr.Body().Map().Get("event")
+		require.True(t, ok, "log record %d: event should have 'event' key", i)
+		require.Equal(t, pcommon.ValueTypeMap, eventMap.Type(), "log record %d: event should be a map", i)
+
+		eventCreated, ok := eventMap.Map().Get("created")
+		require.True(t, ok, "log record %d: body should have 'created' key", i)
 		assert.NotEmpty(t, eventCreated.Str(), "log record %d: event.created should not be empty", i)
 
-		eventDataset, ok := lr.Body().Map().Get("event.dataset")
+		eventDataset, ok := eventMap.Map().Get("dataset")
 		require.True(t, ok, "log record %d: body should have 'event.dataset' key", i)
 		assert.Equal(t, "azure.events", eventDataset.Str(), "log record %d: event.dataset should match data_stream.dataset", i)
 
@@ -493,8 +498,13 @@ func stripEventCreated(logs plog.Logs) {
 			sl := rl.ScopeLogs().At(j)
 			for k := 0; k < sl.LogRecords().Len(); k++ {
 				lr := sl.LogRecords().At(k)
-				lr.Body().Map().Remove("event.created")
 				lr.Body().Map().Remove("@timestamp")
+
+				v, b := lr.Body().Map().Get("event")
+				if !b || v.Type() != pcommon.ValueTypeMap {
+					continue
+				}
+				v.Map().Remove("created")
 			}
 		}
 	}

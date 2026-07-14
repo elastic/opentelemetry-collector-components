@@ -18,20 +18,28 @@ resourceLogs:
                   - key: message
                     value:
                       stringValue: '{"key": "value", "number": 42}'
-                  - key: event.dataset
+                  - key: event
                     value:
-                      stringValue: generic
-                  - key: data_stream.type
+                      kvlistValue:
+                        values:
+                          - key: dataset
+                            value:
+                              stringValue: generic
+                  - key: data_stream
                     value:
-                      stringValue: logs
-                  - key: data_stream.dataset
-                    value:
-                      stringValue: generic
-                  - key: data_stream.namespace
-                    value:
-                      stringValue: default
-            observedTimeUnixNano: "1773919567376876000"
-            timeUnixNano: "1773919567376876000"
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: logs
+                          - key: dataset
+                            value:
+                              stringValue: generic
+                          - key: namespace
+                            value:
+                              stringValue: default
+            observedTimeUnixNano: "1784054613325241000"
+            timeUnixNano: "1784054613325241000"
         scope:
           attributes:
             - key: elastic.mapping.mode
