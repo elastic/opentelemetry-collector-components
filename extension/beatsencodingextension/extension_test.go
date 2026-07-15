@@ -286,9 +286,13 @@ func TestUnmarshalLogs_StructuralChecks(t *testing.T) {
 		require.True(t, ok, "log record %d: body should have 'event.dataset' key", i)
 		assert.Equal(t, "azure.events", eventDataset.Str(), "log record %d: event.dataset should match data_stream.dataset", i)
 
-		inputType, ok := lr.Body().Map().Get("input.type")
+		inputMap, ok := lr.Body().Map().Get("input")
+		require.True(t, ok, "log record %d: body should have 'input' key", i)
+		require.Equal(t, pcommon.ValueTypeMap, inputMap.Type(), "log record %d: input should be a map", i)
+
+		eType, ok := inputMap.Map().Get("type")
 		require.True(t, ok, "log record %d: body should have 'input.type' key", i)
-		assert.Equal(t, "azure-eventhub", inputType.Str(), "log record %d: input.type mismatch", i)
+		assert.Equal(t, "azure-eventhub", eType.AsString(), "log record %d: input.type mismatch", i)
 
 		tagsVal, ok := lr.Body().Map().Get("tags")
 		require.True(t, ok, "log record %d: body should have 'tags' key", i)

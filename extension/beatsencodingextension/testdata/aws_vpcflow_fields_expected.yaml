@@ -25,6 +25,9 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: aws.vpcflow
+                  - key: environment
+                    value:
+                      stringValue: production
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -38,14 +41,11 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-                  - key: environment
-                    value:
-                      stringValue: production
                   - key: team
                     value:
                       stringValue: security
-            observedTimeUnixNano: "1784054613326675000"
-            timeUnixNano: "1784054613326675000"
+            observedTimeUnixNano: "1784122727859786000"
+            timeUnixNano: "1784122727859786000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -69,6 +69,9 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: aws.vpcflow
+                  - key: team
+                    value:
+                      stringValue: security
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -85,11 +88,8 @@ resourceLogs:
                   - key: environment
                     value:
                       stringValue: production
-                  - key: team
-                    value:
-                      stringValue: security
-            observedTimeUnixNano: "1784054613326675000"
-            timeUnixNano: "1784054613326675000"
+            observedTimeUnixNano: "1784122727859786000"
+            timeUnixNano: "1784122727859786000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -113,6 +113,9 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: aws.vpcflow
+                  - key: environment
+                    value:
+                      stringValue: production
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -126,14 +129,11 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-                  - key: environment
-                    value:
-                      stringValue: production
                   - key: team
                     value:
                       stringValue: security
-            observedTimeUnixNano: "1784054613326675000"
-            timeUnixNano: "1784054613326675000"
+            observedTimeUnixNano: "1784122727859786000"
+            timeUnixNano: "1784122727859786000"
         scope:
           attributes:
             - key: elastic.mapping.mode

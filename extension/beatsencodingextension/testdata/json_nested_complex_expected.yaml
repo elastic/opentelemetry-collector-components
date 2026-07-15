@@ -28,6 +28,13 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: custom
+                  - key: input
+                    value:
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: aws-s3
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -41,11 +48,8 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-                  - key: input.type
-                    value:
-                      stringValue: aws-s3
-            observedTimeUnixNano: "1784054613328143000"
-            timeUnixNano: "1784054613328143000"
+            observedTimeUnixNano: "1784122727861952000"
+            timeUnixNano: "1784122727861952000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -72,6 +76,13 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: custom
+                  - key: input
+                    value:
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: aws-s3
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -85,11 +96,8 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-                  - key: input.type
-                    value:
-                      stringValue: aws-s3
-            observedTimeUnixNano: "1784054613328143000"
-            timeUnixNano: "1784054613328143000"
+            observedTimeUnixNano: "1784122727861952000"
+            timeUnixNano: "1784122727861952000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -116,6 +124,13 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: custom
+                  - key: input
+                    value:
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: aws-s3
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -129,11 +144,8 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-                  - key: input.type
-                    value:
-                      stringValue: aws-s3
-            observedTimeUnixNano: "1784054613328143000"
-            timeUnixNano: "1784054613328143000"
+            observedTimeUnixNano: "1784122727861952000"
+            timeUnixNano: "1784122727861952000"
         scope:
           attributes:
             - key: elastic.mapping.mode

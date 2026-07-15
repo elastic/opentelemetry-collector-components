@@ -38,8 +38,8 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-            observedTimeUnixNano: "1784054613325241000"
-            timeUnixNano: "1784054613325241000"
+            observedTimeUnixNano: "1784122727857712000"
+            timeUnixNano: "1784122727857712000"
         scope:
           attributes:
             - key: elastic.mapping.mode

@@ -613,7 +613,8 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 	dStreamMap.PutStr("namespace", e.config.DataStream.Namespace)
 
 	if e.config.InputType != "" {
-		body.PutStr("input.type", e.config.InputType)
+		inputMap := body.PutEmptyMap("input")
+		inputMap.PutStr("type", e.config.InputType)
 	}
 
 	if len(e.config.Tags) > 0 {

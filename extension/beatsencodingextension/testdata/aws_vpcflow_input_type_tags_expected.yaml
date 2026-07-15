@@ -25,6 +25,12 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: aws.vpcflow
+                  - key: tags
+                    value:
+                      arrayValue:
+                        values:
+                          - stringValue: forwarded
+                          - stringValue: aws-vpcflow
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -38,17 +44,15 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-                  - key: input.type
+                  - key: input
                     value:
-                      stringValue: aws-s3
-                  - key: tags
-                    value:
-                      arrayValue:
+                      kvlistValue:
                         values:
-                          - stringValue: forwarded
-                          - stringValue: aws-vpcflow
-            observedTimeUnixNano: "1784054613327395000"
-            timeUnixNano: "1784054613327395000"
+                          - key: type
+                            value:
+                              stringValue: aws-s3
+            observedTimeUnixNano: "1784122727860660000"
+            timeUnixNano: "1784122727860660000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -72,6 +76,12 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: aws.vpcflow
+                  - key: tags
+                    value:
+                      arrayValue:
+                        values:
+                          - stringValue: forwarded
+                          - stringValue: aws-vpcflow
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -85,17 +95,15 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-                  - key: input.type
+                  - key: input
                     value:
-                      stringValue: aws-s3
-                  - key: tags
-                    value:
-                      arrayValue:
+                      kvlistValue:
                         values:
-                          - stringValue: forwarded
-                          - stringValue: aws-vpcflow
-            observedTimeUnixNano: "1784054613327395000"
-            timeUnixNano: "1784054613327395000"
+                          - key: type
+                            value:
+                              stringValue: aws-s3
+            observedTimeUnixNano: "1784122727860660000"
+            timeUnixNano: "1784122727860660000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -119,6 +127,12 @@ resourceLogs:
                           - key: dataset
                             value:
                               stringValue: aws.vpcflow
+                  - key: tags
+                    value:
+                      arrayValue:
+                        values:
+                          - stringValue: forwarded
+                          - stringValue: aws-vpcflow
                   - key: data_stream
                     value:
                       kvlistValue:
@@ -132,17 +146,15 @@ resourceLogs:
                           - key: namespace
                             value:
                               stringValue: default
-                  - key: input.type
+                  - key: input
                     value:
-                      stringValue: aws-s3
-                  - key: tags
-                    value:
-                      arrayValue:
+                      kvlistValue:
                         values:
-                          - stringValue: forwarded
-                          - stringValue: aws-vpcflow
-            observedTimeUnixNano: "1784054613327395000"
-            timeUnixNano: "1784054613327395000"
+                          - key: type
+                            value:
+                              stringValue: aws-s3
+            observedTimeUnixNano: "1784122727860660000"
+            timeUnixNano: "1784122727860660000"
         scope:
           attributes:
             - key: elastic.mapping.mode
