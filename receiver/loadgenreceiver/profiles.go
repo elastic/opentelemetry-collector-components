@@ -151,7 +151,7 @@ func (ar *profilesGenerator) Start(ctx context.Context, _ component.Host) error 
 					ar.statsMu.Unlock()
 				}
 
-				if !waitDelay(startCtx, ar.cfg.Profiles.Delay) {
+				if !waitJitter(startCtx, ar.cfg.Profiles.Jitter) {
 					return
 				}
 			}

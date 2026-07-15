@@ -103,7 +103,7 @@ func TestProfilesGenerator_Delay(t *testing.T) {
 		const delay = 1 * time.Hour
 		sink := &consumertest.ProfilesSink{}
 		cfg := createDefaultReceiverConfig(nil, nil, nil, nil)
-		cfg.(*Config).Profiles.Delay = &DelayRange{Min: delay, Max: delay}
+		cfg.(*Config).Profiles.Jitter = &JitterRange{Min: delay, Max: delay}
 
 		r, err := createProfilesReceiver(t.Context(), receiver.Settings{
 			ID:                component.ID{},

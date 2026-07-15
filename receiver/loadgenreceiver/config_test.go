@@ -94,8 +94,8 @@ func TestLoadConfig(t *testing.T) {
 			expectedErrMessage: "profiles::max_buffer_size must be >= 0",
 		},
 		{
-			id:                 component.NewIDWithName(metadata.Type, "profiles_invalid_delay"),
-			expectedErrMessage: "profiles::delay.max must be >= delay.min",
+			id:                 component.NewIDWithName(metadata.Type, "profiles_invalid_jitter"),
+			expectedErrMessage: "profiles::jitter.max must be >= jitter.min",
 		},
 	}
 	for _, tt := range tests {
