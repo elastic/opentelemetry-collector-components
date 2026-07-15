@@ -20,6 +20,7 @@ package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-co
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 )
@@ -66,6 +67,10 @@ type SignalConfig struct {
 	// MaxBufferSize defines the maximum acceptable size for the file content. Set to 0 if you don't want
 	// to set a limit.
 	MaxBufferSize int `mapstructure:"max_buffer_size"`
+
+	// Delay defines a range between two time.Duration values the receiver
+	// should wait before forwarding the next signal.
+	Delay []time.Duration `mapstructure:"delay"`
 
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
