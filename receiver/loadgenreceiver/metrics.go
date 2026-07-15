@@ -156,6 +156,9 @@ func (ar *metricsGenerator) Start(ctx context.Context, _ component.Host) error {
 					ar.stats.MetricDataPoints += recordCount
 					ar.statsMu.Unlock()
 				}
+				if !waitDelay(startCtx, ar.cfg.Metrics.Delay) {
+					return
+				}
 			}
 		}()
 	}

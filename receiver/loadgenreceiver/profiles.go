@@ -24,7 +24,6 @@ import (
 	_ "embed"
 	"errors"
 	"io"
-	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -152,18 +151,8 @@ func (ar *profilesGenerator) Start(ctx context.Context, _ component.Host) error 
 					ar.statsMu.Unlock()
 				}
 
-				if len(ar.cfg.Profiles.Delay) == 2 {
-					// random delayed duration between the
-					// configured range
-					delayDuration := rand.Int64N(int64(ar.cfg.Profiles.Delay[1].Nanoseconds()-ar.cfg.Profiles.Delay[0].Nanoseconds())) + ar.cfg.Profiles.Delay[0].Nanoseconds()
-					delayTicker := time.NewTicker(time.Duration(delayDuration))
-					select {
-					case <-delayTicker.C:
-						continue
-					case <-startCtx.Done():
-						return
-					}
-
+				if !waitDelay(startCtx, ar.cfg.Profiles.Delay) {
+					return
 				}
 			}
 		}()

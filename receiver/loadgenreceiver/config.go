@@ -18,8 +18,10 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
@@ -68,9 +70,9 @@ type SignalConfig struct {
 	// to set a limit.
 	MaxBufferSize int `mapstructure:"max_buffer_size"`
 
-	// Delay defines a range between two time.Duration values the receiver
-	// should wait before forwarding the next signal.
-	Delay []time.Duration `mapstructure:"delay"`
+	// Delay defines the range of jitter the receiver waits between forwarding signals.
+	// When set, each forward sleeps for a random duration in [Min, Max].
+	Delay *DelayRange `mapstructure:"delay"`
 
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
@@ -108,6 +110,35 @@ type ProfilesConfig struct {
 	SignalConfig `mapstructure:",squash"`
 }
 
+// DelayRange specifies a uniform random delay applied between forwarded signals.
+type DelayRange struct {
+	Min time.Duration `mapstructure:"min"`
+	Max time.Duration `mapstructure:"max"`
+}
+
+// waitDelay blocks for a random duration in [delay.Min, delay.Max].
+// Returns false if ctx is canceled before the delay elapses.
+func waitDelay(ctx context.Context, delay *DelayRange) bool {
+	if delay == nil {
+		return true
+	}
+	n := delay.Max.Nanoseconds() - delay.Min.Nanoseconds()
+	var d time.Duration
+	if n > 0 {
+		d = time.Duration(rand.Int64N(n) + delay.Min.Nanoseconds())
+	} else {
+		d = delay.Min
+	}
+	t := time.NewTimer(d)
+	select {
+	case <-t.C:
+		return true
+	case <-ctx.Done():
+		t.Stop()
+		return false
+	}
+}
+
 var _ component.Config = (*Config)(nil)
 
 func validateSignal(sigConfig SignalConfig, file JsonlFile) error {
@@ -120,6 +151,14 @@ func validateSignal(sigConfig SignalConfig, file JsonlFile) error {
 
 	if file.Path != "" && file.Compression != "" && file.Compression != compressionZSTD {
 		return errors.New("compression is not supported")
+	}
+	if d := sigConfig.Delay; d != nil {
+		if d.Min < 0 {
+			return fmt.Errorf("delay.min must be >= 0")
+		}
+		if d.Max < d.Min {
+			return fmt.Errorf("delay.max must be >= delay.min")
+		}
 	}
 	return nil
 }
