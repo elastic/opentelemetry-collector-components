@@ -36,3 +36,4 @@ excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver/correctnesstests
   - github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver
   - github.com/elastic/opentelemetry-collector-components/receiver/entityanalyticsreceiver
+  - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter
