@@ -27,20 +27,28 @@ resourceLogs:
                               "resultType": "0",
                               "durationMs": 0
                             }
-                  - key: event.dataset
+                  - key: event
                     value:
-                      stringValue: azure.events
-                  - key: data_stream.type
+                      kvlistValue:
+                        values:
+                          - key: dataset
+                            value:
+                              stringValue: azure.events
+                  - key: data_stream
                     value:
-                      stringValue: logs
-                  - key: data_stream.dataset
-                    value:
-                      stringValue: azure.events
-                  - key: data_stream.namespace
-                    value:
-                      stringValue: default
-            observedTimeUnixNano: "1773919567373288000"
-            timeUnixNano: "1773919567373288000"
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: logs
+                          - key: dataset
+                            value:
+                              stringValue: azure.events
+                          - key: namespace
+                            value:
+                              stringValue: default
+            observedTimeUnixNano: "1784122727848635000"
+            timeUnixNano: "1784122727848635000"
           - attributes:
               - key: data_stream.type
                 value:
@@ -64,20 +72,28 @@ resourceLogs:
                               "category": "Administrative",
                               "resultType": "Success"
                             }
-                  - key: event.dataset
+                  - key: event
                     value:
-                      stringValue: azure.events
-                  - key: data_stream.type
+                      kvlistValue:
+                        values:
+                          - key: dataset
+                            value:
+                              stringValue: azure.events
+                  - key: data_stream
                     value:
-                      stringValue: logs
-                  - key: data_stream.dataset
-                    value:
-                      stringValue: azure.events
-                  - key: data_stream.namespace
-                    value:
-                      stringValue: default
-            observedTimeUnixNano: "1773919567373288000"
-            timeUnixNano: "1773919567373288000"
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: logs
+                          - key: dataset
+                            value:
+                              stringValue: azure.events
+                          - key: namespace
+                            value:
+                              stringValue: default
+            observedTimeUnixNano: "1784122727848635000"
+            timeUnixNano: "1784122727848635000"
         scope:
           attributes:
             - key: elastic.mapping.mode

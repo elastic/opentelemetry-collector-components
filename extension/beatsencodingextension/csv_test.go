@@ -26,6 +26,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 )
 
@@ -88,9 +89,13 @@ func TestCSVDecoder(t *testing.T) {
 	// Routing attributes must be present so the document lands in the
 	// configured data stream and the integration pipeline runs.
 	body := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().Map()
-	ds, ok := body.Get("data_stream.dataset")
+	dsMap, ok := body.Get("data_stream")
 	require.True(t, ok)
-	assert.Equal(t, "netskope.transaction", ds.Str())
+	require.Equal(t, pcommon.ValueTypeMap, dsMap.Type())
+
+	v, ok := dsMap.Map().Get("dataset")
+	require.True(t, ok)
+	assert.Equal(t, "netskope.transaction", v.Str())
 
 	// Every record must carry a baseline @timestamp (like a Beats doc) so it
 	// indexes into a data stream even when the integration pipeline does not
