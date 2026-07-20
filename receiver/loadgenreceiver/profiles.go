@@ -150,6 +150,10 @@ func (ar *profilesGenerator) Start(ctx context.Context, _ component.Host) error 
 					ar.stats.Samples += recordCount
 					ar.statsMu.Unlock()
 				}
+
+				if !waitJitter(startCtx, ar.cfg.Profiles.Jitter) {
+					return
+				}
 			}
 		}()
 	}

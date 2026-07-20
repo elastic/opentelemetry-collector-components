@@ -149,6 +149,9 @@ func (ar *logsGenerator) Start(ctx context.Context, _ component.Host) error {
 					ar.stats.LogRecords += recordCount
 					ar.statsMu.Unlock()
 				}
+				if !waitJitter(startCtx, ar.cfg.Logs.Jitter) {
+					return
+				}
 			}
 		}()
 	}
