@@ -31,3 +31,9 @@ loadgen/profiles_invalid_max_replay:
 loadgen/profiles_invalid_max_buffer_size:
   profiles:
     max_buffer_size: -1
+
+loadgen/profiles_invalid_jitter:
+  profiles:
+    jitter:
+      min: 100ms
+      max: 50ms

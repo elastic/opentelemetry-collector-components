@@ -18,8 +18,11 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 )
@@ -67,6 +70,10 @@ type SignalConfig struct {
 	// to set a limit.
 	MaxBufferSize int `mapstructure:"max_buffer_size"`
 
+	// Jitter defines the range of random delay the receiver waits between forwarding signals.
+	// When set, each forward sleeps for a random duration in [Min, Max].
+	Jitter *JitterRange `mapstructure:"jitter"`
+
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
 	doneCh chan Stats
@@ -103,6 +110,35 @@ type ProfilesConfig struct {
 	SignalConfig `mapstructure:",squash"`
 }
 
+// JitterRange specifies a uniform random jitter applied between forwarded signals.
+type JitterRange struct {
+	Min time.Duration `mapstructure:"min"`
+	Max time.Duration `mapstructure:"max"`
+}
+
+// waitJitter blocks for a random duration in [jitter.Min, jitter.Max].
+// Returns false if ctx is canceled before the duration elapses.
+func waitJitter(ctx context.Context, jitter *JitterRange) bool {
+	if jitter == nil {
+		return true
+	}
+	n := jitter.Max.Nanoseconds() - jitter.Min.Nanoseconds()
+	var d time.Duration
+	if n > 0 {
+		d = time.Duration(rand.Int64N(n) + jitter.Min.Nanoseconds())
+	} else {
+		d = jitter.Min
+	}
+	t := time.NewTimer(d)
+	select {
+	case <-t.C:
+		return true
+	case <-ctx.Done():
+		t.Stop()
+		return false
+	}
+}
+
 var _ component.Config = (*Config)(nil)
 
 func validateSignal(sigConfig SignalConfig, file JsonlFile) error {
@@ -115,6 +151,14 @@ func validateSignal(sigConfig SignalConfig, file JsonlFile) error {
 
 	if file.Path != "" && file.Compression != "" && file.Compression != compressionZSTD {
 		return errors.New("compression is not supported")
+	}
+	if j := sigConfig.Jitter; j != nil {
+		if j.Min < 0 {
+			return fmt.Errorf("jitter.min must be >= 0")
+		}
+		if j.Max < j.Min {
+			return fmt.Errorf("jitter.max must be >= jitter.min")
+		}
 	}
 	return nil
 }
