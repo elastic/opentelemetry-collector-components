@@ -3,7 +3,7 @@ resourceMetrics:
       attributes:
         - key: agent.name
           value:
-            stringValue: unknown
+            stringValue: otlp/go
         - key: deployment.environment
           value:
             stringValue: qa

@@ -19,10 +19,14 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 
 import (
 	"context"
+	"fmt"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/processor"
 
@@ -80,12 +84,24 @@ func (c *elasticapmConnector) Shutdown(ctx context.Context) error {
 
 func (c *elasticapmConnector) newLogsConsumer(ctx context.Context) (consumer.Logs, error) {
 	set := c.signaltometricsSettings()
-	return signaltometricsFactory.CreateLogsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	baseConsumer, err := signaltometricsFactory.CreateLogsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	if err != nil {
+		return nil, err
+	}
+	// Wrap the base consumer to derive agent.name, since it isn't set by
+	// elasticapmprocessor for the logs signal.
+	return &logsResourceEnricher{next: baseConsumer}, nil
 }
 
 func (c *elasticapmConnector) newMetricsConsumer(ctx context.Context) (consumer.Metrics, error) {
 	set := c.signaltometricsSettings()
-	return signaltometricsFactory.CreateMetricsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	baseConsumer, err := signaltometricsFactory.CreateMetricsToMetrics(ctx, set, c.cfg.signaltometricsConfig(), c.lsminterval)
+	if err != nil {
+		return nil, err
+	}
+	// Wrap the base consumer to derive agent.name, since it isn't set by
+	// elasticapmprocessor for the metrics signal.
+	return &metricsResourceEnricher{next: baseConsumer}, nil
 }
 
 func (c *elasticapmConnector) newTracesToMetrics(ctx context.Context) (consumer.Traces, error) {
@@ -125,6 +141,87 @@ func (e *spanEnricher) ConsumeTraces(ctx context.Context, td ptrace.Traces) erro
 
 func (e *spanEnricher) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: true}
+}
+
+// metricsResourceEnricher wraps a metrics consumer to derive the agent.name
+// resource attribute, mirroring what elasticapmprocessor does for traces.
+type metricsResourceEnricher struct {
+	next consumer.Metrics
+}
+
+func (e *metricsResourceEnricher) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	rms := md.ResourceMetrics()
+	for i := 0; i < rms.Len(); i++ {
+		setAgentName(rms.At(i).Resource())
+	}
+	return e.next.ConsumeMetrics(ctx, md)
+}
+
+func (e *metricsResourceEnricher) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: true}
+}
+
+// logsResourceEnricher wraps a logs consumer to derive the agent.name
+// resource attribute, mirroring what elasticapmprocessor does for traces.
+type logsResourceEnricher struct {
+	next consumer.Logs
+}
+
+func (e *logsResourceEnricher) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	rls := ld.ResourceLogs()
+	for i := 0; i < rls.Len(); i++ {
+		setAgentName(rls.At(i).Resource())
+	}
+	return e.next.ConsumeLogs(ctx, ld)
+}
+
+func (e *logsResourceEnricher) Capabilities() consumer.Capabilities {
+	return consumer.Capabilities{MutatesData: true}
+}
+
+// setAgentName derives the agent.name resource attribute from
+// telemetry.sdk.name, telemetry.sdk.language and telemetry.distro.name,
+// the same way elasticapmprocessor does for traces (see setAgentName in
+// processor/elasticapmprocessor/internal/enrichments/resource.go; keep the
+// two in sync). It is a no-op if agent.name is already set, e.g. by a
+// classic Elastic APM agent. Otherwise it always sets a value, defaulting
+// to "otlp" when no telemetry.* attributes are present, so that a service
+// never ends up with a different agent.name on its traces than on its
+// metrics/logs-derived aggregates.
+func setAgentName(resource pcommon.Resource) {
+	attrs := resource.Attributes()
+	if _, ok := attrs.Get("agent.name"); ok {
+		return
+	}
+
+	var sdkName, sdkLanguage, distroName string
+	attrs.Range(func(k string, v pcommon.Value) bool {
+		switch k {
+		case "telemetry.sdk.name":
+			sdkName = v.Str()
+		case "telemetry.sdk.language":
+			sdkLanguage = v.Str()
+		case "telemetry.distro.name":
+			distroName = v.Str()
+		}
+		return true
+	})
+
+	agentName := "otlp"
+	if sdkName != "" {
+		agentName = sdkName
+	}
+	switch {
+	case distroName != "":
+		lang := "unknown"
+		if sdkLanguage != "" {
+			lang = sdkLanguage
+		}
+		agentName = fmt.Sprintf("%s/%s/%s", agentName, lang, distroName)
+	case sdkLanguage != "":
+		agentName = fmt.Sprintf("%s/%s", agentName, sdkLanguage)
+	}
+	attrs.PutStr("agent.name", agentName)
 }
 
 func (c *elasticapmConnector) signaltometricsSettings() connector.Settings {
