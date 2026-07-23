@@ -50,7 +50,7 @@ var Config struct {
 	MetricsGen bool
 	// MetricsGenBenchmark uses Go's benchmark runner to choose the metricsgen
 	// start_now_minus override. When false, metricsgen runs the provided config
-	// once while and respects the provided start_now_minus still reporting telemetry-derived throughput.
+	// once, respecting its lifecycle settings while still reporting telemetry-derived throughput.
 	MetricsGenBenchmark bool
 	// DurationMetrics is an optional safety cap for the metricsgen run.
 	// When 0, the run continues until the collector exits on its own (e.g.
