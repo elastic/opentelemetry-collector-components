@@ -186,14 +186,20 @@ With the use of flag `-metricsgen`, otelbench runs the collector defined by `-co
 for `metricsgen`-based metrics pipelines (e.g. Prometheus Remote Write) and the `loadgenreceiver` is not used.
 Read more information for [metricsgenreceiver](https://github.com/elastic/metricsgenreceiver)
 
-The run continues until the collector exits, for example when metricsgen reaches `exit_after_end`. You can interrupt the run manually, or use -duration-metrics as a safety cap to shut the collector down after a fixed time. Use `-duration-metrics` as an optional safety cap (a Go duration like `90s`, `2m`, `1h`); when it elapses, the collector is shut down. Leaving it at `0` (the default) means no cap.
+The run continues until the collector exits. For finite backfills, the metricsgen config can use `exit_after_end: true`.
+For true soak runs, use a config with `real_time: true` and `run_indefinitely: true`, such as `config-prw-soak.yaml`.
+You can interrupt the run manually, or use `-duration-metrics` as an optional safety cap to shut the collector down
+after a fixed time. Leaving it at `0` (the default) means no cap.
 
 ```shell
-# Run metricsgen mode with an explicit metricsgen PRW config.
+# Run finite backfill mode with an explicit metricsgen PRW config.
 ./otelbench -metricsgen -config ./config-prw.yaml
 
-# Add a safety cap.
-./otelbench -metricsgen -config ./config-prw.yaml -duration-metrics=120s
+# Run true soak mode with an explicit metricsgen PRW config.
+./otelbench -metricsgen -metricsgen-benchmark=false -config ./config-prw-soak.yaml
+
+# Add a safety cap to soak mode.
+./otelbench -metricsgen -metricsgen-benchmark=false -config ./config-prw-soak.yaml -duration-metrics=120s
 ```
 
 > Note: if the exporter is configured to retry forever (`retry_on_failure.max_elapsed_time: 0`) together with
@@ -214,13 +220,17 @@ BenchmarkOTelbench/metricsgen <backfill_minutes>     <ns/op> ns/op     <duration
 BenchmarkOTelbench/metricsgen          3     62000000000 ns/op       186.3 duration_s     0 failed_metric_points/s        3401 metric_points/s
 ```
 
-Metricsgen mode uses Go's benchmark runner to choose the backfill size. The benchmark `N` is passed into the
-collector config as `receivers.metricsgen.start_now_minus=<N>m`, so `N=3` means the final benchmark run generated
+By default, metricsgen mode uses Go's benchmark runner to choose the backfill size. The benchmark `N` is passed into
+the collector config as `receivers.metricsgen.start_now_minus=<N>m`, so `N=3` means the final benchmark run generated
 three minutes of historical metrics. `duration_s` is the active telemetry window used for the throughput calculation.
 
 For each benchmark calibration run, otelbench overrides `receivers.metricsgen.seed` with the base seed plus a
 monotonically increasing run index. This keeps generated time series distinct across repeated benchmark calibration
 runs and avoids `version_conflict_exception` conflicts.
+
+Set `-metricsgen-benchmark=false` to keep telemetry reporting enabled but run the rendered metricsgen config once
+without overriding `receivers.metricsgen.start_now_minus` or other lifecycle settings. This is the mode to use with
+soak configs that set `real_time: true` and `run_indefinitely: true`.
 
 The scrape host is controlled by `-metrics-telemetry-endpoint` (default `127.0.0.1`). Otelbench asks the OS for an
 available internal telemetry port using `:0`, releases it, prints the selected host:port. This overrides the collector's `service.telemetry.metrics` pull reader to expose Prometheus telemetry on the selected port.
@@ -235,6 +245,12 @@ The default host works with the bundled config, so no flag is needed for benchma
 ```shell
 # Benchmark output on (default).
 ./otelbench -metricsgen -config ./config-prw.yaml
+
+# Benchmark output on, but use start_now_minus from the finite backfill config.
+./otelbench -metricsgen -metricsgen-benchmark=false -config ./config-prw.yaml
+
+# Benchmark output on for a true soak config.
+./otelbench -metricsgen -metricsgen-benchmark=false -config ./config-prw-soak.yaml
 
 # Disable benchmark output, metricsgen only.
 ./otelbench -metricsgen -config ./config-prw.yaml -metrics-telemetry-endpoint=""
