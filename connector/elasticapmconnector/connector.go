@@ -88,8 +88,9 @@ func (c *elasticapmConnector) newLogsConsumer(ctx context.Context) (consumer.Log
 	if err != nil {
 		return nil, err
 	}
-	// Wrap the base consumer to derive agent.name, since it isn't set by
-	// elasticapmprocessor for the logs signal.
+	// Wrap the base consumer to derive agent.name: the connector may be used
+	// without elasticapmprocessor in the pipeline, or with skip_enrichment
+	// enabled, in which case agent.name is not set upstream for this signal.
 	return &logsResourceEnricher{next: baseConsumer}, nil
 }
 
@@ -99,8 +100,9 @@ func (c *elasticapmConnector) newMetricsConsumer(ctx context.Context) (consumer.
 	if err != nil {
 		return nil, err
 	}
-	// Wrap the base consumer to derive agent.name, since it isn't set by
-	// elasticapmprocessor for the metrics signal.
+	// Wrap the base consumer to derive agent.name: the connector may be used
+	// without elasticapmprocessor in the pipeline, or with skip_enrichment
+	// enabled, in which case agent.name is not set upstream for this signal.
 	return &metricsResourceEnricher{next: baseConsumer}, nil
 }
 
@@ -144,7 +146,7 @@ func (e *spanEnricher) Capabilities() consumer.Capabilities {
 }
 
 // metricsResourceEnricher wraps a metrics consumer to derive the agent.name
-// resource attribute, mirroring what elasticapmprocessor does for traces.
+// resource attribute via agentname.Derive before aggregation.
 type metricsResourceEnricher struct {
 	next consumer.Metrics
 }
@@ -162,7 +164,7 @@ func (e *metricsResourceEnricher) Capabilities() consumer.Capabilities {
 }
 
 // logsResourceEnricher wraps a logs consumer to derive the agent.name
-// resource attribute, mirroring what elasticapmprocessor does for traces.
+// resource attribute via agentname.Derive before aggregation.
 type logsResourceEnricher struct {
 	next consumer.Logs
 }
