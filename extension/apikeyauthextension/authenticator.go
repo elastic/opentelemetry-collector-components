@@ -29,6 +29,7 @@ import (
 	mathrand "math/rand/v2"
 	"net/http"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -107,6 +108,11 @@ type cacheEntry struct {
 type authData struct {
 	username string
 	apiKeyID string
+
+	// attributes maps a configured attribute name to whether the key was
+	// granted the privileges behind it. Populated from attribute_privileges;
+	// nil when none are configured.
+	attributes map[string]bool
 }
 
 func (a *authData) GetAttribute(name string) any {
@@ -116,11 +122,21 @@ func (a *authData) GetAttribute(name string) any {
 	case "username":
 		return a.username
 	}
+	if granted, ok := a.attributes[name]; ok {
+		return granted
+	}
 	return nil
 }
 
 func (a *authData) GetAttributeNames() []string {
-	return []string{"username", "api_key"}
+	names := make([]string, 0, 2+len(a.attributes))
+	names = append(names, "username", "api_key")
+	for name := range a.attributes {
+		names = append(names, name)
+	}
+	// Reserved names come first; sort the attribute tail for a stable order.
+	sort.Strings(names[2:])
+	return names
 }
 
 type authenticator struct {
@@ -268,11 +284,21 @@ func getHeader(headers map[string][]string, titlecase, lowercase string) (string
 	return "", false
 }
 
-// hasPrivileges checks if the API Key is valid and has the required privileges.
-func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue string) (bool, string, error) {
-	clientMetadata := client.FromContext(ctx).Metadata
-	applications := make([]types.ApplicationPrivilegesCheck, len(a.config.ApplicationPrivileges))
-	for i, app := range a.config.ApplicationPrivileges {
+// privilegeResult holds the outcome of a _has_privileges check.
+type privilegeResult struct {
+	// authorized is true when the key has all required application privileges.
+	authorized bool
+	username   string
+	// attributes maps each configured attribute name to whether its privileges
+	// were granted. Nil when no attribute privileges are configured.
+	attributes map[string]bool
+}
+
+// buildChecks turns application privilege config into _has_privileges checks,
+// expanding dynamic resources from client metadata.
+func buildChecks(apps []ApplicationPrivilegesConfig, clientMetadata client.Metadata) ([]types.ApplicationPrivilegesCheck, error) {
+	checks := make([]types.ApplicationPrivilegesCheck, len(apps))
+	for i, app := range apps {
 		// Start with static resources
 		resources := make([]string, len(app.Resources))
 		copy(resources, app.Resources)
@@ -281,7 +307,7 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 		for _, dr := range app.DynamicResources {
 			values := clientMetadata.Get(dr.Metadata)
 			if len(values) == 0 {
-				return false, "", &metadataValidationError{
+				return nil, &metadataValidationError{
 					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
 				}
 			}
@@ -290,15 +316,36 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 			}
 		}
 
-		applications[i] = types.ApplicationPrivilegesCheck{
+		checks[i] = types.ApplicationPrivilegesCheck{
 			Application: app.Application,
 			Privileges:  app.Privileges,
 			Resources:   resources,
 		}
 	}
+	return checks, nil
+}
+
+// hasPrivileges checks if the API Key is valid and has the required privileges.
+// Observed privileges are requested in the same call and reported separately;
+// they never affect the authorized decision.
+func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue string) (privilegeResult, error) {
+	clientMetadata := client.FromContext(ctx).Metadata
+	requiredChecks, err := buildChecks(a.config.ApplicationPrivileges, clientMetadata)
+	if err != nil {
+		return privilegeResult{}, err
+	}
+	attributeApps := make([]ApplicationPrivilegesConfig, len(a.config.AttributePrivileges))
+	for i, attr := range a.config.AttributePrivileges {
+		attributeApps[i] = attr.ApplicationPrivilegesConfig
+	}
+	attributeChecks, err := buildChecks(attributeApps, clientMetadata)
+	if err != nil {
+		return privilegeResult{}, err
+	}
+
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
-	req.Request(&hasprivileges.Request{Application: applications})
+	req.Request(&hasprivileges.Request{Application: append(requiredChecks, attributeChecks...)})
 	privCtx := ctx
 	cancel := func() {}
 	if a.config.Timeout > 0 {
@@ -317,9 +364,55 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 		} else if errors.Is(ctx.Err(), context.Canceled) {
 			err = parentCanceledError{cause: err}
 		}
-		return false, "", err
+		return privilegeResult{}, err
 	}
-	return resp.HasAllRequested, resp.Username, nil
+
+	result := privilegeResult{username: resp.Username}
+	if len(attributeChecks) == 0 {
+		// Fast path, unchanged behavior: has_all_requested covers exactly the
+		// required checks, since only application privileges are requested.
+		result.authorized = resp.HasAllRequested
+		return result, nil
+	}
+	// has_all_requested now folds in the attribute privileges, so derive the
+	// authorized decision from the granular results for the required checks
+	// only, and expose each granted attribute under its declared name. Only
+	// granted attributes are set; a key that lacks one carries nothing, so the
+	// common non-onboarding key allocates no map.
+	result.authorized = allGranted(resp.Application, requiredChecks)
+	for i, attr := range a.config.AttributePrivileges {
+		if !allGranted(resp.Application, attributeChecks[i:i+1]) {
+			continue
+		}
+		if result.attributes == nil {
+			result.attributes = make(map[string]bool, 1)
+		}
+		result.attributes[attr.Attribute] = true
+	}
+	return result, nil
+}
+
+// allGranted reports whether every privilege in every requested resource of
+// every check was granted.
+func allGranted(results types.ApplicationsPrivileges, checks []types.ApplicationPrivilegesCheck) bool {
+	for _, c := range checks {
+		resourcePrivileges, ok := results[c.Application]
+		if !ok {
+			return false
+		}
+		for _, resource := range c.Resources {
+			privileges, ok := resourcePrivileges[resource]
+			if !ok {
+				return false
+			}
+			for _, privilege := range c.Privileges {
+				if !privileges[privilege] {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 // getCacheKey computes a cache key for the given API Key ID and headers.
@@ -396,7 +489,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 		return newCtxWithAuthData(ctx, cacheEntry.data), nil
 	}
 
-	hasPrivileges, username, err := a.hasPrivileges(ctx, authHeaderValue)
+	privileges, err := a.hasPrivileges(ctx, authHeaderValue)
 	if err != nil {
 		if isRetryableOverloadError(err) {
 			return ctx, errorWithDetails(status.New(
@@ -463,7 +556,7 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 				fmt.Sprintf("server error: %s", err.Error()),
 			), id, retryDelay)
 	}
-	if !hasPrivileges {
+	if !privileges.authorized {
 		cacheEntry := &cacheEntry{
 			key: derivedKey,
 			err: errorWithDetails(
@@ -478,8 +571,9 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 	cacheEntry := &cacheEntry{
 		key: derivedKey,
 		data: &authData{
-			username: username,
-			apiKeyID: id,
+			username:   privileges.username,
+			apiKeyID:   id,
+			attributes: privileges.attributes,
 		},
 	}
 	a.cache.Add(cacheKey, cacheEntry)

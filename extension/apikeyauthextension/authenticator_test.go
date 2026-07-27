@@ -248,6 +248,91 @@ func TestAuthenticator_ApplicationPrivileges(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAuthenticator_AttributePrivileges(t *testing.T) {
+	cases := []struct {
+		name          string
+		application   types.ApplicationsPrivileges
+		wantErr       string
+		wantAttrValue any
+		wantAttrNames []string
+	}{
+		{
+			name: "marker granted",
+			application: types.ApplicationsPrivileges{
+				"apm":                      {"*": {"event:write": true}},
+				"observability-onboarding": {"*": {"receipt:emit": true}},
+			},
+			wantAttrValue: true,
+			wantAttrNames: []string{"username", "api_key", "onboarding_receipt"},
+		},
+		{
+			name: "marker absent still authorizes",
+			application: types.ApplicationsPrivileges{
+				"apm":                      {"*": {"event:write": true}},
+				"observability-onboarding": {"*": {"receipt:emit": false}},
+			},
+			wantAttrValue: nil, // not granted: attribute is absent, not false
+			wantAttrNames: []string{"username", "api_key"},
+		},
+		{
+			name: "required privilege missing",
+			application: types.ApplicationsPrivileges{
+				"apm":                      {"*": {"event:write": false}},
+				"observability-onboarding": {"*": {"receipt:emit": true}},
+			},
+			wantErr: `rpc error: code = PermissionDenied desc = unauthorized`,
+		},
+	}
+
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "apm",
+		Resources:   []string{"*"},
+		Privileges:  []string{"event:write"},
+	}}
+	config.AttributePrivileges = []AttributePrivilegeConfig{{
+		Attribute: "onboarding_receipt",
+		ApplicationPrivilegesConfig: ApplicationPrivilegesConfig{
+			Application: "observability-onboarding",
+			Resources:   []string{"*"},
+			Privileges:  []string{"receipt:emit"},
+		},
+	}}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+				var body hasprivileges.Request
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				// Required and attribute checks ride the single call.
+				require.Equal(t, []types.ApplicationPrivilegesCheck{
+					{Application: "apm", Resources: []string{"*"}, Privileges: []string{"event:write"}},
+					{Application: "observability-onboarding", Resources: []string{"*"}, Privileges: []string{"receipt:emit"}},
+				}, body.Application)
+				require.NoError(t, json.NewEncoder(w).Encode(hasprivileges.Response{
+					Application: tc.application,
+					Username:    user,
+				}))
+			})
+			authenticator := newTestAuthenticator(t, srv, config)
+
+			ctx, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+			})
+			if tc.wantErr != "" {
+				require.EqualError(t, err, tc.wantErr)
+				return
+			}
+			require.NoError(t, err)
+
+			auth := client.FromContext(ctx).Auth
+			require.NotNil(t, auth)
+			require.Equal(t, tc.wantAttrNames, auth.GetAttributeNames())
+			require.Equal(t, tc.wantAttrValue, auth.GetAttribute("onboarding_receipt"))
+		})
+	}
+}
+
 func TestAuthenticator_Caching(t *testing.T) {
 	var calls int
 	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {

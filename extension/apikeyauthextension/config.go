@@ -43,6 +43,20 @@ type Config struct {
 	// that are queried when verifying API Keys.
 	ApplicationPrivileges []ApplicationPrivilegesConfig `mapstructure:"application_privileges,omitempty"`
 
+	// AttributePrivileges defines privilege checks that are sent in the same
+	// _has_privileges call as ApplicationPrivileges but never affect the
+	// authentication decision. A key that lacks these privileges still
+	// authenticates normally. Each entry sets a named auth attribute to a bool
+	// of whether the key was granted the entry's privileges, so downstream
+	// components can act on it without a second call to Elasticsearch.
+	//
+	// This is used to tag purpose-built keys (for example onboarding keys that
+	// carry a marker privilege) without adding the privilege to the required
+	// set, which would make has_all_requested false for every other key. The
+	// attribute name is declared explicitly so the downstream contract does not
+	// depend on the Elasticsearch privilege string.
+	AttributePrivileges []AttributePrivilegeConfig `mapstructure:"attribute_privileges,omitempty"`
+
 	// Cache holds configuration related to caching
 	// API Key verification results.
 	Cache CacheConfig `mapstructure:"cache"`
@@ -122,6 +136,18 @@ type ApplicationPrivilegesConfig struct {
 	// If there are multiple metadata values for a given dynamic
 	// resource, then multiple resources will be generated.
 	DynamicResources []DynamicResource `mapstructure:"dynamic_resources,omitempty"`
+}
+
+// AttributePrivilegeConfig defines a non-gating privilege check whose result is
+// exposed as a named auth attribute. It reuses the application/privileges/
+// resources fields of ApplicationPrivilegesConfig and adds the attribute name.
+type AttributePrivilegeConfig struct {
+	// Attribute holds the auth attribute name to set. Its value is a bool of
+	// whether the key was granted every privilege in every resource of this
+	// entry.
+	Attribute string `mapstructure:"attribute"`
+
+	ApplicationPrivilegesConfig `mapstructure:",squash"`
 }
 
 // DynamicResource defines a resource that is extracted from client metadata
@@ -275,6 +301,24 @@ func (cfg *Config) Validate() error {
 			if dr.Metadata != "" && !keyMetadataSet[dr.Metadata] {
 				return fmt.Errorf(""+
 					"application_privileges::%d::dynamic_resources::%d: "+
+					"dynamic resource metadata %q must be included in cache.key_metadata",
+					i, j, dr.Metadata,
+				)
+			}
+		}
+	}
+	// Validate each attribute privilege config
+	for i, attr := range cfg.AttributePrivileges {
+		if attr.Attribute == "" {
+			return fmt.Errorf("attribute_privileges::%d: attribute must be non-empty", i)
+		}
+		if attr.Attribute == "username" || attr.Attribute == "api_key" {
+			return fmt.Errorf("attribute_privileges::%d: attribute %q is reserved", i, attr.Attribute)
+		}
+		for j, dr := range attr.DynamicResources {
+			if dr.Metadata != "" && !keyMetadataSet[dr.Metadata] {
+				return fmt.Errorf(""+
+					"attribute_privileges::%d::dynamic_resources::%d: "+
 					"dynamic resource metadata %q must be included in cache.key_metadata",
 					i, j, dr.Metadata,
 				)
