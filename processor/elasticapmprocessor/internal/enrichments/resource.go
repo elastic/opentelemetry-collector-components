@@ -18,10 +18,9 @@
 package enrichments // import "github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments"
 
 import (
-	"fmt"
-
 	"regexp"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/agentname"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
@@ -185,30 +184,8 @@ func (s *resourceEnrichmentContext) setDefaultServiceLanguage(resource pcommon.R
 }
 
 func (s *resourceEnrichmentContext) setAgentName(resource pcommon.Resource) {
-	agentName := "otlp"
-	if s.telemetrySDKName != "" {
-		agentName = s.telemetrySDKName
-	}
-	switch {
-	case s.telemetryDistroName != "":
-		agentLang := "unknown"
-		if s.telemetrySDKLanguage != "" {
-			agentLang = s.telemetrySDKLanguage
-		}
-		agentName = fmt.Sprintf(
-			"%s/%s/%s",
-			agentName,
-			agentLang,
-			s.telemetryDistroName,
-		)
-	case s.telemetrySDKLanguage != "":
-		agentName = fmt.Sprintf(
-			"%s/%s",
-			agentName,
-			s.telemetrySDKLanguage,
-		)
-	}
-	attribute.PutStr(resource.Attributes(), elasticattr.AgentName, agentName)
+	attribute.PutStr(resource.Attributes(), elasticattr.AgentName,
+		agentname.Derive(s.telemetrySDKName, s.telemetrySDKLanguage, s.telemetryDistroName))
 }
 
 func (s *resourceEnrichmentContext) setAgentVersion(resource pcommon.Resource) {

@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/elastic/apm-data v1.22.0
+	github.com/elastic/opentelemetry-collector-components/internal/agentname v0.0.0
 	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.40.0
 	github.com/google/go-cmp v0.7.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.156.0
@@ -69,5 +70,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/elastic/opentelemetry-collector-components/internal/agentname => ../../internal/agentname
 
 replace github.com/elastic/opentelemetry-collector-components/internal/elasticattr => ../../internal/elasticattr

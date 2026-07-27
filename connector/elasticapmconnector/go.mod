@@ -3,6 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/connector/elasticap
 go 1.25.0
 
 require (
+	github.com/elastic/opentelemetry-collector-components/internal/agentname v0.0.0
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0-20250220025958-386ba0c4bced
 	github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor v0.62.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.156.0
@@ -114,6 +115,8 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/elastic/opentelemetry-collector-components/internal/agentname => ../../internal/agentname
 
 replace github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent => ../../internal/sharedcomponent
 

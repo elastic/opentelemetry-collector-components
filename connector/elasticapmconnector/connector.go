@@ -19,7 +19,6 @@ package elasticapmconnector // import "github.com/elastic/opentelemetry-collecto
 
 import (
 	"context"
-	"fmt"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/connector"
@@ -32,6 +31,7 @@ import (
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/agentname"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor"
 )
 
@@ -179,49 +179,19 @@ func (e *logsResourceEnricher) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: true}
 }
 
-// setAgentName derives the agent.name resource attribute from
-// telemetry.sdk.name, telemetry.sdk.language and telemetry.distro.name,
-// the same way elasticapmprocessor does for traces (see setAgentName in
-// processor/elasticapmprocessor/internal/enrichments/resource.go; keep the
-// two in sync). It is a no-op if agent.name is already set, e.g. by a
-// classic Elastic APM agent. Otherwise it always sets a value, defaulting
-// to "otlp" when no telemetry.* attributes are present, so that a service
-// never ends up with a different agent.name on its traces than on its
-// metrics/logs-derived aggregates.
+// setAgentName derives the agent.name resource attribute using agentname.Derive.
+// It is a no-op if agent.name is already set, e.g. by a classic Elastic APM agent,
+// preserving the existing value (including empty string) to match the behaviour of
+// the attribute.PutStr guard used by elasticapmprocessor.
 func setAgentName(resource pcommon.Resource) {
 	attrs := resource.Attributes()
 	if _, ok := attrs.Get("agent.name"); ok {
 		return
 	}
-
-	var sdkName, sdkLanguage, distroName string
-	attrs.Range(func(k string, v pcommon.Value) bool {
-		switch k {
-		case "telemetry.sdk.name":
-			sdkName = v.Str()
-		case "telemetry.sdk.language":
-			sdkLanguage = v.Str()
-		case "telemetry.distro.name":
-			distroName = v.Str()
-		}
-		return true
-	})
-
-	agentName := "otlp"
-	if sdkName != "" {
-		agentName = sdkName
-	}
-	switch {
-	case distroName != "":
-		lang := "unknown"
-		if sdkLanguage != "" {
-			lang = sdkLanguage
-		}
-		agentName = fmt.Sprintf("%s/%s/%s", agentName, lang, distroName)
-	case sdkLanguage != "":
-		agentName = fmt.Sprintf("%s/%s", agentName, sdkLanguage)
-	}
-	attrs.PutStr("agent.name", agentName)
+	sdkName, _ := attrs.Get("telemetry.sdk.name")
+	sdkLanguage, _ := attrs.Get("telemetry.sdk.language")
+	distroName, _ := attrs.Get("telemetry.distro.name")
+	attrs.PutStr("agent.name", agentname.Derive(sdkName.Str(), sdkLanguage.Str(), distroName.Str()))
 }
 
 func (c *elasticapmConnector) signaltometricsSettings() connector.Settings {
