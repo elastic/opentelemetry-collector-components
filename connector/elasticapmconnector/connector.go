@@ -179,19 +179,26 @@ func (e *logsResourceEnricher) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: true}
 }
 
+const (
+	attrAgentName   = "agent.name"
+	attrSDKName     = "telemetry.sdk.name"
+	attrSDKLanguage = "telemetry.sdk.language"
+	attrDistroName  = "telemetry.distro.name"
+)
+
 // setAgentName derives the agent.name resource attribute using agentname.Derive.
 // It is a no-op if agent.name is already set, e.g. by a classic Elastic APM agent,
 // preserving the existing value (including empty string) to match the behaviour of
 // the attribute.PutStr guard used by elasticapmprocessor.
 func setAgentName(resource pcommon.Resource) {
 	attrs := resource.Attributes()
-	if _, ok := attrs.Get("agent.name"); ok {
+	if _, ok := attrs.Get(attrAgentName); ok {
 		return
 	}
-	sdkName, _ := attrs.Get("telemetry.sdk.name")
-	sdkLanguage, _ := attrs.Get("telemetry.sdk.language")
-	distroName, _ := attrs.Get("telemetry.distro.name")
-	attrs.PutStr("agent.name", agentname.Derive(sdkName.Str(), sdkLanguage.Str(), distroName.Str()))
+	sdkName, _ := attrs.Get(attrSDKName)
+	sdkLanguage, _ := attrs.Get(attrSDKLanguage)
+	distroName, _ := attrs.Get(attrDistroName)
+	attrs.PutStr(attrAgentName, agentname.Derive(sdkName.Str(), sdkLanguage.Str(), distroName.Str()))
 }
 
 func (c *elasticapmConnector) signaltometricsSettings() connector.Settings {
