@@ -44,7 +44,8 @@ func TestLoadConfig(t *testing.T) {
 					Transport: confignet.TransportTypeTCP,
 				},
 			},
-			BatchSize:             defaultBatchSize,
+			BatchBytes:            defaultBatchBytes,
+			BatchFlushInterval:    defaultBatchFlushInterval,
 			MaxConcurrentDecoders: int(defaultMaxConcurrentDecoders),
 			MaxEventSize:          defaultMaxEventSize,
 			AgentConfig: AgentConfig{
@@ -70,10 +71,26 @@ func TestLoadConfig(t *testing.T) {
 			expected: expectedDefaultConfig(),
 		},
 		{
-			id: component.NewIDWithName(metadata.Type, "custom_batch_size"),
+			id: component.NewIDWithName(metadata.Type, "custom_batch_bytes"),
 			expected: func() *Config {
 				cfg := expectedDefaultConfig()
-				cfg.BatchSize = 25
+				cfg.BatchBytes = 4096
+				return cfg
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "custom_batch_flush_interval"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.BatchFlushInterval = 100 * time.Millisecond
+				return cfg
+			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "disabled_batch_flush_interval"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.BatchFlushInterval = 0
 				return cfg
 			}(),
 		},
@@ -102,8 +119,12 @@ func TestLoadConfig(t *testing.T) {
 			}(),
 		},
 		{
-			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_size"),
-			validateErrorMessage: "batch_size must be positive",
+			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_bytes"),
+			validateErrorMessage: "batch_bytes must be positive",
+		},
+		{
+			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_flush_interval"),
+			validateErrorMessage: "batch_flush_interval must not be negative",
 		},
 		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_max_concurrent_decoders"),

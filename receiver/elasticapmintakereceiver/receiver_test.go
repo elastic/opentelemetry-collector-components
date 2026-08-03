@@ -477,6 +477,7 @@ func TestInvalidInput(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
@@ -542,6 +543,7 @@ func TestErrors(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextLog := new(consumertest.LogsSink)
@@ -577,6 +579,7 @@ func TestMetrics(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextMetrics := new(consumertest.MetricsSink)
@@ -618,6 +621,7 @@ func TestLogs(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextLogs := new(consumertest.LogsSink)
@@ -674,6 +678,7 @@ func TestTransactionsAndSpans(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
@@ -828,9 +833,15 @@ func TestConsumeOTelConsumesSignalsConcurrently(t *testing.T) {
 	}
 }
 
-func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
+func TestEventsHandlerUsesConfiguredBatchBytes(t *testing.T) {
+	payload := generateTransactionPayload(5)
+	// Event lines are fixed-width. A threshold one byte over a single line
+	// flushes once two events have accumulated, grouping events in pairs.
+	eventLineLen := len(bytes.Split(payload, []byte("\n"))[1])
+
 	cfg := createDefaultConfig().(*Config)
-	cfg.BatchSize = 2
+	cfg.BatchBytes = eventLineLen + 1
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	rcvr, err := newElasticAPMIntakeReceiver(
 		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
@@ -845,7 +856,7 @@ func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
 	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
 		return withECSMappingMode(req.Context(), false)
 	})
-	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(5)))
+	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(payload))
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -888,7 +899,7 @@ func TestEventsHandlerZeroMaxConcurrentDecodersDisablesLimit(t *testing.T) {
 
 func TestEventsHandler_ContextCanceledWithUnknownRPCError(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
-	cfg.BatchSize = 1
+	cfg.BatchBytes = 1 // flush after every event
 
 	rcvr, err := newElasticAPMIntakeReceiver(
 		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
@@ -917,7 +928,7 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 		name                 string
 		inputFile            string
 		signal               string // "traces" or "metrics"
-		batchSize            int    // 0 means use default
+		eventsPerBatch       int    // 0 means use default batching
 		expectedDynamicAttrs []string
 		// expectedPerGroupDynamicAttrs, if set, verifies each group's
 		// context independently (one entry per ConsumeX call, in order).
@@ -969,10 +980,10 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			// The first event shadows tag1 via context.tags (batch 1).
 			// The second event does not shadow tag1 (batch 2).
 			// batch 2's context must still carry tag1 in its dynamic attrs.
-			name:      "cross-batch: first event shadows global label, second batch must still see it",
-			inputFile: "global_label_cross_batch_shadow_first_event.ndjson",
-			signal:    "traces",
-			batchSize: 1, // one event per batch to isolate the shadow in batch 1
+			name:           "cross-batch: first event shadows global label, second batch must still see it",
+			inputFile:      "global_label_cross_batch_shadow_first_event.ndjson",
+			signal:         "traces",
+			eventsPerBatch: 1, // one event per batch to isolate the shadow in batch 1
 			expectedPerGroupDynamicAttrs: [][]string{
 				{"labels.tag2"},                // batch 1: tag1 shadowed → only tag2
 				{"labels.tag1", "labels.tag2"}, // batch 2: no shadow → both globals
@@ -987,10 +998,10 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			// Events 0 and 1 both shadow tag1 (batch 1, all events shadow).
 			// Event 2 does not shadow tag1 (batch 2).
 			// batch 2's context must still carry tag1 in its dynamic attrs.
-			name:      "cross-batch: all events in first batch shadow global label, second batch must still see it",
-			inputFile: "global_label_cross_batch_shadow_all_events.ndjson",
-			signal:    "traces",
-			batchSize: 2, // two events per batch → events 0,1 in batch 1; event 2 in batch 2
+			name:           "cross-batch: all events in first batch shadow global label, second batch must still see it",
+			inputFile:      "global_label_cross_batch_shadow_all_events.ndjson",
+			signal:         "traces",
+			eventsPerBatch: 2, // events 0,1 in batch 1; event 2 in batch 2
 			expectedPerGroupDynamicAttrs: [][]string{
 				{"labels.tag2"},                // batch 1: both events shadow tag1 → only tag2
 				{"labels.tag1", "labels.tag2"}, // batch 2: no shadow → both globals
@@ -1019,8 +1030,18 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			cfg := factory.CreateDefaultConfig().(*Config)
 			cfg.NetAddr.Endpoint = testEndpoint
-			if tc.batchSize > 0 {
-				cfg.BatchSize = tc.batchSize
+			cfg.BatchFlushInterval = 0 // deterministic batch shapes
+			if tc.eventsPerBatch > 0 {
+				input, err := os.ReadFile(filepath.Join(testData, tc.inputFile))
+				require.NoError(t, err)
+				// Flush fires once accumulated bytes reach the threshold, so
+				// one byte over the first eventsPerBatch-1 event lines groups
+				// the first eventsPerBatch events into one batch.
+				lines := bytes.Split(input, []byte("\n"))
+				cfg.BatchBytes = 1
+				for _, line := range lines[1:tc.eventsPerBatch] {
+					cfg.BatchBytes += len(line)
+				}
 			}
 			set := receivertest.NewNopSettings(metadata.Type)
 
@@ -1209,7 +1230,7 @@ func TestHandleStreamTypelessAndMalformedEvents(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			body := bytes.NewBufferString(metadataLine + tc.line + "\n")
-			accepted, errs := ndjsondecoder.HandleStream(context.Background(), body, 10, 1<<20, logger, noop)
+			accepted, errs := ndjsondecoder.HandleStream(context.Background(), body, ndjsondecoder.Config{BatchBytes: 1 << 20, MaxLineLength: 1 << 20}, logger, noop)
 			require.Equal(t, 0, accepted)
 			require.Len(t, errs, 1, "expected one error for typeless/malformed input, got none")
 		})
@@ -1225,7 +1246,7 @@ func TestHandleStreamReturnsOnCanceledContext(t *testing.T) {
 			`{"transaction": {"id": "aa00000000000001", "trace_id": "aa00000000000001aa00000000000001", "name": "tx", "type": "request", "duration": 1, "timestamp": 1000000, "outcome": "success", "sampled": true, "span_count": {"started": 0}}}` + "\n",
 	)
 	logger := receivertest.NewNopSettings(metadata.Type).Logger
-	accepted, errs := ndjsondecoder.HandleStream(ctx, body, 10, 1<<20, logger, func(_ context.Context, _ *plog.Logs, _ *pmetric.Metrics, _ *ptrace.Traces) error {
+	accepted, errs := ndjsondecoder.HandleStream(ctx, body, ndjsondecoder.Config{BatchBytes: 1 << 20, MaxLineLength: 1 << 20}, logger, func(_ context.Context, _ *plog.Logs, _ *pmetric.Metrics, _ *ptrace.Traces) error {
 		return nil
 	})
 	require.Equal(t, 0, accepted)

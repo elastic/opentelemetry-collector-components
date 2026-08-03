@@ -590,7 +590,11 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 		}
 	}
 
-	body.PutStr("event.created", eventCreated)
+	// Store event and data_stream content as maps
+
+	eventMap := body.PutEmptyMap("event")
+	eventMap.PutStr("created", eventCreated)
+	eventMap.PutStr("dataset", e.config.DataStream.Dataset)
 
 	// Always set @timestamp on the body, like a Beats document. Some
 	// integration ingest pipelines only derive @timestamp on certain code
@@ -603,13 +607,14 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 
 	// The data_stream.* should be also set on the body as some
 	// integrations expect them.
-	body.PutStr("data_stream.type", "logs")
-	body.PutStr("data_stream.dataset", e.config.DataStream.Dataset)
-	body.PutStr("data_stream.namespace", e.config.DataStream.Namespace)
-	body.PutStr("event.dataset", e.config.DataStream.Dataset)
+	dStreamMap := body.PutEmptyMap("data_stream")
+	dStreamMap.PutStr("type", "logs")
+	dStreamMap.PutStr("dataset", e.config.DataStream.Dataset)
+	dStreamMap.PutStr("namespace", e.config.DataStream.Namespace)
 
 	if e.config.InputType != "" {
-		body.PutStr("input.type", e.config.InputType)
+		inputMap := body.PutEmptyMap("input")
+		inputMap.PutStr("type", e.config.InputType)
 	}
 
 	if len(e.config.Tags) > 0 {

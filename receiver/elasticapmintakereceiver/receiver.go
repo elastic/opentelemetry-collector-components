@@ -215,7 +215,7 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 			return errors.Join(r.consumeOTel(ctx, ld, md, td)...)
 		})
 
-		accepted, streamErrs := ndjsondecoder.HandleStream(ctx, req.Body, r.cfg.BatchSize, r.cfg.MaxEventSize, r.settings.Logger, consumer)
+		accepted, streamErrs := ndjsondecoder.HandleStream(ctx, req.Body, r.cfg.streamConfig(), r.settings.Logger, consumer)
 
 		result.Accepted = accepted
 		result.Errors = make([]string, 0, len(streamErrs)+2)
