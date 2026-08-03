@@ -1,0 +1,21 @@
+type: awss3
+
+scope_name: github.com/elastic/opentelemetry-collector-components/exporter/awss3exporter
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: exporter
+  stability:
+    development: [logs]
+  codeowners:
+    active: [VihasMakwana]
+
+tests:
+  config:
+    attributes:
+      bucket: bucket
+      role_arn: role_arn
+      region: region
+      format: format
+      tenant_id: tenant_id
+      org_id: org_id

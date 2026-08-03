@@ -24,3 +24,4 @@ extension/apmconfigextension           @elastic/ingest-otel-data
 extension/fileintegrationextension     @elastic/ecosystem @elastic/ingest-otel-data
 pkg/integrations                       @elastic/ecosystem @elastic/ingest-otel-data
 extension/awscredentialsproviderextension             @elastic/obs-infraobs-integrations @elastic/ingest-otel-data
+exporter/awss3exporter                 @elastic/ingest-otel-data
