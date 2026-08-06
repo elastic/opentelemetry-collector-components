@@ -1,0 +1,33 @@
+vercel:
+  endpoint: localhost:0
+  route: /vercel
+  encoding:
+    extension: vercel
+    flush:
+      items: 500
+      bytes: 524288
+
+vercel/missing_route:
+  endpoint: localhost:0
+  route: ""
+  encoding:
+    extension: vercel
+
+vercel/invalid_route:
+  endpoint: localhost:0
+  route: logs
+  encoding:
+    extension: vercel
+
+vercel/missing_encoding:
+  endpoint: localhost:0
+  route: /vercel
+
+vercel/negative_flush:
+  endpoint: localhost:0
+  route: /vercel
+  encoding:
+    extension: vercel
+    flush:
+      items: -1
+      bytes: -1
