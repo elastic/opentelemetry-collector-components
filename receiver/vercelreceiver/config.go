@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package vercelreceiver
+package vercelreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/vercelreceiver"
 
 import (
 	"errors"

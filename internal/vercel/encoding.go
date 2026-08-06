@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package vercel
+package vercel // import "github.com/elastic/opentelemetry-collector-components/internal/vercel"
 
 import (
 	"io"

@@ -16,4 +16,4 @@
 // under the License.
 
 //go:generate mdatagen metadata.yaml
-package vercelencodingextension
+package vercelencodingextension // import "github.com/elastic/opentelemetry-collector-components/extension/vercelencodingextension"

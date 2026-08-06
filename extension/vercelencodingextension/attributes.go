@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package vercelencodingextension
+package vercelencodingextension // import "github.com/elastic/opentelemetry-collector-components/extension/vercelencodingextension"
 
 import (
 	"fmt"
@@ -74,10 +74,11 @@ const (
 	attrVercelProxy           = "vercel.proxy"
 	attrTLSClientJA4          = "tls.client.ja4"
 	// Audit log keys.
-	attrVercelTeamID          = "vercel.team.id"
-	attrVercelActorType       = "vercel.actor.type"
-	attrVercelVia             = "vercel.via"
-	attrVercelRequestID       = "vercel.request.id"
+	attrVercelTeamID    = "vercel.team.id"
+	attrVercelActorType = "vercel.actor.type"
+	attrVercelVia       = "vercel.via"
+	attrVercelRequestID = "vercel.request.id"
+	//nolint:gosec // This is an OpenTelemetry attribute key, not a credential.
 	attrVercelTokenID         = "vercel.token.id"
 	attrVercelAuditLogPayload = "vercel.audit_log.payload"
 )

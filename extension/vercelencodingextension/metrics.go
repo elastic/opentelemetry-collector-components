@@ -15,9 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package vercelencodingextension
+package vercelencodingextension // import "github.com/elastic/opentelemetry-collector-components/extension/vercelencodingextension"
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -247,7 +248,7 @@ func appendSpeedInsightsDataPoint(batch *metricsBatch, record *speedInsightsSche
 // zoneless local date-times to time.UTC.
 func parseVercelTimestamp(value string) (time.Time, error) {
 	if value == "" {
-		return time.Time{}, fmt.Errorf("empty timestamp")
+		return time.Time{}, errors.New("empty timestamp")
 	}
 
 	// Normalize space separator to 'T' (e.g. "2026-07-29 13:45:30" -> "2026-07-29T13:45:30")

@@ -16,4 +16,4 @@
 // under the License.
 
 // Package vercelreceiver implements Vercel drain APIs.
-package vercelreceiver
+package vercelreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/vercelreceiver"

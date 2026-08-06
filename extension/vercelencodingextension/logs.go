@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package vercelencodingextension
+package vercelencodingextension // import "github.com/elastic/opentelemetry-collector-components/extension/vercelencodingextension"
 
 import (
 	"encoding/hex"
