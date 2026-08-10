@@ -1,0 +1,101 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: deployment.environment.name
+          value:
+            stringValue: production
+        - key: deployment.id
+          value:
+            stringValue: dpl_123
+        - key: vercel.owner.id
+          value:
+            stringValue: team_full
+        - key: vercel.project.id
+          value:
+            stringValue: proj_full
+        - key: vercel.url
+          value:
+            stringValue: example.vercel.app
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 2.5
+                  attributes:
+                    - key: device.id
+                      value:
+                        stringValue: "999"
+                    - key: device.manufacturer
+                      value:
+                        stringValue: Apple
+                    - key: geo.country.iso_code
+                      value:
+                        stringValue: US
+                    - key: geo.locality.name
+                      value:
+                        stringValue: San Francisco
+                    - key: geo.region.iso_code
+                      value:
+                        stringValue: CA
+                    - key: http.route
+                      value:
+                        stringValue: /dashboard/[id]
+                    - key: url.domain
+                      value:
+                        stringValue: example.com
+                    - key: url.full
+                      value:
+                        stringValue: https://example.com/dashboard
+                    - key: url.path
+                      value:
+                        stringValue: /dashboard
+                    - key: url.scheme
+                      value:
+                        stringValue: https
+                    - key: user_agent.name
+                      value:
+                        stringValue: Chrome
+                    - key: user_agent.os.name
+                      value:
+                        stringValue: macOS
+                    - key: user_agent.os.version
+                      value:
+                        stringValue: "13.4"
+                    - key: user_agent.version
+                      value:
+                        stringValue: "114.0"
+                    - key: vercel.browser.engine.name
+                      value:
+                        stringValue: Blink
+                    - key: vercel.browser.engine.version
+                      value:
+                        stringValue: "114.0"
+                    - key: vercel.client.type
+                      value:
+                        stringValue: browser
+                    - key: vercel.connection.speed
+                      value:
+                        stringValue: 4g
+                    - key: vercel.device.type
+                      value:
+                        stringValue: desktop
+                    - key: vercel.speed_insights.attribution
+                      value:
+                        stringValue: attr-data
+                  timeUnixNano: "1694705400000000000"
+            name: LCP
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.speedinsights.v1
+            - key: vercel.speed_insights.script.version
+              value:
+                stringValue: 1.0.0
+            - key: vercel.speed_insights.sdk.version
+              value:
+                stringValue: 2.1.0
+            - key: vercel.speed_insights.sdk.name
+              value:
+                stringValue: '@vercel/speed-insights'
+          name: otelcol/vercel_encoding

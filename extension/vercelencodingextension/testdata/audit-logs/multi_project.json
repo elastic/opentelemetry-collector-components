@@ -1,0 +1,5 @@
+[
+  { "schema": "vercel.audit_log.v1", "id": "uev_mp_1", "teamId": "team_1", "projectId": "proj_A", "action": "deployment.created", "timestamp": 1779444000123, "actor": { "type": "user", "id": "user_1", "name": "User One" }, "requestId": "req_1" },
+  { "schema": "vercel.audit_log.v1", "id": "uev_mp_2", "teamId": "team_1", "projectId": "proj_A", "action": "deployment.promoted", "timestamp": 1779444005000, "actor": { "type": "user", "id": "user_1", "name": "User One" }, "requestId": "req_2" },
+  { "schema": "vercel.audit_log.v1", "id": "uev_mp_3", "teamId": "team_1", "projectId": "proj_B", "action": "project.env.created", "timestamp": 1779444010000, "actor": { "type": "system", "id": "system", "name": "System" }, "requestId": "req_3" }
+]
