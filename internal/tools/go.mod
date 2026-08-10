@@ -13,7 +13,6 @@ require (
 	go.opentelemetry.io/collector/cmd/builder v0.156.0
 	go.opentelemetry.io/collector/cmd/mdatagen v0.156.0
 	golang.org/x/tools v0.47.0
-	golang.org/x/vuln v1.5.0
 )
 
 require (

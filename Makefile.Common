@@ -22,7 +22,6 @@ export PATH := $(TOOLS_BIN_DIR):$(PATH)
 LINT         := $(TOOLS_BIN_DIR)/golangci-lint
 MISSPELL     := $(TOOLS_BIN_DIR)/misspell
 MDATAGEN     := $(TOOLS_BIN_DIR)/mdatagen
-GOVULNCHECK  := $(TOOLS_BIN_DIR)/govulncheck
 GOJQ         := $(TOOLS_BIN_DIR)/gojq
 PORTO        := $(TOOLS_BIN_DIR)/porto
 BUILDER      := $(TOOLS_BIN_DIR)/builder
@@ -100,9 +99,9 @@ _GOVUL_MAP = reduce (.[] | select(.osv)) as $$osv ({}; . + {($$osv.osv.id): {sum
 # jq filter: Check if vulnerability should be skipped (withdrawn, golang+IGNORE_GOLANG_VULNS, or has no position/symbol in trace)
 _GOVUL_SKIP = ($$osv_data[.finding.osv].withdrawn | . != null and . != "") or ("$(IGNORE_GOLANG_VULNS)" == "1" and ($$osv_data[.finding.osv].pkg | test("^(stdlib|golang\\.org|google\\.golang\\.org)"))) or (.finding.trace | length == 0 or (all(.position == null and .symbol == null)))
 .PHONY: govulncheck
-govulncheck: $(GOVULNCHECK) $(GOJQ)
+govulncheck: $(GOJQ)
 	@set -e; \
-	$(GOVULNCHECK) -format json ./... > govulncheck-output.json; \
+	$(GOCMD) -C $(SRC_ROOT) tool govulncheck -C $(CURDIR) -format json ./... > govulncheck-output.json; \
 	FOUND="$$( $(GOJQ) -r -s '$(_GOVUL_MAP) | [.[] | select(.finding != null and ($(_GOVUL_SKIP) | not)) | .finding.osv] | unique | .[]' govulncheck-output.json | sort -u )"; \
 	[ -z "$$FOUND" ] && echo "No vulnerabilities found" && rm -f govulncheck-output.json && exit 0; \
 	echo "Found: $$FOUND"; \
