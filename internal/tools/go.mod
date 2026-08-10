@@ -10,7 +10,6 @@ require (
 	github.com/jcchavezs/porto v0.7.0
 	go.opentelemetry.io/build-tools/chloggen v0.30.0
 	go.opentelemetry.io/build-tools/multimod v0.30.0
-	go.opentelemetry.io/collector/cmd/builder v0.156.0
 	go.opentelemetry.io/collector/cmd/mdatagen v0.156.0
 	golang.org/x/tools v0.47.0
 )
@@ -138,11 +137,7 @@ require (
 	github.com/kkHAIKE/contextcheck v1.1.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
-	github.com/knadh/koanf/parsers/yaml v1.1.0 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.0 // indirect
-	github.com/knadh/koanf/providers/env/v2 v2.0.0 // indirect
-	github.com/knadh/koanf/providers/file v1.2.1 // indirect
-	github.com/knadh/koanf/providers/fs v1.0.0 // indirect
 	github.com/knadh/koanf/v2 v2.3.5 // indirect
 	github.com/kulti/thelper v0.7.1 // indirect
 	github.com/kunwardeep/paralleltest v1.0.15 // indirect

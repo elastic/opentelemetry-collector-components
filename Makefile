@@ -93,7 +93,7 @@ remove-toolchain:
 
 # Build a collector based on the Elastic components (generate Elastic collector)
 .PHONY: genelasticcol
-genelasticcol: $(BUILDER)
+genelasticcol:
 	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) --config ./distributions/elastic-components/manifest.yaml
 
 # Validate that the Elastic components collector can run with the example configuration.

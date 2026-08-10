@@ -32,7 +32,6 @@ import (
 	_ "github.com/jcchavezs/porto/cmd/porto"
 	_ "go.opentelemetry.io/build-tools/chloggen"
 	_ "go.opentelemetry.io/build-tools/multimod"
-	_ "go.opentelemetry.io/collector/cmd/builder"
 	_ "go.opentelemetry.io/collector/cmd/mdatagen"
 	_ "golang.org/x/tools/cmd/goimports"
 )
