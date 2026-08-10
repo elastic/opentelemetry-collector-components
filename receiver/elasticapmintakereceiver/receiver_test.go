@@ -32,7 +32,6 @@ import (
 	"testing"
 	"time"
 
-	xxhashv2 "github.com/cespare/xxhash/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/plogtest"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
@@ -53,10 +52,10 @@ import (
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
 
-	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
 
@@ -462,19 +461,23 @@ func TestInvalidInput(t *testing.T) {
 		inputNdJsonFileName          string
 		expectedErrorMessageFileName string
 	}{
-		{"invalid-event.ndjson", "invalid-event-expected.txt"},
-		{"invalid-event-type.ndjson", "invalid-event-type-expected.txt"},
-		{"invalid-json-event.ndjson", "invalid-json-event-expected.txt"},
-		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.txt"},
-		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.txt"},
-		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
-		{"invalid-metadata.ndjson", "invalid-metadata-expected.txt"},
-		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.txt"},
+		{"invalid-event.ndjson", "invalid-event-expected.json"},
+		{"invalid-event-type.ndjson", "invalid-event-type-expected.json"},
+		{"invalid-json-event.ndjson", "invalid-json-event-expected.json"},
+		{"typeless-event.ndjson", "typeless-event-expected.json"},
+		{"invalid-json-metadata.ndjson", "invalid-json-metadata-expected.json"},
+		{"invalid-metadata-2.ndjson", "invalid-metadata-2-expected.json"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.json"},
+		{"invalid-metadata.ndjson", "invalid-metadata-expected.json"},
+		{"missing-agent-metadata.ndjson", "missing-agent-metadata-expected.json"},
+		{"invalid-span-validation.ndjson", "invalid-span-validation-expected.json"},
+		{"invalid-transaction-validation.ndjson", "invalid-transaction-validation-expected.json"},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
@@ -521,9 +524,7 @@ func TestInvalidInput(t *testing.T) {
 				t.Fatalf("unexpected response body: got %q, want %q", bodyStr, expectedError)
 			}
 
-			if resp.StatusCode < http.StatusBadRequest {
-				t.Fatalf("unexpected status code - this request is invalid and should not be accepted. Status code: %v", resp.StatusCode)
-			}
+			assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		})
 	}
 }
@@ -534,11 +535,15 @@ func TestErrors(t *testing.T) {
 		outputExpectedYamlFileName string
 	}{
 		{"errors.ndjson", "errors_expected.yaml"},
+		{"error_context_tags.ndjson", "error_context_tags_expected.yaml"},                           // context.tags written as resource labels.*
+		{"error_transaction_sampled_false.ndjson", "error_transaction_sampled_false_expected.yaml"}, // error.transaction.sampled=false parity
+		{"error_empty_stacktrace_strings.ndjson", "error_empty_stacktrace_strings_expected.yaml"},   // empty-string stacktrace fields must not be written
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextLog := new(consumertest.LogsSink)
@@ -568,11 +573,13 @@ func TestMetrics(t *testing.T) {
 	}{
 		{"metricsets.ndjson", "metricsets_expected.yaml", []string{"labels.tag1", "numeric_labels.tag2"}},
 		{"multiple_histogram_metrics_samples.ndjson", "multiple_histogram_metrics_samples_expected.yaml", nil},
+		{"metricset_summary_type.ndjson", "metricset_summary_type_expected.yaml", nil}, // "summary" metric type parity
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextMetrics := new(consumertest.MetricsSink)
@@ -608,11 +615,13 @@ func TestLogs(t *testing.T) {
 		expectedDynamicAttrs       []string
 	}{
 		{"logs.ndjson", "logs_expected.yaml", []string{"labels.ab_testing", "labels.group", "numeric_labels.segment"}},
+		{"comprehensive_log_fields.ndjson", "comprehensive_log_fields_expected.yaml", []string{"numeric_labels.tier", "labels.team"}},
 	}
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextLogs := new(consumertest.LogsSink)
@@ -656,6 +665,12 @@ var inputFiles = []struct {
 	{"hostdata.ndjson", "hostdata_expected.yaml", nil},
 	{"spans_representative_count.ndjson", "spans_representative_count_expected.yaml", nil},
 	{"dropped_spans_stats_no_duration.ndjson", "dropped_spans_stats_no_duration_expected.yaml", nil},
+	{"transactions_xff_nat_ip.ndjson", "transactions_xff_nat_ip_expected.yaml", nil},
+	{"transaction_sampled_false.ndjson", "transaction_sampled_false_expected.yaml", nil},         // transaction.sampled=false parity
+	{"span_otel_custom_attrs.ndjson", "span_otel_custom_attrs_expected.yaml", nil},               // OTel attrs on spans must propagate to labels.*
+	{"transaction_otel_custom_attrs.ndjson", "transaction_otel_custom_attrs_expected.yaml", nil}, // OTel attrs on transactions must propagate to labels.*
+	{"span_empty_string_label.ndjson", "span_empty_string_label_expected.yaml", nil},             // empty-string tag values are omitted from labels.*
+	{"span_empty_stacktrace_strings.ndjson", "span_empty_stacktrace_strings_expected.yaml", nil}, // empty-string stacktrace frame fields must not be written
 }
 
 func TestTransactionsAndSpans(t *testing.T) {
@@ -663,6 +678,7 @@ func TestTransactionsAndSpans(t *testing.T) {
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
 	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
 	nextTrace := new(consumertest.TracesSink)
@@ -817,9 +833,15 @@ func TestConsumeOTelConsumesSignalsConcurrently(t *testing.T) {
 	}
 }
 
-func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
+func TestEventsHandlerUsesConfiguredBatchBytes(t *testing.T) {
+	payload := generateTransactionPayload(5)
+	// Event lines are fixed-width. A threshold one byte over a single line
+	// flushes once two events have accumulated, grouping events in pairs.
+	eventLineLen := len(bytes.Split(payload, []byte("\n"))[1])
+
 	cfg := createDefaultConfig().(*Config)
-	cfg.BatchSize = 2
+	cfg.BatchBytes = eventLineLen + 1
+	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	rcvr, err := newElasticAPMIntakeReceiver(
 		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
@@ -834,7 +856,7 @@ func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
 	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
 		return withECSMappingMode(req.Context(), false)
 	})
-	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(5)))
+	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(payload))
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -849,9 +871,35 @@ func TestEventsHandlerUsesConfiguredBatchSize(t *testing.T) {
 	})
 }
 
+func TestEventsHandlerZeroMaxConcurrentDecodersDisablesLimit(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	cfg.MaxConcurrentDecoders = 0
+
+	rcvr, err := newElasticAPMIntakeReceiver(
+		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+		cfg,
+		receivertest.NewNopSettings(metadata.Type),
+	)
+	require.NoError(t, err)
+
+	nextTraces := new(consumertest.TracesSink)
+	rcvr.nextTraces = nextTraces
+
+	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+		return withECSMappingMode(req.Context(), false)
+	})
+	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1)))
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	require.Len(t, nextTraces.AllTraces(), 1)
+}
+
 func TestEventsHandler_ContextCanceledWithUnknownRPCError(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
-	cfg.BatchSize = 1
+	cfg.BatchBytes = 1 // flush after every event
 
 	rcvr, err := newElasticAPMIntakeReceiver(
 		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
@@ -880,6 +928,7 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 		name                 string
 		inputFile            string
 		signal               string // "traces" or "metrics"
+		eventsPerBatch       int    // 0 means use default batching
 		expectedDynamicAttrs []string
 		// expectedPerGroupDynamicAttrs, if set, verifies each group's
 		// context independently (one entry per ConsumeX call, in order).
@@ -922,6 +971,57 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			},
 			expectedYamlFile: "metric_global_label_shadow_expected.yaml",
 		},
+		{
+			// Global label keys are fixed at metadata-read time and must
+			// appear in x-elastic-dynamic-resource-attributes for any event
+			// that has not shadowed them, regardless of which batch that
+			// event lands in.
+			//
+			// The first event shadows tag1 via context.tags (batch 1).
+			// The second event does not shadow tag1 (batch 2).
+			// batch 2's context must still carry tag1 in its dynamic attrs.
+			name:           "cross-batch: first event shadows global label, second batch must still see it",
+			inputFile:      "global_label_cross_batch_shadow_first_event.ndjson",
+			signal:         "traces",
+			eventsPerBatch: 1, // one event per batch to isolate the shadow in batch 1
+			expectedPerGroupDynamicAttrs: [][]string{
+				{"labels.tag2"},                // batch 1: tag1 shadowed → only tag2
+				{"labels.tag1", "labels.tag2"}, // batch 2: no shadow → both globals
+			},
+		},
+		{
+			// Global label keys are fixed at metadata-read time. Even when
+			// every event in a batch shadows the same key, subsequent batches
+			// must still see that key in x-elastic-dynamic-resource-attributes
+			// for events that do not shadow it.
+			//
+			// Events 0 and 1 both shadow tag1 (batch 1, all events shadow).
+			// Event 2 does not shadow tag1 (batch 2).
+			// batch 2's context must still carry tag1 in its dynamic attrs.
+			name:           "cross-batch: all events in first batch shadow global label, second batch must still see it",
+			inputFile:      "global_label_cross_batch_shadow_all_events.ndjson",
+			signal:         "traces",
+			eventsPerBatch: 2, // events 0,1 in batch 1; event 2 in batch 2
+			expectedPerGroupDynamicAttrs: [][]string{
+				{"labels.tag2"},                // batch 1: both events shadow tag1 → only tag2
+				{"labels.tag1", "labels.tag2"}, // batch 2: no shadow → both globals
+			},
+		},
+		{
+			// Log events with per-event labels that shadow metadata global labels
+			// must be routed to shadow batches, not always to main.
+			//   - Log 1: no labels → both globals retained → main batch
+			//   - Logs 2,3: labels.global_tag shadows → same mask → shadowed batch A
+			//   - Log 4: labels.num_tag shadows → different mask → shadowed batch B
+			name:      "log event-level label shadows metadata global label",
+			inputFile: "log_global_label_shadow.ndjson",
+			signal:    "logs",
+			expectedPerGroupDynamicAttrs: [][]string{
+				{"labels.global_tag", "numeric_labels.num_tag"}, // main: log 1
+				{"numeric_labels.num_tag"},                      // shadowed batch A: logs 2,3
+				{"labels.global_tag"},                           // shadowed batch B: log 4
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -930,6 +1030,19 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			cfg := factory.CreateDefaultConfig().(*Config)
 			cfg.NetAddr.Endpoint = testEndpoint
+			cfg.BatchFlushInterval = 0 // deterministic batch shapes
+			if tc.eventsPerBatch > 0 {
+				input, err := os.ReadFile(filepath.Join(testData, tc.inputFile))
+				require.NoError(t, err)
+				// Flush fires once accumulated bytes reach the threshold, so
+				// one byte over the first eventsPerBatch-1 event lines groups
+				// the first eventsPerBatch events into one batch.
+				lines := bytes.Split(input, []byte("\n"))
+				cfg.BatchBytes = 1
+				for _, line := range lines[1:tc.eventsPerBatch] {
+					cfg.BatchBytes += len(line)
+				}
+			}
 			set := receivertest.NewNopSettings(metadata.Type)
 
 			var rcv component.Component
@@ -946,6 +1059,10 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 				metricsSink = new(consumertest.MetricsSink)
 				rcv, err = factory.CreateMetrics(context.Background(), set, cfg, metricsSink)
 				ctxsFn = metricsSink.Contexts
+			case "logs":
+				logsSink := new(consumertest.LogsSink)
+				rcv, err = factory.CreateLogs(context.Background(), set, cfg, logsSink)
+				ctxsFn = logsSink.Contexts
 			}
 			require.NoError(t, err)
 
@@ -1099,18 +1216,39 @@ func runComparisonForMetrics(t *testing.T, inputJsonFileName string, expectedYam
 	))
 }
 
-func TestProcessBatchReturnsOnCanceledContext(t *testing.T) {
-	r := &elasticAPMIntakeReceiver{
-		settings: receivertest.NewNopSettings(metadata.Type),
-	}
+func TestHandleStreamTypelessAndMalformedEvents(t *testing.T) {
+	metadataLine := `{"metadata": {"service": {"name": "test", "agent": {"name": "test", "version": "1.0"}}}}` + "\n"
+	logger := receivertest.NewNopSettings(metadata.Type).Logger
+	noop := func(_ context.Context, _ *plog.Logs, _ *pmetric.Metrics, _ *ptrace.Traces) error { return nil }
 
+	for _, tc := range []struct {
+		name string
+		line string
+	}{
+		{"typeless valid JSON", "{}"},
+		{"malformed JSON no event type", "{"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := bytes.NewBufferString(metadataLine + tc.line + "\n")
+			accepted, errs := ndjsondecoder.HandleStream(context.Background(), body, ndjsondecoder.Config{BatchBytes: 1 << 20, MaxLineLength: 1 << 20}, logger, noop)
+			require.Equal(t, 0, accepted)
+			require.Len(t, errs, 1, "expected one error for typeless/malformed input, got none")
+		})
+	}
+}
+
+func TestHandleStreamReturnsOnCanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	batch := modelpb.Batch{
-		&modelpb.APMEvent{},
-	}
-	ss := &streamState{rcv: r, fpHasher: xxhashv2.New()}
-	err := ss.processBatch(ctx, &batch)
-	require.ErrorIs(t, err, context.Canceled)
+	body := bytes.NewBufferString(
+		`{"metadata": {"service": {"name": "test", "agent": {"name": "test", "version": "1.0"}}}}` + "\n" +
+			`{"transaction": {"id": "aa00000000000001", "trace_id": "aa00000000000001aa00000000000001", "name": "tx", "type": "request", "duration": 1, "timestamp": 1000000, "outcome": "success", "sampled": true, "span_count": {"started": 0}}}` + "\n",
+	)
+	logger := receivertest.NewNopSettings(metadata.Type).Logger
+	accepted, errs := ndjsondecoder.HandleStream(ctx, body, ndjsondecoder.Config{BatchBytes: 1 << 20, MaxLineLength: 1 << 20}, logger, func(_ context.Context, _ *plog.Logs, _ *pmetric.Metrics, _ *ptrace.Traces) error {
+		return nil
+	})
+	require.Equal(t, 0, accepted)
+	require.True(t, errors.Is(errors.Join(errs...), context.Canceled))
 }

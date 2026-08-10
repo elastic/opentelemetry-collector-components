@@ -20,27 +20,29 @@ package elasticapmintakereceiver
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 
-	xxhashv2 "github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver/receivertest"
-	"golang.org/x/sync/semaphore"
 
-	"github.com/elastic/apm-data/input/elasticapm"
-	"github.com/elastic/apm-data/model/modelpb"
 	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/ndjsondecoder"
 	"github.com/elastic/opentelemetry-lib/agentcfg"
 )
 
@@ -88,12 +90,11 @@ func BenchmarkProcessBatch(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			factory := NewFactory()
 			endpoint := testutil.GetAvailableLocalAddress(b)
-			cfg := &Config{
-				ServerConfig: confighttp.ServerConfig{
-					NetAddr: confignet.AddrConfig{
-						Endpoint:  endpoint,
-						Transport: confignet.TransportTypeTCP,
-					},
+			cfg := createDefaultConfig().(*Config)
+			cfg.ServerConfig = confighttp.ServerConfig{
+				NetAddr: confignet.AddrConfig{
+					Endpoint:  endpoint,
+					Transport: confignet.TransportTypeTCP,
 				},
 			}
 
@@ -150,7 +151,7 @@ func loadTestdata(b *testing.B, name string) []byte {
 // directly to isolate intake processing from transport overhead.
 func newBenchReceiver(b *testing.B) *elasticAPMIntakeReceiver {
 	b.Helper()
-	cfg := &Config{}
+	cfg := createDefaultConfig().(*Config)
 	set := receivertest.NewNopSettings(metadata.Type)
 	rcv, err := newElasticAPMIntakeReceiver(
 		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
@@ -166,22 +167,12 @@ func newBenchReceiver(b *testing.B) *elasticAPMIntakeReceiver {
 	return rcv
 }
 
-// runHandleStream drives the receiver's processBatch through a real
-// elasticapm.Processor. This mirrors the HTTP handler pipeline (NDJSON
-// decode → batched processBatch → consumer) without HTTP overhead.
 func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte) {
 	b.Helper()
-	const (
-		maxEventSize = 1024 * 1024 // 1MiB, matches handler default
-		batchSize    = 10          // matches handler default
-	)
-	proc := elasticapm.NewProcessor(elasticapm.Config{
-		MaxEventSize: maxEventSize,
-		Semaphore:    semaphore.NewWeighted(100),
-	})
-	ss := &streamState{rcv: rcv, fpHasher: xxhashv2.New()}
-	batchProcessor := modelpb.ProcessBatchFunc(ss.processBatch)
 	ctx := withECSMappingMode(context.Background(), false)
+	consumer := ndjsondecoder.BatchConsumer(func(ctx context.Context, ld *plog.Logs, md *pmetric.Metrics, td *ptrace.Traces) error {
+		return errors.Join(rcv.consumeOTel(ctx, ld, md, td)...)
+	})
 
 	b.SetBytes(int64(len(payload)))
 	b.ResetTimer()
@@ -190,10 +181,9 @@ func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte
 	reader := bytes.NewReader(payload)
 	for i := 0; i < b.N; i++ {
 		reader.Reset(payload)
-		var result elasticapm.Result
-		baseEvent := &modelpb.APMEvent{Event: &modelpb.Event{}}
-		if err := proc.HandleStream(ctx, baseEvent, reader, batchSize, batchProcessor, &result); err != nil {
-			b.Fatal(err)
+		_, streamErrs := ndjsondecoder.HandleStream(ctx, reader, rcv.cfg.streamConfig(), rcv.settings.Logger, consumer)
+		if len(streamErrs) != 0 {
+			b.Fatalf("unexpected stream errors: %v", streamErrs)
 		}
 	}
 }
@@ -225,6 +215,46 @@ func BenchmarkHandleStream(b *testing.B) {
 	}
 }
 
+// BenchmarkHandleStreamHTTP measures the full HTTP handler path — HTTP
+// request creation, NDJSON decode, pdata conversion, no-op consumer — using
+// httptest to eliminate TCP/socket overhead. Compare with BenchmarkHandleStream
+// (raw pipeline, no HTTP) to isolate handler overhead.
+func BenchmarkHandleStreamHTTP(b *testing.B) {
+	cases := []struct {
+		name string
+		file string
+	}{
+		{"transactions", "transactions.ndjson"},
+		{"spans", "spans.ndjson"},
+		{"transactions_spans", "transactions_spans.ndjson"},
+		{"errors", "errors.ndjson"},
+		{"logs", "logs.ndjson"},
+		{"metricsets", "metricsets.ndjson"},
+		{"histograms", "multiple_histogram_metrics_samples.ndjson"},
+		{"metric_global_label_shadow", "metric_global_label_shadow.ndjson"},
+	}
+	for _, tc := range cases {
+		payload := loadTestdata(b, tc.file)
+		b.Run(tc.name, func(b *testing.B) {
+			rcv := newBenchReceiver(b)
+			handler := rcv.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+				return withECSMappingMode(req.Context(), false)
+			})
+			b.SetBytes(int64(len(payload)))
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(payload))
+				rec := httptest.NewRecorder()
+				handler.ServeHTTP(rec, req)
+				if rec.Code != http.StatusAccepted {
+					b.Fatalf("unexpected status code: %d body: %s", rec.Code, rec.Body.String())
+				}
+			}
+		})
+	}
+}
+
 // BenchmarkHandleStreamGlobalLabels measures the cost of the global-label
 // shadowing path using the in-file synthetic payloads.
 func BenchmarkHandleStreamGlobalLabels(b *testing.B) {
@@ -245,9 +275,9 @@ func BenchmarkHandleStreamGlobalLabels(b *testing.B) {
 }
 
 // BenchmarkHandleStreamSize sweeps payload size to expose per-event scaling
-// behavior: how does CPU/alloc-per-event change as batches grow? The handler's
-// internal batchSize is 10, so 10/100/1000 events exercise 1/10/100 batch
-// flushes per request.
+// behavior: how does CPU/alloc-per-event change as batches grow? Batches are
+// bounded by batch_bytes (default 1MiB), so these payloads accumulate into a
+// single growing batch flushed at end of stream.
 func BenchmarkHandleStreamSize(b *testing.B) {
 	for _, n := range []int{10, 100, 1000} {
 		payload := generateTransactionPayload(n)

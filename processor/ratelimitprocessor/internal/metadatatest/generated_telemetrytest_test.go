@@ -37,11 +37,17 @@ func TestSetupTelemetry(t *testing.T) {
 	require.NoError(t, err)
 	defer tb.Shutdown()
 	tb.RatelimitConcurrentRequests.Add(context.Background(), 1)
+	tb.RatelimitDelayDuration.Record(context.Background(), 1)
 	tb.RatelimitRequestDuration.Record(context.Background(), 1)
 	tb.RatelimitRequestSize.Record(context.Background(), 1)
 	tb.RatelimitRequests.Add(context.Background(), 1)
+	tb.RatelimitTokensAfter.Record(context.Background(), 1)
+	tb.RatelimitTokensBefore.Record(context.Background(), 1)
 	AssertEqualRatelimitConcurrentRequests(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualRatelimitDelayDuration(t, testTel,
+		[]metricdata.HistogramDataPoint[float64]{{}}, metricdatatest.IgnoreValue(),
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualRatelimitRequestDuration(t, testTel,
 		[]metricdata.HistogramDataPoint[float64]{{}}, metricdatatest.IgnoreValue(),
@@ -51,6 +57,12 @@ func TestSetupTelemetry(t *testing.T) {
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualRatelimitRequests(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualRatelimitTokensAfter(t, testTel,
+		[]metricdata.DataPoint[float64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualRatelimitTokensBefore(t, testTel,
+		[]metricdata.DataPoint[float64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 
 	require.NoError(t, testTel.Shutdown(context.Background()))

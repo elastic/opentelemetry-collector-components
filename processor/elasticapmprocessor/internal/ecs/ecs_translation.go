@@ -35,6 +35,7 @@ import (
 // Supported ECS resource attributes
 const (
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
+	defaultServiceName               = "unknown"
 )
 
 // kv is a key-value pair for collecting deferred attribute insertions after a RemoveIf pass.
@@ -229,6 +230,16 @@ func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels
 	})
 	for _, l := range toAppend {
 		l.v.CopyTo(attributes.PutEmpty(l.k))
+	}
+
+	// Normalize service name to `unknown` if not present.
+	// See: https://github.com/elastic/apm-data/blob/66b89636fc3a2ad643f38c7bb6f0992452ba60a7/input/otlp/metadata.go#L399-L404
+	// `agent.{name, version} are normalized as per the apm-data logic in internal/enrichments/resource.go.
+	//
+	// TODO(lahsivjar): Can we unify all resource enrichments (including ECS) at one place?
+	if context.ServiceName == "" {
+		context.ServiceName = defaultServiceName
+		attributes.PutStr(string(semconv.ServiceNameKey), defaultServiceName)
 	}
 
 	// set host.name and host.hostname

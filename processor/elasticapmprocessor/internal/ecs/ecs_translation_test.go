@@ -131,6 +131,11 @@ func TestTranslateResourceMetadata(t *testing.T) {
 			wantKey:  string(semconv.TelemetrySDKLanguageKey),
 		},
 		{
+			name:    "missing service.name should default to unknown",
+			wantKey: string(semconv.ServiceNameKey),
+			wantVal: "unknown",
+		},
+		{
 			name:     "supported service version truncated",
 			inputKey: string(semconv.ServiceVersionKey),
 			inputVal: strings.Repeat("a", int(ecsKeywordMaxLength)+1),

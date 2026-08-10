@@ -1,0 +1,62 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1496170407154000"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: transaction
+              - key: transaction.duration.us
+                value:
+                  intValue: "10000"
+              - key: transaction.id
+                value:
+                  stringValue: aa00000000000001
+              - key: transaction.name
+                value:
+                  stringValue: GET /api
+              - key: transaction.type
+                value:
+                  stringValue: request
+              - key: transaction.span_count.started
+                value:
+                  intValue: "0"
+            endTimeUnixNano: "1496170407164000000"
+            name: GET /api
+            spanId: aa00000000000001
+            startTimeUnixNano: "1496170407154000000"
+            status:
+              code: 1
+            traceId: aa00000000000001aa00000000000001

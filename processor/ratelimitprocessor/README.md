@@ -43,14 +43,36 @@ processors:
 ```
 ### Telemetry and metrics
 
-The processor emits attributes on relevant metrics to aid debugging and monitoring:
+#### Metrics
 
-* `decision`
-* `reason`
+| Metric | Type | Description |
+|--------|------|-------------|
+| `otelcol_ratelimit.requests` | Counter | Total number of rate-limiting decisions made. Labelled with `decision` and `reason`. |
+| `otelcol_ratelimit.request_duration` | Histogram | Time (seconds) to evaluate the rate limit check itself. Labelled by metadata keys only. |
+| `otelcol_ratelimit.request_size` | Histogram | Size (bytes) of the request. Only recorded when `strategy: bytes`. Labelled with `decision` and `reason`. |
+| `otelcol_ratelimit.concurrent_requests` | UpDownCounter | Number of requests currently being processed (in-flight). Labelled by metadata keys only. |
+| `otelcol_ratelimit.delay_duration` | Histogram | Time (seconds) a request spent waiting due to rate limiting. Only recorded when `throttle_behavior: delay` and a delay actually occurred (`decision: delayed`). Labelled with `decision` and `reason`. |
+| `otelcol_ratelimit.tokens_after` | Gauge | Token bucket level after this request was served. Negative values indicate the bucket is in debt. Only emitted for `throttle_behavior: delay`. Labelled by metadata keys and `limit_threshold`. |
+| `otelcol_ratelimit.tokens_before` | Gauge | Token bucket level when the request arrived, before any tokens were consumed. Negative means the bucket was already in deficit on arrival (sustained throttling). Only emitted for `throttle_behavior: delay`. Labelled by metadata keys and `limit_threshold`. |
 
-Metrics exposed by the processor include:
+`tokens_before` and `tokens_after` answer different questions: `tokens_before` shows whether the bucket was already in deficit when the request arrived — a negative value is a reliable signal of sustained overload rather than a transient burst. `tokens_after` shows how deep in debt the bucket is after serving the request, reflecting committed future debt from the reservation. Together they give a before→after trajectory that neither metric provides on its own.
 
-* `otelcol_ratelimit.requests` — total number of rate limiting requests
-* `otelcol_ratelimit.request_duration` — histogram of request processing duration (seconds)
-* `otelcol_ratelimit.request_size` — histogram of bytes per request (only when strategy is `bytes`)
-* `otelcol_ratelimit.concurrent_requests` — current number of in-flight requests
+#### Attributes
+
+**`ratelimit_decision`** — the outcome of the rate limit check:
+
+| Value | Meaning |
+|-------|---------|
+| `accepted` | Request passed immediately; tokens were available. |
+| `delayed` | Request was held for a short wait while the bucket refilled (`throttle_behavior: delay`). No error is returned. |
+| `throttled` | Request was rejected because the bucket was empty (`throttle_behavior: error`). An error is returned to the sender. |
+| `cancelled` | Request was waiting for the bucket to refill but the client cancelled the context before the wait completed. The cancellation error is propagated back. |
+
+**`reason`** — the rate-limiting state that produced the decision:
+
+| Value | Meaning |
+|-------|---------|
+| `under_limit` | Bucket had enough tokens; request accepted immediately. |
+| `over_limit` | Bucket was empty or in deficit. Applies to `delayed`, `throttled`, and `cancelled` decisions. |
+
+**`limit_threshold`** — the configured token refill rate (tokens/second) for the key. Appears on `otelcol_ratelimit.tokens_after` and `otelcol_ratelimit.tokens_before` (delay mode only).

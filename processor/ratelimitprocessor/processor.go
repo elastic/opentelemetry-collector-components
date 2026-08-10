@@ -31,8 +31,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor/internal/metadata"
@@ -185,30 +183,30 @@ func (r *ProfilesRateLimiterProcessor) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{MutatesData: false}
 }
 
-func getTelemetryAttrs(attrsCommon []attribute.KeyValue, err error) (attrs []attribute.KeyValue) {
-	switch {
-	case err == nil:
-		attrs = append(attrsCommon,
+func getTelemetryAttrs(attrsCommon []attribute.KeyValue, result RateLimitResult, err error) []attribute.KeyValue {
+	switch result.Decision {
+	case DecisionDelayed, DecisionThrottled, DecisionCancelled:
+		return append(attrsCommon,
+			telemetry.WithDecision(string(result.Decision)),
+			telemetry.WithReason(telemetry.StatusOverLimit),
+		)
+	default: // DecisionAccepted
+		if err != nil {
+			return append(attrsCommon,
+				telemetry.WithDecision(string(DecisionAccepted)),
+				telemetry.WithReason(telemetry.RequestErr),
+			)
+		}
+		return append(attrsCommon,
+			telemetry.WithDecision(string(DecisionAccepted)),
 			telemetry.WithReason(telemetry.StatusUnderLimit),
-			telemetry.WithDecision("accepted"),
-		)
-	case status.Code(err) == codes.ResourceExhausted:
-		attrs = append(attrsCommon,
-			telemetry.WithDecision("throttled"),
-		)
-	default:
-		attrs = append(attrsCommon,
-			telemetry.WithReason(telemetry.RequestErr),
-			telemetry.WithDecision("accepted"),
 		)
 	}
-
-	return attrs
 }
 
 func withRateLimit[T any](ctx context.Context,
 	hits int,
-	rateLimit func(ctx context.Context, n int) error,
+	rateLimit func(ctx context.Context, n int) (RateLimitResult, error),
 	metadataKeys []string,
 	tb *metadata.TelemetryBuilder,
 	logger *zap.Logger,
@@ -221,32 +219,43 @@ func withRateLimit[T any](ctx context.Context,
 	defer tb.RatelimitConcurrentRequests.Add(ctx, -1, metric.WithAttributeSet(attrsSet))
 
 	start := time.Now()
-	err := rateLimit(ctx, hits)
+	result, err := rateLimit(ctx, hits)
 	tb.RatelimitRequestDuration.Record(ctx,
 		time.Since(start).Seconds(),
 		metric.WithAttributeSet(attrsSet),
 	)
 
-	attrRequests := getTelemetryAttrs(attrsCommon, err)
+	attrRequests := getTelemetryAttrs(attrsCommon, result, err)
 	attrRequestsSet := attribute.NewSet(attrRequests...)
 	tb.RatelimitRequestSize.Record(ctx, int64(hits), metric.WithAttributeSet(attrRequestsSet))
 	tb.RatelimitRequests.Add(ctx, 1, metric.WithAttributeSet(attrRequestsSet))
+	if result.Decision == DecisionDelayed {
+		tb.RatelimitDelayDuration.Record(ctx, result.Delay.Seconds(), metric.WithAttributeSet(attrRequestsSet))
+	}
+	if result.EmitTokenMetrics {
+		tokenAttrs := attribute.NewSet(append(attrsCommon, telemetry.WithLimitThreshold(result.ConfigRate))...)
+		tb.RatelimitTokensAfter.Record(ctx, result.TokensAfter, metric.WithAttributeSet(tokenAttrs))
+		tb.RatelimitTokensBefore.Record(ctx, result.TokensBefore, metric.WithAttributeSet(tokenAttrs))
+	}
+
 	if err != nil {
-		// enhance error logging with metadata keys
-		fields := make([]zap.Field, 0, len(attrsCommon)+1)
-		fields = append(fields, zap.Int("hits", hits))
-		for _, kv := range attrsCommon {
-			switch kv.Value.Type() {
-			case attribute.STRINGSLICE:
-				fields = append(fields, zap.Strings(string(kv.Key), kv.Value.AsStringSlice()))
-			default:
-				fields = append(fields, zap.String(string(kv.Key), kv.Value.AsString()))
+		if result.Decision != DecisionCancelled {
+			// enhance error logging with metadata keys
+			fields := make([]zap.Field, 0, len(attrsCommon)+1)
+			fields = append(fields, zap.Int("hits", hits))
+			for _, kv := range attrsCommon {
+				switch kv.Value.Type() {
+				case attribute.STRINGSLICE:
+					fields = append(fields, zap.Strings(string(kv.Key), kv.Value.AsStringSlice()))
+				default:
+					fields = append(fields, zap.String(string(kv.Key), kv.Value.AsString()))
+				}
 			}
+			logger.Error(
+				"request is over the limits defined by the rate limiter",
+				append(fields, zap.Error(err))...,
+			)
 		}
-		logger.Error(
-			"request is over the limits defined by the rate limiter",
-			append(fields, zap.Error(err))...,
-		)
 		return err
 	}
 	return next(ctx, data)

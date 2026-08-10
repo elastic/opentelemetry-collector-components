@@ -36,6 +36,12 @@ const (
 	// each line becomes a separate log record.
 	FormatText Format = "text"
 
+	// FormatCSV indicates the input is CSV: the first record is the header
+	// (unless CSV.FieldsNames is set) and each subsequent record becomes a
+	// log record whose "message" is a JSON object keyed by the header. This
+	// mirrors the Beats aws-s3 input's decoding.codec.csv behaviour.
+	FormatCSV Format = "csv"
+
 	// FieldTypeString maps to pcommon.Map.PutStr.
 	FieldTypeString FieldType = "String"
 
@@ -47,6 +53,32 @@ const (
 type DataStreamConfig struct {
 	Dataset   string `mapstructure:"dataset"`
 	Namespace string `mapstructure:"namespace"`
+}
+
+// CSVConfig configures CSV decoding. Only used when Format is "csv". The
+// option names mirror the Beats aws-s3 input's decoding.codec.csv settings so
+// configurations are consistent across the Agent and forwarder paths.
+type CSVConfig struct {
+	// Comma is the field separator, a single character. Defaults to ",".
+	// Netskope Log Streaming, for example, uses a single space.
+	Comma string `mapstructure:"comma,omitempty"`
+
+	// Comment, if set, is the comment character. Lines beginning with it
+	// (before the first non-comment record) are skipped. A single character;
+	// must differ from Comma.
+	Comment string `mapstructure:"comment,omitempty"`
+
+	// FieldsNames overrides the header. When empty, the first non-comment CSV
+	// record is read and used as the header. Named "fields_names" to match the
+	// Beats csv codec option.
+	FieldsNames []string `mapstructure:"fields_names,omitempty"`
+
+	// LazyQuotes, if true, allows a quote to appear in an unquoted field and
+	// a non-doubled quote in a quoted field.
+	LazyQuotes bool `mapstructure:"lazy_quotes,omitempty"`
+
+	// TrimLeadingSpace, if true, trims leading white space in a field.
+	TrimLeadingSpace bool `mapstructure:"trim_leading_space,omitempty"`
 }
 
 // Config defines the configuration for the beats encoding extension.
@@ -83,6 +115,9 @@ type Config struct {
 	// Only used when Format is "json" and Unwrap is set.
 	Mappings []FieldMapping `mapstructure:"mappings,omitempty"`
 
+	// CSV configures CSV decoding. Only used when Format is "csv".
+	CSV CSVConfig `mapstructure:"csv,omitempty"`
+
 	// prevent unkeyed literal initialization
 	_ struct{}
 }
@@ -106,13 +141,39 @@ type FieldMapping struct {
 
 func (c *Config) Validate() error {
 	switch c.Format {
-	case FormatJSON, FormatText:
+	case FormatJSON, FormatText, FormatCSV:
 	default:
-		return fmt.Errorf("invalid format %q: must be %q or %q", c.Format, FormatJSON, FormatText)
+		return fmt.Errorf("invalid format %q: must be %q, %q or %q", c.Format, FormatJSON, FormatText, FormatCSV)
 	}
 
 	if len(c.Unwrap) > 0 && c.Format != FormatJSON {
 		return fmt.Errorf("unwrap is only supported when format is %q", FormatJSON)
+	}
+
+	if c.Format != FormatCSV &&
+		(c.CSV.Comma != "" || c.CSV.Comment != "" || len(c.CSV.FieldsNames) > 0 ||
+			c.CSV.LazyQuotes || c.CSV.TrimLeadingSpace) {
+		return fmt.Errorf("csv options are only supported when format is %q", FormatCSV)
+	}
+
+	if c.CSV.Comma != "" && len([]rune(c.CSV.Comma)) != 1 {
+		return fmt.Errorf("csv.comma must be a single character, got %q", c.CSV.Comma)
+	}
+
+	if c.CSV.Comment != "" && len([]rune(c.CSV.Comment)) != 1 {
+		return fmt.Errorf("csv.comment must be a single character, got %q", c.CSV.Comment)
+	}
+
+	// csv.Reader rejects comment == comma at decode time; fail fast here with a
+	// clear message. Comma defaults to "," when unset.
+	if c.CSV.Comment != "" {
+		comma := c.CSV.Comma
+		if comma == "" {
+			comma = ","
+		}
+		if c.CSV.Comment == comma {
+			return fmt.Errorf("csv.comment must differ from csv.comma (both %q)", comma)
+		}
 	}
 
 	if c.DataStream.Dataset == "" {

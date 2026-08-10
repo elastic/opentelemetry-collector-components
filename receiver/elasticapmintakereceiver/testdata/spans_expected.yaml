@@ -127,6 +127,9 @@ resourceSpans:
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
+        - key: labels.tag1
+          value:
+            stringValue: label1
         - key: labels.elastic_profiler_stack_trace_ids
           value:
             arrayValue:
@@ -134,9 +137,6 @@ resourceSpans:
                 - stringValue: foo
                 - stringValue: bar
                 - stringValue: foo
-        - key: labels.tag1
-          value:
-            stringValue: label1
     scopeSpans:
       - scope: {}
         spans:
@@ -598,6 +598,51 @@ resourceSpans:
             status:
               code: 1
             traceId: edcbaf0123456789abcdef9876543210
+          - attributes:
+              - key: timestamp.us
+                value:
+                  intValue: "1625572685682272"
+              - key: event.outcome
+                value:
+                  stringValue: success
+              - key: processor.event
+                value:
+                  stringValue: span
+              - key: span.duration.us
+                value:
+                  intValue: "250500"
+              - key: transaction.id
+                value:
+                  stringValue: 01af25874dec69dd
+              - key: span.id
+                value:
+                  stringValue: aabbccddeeff0011
+              - key: span.name
+                value:
+                  stringValue: GET /api/batch
+              - key: span.type
+                value:
+                  stringValue: external
+              - key: span.composite.compression_strategy
+                value:
+                  stringValue: same_kind
+              - key: span.composite.count
+                value:
+                  intValue: "8"
+              - key: span.composite.sum.us
+                value:
+                  intValue: "248300"
+              - key: span.representative_count
+                value:
+                  doubleValue: 1
+            endTimeUnixNano: "1625572685932772000"
+            name: GET /api/batch
+            parentSpanId: abcdef0123456789
+            spanId: aabbccddeeff0011
+            startTimeUnixNano: "1625572685682272000"
+            status:
+              code: 1
+            traceId: aabbccddeeff0011aabbccddeeff0011
   - resource:
       attributes:
         - key: service.name
@@ -714,9 +759,6 @@ resourceSpans:
         - key: user.domain
           value:
             stringValue: ldap://abc
-        - key: destination.ip
-          value:
-            stringValue: ::1
         - key: agent.name
           value:
             stringValue: elastic-ruby
@@ -732,6 +774,9 @@ resourceSpans:
         - key: labels.tag1
           value:
             stringValue: label1
+        - key: destination.ip
+          value:
+            stringValue: ::1
     scopeSpans:
       - scope: {}
         spans:
@@ -1174,15 +1219,15 @@ resourceSpans:
               - key: destination.port
                 value:
                   intValue: "5432"
-              - key: http.request.id
-                value:
-                  stringValue: some-request-id
               - key: http.response.decoded_body_size
                 value:
                   intValue: "401"
               - key: http.response.transfer_size
                 value:
                   intValue: "30012"
+              - key: http.request.id
+                value:
+                  stringValue: some-request-id
               - key: span.db.link
                 value:
                   stringValue: other.db.com
@@ -1412,9 +1457,6 @@ resourceSpans:
         - key: user.domain
           value:
             stringValue: ldap://abc
-        - key: destination.ip
-          value:
-            stringValue: ::1
         - key: agent.name
           value:
             stringValue: elastic-node
@@ -1427,6 +1469,9 @@ resourceSpans:
         - key: labels.tag1
           value:
             stringValue: label1
+        - key: destination.ip
+          value:
+            stringValue: ::1
     scopeSpans:
       - scope: {}
         spans:

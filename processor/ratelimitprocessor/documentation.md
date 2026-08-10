@@ -14,6 +14,14 @@ Number of in-flight requests at any given time
 | ---- | ----------- | ---------- | --------- | --------- |
 | {requests} | Sum | Int | false | Development |
 
+### otelcol_ratelimit.delay_duration
+
+Time (in seconds) a request spent waiting due to rate limiting. Only recorded when a delay occurs.
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {seconds} | Histogram | Double | Development |
+
 ### otelcol_ratelimit.request_duration
 
 Time(in seconds) taken to process a rate limit request
@@ -44,3 +52,19 @@ Number of rate-limiting requests
 | ---- | ----------- | ------ | ------------------- |
 | decision | rate limit decision | Any Str | - |
 | reason | rate limit reason | Any Str | - |
+
+### otelcol_ratelimit.tokens_after
+
+Token bucket level after this request was served. Negative values indicate the bucket is in debt. Only emitted for throttle_behavior=delay.
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {tokens} | Gauge | Double | Development |
+
+### otelcol_ratelimit.tokens_before
+
+Token bucket level at the moment a request arrived, before any tokens were consumed. Negative values mean the bucket was already in deficit on arrival (sustained throttling). Only emitted for throttle_behavior=delay.
+
+| Unit | Metric Type | Value Type | Stability |
+| ---- | ----------- | ---------- | --------- |
+| {tokens} | Gauge | Double | Development |

@@ -34,9 +34,11 @@ import (
 )
 
 const (
-	defaultEndpoint              = "localhost:8200"
-	defaultESEndpoint            = "http://localhost:9200"
-	defaultBatchSize             = 10
+	defaultEndpoint   = "localhost:8200"
+	defaultESEndpoint = "http://localhost:9200"
+	// 512KiB (512 * 1024) of raw NDJSON per batch; decoded pdata is ~5-7x.
+	defaultBatchBytes            = 524288
+	defaultBatchFlushInterval    = time.Second
 	defaultMaxConcurrentDecoders = 100
 	defaultMaxEventSize          = 1024 * 1024 // 1Mib
 )
@@ -66,7 +68,8 @@ func createDefaultConfig() component.Config {
 
 	return &Config{
 		ServerConfig:          defaultServerConfig,
-		BatchSize:             defaultBatchSize,
+		BatchBytes:            defaultBatchBytes,
+		BatchFlushInterval:    defaultBatchFlushInterval,
 		MaxConcurrentDecoders: defaultMaxConcurrentDecoders,
 		MaxEventSize:          defaultMaxEventSize,
 		AgentConfig: AgentConfig{

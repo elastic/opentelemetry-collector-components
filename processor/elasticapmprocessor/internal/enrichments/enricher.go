@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
@@ -71,8 +72,9 @@ func (e *Enricher) EnrichResourceSpans(resSpan ptrace.ResourceSpans) {
 }
 
 // EnrichResourceLogs enriches a single ResourceLogs with the current enricher
-// configuration.
-func (e *Enricher) EnrichResourceLogs(resLog plog.ResourceLogs) {
+// configuration. resourceNamespace is the namespace from the resource context
+// and is propagated to error log events that have no explicit namespace set.
+func (e *Enricher) EnrichResourceLogs(resLog plog.ResourceLogs, resourceNamespace string) {
 	resource := resLog.Resource()
 	EnrichResource(resource, e.Config.Resource)
 	resourceAttrs := resource.Attributes().AsRaw()
@@ -80,9 +82,13 @@ func (e *Enricher) EnrichResourceLogs(resLog plog.ResourceLogs) {
 	for j := 0; j < scopeLogs.Len(); j++ {
 		scopeLog := scopeLogs.At(j)
 		EnrichScope(scopeLog.Scope(), e.Config)
+		ns := resourceNamespace
+		if v, ok := scopeLog.Scope().Attributes().Get(elasticattr.DataStreamNamespace); ok && v.Str() != "" {
+			ns = v.Str()
+		}
 		logRecords := scopeLog.LogRecords()
 		for k := 0; k < logRecords.Len(); k++ {
-			EnrichLog(resourceAttrs, logRecords.At(k), e.Config, e.remapToECSLabels)
+			EnrichLog(resourceAttrs, logRecords.At(k), e.Config, e.remapToECSLabels, ns)
 		}
 	}
 }
@@ -128,12 +134,13 @@ func ecsAPMConfig(cfg config.Config) config.Config {
 // ecsPreProcessResource runs the shared ECS pre-processing pipeline on a
 // resource. This is common across all signal types (traces, logs, metrics)
 // in ECS mode.
-func ecsPreProcessResource(ctx context.Context, resource pcommon.Resource, dataStreamType string, serviceNameInDataStreamDataset bool, hostIPEnabled bool, sanitizeExistingLabels bool) {
+func ecsPreProcessResource(ctx context.Context, resource pcommon.Resource, dataStreamType string, serviceNameInDataStreamDataset bool, hostIPEnabled bool, sanitizeExistingLabels bool) ecs.ResourceAttrContext {
 	resourceContext := ecs.TranslateResourceMetadata(resource, sanitizeExistingLabels)
 	routing.EncodeDataStream(resource, dataStreamType, serviceNameInDataStreamDataset, resourceContext)
 	if hostIPEnabled {
 		ecs.SetHostIP(ctx, resource.Attributes())
 	}
+	return resourceContext
 }
 
 // NewEnricher creates a new instance of Enricher. remapToECSLabels

@@ -41,19 +41,22 @@ var MetricsInfo = metricsInfo{
 		Name: "samples.beam.count",
 	},
 	SamplesClassification: metricInfo{
-		Name: "samples.classification",
+		Name:       "samples.classification",
+		Attributes: []string{"classification", "frame_type", "profile.type_unit"},
 	},
 	SamplesCpythonCount: metricInfo{
 		Name: "samples.cpython.count",
 	},
 	SamplesCustomAggregation: metricInfo{
-		Name: "samples.custom_aggregation",
+		Name:       "samples.custom_aggregation",
+		Attributes: []string{"frame_type", "profile.type_unit"},
 	},
 	SamplesDotnetCount: metricInfo{
 		Name: "samples.dotnet.count",
 	},
 	SamplesFrameType: metricInfo{
-		Name: "samples.frame_type",
+		Name:       "samples.frame_type",
+		Attributes: []string{"frame_type", "profile.type_unit"},
 	},
 	SamplesGoCount: metricInfo{
 		Name: "samples.go.count",
@@ -62,10 +65,12 @@ var MetricsInfo = metricsInfo{
 		Name: "samples.jvm.count",
 	},
 	SamplesKernelCount: metricInfo{
-		Name: "samples.kernel.count",
+		Name:       "samples.kernel.count",
+		Attributes: []string{"kernel_area", "kernel_io", "kernel_proto", "syscall_name"},
 	},
 	SamplesNativeCount: metricInfo{
-		Name: "samples.native.count",
+		Name:       "samples.native.count",
+		Attributes: []string{"shlib_name"},
 	},
 	SamplesPerlCount: metricInfo{
 		Name: "samples.perl.count",
@@ -107,7 +112,8 @@ type metricsInfo struct {
 }
 
 type metricInfo struct {
-	Name string
+	Name       string
+	Attributes []string
 }
 
 type MetricAttributeOption interface {

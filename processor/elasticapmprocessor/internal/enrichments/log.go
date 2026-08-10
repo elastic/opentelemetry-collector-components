@@ -36,7 +36,7 @@ const (
 	emptyExceptionMsg = "[EMPTY]"
 )
 
-func EnrichLog(resourceAttrs map[string]any, log plog.LogRecord, cfg config.Config, remapToECSLabels bool) {
+func EnrichLog(resourceAttrs map[string]any, log plog.LogRecord, cfg config.Config, remapToECSLabels bool, resourceNamespace string) {
 	if remapToECSLabels {
 		ecs.RemapLogRecordAttributesToECSLabels(log.Attributes())
 	}
@@ -46,12 +46,13 @@ func EnrichLog(resourceAttrs map[string]any, log plog.LogRecord, cfg config.Conf
 		mobile.EnrichLogEvent(ctx, log, cfg)
 	}
 
-	if routing.IsErrorEvent(log.Attributes()) {
+	isErrorEvent := routing.IsErrorEvent(log.Attributes())
+	if isErrorEvent {
 		EnrichLogError(log, cfg)
 	}
 
-	if ctx.Action == "crash" || routing.IsErrorEvent(log.Attributes()) {
-		routing.EncodeErrorDataStream(log.Attributes(), routing.DataStreamTypeLogs)
+	if ctx.Action == "crash" || isErrorEvent {
+		routing.EncodeErrorDataStream(log.Attributes(), routing.DataStreamTypeLogs, resourceNamespace)
 	}
 }
 

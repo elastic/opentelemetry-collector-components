@@ -1,0 +1,5 @@
+{"metadata": {"service": {"name": "shadow-test", "agent": {"name": "elastic-node", "version": "1.0.0"}}, "labels": {"global_tag": "from_metadata", "num_tag": 100}}}
+{"log": {"message": "log without labels", "@timestamp": 1496170422281000}}
+{"log": {"message": "log shadow global_tag 1", "labels": {"global_tag": "from_event"}, "@timestamp": 1496170422282000}}
+{"log": {"message": "log shadow global_tag 2", "labels": {"global_tag": "from_event_2"}, "@timestamp": 1496170422283000}}
+{"log": {"message": "log shadow num_tag", "labels": {"num_tag": 200}, "@timestamp": 1496170422284000}}

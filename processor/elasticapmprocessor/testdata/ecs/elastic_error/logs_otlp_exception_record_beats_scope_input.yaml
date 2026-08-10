@@ -1,0 +1,29 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: test-service
+    scopeLogs:
+      - scope:
+          attributes:
+            - key: data_stream.namespace
+              value:
+                stringValue: scope-ns
+        logRecords:
+          - attributes:
+              - key: exception.message
+                value:
+                  stringValue: "Null pointer exception"
+              - key: exception.type
+                value:
+                  stringValue: "java.lang.NullPointerException"
+              - key: error.id
+                value:
+                  stringValue: "error-record-beats-scope-123"
+              - key: data_stream.namespace
+                value:
+                  stringValue: record-ns
+            body:
+              stringValue: "Application error occurred"
+            timeUnixNano: "1000000000"
