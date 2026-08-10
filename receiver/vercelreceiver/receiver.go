@@ -117,7 +117,7 @@ func (r *vercelReceiver) Shutdown(ctx context.Context) error {
 }
 
 func (r *vercelReceiver) handlePayload(w http.ResponseWriter, req *http.Request) {
-	defer req.Body.Close()
+	defer func() { _ = req.Body.Close() }()
 
 	// The extension owns the decoding mechanism; the receiver owns the flush/
 	// batch policy. Decoding lives behind the encoding extension, which is where

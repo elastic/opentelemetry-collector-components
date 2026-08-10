@@ -135,7 +135,7 @@ func TestRouteAcceptsPost(t *testing.T) {
 
 			resp, err := http.Post("http://"+rcvr.listener.Addr().String()+defaultRoute, "application/json", bytes.NewBufferString(`{}`))
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { require.NoError(t, resp.Body.Close()) }()
 
 			require.Equal(t, http.StatusOK, resp.StatusCode)
 			require.Equal(t, tc.wantLogRecords, logsSink.LogRecordCount())
@@ -184,7 +184,7 @@ func TestRouteRequiresConsumer(t *testing.T) {
 
 			resp, err := http.Post("http://"+rcvr.listener.Addr().String()+"/vercel", "application/json", bytes.NewBufferString(`{}`))
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { require.NoError(t, resp.Body.Close()) }()
 
 			require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 		})
@@ -283,7 +283,7 @@ func TestRouteReturnsErrors(t *testing.T) {
 
 			resp, err := http.Post("http://"+rcvr.listener.Addr().String()+defaultRoute, "application/json", bytes.NewBufferString(`{}`))
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { require.NoError(t, resp.Body.Close()) }()
 
 			require.Equal(t, tc.wantStatus, resp.StatusCode)
 		})
@@ -405,6 +405,6 @@ func freeEndpoint(t *testing.T) string {
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer listener.Close()
+	defer func() { require.NoError(t, listener.Close()) }()
 	return listener.Addr().String()
 }
