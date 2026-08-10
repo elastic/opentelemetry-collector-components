@@ -29,6 +29,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	xxhash "github.com/cespare/xxhash/v2"
 	"go.opentelemetry.io/collector/client"
@@ -51,21 +52,60 @@ var decoderPool sync.Pool
 // decoded in the batch.
 type BatchConsumer func(ctx context.Context, ld *plog.Logs, md *pmetric.Metrics, td *ptrace.Traces) error
 
+// Config bounds how HandleStream groups decoded events into batches. A batch
+// is flushed to the consumer when any enabled bound is reached, and at end of
+// stream.
+//
+// The age bound is only checked as lines arrive, so the staleness of
+// buffered events depends on the shape of the stream:
+//
+//   - Fast streams (byte rate >= BatchBytes/FlushInterval): the byte bound
+//     fires first; batches are fresher than FlushInterval.
+//   - Continuous slower streams: the age bound is the operative one; events
+//     flush within roughly FlushInterval of arriving.
+//   - Sparse streams (inter-event gaps longer than FlushInterval): a flush
+//     happens on the first line after the age bound is exceeded, so
+//     staleness is one inter-event gap rather than FlushInterval.
+//   - Burst then silence: the buffered tail waits for the next line or end
+//     of stream. The age bound cannot cap that wait, but it caps how much
+//     data is stuck to roughly FlushInterval's worth instead of BatchBytes.
+//
+// In all cases end of stream flushes everything, and APM agents cycle
+// intake requests every ~10s (api_request_time), which bounds the wait in
+// practice. apm-server and the managed intake service behave the same way
+// for intake v2, with a count bound instead of a byte bound and no age
+// bound at all: continuous streams flush promptly (every 10 events), and a
+// sub-batch tail (at most 9 events there) likewise waits for the next
+// event or end of request.
+type Config struct {
+	// BatchBytes flushes once the accumulated raw NDJSON size of the
+	// buffered events reaches this many bytes, so a batch may overshoot it
+	// by up to one line. The decoded in-memory representation is typically
+	// ~5-7x the raw size. Zero or negative disables the byte bound.
+	BatchBytes int
+	// FlushInterval flushes buffered events older than this, bounding how
+	// long they may wait for their batch to fill on a slow stream. Zero or
+	// negative disables the bound.
+	FlushInterval time.Duration
+	// MaxLineLength is the maximum allowed size of a single NDJSON line.
+	MaxLineLength int
+}
+
 // HandleStream processes the NDJSON event stream from body, routing events to
-// consumer in batches of batchSize. It returns the number of accepted events
-// and a slice of non-fatal per-event errors.
+// consumer in batches bounded by cfg. It returns the number of accepted
+// events and a slice of non-fatal per-event errors.
 func HandleStream(
 	ctx context.Context,
 	body io.Reader,
-	batchSize, maxLineLength int,
+	cfg Config,
 	logger *zap.Logger,
 	consumer BatchConsumer,
 ) (int, []error) {
 	dec, ok := decoderPool.Get().(*NDJSONStreamDecoder)
-	if ok && dec.lineReader.maxLineLength == maxLineLength {
+	if ok && dec.lineReader.maxLineLength == cfg.MaxLineLength {
 		dec.Reset(body)
 	} else {
-		dec = NewNDJSONStreamDecoder(body, maxLineLength)
+		dec = NewNDJSONStreamDecoder(body, cfg.MaxLineLength)
 	}
 	defer func() {
 		// Drop the request body reference so pooled decoders do not pin the
@@ -83,18 +123,25 @@ func HandleStream(
 	h := xxhash.New()
 
 	var (
-		accepted   int
-		errs       []error
-		batchCount int
-		main       batchBuf
-		shadows    shadowBufs
+		accepted    int
+		errs        []error
+		batchEvents int
+		batchBytes  int
+		batchStart  time.Time
+		main        batchBuf
+		shadows     shadowBufs
 	)
 
+	// Events count as accepted only once their batch is handed to the
+	// consumer, so the early return on context cancellation does not report
+	// buffered-but-dropped events as accepted.
 	flush := func() {
 		errs = append(errs, flushBatch(ctx, &main, &shadows, keyIndex, allGlobalKeys, consumer)...)
+		accepted += batchEvents
 		main = batchBuf{}
 		shadows = shadowBufs{}
-		batchCount = 0
+		batchEvents = 0
+		batchBytes = 0
 	}
 
 	for {
@@ -198,11 +245,11 @@ func HandleStream(
 			if appendErr != nil {
 				errs = append(errs, appendErr)
 			} else if eventType != "" {
-				accepted++
-				batchCount++
-				if batchCount == batchSize {
-					flush()
+				batchEvents++
+				if batchBytes == 0 {
+					batchStart = time.Now()
 				}
+				batchBytes += len(rawLine)
 			}
 		} else if readErr != nil && !isEOF {
 			errs = append(errs, readErr)
@@ -211,12 +258,18 @@ func HandleStream(
 			}
 		}
 
+		if batchBytes > 0 &&
+			((cfg.BatchBytes > 0 && batchBytes >= cfg.BatchBytes) ||
+				(cfg.FlushInterval > 0 && time.Since(batchStart) >= cfg.FlushInterval)) {
+			flush()
+		}
+
 		if isEOF {
 			break
 		}
 	}
 
-	if batchCount > 0 {
+	if batchBytes > 0 {
 		flush()
 	}
 	return accepted, errs
@@ -242,37 +295,10 @@ type shadowBufs struct {
 	batches  []shadowedBatch
 }
 
+// streamGroups indexes a batch's resource groups by event fingerprint.
 type streamGroups struct {
-	traces []traceEntry
-	logs   []logEntry
-}
-
-type traceEntry struct {
-	fp uint64
-	ss ptrace.ScopeSpans
-}
-
-type logEntry struct {
-	fp uint64
-	sl plog.ScopeLogs
-}
-
-func (g *streamGroups) traceScope(fp uint64) (ptrace.ScopeSpans, bool) {
-	for i := range g.traces {
-		if g.traces[i].fp == fp {
-			return g.traces[i].ss, true
-		}
-	}
-	return ptrace.ScopeSpans{}, false
-}
-
-func (g *streamGroups) logScope(fp uint64) (plog.ScopeLogs, bool) {
-	for i := range g.logs {
-		if g.logs[i].fp == fp {
-			return g.logs[i].sl, true
-		}
-	}
-	return plog.ScopeLogs{}, false
+	traces map[uint64]ptrace.ScopeSpans
+	logs   map[uint64]plog.ScopeLogs
 }
 
 func routeTarget(main *batchBuf, shadows *shadowBufs, tags map[string]any, keyIndex map[string]globalKeyInfo, useBig bool) *batchBuf {
@@ -313,7 +339,7 @@ func routeTarget(main *batchBuf, shadows *shadowBufs, tags map[string]any, keyIn
 }
 
 func getOrCreateTraceScope(fp uint64, buf *batchBuf, meta *metadata, svc *contextService, tags map[string]any, u *user, extras *eventResourceExtras) ptrace.ScopeSpans {
-	if ss, ok := buf.groups.traceScope(fp); ok {
+	if ss, ok := buf.groups.traces[fp]; ok {
 		return ss
 	}
 	if buf.td == nil {
@@ -323,7 +349,10 @@ func getOrCreateTraceScope(fp uint64, buf *batchBuf, meta *metadata, svc *contex
 	rs := buf.td.ResourceSpans().AppendEmpty()
 	writeFullResourceAttrs(rs.Resource().Attributes(), meta, svc, tags, u, extras)
 	ss := rs.ScopeSpans().AppendEmpty()
-	buf.groups.traces = append(buf.groups.traces, traceEntry{fp: fp, ss: ss})
+	if buf.groups.traces == nil {
+		buf.groups.traces = make(map[uint64]ptrace.ScopeSpans)
+	}
+	buf.groups.traces[fp] = ss
 	return ss
 }
 
@@ -331,7 +360,7 @@ func getOrCreateTraceScope(fp uint64, buf *batchBuf, meta *metadata, svc *contex
 // newAttrs is non-nil and points to the resource attributes map so callers
 // can write additional per-event resource attrs (e.g. log-level FaaS/labels).
 func getOrCreateLogScope(fp uint64, buf *batchBuf, meta *metadata, svc *contextService, tags map[string]any, u *user, extras *eventResourceExtras) (plog.ScopeLogs, *pcommon.Map) {
-	if sl, ok := buf.groups.logScope(fp); ok {
+	if sl, ok := buf.groups.logs[fp]; ok {
 		return sl, nil
 	}
 	if buf.ld == nil {
@@ -342,7 +371,10 @@ func getOrCreateLogScope(fp uint64, buf *batchBuf, meta *metadata, svc *contextS
 	attrs := rl.Resource().Attributes()
 	writeFullResourceAttrs(attrs, meta, svc, tags, u, extras)
 	sl := rl.ScopeLogs().AppendEmpty()
-	buf.groups.logs = append(buf.groups.logs, logEntry{fp: fp, sl: sl})
+	if buf.groups.logs == nil {
+		buf.groups.logs = make(map[uint64]plog.ScopeLogs)
+	}
+	buf.groups.logs[fp] = sl
 	return sl, &attrs
 }
 
