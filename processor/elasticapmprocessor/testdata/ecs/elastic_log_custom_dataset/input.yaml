@@ -1,0 +1,32 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: ElasticAPM
+        - key: agent.version
+          value:
+            stringValue: 1.0.0
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: data_stream.dataset
+          value:
+            stringValue: custom-logs
+        - key: data_stream.namespace
+          value:
+            stringValue: custom-ns
+    scopeLogs:
+      - scope: {}
+        logRecords:
+          - attributes:
+              - key: event.domain
+                value:
+                  stringValue: session
+            body:
+              stringValue: test log message
+            observedTimeUnixNano: "1581452773000000321"
+            timeUnixNano: "1581452773000000321"
+            severityNumber: 9
+            traceId: 7bba9f33312b3dbb8b2c2c62bb7abe2d
+            spanId: 86e39566e927d599

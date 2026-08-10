@@ -78,7 +78,7 @@ func TestLogsGenerator_MaxBufferSizeAttr(t *testing.T) {
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(doneCh, nil, nil, nil)
 			cfg.(*Config).Logs.MaxBufferSize = maxBufferSize
-			cfg.(*Config).Logs.JsonlFile = JsonlFile(filePath)
+			cfg.(*Config).Logs.JsonlFile = JsonlFile{Path: filePath}
 
 			_, err := createLogsReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},

@@ -19,6 +19,7 @@ package entityanalyticsreceiver // import "github.com/elastic/opentelemetry-coll
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"go.opentelemetry.io/collector/consumer"
@@ -73,9 +74,29 @@ func newPublisher(cons consumer.Logs, provider, scopeName, scopeVersion string) 
 		body["asset.id"] = doc.ID
 		body["labels.identity_source"] = provider
 
-		if err := lr.Body().SetEmptyMap().FromRaw(body); err != nil {
+		// plog.Map.FromRaw only accepts primitive types, slices, and
+		// maps. Provider fields may contain Go structs (e.g.
+		// jamf.Computer). A JSON round-trip normalizes everything to
+		// pdata-compatible types.
+		normalized, err := normalizeBody(body)
+		if err != nil {
+			return fmt.Errorf("normalizing document body: %w", err)
+		}
+		if err := lr.Body().SetEmptyMap().FromRaw(normalized); err != nil {
 			return fmt.Errorf("encoding document body: %w", err)
 		}
 		return cons.ConsumeLogs(ctx, logs)
 	}
+}
+
+func normalizeBody(m map[string]any) (map[string]any, error) {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

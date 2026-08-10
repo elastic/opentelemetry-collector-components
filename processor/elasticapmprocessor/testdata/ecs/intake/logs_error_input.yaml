@@ -1,3 +1,8 @@
+# Represents OTLP data produced by elasticapmintakereceiver from Elastic APM agent (intake-v2) events.
+# The receiver sets telemetry.sdk.name=ElasticAPM, which routes the data through the APM enricher
+# path in the processor. This path differs from the OTel path: pre-existing labels.* and
+# numeric_labels.* resource attributes (placed by the receiver from APM event tags) have only
+# their suffix sanitized, rather than being fully re-normalized from scratch.
 resourceLogs:
   - resource:
       attributes:

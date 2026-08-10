@@ -1,0 +1,56 @@
+# Example metricsgen -> Prometheus Remote Write config for otelbench's
+# metricsgen mode. Run with:
+#   ./otelbench -metricsgen -config-prw
+receivers:
+  metricsgen:
+    start_now_minus: 60m
+    interval: 30s
+    real_time: false
+    exit_after_end: true
+    seed: 123
+    scenarios:
+      - path: builtin/node_exporter
+        scale: 10
+
+processors:
+  batch:
+
+exporters:
+  prometheusremotewrite/elasticsearch:
+    endpoint: https://local.ingest.127.0.0.1.ip.es.io:8443/api/v1/write
+    timeout: 60s
+    tls:
+      insecure_skip_verify: true
+    headers:
+      Authorization: "ApiKey <your-base64-api-key>"
+    resource_to_telemetry_conversion:
+      enabled: true
+    target_info:
+      enabled: false
+    sending_queue:
+      enabled: true
+      queue_size: 1000
+      num_consumers: 5
+    retry_on_failure:
+      enabled: true
+      initial_interval: 2s
+      max_interval: 5s
+      max_elapsed_time: 30s
+
+service:
+  pipelines:
+    metrics:
+      receivers: [metricsgen]
+      processors: [batch]
+      exporters: [prometheusremotewrite/elasticsearch]
+  telemetry:
+    # Expose the collector's own telemetry so otelbench can derive throughput
+    # (metric_points/s) by scraping otelcol_exporter_* counters.
+    metrics:
+      level: basic
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '127.0.0.1'
+                port: 8889

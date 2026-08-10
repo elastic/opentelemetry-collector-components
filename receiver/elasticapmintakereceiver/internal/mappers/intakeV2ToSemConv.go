@@ -21,58 +21,10 @@ package mappers // import "github.com/elastic/opentelemetry-collector-components
 
 import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
-	semconv22 "go.opentelemetry.io/otel/semconv/v1.22.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"github.com/elastic/apm-data/model/modelpb"
 )
-
-// TranslateToOtelResourceAttributes translates resource attributes from the Elastic APM model to SemConv resource attributes
-func TranslateToOtelResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	if event.Service != nil {
-		putNonEmptyStr(attributes, string(semconv.ServiceNameKey), event.Service.Name)
-		putNonEmptyStr(attributes, string(semconv.ServiceVersionKey), event.Service.Version)
-		if event.Service.Language != nil {
-			putNonEmptyStr(attributes, string(semconv.TelemetrySDKLanguageKey), event.Service.Language.Name)
-			putNonEmptyStr(attributes, string(semconv.TelemetrySDKVersionKey), event.Service.Language.Version)
-		}
-		if event.Service.Runtime != nil {
-			putNonEmptyStr(attributes, string(semconv.ProcessRuntimeNameKey), event.Service.Runtime.Name)
-			putNonEmptyStr(attributes, string(semconv.ProcessRuntimeVersionKey), event.Service.Runtime.Version)
-		}
-		attributes.PutStr(string(semconv.TelemetrySDKNameKey), "ElasticAPM")
-		if event.Service.Environment != "" {
-			// elasticsearchexporter currently uses v1.22.0 of the OTel SemConv, so we need to include the v1.22.0 attribute
-			attributes.PutStr(string(semconv22.DeploymentEnvironmentKey), event.Service.Environment)
-			attributes.PutStr(string(semconv.DeploymentEnvironmentNameKey), event.Service.Environment)
-		}
-		if event.Service.Node != nil {
-			putNonEmptyStr(attributes, string(semconv.ServiceInstanceIDKey), event.Service.Node.Name)
-		}
-	}
-	if event.Host != nil {
-		putNonEmptyStr(attributes, string(semconv.HostNameKey), event.Host.Name)
-		putNonEmptyStr(attributes, string(semconv.HostIDKey), event.Host.Id)
-		putNonEmptyStr(attributes, string(semconv.HostArchKey), event.Host.Architecture)
-		if event.Host.Os != nil {
-			putNonEmptyStr(attributes, string(semconv.OSNameKey), event.Host.Os.Name)
-			putNonEmptyStr(attributes, string(semconv.OSTypeKey), event.Host.Os.Platform)
-			putNonEmptyStr(attributes, string(semconv.OSVersionKey), event.Host.Os.Version)
-		}
-	}
-
-	// UserAgent fields are only expected to be available for error and transaction events.
-	// Translating here since fields should be present at the resource level.
-	// https://opentelemetry.io/docs/specs/semconv/registry/attributes/user-agent
-	if event.UserAgent != nil {
-		putNonEmptyStr(attributes, string(semconv.UserAgentOriginalKey), event.UserAgent.Original)
-	}
-
-	translateCloudAttributes(event, attributes)
-	translateContainerAndKubernetesAttributes(event, attributes)
-	translateProcessUserNetworkAttributes(event, attributes)
-	translateFaasAttributes(event, attributes)
-}
 
 // TranslateIntakeV2TransactionToOTelAttributes translates transaction attributes from the Elastic APM model to SemConv attributes
 func TranslateIntakeV2TransactionToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
@@ -126,108 +78,6 @@ func TranslateIntakeV2SpanToOTelAttributes(event *modelpb.APMEvent, attributes p
 func TranslateIntakeV2LogToOTelAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
 	translateHttpAttributes(event, attributes)
 	translateUrlAttributes(event, attributes)
-}
-
-func translateCloudAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	if event.Cloud != nil {
-		putNonEmptyStr(attributes, string(semconv.CloudProviderKey), event.Cloud.Provider)
-		putNonEmptyStr(attributes, string(semconv.CloudRegionKey), event.Cloud.Region)
-		putNonEmptyStr(attributes, string(semconv.CloudAvailabilityZoneKey), event.Cloud.AvailabilityZone)
-		putNonEmptyStr(attributes, string(semconv.CloudAccountIDKey), event.Cloud.AccountId)
-		putNonEmptyStr(attributes, string(semconv.CloudPlatformKey), event.Cloud.ServiceName)
-	}
-}
-
-func translateContainerAndKubernetesAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	// Container fields
-	if event.Container != nil {
-		putNonEmptyStr(attributes, string(semconv.ContainerIDKey), event.Container.Id)
-		putNonEmptyStr(attributes, string(semconv.ContainerNameKey), event.Container.Name)
-		putNonEmptyStr(attributes, string(semconv.ContainerRuntimeKey), event.Container.Runtime)
-		putNonEmptyStr(attributes, string(semconv.ContainerImageNameKey), event.Container.ImageName)
-		putNonEmptyStr(attributes, string(semconv.ContainerImageTagsKey), event.Container.ImageTag)
-	}
-
-	// Kubernetes fields
-	if event.Kubernetes != nil {
-		putNonEmptyStr(attributes, string(semconv.K8SNamespaceNameKey), event.Kubernetes.Namespace)
-		putNonEmptyStr(attributes, string(semconv.K8SNodeNameKey), event.Kubernetes.NodeName)
-		putNonEmptyStr(attributes, string(semconv.K8SPodNameKey), event.Kubernetes.PodName)
-		putNonEmptyStr(attributes, string(semconv.K8SPodUIDKey), event.Kubernetes.PodUid)
-	}
-}
-
-func translateProcessUserNetworkAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	// Process fields
-	if event.Process != nil {
-		if event.Process.Pid != 0 {
-			attributes.PutInt(string(semconv.ProcessPIDKey), int64(event.Process.Pid))
-		}
-		if event.Process.Ppid != 0 {
-			attributes.PutInt(string(semconv.ProcessParentPIDKey), int64(event.Process.Ppid))
-		}
-		putNonEmptyStr(attributes, string(semconv.ProcessExecutableNameKey), event.Process.Title)
-		if len(event.Process.Argv) > 0 {
-			commandLineArgs := attributes.PutEmptySlice(string(semconv.ProcessCommandLineKey))
-			commandLineArgs.EnsureCapacity(len(event.Process.Argv))
-			for _, arg := range event.Process.Argv {
-				commandLineArgs.AppendEmpty().SetStr(arg)
-			}
-		}
-		putNonEmptyStr(attributes, string(semconv.ProcessExecutablePathKey), event.Process.Executable)
-	}
-
-	// translate user fields defined here: https://opentelemetry.io/docs/specs/semconv/registry/attributes/user
-	if event.User != nil {
-		putNonEmptyStr(attributes, string(semconv.UserIDKey), event.User.Id)
-		putNonEmptyStr(attributes, string(semconv.UserEmailKey), event.User.Email)
-		putNonEmptyStr(attributes, string(semconv.UserNameKey), event.User.Name)
-	}
-
-	// translate network fields defined here: https://opentelemetry.io/docs/specs/semconv/registry/attributes/network
-	if event.Network != nil {
-		if event.Network.Connection != nil {
-			putNonEmptyStr(attributes, string(semconv.NetworkConnectionTypeKey), event.Network.Connection.Type)
-			putNonEmptyStr(attributes, string(semconv.NetworkConnectionSubtypeKey), event.Network.Connection.Subtype)
-		}
-		if event.Network.Carrier != nil {
-			putNonEmptyStr(attributes, string(semconv.NetworkCarrierNameKey), event.Network.Carrier.Name)
-			putNonEmptyStr(attributes, string(semconv.NetworkCarrierMccKey), event.Network.Carrier.Mcc)
-			putNonEmptyStr(attributes, string(semconv.NetworkCarrierMncKey), event.Network.Carrier.Mnc)
-			putNonEmptyStr(attributes, string(semconv.NetworkCarrierIccKey), event.Network.Carrier.Icc)
-		}
-	}
-
-	if event.Client != nil {
-		translateIPAddress(string(semconv.ClientAddressKey), event.Client.Ip, attributes)
-		if event.Client.Port != 0 {
-			attributes.PutInt(string(semconv.ClientPortKey), int64(event.Client.Port))
-		}
-	}
-
-	if event.Source != nil {
-		translateIPAddress(string(semconv.SourceAddressKey), event.Source.Ip, attributes)
-		if event.Source.Port != 0 {
-			attributes.PutInt(string(semconv.SourcePortKey), int64(event.Source.Port))
-		}
-	}
-}
-
-func translateIPAddress(key string, ip *modelpb.IP, attributes pcommon.Map) {
-	if ip != nil {
-		ipAddr := modelpb.IP2Addr(ip)
-		putNonEmptyStr(attributes, key, ipAddr.String())
-	}
-}
-
-func translateFaasAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	if event.Faas != nil {
-		putNonEmptyStr(attributes, string(semconv.FaaSInstanceKey), event.Faas.Id)
-		putNonEmptyStr(attributes, string(semconv.FaaSNameKey), event.Faas.Name)
-		putNonEmptyStr(attributes, string(semconv.FaaSVersionKey), event.Faas.Version)
-		putNonEmptyStr(attributes, string(semconv.FaaSTriggerKey), event.Faas.TriggerType)
-		putPtrBool(attributes, string(semconv.FaaSColdstartKey), event.Faas.ColdStart)
-	}
 }
 
 func translateHttpAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {

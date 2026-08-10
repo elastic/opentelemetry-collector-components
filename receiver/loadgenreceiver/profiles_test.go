@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,7 +80,7 @@ func TestProfilesGenerator_MaxBufferSizeAttr(t *testing.T) {
 			doneCh := make(chan Stats)
 			cfg := createDefaultReceiverConfig(nil, nil, nil, doneCh)
 			cfg.(*Config).Profiles.MaxBufferSize = maxBufferSize
-			cfg.(*Config).Profiles.JsonlFile = JsonlFile(filePath)
+			cfg.(*Config).Profiles.JsonlFile = JsonlFile{Path: filePath}
 
 			_, err := createProfilesReceiver(context.Background(), receiver.Settings{
 				ID: component.ID{},
@@ -94,4 +96,66 @@ func TestProfilesGenerator_MaxBufferSizeAttr(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProfilesGenerator_Delay(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		const delay = 1 * time.Hour
+		sink := &consumertest.ProfilesSink{}
+		cfg := createDefaultReceiverConfig(nil, nil, nil, nil)
+		cfg.(*Config).Profiles.Jitter = &JitterRange{Min: delay, Max: delay}
+
+		r, err := createProfilesReceiver(t.Context(), receiver.Settings{
+			ID:                component.ID{},
+			TelemetrySettings: component.TelemetrySettings{Logger: zap.NewNop()},
+			BuildInfo:         component.BuildInfo{},
+		}, cfg, sink)
+		require.NoError(t, err)
+		require.NoError(t, r.Start(t.Context(), componenttest.NewNopHost()))
+
+		// all goroutines park on the delay timer after forwarding the first batch
+		synctest.Wait()
+		assert.Len(t, sink.AllProfiles(), 1)
+
+		// advance the fake clock past the delay; goroutine forwards a second batch
+		time.Sleep(delay)
+		synctest.Wait()
+		assert.Len(t, sink.AllProfiles(), 2)
+
+		assert.NoError(t, r.Shutdown(t.Context()))
+	})
+}
+
+func TestProfilesGenerator_ZSTDFile(t *testing.T) {
+	const maxReplay = 1
+	doneCh := make(chan Stats)
+	sink := &consumertest.ProfilesSink{}
+	cfg := createDefaultReceiverConfig(nil, nil, nil, doneCh)
+	cfg.(*Config).Profiles.MaxReplay = maxReplay
+	cfg.(*Config).Profiles.JsonlFile = JsonlFile{
+		// testdata/profiles.jsonl.zstd was compressed from
+		// testdata/profiles.jsonl using zstd cli
+		Path:        filepath.Join("testdata", "profiles.jsonl.zstd"),
+		Compression: compressionZSTD,
+	}
+
+	r, err := createProfilesReceiver(context.Background(), receiver.Settings{
+		ID: component.ID{},
+		TelemetrySettings: component.TelemetrySettings{
+			Logger: zap.NewNop(),
+		},
+		BuildInfo: component.BuildInfo{},
+	}, cfg, sink)
+	require.NoError(t, err)
+
+	err = r.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, r.Shutdown(context.Background()))
+	}()
+
+	stats := <-doneCh
+	want := maxReplay * bytes.Count(demoProfiles, []byte("\n"))
+	assert.Equal(t, want, stats.Requests)
+	assert.Equal(t, want, len(sink.AllProfiles()))
 }

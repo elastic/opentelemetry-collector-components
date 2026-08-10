@@ -28,7 +28,6 @@ import (
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 )
 
 func TestEnrichMetric(t *testing.T) {
@@ -215,7 +214,7 @@ func TestEnrichMetrics_TruncatesPreservedMetricSpecialCaseAttributes(t *testing.
 	dp := metric.SetEmptyGauge().DataPoints().AppendEmpty()
 	dp.SetDoubleValue(1.0)
 	attrs := dp.Attributes()
-	longValue := strings.Repeat("a", int(sanitize.StandardKeyWordLength)+1)
+	longValue := strings.Repeat("a", int(1024)+1)
 	attrs.PutStr("system.process.cmdline", longValue)
 	attrs.PutStr("system.filesystem.mount_point", longValue)
 	attrs.PutStr("user.name", longValue)
@@ -226,7 +225,7 @@ func TestEnrichMetrics_TruncatesPreservedMetricSpecialCaseAttributes(t *testing.
 	enricher.EnrichResourceMetrics(metrics.ResourceMetrics().At(0))
 
 	actualAttrs := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Gauge().DataPoints().At(0).Attributes()
-	expected := strings.Repeat("a", int(sanitize.StandardKeyWordLength))
+	expected := strings.Repeat("a", int(1024))
 
 	value, ok := actualAttrs.Get("system.process.cmdline")
 	require.True(t, ok)

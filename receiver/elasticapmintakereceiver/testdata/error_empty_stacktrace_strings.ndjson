@@ -1,0 +1,2 @@
+{"metadata": {"service": {"name": "test-service", "agent": {"name": "elastic-node", "version": "3.14.0"}, "language": {"name": "ecmascript", "version": "8"}, "runtime": {"name": "node", "version": "8.0.0"}}}}
+{"error": {"id": "aa00000000000001", "timestamp": 1494342245999999, "exception": {"type": "DbError", "message": "connection refused", "stacktrace": [{"lineno": 10, "filename": "server.js", "classname": "", "function": "handleReq", "module": ""}]}}}

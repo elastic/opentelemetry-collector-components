@@ -231,8 +231,9 @@ func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (s
 	//
 	//     Authorization: ApiKey base64(ID:APIKey)
 	//
-	encoded, found := strings.CutPrefix(orig, "ApiKey ")
-	if !found {
+	// The scheme name is matched case-insensitively per RFC 7235.
+	scheme, encoded, found := strings.Cut(orig, " ")
+	if !found || !strings.EqualFold(scheme, "ApiKey") {
 		return "", "", errAuthorizationHeaderWrongScheme
 	}
 

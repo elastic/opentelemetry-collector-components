@@ -24,6 +24,9 @@ import (
 // Format defines how the incoming raw bytes should be interpreted.
 type Format string
 
+// FieldType defines the supported OTel pcommon value types for field mappings.
+type FieldType string
+
 const (
 	// FormatJSON indicates the input is a JSON document that may contain
 	// wrapped records (use Unwrap to extract them).
@@ -32,12 +35,50 @@ const (
 	// FormatText indicates the input is newline-delimited text where
 	// each line becomes a separate log record.
 	FormatText Format = "text"
+
+	// FormatCSV indicates the input is CSV: the first record is the header
+	// (unless CSV.FieldsNames is set) and each subsequent record becomes a
+	// log record whose "message" is a JSON object keyed by the header. This
+	// mirrors the Beats aws-s3 input's decoding.codec.csv behaviour.
+	FormatCSV Format = "csv"
+
+	// FieldTypeString maps to pcommon.Map.PutStr.
+	FieldTypeString FieldType = "String"
+
+	// FieldTypeInteger maps to pcommon.Map.PutInt.
+	FieldTypeInteger FieldType = "Integer"
 )
 
 // DataStreamConfig defines the data stream routing attributes.
 type DataStreamConfig struct {
 	Dataset   string `mapstructure:"dataset"`
 	Namespace string `mapstructure:"namespace"`
+}
+
+// CSVConfig configures CSV decoding. Only used when Format is "csv". The
+// option names mirror the Beats aws-s3 input's decoding.codec.csv settings so
+// configurations are consistent across the Agent and forwarder paths.
+type CSVConfig struct {
+	// Comma is the field separator, a single character. Defaults to ",".
+	// Netskope Log Streaming, for example, uses a single space.
+	Comma string `mapstructure:"comma,omitempty"`
+
+	// Comment, if set, is the comment character. Lines beginning with it
+	// (before the first non-comment record) are skipped. A single character;
+	// must differ from Comma.
+	Comment string `mapstructure:"comment,omitempty"`
+
+	// FieldsNames overrides the header. When empty, the first non-comment CSV
+	// record is read and used as the header. Named "fields_names" to match the
+	// Beats csv codec option.
+	FieldsNames []string `mapstructure:"fields_names,omitempty"`
+
+	// LazyQuotes, if true, allows a quote to appear in an unquoted field and
+	// a non-doubled quote in a quoted field.
+	LazyQuotes bool `mapstructure:"lazy_quotes,omitempty"`
+
+	// TrimLeadingSpace, if true, trims leading white space in a field.
+	TrimLeadingSpace bool `mapstructure:"trim_leading_space,omitempty"`
 }
 
 // Config defines the configuration for the beats encoding extension.
@@ -69,19 +110,70 @@ type Config struct {
 	// inject custom metadata (e.g., environment, team) into each event.
 	Fields map[string]any `mapstructure:"fields,omitempty"`
 
+	// Mappings defines which JSON keys to extract from each decoded JSON
+	// element and how to store them in the log record body.
+	// Only used when Format is "json" and Unwrap is set.
+	Mappings []FieldMapping `mapstructure:"mappings,omitempty"`
+
+	// CSV configures CSV decoding. Only used when Format is "csv".
+	CSV CSVConfig `mapstructure:"csv,omitempty"`
+
 	// prevent unkeyed literal initialization
 	_ struct{}
 }
 
+// FieldMapping defines how a single JSON key is extracted and written
+// to the log record body.
+type FieldMapping struct {
+	// Source is the JSON key to read from the decoded object.
+	Source string `mapstructure:"source"`
+
+	// Destination is the key to write to in the log body map.
+	Destination string `mapstructure:"destination"`
+
+	// Type is the OTel pcommon value type: "String" or "Integer".
+	Type FieldType `mapstructure:"type"`
+
+	// Multiplier scales the numeric value before storing.
+	// Only applies to FieldTypeInteger. A value of 0 means no scaling.
+	Multiplier int64 `mapstructure:"multiplier,omitempty"`
+}
+
 func (c *Config) Validate() error {
 	switch c.Format {
-	case FormatJSON, FormatText:
+	case FormatJSON, FormatText, FormatCSV:
 	default:
-		return fmt.Errorf("invalid format %q: must be %q or %q", c.Format, FormatJSON, FormatText)
+		return fmt.Errorf("invalid format %q: must be %q, %q or %q", c.Format, FormatJSON, FormatText, FormatCSV)
 	}
 
 	if len(c.Unwrap) > 0 && c.Format != FormatJSON {
 		return fmt.Errorf("unwrap is only supported when format is %q", FormatJSON)
+	}
+
+	if c.Format != FormatCSV &&
+		(c.CSV.Comma != "" || c.CSV.Comment != "" || len(c.CSV.FieldsNames) > 0 ||
+			c.CSV.LazyQuotes || c.CSV.TrimLeadingSpace) {
+		return fmt.Errorf("csv options are only supported when format is %q", FormatCSV)
+	}
+
+	if c.CSV.Comma != "" && len([]rune(c.CSV.Comma)) != 1 {
+		return fmt.Errorf("csv.comma must be a single character, got %q", c.CSV.Comma)
+	}
+
+	if c.CSV.Comment != "" && len([]rune(c.CSV.Comment)) != 1 {
+		return fmt.Errorf("csv.comment must be a single character, got %q", c.CSV.Comment)
+	}
+
+	// csv.Reader rejects comment == comma at decode time; fail fast here with a
+	// clear message. Comma defaults to "," when unset.
+	if c.CSV.Comment != "" {
+		comma := c.CSV.Comma
+		if comma == "" {
+			comma = ","
+		}
+		if c.CSV.Comment == comma {
+			return fmt.Errorf("csv.comment must differ from csv.comma (both %q)", comma)
+		}
 	}
 
 	if c.DataStream.Dataset == "" {
@@ -90,6 +182,20 @@ func (c *Config) Validate() error {
 
 	if c.DataStream.Namespace == "" {
 		return fmt.Errorf("data_stream.namespace is required")
+	}
+
+	for i, m := range c.Mappings {
+		if m.Source == "" {
+			return fmt.Errorf("mappings[%d].source is required", i)
+		}
+		if m.Destination == "" {
+			return fmt.Errorf("mappings[%d].destination is required", i)
+		}
+		switch m.Type {
+		case FieldTypeString, FieldTypeInteger:
+		default:
+			return fmt.Errorf("mappings[%d].type %q is invalid: must be %q or %q", i, m.Type, FieldTypeString, FieldTypeInteger)
+		}
 	}
 
 	return nil

@@ -37,11 +37,12 @@ type ecsLogEnricher struct {
 	enricher                       *Enricher
 	hostIPEnabled                  bool
 	serviceNameInDataStreamDataset bool
+	sanitizeExistingLabels         bool
 }
 
 func (e *ecsLogEnricher) enrichResourceLogs(ctx context.Context, rl plog.ResourceLogs) {
-	ecsPreProcessResource(ctx, rl.Resource(), routing.DataStreamTypeLogs, e.serviceNameInDataStreamDataset, e.hostIPEnabled)
-	e.enricher.EnrichResourceLogs(rl)
+	resCtx := ecsPreProcessResource(ctx, rl.Resource(), routing.DataStreamTypeLogs, e.serviceNameInDataStreamDataset, e.hostIPEnabled, e.sanitizeExistingLabels)
+	e.enricher.EnrichResourceLogs(rl, resCtx.DataStreamNamespace)
 }
 
 // APMLogEnricher handles elastic APM intake log events in ECS mode.
@@ -64,6 +65,7 @@ func NewAPMLogEnricher(baseCfg config.Config, hostIPEnabled bool, serviceNameInD
 			enricher:                       NewEnricher(cfg, false /* remapToECSLabels */),
 			hostIPEnabled:                  hostIPEnabled,
 			serviceNameInDataStreamDataset: serviceNameInDataStreamDataset,
+			sanitizeExistingLabels:         true,
 		},
 	}
 }
@@ -88,6 +90,7 @@ func NewOTelLogEnricher(baseCfg config.Config, hostIPEnabled bool, serviceNameIn
 			enricher:                       NewEnricher(cfg, true /* remapToECSLabels */),
 			hostIPEnabled:                  hostIPEnabled,
 			serviceNameInDataStreamDataset: serviceNameInDataStreamDataset,
+			sanitizeExistingLabels:         false,
 		},
 	}
 }
@@ -98,7 +101,7 @@ type DefaultLogEnricher struct {
 }
 
 func (e *DefaultLogEnricher) EnrichResourceLogs(_ context.Context, rl plog.ResourceLogs) {
-	e.enricher.EnrichResourceLogs(rl)
+	e.enricher.EnrichResourceLogs(rl, "")
 }
 
 // NewDefaultLogEnricher creates a LogEnricher for non-ECS log events.

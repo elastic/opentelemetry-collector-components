@@ -20,15 +20,18 @@ package enrichments // import "github.com/elastic/opentelemetry-collector-compon
 import (
 	"fmt"
 
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
+	"regexp"
+
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/ecs"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
+	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv25 "go.opentelemetry.io/otel/semconv/v1.25.0"
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
-
-	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/attribute"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 )
+
+const serviceNameMaxLength = 100
 
 // EnrichResource derives and adds Elastic specific resource attributes.
 func EnrichResource(resource pcommon.Resource, cfg config.ResourceConfig) {
@@ -67,8 +70,7 @@ func (s *resourceEnrichmentContext) Enrich(resource pcommon.Resource, cfg config
 		case string(semconv.TelemetrySDKNameKey):
 			s.telemetrySDKName = v.Str()
 		case string(semconv.TelemetrySDKLanguageKey):
-			language := sanitize.Truncate(v.Str())
-			s.telemetrySDKLanguage = language
+			s.telemetrySDKLanguage = ecs.TruncateToECSMaxLength(v.Str())
 		case string(semconv.TelemetrySDKVersionKey):
 			s.telemetrySDKVersion = v.Str()
 		case string(semconv.TelemetryDistroNameKey):
@@ -286,8 +288,20 @@ func (s *resourceEnrichmentContext) sanitizeServiceName(resource pcommon.Resourc
 	if s.serviceName == "" {
 		return
 	}
-	cleaned := sanitize.CleanServiceName(s.serviceName)
+	cleaned := sanitizeServiceName(s.serviceName)
 	if cleaned != s.serviceName {
 		resource.Attributes().PutStr(string(semconv.ServiceNameKey), cleaned)
 	}
+}
+
+var serviceNameInvalidRegexp = regexp.MustCompile("[^a-zA-Z0-9 _-]")
+
+// sanitizeServiceName truncates name to 100 runes and replaces invalid characters with "_".
+// see https://github.com/elastic/apm-data/blob/34677210900a68d6204cdb79da4ce0d1ee685d9a/input/otlp/metadata.go#L491
+func sanitizeServiceName(name string) string {
+	runes := []rune(name)
+	if len(runes) > serviceNameMaxLength {
+		name = string(runes[:serviceNameMaxLength])
+	}
+	return serviceNameInvalidRegexp.ReplaceAllString(name, "_")
 }

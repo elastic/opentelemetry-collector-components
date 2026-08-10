@@ -31,6 +31,12 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
         - key: host.name
           value:
             stringValue: host1
@@ -40,6 +46,9 @@ resourceLogs:
         - key: os.type
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -81,21 +90,12 @@ resourceLogs:
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
-        - key: labels.group
-          value:
-            stringValue: experimental
         - key: labels.ab_testing
           value:
             stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
         - key: numeric_labels.segment
           value:
             doubleValue: 5
@@ -107,109 +107,6 @@ resourceLogs:
                   stringValue: event
             body:
               stringValue: test log message without timestamp
-        scope: {}
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 4.3.0
-        - key: telemetry.sdk.language
-          value:
-            stringValue: Java
-        - key: telemetry.sdk.version
-          value:
-            stringValue: 10.0.2
-        - key: process.runtime.name
-          value:
-            stringValue: Java
-        - key: process.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: production
-        - key: deployment.environment.name
-          value:
-            stringValue: production
-        - key: service.instance.id
-          value:
-            stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.name
-          value:
-            stringValue: host1
-        - key: host.arch
-          value:
-            stringValue: amd64
-        - key: os.type
-          value:
-            stringValue: Linux
-        - key: container.id
-          value:
-            stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: k8s.namespace.name
-          value:
-            stringValue: default
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: instrumented-java-service
-        - key: k8s.pod.uid
-          value:
-            stringValue: b17f231da0ad128dc6c6c0b2e82f6f303d3893e3
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "1"
-        - key: process.executable.name
-          value:
-            stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: -v
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
-        - key: labels.group
-          value:
-            stringValue: experimental
-        - key: labels.ab_testing
-          value:
-            stringValue: "true"
-        - key: numeric_labels.segment
-          value:
-            doubleValue: 5
-    scopeLogs:
-      - logRecords:
           - attributes:
               - key: event.kind
                 value:
@@ -217,109 +114,6 @@ resourceLogs:
             body:
               stringValue: test log message with string timestamp
             timeUnixNano: "1662673649111000000"
-        scope: {}
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: 1234_service-12a3
-        - key: service.version
-          value:
-            stringValue: 4.3.0
-        - key: telemetry.sdk.language
-          value:
-            stringValue: Java
-        - key: telemetry.sdk.version
-          value:
-            stringValue: 10.0.2
-        - key: process.runtime.name
-          value:
-            stringValue: Java
-        - key: process.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: production
-        - key: deployment.environment.name
-          value:
-            stringValue: production
-        - key: service.instance.id
-          value:
-            stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.name
-          value:
-            stringValue: host1
-        - key: host.arch
-          value:
-            stringValue: amd64
-        - key: os.type
-          value:
-            stringValue: Linux
-        - key: container.id
-          value:
-            stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: k8s.namespace.name
-          value:
-            stringValue: default
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: instrumented-java-service
-        - key: k8s.pod.uid
-          value:
-            stringValue: b17f231da0ad128dc6c6c0b2e82f6f303d3893e3
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "1"
-        - key: process.executable.name
-          value:
-            stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: -v
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
-        - key: labels.group
-          value:
-            stringValue: experimental
-        - key: labels.ab_testing
-          value:
-            stringValue: "true"
-        - key: numeric_labels.segment
-          value:
-            doubleValue: 5
-    scopeLogs:
-      - logRecords:
           - attributes:
               - key: event.kind
                 value:
@@ -360,6 +154,12 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
         - key: host.name
           value:
             stringValue: host1
@@ -369,6 +169,9 @@ resourceLogs:
         - key: os.type
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -404,36 +207,27 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: faas.execution
+          value:
+            stringValue: 6f7f0961f83442118a7af6fe80b88d56
         - key: agent.name
           value:
             stringValue: java
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: faas.execution
-          value:
-            stringValue: 6f7f0961f83442118a7af6fe80b88d56
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
-        - key: labels.group
-          value:
-            stringValue: experimental
         - key: labels.ab_testing
           value:
             stringValue: "true"
+        - key: labels.group
+          value:
+            stringValue: experimental
         - key: numeric_labels.segment
           value:
             doubleValue: 5
@@ -479,6 +273,12 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
         - key: host.name
           value:
             stringValue: host1
@@ -488,6 +288,9 @@ resourceLogs:
         - key: os.type
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -523,37 +326,25 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: faas.execution
+          value:
+            stringValue: 6f7f0961f83442118a7af6fe80b88d56
         - key: agent.name
           value:
             stringValue: java
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: faas.execution
-          value:
-            stringValue: 6f7f0961f83442118a7af6fe80b88d56
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
-        - key: labels.str
-          value:
-            stringValue: str
-        - key: labels.bool
+        - key: labels.ab_testing
           value:
             stringValue: "true"
-        - key: labels.ab_testing
+        - key: labels.bool
           value:
             stringValue: "true"
         - key: labels.group
@@ -562,15 +353,18 @@ resourceLogs:
         - key: labels.key with spaces
           value:
             stringValue: value with spaces
+        - key: labels.str
+          value:
+            stringValue: str
         - key: numeric_labels.float
           value:
             doubleValue: 1.1
-        - key: numeric_labels.segment
-          value:
-            doubleValue: 5
         - key: numeric_labels.int
           value:
             doubleValue: 1
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -635,6 +429,12 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
         - key: host.name
           value:
             stringValue: host1
@@ -644,6 +444,9 @@ resourceLogs:
         - key: os.type
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -679,51 +482,42 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
+        - key: faas.execution
+          value:
+            stringValue: 6f7f0961f83442118a7af6fe80b88d56
         - key: agent.name
           value:
             stringValue: java
         - key: agent.version
           value:
             stringValue: 1.10.0
-        - key: faas.execution
-          value:
-            stringValue: 6f7f0961f83442118a7af6fe80b88d56
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: labels.ab_testing
           value:
             stringValue: "true"
-        - key: labels.str
-          value:
-            stringValue: str
         - key: labels.bool
           value:
             stringValue: "true"
         - key: labels.group
           value:
             stringValue: experimental
-        - key: numeric_labels.segment
+        - key: labels.str
           value:
-            doubleValue: 5
-        - key: numeric_labels.int
-          value:
-            doubleValue: 1
+            stringValue: str
         - key: numeric_labels.float
           value:
             doubleValue: 1.1
+        - key: numeric_labels.int
+          value:
+            doubleValue: 1
+        - key: numeric_labels.segment
+          value:
+            doubleValue: 5
     scopeLogs:
       - logRecords:
           - attributes:
@@ -755,130 +549,6 @@ resourceLogs:
               stringValue: test log message with nested ecs fields
             severityText: warn
             timeUnixNano: "1662616049000000000"
-        scope: {}
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: testSvc
-        - key: service.version
-          value:
-            stringValue: v1.0.0
-        - key: telemetry.sdk.language
-          value:
-            stringValue: Java
-        - key: telemetry.sdk.version
-          value:
-            stringValue: 10.0.2
-        - key: process.runtime.name
-          value:
-            stringValue: Java
-        - key: process.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: prod
-        - key: deployment.environment.name
-          value:
-            stringValue: prod
-        - key: service.instance.id
-          value:
-            stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: host.name
-          value:
-            stringValue: host1
-        - key: host.arch
-          value:
-            stringValue: amd64
-        - key: os.type
-          value:
-            stringValue: Linux
-        - key: container.id
-          value:
-            stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: k8s.namespace.name
-          value:
-            stringValue: default
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: instrumented-java-service
-        - key: k8s.pod.uid
-          value:
-            stringValue: b17f231da0ad128dc6c6c0b2e82f6f303d3893e3
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "1"
-        - key: process.executable.name
-          value:
-            stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: -v
-        - key: faas.instance
-          value:
-            stringValue: arn:aws:lambda:us-east-2:123456789012:function:custom-runtime
-        - key: faas.coldstart
-          value:
-            boolValue: true
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: faas.execution
-          value:
-            stringValue: 6f7f0961f83442118a7af6fe80b88d56
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
-        - key: labels.group
-          value:
-            stringValue: experimental
-        - key: labels.ab_testing
-          value:
-            stringValue: "true"
-        - key: labels.str
-          value:
-            stringValue: str
-        - key: labels.bool
-          value:
-            stringValue: "true"
-        - key: numeric_labels.segment
-          value:
-            doubleValue: 5
-        - key: numeric_labels.int
-          value:
-            doubleValue: 1
-        - key: numeric_labels.float
-          value:
-            doubleValue: 1.1
-    scopeLogs:
-      - logRecords:
           - attributes:
               - key: transaction.id
                 value:
@@ -941,6 +611,12 @@ resourceLogs:
         - key: service.instance.id
           value:
             stringValue: svc-node-name
+        - key: service.framework.name
+          value:
+            stringValue: spring
+        - key: service.framework.version
+          value:
+            stringValue: 5.0.0
         - key: host.name
           value:
             stringValue: host1
@@ -950,6 +626,9 @@ resourceLogs:
         - key: os.type
           value:
             stringValue: Linux
+        - key: host.hostname
+          value:
+            stringValue: 8ec7ceb99074
         - key: container.id
           value:
             stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
@@ -988,33 +667,24 @@ resourceLogs:
         - key: faas.coldstart
           value:
             boolValue: true
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
         - key: faas.trigger.request_id
           value:
             stringValue: request-id-xyz789
         - key: faas.execution
           value:
             stringValue: 6f7f0961f83442118a7af6fe80b88d56
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.10.0
         - key: agent.ephemeral_id
           value:
             stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
         - key: agent.activation_method
           value:
             stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
         - key: labels.ab_testing
           value:
             stringValue: "true"
@@ -1055,124 +725,6 @@ resourceLogs:
               stringValue: Log with all available fields set
             severityText: info
             timeUnixNano: "1662616049000000000"
-        scope: {}
-  - resource:
-      attributes:
-        - key: service.name
-          value:
-            stringValue: testSvc
-        - key: service.version
-          value:
-            stringValue: v1.0.0
-        - key: telemetry.sdk.language
-          value:
-            stringValue: Java
-        - key: telemetry.sdk.version
-          value:
-            stringValue: 10.0.2
-        - key: process.runtime.name
-          value:
-            stringValue: Java
-        - key: process.runtime.version
-          value:
-            stringValue: 10.0.2
-        - key: telemetry.sdk.name
-          value:
-            stringValue: ElasticAPM
-        - key: deployment.environment
-          value:
-            stringValue: prod
-        - key: deployment.environment.name
-          value:
-            stringValue: prod
-        - key: service.instance.id
-          value:
-            stringValue: svc-node-name
-        - key: host.name
-          value:
-            stringValue: host1
-        - key: host.arch
-          value:
-            stringValue: amd64
-        - key: os.type
-          value:
-            stringValue: Linux
-        - key: container.id
-          value:
-            stringValue: 8ec7ceb990749e79b37f6dc6cd3628633618d6ce412553a552a0fa6b69419ad4
-        - key: k8s.namespace.name
-          value:
-            stringValue: default
-        - key: k8s.node.name
-          value:
-            stringValue: node-name
-        - key: k8s.pod.name
-          value:
-            stringValue: instrumented-java-service
-        - key: k8s.pod.uid
-          value:
-            stringValue: b17f231da0ad128dc6c6c0b2e82f6f303d3893e3
-        - key: process.pid
-          value:
-            intValue: "1234"
-        - key: process.parent_pid
-          value:
-            intValue: "1"
-        - key: process.executable.name
-          value:
-            stringValue: /usr/lib/jvm/java-10-openjdk-amd64/bin/java
-        - key: process.command_line
-          value:
-            arrayValue:
-              values:
-                - stringValue: -v
-        - key: faas.instance
-          value:
-            stringValue: arn:aws:lambda:us-east-2:123456789012:function:custom-runtime
-        - key: faas.trigger
-          value:
-            stringValue: api-gateway
-        - key: faas.coldstart
-          value:
-            boolValue: true
-        - key: agent.name
-          value:
-            stringValue: java
-        - key: agent.version
-          value:
-            stringValue: 1.10.0
-        - key: faas.trigger.request_id
-          value:
-            stringValue: request-id-xyz789
-        - key: faas.execution
-          value:
-            stringValue: 6f7f0961f83442118a7af6fe80b88d56
-        - key: agent.ephemeral_id
-          value:
-            stringValue: e71be9ac-93b0-44b9-a997-5638f6ccfc36
-        - key: agent.activation_method
-          value:
-            stringValue: some_activation_method
-        - key: service.framework.name
-          value:
-            stringValue: spring
-        - key: service.framework.version
-          value:
-            stringValue: 5.0.0
-        - key: host.hostname
-          value:
-            stringValue: 8ec7ceb99074
-        - key: labels.group
-          value:
-            stringValue: experimental
-        - key: labels.ab_testing
-          value:
-            stringValue: "true"
-        - key: numeric_labels.segment
-          value:
-            doubleValue: 5
-    scopeLogs:
-      - logRecords:
           - attributes:
               - key: processor.event
                 value:

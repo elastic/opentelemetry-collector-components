@@ -45,7 +45,7 @@ beats_encoding/empty_fields:
   format: text
   data_stream:
     dataset: test
-  fields: {}
+  fields: { }
 
 beats_encoding/missing_dataset:
   format: json
@@ -54,3 +54,17 @@ beats_encoding/missing_namespace:
   data_stream:
     dataset: test
     namespace: ""
+
+beats_encoding/with_mappings:
+  unwrap:
+    - records
+  data_stream:
+    dataset: azure.events
+  mappings:
+    - source: message
+      destination: message
+      type: String
+    - source: eventTime
+      destination: "@timestamp"
+      type: Integer
+      multiplier: 1000000

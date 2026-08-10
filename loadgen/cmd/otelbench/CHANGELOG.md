@@ -3,6 +3,48 @@
 # Changelog
 
 <!-- next version -->
+## v0.11.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add `--metricsgen` benchmark flag. (#1294)
+  Adds the metricsgenreceiver support inside otelbench.
+  Allows otelbench to start load testing from the collector config and prints a
+  `BenchmarkOTelbench/metricsgen` line with `metric_points/s` and `failed_metric_points/s`, derived from the
+  `otelcol_exporter_sent/send_failed_metric_points` counters. Use `--config` to provide the collector config.
+
+## v0.10.1
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add `--exporter-elasticsearch` benchmark flag. (#1287)
+  Allows otelbench to benchmark collector configs that route generated telemetry through the Elasticsearch exporter.
+
+## v0.10.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add Elasticsearch exporter to the list of exporter components. (#1283)
+
+## v0.9.0
+
+### 💡 Enhancements 💡
+- `otelbench`: Release a multi-arch image
+
+- Release 
+## v0.8.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add `--exporter-prometheusremotewrite` benchmark flag for Prometheus Remote Write load testing (#1250)
+  Adds a new `--exporter-prometheusremotewrite` flag (default: false) to benchmark the
+  `prometheusremotewrite` exporter. When enabled, otelbench allows load tests to send metrics directly via PRW to any Prometheus-compatible endpoint.
+
+## v0.7.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Add Prometheus Remote Write Exporter to the otelbench component registry.
 
 ## v0.6.0
 

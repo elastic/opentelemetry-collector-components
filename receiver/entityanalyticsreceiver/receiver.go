@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/receiver"
 	"go.uber.org/zap"
@@ -80,7 +81,11 @@ func (r *entityAnalyticsReceiver) Start(_ context.Context, host component.Host) 
 	if !ok {
 		return fmt.Errorf("unknown provider %q", r.cfg.Provider)
 	}
-	provider, err := factory(nil)
+	var provCfg *confmap.Conf
+	if len(r.cfg.ProviderConfig) > 0 {
+		provCfg = confmap.NewFromStringMap(r.cfg.ProviderConfig)
+	}
+	provider, err := factory(provCfg)
 	if err != nil {
 		return fmt.Errorf("creating provider %q: %w", r.cfg.Provider, err)
 	}
@@ -102,31 +107,44 @@ func (r *entityAnalyticsReceiver) Shutdown(_ context.Context) error {
 	return nil
 }
 
+// run drives the sync loop with a single ticker at UpdateInterval.
+// At each tick, a full sync is performed if the last successful full
+// sync is older than SyncInterval (or has never happened); otherwise
+// an incremental sync runs. This is self-healing: a failed full sync
+// leaves lastFullSyncAt at its zero value, so every subsequent tick
+// retries a full sync until one succeeds. Note that under persistent
+// full-sync failure, retries occur at UpdateInterval cadence, not at
+// SyncInterval.
 func (r *entityAnalyticsReceiver) run(ctx context.Context, store entcollect.Store, provider entcollect.Provider, log *slog.Logger) {
 	defer r.wg.Done()
 
 	pub := newPublisher(r.consumer, r.cfg.Provider, metadata.ScopeName, r.buildVersion)
 
-	r.doSync(ctx, store, provider, pub, log, true)
+	var lastFullSyncAt time.Time
+	if r.doSync(ctx, store, provider, pub, log, true) {
+		lastFullSyncAt = time.Now()
+	}
 
-	fullTicker := time.NewTicker(r.cfg.SyncInterval)
-	defer fullTicker.Stop()
-	incrTicker := time.NewTicker(r.cfg.UpdateInterval)
-	defer incrTicker.Stop()
+	ticker := time.NewTicker(r.cfg.UpdateInterval)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-fullTicker.C:
-			r.doSync(ctx, store, provider, pub, log, true)
-		case <-incrTicker.C:
-			r.doSync(ctx, store, provider, pub, log, false)
+		case <-ticker.C:
+			full := lastFullSyncAt.IsZero() || time.Since(lastFullSyncAt) >= r.cfg.SyncInterval
+			if r.doSync(ctx, store, provider, pub, log, full) && full {
+				lastFullSyncAt = time.Now()
+			}
 		}
 	}
 }
 
-func (r *entityAnalyticsReceiver) doSync(ctx context.Context, store entcollect.Store, provider entcollect.Provider, pub entcollect.Publisher, log *slog.Logger, full bool) {
+// doSync runs one sync (full or incremental) and commits the buffer
+// on success. It returns true if both the sync and the commit
+// succeeded, false otherwise.
+func (r *entityAnalyticsReceiver) doSync(ctx context.Context, store entcollect.Store, provider entcollect.Provider, pub entcollect.Publisher, log *slog.Logger, full bool) bool {
 	kind := "full"
 	if !full {
 		kind = "incremental"
@@ -143,11 +161,12 @@ func (r *entityAnalyticsReceiver) doSync(ctx context.Context, store entcollect.S
 	if err != nil {
 		buf.Discard()
 		r.logger.Error("sync failed", zap.String("kind", kind), zap.Error(err))
-		return
+		return false
 	}
 	if err := buf.Commit(); err != nil {
 		r.logger.Error("committing sync state", zap.String("kind", kind), zap.Error(err))
-		return
+		return false
 	}
 	r.logger.Info("sync complete", zap.String("kind", kind))
+	return true
 }

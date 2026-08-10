@@ -22,6 +22,7 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/ptrace"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/enrichments/config"
 	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/routing"
 )
@@ -34,29 +35,36 @@ type TraceEnricher interface {
 // ecsTraceEnricher contains the shared ECS trace enrichment pipeline
 // embedded by APMTraceEnricher and OTelTraceEnricher.
 type ecsTraceEnricher struct {
-	enricher      *Enricher
-	hostIPEnabled bool
+	enricher               *Enricher
+	hostIPEnabled          bool
+	sanitizeExistingLabels bool
 }
 
 func (e *ecsTraceEnricher) enrichResourceSpans(ctx context.Context, rs ptrace.ResourceSpans) {
 	// Traces signal never need to be routed to service-specific datasets
-	ecsPreProcessResource(ctx, rs.Resource(), routing.DataStreamTypeTraces, false, e.hostIPEnabled)
-	routeErrorSpanEvents(rs)
+	resCtx := ecsPreProcessResource(ctx, rs.Resource(), routing.DataStreamTypeTraces, false, e.hostIPEnabled, e.sanitizeExistingLabels)
+	routeErrorSpanEvents(rs, resCtx.DataStreamNamespace)
 	e.enricher.EnrichResourceSpans(rs)
 }
 
 // routeErrorSpanEvents iterates through spans to find errors in span
 // events and overrides the resource-level data stream for error events.
-func routeErrorSpanEvents(rs ptrace.ResourceSpans) {
+// resourceNamespace is propagated to events that have no explicit namespace set.
+func routeErrorSpanEvents(rs ptrace.ResourceSpans, resourceNamespace string) {
 	scopeSpans := rs.ScopeSpans()
 	for j := 0; j < scopeSpans.Len(); j++ {
-		spans := scopeSpans.At(j).Spans()
+		ss := scopeSpans.At(j)
+		ns := resourceNamespace
+		if v, ok := ss.Scope().Attributes().Get(elasticattr.DataStreamNamespace); ok && v.Str() != "" {
+			ns = v.Str()
+		}
+		spans := ss.Spans()
 		for k := 0; k < spans.Len(); k++ {
 			events := spans.At(k).Events()
 			for l := 0; l < events.Len(); l++ {
 				event := events.At(l)
 				if routing.IsErrorEvent(event.Attributes()) {
-					routing.EncodeErrorDataStream(event.Attributes(), routing.DataStreamTypeTraces)
+					routing.EncodeErrorDataStream(event.Attributes(), routing.DataStreamTypeTraces, ns)
 				}
 			}
 		}
@@ -85,8 +93,9 @@ func NewAPMTraceEnricher(baseCfg config.Config, hostIPEnabled bool) *APMTraceEnr
 	cfg.Transaction.Result.Enabled = false
 	return &APMTraceEnricher{
 		ecsTraceEnricher: ecsTraceEnricher{
-			enricher:      NewEnricher(cfg, false /* remapToECSLabels */),
-			hostIPEnabled: hostIPEnabled,
+			enricher:               NewEnricher(cfg, false /* remapToECSLabels */),
+			hostIPEnabled:          hostIPEnabled,
+			sanitizeExistingLabels: true,
 		},
 	}
 }
@@ -108,8 +117,9 @@ func NewOTelTraceEnricher(baseCfg config.Config, hostIPEnabled bool) *OTelTraceE
 	cfg := ecsOTelConfig(baseCfg)
 	return &OTelTraceEnricher{
 		ecsTraceEnricher: ecsTraceEnricher{
-			enricher:      NewEnricher(cfg, true /* remapToECSLabels */),
-			hostIPEnabled: hostIPEnabled,
+			enricher:               NewEnricher(cfg, true /* remapToECSLabels */),
+			hostIPEnabled:          hostIPEnabled,
+			sanitizeExistingLabels: false,
 		},
 	}
 }

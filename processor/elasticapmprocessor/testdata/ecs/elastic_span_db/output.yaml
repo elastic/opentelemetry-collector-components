@@ -1,34 +1,12 @@
 resourceSpans:
   - resource:
       attributes:
-        - key: labels.unsupported_key
-          value:
-            stringValue: foo
         - key: agent.name
           value:
             stringValue: ElasticAPM
         - key: agent.version
           value:
             stringValue: 1.0.0
-        - key: labels.my_value
-          value:
-            stringValue: foo
-        - key: labels.other_value
-          value:
-            stringValue: foo
-        - key: numeric_labels.foo
-          value:
-            doubleValue: 42
-        - key: numeric_labels.http_status_code
-          value:
-            doubleValue: 200
-        - key: labels.elastic_profiler_stack_trace_ids
-          value:
-            arrayValue:
-              values:
-                - stringValue: foo
-                - stringValue: bar
-                - stringValue: foo
         - key: service.name
           value:
             stringValue: test-service
@@ -41,24 +19,12 @@ resourceSpans:
         - key: service.namespace
           value:
             stringValue: production
-        - key: labels.service_language_name
-          value:
-            stringValue: go
-        - key: labels.service_language_version
-          value:
-            stringValue: 1.21.0
         - key: service.framework.name
           value:
             stringValue: Node
         - key: service.framework.version
           value:
             stringValue: 1.9.0
-        - key: labels.service_runtime_name
-          value:
-            stringValue: go
-        - key: labels.service_runtime_version
-          value:
-            stringValue: go1.21.0
         - key: service.origin.id
           value:
             stringValue: origin-456
@@ -293,9 +259,6 @@ resourceSpans:
         - key: faas.coldstart
           value:
             boolValue: false
-        - key: labels.faas_trigger_request_id
-          value:
-            stringValue: req-123
         - key: faas.execution
           value:
             stringValue: exec-456
@@ -314,6 +277,43 @@ resourceSpans:
         - key: agent.activation_method
           value:
             stringValue: automatic
+        - key: labels.unsupported_key
+          value:
+            stringValue: foo
+        - key: labels.labels_my_value
+          value:
+            stringValue: foo
+        - key: labels.labels_other_value
+          value:
+            stringValue: foo
+        - key: numeric_labels.numeric_labels_foo
+          value:
+            doubleValue: 42
+        - key: numeric_labels.numeric_labels_http_status_code
+          value:
+            doubleValue: 200
+        - key: labels.labels_elastic_profiler_stack_trace_ids
+          value:
+            arrayValue:
+              values:
+                - stringValue: foo
+                - stringValue: bar
+                - stringValue: foo
+        - key: labels.service_language_name
+          value:
+            stringValue: go
+        - key: labels.service_language_version
+          value:
+            stringValue: 1.21.0
+        - key: labels.service_runtime_name
+          value:
+            stringValue: go
+        - key: labels.service_runtime_version
+          value:
+            stringValue: go1.21.0
+        - key: labels.faas_trigger_request_id
+          value:
+            stringValue: req-123
         - key: data_stream.type
           value:
             stringValue: traces

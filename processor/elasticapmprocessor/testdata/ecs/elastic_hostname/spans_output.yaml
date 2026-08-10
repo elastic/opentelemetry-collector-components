@@ -4,18 +4,21 @@ resourceSpans:
         - key: host.hostname
           value:
             stringValue: hostname-1
+        - key: service.name
+          value:
+            stringValue: unknown
         - key: host.name
           value:
             stringValue: hostname-1
         - key: data_stream.type
           value:
             stringValue: traces
-        - key: data_stream.dataset
-          value:
-            stringValue: apm
         - key: data_stream.namespace
           value:
             stringValue: default
+        - key: data_stream.dataset
+          value:
+            stringValue: apm
         - key: agent.name
           value:
             stringValue: otlp

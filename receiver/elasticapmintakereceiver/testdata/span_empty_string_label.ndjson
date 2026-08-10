@@ -1,0 +1,2 @@
+{"metadata": {"service": {"name": "test-service", "agent": {"name": "elastic-node", "version": "3.14.0"}, "language": {"name": "ecmascript", "version": "8"}, "runtime": {"name": "node", "version": "8.0.0"}}}}
+{"span": {"id": "abcdef0123456789", "trace_id": "aa00000000000001aa00000000000001", "parent_id": "bb00000000000001", "transaction_id": "bb00000000000001", "name": "test span", "type": "custom", "duration": 10.0, "timestamp": 1496170407154000, "context": {"tags": {"env": "", "region": "us-east"}}}}

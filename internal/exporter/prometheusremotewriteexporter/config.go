@@ -1,0 +1,194 @@
+// Licensed to Elasticsearch B.V. under one or more contributor
+// license agreements. See the NOTICE file distributed with
+// this work for additional information regarding copyright
+// ownership. Elasticsearch B.V. licenses this file to you under
+// the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+package prometheusremotewriteexporter // import "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter"
+
+import (
+	"errors"
+	"fmt"
+
+	remoteapi "github.com/prometheus/client_golang/exp/api/remote"
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/config/configretry"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter/internal/metadata"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
+)
+
+// Config defines configuration for Remote Write exporter.
+type Config struct {
+	TimeoutSettings           exporterhelper.TimeoutConfig `mapstructure:",squash"` // squash ensures fields are correctly decoded in embedded struct.
+	configretry.BackOffConfig `mapstructure:"retry_on_failure"`
+
+	// prefix attached to each exported metric name
+	// See: https://prometheus.io/docs/practices/naming/#metric-names
+	Namespace string `mapstructure:"namespace"`
+
+	// QueueConfig allows users to fine tune the queues
+	// that handle outgoing requests.
+	RemoteWriteQueue RemoteWriteQueue `mapstructure:"remote_write_queue"`
+
+	// SendingQueue enables the standard OTel exporterhelper queue with
+	// batch+partition support.
+	SendingQueue configoptional.Optional[exporterhelper.QueueBatchConfig] `mapstructure:"sending_queue"`
+
+	// ExternalLabels defines a map of label keys and values that are allowed to start with reserved prefix "__"
+	ExternalLabels map[string]string `mapstructure:"external_labels"`
+
+	ClientConfig confighttp.ClientConfig `mapstructure:",squash"` // squash ensures fields are correctly decoded in embedded struct.
+
+	// maximum size in bytes of time series batch sent to remote storage
+	MaxBatchSizeBytes int `mapstructure:"max_batch_size_bytes"`
+
+	// maximum amount of parallel requests to do when handling large batch request
+	MaxBatchRequestParallelism *int `mapstructure:"max_batch_request_parallelism"`
+
+	// ResourceToTelemetrySettings is the option for converting resource attributes to telemetry attributes.
+	// "Enabled" - A boolean field to enable/disable this option. Default is `false`.
+	// If enabled, all the resource attributes will be converted to metric labels by default.
+	// "ExcludeServiceAttributes" - If set to `true`, the `service.name`, `service.instance.id` and `service.namespace` resource attributes,
+	// which are already converted to `job` and `instance` labels respectively, will be excluded from the final metrics.
+	ResourceToTelemetrySettings resourcetotelemetry.Settings `mapstructure:"resource_to_telemetry_conversion"`
+
+	// WAL enables persisting metrics to a write-ahead-log before sending to the remote storage.
+	WAL configoptional.Optional[WALConfig] `mapstructure:"wal"`
+
+	// TargetInfo allows customizing the target_info metric
+	TargetInfo TargetInfo `mapstructure:"target_info,omitempty"`
+
+	// DisableScopeInfo allows disabling the export of the scope info labels
+	DisableScopeInfo bool `mapstructure:"disable_scope_info"`
+
+	// AddMetricSuffixes controls whether unit and type suffixes are added to metrics on export
+	//
+	// Deprecated: Use TranslationStrategy instead. It will be removed in v0.153.0.
+	AddMetricSuffixes bool `mapstructure:"add_metric_suffixes"`
+
+	// TranslationStrategy controls how OTLP metric and attribute names are translated into Prometheus metric and label names.
+	// When set, this takes precedence over AddMetricSuffixes.
+	TranslationStrategy translationStrategy `mapstructure:"translation_strategy"`
+
+	// SendMetadata controls whether prometheus metadata will be generated and sent, this option is ignored when using PRW 2.0, which always includes metadata.
+	SendMetadata bool `mapstructure:"send_metadata"`
+
+	// RemoteWriteProtoMsg controls whether prometheus remote write v1 or v2 is sent.
+	RemoteWriteProtoMsg remoteapi.WriteMessageType `mapstructure:"protobuf_message,omitempty"`
+}
+
+type translationStrategy string
+
+const (
+	// underscoreEscapingWithSuffixes escapes special characters to '_', and appends type and unit suffixes.
+	underscoreEscapingWithSuffixes translationStrategy = "UnderscoreEscapingWithSuffixes"
+
+	// underscoreEscapingWithoutSuffixes escapes special characters to '_', but suffixes won't be attached.
+	underscoreEscapingWithoutSuffixes translationStrategy = "UnderscoreEscapingWithoutSuffixes"
+
+	// noUTF8EscapingWithSuffixes does not change special characters to '_', but does append '_total' for counters and unit suffixes.
+	noUTF8EscapingWithSuffixes translationStrategy = "NoUTF8EscapingWithSuffixes"
+
+	// noTranslation passes metric and label names through unaltered.
+	noTranslation translationStrategy = "NoTranslation"
+)
+
+type TargetInfo struct {
+	// Enabled if false the target_info metric is not generated by the exporter
+	Enabled bool `mapstructure:"enabled"`
+
+	// prevent unkeyed literal initialization
+	_ struct{}
+}
+
+// RemoteWriteQueue allows to configure the remote write queue.
+type RemoteWriteQueue struct {
+	// Enabled if false the queue is not enabled, the export requests
+	// are executed synchronously.
+	Enabled bool `mapstructure:"enabled"`
+
+	// QueueSize is the maximum number of OTLP metric batches allowed
+	// in the queue at a given time. Ignored if Enabled is false.
+	QueueSize int `mapstructure:"queue_size"`
+
+	// NumWorkers configures the number of workers used by
+	// the collector to fan out remote write requests.
+	NumConsumers int `mapstructure:"num_consumers"`
+
+	// prevent unkeyed literal initialization
+	_ struct{}
+}
+
+// TODO(jbd): Add capacity, max_samples_per_send to QueueConfig.
+
+var _ component.Config = (*Config)(nil)
+
+// Validate checks if the exporter configuration is valid
+func (cfg *Config) Validate() error {
+	if cfg.MaxBatchRequestParallelism != nil && *cfg.MaxBatchRequestParallelism < 1 {
+		return errors.New("max_batch_request_parallelism can't be set to below 1")
+	}
+
+	if cfg.RemoteWriteQueue.QueueSize < 0 {
+		return errors.New("remote write queue size can't be negative")
+	}
+
+	if cfg.RemoteWriteQueue.Enabled && cfg.RemoteWriteQueue.QueueSize == 0 {
+		return errors.New("a 0 size queue will drop all the data")
+	}
+
+	if cfg.RemoteWriteQueue.NumConsumers < 0 {
+		return errors.New("remote write consumer number can't be negative")
+	}
+
+	if cfg.MaxBatchSizeBytes < 0 {
+		return errors.New("max_batch_byte_size must be greater than 0")
+	}
+	if cfg.MaxBatchSizeBytes == 0 {
+		// Defaults to ~2.81MB
+		cfg.MaxBatchSizeBytes = 3000000
+	}
+
+	if len(cfg.ClientConfig.Compression) > 0 && cfg.ClientConfig.Compression != "snappy" {
+		return errors.New("compression type must be snappy")
+	}
+
+	err := cfg.RemoteWriteProtoMsg.Validate()
+	if err != nil {
+		return err
+	}
+
+	if !metadata.ExporterPrometheusremotewritexporterEnableSendingRW2FeatureGate.IsEnabled() && cfg.RemoteWriteProtoMsg == remoteapi.WriteV2MessageType {
+		return fmt.Errorf("remote write v2 is only supported with the feature gate %s", metadata.ExporterPrometheusremotewritexporterEnableSendingRW2FeatureGate.ID())
+	}
+
+	// Validate translation strategy if set
+	if cfg.TranslationStrategy != "" {
+		switch cfg.TranslationStrategy {
+		case underscoreEscapingWithSuffixes, underscoreEscapingWithoutSuffixes, noUTF8EscapingWithSuffixes, noTranslation:
+		default:
+			return fmt.Errorf("invalid translation_strategy: %s", cfg.TranslationStrategy)
+		}
+
+		if cfg.RemoteWriteProtoMsg == remoteapi.WriteV1MessageType && (cfg.TranslationStrategy == noUTF8EscapingWithSuffixes || cfg.TranslationStrategy == noTranslation) {
+			return fmt.Errorf("translation strategy %s requires Prometheus Remote Write 2.0 (UTF-8 support)", cfg.TranslationStrategy)
+		}
+	}
+
+	return nil
+}

@@ -18,16 +18,29 @@
 package loadgenreceiver // import "github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"math/rand/v2"
+	"time"
 
 	"go.opentelemetry.io/collector/component"
 )
 
-const maxScannerBufSize = 1024 * 1024
-
-type (
-	JsonlFile string
+const (
+	maxScannerBufSize = 1024 * 1024
+	// the type of compression codec
+	compressionZSTD = "zstd"
 )
+
+// JsonlFile is an optional configuration option to specify the path to
+// get the base generated signals from.
+type JsonlFile struct {
+	Path string `mapstructure:"jsonl_file"`
+	// Compression Codec used to extract telemetry data
+	// Supported compression algorithms:`zstd`
+	Compression string `mapstructure:"compression"`
+}
 
 // Config defines configuration for loadgen receiver.
 type Config struct {
@@ -57,15 +70,17 @@ type SignalConfig struct {
 	// to set a limit.
 	MaxBufferSize int `mapstructure:"max_buffer_size"`
 
+	// Jitter defines the range of random delay the receiver waits between forwarding signals.
+	// When set, each forward sleeps for a random duration in [Min, Max].
+	Jitter *JitterRange `mapstructure:"jitter"`
+
 	// doneCh is only non-nil when the receiver is created with NewFactoryWithDone.
 	// It is to notify the caller of collector that receiver finished replaying the file for MaxReplay number of times.
 	doneCh chan Stats
 }
 
 type MetricsConfig struct {
-	// JsonlFile is an optional configuration option to specify the path to
-	// get the base generated signals from.
-	JsonlFile `mapstructure:"jsonl_file"`
+	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
 
@@ -78,56 +93,97 @@ type MetricsConfig struct {
 }
 
 type LogsConfig struct {
-	// JsonlFile is an optional configuration option to specify the path to
-	// get the base generated signals from.
-	JsonlFile `mapstructure:"jsonl_file"`
+	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
 }
 
 type TracesConfig struct {
-	// JsonlFile is an optional configuration option to specify the path to
-	// get the base generated signals from.
-	JsonlFile `mapstructure:"jsonl_file"`
+	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
 }
 
 type ProfilesConfig struct {
-	// JsonlFile is an optional configuration option to specify the path to
-	// get the base generated signals from.
-	JsonlFile `mapstructure:"jsonl_file"`
+	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
 }
 
+// JitterRange specifies a uniform random jitter applied between forwarded signals.
+type JitterRange struct {
+	Min time.Duration `mapstructure:"min"`
+	Max time.Duration `mapstructure:"max"`
+}
+
+// waitJitter blocks for a random duration in [jitter.Min, jitter.Max].
+// Returns false if ctx is canceled before the duration elapses.
+func waitJitter(ctx context.Context, jitter *JitterRange) bool {
+	if jitter == nil {
+		return true
+	}
+	n := jitter.Max.Nanoseconds() - jitter.Min.Nanoseconds()
+	var d time.Duration
+	if n > 0 {
+		d = time.Duration(rand.Int64N(n) + jitter.Min.Nanoseconds())
+	} else {
+		d = jitter.Min
+	}
+	t := time.NewTimer(d)
+	select {
+	case <-t.C:
+		return true
+	case <-ctx.Done():
+		t.Stop()
+		return false
+	}
+}
+
 var _ component.Config = (*Config)(nil)
+
+func validateSignal(sigConfig SignalConfig, file JsonlFile) error {
+	if sigConfig.MaxReplay < 0 {
+		return fmt.Errorf("max_replay must be >= 0")
+	}
+	if sigConfig.MaxBufferSize < 0 {
+		return fmt.Errorf("max_buffer_size must be >= 0")
+	}
+
+	if file.Path != "" && file.Compression != "" && file.Compression != compressionZSTD {
+		return errors.New("compression is not supported")
+	}
+	if j := sigConfig.Jitter; j != nil {
+		if j.Min < 0 {
+			return fmt.Errorf("jitter.min must be >= 0")
+		}
+		if j.Max < j.Min {
+			return fmt.Errorf("jitter.max must be >= jitter.min")
+		}
+	}
+	return nil
+}
 
 // Validate checks the receiver configuration is valid
 func (cfg *Config) Validate() error {
-	if cfg.Logs.MaxReplay < 0 {
-		return fmt.Errorf("logs::max_replay must be >= 0")
+	err := validateSignal(cfg.Logs.SignalConfig, cfg.Logs.JsonlFile)
+	if err != nil {
+		return fmt.Errorf("logs::%w", err)
 	}
-	if cfg.Metrics.MaxReplay < 0 {
-		return fmt.Errorf("metrics::max_replay must be >= 0")
+
+	err = validateSignal(cfg.Metrics.SignalConfig, cfg.Metrics.JsonlFile)
+	if err != nil {
+		return fmt.Errorf("metrics::%w", err)
 	}
-	if cfg.Traces.MaxReplay < 0 {
-		return fmt.Errorf("traces::max_replay must be >= 0")
+
+	err = validateSignal(cfg.Traces.SignalConfig, cfg.Traces.JsonlFile)
+	if err != nil {
+		return fmt.Errorf("traces::%w", err)
 	}
-	if cfg.Profiles.MaxReplay < 0 {
-		return fmt.Errorf("profiles::max_replay must be >= 0")
+
+	err = validateSignal(cfg.Profiles.SignalConfig, cfg.Profiles.JsonlFile)
+	if err != nil {
+		return fmt.Errorf("profiles::%w", err)
 	}
-	if cfg.Logs.MaxBufferSize < 0 {
-		return fmt.Errorf("logs::max_buffer_size must be >= 0")
-	}
-	if cfg.Metrics.MaxBufferSize < 0 {
-		return fmt.Errorf("metrics::max_buffer_size must be >= 0")
-	}
-	if cfg.Traces.MaxBufferSize < 0 {
-		return fmt.Errorf("traces::max_buffer_size must be >= 0")
-	}
-	if cfg.Profiles.MaxBufferSize < 0 {
-		return fmt.Errorf("profiles::max_buffer_size must be >= 0")
-	}
+
 	return nil
 }

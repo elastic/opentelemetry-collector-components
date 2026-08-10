@@ -19,9 +19,9 @@ package ecs // import "github.com/elastic/opentelemetry-collector-components/pro
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/elastic/opentelemetry-collector-components/internal/elasticattr"
-	"github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor/internal/sanitize"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv12 "go.opentelemetry.io/otel/semconv/v1.12.0"
 	semconv16 "go.opentelemetry.io/otel/semconv/v1.16.0"
@@ -35,20 +35,85 @@ import (
 // Supported ECS resource attributes
 const (
 	ecsAttrOpenCensusExporterVersion = "opencensus.exporterversion"
+	defaultServiceName               = "unknown"
 )
 
-// TranslateResourceMetadata normalizes resource attributes.
-// Sanitizes existing labels and numeric_labels keys.
-// Moves unsupported attributes to labels with a "labels." prefix (key sanitized),
-// and leaves supported ECS attributes unchanged.
-func TranslateResourceMetadata(resource pcommon.Resource) {
-	attributes := resource.Attributes()
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitizeExistingLabelAttribute(attributes, k, v) {
-			return true
-		}
+// kv is a key-value pair for collecting deferred attribute insertions after a RemoveIf pass.
+type kv struct {
+	k string
+	v pcommon.Value
+}
 
+// ResourceAttrContext is collected while translating resource attributes and
+// reused by data stream routing.
+type ResourceAttrContext struct {
+	ServiceName         string
+	HostName            string
+	HostHostName        string
+	K8SNodeName         string
+	K8SPodName          string
+	K8SPodUID           string
+	K8SNamespaceName    string
+	DataStreamType      string
+	DataStreamDataset   string
+	DataStreamNamespace string
+}
+
+// TranslateResourceMetadata normalizes resource attributes.
+// Moves unsupported attributes to labels.* / numeric_labels.* (key sanitized),
+// and leaves supported ECS attributes unchanged.
+//
+// When sanitizeExistingLabels is true (APM intake path), existing labels.* /
+// numeric_labels.* keys have only their suffix sanitized (reserved characters
+// replaced). All other unsupported attributes are fully re-normalized.
+// When false (OTel path), all unsupported attributes — including any that
+// already carry a labels.* prefix — are treated as raw keys and re-normalized
+// from scratch.
+//
+// It also applies resource-level conventions (for example host.hostname
+// derivation from kubernetes metadata) and returns the resulting
+// ResourceAttrContext.
+func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels bool) ResourceAttrContext {
+	attributes := resource.Attributes()
+	var context ResourceAttrContext
+	var toAppend []kv
+	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
+		case elasticattr.DataStreamType:
+			context.DataStreamType = v.Str()
+			return false
+		case elasticattr.DataStreamDataset:
+			context.DataStreamDataset = v.Str()
+			return false
+		case elasticattr.DataStreamNamespace:
+			context.DataStreamNamespace = v.Str()
+			return false
+		case elasticattr.HostHostName:
+			context.HostHostName = v.Str()
+			return false
+		case string(semconv.ServiceNameKey):
+			context.ServiceName = v.Str()
+			return false
+		case string(semconv.HostNameKey):
+			truncatePreservedStringAttribute(v)
+			context.HostName = v.Str()
+			return false
+		case string(semconv.K8SNodeNameKey):
+			truncatePreservedStringAttribute(v)
+			context.K8SNodeName = v.Str()
+			return false
+		case string(semconv.K8SPodNameKey):
+			truncatePreservedStringAttribute(v)
+			context.K8SPodName = v.Str()
+			return false
+		case string(semconv.K8SPodUIDKey):
+			truncatePreservedStringAttribute(v)
+			context.K8SPodUID = v.Str()
+			return false
+		case string(semconv.K8SNamespaceNameKey):
+			truncatePreservedStringAttribute(v)
+			context.K8SNamespaceName = v.Str()
+			return false
 		case elasticattr.AgentActivationMethod,
 			elasticattr.AgentEphemeralID,
 			elasticattr.AgentName,
@@ -63,13 +128,9 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			elasticattr.CloudOriginServiceName,
 			elasticattr.CloudProjectID,
 			elasticattr.CloudProjectName,
-			elasticattr.DataStreamDataset,
-			elasticattr.DataStreamNamespace,
-			elasticattr.DataStreamType,
 			elasticattr.DestinationIP,
 			elasticattr.FaaSExecution,
 			elasticattr.FaaSTriggerRequestID,
-			elasticattr.HostHostName,
 			elasticattr.HostOSType,
 			elasticattr.MetricsetName,
 			elasticattr.ServiceFrameworkName,
@@ -99,7 +160,6 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			string(semconv.ProcessExecutableNameKey),
 			string(semconv.ProcessParentPIDKey),
 			string(semconv.ProcessPIDKey),
-			string(semconv.ServiceNameKey),
 			string(semconv.ServiceNamespaceKey),
 			string(semconv.SourceAddressKey),
 			string(semconv.SourcePortKey),
@@ -111,7 +171,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			string(semconv.UserIDKey),
 			string(semconv.UserNameKey),
 			ecsAttrOpenCensusExporterVersion:
-			return true
+			return false
 		case elasticattr.ContainerImageTag,
 			elasticattr.DeviceManufacturer,
 			string(semconv.CloudAccountIDKey),
@@ -130,12 +190,7 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			string(semconv.DeviceModelNameKey),
 			string(semconv.HostArchKey),
 			string(semconv.HostIDKey),
-			string(semconv.HostNameKey),
 			string(semconv.HostTypeKey),
-			string(semconv.K8SNamespaceNameKey),
-			string(semconv.K8SNodeNameKey),
-			string(semconv.K8SPodNameKey),
-			string(semconv.K8SPodUIDKey),
 			string(semconv.OSDescriptionKey),
 			string(semconv.OSNameKey),
 			string(semconv.OSTypeKey),
@@ -150,13 +205,63 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 			string(semconv.TelemetrySDKLanguageKey),
 			string(semconv.TelemetrySDKNameKey),
 			string(semconv.TelemetrySDKVersionKey):
-			truncatePreservedStringAttribute(attributes, k, v)
-			return true
+			truncatePreservedStringAttribute(v)
+			return false
 		default:
-			fallbackToLabelAttribute(attributes, k, v)
+			if sanitizeExistingLabels {
+				for _, prefix := range []string{"labels.", "numeric_labels."} {
+					if strings.HasPrefix(k, prefix) {
+						sanitized, changed := sanitizeExistingLabelKey(k, prefix)
+						if changed {
+							newV := pcommon.NewValueEmpty()
+							v.CopyTo(newV)
+							toAppend = append(toAppend, kv{k: sanitized, v: newV})
+							return true
+						}
+						return false
+					}
+				}
+			}
+			if label := getLabelAttributeValue(k, v); label.k != "" {
+				toAppend = append(toAppend, label)
+			}
 			return true
 		}
 	})
+	for _, l := range toAppend {
+		l.v.CopyTo(attributes.PutEmpty(l.k))
+	}
+
+	// Normalize service name to `unknown` if not present.
+	// See: https://github.com/elastic/apm-data/blob/66b89636fc3a2ad643f38c7bb6f0992452ba60a7/input/otlp/metadata.go#L399-L404
+	// `agent.{name, version} are normalized as per the apm-data logic in internal/enrichments/resource.go.
+	//
+	// TODO(lahsivjar): Can we unify all resource enrichments (including ECS) at one place?
+	if context.ServiceName == "" {
+		context.ServiceName = defaultServiceName
+		attributes.PutStr(string(semconv.ServiceNameKey), defaultServiceName)
+	}
+
+	// set host.name and host.hostname
+	if context.K8SNodeName != "" {
+		// Keep legacy MIS/APM-server hostname behavior for kubernetes workloads:
+		// when node.name is present, host.hostname must resolve to the node name.
+		context.HostHostName = context.K8SNodeName
+		attributes.PutStr(elasticattr.HostHostName, context.K8SNodeName)
+	} else if context.K8SPodName != "" ||
+		context.K8SPodUID != "" ||
+		context.K8SNamespaceName != "" {
+		// kubernetes.* is set but kubernetes.node.name is not: don't set host.hostname
+		context.HostHostName = ""
+		attributes.Remove(elasticattr.HostHostName)
+	}
+	// Mirror host.hostname into host.name when host.name is missing so downstream
+	// enrichment and routing keep the same fallback semantics as before.
+	if context.HostName == "" && context.HostHostName != "" {
+		context.HostName = context.HostHostName
+		attributes.PutStr(string(semconv.HostNameKey), context.HostHostName)
+	}
+	return context
 }
 
 // RemapLogRecordAttributesToECSLabels applies the apm-data OTLP fallback behaviour for
@@ -164,11 +269,8 @@ func TranslateResourceMetadata(resource pcommon.Resource) {
 // unsupported attributes are moved to labels.* / numeric_labels.* with a
 // sanitized key.
 func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitizeExistingLabelAttribute(attributes, k, v) {
-			return true
-		}
-
+	var toAppend []kv
+	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.DataStreamDataset,
 			elasticattr.DataStreamNamespace,
@@ -183,12 +285,17 @@ func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
 			string(semconv.NetworkConnectionTypeKey),
 			"event.domain",
 			"event.name":
-			return true
+			return false
 		default:
-			fallbackToLabelAttribute(attributes, k, v)
+			if label := getLabelAttributeValue(k, v); label.k != "" {
+				toAppend = append(toAppend, label)
+			}
 			return true
 		}
 	})
+	for _, l := range toAppend {
+		l.v.CopyTo(attributes.PutEmpty(l.k))
+	}
 }
 
 // RemapSpanAttributesToECSLabels applies the apm-data OTLP span fallback behaviour for
@@ -200,11 +307,8 @@ func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
 // preserved, while unsupported attributes are moved to labels.* /
 // numeric_labels.* with a sanitized key.
 func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitizeExistingLabelAttribute(attributes, k, v) {
-			return true
-		}
-
+	var toAppend []kv
+	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		// data_stream.*
 		case elasticattr.DataStreamDataset,
@@ -303,24 +407,25 @@ func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 			string(semconv.UserAgentNameKey),
 			string(semconv.UserAgentOriginalKey),
 			string(semconv.UserAgentVersionKey):
-			return true
+			return false
 		default:
-			fallbackToLabelAttribute(attributes, k, v)
+			if label := getLabelAttributeValue(k, v); label.k != "" {
+				toAppend = append(toAppend, label)
+			}
 			return true
 		}
 	})
+	for _, l := range toAppend {
+		l.v.CopyTo(attributes.PutEmpty(l.k))
+	}
 }
 
 // RemapMetricDataPointAttributesToECSLabels applies the apm-data OTLP metric fallback
-// for raw metric datapoint attributes in ECS mode. Existing labels.* /
-// numeric_labels.* keys are sanitized in place, metric-specific special cases
+// for raw metric datapoint attributes in ECS mode. Metric-specific special cases
 // are preserved, and everything else is moved to labels.* / numeric_labels.*.
 func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
-	attributes.Range(func(k string, v pcommon.Value) bool {
-		if sanitizeExistingLabelAttribute(attributes, k, v) {
-			return true
-		}
-
+	var toAppend []kv
+	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.DataStreamDataset,
 			elasticattr.DataStreamNamespace,
@@ -329,134 +434,119 @@ func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
 			"event.module",
 			"system.process.cpu.start_time",
 			"system.process.state":
-			return true
+			return false
 		case string(semconv.UserNameKey),
 			"system.filesystem.mount_point",
 			"system.process.cmdline":
-			truncatePreservedStringAttribute(attributes, k, v)
-			return true
+			truncatePreservedStringAttribute(v)
+			return false
 		default:
-			fallbackToLabelAttribute(attributes, k, v)
+			if label := getLabelAttributeValue(k, v); label.k != "" {
+				toAppend = append(toAppend, label)
+			}
 			return true
 		}
 	})
+	for _, l := range toAppend {
+		l.v.CopyTo(attributes.PutEmpty(l.k))
+	}
 }
 
-func sanitizeExistingLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) bool {
-	if !sanitize.IsLabelAttribute(key) {
-		return false
-	}
-	sanitized := sanitize.HandleLabelAttributeKey(key)
-	if sanitized != key {
-		value.CopyTo(attributes.PutEmpty(sanitized))
-		attributes.Remove(key)
-	}
-	return true
-}
-
-func truncatePreservedStringAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
+func truncatePreservedStringAttribute(value pcommon.Value) {
 	if value.Type() != pcommon.ValueTypeStr {
 		return
 	}
-	truncated := sanitize.Truncate(value.Str())
-	if truncated != value.Str() {
-		attributes.PutStr(key, truncated)
+	if truncated := TruncateToECSMaxLength(value.Str()); truncated != value.Str() {
+		value.SetStr(truncated)
 	}
 }
 
-func fallbackToLabelAttribute(attributes pcommon.Map, key string, value pcommon.Value) {
-	setLabelAttributeValue(attributes, sanitize.HandleAttributeKey(key), value)
-	attributes.Remove(key)
-}
-
-// setLabelAttributeValue maps a value into labels.* / numeric_labels.*.
-// Elasticsearch label mappings only support flat scalar values and
-// homogeneous arrays thereof; Map, Bytes, and empty types cannot be
-// stored and are intentionally dropped. This matches the behaviour of
-// apm-data's setLabel (input/otlp/metadata.go) which also silently
-// ignores these types.
-func setLabelAttributeValue(attributes pcommon.Map, key string, value pcommon.Value) {
+func getLabelAttributeValue(key string, value pcommon.Value) kv {
+	sanitizedKey := strings.Map(replaceReservedLabelKeyRune, key)
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		attributes.PutStr("labels."+key, sanitize.Truncate(value.Str()))
+		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(TruncateToECSMaxLength(value.Str()))}
 	case pcommon.ValueTypeBool:
-		attributes.PutStr("labels."+key, strconv.FormatBool(value.Bool()))
+		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(strconv.FormatBool(value.Bool()))}
 	case pcommon.ValueTypeInt:
-		attributes.PutDouble("numeric_labels."+key, float64(value.Int()))
+		return kv{k: "numeric_labels." + sanitizedKey, v: pcommon.NewValueDouble(float64(value.Int()))}
 	case pcommon.ValueTypeDouble:
-		attributes.PutDouble("numeric_labels."+key, value.Double())
+		return kv{k: "numeric_labels." + sanitizedKey, v: pcommon.NewValueDouble(value.Double())}
 	case pcommon.ValueTypeSlice:
 		slice := value.Slice()
 		if slice.Len() == 0 {
-			return
+			return kv{}
 		}
 		switch slice.At(0).Type() {
+		// TODO(lahsivjar): Can we assume all are same type and just use pcommon.Value#CopyTo?
 		case pcommon.ValueTypeStr:
-			target := attributes.PutEmptySlice("labels." + key)
+			lv := pcommon.NewValueEmpty()
+			sl := lv.SetEmptySlice()
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeStr {
-					target.AppendEmpty().SetStr(sanitize.Truncate(item.Str()))
+					sl.AppendEmpty().SetStr(TruncateToECSMaxLength(item.Str()))
 				}
 			}
+			return kv{k: "labels." + sanitizedKey, v: lv}
 		case pcommon.ValueTypeBool:
-			target := attributes.PutEmptySlice("labels." + key)
+			lv := pcommon.NewValueEmpty()
+			sl := lv.SetEmptySlice()
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeBool {
-					target.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
+					sl.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
 				}
 			}
+			return kv{k: "labels." + sanitizedKey, v: lv}
 		case pcommon.ValueTypeDouble:
-			target := attributes.PutEmptySlice("numeric_labels." + key)
+			lv := pcommon.NewValueEmpty()
+			sl := lv.SetEmptySlice()
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeDouble {
-					target.AppendEmpty().SetDouble(item.Double())
+					sl.AppendEmpty().SetDouble(item.Double())
 				}
 			}
+			return kv{k: "numeric_labels." + sanitizedKey, v: lv}
 		case pcommon.ValueTypeInt:
-			target := attributes.PutEmptySlice("numeric_labels." + key)
+			lv := pcommon.NewValueEmpty()
+			sl := lv.SetEmptySlice()
 			for i := 0; i < slice.Len(); i++ {
 				item := slice.At(i)
 				if item.Type() == pcommon.ValueTypeInt {
-					target.AppendEmpty().SetDouble(float64(item.Int()))
+					sl.AppendEmpty().SetDouble(float64(item.Int()))
 				}
 			}
-		default:
+			return kv{k: "numeric_labels." + sanitizedKey, v: lv}
 		}
 	case pcommon.ValueTypeMap, pcommon.ValueTypeBytes, pcommon.ValueTypeEmpty:
-		return
+		// ES label mappings only support flat scalars and homogeneous arrays;
+		// apm-data's setLabel also silently drops these types.
 	}
+	return kv{}
 }
 
-func ApplyResourceConventions(resource pcommon.Resource) {
-	setHostnameFromKubernetes(resource)
+// sanitizeExistingLabelKey sanitizes reserved characters from the suffix of a
+// labels.* or numeric_labels.* key. prefix must include the trailing dot
+// (e.g. "labels." or "numeric_labels."). Returns the sanitized key and
+// whether it changed. If k does not start with prefix, k is returned unchanged.
+func sanitizeExistingLabelKey(k, prefix string) (string, bool) {
+	if !strings.HasPrefix(k, prefix) {
+		return k, false
+	}
+	suffix := k[len(prefix):]
+	sanitized := strings.Map(replaceReservedLabelKeyRune, suffix)
+	if sanitized == suffix {
+		return k, false
+	}
+	return prefix + sanitized, true
 }
 
-// setHostnameFromKubernetes sets the host.hostname attribute based on kubernetes attributes for backwards compatibility with MIS and APM Server.
-func setHostnameFromKubernetes(resource pcommon.Resource) {
-	attrs := resource.Attributes()
-
-	hostName, hostNameExists := attrs.Get(string(semconv.HostNameKey))
-	k8sNodeName, k8sNodeNameExists := attrs.Get(string(semconv.K8SNodeNameKey))
-	k8sPodName, k8sPodNameExists := attrs.Get(string(semconv.K8SPodNameKey))
-	k8sPodUID, k8sPodUIDExists := attrs.Get(string(semconv.K8SPodUIDKey))
-	k8sNamespace, k8sNamespaceExists := attrs.Get(string(semconv.K8SNamespaceNameKey))
-
-	if k8sNodeNameExists && k8sNodeName.Str() != "" {
-		// kubernetes.node.name is set: set host.hostname to its value
-		attrs.PutStr(elasticattr.HostHostName, k8sNodeName.Str())
-	} else if (k8sPodNameExists && k8sPodName.Str() != "") ||
-		(k8sPodUIDExists && k8sPodUID.Str() != "") ||
-		(k8sNamespaceExists && k8sNamespace.Str() != "") {
-		// kubernetes.* is set but kubernetes.node.name is not: don't set host.hostname
-		attrs.Remove(elasticattr.HostHostName)
+func replaceReservedLabelKeyRune(r rune) rune {
+	switch r {
+	case '.', '*', '"':
+		return '_'
 	}
-
-	// If host.name is not set but host.hostname is, use hostname as name
-	hostHostname, hostHostnameExists := attrs.Get(elasticattr.HostHostName)
-	if (!hostNameExists || hostName.Str() == "") && hostHostnameExists && hostHostname.Str() != "" {
-		attrs.PutStr(string(semconv.HostNameKey), hostHostname.Str())
-	}
+	return r
 }

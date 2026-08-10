@@ -22,6 +22,15 @@ resourceSpans:
         - key: deployment.environment.name
           value:
             stringValue: Production
+        - key: service.framework.name
+          value:
+            stringValue: ASP.NET Core
+        - key: service.framework.version
+          value:
+            stringValue: 8.0.0.0
+        - key: host.hostname
+          value:
+            stringValue: gregs-mbp-2
         - key: process.pid
           value:
             intValue: "63039"
@@ -37,15 +46,6 @@ resourceSpans:
         - key: agent.activation_method
           value:
             stringValue: nuget
-        - key: service.framework.name
-          value:
-            stringValue: ASP.NET Core
-        - key: service.framework.version
-          value:
-            stringValue: 8.0.0.0
-        - key: host.hostname
-          value:
-            stringValue: gregs-mbp-2
     scopeSpans:
       - scope: {}
         spans:

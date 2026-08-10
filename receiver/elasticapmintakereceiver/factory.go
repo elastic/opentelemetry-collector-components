@@ -36,6 +36,11 @@ import (
 const (
 	defaultEndpoint   = "localhost:8200"
 	defaultESEndpoint = "http://localhost:9200"
+	// 512KiB (512 * 1024) of raw NDJSON per batch; decoded pdata is ~5-7x.
+	defaultBatchBytes            = 524288
+	defaultBatchFlushInterval    = time.Second
+	defaultMaxConcurrentDecoders = 100
+	defaultMaxEventSize          = 1024 * 1024 // 1Mib
 )
 
 // NewFactory creates a new factory for the elasticapm receiver.
@@ -62,7 +67,11 @@ func createDefaultConfig() component.Config {
 	defaultESClientConfig.Endpoint = defaultESEndpoint
 
 	return &Config{
-		ServerConfig: defaultServerConfig,
+		ServerConfig:          defaultServerConfig,
+		BatchBytes:            defaultBatchBytes,
+		BatchFlushInterval:    defaultBatchFlushInterval,
+		MaxConcurrentDecoders: defaultMaxConcurrentDecoders,
+		MaxEventSize:          defaultMaxEventSize,
 		AgentConfig: AgentConfig{
 			Enabled:       false,
 			Elasticsearch: defaultESClientConfig,

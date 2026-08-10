@@ -22,9 +22,18 @@ resourceMetrics:
         - key: host.ip
           value:
             stringValue: 1.2.3.4
+        - key: labels.my_value
+          value:
+            stringValue: foo
+        - key: labels.other_value
+          value:
+            stringValue: bar
         - key: metricset.name
           value:
             stringValue: app
+        - key: numeric_labels.http_status_code
+          value:
+            doubleValue: 200
         - key: os.type
           value:
             stringValue: linux

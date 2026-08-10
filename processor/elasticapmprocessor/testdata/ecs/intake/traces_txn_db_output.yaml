@@ -1,24 +1,27 @@
 resourceSpans:
   - resource:
       attributes:
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
         - key: labels.resource_required
           value:
             stringValue: foo
         - key: labels.resource_optional
           value:
             stringValue: bar
-        - key: telemetry.sdk.name
+        - key: service.name
           value:
-            stringValue: ElasticAPM
+            stringValue: unknown
         - key: data_stream.type
           value:
             stringValue: traces
-        - key: data_stream.dataset
-          value:
-            stringValue: apm
         - key: data_stream.namespace
           value:
             stringValue: default
+        - key: data_stream.dataset
+          value:
+            stringValue: apm
         - key: host.ip
           value:
             stringValue: 1.2.3.4

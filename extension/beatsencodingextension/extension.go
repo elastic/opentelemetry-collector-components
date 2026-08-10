@@ -20,9 +20,11 @@ package beatsencodingextension // import "github.com/elastic/opentelemetry-colle
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -43,6 +45,12 @@ var (
 	_ encoding.LogsUnmarshalerExtension = (*beatsEncodingExtension)(nil)
 	_ encoding.LogsDecoderExtension     = (*beatsEncodingExtension)(nil)
 )
+
+// MappedField pairs a FieldMapping with its extracted value.
+type MappedField struct {
+	Mapping FieldMapping
+	Value   any
+}
 
 type beatsEncodingExtension struct {
 	config *Config
@@ -89,9 +97,138 @@ func (e *beatsEncodingExtension) NewLogsDecoder(reader io.Reader, options ...enc
 		return e.newLineDecoder(reader, options...)
 	case FormatJSON:
 		return e.newJSONDecoder(reader, options...)
+	case FormatCSV:
+		return e.newCSVDecoder(reader, options...)
 	default:
 		return nil, fmt.Errorf("unsupported format: %q", e.config.Format)
 	}
+}
+
+// newCSVDecoder returns a streaming decoder that reads CSV records. The first
+// record is the header (unless CSV.FieldsNames is set); each subsequent record
+// becomes a log record whose "message" is a JSON object keyed by the header.
+// This mirrors the Beats aws-s3 input's decoding.codec.csv behaviour so the
+// documents match what an Elastic Agent would produce.
+func (e *beatsEncodingExtension) newCSVDecoder(reader io.Reader, options ...encoding.DecoderOption) (encoding.LogsDecoder, error) {
+	opts := encoding.NewDecoderOptions(options...)
+	batchHelper := xstreamencoding.NewBatchHelper(options...)
+
+	r := csv.NewReader(reader)
+	r.ReuseRecord = true
+	r.LazyQuotes = e.config.CSV.LazyQuotes
+	r.TrimLeadingSpace = e.config.CSV.TrimLeadingSpace
+	if e.config.CSV.Comma != "" {
+		r.Comma = []rune(e.config.CSV.Comma)[0]
+	}
+	if e.config.CSV.Comment != "" {
+		r.Comment = []rune(e.config.CSV.Comment)[0]
+	}
+
+	// Establish the header. With FieldsNames set, lock the field count to it;
+	// otherwise the first non-comment record is the header and csv.Reader
+	// enforces that subsequent records have the same field count.
+	var header []string
+	if len(e.config.CSV.FieldsNames) != 0 {
+		header = e.config.CSV.FieldsNames
+		r.FieldsPerRecord = len(header)
+	} else {
+		h, err := r.Read()
+		if errors.Is(err, io.EOF) {
+			// Empty input: nothing to decode.
+			return newEOFDecoder(opts.Offset), nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("reading CSV header: %w", err)
+		}
+		header = slices.Clone(h)
+	}
+
+	// Skip records already processed in a previous decoder session.
+	recordCount := int64(0)
+	for recordCount < opts.Offset {
+		if _, err := r.Read(); err != nil {
+			return nil, fmt.Errorf("skipping CSV record %d: %w", recordCount, err)
+		}
+		recordCount++
+	}
+
+	decodeF := func() (plog.Logs, error) {
+		logs := plog.NewLogs()
+		sl := newScopeLogs(logs)
+		now := pcommon.NewTimestampFromTime(time.Now())
+		eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
+
+		for {
+			record, err := r.Read()
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				return logs, fmt.Errorf("reading CSV record: %w", err)
+			}
+
+			msg, err := csvRecordToJSON(header, record)
+			if err != nil {
+				return plog.NewLogs(), err
+			}
+
+			data := []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: msg}}
+			if err := e.appendLogRecord(sl, now, eventCreated, data); err != nil {
+				return plog.NewLogs(), err
+			}
+
+			recordCount++
+			batchHelper.IncrementItems(1)
+			batchHelper.IncrementBytes(int64(len(msg)))
+
+			if batchHelper.ShouldFlush() {
+				batchHelper.Reset()
+				return logs, nil
+			}
+		}
+
+		if logs.LogRecordCount() == 0 {
+			return logs, io.EOF
+		}
+		return logs, nil
+	}
+
+	offsetF := func() int64 { return recordCount }
+	return xstreamencoding.NewLogsDecoderAdapter(decodeF, offsetF), nil
+}
+
+// newEOFDecoder returns a decoder that yields no records (io.EOF). Used when
+// the CSV input is empty so callers get empty logs rather than an error.
+func newEOFDecoder(offset int64) encoding.LogsDecoder {
+	decodeF := func() (plog.Logs, error) { return plog.NewLogs(), io.EOF }
+	offsetF := func() int64 { return offset }
+	return xstreamencoding.NewLogsDecoderAdapter(decodeF, offsetF)
+}
+
+// csvRecordToJSON encodes a CSV record as a JSON object keyed by header.
+// Values are kept as strings (matching the Beats csv codec), and JSON
+// encoding handles escaping.
+//
+// csv.Reader enforces that every record has the same field count as the header
+// (FieldsPerRecord), so a row with too few or too many fields fails the read
+// with ErrFieldCount before reaching here — matching the Beats codec's strict
+// behaviour. The length guard below is therefore defensive only (it never pads
+// in practice) and exists solely to avoid an index panic if that invariant
+// ever changes.
+func csvRecordToJSON(header, record []string) (string, error) {
+	m := make(map[string]string, len(header))
+	for i, name := range header {
+		if i < len(record) {
+			m[name] = record[i]
+		} else {
+			m[name] = ""
+		}
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "", fmt.Errorf("encoding CSV record to JSON: %w", err)
+	}
+	return string(b), nil
 }
 
 // newLineDecoder returns a streaming decoder that reads newline-delimited
@@ -112,7 +249,11 @@ func (e *beatsEncodingExtension) newLineDecoder(reader io.Reader, options ...enc
 			line, flush, err := scanner.ScanString()
 
 			if line != "" {
-				e.appendLogRecord(sl, now, eventCreated, line)
+				// Simply add to message as a string
+				data := []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: line}}
+				if err := e.appendLogRecord(sl, now, eventCreated, data); err != nil {
+					return plog.NewLogs(), err
+				}
 			}
 
 			if errors.Is(err, io.EOF) {
@@ -180,7 +321,12 @@ func (e *beatsEncodingExtension) newSingleRecordDecoder(reader io.Reader, opts e
 		logs := plog.NewLogs()
 		sl := newScopeLogs(logs)
 		now := pcommon.NewTimestampFromTime(time.Now())
-		e.appendLogRecord(sl, now, now.AsTime().UTC().Format(time.RFC3339Nano), string(trimmed))
+
+		// Simply add to message as a string
+		data := []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: string(trimmed)}}
+		if err := e.appendLogRecord(sl, now, now.AsTime().UTC().Format(time.RFC3339Nano), data); err != nil {
+			return plog.NewLogs(), err
+		}
 		return logs, nil
 	}
 
@@ -228,6 +374,9 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 		eventCreated := now.AsTime().UTC().Format(time.RFC3339Nano)
 
 		for dec.More() {
+			var n int64
+			var data []MappedField
+
 			var raw json.RawMessage
 			if err := dec.Decode(&raw); err != nil {
 				return logs, fmt.Errorf("decoding array element: %w", err)
@@ -238,10 +387,36 @@ func (e *beatsEncodingExtension) newStreamingJSONDecoder(reader io.Reader, opts 
 				continue
 			}
 
-			e.appendLogRecord(sl, now, eventCreated, string(trimmed))
+			n = int64(len(raw))
+
+			if len(e.config.Mappings) > 0 {
+				// Use Number to preserve numeric types
+				numDec := json.NewDecoder(bytes.NewReader(raw))
+				numDec.UseNumber()
+
+				var asMap map[string]any
+				if err := numDec.Decode(&asMap); err != nil {
+					return logs, fmt.Errorf("decoding array element: %w", err)
+				}
+				if len(raw) == 0 {
+					continue
+				}
+				for _, m := range e.config.Mappings {
+					if val, ok := asMap[m.Source]; ok {
+						data = append(data, MappedField{Mapping: m, Value: val})
+					}
+				}
+			} else {
+				data = []MappedField{{Mapping: FieldMapping{Type: FieldTypeString, Destination: "message"}, Value: string(trimmed)}}
+			}
+
+			if err := e.appendLogRecord(sl, now, eventCreated, data); err != nil {
+				return plog.NewLogs(), err
+			}
+
 			recordCount++
 			batchHelper.IncrementItems(1)
-			batchHelper.IncrementBytes(int64(len(raw)))
+			batchHelper.IncrementBytes(n)
 
 			if batchHelper.ShouldFlush() {
 				batchHelper.Reset()
@@ -382,25 +557,64 @@ func newScopeLogs(logs plog.Logs) plog.ScopeLogs {
 	return sl
 }
 
-func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated string, record string) {
+func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.Timestamp, eventCreated string, data []MappedField) error {
 	lr := sl.LogRecords().AppendEmpty()
 	lr.SetTimestamp(ts)
 	lr.SetObservedTimestamp(ts)
 
 	body := lr.Body().SetEmptyMap()
-	body.EnsureCapacity(7) // we know we'll be adding at least 7 entries to the body
-	body.PutStr("message", record)
-	body.PutStr("event.created", eventCreated)
+	body.EnsureCapacity(7)
+
+	for _, d := range data {
+		switch d.Mapping.Type {
+		case FieldTypeString:
+			s, ok := d.Value.(string)
+			if !ok {
+				return fmt.Errorf("expected string field type, got %T", d.Value)
+			}
+			body.PutStr(d.Mapping.Destination, s)
+		case FieldTypeInteger:
+			num, ok := d.Value.(json.Number)
+			if !ok {
+				return fmt.Errorf("field %q: expected numeric (json.Number), got %T", d.Mapping.Destination, d.Value)
+			}
+			base, err := num.Int64()
+			if err != nil {
+				return fmt.Errorf("field %q: expected integer, got %q: %w", d.Mapping.Destination, num.String(), err)
+			}
+
+			if d.Mapping.Multiplier != 0 {
+				base *= d.Mapping.Multiplier
+			}
+			body.PutInt(d.Mapping.Destination, base)
+		}
+	}
+
+	// Store event and data_stream content as maps
+
+	eventMap := body.PutEmptyMap("event")
+	eventMap.PutStr("created", eventCreated)
+	eventMap.PutStr("dataset", e.config.DataStream.Dataset)
+
+	// Always set @timestamp on the body, like a Beats document. Some
+	// integration ingest pipelines only derive @timestamp on certain code
+	// paths (e.g. Netskope sets it inside per-record-type sub-pipelines) and
+	// otherwise rely on the input having stamped it. Without a baseline here,
+	// such documents reach a data stream with no @timestamp and are rejected.
+	// When the pipeline does derive @timestamp from the event it overrides
+	// this value.
+	body.PutStr("@timestamp", eventCreated)
 
 	// The data_stream.* should be also set on the body as some
 	// integrations expect them.
-	body.PutStr("data_stream.type", "logs")
-	body.PutStr("data_stream.dataset", e.config.DataStream.Dataset)
-	body.PutStr("data_stream.namespace", e.config.DataStream.Namespace)
-	body.PutStr("event.dataset", e.config.DataStream.Dataset)
+	dStreamMap := body.PutEmptyMap("data_stream")
+	dStreamMap.PutStr("type", "logs")
+	dStreamMap.PutStr("dataset", e.config.DataStream.Dataset)
+	dStreamMap.PutStr("namespace", e.config.DataStream.Namespace)
 
 	if e.config.InputType != "" {
-		body.PutStr("input.type", e.config.InputType)
+		inputMap := body.PutEmptyMap("input")
+		inputMap.PutStr("type", e.config.InputType)
 	}
 
 	if len(e.config.Tags) > 0 {
@@ -420,4 +634,6 @@ func (e *beatsEncodingExtension) appendLogRecord(sl plog.ScopeLogs, ts pcommon.T
 	attrs.PutStr("data_stream.type", "logs")
 	attrs.PutStr("data_stream.dataset", e.config.DataStream.Dataset)
 	attrs.PutStr("data_stream.namespace", e.config.DataStream.Namespace)
+
+	return nil
 }

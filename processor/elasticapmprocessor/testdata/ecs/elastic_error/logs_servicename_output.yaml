@@ -4,16 +4,16 @@ resourceLogs:
         - key: service.name
           value:
             stringValue: My App
-        - key: labels.my_value
+        - key: labels.labels_my_value
           value:
             stringValue: foo
-        - key: labels.other_value
+        - key: labels.labels_other_value
           value:
             stringValue: foo
-        - key: numeric_labels.foo
+        - key: numeric_labels.numeric_labels_foo
           value:
             doubleValue: 42
-        - key: numeric_labels.http_status_code
+        - key: numeric_labels.numeric_labels_http_status_code
           value:
             doubleValue: 200
         - key: data_stream.type
@@ -52,15 +52,6 @@ resourceLogs:
               - key: error.id
                 value:
                   stringValue: ac388d6b8a3cd6b9ca32952fb51e85be
-              - key: data_stream.type
-                value:
-                  stringValue: logs
-              - key: data_stream.dataset
-                value:
-                  stringValue: apm.error
-              - key: data_stream.namespace
-                value:
-                  stringValue: default
               - key: error.exception.handled
                 value:
                   boolValue: true
@@ -82,6 +73,15 @@ resourceLogs:
               - key: event.type
                 value:
                   stringValue: error
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: apm.error
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
             body:
               stringValue: Error occurred
             timeUnixNano: "1000000000"

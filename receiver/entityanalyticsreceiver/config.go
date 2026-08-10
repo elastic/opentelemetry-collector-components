@@ -32,6 +32,11 @@ type Config struct {
 	StorageID      string        `mapstructure:"storage"`
 	SyncInterval   time.Duration `mapstructure:"sync_interval"`
 	UpdateInterval time.Duration `mapstructure:"update_interval"`
+
+	// ProviderConfig captures provider-specific keys (e.g. jamf_tenant,
+	// okta_domain) that the receiver does not interpret directly. These
+	// are forwarded to the ProviderFactory as a confmap.Conf at Start.
+	ProviderConfig map[string]any `mapstructure:",remain"`
 }
 
 func (cfg *Config) Validate() error {

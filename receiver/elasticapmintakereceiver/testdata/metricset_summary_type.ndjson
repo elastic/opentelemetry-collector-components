@@ -1,0 +1,2 @@
+{"metadata": {"service": {"name": "test-service", "agent": {"name": "elastic-node", "version": "3.14.0"}, "language": {"name": "ecmascript", "version": "8"}, "runtime": {"name": "node", "version": "8.0.0"}}}}
+{"metricset": {"samples": {"response.latency": {"type": "summary", "value": 42.5}, "jvm.gc.time": {"type": "gauge", "value": 12.3}, "http.requests": {"type": "counter", "value": 100.0}}, "timestamp": 1496170421368000}}

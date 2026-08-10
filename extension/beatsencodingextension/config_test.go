@@ -109,6 +109,19 @@ func TestLoadConfig(t *testing.T) {
 			id:      component.NewIDWithName(metadata.Type, "missing_namespace"),
 			wantErr: "data_stream.namespace is required",
 		},
+		{
+			id: component.NewIDWithName(metadata.Type, "with_mappings"),
+			expected: func() *Config {
+				cfg := createDefaultConfig().(*Config)
+				cfg.Unwrap = []string{"records"}
+				cfg.DataStream.Dataset = "azure.events"
+				cfg.Mappings = []FieldMapping{
+					{Source: "message", Destination: "message", Type: FieldTypeString},
+					{Source: "eventTime", Destination: "@timestamp", Type: FieldTypeInteger, Multiplier: 1000000},
+				}
+				return cfg
+			}(),
+		},
 	}
 
 	for _, tt := range tests {

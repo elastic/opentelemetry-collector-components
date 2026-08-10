@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
@@ -168,6 +169,36 @@ func TestCommitFailureAfterSuccessfulSync(t *testing.T) {
 	assert.Empty(t, base.data, "store should be empty — commit could not persist state")
 }
 
+// TestSelfHealingAfterFailedFullSync verifies that when the initial
+// full sync fails, the next tick retries a full sync rather than
+// silently calling IncrementalSync against unestablished state.
+func TestSelfHealingAfterFailedFullSync(t *testing.T) {
+	const name = "test_selfheal"
+
+	prov := &recordingProvider{failFullN: 1}
+	Register(name, func(_ *confmap.Conf) (entcollect.Provider, error) { return prov, nil })
+	t.Cleanup(func() { unregister(name) })
+
+	cfg := &Config{
+		Provider:       name,
+		StorageID:      "elasticsearch_storage",
+		SyncInterval:   10 * time.Millisecond,
+		UpdateInterval: 10 * time.Millisecond,
+	}
+	rcvr := newReceiver(nopSettings(), cfg, &consumertest.LogsSink{})
+	require.NoError(t, rcvr.Start(context.Background(), testHost(name, newMemoryStore())))
+	t.Cleanup(func() { require.NoError(t, rcvr.Shutdown(context.Background())) })
+
+	require.Eventually(t, func() bool {
+		return prov.callCount() >= 2
+	}, 5*time.Second, 5*time.Millisecond)
+
+	calls := prov.calls()
+	require.GreaterOrEqual(t, len(calls), 2)
+	assert.Equal(t, "full", calls[0], "first call must be full")
+	assert.Equal(t, "full", calls[1], "second call must also be full because the first full sync failed")
+}
+
 func TestShutdownCancelsSync(t *testing.T) {
 	const name = "test_shutdown"
 	Register(name, fakeFactory(nil, nil, 0))
@@ -178,6 +209,72 @@ func TestShutdownCancelsSync(t *testing.T) {
 	rcvr := newReceiver(nopSettings(), testConfig(name), sink)
 	require.NoError(t, rcvr.Start(context.Background(), testHost(name, store)))
 	require.NoError(t, rcvr.Shutdown(context.Background()))
+}
+
+// TestProviderConfigWiring verifies that provider-specific keys set on the
+// receiver Config (captured via mapstructure:",remain") are forwarded to
+// the ProviderFactory as a confmap.Conf during Start.
+func TestProviderConfigWiring(t *testing.T) {
+	const name = "test_wiring"
+
+	var received *confmap.Conf
+	Register(name, func(cfg *confmap.Conf) (entcollect.Provider, error) {
+		received = cfg
+		return &fakeProvider{}, nil
+	})
+	t.Cleanup(func() { unregister(name) })
+
+	rcvr := newReceiver(nopSettings(), &Config{
+		Provider:       name,
+		StorageID:      "elasticsearch_storage",
+		SyncInterval:   24 * time.Hour,
+		UpdateInterval: time.Hour,
+		ProviderConfig: map[string]any{
+			"jamf_tenant":   "test.example.com",
+			"jamf_username": "user",
+			"jamf_password": "pass",
+		},
+	}, &consumertest.LogsSink{})
+
+	store := newMemoryStore()
+	require.NoError(t, rcvr.Start(context.Background(), testHost(name, store)))
+	t.Cleanup(func() { require.NoError(t, rcvr.Shutdown(context.Background())) })
+
+	require.NotNil(t, received, "factory should receive non-nil config when provider keys are set")
+
+	type provConf struct {
+		Tenant   string `mapstructure:"jamf_tenant"`
+		Username string `mapstructure:"jamf_username"`
+		Password string `mapstructure:"jamf_password"`
+	}
+	var pc provConf
+	require.NoError(t, received.Unmarshal(&pc), "unmarshalling provider config")
+	assert.Equal(t, "test.example.com", pc.Tenant, "jamf_tenant should flow from receiver to factory")
+	assert.Equal(t, "user", pc.Username, "jamf_username should flow from receiver to factory")
+	assert.Equal(t, "pass", pc.Password, "jamf_password should flow from receiver to factory")
+}
+
+// TestProviderConfigWiring_NilWhenEmpty verifies that when no provider-specific
+// keys are set, the factory receives nil (preserving the env-var fallback path).
+func TestProviderConfigWiring_NilWhenEmpty(t *testing.T) {
+	const name = "test_wiring_nil"
+
+	var received *confmap.Conf
+	called := false
+	Register(name, func(cfg *confmap.Conf) (entcollect.Provider, error) {
+		called = true
+		received = cfg
+		return &fakeProvider{}, nil
+	})
+	t.Cleanup(func() { unregister(name) })
+
+	rcvr := newReceiver(nopSettings(), testConfig(name), &consumertest.LogsSink{})
+	store := newMemoryStore()
+	require.NoError(t, rcvr.Start(context.Background(), testHost(name, store)))
+	t.Cleanup(func() { require.NoError(t, rcvr.Shutdown(context.Background())) })
+
+	require.True(t, called, "factory should have been called")
+	assert.Nil(t, received, "factory should receive nil config when no provider-specific keys are set")
 }
 
 func TestMissingStorageExtension(t *testing.T) {
@@ -385,3 +482,44 @@ type notRegistryExtension struct{}
 
 func (n *notRegistryExtension) Start(context.Context, component.Host) error { return nil }
 func (n *notRegistryExtension) Shutdown(context.Context) error              { return nil }
+
+// recordingProvider records the kind of each sync call ("full" or
+// "incremental") and fails the first failFullN full sync calls.
+type recordingProvider struct {
+	mu         sync.Mutex
+	callsLog   []string
+	fullErrors int
+	failFullN  int
+}
+
+func (p *recordingProvider) FullSync(context.Context, entcollect.Store, entcollect.Publisher, *slog.Logger) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.callsLog = append(p.callsLog, "full")
+	if p.fullErrors < p.failFullN {
+		p.fullErrors++
+		return errors.New("full sync failed")
+	}
+	return nil
+}
+
+func (p *recordingProvider) IncrementalSync(context.Context, entcollect.Store, entcollect.Publisher, *slog.Logger) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.callsLog = append(p.callsLog, "incremental")
+	return nil
+}
+
+func (p *recordingProvider) callCount() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.callsLog)
+}
+
+func (p *recordingProvider) calls() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]string, len(p.callsLog))
+	copy(out, p.callsLog)
+	return out
+}

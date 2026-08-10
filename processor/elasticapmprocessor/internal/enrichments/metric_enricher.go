@@ -37,17 +37,13 @@ type ecsMetricEnricher struct {
 	enricher                       *Enricher
 	hostIPEnabled                  bool
 	serviceNameInDataStreamDataset bool
+	sanitizeExistingLabels         bool
 }
 
 func (e *ecsMetricEnricher) enrichResourceMetrics(ctx context.Context, rm pmetric.ResourceMetrics) {
 	resource := rm.Resource()
-	ecsPreProcessResource(ctx, resource, routing.DataStreamTypeMetrics, e.serviceNameInDataStreamDataset, e.hostIPEnabled)
-
-	// Check if resource has a service name for routing decisions
-	hasServiceName := false
-	if serviceName, ok := resource.Attributes().Get(routing.ServiceNameAttributeKey); ok && serviceName.Str() != "" {
-		hasServiceName = true
-	}
+	resCtx := ecsPreProcessResource(ctx, resource, routing.DataStreamTypeMetrics, e.serviceNameInDataStreamDataset, e.hostIPEnabled, e.sanitizeExistingLabels)
+	hasServiceName := resCtx.ServiceName != ""
 
 	// Route internal metrics to appropriate data streams if needed.
 	routeMetricsToDataStream(rm.ScopeMetrics(), hasServiceName)
@@ -133,6 +129,7 @@ func NewAPMMetricEnricher(baseCfg config.Config, hostIPEnabled bool, serviceName
 			enricher:                       NewEnricher(cfg, false /* remapToECSLabels */),
 			hostIPEnabled:                  hostIPEnabled,
 			serviceNameInDataStreamDataset: serviceNameInDataStreamDataset,
+			sanitizeExistingLabels:         true,
 		},
 	}
 }
@@ -154,6 +151,7 @@ func NewOTelMetricEnricher(baseCfg config.Config, hostIPEnabled bool, serviceNam
 			enricher:                       NewEnricher(cfg, true /* remapToECSLabels */),
 			hostIPEnabled:                  hostIPEnabled,
 			serviceNameInDataStreamDataset: serviceNameInDataStreamDataset,
+			sanitizeExistingLabels:         false,
 		},
 	}
 }

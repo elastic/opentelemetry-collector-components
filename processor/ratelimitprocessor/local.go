@@ -65,43 +65,57 @@ func (r *localRateLimiter) Shutdown(_ context.Context) error {
 	return nil
 }
 
-func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
-	metadata := client.FromContext(ctx).Metadata
+func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) (RateLimitResult, error) {
+	clientMetadata := client.FromContext(ctx).Metadata
 	// Each (shared) processor gets its own rate limiter,
 	// so it's enough to use client metadata-based unique key.
-	key := getUniqueKey(metadata, r.cfg.MetadataKeys)
-	cfg := resolveRateLimit(r.cfg, metadata)
+	key := getUniqueKey(clientMetadata, r.cfg.MetadataKeys)
+	cfg := resolveRateLimit(r.cfg, clientMetadata)
 
 	v, _ := r.limiters.LoadOrStore(key, &keyState{
 		limiter: rate.NewLimiter(rate.Limit(cfg.Rate), cfg.Burst),
 	})
 	state := v.(*keyState)
-	limiter := state.limiter
+
+	makeResult := func(decision Decision, delay time.Duration, tokensBefore, tokensAfter float64, emitTokenMetrics bool) RateLimitResult {
+		return RateLimitResult{
+			Decision:         decision,
+			Delay:            delay,
+			TokensBefore:     tokensBefore,
+			TokensAfter:      tokensAfter,
+			ConfigRate:       float64(cfg.Rate),
+			EmitTokenMetrics: emitTokenMetrics,
+		}
+	}
 
 	switch cfg.ThrottleBehavior {
 	case ThrottleBehaviorError:
-		if ok := limiter.AllowN(time.Now(), hits); !ok {
-			return errorWithDetails(errTooManyRequests, cfg)
+		if ok := state.limiter.AllowN(time.Now(), hits); !ok {
+			return makeResult(DecisionThrottled, 0, 0, 0, false), errorWithDetails(errTooManyRequests, cfg)
 		}
+		return makeResult(DecisionAccepted, 0, 0, 0, false), nil
+
 	case ThrottleBehaviorDelay:
-		reservations, delay, err := reserveAll(state, hits)
+		reservations, delay, tokensBefore, tokensAfter, err := reserveAll(state, hits)
 		if err != nil {
-			return errorWithDetails(err, cfg)
+			return makeResult(DecisionThrottled, 0, tokensBefore, tokensAfter, true), errorWithDetails(err, cfg)
 		}
 		if delay <= 0 {
-			return nil
+			return makeResult(DecisionAccepted, 0, tokensBefore, tokensAfter, true), nil
 		}
 		timer := time.NewTimer(delay)
 		defer timer.Stop()
 		select {
 		case <-ctx.Done():
 			cancelReservations(reservations)
-			return ctx.Err()
+			// tokensAfter reflects peak debt at reservation time, before cancellation.
+			return makeResult(DecisionCancelled, 0, tokensBefore, tokensAfter, true), ctx.Err()
 		case <-timer.C:
+			return makeResult(DecisionDelayed, delay, tokensBefore, tokensAfter, true), nil
 		}
 	}
 
-	return nil
+	return makeResult(DecisionAccepted, 0, 0, 0, false), nil
 }
 
 // reserveAll books all chunks for one caller atomically under
@@ -116,15 +130,19 @@ func (r *localRateLimiter) RateLimit(ctx context.Context, hits int) error {
 // never hold more than burst tokens). All chunks are booked at the same
 // timestamp, so the last reservation carries the largest deficit and
 // therefore the cumulative delay for the whole batch.
-func reserveAll(state *keyState, hits int) ([]*rate.Reservation, time.Duration, error) {
+func reserveAll(state *keyState, hits int) ([]*rate.Reservation, time.Duration, float64, float64, error) {
 	// Empty batches (hits <= 0) consume nothing and have no delay.
 	if hits <= 0 {
-		return nil, 0, nil
+		return nil, 0, 0, 0, nil
 	}
 	state.reserveLock.Lock()
 	defer state.reserveLock.Unlock()
 
 	limiter := state.limiter
+	// Both tokensBefore and tokensAfter are captured inside the lock so they are
+	// consistent with each other: no other caller sharing this key can consume
+	// tokens between the two reads or between either read and the ReserveN calls.
+	tokensBefore := limiter.Tokens()
 	burst := limiter.Burst()
 	now := time.Now()
 	reservations := make([]*rate.Reservation, 0, (hits+burst-1)/burst)
@@ -139,12 +157,12 @@ func reserveAll(state *keyState, hits int) ([]*rate.Reservation, time.Duration, 
 			// math.MaxInt64 nanoseconds. Cancel anything we already
 			// booked so we don't leak tokens.
 			cancelReservations(reservations)
-			return nil, 0, errTooManyRequests
+			return nil, 0, tokensBefore, limiter.Tokens(), errTooManyRequests
 		}
 		reservations = append(reservations, lr)
 		remaining -= n
 	}
-	return reservations, reservations[len(reservations)-1].Delay(), nil
+	return reservations, reservations[len(reservations)-1].Delay(), tokensBefore, limiter.Tokens(), nil
 }
 
 // cancelReservations releases tokens reserved by reserveAll. Reservations

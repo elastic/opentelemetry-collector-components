@@ -1,0 +1,52 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: elastic-node
+        - key: agent.version
+          value:
+            stringValue: 3.14.0
+        - key: metricset.name
+          value:
+            stringValue: app
+        - key: process.runtime.name
+          value:
+            stringValue: node
+        - key: process.runtime.version
+          value:
+            stringValue: 8.0.0
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: telemetry.sdk.language
+          value:
+            stringValue: ecmascript
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: telemetry.sdk.version
+          value:
+            stringValue: "8"
+    scopeMetrics:
+      - metrics:
+          - name: response.latency
+          - gauge:
+              dataPoints:
+                - asDouble: 12.3
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1496170421368000000"
+            name: jvm.gc.time
+          - name: http.requests
+            sum:
+              dataPoints:
+                - asDouble: 100
+                  attributes:
+                    - key: processor.event
+                      value:
+                        stringValue: metric
+                  timeUnixNano: "1496170421368000000"
+        scope: {}

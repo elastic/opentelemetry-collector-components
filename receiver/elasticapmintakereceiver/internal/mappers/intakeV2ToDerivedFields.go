@@ -99,14 +99,6 @@ func SetDerivedFieldsForSpan(event *modelpb.APMEvent, attributes pcommon.Map) {
 	}
 }
 
-// SetDerivedResourceAttributes sets resource fields that are NOT part of OTel. These fields are derived by the Enrichment lib in case of OTLP input
-func SetDerivedResourceAttributes(event *modelpb.APMEvent, attributes pcommon.Map) {
-	if event.Agent != nil {
-		attributes.PutStr(elasticattr.AgentName, event.Agent.Name)
-		attributes.PutStr(elasticattr.AgentVersion, event.Agent.Version)
-	}
-}
-
 // SetDerivedFieldsForMetrics sets fields that are NOT part of OTel for metrics. These fields are derived by the Enrichment lib in case of OTLP input
 func SetDerivedFieldsForMetrics(attributes pcommon.Map) {
 	attributes.PutStr(elasticattr.ProcessorEvent, "metric")

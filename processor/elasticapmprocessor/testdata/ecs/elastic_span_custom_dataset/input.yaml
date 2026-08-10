@@ -1,0 +1,36 @@
+resourceSpans:
+  - resource:
+      attributes:
+        - key: agent.name
+          value:
+            stringValue: ElasticAPM
+        - key: agent.version
+          value:
+            stringValue: 1.0.0
+        - key: service.name
+          value:
+            stringValue: test-service
+        - key: data_stream.dataset
+          value:
+            stringValue: custom-traces
+        - key: data_stream.namespace
+          value:
+            stringValue: custom-ns
+    scopeSpans:
+      - scope: {}
+        spans:
+          - attributes:
+              - key: db.name
+                value:
+                  stringValue: main
+              - key: db.system
+                value:
+                  stringValue: mysql
+            endTimeUnixNano: "1581452773000000789"
+            kind: 3
+            name: SELECT
+            parentSpanId: a2fb4a1d1a96d312
+            spanId: 86e39566e927d599
+            startTimeUnixNano: "1581452772000000321"
+            status: {}
+            traceId: 7bba9f33312b3dbb8b2c2c62bb7abe2d

@@ -1,0 +1,169 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: service.name
+          value:
+            stringValue: comp-override-svc
+        - key: service.version
+          value:
+            stringValue: 5.1.0
+        - key: telemetry.sdk.language
+          value:
+            stringValue: Java
+        - key: telemetry.sdk.version
+          value:
+            stringValue: 17.0.2
+        - key: process.runtime.name
+          value:
+            stringValue: JVM
+        - key: process.runtime.version
+          value:
+            stringValue: 17.0.2
+        - key: telemetry.sdk.name
+          value:
+            stringValue: ElasticAPM
+        - key: deployment.environment
+          value:
+            stringValue: prod
+        - key: deployment.environment.name
+          value:
+            stringValue: prod
+        - key: service.instance.id
+          value:
+            stringValue: override-node
+        - key: service.framework.name
+          value:
+            stringValue: Spring Boot
+        - key: service.framework.version
+          value:
+            stringValue: 3.0.0
+        - key: host.name
+          value:
+            stringValue: comp-host-configured
+        - key: host.arch
+          value:
+            stringValue: amd64
+        - key: os.type
+          value:
+            stringValue: linux
+        - key: host.hostname
+          value:
+            stringValue: comp-host-detected
+        - key: cloud.provider
+          value:
+            stringValue: gcp
+        - key: cloud.region
+          value:
+            stringValue: us-central1
+        - key: cloud.availability_zone
+          value:
+            stringValue: us-central1-a
+        - key: cloud.account.id
+          value:
+            stringValue: gcp-acct-123
+        - key: cloud.platform
+          value:
+            stringValue: GCE
+        - key: cloud.account.name
+          value:
+            stringValue: Comp GCP Project
+        - key: cloud.instance.id
+          value:
+            stringValue: comp-instance-id
+        - key: cloud.instance.name
+          value:
+            stringValue: comp-gce-instance
+        - key: cloud.machine.type
+          value:
+            stringValue: n2-standard-4
+        - key: cloud.project.id
+          value:
+            stringValue: comp-project-123
+        - key: cloud.project.name
+          value:
+            stringValue: Comp Project
+        - key: container.id
+          value:
+            stringValue: comp-container-abc123
+        - key: k8s.namespace.name
+          value:
+            stringValue: comp-ns
+        - key: k8s.node.name
+          value:
+            stringValue: comp-k8s-node-1
+        - key: k8s.pod.name
+          value:
+            stringValue: comp-pod-1
+        - key: k8s.pod.uid
+          value:
+            stringValue: comp-pod-uid-abc
+        - key: process.pid
+          value:
+            intValue: "9876"
+        - key: process.parent_pid
+          value:
+            intValue: "1"
+        - key: process.executable.name
+          value:
+            stringValue: java
+        - key: process.command_line
+          value:
+            arrayValue:
+              values:
+                - stringValue: -jar
+                - stringValue: app.jar
+        - key: network.connection.type
+          value:
+            stringValue: wifi
+        - key: agent.name
+          value:
+            stringValue: java
+        - key: agent.version
+          value:
+            stringValue: 1.36.0
+        - key: agent.ephemeral_id
+          value:
+            stringValue: comp-eph-id-123
+        - key: agent.activation_method
+          value:
+            stringValue: premain
+        - key: labels.team
+          value:
+            stringValue: platform
+        - key: numeric_labels.tier
+          value:
+            doubleValue: 3
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: transaction.id
+                value:
+                  stringValue: abcdef0123456789
+              - key: log.logger
+                value:
+                  stringValue: com.example.EventLogger
+              - key: log.origin.function
+                value:
+                  stringValue: handleEvent
+              - key: log.origin.file.line
+                value:
+                  intValue: "42"
+              - key: log.origin.file.name
+                value:
+                  stringValue: EventService.java
+              - key: event.dataset
+                value:
+                  stringValue: events.audit
+              - key: event.kind
+                value:
+                  stringValue: event
+              - key: process.thread.name
+                value:
+                  stringValue: event-thread-1
+            body:
+              stringValue: log with event action category type
+            severityText: warn
+            spanId: fedcba9876543210
+            timeUnixNano: "1662616049000000000"
+            traceId: 0123456789abcdef0123456789abcdef
+        scope: {}
