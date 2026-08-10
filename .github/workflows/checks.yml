@@ -107,7 +107,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: 'oldstable'
+          go-version: 'stable'
           cache: false
       - name: Cache Go
         id: go-cache
