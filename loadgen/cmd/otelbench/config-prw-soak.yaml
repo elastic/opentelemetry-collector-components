@@ -1,12 +1,12 @@
+# yaml-language-server: $schema=none
 # Example metricsgen -> Prometheus Remote Write config for otelbench's
-# finite backfill benchmark mode. Run with:
-#   ./otelbench -metricsgen -config ./config-prw.yaml
+# true soak mode. Run with:
+#   ./otelbench -metricsgen -metricsgen-benchmark=false -config ./config-prw-soak.yaml
 receivers:
   metricsgen:
-    start_now_minus: 10m
-    interval: 30s
-    real_time: false
-    exit_after_end: true
+    interval: 10s
+    real_time: true
+    run_indefinitely: true
     seed: 123
     scenarios:
       - path: builtin/node_exporter
@@ -22,8 +22,7 @@ exporters:
     tls:
       insecure_skip_verify: true
     headers:
-      # Authorization: "ApiKey <your-base64-api-key>"
-      Authorization: "ApiKey <your-api-key>"
+      Authorization: "ApiKey <your-base64-api-key>"
     resource_to_telemetry_conversion:
       enabled: true
     target_info:
