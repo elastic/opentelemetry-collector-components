@@ -252,7 +252,6 @@ jobs:
           path: |
             ~/go/bin
             ~/go/pkg/mod
-            ./.tools
           key: go-cache-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
       - name: Run Integration Tests
         run: make gointegration-test GROUP=${{ matrix.group }}
