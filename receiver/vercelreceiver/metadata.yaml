@@ -1,0 +1,14 @@
+type: vercel
+scope_name: otelcol/vercel
+
+status:
+  class: receiver
+  stability:
+    alpha: [logs, metrics]
+
+tests:
+  host: "hosttest.NewCustomHost()"
+  config:
+    endpoint: "localhost:0"
+    encoding:
+      extension: vercel

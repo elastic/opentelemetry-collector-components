@@ -1,0 +1,95 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: vercel.team.id
+          value:
+            stringValue: team_full
+        - key: vercel.project.id
+          value:
+            stringValue: prj_full
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: log.record.uid
+                value:
+                  stringValue: uev_full_0000000000000000000001
+              - key: vercel.actor.type
+                value:
+                  stringValue: user
+              - key: user.id
+                value:
+                  stringValue: user_full
+              - key: user.name
+                value:
+                  stringValue: Full User
+              - key: user.email
+                value:
+                  stringValue: full-user@example.com
+              - key: vercel.request.id
+                value:
+                  stringValue: req_full
+              - key: user_agent.original
+                value:
+                  stringValue: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
+              - key: client.address
+                value:
+                  stringValue: 203.0.113.10
+              - key: vercel.token.id
+                value:
+                  stringValue: token_full
+              - key: vercel.via
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: type
+                              value:
+                                stringValue: app
+                            - key: id
+                              value:
+                                stringValue: app_full
+                            - key: name
+                              value:
+                                stringValue: Full App
+                            - key: email
+                              value:
+                                stringValue: app-user@example.com
+              - key: vercel.audit_log.payload
+                value:
+                  kvlistValue:
+                    values:
+                      - key: drain_url
+                        value:
+                          stringValue: https://example.com/webhook
+                      - key: delivery_format
+                        value:
+                          stringValue: ndjson
+                      - key: http_status_code
+                        value:
+                          intValue: "200"
+                      - key: is_enabled
+                        value:
+                          boolValue: true
+                      - key: filter
+                        value:
+                          kvlistValue:
+                            values:
+                              - key: environment_types
+                                value:
+                                  arrayValue:
+                                    values:
+                                      - stringValue: production
+                                      - stringValue: preview
+                              - key: max_retry_count
+                                value:
+                                  intValue: "5"
+            body: {}
+            eventName: project.env.created
+            timeUnixNano: "1779444000123000000"
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.auditlog.v1
+          name: otelcol/vercel_encoding
