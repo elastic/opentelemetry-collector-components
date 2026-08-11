@@ -26,7 +26,7 @@ jobs:
           go-version-file: internal/tools/go.mod
           cache: 'false'
 
-      # Warm the go tool cache used by changelog checks.
+      # Ensure chloggen is available for create_pr.sh below.
       - name: Install tools
         run: make install-tools
 
