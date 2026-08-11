@@ -3,20 +3,6 @@ module github.com/elastic/opentelemetry-collector-components/internal/tools
 go 1.25.0
 
 require (
-	github.com/client9/misspell v0.3.4
-	github.com/elastic/go-licenser v0.4.2
-	github.com/golangci/golangci-lint/v2 v2.8.0
-	github.com/itchyny/gojq v0.12.19
-	github.com/jcchavezs/porto v0.7.0
-	go.opentelemetry.io/build-tools/chloggen v0.30.0
-	go.opentelemetry.io/build-tools/multimod v0.30.0
-	go.opentelemetry.io/collector/cmd/builder v0.156.0
-	go.opentelemetry.io/collector/cmd/mdatagen v0.156.0
-	golang.org/x/tools v0.47.0
-	golang.org/x/vuln v1.5.0
-)
-
-require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
 	4d63.com/gochecknoglobals v0.2.2 // indirect
 	codeberg.org/chavacava/garif v0.2.0 // indirect
@@ -67,6 +53,7 @@ require (
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/ckaznocha/intrange v0.3.1 // indirect
+	github.com/client9/misspell v0.3.4 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
@@ -77,6 +64,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/denis-tingaikin/go-header v0.5.0 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
+	github.com/elastic/go-licenser v0.4.2 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ettle/strcase v0.2.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -106,6 +94,7 @@ require (
 	github.com/golangci/dupl v0.0.0-20250308024227-f665c8d69b32 // indirect
 	github.com/golangci/go-printf-func-name v0.1.1 // indirect
 	github.com/golangci/gofmt v0.0.0-20250106114630-d62b90e6713d // indirect
+	github.com/golangci/golangci-lint/v2 v2.8.0 // indirect
 	github.com/golangci/golines v0.14.0 // indirect
 	github.com/golangci/misspell v0.7.0 // indirect
 	github.com/golangci/plugin-module-register v0.1.2 // indirect
@@ -126,8 +115,10 @@ require (
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/itchyny/go-yaml v0.0.0-20251001235044-fca9a0999f15 // indirect
+	github.com/itchyny/gojq v0.12.19 // indirect
 	github.com/itchyny/timefmt-go v0.1.8 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
+	github.com/jcchavezs/porto v0.7.0 // indirect
 	github.com/jgautheron/goconst v1.8.2 // indirect
 	github.com/jingyugao/rowserrcheck v1.1.1 // indirect
 	github.com/jjti/go-spancheck v0.6.5 // indirect
@@ -238,6 +229,10 @@ require (
 	go.augendre.info/arangolint v0.3.1 // indirect
 	go.augendre.info/fatcontext v0.9.0 // indirect
 	go.opentelemetry.io/build-tools v0.30.0 // indirect
+	go.opentelemetry.io/build-tools/chloggen v0.30.0 // indirect
+	go.opentelemetry.io/build-tools/multimod v0.30.0 // indirect
+	go.opentelemetry.io/collector/cmd/builder v0.156.0 // indirect
+	go.opentelemetry.io/collector/cmd/mdatagen v0.156.0 // indirect
 	go.opentelemetry.io/collector/component v1.62.0 // indirect
 	go.opentelemetry.io/collector/confmap v1.62.0 // indirect
 	go.opentelemetry.io/collector/confmap/provider/fileprovider v1.62.0 // indirect
@@ -252,18 +247,34 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20251023183803-a4bb9ffd2546 // indirect
-	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260625142307-59b4966ccb57 // indirect
-	golang.org/x/text v0.39.0 // indirect
+	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260708182218-49f421fb7959 // indirect
+	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/vuln v1.6.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.6.1 // indirect
 	mvdan.cc/gofumpt v0.9.2 // indirect
 	mvdan.cc/unparam v0.0.0-20251027182757-5beb8c8f8f15 // indirect
+)
+
+tool (
+	github.com/client9/misspell/cmd/misspell
+	github.com/elastic/go-licenser
+	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+	github.com/itchyny/gojq/cmd/gojq
+	github.com/jcchavezs/porto/cmd/porto
+	go.opentelemetry.io/build-tools/chloggen
+	go.opentelemetry.io/build-tools/multimod
+	go.opentelemetry.io/collector/cmd/builder
+	go.opentelemetry.io/collector/cmd/mdatagen
+	golang.org/x/tools/cmd/goimports
+	golang.org/x/vuln/cmd/govulncheck
 )

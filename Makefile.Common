@@ -12,23 +12,27 @@ GOARCH := $(shell $(GOCMD) env GOARCH)
 # SRC_ROOT is the top of the source tree.
 SRC_ROOT := $(shell git rev-parse --show-toplevel)
 
-TOOLS_MOD_DIR   := $(SRC_ROOT)/internal/tools
-TOOLS_BIN_DIR   := $(SRC_ROOT)/.tools
-TOOLS_MOD_REGEX := "\s+_\s+\".*\""
-TOOLS_PKG_NAMES := $(shell grep -E $(TOOLS_MOD_REGEX) < $(TOOLS_MOD_DIR)/tools.go | tr -d " _\"" | grep -vE '/v[0-9]+$$')
-TOOLS_BIN_NAMES := $(addprefix $(TOOLS_BIN_DIR)/, $(notdir $(shell echo $(TOOLS_PKG_NAMES))))
-export PATH := $(TOOLS_BIN_DIR):$(PATH)
+# Tools are declared in $(TOOLS_MOD_DIR)/go.mod using tool directives.
+TOOLS_MOD_DIR := $(SRC_ROOT)/internal/tools
 
-LINT         := $(TOOLS_BIN_DIR)/golangci-lint
-MISSPELL     := $(TOOLS_BIN_DIR)/misspell
-MDATAGEN     := $(TOOLS_BIN_DIR)/mdatagen
-GOVULNCHECK  := $(TOOLS_BIN_DIR)/govulncheck
-GOJQ         := $(TOOLS_BIN_DIR)/gojq
-PORTO        := $(TOOLS_BIN_DIR)/porto
-BUILDER      := $(TOOLS_BIN_DIR)/builder
-LICENSER     := $(TOOLS_BIN_DIR)/go-licenser
-CHLOGGEN     := $(TOOLS_BIN_DIR)/chloggen
-MULTIMOD     := $(TOOLS_BIN_DIR)/multimod
+# Resolve tool binaries from the tools module. Use -n so the binary runs in the
+# caller's working directory (go tool -C would change cwd and break tools that
+# look for local files/modules).
+#
+# On Windows, `go tool -n` returns paths with backslashes which break under
+# MSYS2/Git Bash; $(subst \,/,...) converts them to forward slashes.
+GO_TOOL = GOOS= GOARCH= $(GOCMD) tool -C $(TOOLS_MOD_DIR)
+LINT = $(subst \,/,$(shell $(GO_TOOL) -n github.com/golangci/golangci-lint/v2/cmd/golangci-lint))
+MISSPELL = $(subst \,/,$(shell $(GO_TOOL) -n github.com/client9/misspell/cmd/misspell))
+MDATAGEN = $(subst \,/,$(shell $(GO_TOOL) -n go.opentelemetry.io/collector/cmd/mdatagen))
+GOVULNCHECK = $(subst \,/,$(shell $(GO_TOOL) -n golang.org/x/vuln/cmd/govulncheck))
+GOJQ = $(subst \,/,$(shell $(GO_TOOL) -n github.com/itchyny/gojq/cmd/gojq))
+PORTO = $(subst \,/,$(shell $(GO_TOOL) -n github.com/jcchavezs/porto/cmd/porto))
+BUILDER = $(subst \,/,$(shell $(GO_TOOL) -n go.opentelemetry.io/collector/cmd/builder))
+LICENSER = $(subst \,/,$(shell $(GO_TOOL) -n github.com/elastic/go-licenser))
+CHLOGGEN = $(subst \,/,$(shell $(GO_TOOL) -n go.opentelemetry.io/build-tools/chloggen))
+MULTIMOD = $(subst \,/,$(shell $(GO_TOOL) -n go.opentelemetry.io/build-tools/multimod))
+GOIMPORTS = $(subst \,/,$(shell $(GO_TOOL) -n golang.org/x/tools/cmd/goimports))
 
 # Ignored vulnerabilities with justification:
 # - GO-2026-5662: False positive, we use `github.com/prometheus/prometheus`
@@ -39,14 +43,21 @@ IGNORED_VULNS = GO-2026-5662
 # Ignore all golang-related vulnerabilities (stdlib, golang.org/x/*, google.golang.org/*, etc.)
 IGNORE_GOLANG_VULNS ?=
 
+# Download tools module deps and warm the go tool cache.
 .PHONY: install-tools
-install-tools: $(TOOLS_BIN_NAMES)
-
-$(TOOLS_BIN_DIR):
-	mkdir -p $@
-
-$(TOOLS_BIN_NAMES): $(TOOLS_BIN_DIR) $(TOOLS_MOD_DIR)/go.mod
-	cd $(TOOLS_MOD_DIR) && $(GOCMD) build -o $@ -trimpath $(filter %/$(notdir $@),$(TOOLS_PKG_NAMES))
+install-tools:
+	cd $(TOOLS_MOD_DIR) && $(GOCMD) mod download
+	@$(GO_TOOL) -n github.com/client9/misspell/cmd/misspell >/dev/null
+	@$(GO_TOOL) -n github.com/elastic/go-licenser >/dev/null
+	@$(GO_TOOL) -n github.com/golangci/golangci-lint/v2/cmd/golangci-lint >/dev/null
+	@$(GO_TOOL) -n github.com/itchyny/gojq/cmd/gojq >/dev/null
+	@$(GO_TOOL) -n github.com/jcchavezs/porto/cmd/porto >/dev/null
+	@$(GO_TOOL) -n go.opentelemetry.io/build-tools/chloggen >/dev/null
+	@$(GO_TOOL) -n go.opentelemetry.io/build-tools/multimod >/dev/null
+	@$(GO_TOOL) -n go.opentelemetry.io/collector/cmd/builder >/dev/null
+	@$(GO_TOOL) -n go.opentelemetry.io/collector/cmd/mdatagen >/dev/null
+	@$(GO_TOOL) -n golang.org/x/tools/cmd/goimports >/dev/null
+	@$(GO_TOOL) -n golang.org/x/vuln/cmd/govulncheck >/dev/null
 
 .PHONY: test
 test:
@@ -66,33 +77,33 @@ tidy:
 	$(GOCMD) mod tidy -compat=1.21.0
 
 .PHONY: license-check
-license-check: $(LICENSER)
+license-check:
 	@$(LICENSER) -d
 
 .PHONY: license-update
-license-update: $(LICENSER)
+license-update:
 	@$(LICENSER)
 
 .PHONY: misspell
-misspell: $(MISSPELL)
-	@echo "running $(MISSPELL)"
-	@$(MISSPELL_CMD)
+misspell:
+	@echo "running misspell"
+	@$(MISSPELL) $$(find . \( -name "*.md" -o -name "*.yaml" \) -type f | sort)
 
 .PHONY: lint
-lint: $(LINT) misspell
+lint: misspell
 	$(LINT) run --allow-parallel-runners --verbose --build-tags integration --timeout=30m --path-prefix $(shell basename "$(CURDIR)")
 
 .PHONY: generate
-generate: $(MDATAGEN)
+generate:
 	$(GOCMD) generate ./...
-	goimports -w ./
+	$(GOIMPORTS) -w ./
 
 .PHONY: moddownload
 moddownload:
 	$(GOCMD) mod download
 
 .PHONY: porto
-porto: $(PORTO)
+porto:
 	$(PORTO) -w --include-internal --skip-dirs "^cmd$$" ./
 
 # jq filter: Build OSV lookup map {id: {withdrawn, summary, pkg}}
@@ -100,7 +111,7 @@ _GOVUL_MAP = reduce (.[] | select(.osv)) as $$osv ({}; . + {($$osv.osv.id): {sum
 # jq filter: Check if vulnerability should be skipped (withdrawn, golang+IGNORE_GOLANG_VULNS, or has no position/symbol in trace)
 _GOVUL_SKIP = ($$osv_data[.finding.osv].withdrawn | . != null and . != "") or ("$(IGNORE_GOLANG_VULNS)" == "1" and ($$osv_data[.finding.osv].pkg | test("^(stdlib|golang\\.org|google\\.golang\\.org)"))) or (.finding.trace | length == 0 or (all(.position == null and .symbol == null)))
 .PHONY: govulncheck
-govulncheck: $(GOVULNCHECK) $(GOJQ)
+govulncheck:
 	@set -e; \
 	$(GOVULNCHECK) -format json ./... > govulncheck-output.json; \
 	FOUND="$$( $(GOJQ) -r -s '$(_GOVUL_MAP) | [.[] | select(.finding != null and ($(_GOVUL_SKIP) | not)) | .finding.osv] | unique | .[]' govulncheck-output.json | sort -u )"; \
