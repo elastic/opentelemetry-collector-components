@@ -8,6 +8,9 @@ on:
       # any change in the go files will cause this workflow to run
       - loadgen/cmd/otelbench/**/*.go
 
+permissions:
+  contents: read
+
 jobs:
   changelog:
     timeout-minutes: 30
