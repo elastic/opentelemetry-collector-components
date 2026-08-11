@@ -79,10 +79,13 @@ func (e *httpExporter) pushLogs(ctx context.Context, ld plog.Logs) error {
 	if err != nil {
 		return fmt.Errorf("failed to POST to %s: %w", e.config.Endpoint, err)
 	}
-	defer resp.Body.Close()
-
-	// Drain body so connections can be reused.
-	_, _ = io.Copy(io.Discard, resp.Body)
+	defer func() {
+		// Drain body so connections can be reused.
+		_, _ = io.Copy(io.Discard, resp.Body)
+		if err := resp.Body.Close(); err != nil {
+			e.logger.Warn("failed to close response body", zap.Error(err))
+		}
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("POST %s returned status %d", e.config.Endpoint, resp.StatusCode)
