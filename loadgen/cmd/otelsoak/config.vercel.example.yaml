@@ -1,0 +1,59 @@
+# otelsoak example: POST Vercel drain NDJSON to a Managed Inputs endpoint.
+#
+# VERCEL_SIGNAL selects the fixture file (default: logs):
+#   logs | speed_insights
+# For both (logs.jsonl + speed_insights.jsonl concatenated at run time), use:
+#   make otelsoak-run-vercel VERCEL_SIGNAL=both
+#
+# Example:
+#   make genelasticcol
+#   VERCEL_SIGNAL=speed_insights \
+#   ELASTIC_SERVER_URL=https://<deployment>.ingest.<region>.<csp>.qa.elastic.cloud \
+#   ELASTIC_APM_API_KEY=<encoded-api-key> \
+#   ./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml
+#
+# Each loadgen log body is one Vercel drain JSON line (logs or speed-insights).
+# The http exporter joins bodies with newlines and POSTs them as
+# application/json (not OTLP) to the same Managed Input URL.
+
+receivers:
+  loadgen:
+    concurrency: 4
+    logs:
+      # Path is relative to the process working directory (repo root when using make).
+      jsonl_file: loadgen/cmd/otelsoak/testdata/vercel/${env:VERCEL_SIGNAL:-logs}.jsonl
+
+processors:
+  ratelimit:
+    strategy: requests
+    rate: 100
+    burst: 100
+    throttle_behavior: delay
+
+exporters:
+  http:
+    endpoint: "${env:ELASTIC_SERVER_URL}/inputs/vercel/_default_"
+    headers:
+      - name: Authorization
+        value: "ApiKey ${env:ELASTIC_APM_API_KEY}"
+    tls:
+      insecure_skip_verify: true
+    timeout: 60s
+    sending_queue:
+      enabled: false
+  debug:
+
+service:
+  pipelines:
+    logs:
+      receivers: [loadgen]
+      processors: [ratelimit]
+      exporters: [http, debug]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '127.0.0.1'
+                port: 8888
