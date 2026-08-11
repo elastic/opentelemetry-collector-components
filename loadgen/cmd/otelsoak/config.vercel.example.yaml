@@ -24,6 +24,21 @@ receivers:
       jsonl_file: loadgen/cmd/otelsoak/testdata/vercel/${env:VERCEL_SIGNAL:-logs}.jsonl
 
 processors:
+  # vercelencodingextension reads event time (and log id / SI deviceId) from the
+  # drain JSON body, not the OTLP log timestamp loadgen rewrites. Refresh body
+  # fields each send so documents keep advancing under concurrency.
+  transform/vercel_refresh:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          # Speed Insights: ISO timestamp + unique deviceId
+          - replace_pattern(body, "\"timestamp\":\"[^\"]+\"", Concat(["\"timestamp\":\"", FormatTime(Now(), "%Y-%m-%dT%H:%M:%S.%f%j"), "\""], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1")
+          - replace_pattern(body, "\"deviceId\":\\d+", Concat(["\"deviceId\":", String(UnixNano(Now()))], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1")
+          # Vercel logs: unix-millis timestamp(s) + unique id (also used as log.record.uid)
+          - replace_pattern(body, "\"timestamp\":\\d+", Concat(["\"timestamp\":", String(UnixMilli(Now()))], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1") == false
+          - replace_pattern(body, "\"id\":\"[^\"]+\"", Concat(["\"id\":\"", UUID(), "\""], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1") == false
+
   ratelimit:
     strategy: requests
     rate: 100
@@ -47,7 +62,7 @@ service:
   pipelines:
     logs:
       receivers: [loadgen]
-      processors: [ratelimit]
+      processors: [transform/vercel_refresh, ratelimit]
       exporters: [http, debug]
   telemetry:
     metrics:

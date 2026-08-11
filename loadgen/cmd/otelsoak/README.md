@@ -48,6 +48,12 @@ loadgen log bodies that contain drain NDJSON lines. See
 Logs and speed-insights use the same Managed Input URL; only the NDJSON body shape changes.
 Leave `VERCEL_SIGNAL` unset for the default; an empty value (`VERCEL_SIGNAL=`) is not a default and will fail.
 
+`config.vercel.example.yaml` runs `transform/vercel_refresh` before the `http` exporter
+so drain JSON fields keep advancing (loadgen only refreshes the OTLP log timestamp):
+
+- Speed Insights: body `timestamp` (ISO) and `deviceId`
+- Vercel logs: body unix-millis `timestamp` (including nested `proxy.timestamp`) and `id`
+
 How to run:
 
 ```bash
