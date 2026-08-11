@@ -74,8 +74,6 @@ gotidy:
 
 .PHONY: gogenerate
 gogenerate:
-	# This is a workaround for a bug in mdatagen upstream: https://github.com/open-telemetry/opentelemetry-collector/issues/13069
-	@command -v goimports >/dev/null 2>&1 || $(MAKE) -B install-tools
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="generate"
 	@$(MAKE) $(FOR_GROUP_TARGET) TARGET="fmt"
 
@@ -93,7 +91,7 @@ remove-toolchain:
 
 # Build a collector based on the Elastic components (generate Elastic collector)
 .PHONY: genelasticcol
-genelasticcol: $(BUILDER)
+genelasticcol:
 	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) --config ./distributions/elastic-components/manifest.yaml
 
 # Validate that the Elastic components collector can run with the example configuration.
@@ -176,7 +174,7 @@ sync-upstream-release-repo: $(RELEASE_REPO_DIR)
 	git clean -fd
 
 .PHONY: update-otel
-update-otel: $(MULTIMOD) sync-upstream-release-repo
+update-otel: sync-upstream-release-repo
 	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m stable --commit-hash "$(OTEL_STABLE_VERSION)"
 	git add . && git commit -s -m "[chore] multimod update stable modules" ; \
 	$(MULTIMOD) sync -s=true -o $(RELEASE_REPO_DIR) -m beta --commit-hash "$(OTEL_VERSION)"
@@ -194,7 +192,7 @@ COMMIT?=HEAD
 MODSET?=edot-base
 REMOTE?=git@github.com:elastic/opentelemetry-collector-components.git
 .PHONY: push-tags
-push-tags: $(MULTIMOD) versionscheck
+push-tags: versionscheck
 	$(MULTIMOD) verify
 	set -e; for tag in `$(MULTIMOD) tag -m ${MODSET} -c ${COMMIT} --print-tags | grep -v "Using" `; do \
 		echo "pushing tag $${tag}"; \

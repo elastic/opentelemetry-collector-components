@@ -1,0 +1,38 @@
+[
+  {
+    "schema": "vercel.audit_log.v1",
+    "id": "uev_full_0000000000000000000001",
+    "teamId": "team_full",
+    "projectId": "prj_full",
+    "action": "project.env.created",
+    "timestamp": 1779444000123,
+    "actor": {
+      "type": "user",
+      "id": "user_full",
+      "name": "Full User",
+      "email": "full-user@example.com"
+    },
+    "via": [
+      {
+        "type": "app",
+        "id": "app_full",
+        "name": "Full App",
+        "email": "app-user@example.com"
+      }
+    ],
+    "requestId": "req_full",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    "ipAddress": "203.0.113.10",
+    "tokenId": "token_full",
+    "payload": {
+      "drainUrl": "https://example.com/webhook",
+      "deliveryFormat": "ndjson",
+      "httpStatusCode": 200,
+      "isEnabled": true,
+      "filter": {
+        "environmentTypes": ["production", "preview"],
+        "maxRetryCount": 5
+      }
+    }
+  }
+]

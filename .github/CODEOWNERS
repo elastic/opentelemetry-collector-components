@@ -11,6 +11,7 @@ receiver/loadgenreceiver               @elastic/obs-ds-intake-services @elastic/
 receiver/elasticapmintakereceiver      @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 receiver/akamaisiemreceiver            @elastic/security-service-integrations @elastic/ingest-otel-data
 receiver/entityanalyticsreceiver       @elastic/security-service-integrations @elastic/ingest-otel-data
+receiver/vercelreceiver                @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 processor/elasticinframetricsprocessor @elastic/obs-infraobs-integrations @elastic/ingest-otel-data
 processor/elasticapmprocessor          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 processor/elastictraceprocessor        @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
@@ -22,5 +23,6 @@ connector/elasticapmconnector          @elastic/obs-ds-intake-services @elastic/
 extension/apikeyauthextension          @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/ingest-otel-data
 extension/apmconfigextension           @elastic/ingest-otel-data
 extension/fileintegrationextension     @elastic/ecosystem @elastic/ingest-otel-data
+extension/vercelencodingextension      @elastic/obs-infraobs-integrations
 pkg/integrations                       @elastic/ecosystem @elastic/ingest-otel-data
 extension/awscredentialsproviderextension             @elastic/obs-infraobs-integrations @elastic/ingest-otel-data

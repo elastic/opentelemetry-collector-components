@@ -8,13 +8,13 @@ get-version:
 
 FILENAME?=$(shell git branch --show-current)
 .PHONY: chlog-new
-chlog-new: $(CHLOGGEN) # Create new changelog entry
+chlog-new: # Create new changelog entry
 	$(CHLOGGEN) new --filename $(FILENAME)
 
 .PHONY: chlog-validate
-chlog-validate: $(CHLOGGEN) # Validate the new changelog entry
+chlog-validate: # Validate the new changelog entry
 	$(CHLOGGEN) validate
 
 .PHONY: chlog-preview
-chlog-preview: $(CHLOGGEN) # Preview the changelog entry in CHANGELOG.md
+chlog-preview: # Preview the changelog entry in CHANGELOG.md
 	$(CHLOGGEN) update --dry
