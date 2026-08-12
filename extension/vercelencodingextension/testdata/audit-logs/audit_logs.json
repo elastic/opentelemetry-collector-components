@@ -1,0 +1,40 @@
+[
+  {
+    "schema": "vercel.audit_log.v1",
+    "id": "uev_O0Sn1S6VHTDuKJ6sNs3hLIEy",
+    "teamId": "team_123",
+    "projectId": "prj_123",
+    "action": "drain-created",
+    "timestamp": 1779444000123,
+    "actor": {
+      "type": "user",
+      "id": "user_123",
+      "name": "Test User",
+      "email": "test@example.com"
+    },
+    "via": [
+      {
+        "type": "app",
+        "id": "app_123",
+        "name": "Test App"
+      }
+    ],
+    "requestId": "req_123",
+    "payload": {
+      "drainUrl": "https://example.com"
+    }
+  },
+  {
+    "schema": "vercel.audit_log.v1",
+    "id": "uev_O0Sn1S6VHTDuKJ6sNs3hLIEz",
+    "teamId": "team_123",
+    "action": "team-updated",
+    "timestamp": 1779444000456,
+    "actor": {
+      "type": "system",
+      "id": "system",
+      "name": "System"
+    },
+    "payload": {}
+  }
+]

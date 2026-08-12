@@ -1,0 +1,90 @@
+resourceLogs:
+  - resource:
+      attributes:
+        - key: vercel.team.id
+          value:
+            stringValue: team_123
+        - key: vercel.project.id
+          value:
+            stringValue: prj_123
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: log.record.uid
+                value:
+                  stringValue: uev_O0Sn1S6VHTDuKJ6sNs3hLIEy
+              - key: vercel.actor.type
+                value:
+                  stringValue: user
+              - key: user.id
+                value:
+                  stringValue: user_123
+              - key: user.name
+                value:
+                  stringValue: Test User
+              - key: user.email
+                value:
+                  stringValue: test@example.com
+              - key: vercel.request.id
+                value:
+                  stringValue: req_123
+              - key: vercel.via
+                value:
+                  arrayValue:
+                    values:
+                      - kvlistValue:
+                          values:
+                            - key: type
+                              value:
+                                stringValue: app
+                            - key: id
+                              value:
+                                stringValue: app_123
+                            - key: name
+                              value:
+                                stringValue: Test App
+              - key: vercel.audit_log.payload
+                value:
+                  kvlistValue:
+                    values:
+                      - key: drain_url
+                        value:
+                          stringValue: https://example.com
+            body: {}
+            eventName: drain-created
+            timeUnixNano: "1779444000123000000"
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.auditlog.v1
+          name: otelcol/vercel_encoding
+  - resource:
+      attributes:
+        - key: vercel.team.id
+          value:
+            stringValue: team_123
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: log.record.uid
+                value:
+                  stringValue: uev_O0Sn1S6VHTDuKJ6sNs3hLIEz
+              - key: vercel.actor.type
+                value:
+                  stringValue: system
+              - key: user.id
+                value:
+                  stringValue: system
+              - key: user.name
+                value:
+                  stringValue: System
+            body: {}
+            eventName: team-updated
+            timeUnixNano: "1779444000456000000"
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.auditlog.v1
+          name: otelcol/vercel_encoding
