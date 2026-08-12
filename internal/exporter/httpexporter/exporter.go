@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer/consumererror"
@@ -62,12 +61,12 @@ func (e *httpExporter) start(ctx context.Context, host component.Host) error {
 }
 
 func (e *httpExporter) pushLogs(ctx context.Context, ld plog.Logs) error {
-	body := encodeLogBodies(ld)
-	if len(body) == 0 {
+	buf, empty := encodeLogBodies(ld)
+	if empty {
 		return nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.config.Endpoint, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.config.Endpoint, bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -100,9 +99,9 @@ func (e *httpExporter) pushLogs(ctx context.Context, ld plog.Logs) error {
 	return consumererror.NewPermanent(err)
 }
 
-// encodeLogBodies joins each log record body as a line (NDJSON-friendly).
-func encodeLogBodies(ld plog.Logs) []byte {
-	var b strings.Builder
+// encodeLogBodies joins each log record body as NDJSON (one JSON text per line,
+// each terminated by '\n', including after the last record).
+func encodeLogBodies(ld plog.Logs) (buf bytes.Buffer, empty bool) {
 	rls := ld.ResourceLogs()
 	for i := 0; i < rls.Len(); i++ {
 		sls := rls.At(i).ScopeLogs()
@@ -113,12 +112,10 @@ func encodeLogBodies(ld plog.Logs) []byte {
 				if line == "" {
 					continue
 				}
-				if b.Len() > 0 {
-					b.WriteByte('\n')
-				}
-				b.WriteString(line)
+				buf.WriteString(line)
+				buf.WriteByte('\n')
 			}
 		}
 	}
-	return []byte(b.String())
+	return buf, buf.Len() == 0
 }

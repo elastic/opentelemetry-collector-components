@@ -68,7 +68,7 @@ func TestPushLogsPostsNDJSONBodies(t *testing.T) {
 	assert.Equal(t, http.MethodPost, gotMethod)
 	assert.Equal(t, "application/json", gotContentType)
 	assert.Equal(t, "ApiKey test-key", gotAuth)
-	assert.Equal(t, "{\"id\":\"1\",\"projectId\":\"p1\"}\n{\"id\":\"2\",\"projectId\":\"p1\"}", gotBody)
+	assert.Equal(t, "{\"id\":\"1\",\"projectId\":\"p1\"}\n{\"id\":\"2\",\"projectId\":\"p1\"}\n", gotBody)
 }
 
 func TestPushLogsStatusCodeErrors(t *testing.T) {
