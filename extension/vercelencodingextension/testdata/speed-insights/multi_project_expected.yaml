@@ -1,0 +1,45 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: vercel.project.id
+          value:
+            stringValue: proj_A
+        - key: vercel.owner.id
+          value:
+            stringValue: team_1
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 0.1
+                  timeUnixNano: "1694705400000000000"
+                - asDouble: 0.2
+                  timeUnixNano: "1694705405000000000"
+            name: CLS
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.speedinsights.v1
+          name: otelcol/vercel_encoding
+  - resource:
+      attributes:
+        - key: vercel.project.id
+          value:
+            stringValue: proj_B
+        - key: vercel.owner.id
+          value:
+            stringValue: team_1
+    scopeMetrics:
+      - metrics:
+          - gauge:
+              dataPoints:
+                - asDouble: 2.5
+                  timeUnixNano: "1694705410000000000"
+            name: LCP
+        scope:
+          attributes:
+            - key: encoding.format
+              value:
+                stringValue: vercel.speedinsights.v1
+          name: otelcol/vercel_encoding

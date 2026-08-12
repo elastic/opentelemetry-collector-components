@@ -1,0 +1,5 @@
+[
+  { "schema": "vercel.analytics.v2", "eventType": "pageview", "timestamp": 1694723400000, "projectId": "proj_A", "ownerId": "team_1", "path": "/home" },
+  { "schema": "vercel.analytics.v2", "eventType": "pageview", "timestamp": 1694723405000, "projectId": "proj_A", "ownerId": "team_1", "path": "/about" },
+  { "schema": "vercel.analytics.v2", "eventType": "event", "eventName": "signup", "timestamp": 1694723410000, "projectId": "proj_B", "ownerId": "team_1", "path": "/signup" }
+]
