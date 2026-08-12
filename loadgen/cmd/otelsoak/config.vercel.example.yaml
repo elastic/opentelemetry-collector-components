@@ -1,9 +1,9 @@
 # otelsoak example: POST Vercel drain NDJSON to a Managed Inputs endpoint.
 #
-# VERCEL_SIGNAL selects the fixture file (default: logs):
-#   logs | speed_insights
-# For both (logs.jsonl + speed_insights.jsonl concatenated at run time), use:
-#   make otelsoak-run-vercel VERCEL_SIGNAL=both
+# VERCEL_SIGNAL selects the embedded loadgen logs preset (default: logs):
+#   logs | speed_insights | both
+# These map to loadgenreceiver presets vercel_logs / vercel_speed_insights /
+# vercel_both (fixtures embedded in the receiver).
 #
 # Example:
 #   make genelasticcol
@@ -20,8 +20,7 @@ receivers:
   loadgen:
     concurrency: 4
     logs:
-      # Path is relative to the process working directory (repo root when using make).
-      jsonl_file: loadgen/cmd/otelsoak/testdata/vercel/${env:VERCEL_SIGNAL:-logs}.jsonl
+      preset: vercel_${env:VERCEL_SIGNAL:-logs}
 
 processors:
   # vercelencodingextension reads event time (and log id / SI deviceId) from the

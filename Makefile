@@ -138,29 +138,9 @@ otelsoak-run: genelasticcol
 
 # Run otelsoak against a Vercel Managed Inputs drain endpoint (HTTP NDJSON via httpexporter).
 # Optional: VERCEL_SIGNAL=logs|speed_insights|both (default logs).
-# For both, cats logs.jsonl + speed_insights.jsonl into a temp file at run time.
-VERCEL_SIGNAL ?= logs
-VERCEL_TESTDATA := loadgen/cmd/otelsoak/testdata/vercel
 .PHONY: otelsoak-run-vercel
 otelsoak-run-vercel: genelasticcol
-	@case "$(VERCEL_SIGNAL)" in \
-	  logs|speed_insights) \
-	    ./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml $(ARGS); \
-	    ;; \
-	  both) \
-	    tmp=$$(mktemp); \
-	    cat $(VERCEL_TESTDATA)/logs.jsonl $(VERCEL_TESTDATA)/speed_insights.jsonl > $$tmp; \
-	    ./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml \
-	      --set receivers.loadgen.logs.jsonl_file=$$tmp $(ARGS); \
-	    status=$$?; \
-	    rm -f $$tmp; \
-	    exit $$status; \
-	    ;; \
-	  *) \
-	    echo "VERCEL_SIGNAL must be logs, speed_insights, or both (got: $(VERCEL_SIGNAL))" >&2; \
-	    exit 1; \
-	    ;; \
-	esac
+	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml $(ARGS)
 
 
 # Clones the upstream opentelemetry-collector repository in a temporal .release

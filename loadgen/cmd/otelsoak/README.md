@@ -34,16 +34,15 @@ drains. The Vercel drain scenario sends NDJSON over HTTP instead.
 Use the `http` exporter
 ([internal/exporter/httpexporter](../../../internal/exporter/httpexporter)) with
 loadgen log bodies that contain drain NDJSON lines. See
-[`config.vercel.example.yaml`](./config.vercel.example.yaml) and
-[`testdata/vercel/`](./testdata/vercel/).
+[`config.vercel.example.yaml`](./config.vercel.example.yaml).
 
-`VERCEL_SIGNAL` selects which fixture to replay (default `logs`):
+`VERCEL_SIGNAL` selects an embedded loadgenreceiver logs preset (default `logs`):
 
-| Value | Fixture |
-| --- | --- |
-| `logs` | [`testdata/vercel/logs.jsonl`](./testdata/vercel/logs.jsonl) |
-| `speed_insights` | [`testdata/vercel/speed_insights.jsonl`](./testdata/vercel/speed_insights.jsonl) |
-| `both` | Concat of the two files at run time (`make otelsoak-run-vercel` only) |
+| Value | loadgen `logs.preset` | Embedded fixture |
+| --- | --- | --- |
+| `logs` | `vercel_logs` | [`receiver/loadgenreceiver/testdata/vercel/logs.jsonl`](../../../receiver/loadgenreceiver/testdata/vercel/logs.jsonl) |
+| `speed_insights` | `vercel_speed_insights` | [`receiver/loadgenreceiver/testdata/vercel/speed_insights.jsonl`](../../../receiver/loadgenreceiver/testdata/vercel/speed_insights.jsonl) |
+| `both` | `vercel_both` | concat of the two embeds |
 
 Logs and speed-insights use the same Managed Input URL; only the NDJSON body shape changes.
 Leave `VERCEL_SIGNAL` unset for the default; an empty value (`VERCEL_SIGNAL=`) is not a default and will fail.
@@ -64,7 +63,7 @@ ELASTIC_APM_API_KEY=some_api_key \
 make otelsoak-run-vercel
 ```
 
-For both signals (temp file = `logs.jsonl` + `speed_insights.jsonl`):
+For both signals:
 
 ```bash
 VERCEL_SIGNAL=both \
@@ -76,6 +75,6 @@ make otelsoak-run-vercel
 Validate the config without sending traffic:
 
 ```bash
-VERCEL_SIGNAL=speed_insights ELASTIC_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar \
+VERCEL_SIGNAL=both ELASTIC_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar \
   ./loadgen/cmd/otelsoak/otelsoak validate --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml
 ```

@@ -42,6 +42,7 @@ exporters:
 
 ## Sample otelsoak pipeline (Vercel drain)
 
-Put each drain NDJSON line in a loadgen OTLP-JSONL log body (see
-`loadgen/cmd/otelsoak/testdata/vercel/`). Select logs, speed-insights, or both
-with `VERCEL_SIGNAL` in [`config.vercel.example.yaml`](../../loadgen/cmd/otelsoak/config.vercel.example.yaml).
+Use loadgenreceiver embedded Vercel presets (`vercel_logs`,
+`vercel_speed_insights`, `vercel_both`) via `VERCEL_SIGNAL` in
+[`config.vercel.example.yaml`](../../loadgen/cmd/otelsoak/config.vercel.example.yaml).
+Fixtures live under [`receiver/loadgenreceiver/testdata/vercel/`](../../receiver/loadgenreceiver/testdata/vercel/).

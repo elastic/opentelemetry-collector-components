@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.uber.org/zap"
@@ -87,10 +88,16 @@ func (e *httpExporter) pushLogs(ctx context.Context, ld plog.Logs) error {
 		}
 	}()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("POST %s returned status %d", e.config.Endpoint, resp.StatusCode)
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
 	}
-	return nil
+
+	err = fmt.Errorf("POST %s returned status %d", e.config.Endpoint, resp.StatusCode)
+	// 5xx and 429 are typically transient; other 4xx (auth, bad request) are not.
+	if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
+		return err
+	}
+	return consumererror.NewPermanent(err)
 }
 
 // encodeLogBodies joins each log record body as a line (NDJSON-friendly).

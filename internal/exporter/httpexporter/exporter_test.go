@@ -18,6 +18,7 @@
 package httpexporter
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -28,6 +29,7 @@ import (
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/exporter/exportertest"
 	"go.opentelemetry.io/collector/pdata/plog"
 
@@ -69,26 +71,44 @@ func TestPushLogsPostsNDJSONBodies(t *testing.T) {
 	assert.Equal(t, "{\"id\":\"1\",\"projectId\":\"p1\"}\n{\"id\":\"2\",\"projectId\":\"p1\"}", gotBody)
 }
 
-func TestPushLogsNon2xxReturnsError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	t.Cleanup(srv.Close)
+func TestPushLogsStatusCodeErrors(t *testing.T) {
+	tests := []struct {
+		name      string
+		status    int
+		permanent bool
+	}{
+		{name: "unauthorized is permanent", status: http.StatusUnauthorized, permanent: true},
+		{name: "forbidden is permanent", status: http.StatusForbidden, permanent: true},
+		{name: "bad request is permanent", status: http.StatusBadRequest, permanent: true},
+		{name: "too many requests is retryable", status: http.StatusTooManyRequests, permanent: false},
+		{name: "server error is retryable", status: http.StatusInternalServerError, permanent: false},
+		{name: "bad gateway is retryable", status: http.StatusBadGateway, permanent: false},
+	}
 
-	cfg := createDefaultConfig().(*Config)
-	cfg.Endpoint = srv.URL
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+			}))
+			t.Cleanup(srv.Close)
 
-	set := exportertest.NewNopSettings(metadata.Type)
-	exp, err := newExporter(cfg, set)
-	require.NoError(t, err)
-	require.NoError(t, exp.start(t.Context(), componenttest.NewNopHost()))
+			cfg := createDefaultConfig().(*Config)
+			cfg.Endpoint = srv.URL
 
-	logs := plog.NewLogs()
-	logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty().Body().SetStr(`{}`)
+			set := exportertest.NewNopSettings(metadata.Type)
+			exp, err := newExporter(cfg, set)
+			require.NoError(t, err)
+			require.NoError(t, exp.start(t.Context(), componenttest.NewNopHost()))
 
-	err = exp.pushLogs(t.Context(), logs)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "401")
+			logs := plog.NewLogs()
+			logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty().Body().SetStr(`{}`)
+
+			err = exp.pushLogs(t.Context(), logs)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("%d", tt.status))
+			assert.Equal(t, tt.permanent, consumererror.IsPermanent(err))
+		})
+	}
 }
 
 func TestConfigValidate(t *testing.T) {
