@@ -119,11 +119,18 @@ builddocker:
 .PHONY: otelsoak-validate
 otelsoak-validate: genelasticcol
 	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./loadgen/cmd/otelsoak/otelsoak validate --config ./loadgen/cmd/otelsoak/config.example.yaml
+	ELASTIC_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./loadgen/cmd/otelsoak/otelsoak validate --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml
 
 # Run otelsoak
 .PHONY: otelsoak-run
 otelsoak-run: genelasticcol
 	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.example.yaml $(ARGS)
+
+# Run otelsoak against a Vercel Managed Inputs drain endpoint (HTTP NDJSON via httpexporter).
+# Optional: VERCEL_SIGNAL=logs|speed_insights|both (default logs).
+.PHONY: otelsoak-run-vercel
+otelsoak-run-vercel: genelasticcol
+	./loadgen/cmd/otelsoak/otelsoak --config ./loadgen/cmd/otelsoak/config.vercel.example.yaml $(ARGS)
 
 
 # Clones the upstream opentelemetry-collector repository in a temporal .release
