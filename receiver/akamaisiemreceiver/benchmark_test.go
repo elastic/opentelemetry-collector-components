@@ -155,7 +155,7 @@ func buildNDJSON(b testing.TB, n int) []byte {
 		sb.WriteString(e)
 		sb.WriteString("\n")
 	}
-	sb.WriteString(fmt.Sprintf(`{"offset":"bench-cursor","total":%d,"limit":%d}`, n, n+1))
+	fmt.Fprintf(&sb, `{"offset":"bench-cursor","total":%d,"limit":%d}`, n, n+1)
 	sb.WriteString("\n")
 	return []byte(sb.String())
 }
