@@ -14,8 +14,7 @@ INTEGRATION_MODS := $(shell $(FIND_INTEGRATION_TEST_MODS) | xargs $(TO_MOD_DIR) 
 
 GROUP ?= all
 FOR_GROUP_TARGET=for-$(GROUP)-target
-# Modules such as processor/elasticapmprocessor require go >= 1.26.
-GOTOOLCHAIN ?= go1.26.5+auto
+GOTOOLCHAIN ?= go1.25.7+auto
 
 .DEFAULT_GOAL := all
 
@@ -93,16 +92,7 @@ remove-toolchain:
 # Build a collector based on the Elastic components (generate Elastic collector)
 .PHONY: genelasticcol
 genelasticcol:
-	@set +e; \
-	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) \
-		--config ./distributions/elastic-components/manifest.yaml --skip-compilation=true; \
-	status=$$?; \
-	set -e; \
-	if [ ! -f ./_build/go.mod ]; then exit $${status:-1}; fi; \
-	cd ./_build && GOTOOLCHAIN=${GOTOOLCHAIN} $(GOCMD) mod tidy; \
-	cd ..; \
-	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) \
-		--config ./distributions/elastic-components/manifest.yaml --skip-get-modules=true
+	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) --config ./distributions/elastic-components/manifest.yaml
 
 # Validate that the Elastic components collector can run with the example configuration.
 .PHONY: elasticcol-validate
