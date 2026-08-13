@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor
 
-go 1.26.0
+go 1.25.0
 
 require (
 	github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor v0.30.0
@@ -19,7 +19,7 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/elastic/apm-data v1.22.0 // indirect
+	github.com/elastic/apm-data v1.22.1 // indirect
 	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.40.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

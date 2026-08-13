@@ -76,7 +76,7 @@ type ResourceAttrContext struct {
 func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels bool) ResourceAttrContext {
 	attributes := resource.Attributes()
 	var context ResourceAttrContext
-	var toAppend []kv
+	toAppend := make([]kv, 0, attributes.Len())
 	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.DataStreamType:
@@ -269,7 +269,7 @@ func TranslateResourceMetadata(resource pcommon.Resource, sanitizeExistingLabels
 // unsupported attributes are moved to labels.* / numeric_labels.* with a
 // sanitized key.
 func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
-	var toAppend []kv
+	toAppend := make([]kv, 0, attributes.Len())
 	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.DataStreamDataset,
@@ -307,7 +307,7 @@ func RemapLogRecordAttributesToECSLabels(attributes pcommon.Map) {
 // preserved, while unsupported attributes are moved to labels.* /
 // numeric_labels.* with a sanitized key.
 func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
-	var toAppend []kv
+	toAppend := make([]kv, 0, attributes.Len())
 	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		// data_stream.*
@@ -424,7 +424,7 @@ func RemapSpanAttributesToECSLabels(attributes pcommon.Map) {
 // for raw metric datapoint attributes in ECS mode. Metric-specific special cases
 // are preserved, and everything else is moved to labels.* / numeric_labels.*.
 func RemapMetricDataPointAttributesToECSLabels(attributes pcommon.Map) {
-	var toAppend []kv
+	toAppend := make([]kv, 0, attributes.Len())
 	attributes.RemoveIf(func(k string, v pcommon.Value) bool {
 		switch k {
 		case elasticattr.DataStreamDataset,
@@ -461,17 +461,28 @@ func truncatePreservedStringAttribute(value pcommon.Value) {
 	}
 }
 
+// buildLabelKey builds prefix+sanitize(key) in a single allocation by writing
+// the prefix then iterating key runes through replaceReservedLabelKeyRune.
+func buildLabelKey(prefix, key string) string {
+	var sb strings.Builder
+	sb.Grow(len(prefix) + len(key))
+	sb.WriteString(prefix)
+	for _, r := range key {
+		sb.WriteRune(replaceReservedLabelKeyRune(r))
+	}
+	return sb.String()
+}
+
 func getLabelAttributeValue(key string, value pcommon.Value) kv {
-	sanitizedKey := strings.Map(replaceReservedLabelKeyRune, key)
 	switch value.Type() {
 	case pcommon.ValueTypeStr:
-		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(TruncateToECSMaxLength(value.Str()))}
+		return kv{k: buildLabelKey("labels.", key), v: pcommon.NewValueStr(TruncateToECSMaxLength(value.Str()))}
 	case pcommon.ValueTypeBool:
-		return kv{k: "labels." + sanitizedKey, v: pcommon.NewValueStr(strconv.FormatBool(value.Bool()))}
+		return kv{k: buildLabelKey("labels.", key), v: pcommon.NewValueStr(strconv.FormatBool(value.Bool()))}
 	case pcommon.ValueTypeInt:
-		return kv{k: "numeric_labels." + sanitizedKey, v: pcommon.NewValueDouble(float64(value.Int()))}
+		return kv{k: buildLabelKey("numeric_labels.", key), v: pcommon.NewValueDouble(float64(value.Int()))}
 	case pcommon.ValueTypeDouble:
-		return kv{k: "numeric_labels." + sanitizedKey, v: pcommon.NewValueDouble(value.Double())}
+		return kv{k: buildLabelKey("numeric_labels.", key), v: pcommon.NewValueDouble(value.Double())}
 	case pcommon.ValueTypeSlice:
 		slice := value.Slice()
 		if slice.Len() == 0 {
@@ -488,7 +499,7 @@ func getLabelAttributeValue(key string, value pcommon.Value) kv {
 					sl.AppendEmpty().SetStr(TruncateToECSMaxLength(item.Str()))
 				}
 			}
-			return kv{k: "labels." + sanitizedKey, v: lv}
+			return kv{k: buildLabelKey("labels.", key), v: lv}
 		case pcommon.ValueTypeBool:
 			lv := pcommon.NewValueEmpty()
 			sl := lv.SetEmptySlice()
@@ -498,7 +509,7 @@ func getLabelAttributeValue(key string, value pcommon.Value) kv {
 					sl.AppendEmpty().SetStr(strconv.FormatBool(item.Bool()))
 				}
 			}
-			return kv{k: "labels." + sanitizedKey, v: lv}
+			return kv{k: buildLabelKey("labels.", key), v: lv}
 		case pcommon.ValueTypeDouble:
 			lv := pcommon.NewValueEmpty()
 			sl := lv.SetEmptySlice()
@@ -508,7 +519,7 @@ func getLabelAttributeValue(key string, value pcommon.Value) kv {
 					sl.AppendEmpty().SetDouble(item.Double())
 				}
 			}
-			return kv{k: "numeric_labels." + sanitizedKey, v: lv}
+			return kv{k: buildLabelKey("numeric_labels.", key), v: lv}
 		case pcommon.ValueTypeInt:
 			lv := pcommon.NewValueEmpty()
 			sl := lv.SetEmptySlice()
@@ -518,7 +529,7 @@ func getLabelAttributeValue(key string, value pcommon.Value) kv {
 					sl.AppendEmpty().SetDouble(float64(item.Int()))
 				}
 			}
-			return kv{k: "numeric_labels." + sanitizedKey, v: lv}
+			return kv{k: buildLabelKey("numeric_labels.", key), v: lv}
 		}
 	case pcommon.ValueTypeMap, pcommon.ValueTypeBytes, pcommon.ValueTypeEmpty:
 		// ES label mappings only support flat scalars and homogeneous arrays;
