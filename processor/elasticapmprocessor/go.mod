@@ -1,10 +1,10 @@
 module github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor
 
-go 1.26.0
+go 1.25.0
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
-	github.com/elastic/apm-data v1.22.0
+	github.com/elastic/apm-data v1.22.1
 	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.40.0
 	github.com/google/go-cmp v0.7.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.156.0
@@ -25,7 +25,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.10.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.28.0
-	google.golang.org/grpc v1.82.1
+	google.golang.org/grpc v1.83.0
 )
 
 require (
