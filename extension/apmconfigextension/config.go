@@ -25,7 +25,6 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/confmap"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
 
 const (
@@ -82,8 +81,8 @@ type Protocols struct {
 }
 
 var (
-	_ xconfmap.Validator  = (*Config)(nil)
-	_ xconfmap.Validator  = (*ElasticsearchFetcher)(nil)
+	_ confmap.Validator   = (*Config)(nil)
+	_ confmap.Validator   = (*ElasticsearchFetcher)(nil)
 	_ confmap.Unmarshaler = (*Config)(nil)
 	_ component.Config    = (*Config)(nil)
 )
