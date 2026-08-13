@@ -243,6 +243,8 @@ github.com/google/go-cmp v0.5.8/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeN
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
+github.com/google/jsonschema-go v0.4.3 h1:/DBOLZTfDow7pe2GmaJNhltueGTtDKICi8V8p+DQPd0=
+github.com/google/jsonschema-go v0.4.3/go.mod h1:r5quNTdLOYEz95Ru18zA0ydNbBuYoo9tgaYcxEYhJVE=
 github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 h1:z2ogiKUYzX5Is6zr/vP9vJGqPwcdqsWjOt+V8J7+bTc=
 github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83/go.mod h1:MxpfABSjhmINe3F1It9d+8exIHFvUqtLIRCdOGNXqiI=
 github.com/google/renameio v0.1.0 h1:GOZbcHa3HfsPKPlmyPyN2KEohoMXOhdMbHrvbpl2QaA=
@@ -278,6 +280,8 @@ github.com/hashicorp/golang-lru/v2 v2.0.7 h1:a+bsQ5rvGLjzHuww6tVxozPZFVghXaHOwFs
 github.com/hashicorp/golang-lru/v2 v2.0.7/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
+github.com/iimos/ucum v0.0.3 h1:nXmi4ZM9ITooXgzLbFg9lL/RcB8TLI91qmgGQ8XT56s=
+github.com/iimos/ucum v0.0.3/go.mod h1:GLkwylGGfhLPvLSpmbgJr52tmpq+3EBh0LYSQR3i8MY=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/itchyny/go-yaml v0.0.0-20251001235044-fca9a0999f15 h1:m4jKsIK0QS9ihQzOxUN2zJcPdrACwqIWCwvdzv9skMQ=
@@ -562,10 +566,10 @@ go.opentelemetry.io/build-tools/chloggen v0.30.0 h1:vAHRnY59kRHqIUrsnmBYAcJ0+p8u
 go.opentelemetry.io/build-tools/chloggen v0.30.0/go.mod h1:7ZVQIvfBkhncKSyk6WY1F0Kkg/9ibxRZkUrHP7EJ9XY=
 go.opentelemetry.io/build-tools/multimod v0.30.0 h1:f3L37C35ds33QIx2pwacH4F+EZp9BxGjbw3IIplu+uc=
 go.opentelemetry.io/build-tools/multimod v0.30.0/go.mod h1:1pbgfye9qeRAWWsiuzeZ4fxfoAqkKr0Lvl+JPLSpbs8=
-go.opentelemetry.io/collector/cmd/builder v0.156.0 h1:mN7NP2os9W83Z00Ww+p29+aX4Sn9oHCqgw18WNYIbR4=
-go.opentelemetry.io/collector/cmd/builder v0.156.0/go.mod h1:GjITmlw2PboZmOi5kJ4q++hZHu2tZWNTxFb3kl8vzO8=
-go.opentelemetry.io/collector/cmd/mdatagen v0.156.0 h1:4EpS20DWMcgUlPtymvRXX1hytoCSdja5R1h4BztpRCM=
-go.opentelemetry.io/collector/cmd/mdatagen v0.156.0/go.mod h1:2/10sxkryZ3g10LhU3gqdzc5yguZQ6DY64wpbRirbxM=
+go.opentelemetry.io/collector/cmd/builder v0.158.0 h1:no4kk70FNnarlVnraV0P9FwF3BV4byUhleHvBZvXifU=
+go.opentelemetry.io/collector/cmd/builder v0.158.0/go.mod h1:lDlDQuKm/Oo5K0RGq1OvnlqQkcKB0kkIu/Q6y2/Btsc=
+go.opentelemetry.io/collector/cmd/mdatagen v0.158.0 h1:DaCXZLrlRwXowI2RaEUhJSGAizx7+fqKcPOB9jghtV4=
+go.opentelemetry.io/collector/cmd/mdatagen v0.158.0/go.mod h1:PM/LrCpUjeaLMYZo9PdXfUJuWMkgypgxrC5ouV9yNsI=
 go.opentelemetry.io/collector/component v1.64.0 h1:c8663Y++GIsnRDn4itl2q1i7aGgCXrIdTWUUHNe78Ow=
 go.opentelemetry.io/collector/component v1.64.0/go.mod h1:2QhrPI89ZJL8FyTcwIutWPSDbWziM04PG0DvnM8GQ4M=
 go.opentelemetry.io/collector/confmap v1.64.0 h1:0iORRU/KHd3T1FMV3r3ywLAPk7VpZGg/GmORRzsUthk=
@@ -574,10 +578,10 @@ go.opentelemetry.io/collector/confmap/provider/fileprovider v1.64.0 h1:CS5/jU27/
 go.opentelemetry.io/collector/confmap/provider/fileprovider v1.64.0/go.mod h1:RnXY/lnxIEFhGSUJDLprWcE9N+cQwXCBghLb6x5dSUk=
 go.opentelemetry.io/collector/featuregate v1.64.0 h1:lWEUtzSSPxR4n9PdQ/BQrDUaL5d49gCk2vpITBjMYVk=
 go.opentelemetry.io/collector/featuregate v1.64.0/go.mod h1:4ga1QBMPEejXXmpyJS8lmaRpknJ3Lb9Bvk6e420bUFU=
-go.opentelemetry.io/collector/filter v0.156.0 h1:Hwhr2/qsNd78F0NJnm9J/8a7Advyovxdd77I4pC+LhM=
-go.opentelemetry.io/collector/filter v0.156.0/go.mod h1:PagU+dBYxXha2/4G7MVWczuojFqRKeuhxEqIve0TBDg=
-go.opentelemetry.io/collector/internal/schemagen v0.156.0 h1:/IFXNOEKcig2AQF9mMz26MX2SqGAPYGZbJN4hMGB6k8=
-go.opentelemetry.io/collector/internal/schemagen v0.156.0/go.mod h1:+CPi0cIiQCIlG3x0FDzz6bS5xjRL19sZKbgkjWlG0+U=
+go.opentelemetry.io/collector/filter v0.158.0 h1:70r9/QoJesVOa5YxnzrQnNfP7YzGouwgbBdw2B12U04=
+go.opentelemetry.io/collector/filter v0.158.0/go.mod h1:qXy8LzFH7f7s+LxDx8jT70JuCRXhnsIScsyIffPlqVA=
+go.opentelemetry.io/collector/internal/schemagen v0.158.0 h1:1LILK/yJFjfWI0AvLKW5bawefupOO9T1iRyUprGZZdo=
+go.opentelemetry.io/collector/internal/schemagen v0.158.0/go.mod h1:fk4pmaumpJ5f8rvdoeqM8NDzWi6J0qrSGlsP5ZFY6KY=
 go.opentelemetry.io/collector/internal/testutil v0.158.0 h1:ypt51JFMdHKoB6nODafWcUq9MiexCelDJ2zxXNu1xWo=
 go.opentelemetry.io/collector/internal/testutil v0.158.0/go.mod h1:Jkjs6rkqs973LqgZ0Fe3zrokQRKULYXPIf4HuqStiEE=
 go.opentelemetry.io/collector/pdata v1.64.0 h1:P3HDQLm/ksHWBbaWqtlXhAvC/4lTL5pqIG8TRScNDXI=
