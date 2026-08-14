@@ -1,0 +1,9 @@
+type: http
+scope_name: github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter
+github_project: elastic/opentelemetry-collector-components
+
+status:
+  class: exporter
+  stability:
+    development: [logs]
+  distributions: []

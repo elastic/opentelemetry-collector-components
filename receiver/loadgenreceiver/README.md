@@ -29,6 +29,26 @@ The receiver only rewrites timestamps to Now, and does not modify any other fiel
 
 See [./config.go](./config.go) for configurations.
 
+### Logs presets
+
+In addition to the default OpenTelemetry Demo embed and optional `jsonl_file`,
+logs can select an embedded preset via `logs.preset` (mutually exclusive with
+`jsonl_file`):
+
+| Preset | Description |
+| --- | --- |
+| `vercel_logs` | Vercel log-drain NDJSON samples |
+| `vercel_speed_insights` | Vercel Speed Insights drain samples |
+| `vercel_both` | Concatenation of the two Vercel presets |
+
+```yaml
+receivers:
+  loadgen:
+    logs:
+      preset: vercel_both
+```
+
+
 ## Sample configuration
 
 ```yaml

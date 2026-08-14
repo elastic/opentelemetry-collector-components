@@ -96,6 +96,11 @@ type LogsConfig struct {
 	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
+
+	// Preset selects embedded JSONL samples for logs. Mutually exclusive with jsonl_file.
+	// Supported values: vercel_logs, vercel_speed_insights, vercel_both.
+	// Empty uses the default OpenTelemetry Demo logs embed.
+	Preset string `mapstructure:"preset"`
 }
 
 type TracesConfig struct {
@@ -167,6 +172,12 @@ func validateSignal(sigConfig SignalConfig, file JsonlFile) error {
 func (cfg *Config) Validate() error {
 	err := validateSignal(cfg.Logs.SignalConfig, cfg.Logs.JsonlFile)
 	if err != nil {
+		return fmt.Errorf("logs::%w", err)
+	}
+	if cfg.Logs.Preset != "" && cfg.Logs.Path != "" {
+		return fmt.Errorf("logs::preset and logs::jsonl_file are mutually exclusive")
+	}
+	if _, err := logsPresetData(cfg.Logs.Preset); err != nil {
 		return fmt.Errorf("logs::%w", err)
 	}
 
