@@ -20,11 +20,14 @@ package dynamicroutingconnector // import "github.com/elastic/opentelemetry-coll
 import (
 	"cmp"
 	"errors"
+	"fmt"
 	"math"
 	"slices"
 	"time"
 
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -33,6 +36,17 @@ type Config struct {
 	RecordingInterval time.Duration     `mapstructure:"recording_interval"`
 	TTL               time.Duration     `mapstructure:"ttl"`
 	RoutingPipelines  []RoutingPipeline `mapstructure:"routing_pipelines"`
+	StaticRoutes      []StaticRoute     `mapstructure:"static_routes"`
+}
+
+// StaticRoute maps a set of OTTL conditions to a fixed pipeline,
+// bypassing cardinality-based dynamic routing entirely.
+// Conditions are evaluated with OR semantics: any condition matching routes the
+// request. Use OTTL and/or operators within a single condition for AND logic.
+// Supported paths: otelcol.client.metadata["<key>"] (see ottlotelcol context).
+type StaticRoute struct {
+	Conditions []string      `mapstructure:"conditions"`
+	Pipelines  []pipeline.ID `mapstructure:"pipelines"`
 }
 
 type RoutingPipeline struct {
@@ -54,6 +68,18 @@ func (c *Config) Validate() error {
 	}
 	if len(c.RoutingPipelines) == 0 {
 		return errors.New("atleast one pipeline needs to be defined")
+	}
+	nopSettings := component.TelemetrySettings{Logger: zap.NewNop()}
+	for i, sr := range c.StaticRoutes {
+		if len(sr.Conditions) == 0 {
+			return fmt.Errorf("static_routes[%d]: at least one condition must be specified", i)
+		}
+		if _, err := newStaticConditionSequence(sr.Conditions, nopSettings); err != nil {
+			return fmt.Errorf("static_routes[%d]: invalid condition: %w", i, err)
+		}
+		if len(sr.Pipelines) == 0 {
+			return fmt.Errorf("static_routes[%d]: at least one pipeline must be specified", i)
+		}
 	}
 	if c.RecordingInterval <= 0 {
 		return errors.New("recording_interval must be greater than zero")
