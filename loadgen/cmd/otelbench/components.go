@@ -38,7 +38,7 @@ import (
 	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 
 	"github.com/elastic/metricsgenreceiver/metricsgenreceiver"
-	"github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter"
+	"github.com/elastic/opentelemetry-collector-components/exporter/httpexporter"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )

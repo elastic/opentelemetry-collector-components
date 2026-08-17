@@ -1,4 +1,4 @@
-module github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter
+module github.com/elastic/opentelemetry-collector-components/exporter/httpexporter
 
 go 1.25.0
 

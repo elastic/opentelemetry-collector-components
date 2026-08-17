@@ -32,7 +32,7 @@ OTLP exporters used in the OTLP otelsoak scenarios cannot target Managed Input
 drains. The Vercel drain scenario sends NDJSON over HTTP instead.
 
 Use the `http` exporter
-([internal/exporter/httpexporter](../../../internal/exporter/httpexporter)) with
+([exporter/httpexporter](../../../exporter/httpexporter)) with
 loadgen log bodies that contain drain NDJSON lines. See
 [`config.vercel.example.yaml`](./config.vercel.example.yaml).
 

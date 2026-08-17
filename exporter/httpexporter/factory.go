@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package httpexporter // import "github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter"
+package httpexporter // import "github.com/elastic/opentelemetry-collector-components/exporter/httpexporter"
 
 import (
 	"context"
@@ -29,7 +29,7 @@ import (
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/exporter/httpexporter/internal/metadata"
 )
 
 // NewFactory creates a factory for the HTTP body exporter.
