@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.4
 	github.com/elastic/metricsgenreceiver/metricsgenreceiver v0.0.0-20260619100109-5151cd4d2928
+	github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter v0.0.0-00010101000000-000000000000
 	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0-00010101000000-000000000000
 	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.158.0
@@ -270,3 +271,5 @@ replace (
 	// https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/33137 TODO: Remove this once the issue is fixed.
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter => ../../../internal/exporter/prometheusremotewriteexporter
 )
+
+replace github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter => ../../../internal/exporter/httpexporter
