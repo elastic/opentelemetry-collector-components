@@ -20,4 +20,4 @@
 // Package httpexporter posts log record bodies as an HTTP request body.
 // It is intended for load generation against raw HTTP ingest endpoints
 // such as Managed Input drains (e.g. Vercel NDJSON), not OTLP.
-package httpexporter // import "github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter"
+package httpexporter // import "github.com/elastic/opentelemetry-collector-components/exporter/httpexporter"

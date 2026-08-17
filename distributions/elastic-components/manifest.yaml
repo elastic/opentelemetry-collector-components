@@ -67,7 +67,7 @@ exporters:
   - gomod: go.opentelemetry.io/collector/exporter/debugexporter v0.158.0
   - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.158.0
   - gomod: go.opentelemetry.io/collector/exporter/otlphttpexporter v0.158.0
-  - gomod: github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter v0.1.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/exporter/httpexporter v0.1.0
 
 providers:
   - gomod: go.opentelemetry.io/collector/confmap/provider/envprovider v1.64.0
@@ -95,6 +95,6 @@ replaces:
   - github.com/elastic/opentelemetry-collector-components/receiver/integrationreceiver => ../receiver/integrationreceiver
   - github.com/elastic/opentelemetry-collector-components/receiver/entityanalyticsreceiver => ../receiver/entityanalyticsreceiver
   - github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver => ../receiver/akamaisiemreceiver
-  - github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter => ../internal/exporter/httpexporter
+  - github.com/elastic/opentelemetry-collector-components/exporter/httpexporter => ../exporter/httpexporter
   - github.com/elastic/opentelemetry-collector-components/processor/elastictraceprocessor => ../processor/elastictraceprocessor
   - github.com/elastic/opentelemetry-collector-components/internal/elasticattr => ../internal/elasticattr

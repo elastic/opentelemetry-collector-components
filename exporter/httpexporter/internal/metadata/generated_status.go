@@ -25,7 +25,7 @@ import (
 
 var (
 	Type      = component.MustNewType("http")
-	ScopeName = "github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter"
+	ScopeName = "github.com/elastic/opentelemetry-collector-components/exporter/httpexporter"
 )
 
 const (

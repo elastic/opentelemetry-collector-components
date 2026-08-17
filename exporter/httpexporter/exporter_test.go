@@ -33,7 +33,7 @@ import (
 	"go.opentelemetry.io/collector/exporter/exportertest"
 	"go.opentelemetry.io/collector/pdata/plog"
 
-	"github.com/elastic/opentelemetry-collector-components/internal/exporter/httpexporter/internal/metadata"
+	"github.com/elastic/opentelemetry-collector-components/exporter/httpexporter/internal/metadata"
 )
 
 func TestPushLogsPostsNDJSONBodies(t *testing.T) {
