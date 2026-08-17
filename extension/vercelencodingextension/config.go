@@ -19,10 +19,10 @@ package vercelencodingextension // import "github.com/elastic/opentelemetry-coll
 
 import (
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
+	"go.opentelemetry.io/collector/confmap"
 )
 
-var _ xconfmap.Validator = (*Config)(nil)
+var _ confmap.Validator = (*Config)(nil)
 
 type Config struct{}
 

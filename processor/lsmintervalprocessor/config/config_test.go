@@ -25,7 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/confmap"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
 
 func TestConfig(t *testing.T) {
@@ -79,7 +78,7 @@ func TestConfig(t *testing.T) {
 			actual := CreateDefaultConfig()
 			require.NoError(t, subConf.Unmarshal(&actual))
 
-			err = xconfmap.Validate(actual)
+			err = confmap.Validate(actual)
 			if tc.expectedErrMsg != "" {
 				assert.ErrorContains(t, err, tc.expectedErrMsg)
 			} else {

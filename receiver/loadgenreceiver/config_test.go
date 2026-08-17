@@ -24,8 +24,8 @@ import (
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver/internal/metadata"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -111,7 +111,7 @@ func TestLoadConfig(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NoError(t, sub.Unmarshal(cfg))
 
-			err = xconfmap.Validate(cfg)
+			err = confmap.Validate(cfg)
 			if tt.expectedErrMessage != "" {
 				assert.EqualError(t, err, tt.expectedErrMessage)
 				return
