@@ -67,6 +67,51 @@ func TestConfig(t *testing.T) {
 			errMsg: "ttl must be greater than or equal to recording_interval",
 		},
 		{
+			name:   "invalid-static-routes/no-conditions",
+			errMsg: "static_routes[0]: at least one condition must be specified",
+		},
+		{
+			name:   "invalid-static-routes/invalid-condition",
+			errMsg: "static_routes[0]: invalid condition:",
+		},
+		{
+			name:   "invalid-static-routes/no-pipelines",
+			errMsg: "static_routes[0]: at least one pipeline must be specified",
+		},
+		{
+			name: "valid-static-routes",
+			expected: &Config{
+				RoutingKeys: RoutingKeys{
+					PartitionBy: []string{"x-tenant"},
+					MeasureBy:   []string{"x-forwarded-for"},
+				},
+				DefaultPipelines: []pipeline.ID{
+					pipeline.NewIDWithName(pipeline.SignalLogs, "default"),
+				},
+				RecordingInterval: time.Minute,
+				TTL:               5 * time.Minute,
+				RoutingPipelines: []RoutingPipeline{
+					{
+						Pipelines: []pipeline.ID{
+							pipeline.NewIDWithName(pipeline.SignalLogs, "final"),
+						},
+						MaxCardinality: math.Inf(1),
+					},
+				},
+				StaticRoutes: []StaticRoute{
+					{
+						Conditions: []string{
+							`otelcol.client.metadata["x-tenant"][0] == "gold-1"`,
+							`otelcol.client.metadata["x-tenant"][0] == "gold-2"`,
+						},
+						Pipelines: []pipeline.ID{
+							pipeline.NewIDWithName(pipeline.SignalLogs, "gold"),
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "invalid-dynamic-pipelines/valid",
 			expected: &Config{
 				RoutingKeys: RoutingKeys{

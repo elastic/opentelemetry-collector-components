@@ -36,6 +36,10 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/contexts/ottlotelcol"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl/ottlfuncs"
+
 	"github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector/internal/metadata"
 )
 
@@ -51,10 +55,23 @@ var defaultRoutedOpt = metric.WithAttributeSet(attribute.NewSet(
 	attribute.String("partition_key", ""),
 ))
 
+// staticRoutedOpt is a cached MeasurementOption for static-routed requests.
+var staticRoutedOpt = metric.WithAttributeSet(attribute.NewSet(
+	attribute.String("cardinality_bucket", "static"),
+	attribute.String("partition_key", ""),
+))
+
 // consumerProvider is a function with a type parameter C (expected to be one
 // of consumer.Traces, consumer.Metrics, or Consumer.Logs). returns a
 // consumer for the given component ID(s).
 type consumerProvider[C any] func(...pipeline.ID) (C, error)
+
+// staticRoute holds a compiled static routing entry: a pre-compiled OTTL
+// condition sequence and the consumer to use when any condition matches.
+type staticRoute[C any] struct {
+	conditions *ottl.ConditionSequence[*ottlotelcol.TransformContext]
+	consumer   C
+}
 
 type router[C any] struct {
 	recordingInterval  time.Duration
@@ -63,6 +80,7 @@ type router[C any] struct {
 	sortedMetadataKeys []string
 	defaultConsumer    C
 	consumers          []consumerThreshold[C]
+	staticRoutes       []staticRoute[C]
 
 	logger           *zap.Logger
 	telemetryBuilder *metadata.TelemetryBuilder
@@ -132,6 +150,19 @@ func newRouter[C any](
 		}
 	}
 
+	staticRoutes := make([]staticRoute[C], 0, len(cfg.StaticRoutes))
+	for i, sr := range cfg.StaticRoutes {
+		c, err := provider(sr.Pipelines...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create consumer for static route at index %d: %w", i, err)
+		}
+		condSeq, err := newStaticConditionSequence(sr.Conditions, settings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile conditions for static route at index %d: %w", i, err)
+		}
+		staticRoutes = append(staticRoutes, staticRoute[C]{conditions: condSeq, consumer: c})
+	}
+
 	telemetryBuilder, err := metadata.NewTelemetryBuilder(settings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
@@ -143,6 +174,7 @@ func newRouter[C any](
 		sortedMetadataKeys: sortedMetadataKeys,
 		defaultConsumer:    defaultConsumer,
 		consumers:          consumers,
+		staticRoutes:       staticRoutes,
 		logger:             settings.Logger,
 		telemetryBuilder:   telemetryBuilder,
 		stop:               make(chan struct{}),
@@ -222,15 +254,56 @@ func (r *router[C]) Shutdown(ctx context.Context) error {
 }
 
 func (r *router[C]) Process(ctx context.Context) C {
-	pk := r.partitionKey(ctx)
-	return r.getNextConsumerAndMaybeRecord(ctx, pk)
+	if c, ok := r.matchStaticRoute(ctx); ok {
+		r.telemetryBuilder.DynamicroutingRouted.Add(ctx, 1, staticRoutedOpt)
+		return c
+	}
+	meta := client.FromContext(ctx).Metadata
+	pk := r.partitionKey(meta)
+	return r.getNextConsumerAndMaybeRecord(ctx, pk, meta)
 }
 
-func (r *router[C]) partitionKey(ctx context.Context) string {
-	clientMeta := client.FromContext(ctx).Metadata
+func (r *router[C]) matchStaticRoute(ctx context.Context) (C, bool) {
+	for _, sr := range r.staticRoutes {
+		tCtx := ottlotelcol.NewTransformContextPtr()
+		match, err := sr.conditions.Eval(ctx, tCtx)
+		tCtx.Close()
+		if err != nil {
+			r.logger.Error("failed to evaluate static route condition", zap.Error(err))
+			continue
+		}
+		if match {
+			return sr.consumer, true
+		}
+	}
+	var zero C
+	return zero, false
+}
+
+// newStaticConditionSequence compiles a list of OTTL condition strings into a
+// reusable condition sequence evaluated against the ottlotelcol context.
+// Conditions are OR'd: any matching condition triggers the route.
+func newStaticConditionSequence(conditions []string, settings component.TelemetrySettings) (*ottl.ConditionSequence[*ottlotelcol.TransformContext], error) {
+	parser, err := ottlotelcol.NewParser(
+		ottlfuncs.StandardFuncs[*ottlotelcol.TransformContext](),
+		settings,
+		ottlotelcol.EnablePathContextNames(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := parser.ParseConditions(conditions)
+	if err != nil {
+		return nil, err
+	}
+	seq := ottlotelcol.NewConditionSequence(parsed, settings)
+	return &seq, nil
+}
+
+func (r *router[C]) partitionKey(meta client.Metadata) string {
 	pkb := make([]byte, 0, maxPkCapacity)
 	for _, k := range r.partitionKeys {
-		vs := clientMeta.Get(k)
+		vs := meta.Get(k)
 		if len(vs) == 0 {
 			continue
 		}
@@ -243,11 +316,10 @@ func (r *router[C]) partitionKey(ctx context.Context) string {
 	return string(pkb)
 }
 
-func (r *router[C]) hashSum(ctx context.Context) uint64 {
-	clientMeta := client.FromContext(ctx).Metadata
+func (r *router[C]) hashSum(meta client.Metadata) uint64 {
 	var hash xxhash.Digest
 	for _, k := range r.sortedMetadataKeys {
-		vs := clientMeta.Get(k)
+		vs := meta.Get(k)
 		if len(vs) == 0 {
 			continue
 		}
@@ -296,7 +368,7 @@ func (r *router[C]) recordCardinality(pk string, hashSum uint64) {
 	hll.InsertHash(hashSum)
 }
 
-func (r *router[C]) getNextConsumerAndMaybeRecord(ctx context.Context, pk string) C {
+func (r *router[C]) getNextConsumerAndMaybeRecord(ctx context.Context, pk string, meta client.Metadata) C {
 	if pk == "" {
 		if ce := r.logger.Check(zap.DebugLevel, "returning default consumer due to empty primary key"); ce != nil {
 			ce.Write(zap.String("primary_key", pk))
@@ -307,7 +379,7 @@ func (r *router[C]) getNextConsumerAndMaybeRecord(ctx context.Context, pk string
 
 	item := r.decision.Get(pk)
 	if item == nil || time.Until(item.ExpiresAt()) <= r.recordingInterval {
-		r.recordCardinality(pk, r.hashSum(ctx))
+		r.recordCardinality(pk, r.hashSum(meta))
 	}
 
 	if item == nil {
