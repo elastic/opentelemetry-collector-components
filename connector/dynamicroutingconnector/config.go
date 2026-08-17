@@ -71,14 +71,14 @@ func (c *Config) Validate() error {
 	}
 	nopSettings := component.TelemetrySettings{Logger: zap.NewNop()}
 	for i, sr := range c.StaticRoutes {
+		if len(sr.Pipelines) == 0 {
+			return fmt.Errorf("static_routes[%d]: at least one pipeline must be specified", i)
+		}
 		if len(sr.Conditions) == 0 {
 			return fmt.Errorf("static_routes[%d]: at least one condition must be specified", i)
 		}
 		if _, err := newStaticConditionSequence(sr.Conditions, nopSettings); err != nil {
 			return fmt.Errorf("static_routes[%d]: invalid condition: %w", i, err)
-		}
-		if len(sr.Pipelines) == 0 {
-			return fmt.Errorf("static_routes[%d]: at least one pipeline must be specified", i)
 		}
 	}
 	if c.RecordingInterval <= 0 {
