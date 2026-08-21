@@ -108,7 +108,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 503,
 			}),
-			expectedErr: `rpc error: code = Unavailable desc = failed to check privileges`,
+			expectedErr: `rpc error: code = ResourceExhausted desc = failed to check privileges`,
 		},
 		"server_429_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -147,7 +147,7 @@ func TestAuthenticator(t *testing.T) {
 				},
 				Status: 502,
 			}),
-			expectedErr: `rpc error: code = Unavailable desc = failed to check privileges`,
+			expectedErr: `rpc error: code = ResourceExhausted desc = failed to check privileges`,
 		},
 		"server_500_error": {
 			handler: newCannedErrorHandler(types.ElasticsearchError{
@@ -579,7 +579,7 @@ func TestAuthenticator_RetryInfoDetails(t *testing.T) {
 
 			st, ok := status.FromError(err)
 			require.True(t, ok)
-			require.Equal(t, codes.Unavailable, st.Code())
+			require.Equal(t, codes.ResourceExhausted, st.Code())
 
 			details := st.Details()
 
@@ -1205,7 +1205,7 @@ func TestAuthenticator_RetryDisabled(t *testing.T) {
 
 			st, ok := status.FromError(err)
 			require.True(t, ok)
-			assert.Equal(t, codes.Unavailable, st.Code())
+			assert.Equal(t, codes.ResourceExhausted, st.Code())
 			require.Equal(t, 1, calls)
 		})
 	}
