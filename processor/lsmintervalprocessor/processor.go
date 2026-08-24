@@ -114,22 +114,13 @@ func newProcessor(
 	}
 
 	dbOpts := &pebble.Options{
-		Merger: &pebble.Merger{
-			Name: "pmetrics_merger",
-			Merge: func(key, value []byte) (pebble.ValueMerger, error) {
-				v := merger.NewValue(
-					cfg.ResourceLimit,
-					cfg.ScopeLimit,
-					cfg.MetricLimit,
-					cfg.DatapointLimit,
-					cfg.ExponentialHistogramMaxBuckets,
-				)
-				if err := v.Unmarshal(value); err != nil {
-					return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
-				}
-				return merger.New(v), nil
-			},
-		},
+		Merger: merger.NewPebbleMerger(
+			cfg.ResourceLimit,
+			cfg.ScopeLimit,
+			cfg.MetricLimit,
+			cfg.DatapointLimit,
+			cfg.ExponentialHistogramMaxBuckets,
+		),
 		MemTableSize:                pebbleMemTableSize,
 		MemTableStopWritesThreshold: pebbleMemTableStopWritesThreshold,
 	}
