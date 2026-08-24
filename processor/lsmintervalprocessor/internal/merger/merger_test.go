@@ -18,88 +18,66 @@
 package merger
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 )
 
-// Finish must not Unmarshal and re-encode a single MERGE operand.
-func TestLoneMergeFinishRoundTrip(t *testing.T) {
-	operand := mustFatLSMOperand(t, fatLSMShape{
-		resources: 4,
-		dps:       2,
-	})
-
-	out, closer := compactFinish(t, operand)
-	t.Cleanup(func() {
-		if closer != nil {
-			require.NoError(t, closer.Close())
-		}
-	})
-
-	require.Equal(t, operand, out)
+func TestMergeFinishLone(t *testing.T) {
+	op := mustFatLSMOperand(t, fatLSMShape{resources: 4, dps: 2})
+	out, _ := compactFinish(t, op)
+	require.Equal(t, op, out)
 }
 
-// TestLoneMergeFinishCopiesOperand checks that Finish does not alias
-// Pebble's input buffer. Pebble may reuse that buffer after Merge.
-func TestLoneMergeFinishCopiesOperand(t *testing.T) {
-	operand := mustFatLSMOperand(t, fatLSMShape{resources: 2, dps: 1})
-	orig := append([]byte(nil), operand...)
+func TestMergeFinishCombine(t *testing.T) {
+	baseShape := fatLSMShape{resources: 4, dps: 2}
+	sibShape := fatLSMShape{resources: 2, dps: 2}
+	base := mustFatLSMOperand(t, baseShape)
+	sib := mustFatLSMOperand(t, sibShape)
+	out, _ := compactFinish(t, base, sib)
+	require.NotEqual(t, base, out)
 
-	vm, err := peakPebbleMerger().Merge(nil, operand)
+	v := peakValue()
+	require.NoError(t, v.Unmarshal(out))
+	md, _, err := v.Finalize()
 	require.NoError(t, err)
-	operand[0] ^= 0xff
 
-	out, closer, err := vm.Finish(true)
+	// peakCompactMetrics sets each expo datapoint count to 1000.
+	// Overlapping identities add those counts.
+	want := uint64((baseShape.resources*baseShape.dps + sibShape.resources*sibShape.dps) * 1000)
+	require.Equal(t, want, expoHistogramCount(md))
+}
+
+func TestMergeFinishCopiesOperand(t *testing.T) {
+	op := mustFatLSMOperand(t, fatLSMShape{resources: 2, dps: 1})
+	orig := slices.Clone(op)
+
+	vm, err := peakPebbleMerger().Merge(nil, op)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if closer != nil {
-			require.NoError(t, closer.Close())
-		}
-	})
+	op[0] ^= 0xff
+
+	out, _, err := vm.Finish(true)
+	require.NoError(t, err)
 	require.Equal(t, orig, out)
 }
 
-// A sibling operand forces Unmarshal and a real merge.
-func TestCombineMergeFinishMergesSibling(t *testing.T) {
-	base := mustFatLSMOperand(t, fatLSMShape{resources: 4, dps: 2})
-	sibling := mustFatLSMOperand(t, fatLSMShape{resources: 2, dps: 2})
-
-	out, closer := compactFinish(t, base, sibling)
-	t.Cleanup(func() {
-		if closer != nil {
-			require.NoError(t, closer.Close())
-		}
-	})
-
-	require.NotEqual(t, base, out)
-
-	merged := peakValue()
-	require.NoError(t, merged.Unmarshal(out))
-	md, _, err := merged.Finalize()
-	require.NoError(t, err)
-
-	// Base is 4 resources × 2 expo datapoints × count 1000 = 8000.
-	// Sibling overlaps the first 2 resources (4 expo datapoints × 1000).
-	// Merge must add those counts, not append rows.
-	var expoCount uint64
+func expoHistogramCount(md pmetric.Metrics) uint64 {
+	var n uint64
 	rms := md.ResourceMetrics()
 	for i := 0; i < rms.Len(); i++ {
 		sms := rms.At(i).ScopeMetrics()
 		for j := 0; j < sms.Len(); j++ {
-			ms := sms.At(j).Metrics()
-			for k := 0; k < ms.Len(); k++ {
-				metric := ms.At(k)
-				if metric.Type() != pmetric.MetricTypeExponentialHistogram {
+			for _, m := range sms.At(j).Metrics().All() {
+				if m.Type() != pmetric.MetricTypeExponentialHistogram {
 					continue
 				}
-				dps := metric.ExponentialHistogram().DataPoints()
-				for l := 0; l < dps.Len(); l++ {
-					expoCount += dps.At(l).Count()
+				for _, dp := range m.ExponentialHistogram().DataPoints().All() {
+					n += dp.Count()
 				}
 			}
 		}
 	}
-	require.Equal(t, uint64(12000), expoCount)
+	return n
 }
