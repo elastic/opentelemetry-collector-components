@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: false
@@ -51,7 +51,7 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: false
@@ -105,7 +105,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v6
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: false
@@ -128,7 +128,7 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: false
@@ -176,7 +176,7 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: false
@@ -238,7 +238,7 @@ jobs:
     needs: [setup-environment]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: .go-version
           cache: false
