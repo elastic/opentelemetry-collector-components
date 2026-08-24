@@ -414,7 +414,9 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			switch elasticsearchErr.Status {
 			case http.StatusUnauthorized, http.StatusForbidden:
 				return ctx, status.Error(codes.Unauthenticated, err.Error())
-			case http.StatusTooManyRequests, http.StatusGatewayTimeout:
+			case http.StatusTooManyRequests, http.StatusGatewayTimeout, http.StatusBadGateway, http.StatusServiceUnavailable:
+				// 502/503/504/429 are transient ES overload/unavailability errors (retried by the ES client when enabled);
+				// surface as backpressure so callers throttle+retry
 				return ctx, errorWithDetails(status.New(
 					codes.ResourceExhausted, "failed to check privileges",
 				), id, retryDelay)
@@ -438,10 +440,6 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 					), id, 0)
 				a.cache.Add(cacheKey, &cacheEntry{key: derivedKey, err: goneErr})
 				return ctx, goneErr
-			case http.StatusBadGateway, http.StatusServiceUnavailable:
-				return ctx, errorWithDetails(status.New(
-					codes.Unavailable, "failed to check privileges",
-				), id, retryDelay)
 			default:
 				return ctx, status.Errorf(codes.Internal, "error checking privileges: %v", err)
 			}
