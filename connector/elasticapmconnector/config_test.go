@@ -26,8 +26,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
 )
@@ -108,7 +108,7 @@ func TestConfig(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, sub.Unmarshal(&cfg))
 
-			err = xconfmap.Validate(cfg)
+			err = confmap.Validate(cfg)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, cfg)
 		})
@@ -157,7 +157,7 @@ func TestCustomResourceAttributeValidation(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := xconfmap.Validate(tc.cfg)
+			err := confmap.Validate(tc.cfg)
 			if tc.wantErr {
 				assert.Error(t, err)
 			} else {

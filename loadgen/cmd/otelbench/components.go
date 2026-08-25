@@ -38,6 +38,7 @@ import (
 	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 
 	"github.com/elastic/metricsgenreceiver/metricsgenreceiver"
+	"github.com/elastic/opentelemetry-collector-components/exporter/httpexporter"
 	"github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor"
 	"github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver"
 )
@@ -50,6 +51,7 @@ var defaultBenchmarkExporters = map[string]bool{
 var nonBenchmarkExporters = map[string]struct{}{
 	"debug": {},
 	"nop":   {},
+	"http":  {}, // raw HTTP body exporter; not part of the default OTLP bench matrix
 }
 
 func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenreceiver.Stats) (otelcol.Factories, error) {
@@ -82,6 +84,7 @@ func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenrece
 		otlpexporter.NewFactory(),
 		otlphttpexporter.NewFactory(),
 		prometheusremotewriteexporter.NewFactory(),
+		httpexporter.NewFactory(),
 		debugexporter.NewFactory(),
 		nopexporter.NewFactory(),
 	)
