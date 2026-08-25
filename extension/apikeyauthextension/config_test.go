@@ -25,8 +25,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
-	"go.opentelemetry.io/collector/confmap/xconfmap"
 
 	"github.com/elastic/opentelemetry-collector-components/extension/apikeyauthextension/internal/metadata"
 )
@@ -232,7 +232,7 @@ func TestLoadConfig(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			err = xconfmap.Validate(cfg)
+			err = confmap.Validate(cfg)
 			if tt.expectedErrMessage != "" {
 				require.Error(t, err)
 				assert.EqualError(t, err, tt.expectedErrMessage)

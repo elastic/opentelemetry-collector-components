@@ -20,6 +20,7 @@ package elasticapmprocessor // import "github.com/elastic/opentelemetry-collecto
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net"
 	"path/filepath"
 	"testing"
@@ -1572,4 +1573,148 @@ func consumeMetricResourceAttrsWithDataset(t *testing.T, ctx context.Context, fa
 
 	require.NoError(t, mp.ConsumeMetrics(ctx, metrics))
 	return next.AllMetrics()[0].ResourceMetrics().At(0).Resource().Attributes()
+}
+
+func makeECSCtx(mode string) context.Context {
+	meta := client.NewMetadata(map[string][]string{
+		"x-elastic-mapping-mode": {mode},
+		"x-elastic-target-id":    {"proj-abc123"},
+		"x-elastic-target-type":  {"serverless"},
+		"kafka_topic":            {"motel.events.logs.proj-abc123"},
+	})
+	return client.NewContext(context.Background(), client.Info{Metadata: meta})
+}
+
+func generateBenchLogs(resourceCount, logsPerResource, numAttrs int) plog.Logs {
+	ld := plog.NewLogs()
+	for i := 0; i < resourceCount; i++ {
+		rl := ld.ResourceLogs().AppendEmpty()
+		ra := rl.Resource().Attributes()
+		ra.PutStr("service.name", fmt.Sprintf("svc-%d", i))
+		ra.PutStr("telemetry.sdk.name", "opentelemetry")
+		ra.PutStr("telemetry.sdk.language", "go")
+		ra.PutStr("telemetry.sdk.version", "1.20.0")
+		ra.PutStr("deployment.environment.name", "production")
+		ra.PutStr("host.name", fmt.Sprintf("host-%d", i))
+		sl := rl.ScopeLogs().AppendEmpty()
+		sl.Scope().SetName("bench")
+		for j := 0; j < logsPerResource; j++ {
+			lr := sl.LogRecords().AppendEmpty()
+			lr.Body().SetStr(fmt.Sprintf("log %d/%d", i, j))
+			for k := 0; k < numAttrs; k++ {
+				lr.Attributes().PutStr(fmt.Sprintf("attr.%d", k), fmt.Sprintf("val-%d", k))
+			}
+		}
+	}
+	return ld
+}
+
+func generateBenchTraces(resourceCount, spansPerResource, numAttrs int) ptrace.Traces {
+	td := ptrace.NewTraces()
+	for i := 0; i < resourceCount; i++ {
+		rs := td.ResourceSpans().AppendEmpty()
+		ra := rs.Resource().Attributes()
+		ra.PutStr("service.name", fmt.Sprintf("svc-%d", i))
+		ra.PutStr("telemetry.sdk.name", "opentelemetry")
+		ra.PutStr("telemetry.sdk.language", "go")
+		ra.PutStr("telemetry.sdk.version", "1.20.0")
+		ra.PutStr("deployment.environment.name", "production")
+		ra.PutStr("host.name", fmt.Sprintf("host-%d", i))
+		ss := rs.ScopeSpans().AppendEmpty()
+		for j := 0; j < spansPerResource; j++ {
+			span := ss.Spans().AppendEmpty()
+			span.SetName(fmt.Sprintf("op-%d", j))
+			span.SetTraceID(pcommon.TraceID([16]byte{byte(i), byte(j)}))
+			span.SetSpanID(pcommon.SpanID([8]byte{byte(j)}))
+			for k := 0; k < numAttrs; k++ {
+				span.Attributes().PutStr(fmt.Sprintf("attr.%d", k), fmt.Sprintf("val-%d", k))
+			}
+		}
+	}
+	return td
+}
+
+func BenchmarkLogsProcessor(b *testing.B) {
+	factory := NewFactory()
+	set := processortest.NewNopSettings(metadata.Type)
+
+	cases := []struct {
+		name      string
+		resources int
+		logs      int
+		attrs     int
+		mode      string
+		skip      bool
+	}{
+		{"otel_1r_100logs_5attrs", 1, 100, 5, "otel", false},
+		{"ecs_1r_100logs_5attrs", 1, 100, 5, "ecs", false},
+		{"otel_5r_200logs_10attrs", 5, 200, 10, "otel", false},
+		{"otel_skip_enrichment", 1, 100, 5, "otel", true},
+	}
+
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			cfg := NewDefaultConfig().(*Config)
+			cfg.SkipEnrichment = tc.skip
+			p, err := factory.CreateLogs(context.Background(), set, cfg, consumertest.NewNop())
+			if err != nil {
+				b.Fatal(err)
+			}
+			template := generateBenchLogs(tc.resources, tc.logs, tc.attrs)
+			ctx := makeECSCtx(tc.mode)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				b.StopTimer()
+				ld := plog.NewLogs()
+				template.CopyTo(ld)
+				b.StartTimer()
+				if err := p.ConsumeLogs(ctx, ld); err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.ReportMetric(float64(tc.resources*tc.logs)*float64(b.N)/b.Elapsed().Seconds(), "events/s")
+		})
+	}
+}
+
+func BenchmarkTracesProcessor(b *testing.B) {
+	factory := NewFactory()
+	set := processortest.NewNopSettings(metadata.Type)
+
+	cases := []struct {
+		name      string
+		resources int
+		spans     int
+		attrs     int
+		mode      string
+	}{
+		{"otel_1r_100spans_5attrs", 1, 100, 5, "otel"},
+		{"ecs_1r_100spans_5attrs", 1, 100, 5, "ecs"},
+		{"otel_5r_100spans_10attrs", 5, 100, 10, "otel"},
+	}
+
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			cfg := NewDefaultConfig().(*Config)
+			p, err := factory.CreateTraces(context.Background(), set, cfg, consumertest.NewNop())
+			if err != nil {
+				b.Fatal(err)
+			}
+			template := generateBenchTraces(tc.resources, tc.spans, tc.attrs)
+			ctx := makeECSCtx(tc.mode)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				b.StopTimer()
+				td := ptrace.NewTraces()
+				template.CopyTo(td)
+				b.StartTimer()
+				if err := p.ConsumeTraces(ctx, td); err != nil {
+					b.Fatal(err)
+				}
+			}
+			b.ReportMetric(float64(tc.resources*tc.spans)*float64(b.N)/b.Elapsed().Seconds(), "events/s")
+		})
+	}
 }

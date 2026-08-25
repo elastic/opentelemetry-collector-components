@@ -44,18 +44,20 @@ The Dynamic Routing Connector fills this gap by providing **adaptive, cardinalit
 
 The connector uses the following approach:
 
-1. **Metadata Extraction**: For each incoming telemetry signal, the connector extracts metadata from the client context using the configured `routing_keys.partition_by` and `routing_keys.measure_by`. The `partition_by` keys are used to create a composite key that partitions cardinality estimates (e.g., per tenant, per tenant+type, per region+environment). Multiple keys can be specified to create composite partitions. The `measure_by` keys define what unique combinations are being counted for each composite partition key value.
+1. **Static Route Check**: Before any cardinality logic, the connector checks whether the request matches any configured `static_routes`. If a match is found, the request is immediately forwarded to the configured pipeline. No HLL recording occurs. This allows operators to pin known partition key values to a fixed pipeline without warm-up delay.
 
-2. **Cardinality Estimation**: The connector uses the HyperLogLog algorithm to estimate the number of unique combinations of the configured `measure_by` keys for each composite value of the `partition_by` keys. Composite keys are constructed by concatenating values from all specified partition keys, separated by colons (`:`) for multiple values of the same key and semicolons (`;`) for different keys.
+2. **Metadata Extraction**: For requests not matched by a static route, the connector extracts metadata from the client context using the configured `routing_keys.partition_by` and `routing_keys.measure_by`. The `partition_by` keys create a composite key that partitions cardinality estimates (e.g., per tenant, per tenant+type, per region+environment). The `measure_by` keys define what unique combinations are counted for each composite partition key value.
 
-3. **Threshold-Based Routing**: Based on the estimated cardinality for each primary key value, the connector routes data to different pipelines defined by threshold boundaries. For example:
+3. **Cardinality Estimation**: The connector uses the HyperLogLog algorithm to estimate the number of unique combinations of the configured `measure_by` keys for each composite value of the `partition_by` keys. Composite keys are constructed by concatenating values from all specified partition keys, separated by colons (`:`) for multiple values of the same key and semicolons (`;`) for different keys.
+
+4. **Threshold-Based Routing**: Based on the estimated cardinality for each primary key value, the connector routes data to different pipelines defined by threshold boundaries. For example:
    - Low cardinality (0-10 unique combinations) → Pipeline A
    - Medium cardinality (11-100 unique combinations) → Pipeline B  
    - High cardinality (101+ unique combinations) → Pipeline C
 
-4. **Periodic Re-evaluation**: At configurable intervals, the connector re-evaluates routing decisions based on the most recent cardinality estimates, allowing it to adapt to changing patterns.
+5. **Periodic Re-evaluation**: At configurable intervals, the connector re-evaluates routing decisions based on the most recent cardinality estimates, allowing it to adapt to changing patterns.
 
-5. **Memory Efficiency**: The HyperLogLog algorithm provides accurate cardinality estimates with minimal memory overhead, making it suitable for high-throughput scenarios.
+6. **Memory Efficiency**: The HyperLogLog algorithm provides accurate cardinality estimates with minimal memory overhead, making it suitable for high-throughput scenarios.
 
 ## Configuration
 
@@ -113,6 +115,57 @@ In this example, the connector will:
 
 **Composite Key Construction**: Values from multiple keys are concatenated with colons (`:`) separating multiple values of the same key, and semicolons (`;`) separating different keys. If a key is missing from the metadata, it's skipped in the composite key construction.
 
+### Static Routes
+
+For partition key values with known, stable routing requirements, `static_routes` lets you pin requests to a specific pipeline without waiting for cardinality to be measured. Static routes are evaluated **before** dynamic cardinality-based routing; the first matching route wins and dynamic routing is skipped entirely for that request.
+
+Each route has a `conditions` list of [OTTL](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/pkg/ottl/README.md) expressions evaluated against the [`otelcol` context](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl/contexts/ottlotelcol). Conditions are pre-compiled at startup and evaluated at runtime against the incoming request context.
+
+```yaml
+connectors:
+  dynamicrouting:
+    routing_keys:
+      partition_by: ["x-tenant-id"]
+      measure_by: ["x-forwarded-for"]
+    static_routes:
+      # OR across conditions: route matches if any condition is true
+      - conditions:
+          - 'otelcol.client.metadata["x-tenant-id"][0] == "gold-tenant-1"'
+          - 'otelcol.client.metadata["x-tenant-id"][0] == "gold-tenant-2"'
+        pipelines: ["traces/gold"]
+      # AND within a single condition string using the `and` operator
+      - conditions:
+          - 'otelcol.client.metadata["x-tenant-id"][0] == "platinum-tenant" and otelcol.client.metadata["x-region"][0] == "us-east-1"'
+          - 'otelcol.client.metadata["x-tenant-id"][0] == "platinum-tenant" and otelcol.client.metadata["x-region"][0] == "us-west-2"'
+        pipelines: ["traces/platinum_us"]
+    routing_pipelines:
+      - pipelines: ["traces/small"]
+        max_cardinality: 100
+      - pipelines: ["traces/large"]
+        max_cardinality: .inf
+    default_pipelines: ["traces/default"]
+    recording_interval: 30s
+    ttl: 5m
+```
+
+**OTTL path reference:**
+- `otelcol.client.metadata["key"][0]` — first value of a metadata key (use for equality checks)
+- `otelcol.client.metadata["key"] != nil` — existence check (nil when the key is absent)
+- Standard OTTL functions (`IsString`, `Len`, etc.) are available
+
+**Match semantics:**
+- Multiple `conditions` within one route: **any must match** (OR).
+- AND logic: use the `and` operator within a single condition string.
+- Multiple `static_routes` entries: evaluated in declaration order, **first match wins**.
+- A missing metadata key evaluates as `nil`; an index into a missing key evaluates as not-equal to any string.
+
+**Properties:**
+- Conditions are compiled once at startup; no parsing overhead on the hot path.
+- Static-matched requests do **not** contribute to HLL cardinality sketches, keeping dynamic cardinality estimates clean.
+- Routing is deterministic from the first request — no warm-up period.
+- Emits `cardinality_bucket="static"` on the `otelcol.dynamicrouting.routed` metric for observability.
+- Requires the `ottl.contexts.enableOTelColContext` feature gate (Beta, enabled by default since v0.147.0).
+
 ### Configuration Fields
 
 | Field | Type | Description | Required |
@@ -124,6 +177,9 @@ In this example, the connector will:
 | `default_pipelines` | []pipeline.ID | Pipelines to use when all partition keys are missing from the client context. | Yes |
 | `recording_interval` | duration | How often cardinality data is recorded for decision refresh. | Yes |
 | `ttl` | duration | How long a partition key's routing decision is retained before expiring. Must be greater than or equal to `recording_interval`. | Yes |
+| `static_routes` | []StaticRoute | Optional list of static routing rules evaluated before dynamic routing. Each entry has a `conditions` list (any condition matching triggers the route) and a `pipelines` list. | No |
+| `static_routes[].conditions` | []string | OTTL expressions evaluated against the `otelcol` context. Any true expression matches the route (OR semantics). Use `and` within a single expression for AND logic. At least one condition required per route. | Yes (per route) |
+| `static_routes[].pipelines` | []pipeline.ID | Pipelines to route to when this static route matches. | Yes (per route) |
 
 ### Configuration Rules
 
@@ -132,16 +188,17 @@ In this example, the connector will:
 - `routing_pipelines` must be defined in ascending order of `max_cardinality` values
 - The last pipeline in `routing_pipelines` must have `max_cardinality` set to `.inf` (positive infinity)
 - Each pipeline configuration must specify at least one pipeline ID in the `pipelines` array
+- Each `static_routes` entry must have at least one `conditions` entry (a valid OTTL expression) and at least one pipeline
 
 ### Routing Logic
 
-The connector routes data based on the estimated cardinality for the composite partition key:
+The connector evaluates routing in this order:
 
-- If all `routing_keys.partition_by` keys are missing from the client context → routes to `default_pipelines`
-- Otherwise, constructs a composite key from the `partition_by` keys and routes to the first pipeline in `routing_pipelines` where `estimated_cardinality ≤ max_cardinality`
-  - The connector iterates through `routing_pipelines` in order and selects the first pipeline where the condition is met
-  - Since the last pipeline must have `max_cardinality: .inf`, all cardinality values will match at least one pipeline
-  - Composite keys are created by concatenating values from all `partition_by` keys (values separated by `:`, keys separated by `;`)
+1. **Static routes** (if configured): evaluate each `static_routes` entry in order. The first entry whose conditions all match is used; dynamic routing is skipped. Matched requests emit `cardinality_bucket="static"`.
+2. **Empty partition key**: if all `routing_keys.partition_by` keys are absent from the client context, route to `default_pipelines` (emits `cardinality_bucket="default"`).
+3. **Dynamic routing**: construct a composite key from the `partition_by` keys, look up the cached cardinality decision, and route to the matching `routing_pipelines` entry. On a cache miss (cold path), route to `default_pipelines` and record cardinality for the next evaluation window.
+
+Composite partition keys are built by concatenating values from all `partition_by` keys (values separated by `:`, keys separated by `;`).
 
 ## Use Cases
 
@@ -311,6 +368,14 @@ This connector maintains state (HyperLogLog sketches) in memory. Important consi
 
 - **Check**: Verify that at least one of the `routing_keys.partition_by` keys is present in client metadata
 - **Solution**: Ensure your receiver or proxy is setting the metadata in the context
+
+### Static Route Not Matching
+
+- **Check**: Metadata key names in OTTL expressions are case-sensitive — `otelcol.client.metadata["X-Tenant-Id"]` and `otelcol.client.metadata["x-tenant-id"]` are different keys
+- **Check**: Use `[0]` to index the first value for equality (`otelcol.client.metadata["key"][0] == "value"`); comparing without `[0]` compares a slice, not a string, and will always be false
+- **Check**: Use `otelcol.client.metadata["key"] != nil` to test key presence before indexing if the key may be absent
+- **Check**: Routes are evaluated in declaration order — confirm the intended route appears before any overlapping entry
+- **Check**: The `ottl.contexts.enableOTelColContext` feature gate must be enabled (default since v0.147.0)
 
 ### Routing Not Updating
 
