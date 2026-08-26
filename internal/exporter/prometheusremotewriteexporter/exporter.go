@@ -326,6 +326,7 @@ func (prwe *prwExporter) PushMetrics(ctx context.Context, md pmetric.Metrics) er
 
 func validateAndSanitizeExternalLabels(cfg *Config) (map[string]string, error) {
 	namer := otlptranslator.LabelNamer{
+		//nolint:staticcheck // SA1019: the deprecated field must stay until DropSanitizationGate is removed.
 		UnderscoreLabelSanitization: !prometheustranslator.DropSanitizationGate.IsEnabled(),
 	}
 	sanitizedLabels := make(map[string]string)
