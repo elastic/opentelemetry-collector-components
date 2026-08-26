@@ -21,7 +21,7 @@ jobs:
     env:
       ELASTIC_REGISTRY: "docker.elastic.co/observability-ci/otelbench"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Login to Elastic container registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -34,7 +34,7 @@ jobs:
         working-directory: ./loadgen/cmd/otelbench
         run: echo "OTELBENCH_VERSION=$(make get-version 2>/dev/null || echo 'v0.0.0')" >> $GITHUB_ENV
 
-      - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+      - uses: ko-build/setup-ko@61b4d1d396f5b2e7d6bb6fefdce3dc38d1a13445 # v0.10
         env:
           KO_DOCKER_REPO: ${{ env.ELASTIC_REGISTRY }}
 
