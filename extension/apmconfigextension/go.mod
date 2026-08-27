@@ -4,11 +4,11 @@ go 1.25.0
 
 require (
 	github.com/cespare/xxhash v1.1.0
-	github.com/elastic/go-elasticsearch/v8 v8.19.6
+	github.com/elastic/go-elasticsearch/v8 v8.19.7
 	github.com/elastic/go-freelru v0.16.0
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250613082151-282de5af1c9b
-	github.com/elastic/opentelemetry-lib v0.42.0
-	github.com/stretchr/testify v1.12.0
+	github.com/elastic/opentelemetry-lib v0.45.0
+	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	go.opentelemetry.io/collector/component v1.65.0
 	go.opentelemetry.io/collector/component/componentstatus v0.159.0
@@ -81,7 +81,6 @@ require (
 	go.opentelemetry.io/collector/config/configopaque v1.65.0 // indirect
 	go.opentelemetry.io/collector/config/configoptional v1.65.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v1.65.0 // indirect
-	go.opentelemetry.io/collector/confmap/xconfmap v0.159.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionauth v1.65.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionmiddleware v0.159.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.65.0 // indirect
@@ -114,5 +113,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.12
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
