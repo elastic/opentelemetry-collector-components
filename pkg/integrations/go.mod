@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/pkg/integrations
 go 1.25.0
 
 require (
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.64.0
 	go.opentelemetry.io/collector/confmap v1.64.0
 	go.opentelemetry.io/collector/pipeline v1.64.0
