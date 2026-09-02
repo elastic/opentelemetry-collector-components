@@ -1,0 +1,69 @@
+# otelbench: POST Vercel drain NDJSON via the http exporter.
+#
+# Loadgen logs.preset example is vercel_both (logs + speed insights).
+# Other presets: vercel_logs | vercel_speed_insights
+#
+# Example:
+#   ./otelbench \
+#     -config=./config-vercel.yaml \
+#     -exporter-http=true -exporter-otlp=false -exporter-otlphttp=false \
+#     -logs=true -metrics=false -traces=false -mixed=false \
+#     -concurrency=4 -test.benchtime=10s
+#
+# Auth uses ELASTIC_APM_API_KEY. The http exporter POSTs raw bodies
+# (not OTLP) to the Managed Input drain URL.
+
+receivers:
+  loadgen:
+    logs:
+      preset: vercel_both
+  nop: # required so otelbench can disable unused signal pipelines
+
+processors:
+  # vercelencodingextension reads event time (and log id / SI deviceId) from the
+  # drain JSON body, not the OTLP log timestamp loadgen rewrites. Refresh body
+  # fields each send so documents keep advancing under concurrency.
+  transform/vercel_refresh:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          # Speed Insights: ISO timestamp + unique deviceId
+          - replace_pattern(body, "\"timestamp\":\"[^\"]+\"", Concat(["\"timestamp\":\"", FormatTime(Now(), "%Y-%m-%dT%H:%M:%S.%f%j"), "\""], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1")
+          - replace_pattern(body, "\"deviceId\":\\d+", Concat(["\"deviceId\":", String(UnixNano(Now()))], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1")
+          # Vercel logs: unix-millis timestamp(s) + unique id (also used as log.record.uid)
+          - replace_pattern(body, "\"timestamp\":\\d+", Concat(["\"timestamp\":", String(UnixMilli(Now()))], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1") == false
+          - replace_pattern(body, "\"id\":\"[^\"]+\"", Concat(["\"id\":\"", UUID(), "\""], "")) where IsString(body) and IsMatch(body, "vercel\\.speed_insights\\.v1") == false
+
+exporters:
+  http:
+    endpoint: https://keepandreasgkizasloadtest4-db99da.ingest.eu-central-1.aws.staging.elastic.cloud/inputs/vercel/_default_
+    headers:
+      Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
+    tls:
+      insecure_skip_verify: true
+    timeout: 60s
+    sending_queue:
+      enabled: false
+  nop: # required so otelbench can disable unused signal pipelines
+
+service:
+  pipelines:
+    logs:
+      receivers: [loadgen]
+      processors: [transform/vercel_refresh]
+      exporters: [http]
+    metrics:
+      receivers: [nop]
+      exporters: [nop]
+    traces:
+      receivers: [nop]
+      exporters: [nop]
+    profiles:
+      receivers: [nop]
+      exporters: [nop]
+  telemetry:
+    logs:
+      level: ERROR
+    metrics:
+      level: none
