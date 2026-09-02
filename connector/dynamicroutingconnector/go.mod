@@ -9,7 +9,7 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.158.0
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/client v1.64.0
 	go.opentelemetry.io/collector/component v1.64.0
 	go.opentelemetry.io/collector/component/componenttest v0.158.0

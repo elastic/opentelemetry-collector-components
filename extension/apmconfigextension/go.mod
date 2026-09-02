@@ -8,7 +8,7 @@ require (
 	github.com/elastic/go-freelru v0.16.0
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250613082151-282de5af1c9b
 	github.com/elastic/opentelemetry-lib v0.42.0
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	go.opentelemetry.io/collector/component v1.64.0
 	go.opentelemetry.io/collector/component/componentstatus v0.158.0
@@ -114,5 +114,4 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 	google.golang.org/grpc v1.82.1 // indirect
 	google.golang.org/protobuf v1.36.11
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
