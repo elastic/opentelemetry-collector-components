@@ -183,7 +183,6 @@ func (p *dynamicProcessor[T]) evictIdle() {
 	p.mu.Unlock()
 
 	for _, s := range evicted {
-		s.waitRefs()
 		_ = s.shutdown(context.Background())
 	}
 }

@@ -19,7 +19,7 @@ package dynamicbatchprocessor // import "github.com/elastic/opentelemetry-collec
 
 import (
 	"context"
-	"runtime"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -31,7 +31,8 @@ type shard[T any] struct {
 	comp     component.Component
 	consume  func(context.Context, T) error
 	lastUsed atomic.Int64 // UnixNano; stamped at creation and on each consume
-	refs     atomic.Int32 // in-progress consume calls; incremented under p.mu
+	refs     atomic.Int32 // in-progress consume calls; checked in isIdle under p.mu
+	wg       sync.WaitGroup
 }
 
 func newShard[T any](comp component.Component, consume func(context.Context, T) error) *shard[T] {
@@ -51,20 +52,19 @@ func (s *shard[T]) shutdown(ctx context.Context) error {
 func (s *shard[T]) prepareForConsumption() {
 	s.lastUsed.Store(time.Now().UnixNano())
 	s.refs.Add(1)
+	s.wg.Add(1)
 }
 
 func (s *shard[T]) completeConsumption() {
 	s.refs.Add(-1)
+	s.wg.Done()
 }
 
-// waitRefs spins until all in-progress consume calls complete.
-// refs can only decrease after the shard is removed from the map, so this terminates.
+// waitRefs blocks until all in-progress consume calls complete.
 func (s *shard[T]) waitRefs() {
-	for s.refs.Load() > 0 {
-		runtime.Gosched()
-	}
+	s.wg.Wait()
 }
 
 func (s *shard[T]) isIdle(cutoff int64) bool {
-	return s.lastUsed.Load() < cutoff
+	return s.refs.Load() == 0 && s.lastUsed.Load() < cutoff
 }
