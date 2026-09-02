@@ -2,7 +2,7 @@
 change_type: enhancement
 
 # A brief description of the change.  Surround your text with quotes ("") if it needs to start with a backtick (`).
-note: Registers a new httpexporter for raw HTTP Managed Input drain benchmarks (e.g. Vercel)
+note: Add `--exporter-http` for raw HTTP Managed Input drain benchmarks (e.g. Vercel)
 
 # It is mandatory to specify the component. Do not change this.
 component: otelbench
@@ -14,5 +14,5 @@ issues: [1347]
 # These lines will be padded with 2 spaces and then inserted directly into the document.
 # Use pipe (|) for multiline entries.
 subtext: |
-  Adds the `http` exporter factory so otelbench/otelsoak can POST NDJSON bodies
-  to Managed Input endpoints. The exporter is excluded from the default OTLP benchmark matrix.
+  Registers the `http` exporter factory and exposes `--exporter-http` (default false)
+  so otelbench can POST NDJSON bodies to Managed Input endpoints. The default OTLP is unchanged.

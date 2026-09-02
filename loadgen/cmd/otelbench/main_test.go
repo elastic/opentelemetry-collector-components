@@ -54,6 +54,10 @@ func TestInitRegistersBenchmarkExporterFlags(t *testing.T) {
 			name:         "exporter-prometheusremotewrite",
 			defaultValue: "false",
 		},
+		{
+			name:         "exporter-http",
+			defaultValue: "false",
+		},
 	}
 
 	for _, tc := range cases {
