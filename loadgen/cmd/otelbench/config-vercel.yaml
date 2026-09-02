@@ -42,7 +42,7 @@ exporters:
       Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
     tls:
       insecure_skip_verify: true
-    timeout: 60s
+    timeout: 60sgit
     sending_queue:
       enabled: false
   nop: # required so otelbench can disable unused signal pipelines
