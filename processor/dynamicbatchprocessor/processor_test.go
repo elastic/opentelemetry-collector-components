@@ -370,13 +370,33 @@ func BenchmarkConsumeTracesConcurrent(b *testing.B) {
 }
 
 func BenchmarkBuildMetadataKey(b *testing.B) {
-	info := client.Info{Metadata: client.NewMetadata(map[string][]string{
-		"x-tenant": {"acme"},
-		"x-region": {"us-east"},
-	})}
-	keys := []string{"x-tenant", "x-region"}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = buildMetadataKey(info, keys)
+	cases := []struct {
+		name string
+		info client.Info
+		keys []string
+	}{
+		{
+			name: "small/fits_in_256",
+			info: client.Info{Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant": {"acme"},
+				"x-region": {"us-east"},
+			})},
+			keys: []string{"x-tenant", "x-region"},
+		},
+		{
+			name: "large/exceeds_256",
+			info: client.Info{Metadata: client.NewMetadata(map[string][]string{
+				"x-tenant": {string(make([]byte, 128))},
+				"x-region": {string(make([]byte, 128))},
+			})},
+			keys: []string{"x-tenant", "x-region"},
+		},
+	}
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_ = buildMetadataKey(tc.info, tc.keys)
+			}
+		})
 	}
 }

@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -136,17 +135,24 @@ func (p *dynamicProcessor[T]) getOrCreate(key string) (*shard[T], error) {
 
 // buildMetadataKey produces a stable string key from the given metadata keys.
 // Absent keys produce an empty value segment; order follows cfg.MetadataKeys.
+// Uses a stack-backed buffer to avoid heap allocations for the common case.
 func buildMetadataKey(info client.Info, keys []string) string {
-	var b strings.Builder
+	var backing [256]byte
+	buf := backing[:0]
 	for i, k := range keys {
 		if i > 0 {
-			b.WriteByte('&')
+			buf = append(buf, '&')
 		}
-		b.WriteString(k)
-		b.WriteByte('=')
-		b.WriteString(strings.Join(info.Metadata.Get(k), ","))
+		buf = append(buf, k...)
+		buf = append(buf, '=')
+		for j, v := range info.Metadata.Get(k) {
+			if j > 0 {
+				buf = append(buf, ',')
+			}
+			buf = append(buf, v...)
+		}
 	}
-	return b.String()
+	return string(buf)
 }
 
 func (p *dynamicProcessor[T]) gcLoop() {
