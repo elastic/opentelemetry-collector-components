@@ -37,7 +37,7 @@ processors:
 
 exporters:
   http:
-    endpoint: https://keepandreasgkizasloadtest4-db99da.ingest.eu-central-1.aws.staging.elastic.cloud/inputs/vercel/_default_
+    endpoint: https://local.ingest.127.0.0.1.ip.es.io:8443/inputs/vercel/_default_
     headers:
       Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
     tls:
