@@ -326,6 +326,96 @@ func TestOnMessage(t *testing.T) {
 	}
 }
 
+func TestOnMessage_ServiceAttributes(t *testing.T) {
+	kv := func(key, value string) *protobufs.KeyValue {
+		return &protobufs.KeyValue{Key: key, Value: &protobufs.AnyValue{Value: &protobufs.AnyValue_StringValue{StringValue: value}}}
+	}
+
+	testcases := map[string]struct {
+		description   *protobufs.AgentDescription
+		expectedAttrs apmconfig.IdentifyingAttributes
+	}{
+		"only identifying attributes": {
+			description: &protobufs.AgentDescription{
+				IdentifyingAttributes: []*protobufs.KeyValue{
+					kv("service.name", "my-app"),
+					kv("deployment.environment.name", "production"),
+				},
+			},
+			expectedAttrs: apmconfig.IdentifyingAttributes{
+				kv("service.name", "my-app"),
+				kv("deployment.environment.name", "production"),
+			},
+		},
+		"only non-identifying attributes": {
+			description: &protobufs.AgentDescription{
+				NonIdentifyingAttributes: []*protobufs.KeyValue{
+					kv("service.name", "my-app"),
+					kv("deployment.environment.name", "production"),
+				},
+			},
+			expectedAttrs: apmconfig.IdentifyingAttributes{
+				kv("service.name", "my-app"),
+				kv("deployment.environment.name", "production"),
+			},
+		},
+		"split between identifying and non-identifying attributes": {
+			description: &protobufs.AgentDescription{
+				IdentifyingAttributes: []*protobufs.KeyValue{
+					kv("service.name", "my-app"),
+				},
+				NonIdentifyingAttributes: []*protobufs.KeyValue{
+					kv("deployment.environment.name", "production"),
+					kv("os.type", "linux"),
+				},
+			},
+			expectedAttrs: apmconfig.IdentifyingAttributes{
+				kv("service.name", "my-app"),
+				kv("deployment.environment.name", "production"),
+				kv("os.type", "linux"),
+			},
+		},
+		"identifying attributes take precedence on duplicate keys": {
+			description: &protobufs.AgentDescription{
+				IdentifyingAttributes: []*protobufs.KeyValue{
+					kv("service.name", "my-app"),
+					kv("deployment.environment.name", "production"),
+				},
+				NonIdentifyingAttributes: []*protobufs.KeyValue{
+					kv("deployment.environment.name", "staging"),
+				},
+			},
+			expectedAttrs: apmconfig.IdentifyingAttributes{
+				kv("service.name", "my-app"),
+				kv("deployment.environment.name", "production"),
+			},
+		},
+	}
+
+	for name, tt := range testcases {
+		t.Run(name, func(t *testing.T) {
+			ctx, cancelFn := context.WithCancel(context.Background())
+			defer cancelFn()
+
+			var receivedAttrs apmconfig.IdentifyingAttributes
+			callbacks, err := newRemoteConfigCallbacks(ctx, &remoteConfigMock{
+				remoteConfigFn: func(_ context.Context, attrs apmconfig.IdentifyingAttributes, _ apmconfig.LastConfigHash) (*protobufs.AgentRemoteConfig, error) {
+					receivedAttrs = attrs
+					return nil, nil
+				},
+			}, defaultCacheConfig, zap.NewNop())
+			assert.NoError(t, err)
+
+			connectionCallbacks := callbacks.OnConnecting(nil).ConnectionCallbacks
+			connectionCallbacks.OnMessage(context.TODO(), nil, &protobufs.AgentToServer{
+				InstanceUid:      []byte("test"),
+				AgentDescription: tt.description,
+			})
+			assert.Equal(t, tt.expectedAttrs, receivedAttrs)
+		})
+	}
+}
+
 func TestOnMessageLRU(t *testing.T) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
