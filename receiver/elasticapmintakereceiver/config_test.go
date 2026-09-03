@@ -77,7 +77,7 @@ func TestKeepAlivesEnabled(t *testing.T) {
 		require.NoError(t, err)
 		// Body must be fully drained for the transport to return the connection to the pool.
 		_, _ = io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 	}
 
 	doRequest() // opens the connection
