@@ -4,8 +4,7 @@
 change_type: enhancement
 
 # A brief description of the change.  Surround your text with quotes ("") if it needs to start with a backtick (`).
-note:
-  - Bump otelbench image to v0.13.0. In this version exporter-http is available inside the otelbench image.
+note: Bump otelbench image to v0.13.0. In this version exporter-http is available inside the otelbench image.
 
 # It is mandatory to specify the component. Do not change this.
 component: otelbench
