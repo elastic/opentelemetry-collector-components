@@ -37,13 +37,13 @@ func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 
 	expectedDefaultConfig := func() *Config {
+		serverConfig := confighttp.NewDefaultServerConfig()
+		serverConfig.NetAddr = confignet.AddrConfig{
+			Endpoint:  defaultEndpoint,
+			Transport: confignet.TransportTypeTCP,
+		}
 		return &Config{
-			ServerConfig: confighttp.ServerConfig{
-				NetAddr: confignet.AddrConfig{
-					Endpoint:  defaultEndpoint,
-					Transport: confignet.TransportTypeTCP,
-				},
-			},
+			ServerConfig: serverConfig,
 			BatchBytes:            defaultBatchBytes,
 			BatchFlushInterval:    defaultBatchFlushInterval,
 			MaxConcurrentDecoders: int(defaultMaxConcurrentDecoders),
