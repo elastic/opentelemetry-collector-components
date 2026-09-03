@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/receiver/loadgenrec
 go 1.25.0
 
 require (
-	github.com/klauspost/compress v1.18.6
+	github.com/klauspost/compress v1.19.2
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.65.0
 	go.opentelemetry.io/collector/component/componenttest v0.159.0
