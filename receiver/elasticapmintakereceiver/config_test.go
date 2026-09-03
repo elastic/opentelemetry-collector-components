@@ -33,6 +33,14 @@ import (
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 )
 
+func TestDefaultConfigKeepAlivesEnabled(t *testing.T) {
+	cfg := createDefaultConfig().(*Config)
+	// confighttp.ServerConfig{} zero value leaves KeepAlivesEnabled:false;
+	// confighttp.ToServer applies it unconditionally, sending Connection:close
+	// on every response and preventing upstream connection reuse.
+	assert.True(t, cfg.KeepAlivesEnabled)
+}
+
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 
