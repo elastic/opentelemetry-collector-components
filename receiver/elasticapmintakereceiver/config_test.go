@@ -18,27 +18,77 @@
 package elasticapmintakereceiver
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net"
+	"net/http"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/elastic/opentelemetry-collector-components/internal/testutil"
 	"github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver/internal/metadata"
 	"github.com/elastic/opentelemetry-lib/config/configelasticsearch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
+	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/receiver/receivertest"
 )
 
-func TestDefaultConfigKeepAlivesEnabled(t *testing.T) {
-	cfg := createDefaultConfig().(*Config)
-	// confighttp.ServerConfig{} zero value leaves KeepAlivesEnabled:false;
-	// confighttp.ToServer applies it unconditionally, sending Connection:close
-	// on every response and preventing upstream connection reuse.
-	assert.True(t, cfg.KeepAlivesEnabled)
+func TestKeepAlivesEnabled(t *testing.T) {
+	factory := NewFactory()
+	testEndpoint := testutil.GetAvailableLocalAddress(t)
+	cfg := factory.CreateDefaultConfig().(*Config)
+	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.BatchFlushInterval = 0
+
+	set := receivertest.NewNopSettings(metadata.Type)
+	rcvr, err := factory.CreateTraces(context.Background(), set, cfg, new(consumertest.TracesSink))
+	require.NoError(t, err)
+	require.NoError(t, rcvr.Start(context.Background(), componenttest.NewNopHost()))
+	defer func() { require.NoError(t, rcvr.Shutdown(context.Background())) }()
+
+	var dialCount atomic.Int32
+	httpClient := &http.Client{Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dialCount.Add(1)
+			return (&net.Dialer{}).DialContext(ctx, network, addr)
+		},
+	}}
+
+	body := []byte(
+		`{"metadata":{"service":{"name":"test","agent":{"name":"test","version":"1.0"}}}}` + "\n" +
+			`{"transaction":{"id":"aa00000000000001","trace_id":"aa00000000000001aa00000000000001","name":"tx","type":"request","duration":1,"timestamp":1000000,"outcome":"success","sampled":true,"span_count":{"started":0}}}` + "\n",
+	)
+
+	doRequest := func() {
+		req, err := http.NewRequest(http.MethodPost, "http://"+testEndpoint+intakeV2EventsPath, bytes.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-ndjson")
+		resp, err := httpClient.Do(req)
+		require.NoError(t, err)
+		// Body must be fully drained for the transport to return the connection to the pool.
+		_, _ = io.ReadAll(resp.Body)
+		resp.Body.Close()
+	}
+
+	// Warm-up: opens a new connection.
+	doRequest()
+	assert.Equal(t, int32(1), dialCount.Load(), "first request should open a new connection")
+
+	dialCount.Store(0)
+
+	// Second request must reuse the connection; Connection:close would force a new dial.
+	doRequest()
+	assert.Equal(t, int32(0), dialCount.Load(), "second request must reuse the connection")
 }
 
 func TestLoadConfig(t *testing.T) {
