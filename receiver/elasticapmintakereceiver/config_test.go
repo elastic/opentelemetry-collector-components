@@ -80,15 +80,9 @@ func TestKeepAlivesEnabled(t *testing.T) {
 		resp.Body.Close()
 	}
 
-	// Warm-up: opens a new connection.
-	doRequest()
-	assert.Equal(t, int32(1), dialCount.Load(), "first request should open a new connection")
-
-	dialCount.Store(0)
-
-	// Second request must reuse the connection; Connection:close would force a new dial.
-	doRequest()
-	assert.Equal(t, int32(0), dialCount.Load(), "second request must reuse the connection")
+	doRequest() // opens the connection
+	doRequest() // must reuse it; Connection:close would force a second dial
+	assert.Equal(t, int32(1), dialCount.Load(), "two requests must share one connection")
 }
 
 func TestLoadConfig(t *testing.T) {
