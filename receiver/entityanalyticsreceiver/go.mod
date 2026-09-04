@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/elastic/entcollect v0.0.0-20260706024408-4a12ea00f54d
-	github.com/elastic/go-elasticsearch/v8 v8.19.6
+	github.com/elastic/go-elasticsearch/v8 v8.19.7
 	github.com/jimlambrt/gldap v0.1.14
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.42.0
