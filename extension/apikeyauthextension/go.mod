@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/apikeyaut
 go 1.25.0
 
 require (
-	github.com/elastic/go-elasticsearch/v8 v8.19.6
+	github.com/elastic/go-elasticsearch/v8 v8.19.7
 	github.com/elastic/go-freelru v0.16.0
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/client v1.65.0
