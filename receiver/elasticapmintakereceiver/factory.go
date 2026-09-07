@@ -56,9 +56,7 @@ func NewFactory() receiver.Factory {
 
 // createDefaultConfig creates a default config with the endpoint set to port 8200.
 func createDefaultConfig() component.Config {
-	// this enables https
-	// defaultServerConfig := confighttp.NewDefaultServerConfig()
-	defaultServerConfig := confighttp.ServerConfig{}
+	defaultServerConfig := confighttp.NewDefaultServerConfig()
 	defaultServerConfig.NetAddr = confignet.AddrConfig{
 		Endpoint:  defaultEndpoint,
 		Transport: confignet.TransportTypeTCP,

@@ -31,6 +31,8 @@ type (
 	// protobufs.AgentToServer.InstanceUid
 	InstanceUid []byte
 	// Attributes like service.name used to identify the service being monitored.
+	// They may originate from either the identifying or non-identifying
+	// attributes of the OpAMP AgentDescription.
 	IdentifyingAttributes []*protobufs.KeyValue
 	// The hash of the agent's current configuration, used for caching.
 	LastConfigHash []byte

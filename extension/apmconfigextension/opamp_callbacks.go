@@ -98,6 +98,34 @@ func newRemoteConfigCallbacks(ctx context.Context, configClient apmconfig.Remote
 	return opampCallbacks, nil
 }
 
+// serviceAttributes returns the attributes used to identify the monitored
+// service from an OpAMP AgentDescription. Both identifying_attributes and
+// non_identifying_attributes are considered, since the OpAMP specification
+// does not mandate where attributes such as deployment.environment.name are
+// reported. When the same key is present in both lists, the identifying
+// attribute takes precedence.
+func serviceAttributes(desc *protobufs.AgentDescription) apmconfig.IdentifyingAttributes {
+	identifying := desc.GetIdentifyingAttributes()
+	nonIdentifying := desc.GetNonIdentifyingAttributes()
+	if len(nonIdentifying) == 0 {
+		return identifying
+	}
+
+	attrs := make(apmconfig.IdentifyingAttributes, 0, len(identifying)+len(nonIdentifying))
+	seen := make(map[string]struct{}, len(identifying))
+	for _, attr := range identifying {
+		seen[attr.GetKey()] = struct{}{}
+		attrs = append(attrs, attr)
+	}
+	for _, attr := range nonIdentifying {
+		if _, ok := seen[attr.GetKey()]; ok {
+			continue
+		}
+		attrs = append(attrs, attr)
+	}
+	return attrs
+}
+
 func (rc *remoteConfigCallbacks) serverError(msg string, message *protobufs.ServerToAgent, logFields ...zap.Field) *protobufs.ServerToAgent {
 	message.ErrorResponse = &protobufs.ServerErrorResponse{
 		ErrorMessage: msg,
@@ -127,7 +155,7 @@ func (rc *remoteConfigCallbacks) onMessage(ctx context.Context, conn types.Conne
 		// new description might lead to another remote configuration
 		_ = rc.agentState.Add(agentUid, &agentInfo{
 			agentUid:              message.GetInstanceUid(),
-			identifyingAttributes: message.AgentDescription.IdentifyingAttributes,
+			identifyingAttributes: serviceAttributes(message.GetAgentDescription()),
 		})
 	}
 
