@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/connector/dynamicroutingconnector
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/axiomhq/hyperloglog v0.2.6

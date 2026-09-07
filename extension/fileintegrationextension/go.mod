@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/extension/fileintegrationextension
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/elastic/opentelemetry-collector-components/pkg/integrations v0.0.0

@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/receiver/entityanalyticsreceiver
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/elastic/entcollect v0.0.0-20260706024408-4a12ea00f54d
