@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/gogo/protobuf v1.3.2

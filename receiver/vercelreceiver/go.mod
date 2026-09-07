@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/receiver/vercelreceiver
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0

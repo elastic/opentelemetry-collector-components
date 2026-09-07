@@ -14,7 +14,7 @@ INTEGRATION_MODS := $(shell $(FIND_INTEGRATION_TEST_MODS) | xargs $(TO_MOD_DIR) 
 
 GROUP ?= all
 FOR_GROUP_TARGET=for-$(GROUP)-target
-GOTOOLCHAIN ?= go1.25.7+auto
+GOTOOLCHAIN ?= go1.27.1+auto
 
 .DEFAULT_GOAL := all
 

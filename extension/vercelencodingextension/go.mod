@@ -1,6 +1,6 @@
 module github.com/elastic/opentelemetry-collector-components/extension/vercelencodingextension
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/vercel v0.0.0
