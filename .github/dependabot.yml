@@ -14,6 +14,10 @@ updates:
           - "go.opentelemetry.io/*"
           - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
           - "github.com/elastic/opentelemetry-lib"
+      non-otel:
+        group-by: dependency-name
+        patterns:
+          - "*"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
