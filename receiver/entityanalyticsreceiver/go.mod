@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/elastic/entcollect v0.0.0-20260706024408-4a12ea00f54d
-	github.com/elastic/go-elasticsearch/v8 v8.19.6
+	github.com/elastic/go-elasticsearch/v8 v8.19.7
 	github.com/jimlambrt/gldap v0.1.14
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.42.0
@@ -56,7 +56,7 @@ require (
 	github.com/hashicorp/go-hclog v1.6.3 // indirect
 	github.com/hashicorp/go-version v1.9.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.18.5 // indirect
+	github.com/klauspost/compress v1.20.0 // indirect
 	github.com/knadh/koanf/maps v0.1.3 // indirect
 	github.com/knadh/koanf/providers/confmap v1.0.1 // indirect
 	github.com/knadh/koanf/v2 v2.3.6 // indirect
