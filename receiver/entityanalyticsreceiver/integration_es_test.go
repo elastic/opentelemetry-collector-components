@@ -29,6 +29,20 @@ import (
 	ecokta "github.com/elastic/entcollect/provider/okta"
 )
 
+const (
+	// esLogsTimeout is the budget for a sync phase to publish its
+	// expected records when the receiver is backed by a real
+	// Elasticsearch store. It is wider than the in-memory tests'
+	// budget because every idset load and commit is an ES round-trip
+	// against a container that may still be warming up.
+	esLogsTimeout = 60 * time.Second
+
+	// esStoreKeyTimeout is the budget for the receiver's committed
+	// state to become visible in the ES store after the last record
+	// of a sync has been published.
+	esStoreKeyTimeout = 30 * time.Second
+)
+
 // TestADReceiverLifecycle_ES exercises the full AD receiver lifecycle
 // with a real Elasticsearch store instead of newMemoryStore. This
 // validates that the esStore implementation satisfies the
@@ -59,13 +73,14 @@ func TestADReceiverLifecycle_ES(t *testing.T) {
 
 	// Phase 1: first sync discovers all.
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), adIntegConfig(provName, ldapURL), sink1)
+	set1, logs1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, adIntegConfig(provName, ldapURL), sink1)
 	err := rcvr1.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("receiver start failed: %v", err)
 	}
-	waitForLogs(t, sink1, 3, 30*time.Second)
-	waitForStoreKey(t, store, "ad.users.idset.meta", 10*time.Second)
+	waitForLogsOrSyncError(t, sink1, logs1, 3, esLogsTimeout)
+	waitForStoreKey(t, store, "ad.users.idset.meta", esStoreKeyTimeout)
 	err = rcvr1.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("receiver shutdown failed: %v", err)
@@ -75,12 +90,13 @@ func TestADReceiverLifecycle_ES(t *testing.T) {
 	// Phase 2: remove bob, restart with same store.
 	fix.users = fix.users[:1]
 	sink2 := &consumertest.LogsSink{}
-	rcvr2 := newReceiver(nopSettings(), adIntegConfig(provName, ldapURL), sink2)
+	set2, logs2 := observedSettings(t)
+	rcvr2 := newReceiver(set2, adIntegConfig(provName, ldapURL), sink2)
 	err = rcvr2.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("second receiver start failed: %v", err)
 	}
-	waitForLogs(t, sink2, 3, 30*time.Second)
+	waitForLogsOrSyncError(t, sink2, logs2, 3, esLogsTimeout)
 	err = rcvr2.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("second receiver shutdown failed: %v", err)
@@ -113,13 +129,14 @@ func TestOktaReceiverLifecycle_ES(t *testing.T) {
 
 	// Phase 1: discover all.
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), oktaIntegConfig(provName, host), sink1)
+	set1, logs1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, oktaIntegConfig(provName, host), sink1)
 	err := rcvr1.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("receiver start failed: %v", err)
 	}
-	waitForLogs(t, sink1, 2, 30*time.Second)
-	waitForStoreKey(t, store, "okta.users.idset.meta", 10*time.Second)
+	waitForLogsOrSyncError(t, sink1, logs1, 2, esLogsTimeout)
+	waitForStoreKey(t, store, "okta.users.idset.meta", esStoreKeyTimeout)
 	err = rcvr1.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("receiver shutdown failed: %v", err)
@@ -129,12 +146,13 @@ func TestOktaReceiverLifecycle_ES(t *testing.T) {
 	// Phase 2: remove u2, restart with same store.
 	fix.users = fix.users[:1]
 	sink2 := &consumertest.LogsSink{}
-	rcvr2 := newReceiver(nopSettings(), oktaIntegConfig(provName, host), sink2)
+	set2, logs2 := observedSettings(t)
+	rcvr2 := newReceiver(set2, oktaIntegConfig(provName, host), sink2)
 	err = rcvr2.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("second receiver start failed: %v", err)
 	}
-	waitForLogs(t, sink2, 2, 30*time.Second)
+	waitForLogsOrSyncError(t, sink2, logs2, 2, esLogsTimeout)
 	err = rcvr2.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("second receiver shutdown failed: %v", err)
@@ -168,12 +186,13 @@ func TestEntraidReceiverLifecycle_ES(t *testing.T) {
 
 	// Phase 1: discover all — 2 users + 1 device = 3 events.
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), entraidIntegConfig(provName, srv.URL), sink1)
+	set1, logs1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, entraidIntegConfig(provName, srv.URL), sink1)
 	err := rcvr1.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("receiver start failed: %v", err)
 	}
-	waitForLogs(t, sink1, 3, 30*time.Second)
+	waitForLogsOrSyncError(t, sink1, logs1, 3, esLogsTimeout)
 	err = rcvr1.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("receiver shutdown failed: %v", err)
@@ -187,12 +206,13 @@ func TestEntraidReceiverLifecycle_ES(t *testing.T) {
 	}
 
 	sink2 := &consumertest.LogsSink{}
-	rcvr2 := newReceiver(nopSettings(), entraidIntegConfig(provName, srv.URL), sink2)
+	set2, logs2 := observedSettings(t)
+	rcvr2 := newReceiver(set2, entraidIntegConfig(provName, srv.URL), sink2)
 	err = rcvr2.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("second receiver start failed: %v", err)
 	}
-	waitForLogs(t, sink2, 3, 30*time.Second)
+	waitForLogsOrSyncError(t, sink2, logs2, 3, esLogsTimeout)
 	err = rcvr2.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("second receiver shutdown failed: %v", err)
