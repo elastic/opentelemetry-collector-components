@@ -3,12 +3,18 @@
 # Changelog
 
 <!-- next version -->
+## v0.13.0
+
+### 💡 Enhancements 💡
+
+- `otelbench`: Introduce `-exporter-otlphttp` command in order to be able to make use of the new http exporter and support benchmark tests for additional inputs (like vercel).
+
 ## v0.12.0
 
 ### 💡 Enhancements 💡
 
 - `otelbench`: Introduce `-metricsgen-benchmark=false` when `receivers.metricsgen.start_now_minus` should come from the config instead of Go benchmark `N`.
-- 
+ 
 ## v0.11.0
 
 ### 💡 Enhancements 💡
