@@ -51,7 +51,6 @@ var defaultBenchmarkExporters = map[string]bool{
 var nonBenchmarkExporters = map[string]struct{}{
 	"debug": {},
 	"nop":   {},
-	"http":  {}, // raw HTTP body exporter; not part of the default OTLP bench matrix
 }
 
 func components(logsDone, metricsDone, tracesDone, profilesDone chan loadgenreceiver.Stats) (otelcol.Factories, error) {
