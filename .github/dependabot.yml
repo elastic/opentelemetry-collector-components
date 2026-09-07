@@ -9,12 +9,34 @@ updates:
     labels:
       - automation
     groups:
-      otel-dependencies:
+      otel:
         patterns:
           - "go.opentelemetry.io/*"
           - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
           - "github.com/elastic/opentelemetry-lib"
-      non-otel:
+      aws:
+        patterns:
+          - "github.com/aws/*"
+      prometheus:
+        patterns:
+          - "github.com/prometheus/*"
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+      kubernetes:
+        patterns:
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+      azure:
+        patterns:
+          - "github.com/Azure/*"
+          - "github.com/AzureAD/*"
+      google:
+        patterns:
+          - "cloud.google.com/go/*"
+          - "google.golang.org/*"
+          - "github.com/googleapis/*"
+      other:
         group-by: dependency-name
         patterns:
           - "*"
