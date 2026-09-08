@@ -18,7 +18,7 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/elastic/apm-data v1.22.1 // indirect
+	github.com/elastic/apm-data v1.22.2 // indirect
 	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.40.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

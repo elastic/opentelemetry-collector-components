@@ -32,8 +32,8 @@ github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/ebitengine/purego v0.10.1 h1:dewVBCBT2GaMu1SrNTYxQhgQBethzfhiwvZiLGP/qyY=
 github.com/ebitengine/purego v0.10.1/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
-github.com/elastic/apm-data v1.22.1 h1:Lsyxt1Y//igzVHswipBYp46vzHBZ3iUSfgca2xPtb2Y=
-github.com/elastic/apm-data v1.22.1/go.mod h1:VVPugO2TOSksJoJ8VsttWL5NttvqQQHDYEo03dxO8Rk=
+github.com/elastic/apm-data v1.22.2 h1:Q0WaIDScK8hvcI3vzwtOi1LtaVKcaHtNDRiH2xFf+tk=
+github.com/elastic/apm-data v1.22.2/go.mod h1:7aC1alvZtKrq02N7JG/sff6rAicmQ1Qt/n4qCb+7fAg=
 github.com/elastic/elastic-transport-go/v8 v8.11.0 h1:taYmqC2M6+fZt/+W+ENYh/W5L9+KrlJGOSbEJs8egWc=
 github.com/elastic/elastic-transport-go/v8 v8.11.0/go.mod h1:DZQ0szCNywc9F+C9l/Kkd4n69SvJVj0I3yK1Of7s3l8=
 github.com/elastic/go-elasticsearch/v8 v8.19.7 h1:fMsWcVgPDJMtyptspSmn4SDHykovo4ppaAbBNLK9mKE=
