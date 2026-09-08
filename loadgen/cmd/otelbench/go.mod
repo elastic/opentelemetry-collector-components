@@ -9,7 +9,7 @@ require (
 	github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0-00010101000000-000000000000
 	github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.160.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.159.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusremotewriteexporter v0.160.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.160.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.160.0
 	github.com/prometheus/client_model v0.6.3
