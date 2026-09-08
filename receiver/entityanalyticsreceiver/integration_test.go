@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -35,6 +36,10 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/plog"
+	"go.opentelemetry.io/collector/receiver"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 
 	"github.com/elastic/entcollect"
 	ecjamf "github.com/elastic/entcollect/provider/jamf"
@@ -397,6 +402,76 @@ func waitForLogs(t *testing.T, sink *consumertest.LogsSink, n int, timeout time.
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
+}
+
+// observedSettings returns receiver.Settings whose logger records every
+// entry in the returned observer. Tests use it to surface the receiver's
+// own "sync failed" errors, which would otherwise be swallowed by the
+// nop logger and only show up as an opaque wait timeout.
+func observedSettings(t *testing.T) (receiver.Settings, *observer.ObservedLogs) {
+	t.Helper()
+	core, observed := observer.New(zapcore.DebugLevel)
+	set := nopSettings()
+	set.Logger = zap.New(core)
+	return set, observed
+}
+
+// receiverSyncErrorMessages are the messages the receiver logs at error
+// level when a sync attempt gives up. Once one of these is logged no
+// further records will arrive until the next sync tick, so a test
+// waiting for records should fail immediately rather than time out.
+var receiverSyncErrorMessages = []string{"sync failed", "committing sync state"}
+
+// waitForLogsOrSyncError polls the sink until it contains at least n log
+// records or the timeout expires. Unlike waitForLogs it also watches the
+// receiver's logs and fails fast, with the underlying error, if the
+// receiver reports a failed sync while the test is waiting.
+func waitForLogsOrSyncError(t *testing.T, sink *consumertest.LogsSink, observed *observer.ObservedLogs, n int, timeout time.Duration) {
+	t.Helper()
+	deadline := time.After(timeout)
+	for {
+		if sink.LogRecordCount() >= n {
+			return
+		}
+		if entry, ok := firstSyncError(observed); ok {
+			t.Fatalf("receiver reported %q after %d of %d log records: %v\nreceiver logs:\n%s",
+				entry.Message, sink.LogRecordCount(), n, entry.ContextMap()["error"], formatObservedLogs(observed))
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for %d log records (got %d)\nreceiver logs:\n%s",
+				n, sink.LogRecordCount(), formatObservedLogs(observed))
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
+// firstSyncError returns the first error-level entry matching one of
+// receiverSyncErrorMessages, if any.
+func firstSyncError(observed *observer.ObservedLogs) (observer.LoggedEntry, bool) {
+	for _, entry := range observed.FilterLevelExact(zapcore.ErrorLevel).All() {
+		for _, msg := range receiverSyncErrorMessages {
+			if entry.Message == msg {
+				return entry, true
+			}
+		}
+	}
+	return observer.LoggedEntry{}, false
+}
+
+// formatObservedLogs renders observed receiver log entries, one per line,
+// for inclusion in failure messages.
+func formatObservedLogs(observed *observer.ObservedLogs) string {
+	entries := observed.All()
+	if len(entries) == 0 {
+		return "  (none)"
+	}
+	var sb strings.Builder
+	for _, entry := range entries {
+		fmt.Fprintf(&sb, "  %s %s %s %v\n",
+			entry.Time.Format(time.RFC3339Nano), entry.Level, entry.Message, entry.ContextMap())
+	}
+	return sb.String()
 }
 
 // checkActionCounts extracts event.action values from all log records and
