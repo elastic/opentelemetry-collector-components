@@ -48,7 +48,7 @@ type SourceConfig struct {
 
 type ElasticsearchFetcher struct {
 	// Elasticsearch client configuration.
-	configelasticsearch.ClientConfig `mapstructure:",squash"`
+	ClientConfig configelasticsearch.ClientConfig `mapstructure:",squash"`
 
 	// CacheDuration specifies how long the fetched remote configuration for an agent
 	// should be cached before fetching it again from Elasticsearch.

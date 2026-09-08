@@ -47,7 +47,7 @@ func TestKeepAlivesEnabled(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
 	cfg.BatchFlushInterval = 0
 
 	set := receivertest.NewNopSettings(metadata.Type)
@@ -95,7 +95,7 @@ func TestLoadConfig(t *testing.T) {
 			Transport: confignet.TransportTypeTCP,
 		}
 		return &Config{
-			ServerConfig: serverConfig,
+			ServerConfig:          serverConfig,
 			BatchBytes:            defaultBatchBytes,
 			BatchFlushInterval:    defaultBatchFlushInterval,
 			MaxConcurrentDecoders: int(defaultMaxConcurrentDecoders),
@@ -105,7 +105,7 @@ func TestLoadConfig(t *testing.T) {
 				CacheDuration: 30 * time.Second,
 				Elasticsearch: func() configelasticsearch.ClientConfig {
 					esCfg := configelasticsearch.NewDefaultClientConfig()
-					esCfg.Endpoint = defaultESEndpoint
+					esCfg.ClientConfig.Endpoint = defaultESEndpoint
 					return esCfg
 				}(),
 			},
@@ -192,7 +192,7 @@ func TestLoadConfig(t *testing.T) {
 				cfg := expectedDefaultConfig()
 				cfg.AgentConfig.Enabled = true
 				cfg.AgentConfig.CacheDuration = 10 * time.Second
-				cfg.AgentConfig.Elasticsearch.Endpoint = "http://localhost:8200"
+				cfg.AgentConfig.Elasticsearch.ClientConfig.Endpoint = "http://localhost:8200"
 				return cfg
 			}(),
 		},

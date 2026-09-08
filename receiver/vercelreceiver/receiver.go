@@ -87,12 +87,12 @@ func (r *vercelReceiver) Start(ctx context.Context, host component.Host) error {
 	}
 
 	var err error
-	r.server, err = r.cfg.ToServer(ctx, host.GetExtensions(), r.settings.TelemetrySettings, mux)
+	r.server, err = r.cfg.ServerConfig.ToServer(ctx, host.GetExtensions(), r.settings.TelemetrySettings, mux)
 	if err != nil {
 		return err
 	}
 
-	r.listener, err = r.cfg.ToListener(ctx)
+	r.listener, err = r.cfg.ServerConfig.ToListener(ctx)
 	if err != nil {
 		return err
 	}

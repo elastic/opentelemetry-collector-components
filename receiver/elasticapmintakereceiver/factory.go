@@ -62,7 +62,7 @@ func createDefaultConfig() component.Config {
 		Transport: confignet.TransportTypeTCP,
 	}
 	defaultESClientConfig := configelasticsearch.NewDefaultClientConfig()
-	defaultESClientConfig.Endpoint = defaultESEndpoint
+	defaultESClientConfig.ClientConfig.Endpoint = defaultESEndpoint
 
 	return &Config{
 		ServerConfig:          defaultServerConfig,

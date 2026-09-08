@@ -44,9 +44,9 @@ var (
 )
 
 type Config struct {
-	*confighttp.ServerConfig `mapstructure:",squash"`
-	Route                    string         `mapstructure:"route"`
-	Encoding                 EncodingConfig `mapstructure:"encoding"`
+	ServerConfig *confighttp.ServerConfig `mapstructure:",squash"`
+	Route        string                   `mapstructure:"route"`
+	Encoding     EncodingConfig           `mapstructure:"encoding"`
 }
 
 // EncodingConfig selects the encoding extension and the flush policy the

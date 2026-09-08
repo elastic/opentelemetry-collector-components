@@ -113,23 +113,23 @@ func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host com
 
 	httpMux.HandleFunc("GET /{$}", r.newRootHandler())
 	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), r.cfg.IncludeMetadata)
+		return withECSMappingMode(req.Context(), r.cfg.ServerConfig.IncludeMetadata)
 	}))
 	httpMux.HandleFunc(agentConfigPath, r.newElasticAPMConfigsHandler(ctx, host))
 	// TODO rum v2, v3
 
 	var err error
-	if r.httpServer, err = r.cfg.ToServer(
+	if r.httpServer, err = r.cfg.ServerConfig.ToServer(
 		ctx, host.GetExtensions(), r.settings.TelemetrySettings, httpMux,
 		confighttp.WithErrorHandler(errorHandler),
 	); err != nil {
 		return err
 	}
 
-	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.NetAddr.Endpoint))
+	r.settings.Logger.Info("Starting HTTP server", zap.String("endpoint", r.cfg.ServerConfig.NetAddr.Endpoint))
 
 	var hln net.Listener
-	if hln, err = r.cfg.ToListener(ctx); err != nil {
+	if hln, err = r.cfg.ServerConfig.ToListener(ctx); err != nil {
 		return err
 	}
 

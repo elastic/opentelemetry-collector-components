@@ -78,16 +78,16 @@ func (r *prometheusRWv1Receiver) Start(ctx context.Context, host component.Host)
 	mux.HandleFunc("/api/v1/write", r.handleWrite)
 
 	var err error
-	r.server, err = r.config.ToServer(ctx, host.GetExtensions(), r.settings.TelemetrySettings, mux)
+	r.server, err = r.config.ServerConfig.ToServer(ctx, host.GetExtensions(), r.settings.TelemetrySettings, mux)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP server: %w", err)
 	}
 
 	r.settings.Logger.Info("Starting Prometheus Remote Write v1 receiver",
-		zap.String("endpoint", r.config.NetAddr.Endpoint))
+		zap.String("endpoint", r.config.ServerConfig.NetAddr.Endpoint))
 
 	var listener net.Listener
-	if listener, err = r.config.ToListener(ctx); err != nil {
+	if listener, err = r.config.ServerConfig.ToListener(ctx); err != nil {
 		return fmt.Errorf("failed to create listener: %w", err)
 	}
 

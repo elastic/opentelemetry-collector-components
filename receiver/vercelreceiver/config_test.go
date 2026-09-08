@@ -32,7 +32,7 @@ import (
 func TestDefaultConfig(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
 
-	require.Equal(t, defaultEndpoint, cfg.NetAddr.Endpoint)
+	require.Equal(t, defaultEndpoint, cfg.ServerConfig.NetAddr.Endpoint)
 	require.Equal(t, defaultRoute, cfg.Route)
 }
 
@@ -48,7 +48,7 @@ func TestLoadConfig(t *testing.T) {
 			id: component.NewID(metadata.Type),
 			expected: func() *Config {
 				cfg := createDefaultConfig().(*Config)
-				cfg.NetAddr.Endpoint = "localhost:0"
+				cfg.ServerConfig.NetAddr.Endpoint = "localhost:0"
 				cfg.Route = "/vercel"
 				cfg.Encoding = EncodingConfig{
 					Extension: component.MustNewID("vercel"),

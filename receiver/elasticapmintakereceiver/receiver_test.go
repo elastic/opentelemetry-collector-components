@@ -476,7 +476,7 @@ func TestInvalidInput(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
 	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
@@ -542,7 +542,7 @@ func TestErrors(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
 	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
@@ -578,7 +578,7 @@ func TestMetrics(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
 	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
@@ -620,7 +620,7 @@ func TestLogs(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
 	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
@@ -677,7 +677,7 @@ func TestTransactionsAndSpans(t *testing.T) {
 	factory := NewFactory()
 	testEndpoint := testutil.GetAvailableLocalAddress(t)
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.NetAddr.Endpoint = testEndpoint
+	cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
 	cfg.BatchFlushInterval = 0 // deterministic batch shapes
 
 	set := receivertest.NewNopSettings(metadata.Type)
@@ -730,8 +730,8 @@ func TestMetadataPropagation(t *testing.T) {
 			factory := NewFactory()
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			cfg := factory.CreateDefaultConfig().(*Config)
-			cfg.NetAddr.Endpoint = testEndpoint
-			cfg.IncludeMetadata = tcase.includeMetadata
+			cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+			cfg.ServerConfig.IncludeMetadata = tcase.includeMetadata
 
 			set := receivertest.NewNopSettings(metadata.Type)
 			nextTrace := new(consumertest.TracesSink)
@@ -1029,7 +1029,7 @@ func TestGlobalLabelsMetadataPropagation(t *testing.T) {
 			factory := NewFactory()
 			testEndpoint := testutil.GetAvailableLocalAddress(t)
 			cfg := factory.CreateDefaultConfig().(*Config)
-			cfg.NetAddr.Endpoint = testEndpoint
+			cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
 			cfg.BatchFlushInterval = 0 // deterministic batch shapes
 			if tc.eventsPerBatch > 0 {
 				input, err := os.ReadFile(filepath.Join(testData, tc.inputFile))

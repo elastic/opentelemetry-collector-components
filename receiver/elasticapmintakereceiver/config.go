@@ -53,7 +53,7 @@ type Config struct {
 	// MaxEventSize is the maximum allowed event size, in bytes.
 	MaxEventSize int `mapstructure:"max_event_size"`
 
-	confighttp.ServerConfig `mapstructure:",squash"`
+	ServerConfig confighttp.ServerConfig `mapstructure:",squash"`
 }
 
 type AgentConfig struct {
