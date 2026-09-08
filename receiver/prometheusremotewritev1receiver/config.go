@@ -24,7 +24,7 @@ import (
 
 // Config holds configuration for the Prometheus Remote Write v1 receiver.
 type Config struct {
-	confighttp.ServerConfig `mapstructure:",squash"`
+	ServerConfig confighttp.ServerConfig `mapstructure:",squash"`
 }
 
 var _ component.Config = (*Config)(nil)

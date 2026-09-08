@@ -50,8 +50,8 @@ func TestPushLogsPostsNDJSONBodies(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	cfg := createDefaultConfig().(*Config)
-	cfg.Endpoint = srv.URL + "/inputs/vercel/_default_"
-	cfg.Headers.Set("Authorization", configopaque.String("ApiKey test-key"))
+	cfg.ClientConfig.Endpoint = srv.URL + "/inputs/vercel/_default_"
+	cfg.ClientConfig.Headers.Set("Authorization", configopaque.String("ApiKey test-key"))
 
 	set := exportertest.NewNopSettings(metadata.Type)
 	exp, err := newExporter(cfg, set)
@@ -93,7 +93,7 @@ func TestPushLogsStatusCodeErrors(t *testing.T) {
 			t.Cleanup(srv.Close)
 
 			cfg := createDefaultConfig().(*Config)
-			cfg.Endpoint = srv.URL
+			cfg.ClientConfig.Endpoint = srv.URL
 
 			set := exportertest.NewNopSettings(metadata.Type)
 			exp, err := newExporter(cfg, set)
@@ -115,17 +115,17 @@ func TestConfigValidate(t *testing.T) {
 	cfg := &Config{ClientConfig: confighttp.NewDefaultClientConfig()}
 	assert.Error(t, cfg.Validate())
 
-	cfg.Endpoint = "ftp://example.com"
+	cfg.ClientConfig.Endpoint = "ftp://example.com"
 	assert.Error(t, cfg.Validate())
 
-	cfg.Endpoint = "https://example.com/inputs/vercel/_default_"
+	cfg.ClientConfig.Endpoint = "https://example.com/inputs/vercel/_default_"
 	assert.NoError(t, cfg.Validate())
 }
 
 func TestFactoryCreateLogs(t *testing.T) {
 	factory := NewFactory()
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.Endpoint = "https://example.com/inputs/vercel/_default_"
+	cfg.ClientConfig.Endpoint = "https://example.com/inputs/vercel/_default_"
 
 	exp, err := factory.CreateLogs(t.Context(), exportertest.NewNopSettings(factory.Type()), cfg)
 	require.NoError(t, err)

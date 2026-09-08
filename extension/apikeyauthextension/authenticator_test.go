@@ -624,7 +624,7 @@ func TestAuthenticatorHasPrivilegesTermination(t *testing.T) {
 		cfg.ElasticsearchRetry.Enabled = false
 		cfg.ClientRetry.Enabled = true
 		cfg.ClientRetry.RetryDelay = 3 * time.Second
-		cfg.Timeout = 20 * time.Millisecond
+		cfg.ClientConfig.Timeout = 20 * time.Millisecond
 
 		authenticator := newTestAuthenticator(t, srv, cfg)
 
@@ -660,7 +660,7 @@ func TestAuthenticatorHasPrivilegesTermination(t *testing.T) {
 
 		cfg := createDefaultConfig().(*Config)
 		cfg.ElasticsearchRetry.Enabled = false
-		cfg.Timeout = 200 * time.Millisecond
+		cfg.ClientConfig.Timeout = 200 * time.Millisecond
 
 		authenticator := newTestAuthenticator(t, srv, cfg)
 
@@ -686,7 +686,7 @@ func TestAuthenticatorHasPrivilegesTermination(t *testing.T) {
 		cfg := createDefaultConfig().(*Config)
 		cfg.ElasticsearchRetry.Enabled = false
 		cfg.ClientRetry.Enabled = false
-		cfg.Timeout = 200 * time.Millisecond
+		cfg.ClientConfig.Timeout = 200 * time.Millisecond
 
 		authenticator := newTestAuthenticator(t, srv, cfg)
 
@@ -1235,7 +1235,7 @@ func BenchmarkAuthenticator(b *testing.B) {
 }
 
 func newTestAuthenticator(t testing.TB, srv *httptest.Server, config *Config) *authenticator {
-	config.Endpoint = srv.URL
+	config.ClientConfig.Endpoint = srv.URL
 	auth, err := newAuthenticator(config, extensiontest.NewNopSettings(metadata.Type))
 	require.NoError(t, err)
 

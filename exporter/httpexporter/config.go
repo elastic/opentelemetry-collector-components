@@ -31,7 +31,7 @@ import (
 // Config configures the HTTP body exporter.
 type Config struct {
 	// ClientConfig holds standard HTTP client settings (endpoint, headers, TLS, timeout).
-	confighttp.ClientConfig `mapstructure:",squash"`
+	ClientConfig confighttp.ClientConfig `mapstructure:",squash"`
 
 	// RetryConfig defines retry configuration for failed exports.
 	RetryConfig configretry.BackOffConfig `mapstructure:"retry_on_failure"`
@@ -41,10 +41,10 @@ type Config struct {
 }
 
 func (cfg *Config) Validate() error {
-	if cfg.Endpoint == "" {
+	if cfg.ClientConfig.Endpoint == "" {
 		return errors.New("endpoint is required")
 	}
-	u, err := url.Parse(cfg.Endpoint)
+	u, err := url.Parse(cfg.ClientConfig.Endpoint)
 	if err != nil {
 		return fmt.Errorf("endpoint must be a valid URL: %w", err)
 	}

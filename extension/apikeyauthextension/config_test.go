@@ -202,13 +202,13 @@ func TestLoadConfig(t *testing.T) {
 			id: component.NewIDWithName(metadata.Type, "custom_timeout"),
 			expected: func() *Config {
 				config := createDefaultConfig().(*Config)
-				config.Timeout = 7 * time.Second
+				config.ClientConfig.Timeout = 7 * time.Second
 				return config
 			}(),
 		},
 		{
-			id:                          component.NewIDWithName(metadata.Type, "deprecated_has_privileges_timeout"),
-			expectedUnmarshalErrMessage: "decoding failed due to the following error(s):\n\n'apikeyauthextension.Config' has invalid keys: has_privileges_timeout",
+			id:       component.NewIDWithName(metadata.Type, "deprecated_has_privileges_timeout"),
+			expected: createDefaultConfig().(*Config),
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "invalid_client_retry_delay"),

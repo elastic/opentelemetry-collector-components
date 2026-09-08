@@ -165,13 +165,13 @@ func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, erro
 }
 
 func (a *authenticator) Start(ctx context.Context, host component.Host) error {
-	httpClient, err := a.config.ToClient(ctx, host.GetExtensions(), a.telemetrySettings)
+	httpClient, err := a.config.ClientConfig.ToClient(ctx, host.GetExtensions(), a.telemetrySettings)
 	if err != nil {
 		return err
 	}
 	esRetry := a.config.effectiveElasticsearchRetry()
 	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
-		Addresses: []string{a.config.Endpoint},
+		Addresses: []string{a.config.ClientConfig.Endpoint},
 		Header: map[string][]string{
 			"User-Agent": {a.userAgent},
 		},
@@ -301,8 +301,8 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	req.Request(&hasprivileges.Request{Application: applications})
 	privCtx := ctx
 	cancel := func() {}
-	if a.config.Timeout > 0 {
-		privCtx, cancel = context.WithTimeoutCause(ctx, a.config.Timeout,
+	if a.config.ClientConfig.Timeout > 0 {
+		privCtx, cancel = context.WithTimeoutCause(ctx, a.config.ClientConfig.Timeout,
 			errHasPrivilegesTimeout,
 		)
 	}

@@ -52,7 +52,7 @@ func newExporter(cfg *Config, set exporter.Settings) (*httpExporter, error) {
 }
 
 func (e *httpExporter) start(ctx context.Context, host component.Host) error {
-	client, err := e.config.ToClient(ctx, host.GetExtensions(), e.settings)
+	client, err := e.config.ClientConfig.ToClient(ctx, host.GetExtensions(), e.settings)
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP client: %w", err)
 	}
@@ -66,7 +66,7 @@ func (e *httpExporter) pushLogs(ctx context.Context, ld plog.Logs) error {
 		return nil
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.config.Endpoint, bytes.NewReader(buf.Bytes()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.config.ClientConfig.Endpoint, bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -77,7 +77,7 @@ func (e *httpExporter) pushLogs(ctx context.Context, ld plog.Logs) error {
 
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to POST to %s: %w", e.config.Endpoint, err)
+		return fmt.Errorf("failed to POST to %s: %w", e.config.ClientConfig.Endpoint, err)
 	}
 	defer func() {
 		// Drain body so connections can be reused.
@@ -91,7 +91,7 @@ func (e *httpExporter) pushLogs(ctx context.Context, ld plog.Logs) error {
 		return nil
 	}
 
-	err = fmt.Errorf("POST %s returned status %d", e.config.Endpoint, resp.StatusCode)
+	err = fmt.Errorf("POST %s returned status %d", e.config.ClientConfig.Endpoint, resp.StatusCode)
 	// 5xx and 429 are typically transient; other 4xx (auth, bad request) are not.
 	if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
 		return err

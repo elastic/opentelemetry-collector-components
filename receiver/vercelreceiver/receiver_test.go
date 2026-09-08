@@ -42,7 +42,7 @@ import (
 func TestFactorySharesReceiver(t *testing.T) {
 	endpoint := freeEndpoint(t)
 	cfg := createDefaultConfig().(*Config)
-	cfg.NetAddr.Endpoint = endpoint
+	cfg.ServerConfig.NetAddr.Endpoint = endpoint
 	cfg.Encoding.Extension = component.MustNewID("vercel")
 
 	factory := NewFactory()
@@ -118,7 +118,7 @@ func TestRouteAcceptsPost(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := createDefaultConfig().(*Config)
-			cfg.NetAddr.Endpoint = "localhost:0"
+			cfg.ServerConfig.NetAddr.Endpoint = "localhost:0"
 			cfg.Encoding.Extension = component.MustNewID("vercel")
 
 			logsSink := &consumertest.LogsSink{}
@@ -168,7 +168,7 @@ func TestRouteRequiresConsumer(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := createDefaultConfig().(*Config)
-			cfg.NetAddr.Endpoint = "localhost:0"
+			cfg.ServerConfig.NetAddr.Endpoint = "localhost:0"
 			cfg.Route = "/vercel"
 			cfg.Encoding.Extension = component.MustNewID("vercel")
 
@@ -265,7 +265,7 @@ func TestRouteReturnsErrors(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := createDefaultConfig().(*Config)
-			cfg.NetAddr.Endpoint = "localhost:0"
+			cfg.ServerConfig.NetAddr.Endpoint = "localhost:0"
 			cfg.Encoding.Extension = component.MustNewID("vercel")
 
 			rcvr := newReceiver(
@@ -292,7 +292,7 @@ func TestRouteReturnsErrors(t *testing.T) {
 
 func TestStartRequiresVercelEncoding(t *testing.T) {
 	cfg := createDefaultConfig().(*Config)
-	cfg.NetAddr.Endpoint = "localhost:0"
+	cfg.ServerConfig.NetAddr.Endpoint = "localhost:0"
 	cfg.Encoding.Extension = component.MustNewID("vercel")
 
 	cases := []struct {

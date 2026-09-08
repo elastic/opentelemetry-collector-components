@@ -37,7 +37,7 @@ var defaultElasticsearchRetryConfig = RetryConfig{
 type Config struct {
 	// ClientConfig configures the outbound Elasticsearch HTTP client.
 	// In this extension, timeout > 0 bounds the privilege-check request.
-	confighttp.ClientConfig `mapstructure:",squash"`
+	ClientConfig confighttp.ClientConfig `mapstructure:",squash"`
 
 	// ApplicationPrivileges defines the application privileges
 	// that are queried when verifying API Keys.
