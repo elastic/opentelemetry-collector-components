@@ -220,7 +220,7 @@ func (a *authenticator) Shutdown(ctx context.Context) error {
 }
 
 // parseAuthorizationHeader checks that the Authorization header follows the expected format,
-// and returns the full header value, and the API Key ID.
+// and returns the canonical header value and the API Key ID.
 func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (string, string, error) {
 	orig, ok := getHeader(headers, authorizationHeader, lowerAuthorizationHeader)
 	if !ok {
@@ -246,7 +246,10 @@ func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (s
 		return "", "", errAuthorizationHeaderInvalid
 	}
 
-	return orig, id, nil
+	// Normalize equivalent representations before forwarding the header and deriving
+	// the cache fingerprint. Otherwise, scheme casing is mistaken for a colliding
+	// API key secret when another representation has already populated the cache.
+	return "ApiKey " + base64.StdEncoding.EncodeToString(decoded), id, nil
 }
 
 func getHeader(headers map[string][]string, titlecase, lowercase string) (string, bool) {
