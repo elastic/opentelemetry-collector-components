@@ -248,6 +248,60 @@ func TestAuthenticator_ApplicationPrivileges(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAuthenticator_CanonicalizesAuthorizationScheme(t *testing.T) {
+	encoded := base64.StdEncoding.EncodeToString([]byte("id:secret"))
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "ApiKey "+encoded, r.Header.Get("Authorization"))
+		newCannedHasPrivilegesHandler(successfulResponse).ServeHTTP(w, r)
+	})
+	authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+
+	_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+		"Authorization": {"APIKey " + encoded},
+	})
+	require.NoError(t, err)
+}
+
+func TestAuthenticator_CachingIgnoresAuthorizationSchemeCase(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		firstScheme  string
+		secondScheme string
+	}{
+		{
+			name:         "APIKey_then_ApiKey",
+			firstScheme:  "APIKey",
+			secondScheme: "ApiKey",
+		},
+		{
+			name:         "ApiKey_then_APIKey",
+			firstScheme:  "ApiKey",
+			secondScheme: "APIKey",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				newCannedHasPrivilegesHandler(successfulResponse).ServeHTTP(w, r)
+			})
+			authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+			encoded := base64.StdEncoding.EncodeToString([]byte("id:secret"))
+
+			_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {tc.firstScheme + " " + encoded},
+			})
+			require.NoError(t, err)
+
+			_, err = authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {tc.secondScheme + " " + encoded},
+			})
+			require.NoError(t, err)
+			assert.Equal(t, 1, calls, "equivalent authorization schemes should share a cache entry")
+		})
+	}
+}
+
 func TestAuthenticator_Caching(t *testing.T) {
 	var calls int
 	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
