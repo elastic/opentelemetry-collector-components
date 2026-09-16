@@ -7,7 +7,7 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.7
 	github.com/elastic/go-freelru v0.16.0
 	github.com/elastic/opentelemetry-collector-components/internal/testutil v0.0.0-20250613082151-282de5af1c9b
-	github.com/elastic/opentelemetry-lib v0.46.0
+	github.com/elastic/opentelemetry-lib v0.47.0
 	github.com/stretchr/testify v1.12.1
 	github.com/testcontainers/testcontainers-go v0.44.0
 	go.opentelemetry.io/collector/component v1.67.0
