@@ -265,7 +265,7 @@ func (r *router[C]) Process(ctx context.Context) C {
 
 func (r *router[C]) matchStaticRoute(ctx context.Context) (C, bool) {
 	for _, sr := range r.staticRoutes {
-		tCtx := ottlotelcol.NewTransformContextPtr()
+		tCtx := ottlotelcol.NewTransformContext()
 		match, err := sr.conditions.Eval(ctx, tCtx)
 		tCtx.Close()
 		if err != nil {

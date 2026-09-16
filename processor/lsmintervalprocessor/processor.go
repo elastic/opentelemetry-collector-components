@@ -555,7 +555,7 @@ func (p *Processor) exportForInterval(
 					for k := 0; k < metrics.Len(); k++ {
 						metric := metrics.At(k)
 						executeTransform := func(dp any) {
-							dCtx := ottldatapoint.NewTransformContextPtr(res, scope, metric, dp)
+							dCtx := ottldatapoint.NewTransformContext(res, scope, metric, dp)
 							defer dCtx.Close()
 							if err := ivl.Statements.Execute(exportCtx, dCtx); err != nil {
 								errs = append(errs, fmt.Errorf("failed to execute ottl statement for interval %s: %w", ivl.Duration, err))
