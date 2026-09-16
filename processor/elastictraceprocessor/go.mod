@@ -35,19 +35,19 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.161.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.161.0 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/ua-parser/uap-go v0.0.0-20250213224047-9c035f085b90 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/collector/client v1.67.0 // indirect
-	go.opentelemetry.io/collector/component/componentstatus v0.161.0
-	go.opentelemetry.io/collector/consumer/xconsumer v0.161.0
+	go.opentelemetry.io/collector/component/componentstatus v0.161.0 // indirect
+	go.opentelemetry.io/collector/consumer/xconsumer v0.161.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.67.0 // indirect
-	go.opentelemetry.io/collector/internal/componentalias v0.161.0
-	go.opentelemetry.io/collector/pdata/pprofile v0.161.0
-	go.opentelemetry.io/collector/pdata/testdata v0.161.0
+	go.opentelemetry.io/collector/internal/componentalias v0.161.0 // indirect
+	go.opentelemetry.io/collector/pdata/pprofile v0.161.0 // indirect
+	go.opentelemetry.io/collector/pdata/testdata v0.161.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.67.0 // indirect
-	go.opentelemetry.io/collector/processor/xprocessor v0.161.0
+	go.opentelemetry.io/collector/processor/xprocessor v0.161.0 // indirect
 	go.opentelemetry.io/otel v1.46.0 // indirect
 	go.opentelemetry.io/otel/metric v1.46.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.46.0 // indirect

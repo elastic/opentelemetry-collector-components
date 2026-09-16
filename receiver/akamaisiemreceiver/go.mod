@@ -56,16 +56,16 @@ require (
 	go.opentelemetry.io/collector/config/configmiddleware v1.67.0 // indirect
 	go.opentelemetry.io/collector/config/confignet v1.67.0 // indirect
 	go.opentelemetry.io/collector/config/configtls v1.67.0 // indirect
-	go.opentelemetry.io/collector/consumer/consumererror v0.161.0
-	go.opentelemetry.io/collector/consumer/xconsumer v0.161.0
+	go.opentelemetry.io/collector/consumer/consumererror v0.161.0 // indirect
+	go.opentelemetry.io/collector/consumer/xconsumer v0.161.0 // indirect
 	go.opentelemetry.io/collector/extension v1.67.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionauth v1.67.0 // indirect
-	go.opentelemetry.io/collector/extension/extensionmiddleware v0.161.0
+	go.opentelemetry.io/collector/extension/extensionmiddleware v0.161.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.67.0 // indirect
-	go.opentelemetry.io/collector/internal/componentalias v0.161.0
-	go.opentelemetry.io/collector/pdata/pprofile v0.161.0
+	go.opentelemetry.io/collector/internal/componentalias v0.161.0 // indirect
+	go.opentelemetry.io/collector/pdata/pprofile v0.161.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.67.0 // indirect
-	go.opentelemetry.io/collector/receiver/xreceiver v0.161.0
+	go.opentelemetry.io/collector/receiver/xreceiver v0.161.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect

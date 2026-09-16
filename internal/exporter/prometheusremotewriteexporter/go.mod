@@ -94,7 +94,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/prometheus/client_golang v1.24.1 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.70.1 // indirect
+	github.com/prometheus/common v0.71.0 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/prometheus/sigv4 v0.4.1 // indirect
 	github.com/rs/cors v1.11.1 // indirect
@@ -112,20 +112,20 @@ require (
 	go.opentelemetry.io/collector/config/configtls v1.67.0 // indirect
 	go.opentelemetry.io/collector/confmap v1.67.0 // indirect
 	go.opentelemetry.io/collector/consumer v1.67.0 // indirect
-	go.opentelemetry.io/collector/consumer/consumertest v0.161.0
-	go.opentelemetry.io/collector/consumer/xconsumer v0.161.0
+	go.opentelemetry.io/collector/consumer/consumertest v0.161.0 // indirect
+	go.opentelemetry.io/collector/consumer/xconsumer v0.161.0 // indirect
 	go.opentelemetry.io/collector/extension v1.67.0 // indirect
 	go.opentelemetry.io/collector/extension/extensionauth v1.67.0 // indirect
-	go.opentelemetry.io/collector/extension/extensionmiddleware v0.161.0
-	go.opentelemetry.io/collector/extension/xextension v0.161.0
-	go.opentelemetry.io/collector/internal/componentalias v0.161.0
-	go.opentelemetry.io/collector/pdata/pprofile v0.161.0
-	go.opentelemetry.io/collector/pdata/xpdata v0.161.0
+	go.opentelemetry.io/collector/extension/extensionmiddleware v0.161.0 // indirect
+	go.opentelemetry.io/collector/extension/xextension v0.161.0 // indirect
+	go.opentelemetry.io/collector/internal/componentalias v0.161.0 // indirect
+	go.opentelemetry.io/collector/pdata/pprofile v0.161.0 // indirect
+	go.opentelemetry.io/collector/pdata/xpdata v0.161.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.67.0 // indirect
-	go.opentelemetry.io/collector/pipeline/xpipeline v0.161.0
+	go.opentelemetry.io/collector/pipeline/xpipeline v0.161.0 // indirect
 	go.opentelemetry.io/collector/receiver v1.67.0 // indirect
-	go.opentelemetry.io/collector/receiver/receivertest v0.161.0
-	go.opentelemetry.io/collector/receiver/xreceiver v0.161.0
+	go.opentelemetry.io/collector/receiver/receivertest v0.161.0 // indirect
+	go.opentelemetry.io/collector/receiver/xreceiver v0.161.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.46.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
