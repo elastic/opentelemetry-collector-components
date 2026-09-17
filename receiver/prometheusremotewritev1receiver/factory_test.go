@@ -22,14 +22,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 )
 
-func TestCreateDefaultConfigKeepAlivesEnabled(t *testing.T) {
+func TestCreateDefaultConfig(t *testing.T) {
+	want := confighttp.NewDefaultServerConfig() // NewDefaultServerConfig() sets KeepAlivesEnabled: true
+	want.NetAddr = confignet.AddrConfig{
+		Endpoint:  "localhost:9090",
+		Transport: confignet.TransportTypeTCP,
+	}
+
 	cfg, ok := NewFactory().CreateDefaultConfig().(*Config)
 	require.True(t, ok)
-
-	assert.True(t, cfg.ServerConfig.KeepAlivesEnabled, "default ServerConfig must enable HTTP keep-alives")
-	assert.Equal(t, "localhost:9090", cfg.ServerConfig.NetAddr.Endpoint)
-	assert.Equal(t, confignet.TransportTypeTCP, cfg.ServerConfig.NetAddr.Transport)
+	assert.Equal(t, want, cfg.ServerConfig)
 }
