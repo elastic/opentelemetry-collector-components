@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/connector/dynamicro
 go 1.26.0
 
 require (
-	github.com/axiomhq/hyperloglog v0.2.6
+	github.com/axiomhq/hyperloglog v0.3.0
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/jellydator/ttlcache/v3 v3.4.1
