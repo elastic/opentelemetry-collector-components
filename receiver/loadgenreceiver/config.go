@@ -107,6 +107,38 @@ type TracesConfig struct {
 	JsonlFile `mapstructure:",squash"`
 
 	SignalConfig `mapstructure:",squash"`
+
+	// RewriteIDs rewrites trace and span IDs on every replay pass so that each
+	// pass over the input file produces unique trace IDs with an identical
+	// statistical shape. IDs are remapped deterministically per pass: spans
+	// sharing a trace ID keep sharing one, and parent-child span ID links are
+	// preserved. Without this, replaying a file re-sends the same trace IDs,
+	// which tail-based sampling backends treat as late spans of already-decided
+	// traces instead of new traces.
+	RewriteIDs bool `mapstructure:"rewrite_ids"`
+
+	// LateSpans holds back spans from emitted traces and re-emits them after a
+	// wall-clock delay, to exercise tail-based sampling late-arrival paths
+	// (partial trace at decision time, decision cache hits, re-decisions after
+	// cache eviction).
+	LateSpans *LateSpansConfig `mapstructure:"late_spans"`
+}
+
+// LateSpansConfig configures delayed re-emission of spans held back from
+// generated traces.
+type LateSpansConfig struct {
+	// Fraction is the probability in [0, 1] that spans are held back from an
+	// emitted payload.
+	Fraction float64 `mapstructure:"fraction"`
+
+	// Spans is the maximum number of spans held back per selected payload.
+	// Defaults to 1.
+	Spans int `mapstructure:"spans"`
+
+	// DelayMin and DelayMax bound the uniform random delay after which the
+	// held spans are emitted.
+	DelayMin time.Duration `mapstructure:"delay_min"`
+	DelayMax time.Duration `mapstructure:"delay_max"`
 }
 
 type ProfilesConfig struct {
@@ -189,6 +221,20 @@ func (cfg *Config) Validate() error {
 	err = validateSignal(cfg.Traces.SignalConfig, cfg.Traces.JsonlFile)
 	if err != nil {
 		return fmt.Errorf("traces::%w", err)
+	}
+	if ls := cfg.Traces.LateSpans; ls != nil {
+		if ls.Fraction < 0 || ls.Fraction > 1 {
+			return fmt.Errorf("traces::late_spans::fraction must be in [0, 1]")
+		}
+		if ls.Spans < 0 {
+			return fmt.Errorf("traces::late_spans::spans must be >= 0")
+		}
+		if ls.DelayMin < 0 {
+			return fmt.Errorf("traces::late_spans::delay_min must be >= 0")
+		}
+		if ls.DelayMax < ls.DelayMin {
+			return fmt.Errorf("traces::late_spans::delay_max must be >= delay_min")
+		}
 	}
 
 	err = validateSignal(cfg.Profiles.SignalConfig, cfg.Profiles.JsonlFile)

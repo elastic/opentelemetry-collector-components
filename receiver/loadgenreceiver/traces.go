@@ -21,9 +21,12 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/binary"
 	"errors"
 	"io"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -45,6 +48,10 @@ type tracesGenerator struct {
 	logger *zap.Logger
 
 	samples *list.LoopingList[ptrace.Traces]
+
+	// idSeed salts the per-pass trace/span ID rewrite so that separate
+	// generator runs replaying the same file also produce distinct IDs.
+	idSeed uint64
 
 	stats   Stats
 	statsMu sync.Mutex
@@ -105,6 +112,7 @@ func createTracesReceiver(
 		logger:   set.Logger,
 		consumer: consumer,
 		samples:  list.NewLoopingList(items, genConfig.Traces.MaxReplay),
+		idSeed:   rand.Uint64(),
 	}, nil
 }
 
@@ -134,20 +142,20 @@ func (ar *tracesGenerator) Start(ctx context.Context, _ component.Host) error {
 				if errors.Is(err, list.ErrLoopLimitReached) {
 					return
 				}
+				late, hasLate := ar.splitLateSpans(next)
 				// For graceful shutdown, use ctx instead of startCtx to shield Consume* from context canceled
 				// In other words, Consume* will finish at its own pace, which may take indefinitely long.
-				recordCount := next.SpanCount()
-				if err := ar.consumer.ConsumeTraces(ctx, next); err != nil {
-					ar.logger.Error(err.Error())
-					ar.statsMu.Lock()
-					ar.stats.FailedRequests++
-					ar.stats.FailedSpans += recordCount
-					ar.statsMu.Unlock()
-				} else {
-					ar.statsMu.Lock()
-					ar.stats.Requests++
-					ar.stats.Spans += recordCount
-					ar.statsMu.Unlock()
+				ar.consume(ctx, next)
+				if hasLate {
+					ar.inflightConcurrency.Add(1)
+					go func() {
+						defer ar.inflightConcurrency.Done()
+						ls := ar.cfg.Traces.LateSpans
+						// Emit only if the delay elapses before shutdown.
+						if waitJitter(startCtx, &JitterRange{Min: ls.DelayMin, Max: ls.DelayMax}) {
+							ar.consume(ctx, late)
+						}
+					}()
 				}
 				if !waitJitter(startCtx, ar.cfg.Traces.Jitter) {
 					return
@@ -173,11 +181,24 @@ func (ar *tracesGenerator) Shutdown(context.Context) error {
 }
 
 func (ar *tracesGenerator) nextTraces(next ptrace.Traces) error {
-	sample, err := ar.samples.Next()
+	sample, loop, err := ar.samples.NextLoop()
 	if err != nil {
 		return err
 	}
 	sample.CopyTo(next)
+
+	var idSalt [16]byte
+	if ar.cfg.Traces.RewriteIDs {
+		// The salt is deterministic per (seed, loop pass): spans of one trace
+		// remain grouped even across payloads within a pass, while every pass
+		// yields globally new IDs. IDs are remapped by hashing salt+original
+		// ID rather than XOR: hashing yields uniformly distributed IDs even
+		// from low-entropy originals (e.g. counter-based corpus IDs), which
+		// hash-based tail samplers such as the probabilistic tail_sampling
+		// policy depend on.
+		binary.LittleEndian.PutUint64(idSalt[:8], ar.idSeed)
+		binary.LittleEndian.PutUint64(idSalt[8:], uint64(loop))
+	}
 
 	rm := next.ResourceSpans()
 	for i := 0; i < rm.Len(); i++ {
@@ -189,9 +210,116 @@ func (ar *tracesGenerator) nextTraces(next ptrace.Traces) error {
 				duration := time.Duration(sspan.EndTimestamp() - sspan.StartTimestamp())
 				sspan.SetEndTimestamp(pcommon.NewTimestampFromTime(now))
 				sspan.SetStartTimestamp(pcommon.NewTimestampFromTime(now.Add(-duration)))
+
+				if ar.cfg.Traces.RewriteIDs {
+					sspan.SetTraceID(remapTraceID(sspan.TraceID(), idSalt))
+					sspan.SetSpanID(remapSpanID(sspan.SpanID(), idSalt))
+					sspan.SetParentSpanID(remapSpanID(sspan.ParentSpanID(), idSalt))
+					for l := 0; l < sspan.Links().Len(); l++ {
+						link := sspan.Links().At(l)
+						link.SetTraceID(remapTraceID(link.TraceID(), idSalt))
+						link.SetSpanID(remapSpanID(link.SpanID(), idSalt))
+					}
+				}
 			}
 		}
 	}
 
 	return nil
+}
+
+// remapTraceID remaps a trace ID to SHA-256(salt, id). Empty (all-zero) IDs
+// stay empty as they mark the absence of an ID.
+func remapTraceID(id pcommon.TraceID, salt [16]byte) pcommon.TraceID {
+	if id.IsEmpty() {
+		return id
+	}
+	sum := sha256.Sum256(append(salt[:], id[:]...))
+	copy(id[:], sum[:])
+	return id
+}
+
+// remapSpanID remaps a span ID to SHA-256(salt, id). Empty (all-zero) IDs stay
+// empty: an empty parent span ID marks a root span.
+func remapSpanID(id pcommon.SpanID, salt [16]byte) pcommon.SpanID {
+	if id.IsEmpty() {
+		return id
+	}
+	sum := sha256.Sum256(append(salt[:], id[:]...))
+	copy(id[:], sum[:])
+	return id
+}
+
+// splitLateSpans moves up to cfg.Traces.LateSpans.Spans spans from the tail of
+// next into a separately owned payload for delayed emission. It must run after
+// nextTraces (so held spans carry the rewritten IDs) and before next is handed
+// to the consumer.
+func (ar *tracesGenerator) splitLateSpans(next ptrace.Traces) (ptrace.Traces, bool) {
+	ls := ar.cfg.Traces.LateSpans
+	if ls == nil || rand.Float64() >= ls.Fraction {
+		return ptrace.Traces{}, false
+	}
+	maxHeld := ls.Spans
+	if maxHeld <= 0 {
+		maxHeld = 1
+	}
+	if next.SpanCount() <= maxHeld {
+		// Holding back the whole payload would just delay it, not make spans
+		// late relative to their trace.
+		return ptrace.Traces{}, false
+	}
+
+	late := ptrace.NewTraces()
+	held := 0
+	rm := next.ResourceSpans()
+	for i := rm.Len() - 1; i >= 0 && held < maxHeld; i-- {
+		rs := rm.At(i)
+		var lateRS ptrace.ResourceSpans
+		hasLateRS := false
+		for j := rs.ScopeSpans().Len() - 1; j >= 0 && held < maxHeld; j-- {
+			ss := rs.ScopeSpans().At(j)
+			spans := ss.Spans()
+			n := min(maxHeld-held, spans.Len())
+			if n == 0 {
+				continue
+			}
+			if !hasLateRS {
+				lateRS = late.ResourceSpans().AppendEmpty()
+				rs.Resource().CopyTo(lateRS.Resource())
+				lateRS.SetSchemaUrl(rs.SchemaUrl())
+				hasLateRS = true
+			}
+			lateSS := lateRS.ScopeSpans().AppendEmpty()
+			ss.Scope().CopyTo(lateSS.Scope())
+			lateSS.SetSchemaUrl(ss.SchemaUrl())
+			cut := spans.Len() - n
+			idx := 0
+			spans.RemoveIf(func(s ptrace.Span) bool {
+				idx++
+				if idx <= cut {
+					return false
+				}
+				s.MoveTo(lateSS.Spans().AppendEmpty())
+				return true
+			})
+			held += n
+		}
+	}
+	return late, held > 0
+}
+
+func (ar *tracesGenerator) consume(ctx context.Context, td ptrace.Traces) {
+	recordCount := td.SpanCount()
+	if err := ar.consumer.ConsumeTraces(ctx, td); err != nil {
+		ar.logger.Error(err.Error())
+		ar.statsMu.Lock()
+		ar.stats.FailedRequests++
+		ar.stats.FailedSpans += recordCount
+		ar.statsMu.Unlock()
+	} else {
+		ar.statsMu.Lock()
+		ar.stats.Requests++
+		ar.stats.Spans += recordCount
+		ar.statsMu.Unlock()
+	}
 }
