@@ -169,7 +169,7 @@ func newBenchReceiver(b *testing.B) *elasticAPMIntakeReceiver {
 
 func runHandleStream(b *testing.B, rcv *elasticAPMIntakeReceiver, payload []byte) {
 	b.Helper()
-	ctx := withECSMappingMode(context.Background(), false)
+	ctx := withECSMappingMode(context.Background())
 	consumer := ndjsondecoder.BatchConsumer(func(ctx context.Context, ld *plog.Logs, md *pmetric.Metrics, td *ptrace.Traces) error {
 		return errors.Join(rcv.consumeOTel(ctx, ld, md, td)...)
 	})
@@ -238,7 +238,7 @@ func BenchmarkHandleStreamHTTP(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			rcv := newBenchReceiver(b)
 			handler := rcv.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-				return withECSMappingMode(req.Context(), false)
+				return withECSMappingMode(req.Context())
 			})
 			b.SetBytes(int64(len(payload)))
 			b.ResetTimer()

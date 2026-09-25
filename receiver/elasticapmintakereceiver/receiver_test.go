@@ -712,12 +712,12 @@ func TestMetadataPropagation(t *testing.T) {
 		includeMetadata  bool
 		expectedMetadata client.Metadata
 	}{
-		"when include_metadata is disabled only mappinmapping-mode is propagated": {
+		"when include_metadata is disabled HTTP headers are not copied": {
 			expectedMetadata: client.NewMetadata(map[string][]string{
 				"x-elastic-mapping-mode": {"ecs"},
 			}),
 		},
-		"when include_metadata is enabled all request metadata is propagated": {
+		"when include_metadata is enabled HTTP headers are copied into client metadata": {
 			includeMetadata: true,
 			expectedMetadata: client.NewMetadata(map[string][]string{
 				"content-type":           {"application/x-ndjson"},
@@ -760,6 +760,19 @@ func TestMetadataPropagation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWithECSMappingModePreservesExistingMetadata(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-target-id": {"proj-abc123"},
+		}),
+	})
+
+	got := client.FromContext(withECSMappingMode(ctx))
+
+	require.Equal(t, []string{"proj-abc123"}, got.Metadata.Get("x-elastic-target-id"))
+	require.Equal(t, []string{"ecs"}, got.Metadata.Get("x-elastic-mapping-mode"))
 }
 
 func TestConsumeOTelConsumesSignalsConcurrently(t *testing.T) {
@@ -854,7 +867,7 @@ func TestEventsHandlerUsesConfiguredBatchBytes(t *testing.T) {
 	rcvr.nextTraces = nextTraces
 
 	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), false)
+		return withECSMappingMode(req.Context())
 	})
 	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(payload))
 	rec := httptest.NewRecorder()
@@ -886,7 +899,7 @@ func TestEventsHandlerZeroMaxConcurrentDecodersDisablesLimit(t *testing.T) {
 	rcvr.nextTraces = nextTraces
 
 	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), false)
+		return withECSMappingMode(req.Context())
 	})
 	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1)))
 	rec := httptest.NewRecorder()
@@ -913,7 +926,7 @@ func TestEventsHandler_ContextCanceledWithUnknownRPCError(t *testing.T) {
 
 	rcvr.nextTraces = cancelingUnknownTracesConsumer{cancel: cancelReq}
 	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), false)
+		return withECSMappingMode(req.Context())
 	})
 	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1))).WithContext(reqCtx)
 	rec := httptest.NewRecorder()
