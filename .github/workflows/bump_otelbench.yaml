@@ -57,7 +57,7 @@ jobs:
         with:
           token: ${{ steps.get_token.outputs.token }}
 
-      - uses: elastic/oblt-actions/git/setup@d8162ef6546992b5b3354c825ead9b8582d25132
+      - uses: elastic/oblt-actions/git/setup@645d97cb15a7742c25352c2bd4d1e2ea0590c746
         with:
           github-token: ${{ steps.get_token.outputs.token }}
 
