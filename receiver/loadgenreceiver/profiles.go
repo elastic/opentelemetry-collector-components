@@ -176,7 +176,6 @@ func (ar *profilesGenerator) Shutdown(context.Context) error {
 
 func (ar *profilesGenerator) nextProfiles(next pprofile.Profiles) error {
 	now := pcommon.NewTimestampFromTime(time.Now())
-
 	sample, err := ar.samples.Next()
 	if err != nil {
 		return err
@@ -188,7 +187,15 @@ func (ar *profilesGenerator) nextProfiles(next pprofile.Profiles) error {
 		for j := 0; j < rm.At(i).ScopeProfiles().Len(); j++ {
 			for k := 0; k < rm.At(i).ScopeProfiles().At(j).Profiles().Len(); k++ {
 				profile := rm.At(i).ScopeProfiles().At(j).Profiles().At(k)
+				oldTime := uint64(profile.Time())
 				profile.SetTime(now)
+				// Shift per-sample timestamps by the same delta to keep them within the profile window.
+				for s := 0; s < profile.Samples().Len(); s++ {
+					ts := profile.Samples().At(s).TimestampsUnixNano()
+					for t := 0; t < ts.Len(); t++ {
+						ts.SetAt(t, ts.At(t)-oldTime+uint64(now))
+					}
+				}
 			}
 		}
 	}
