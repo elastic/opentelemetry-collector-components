@@ -72,6 +72,78 @@ type Config struct {
 	// precisions ranging in, say, minutes and milliseconds are merged
 	// together. Defaults to 160.
 	ExponentialHistogramMaxBuckets int `mapstructure:"exponential_histogram_max_buckets"`
+
+	// Storage holds optional tuning options for the embedded Pebble
+	// database. Zero values select the built-in defaults.
+	Storage StorageConfig `mapstructure:"storage"`
+}
+
+const (
+	// DefaultMemTableSize is the default size of a Pebble memtable.
+	DefaultMemTableSize int64 = 32 << 20 // 32MiB
+	// DefaultMemTableStopWritesThreshold is the default number of
+	// memtables at which writes are stopped until a flush completes.
+	DefaultMemTableStopWritesThreshold = 2
+
+	// minMemTableSize is twice the processor's batch commit threshold
+	// (8MiB) so that regular batch commits are never classified as
+	// large batches by Pebble.
+	minMemTableSize int64 = 16 << 20
+	// maxMemTableSize is the upper bound enforced by Pebble.
+	maxMemTableSize int64 = 4<<30 - 1
+)
+
+// StorageConfig tunes the embedded Pebble database. All fields are
+// optional; zero values select the defaults.
+type StorageConfig struct {
+	// MemTableSize is the size in bytes of each Pebble memtable. Larger
+	// memtables combine more merge operands for the same key in a single
+	// flush, which reduces flush CPU and write stalls under sustained
+	// load at the cost of memory. Defaults to 32MiB. When set, it must be
+	// at least 16MiB and less than 4GiB.
+	MemTableSize int64 `mapstructure:"memtable_size"`
+
+	// MemTableStopWritesThreshold is the number of memtables (the active
+	// memtable plus those queued for flushing) at which writes stop until
+	// a flush completes. Raising it absorbs flush latency instead of
+	// stalling ingestion. Peak memtable memory is approximately
+	// MemTableSize * MemTableStopWritesThreshold. Defaults to 2. When
+	// set, it must be at least 2.
+	MemTableStopWritesThreshold int `mapstructure:"memtable_stop_writes_threshold"`
+}
+
+// MemTableSizeOrDefault returns the configured memtable size or the default.
+func (c StorageConfig) MemTableSizeOrDefault() int64 {
+	if c.MemTableSize == 0 {
+		return DefaultMemTableSize
+	}
+	return c.MemTableSize
+}
+
+// MemTableStopWritesThresholdOrDefault returns the configured threshold or
+// the default.
+func (c StorageConfig) MemTableStopWritesThresholdOrDefault() int {
+	if c.MemTableStopWritesThreshold == 0 {
+		return DefaultMemTableStopWritesThreshold
+	}
+	return c.MemTableStopWritesThreshold
+}
+
+// Validate validates the storage configuration.
+func (c StorageConfig) Validate() error {
+	if c.MemTableSize != 0 && (c.MemTableSize < minMemTableSize || c.MemTableSize > maxMemTableSize) {
+		return fmt.Errorf(
+			"invalid value for storage::memtable_size, must be between %d and %d bytes, current: %d",
+			minMemTableSize, maxMemTableSize, c.MemTableSize,
+		)
+	}
+	if c.MemTableStopWritesThreshold != 0 && c.MemTableStopWritesThreshold < 2 {
+		return fmt.Errorf(
+			"invalid value for storage::memtable_stop_writes_threshold, must be at least 2, current: %d",
+			c.MemTableStopWritesThreshold,
+		)
+	}
+	return nil
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -138,7 +210,7 @@ func (cfg *Config) Validate() error {
 			cfg.ExponentialHistogramMaxBuckets,
 		)
 	}
-	return nil
+	return cfg.Storage.Validate()
 }
 
 func CreateDefaultConfig() component.Config {

@@ -39,6 +39,12 @@ By default, aggregated metrics will be exported without any client metadata. It 
 propagate client metadata from input to exported metrics by specifying a list of metadata keys
 in `elasticapm::aggregation::metadata_keys`.
 
+The embedded Pebble database can be tuned with `elasticapm::aggregation::storage`, which accepts
+the same options as the [lsmintervalprocessor](../../processor/lsmintervalprocessor/README.md#storage-tuning):
+- `elasticapm::aggregation::storage::memtable_size`: size in bytes of each memtable (default 32MiB)
+- `elasticapm::aggregation::storage::memtable_stop_writes_threshold`: number of memtables at which
+  writes stop until a flush completes (default 2)
+
 By default, cardinality for aggregated metrics will be limited.
 Each limit defines a `max_cardinality`. There are four limits that can be configured: 
 - `elasticapm::aggregation::limits::resource`: configures the max cardinality of resources

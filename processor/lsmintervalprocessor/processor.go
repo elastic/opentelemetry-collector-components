@@ -45,28 +45,6 @@ import (
 var _ processor.Metrics = (*Processor)(nil)
 
 const (
-	// pebbleMemTableSize defines the max steady state size of a memtable.
-	// There can be more than 1 memtable in memory at a time as it takes
-	// time for old memtable to flush. The memtable size also defines
-	// the size for large batches. A large batch is a batch which will
-	// take atleast half of the memtable size. Note that the Batch#Len
-	// is not the same as the memtable size that the batch will occupy
-	// as data in batches are encoded differently. In general, the
-	// memtable size of the batch will be higher than the length of the
-	// batch data.
-	//
-	// On commit, data in the large batch maybe kept by pebble and thus
-	// large batches will need to be reallocated. Note that large batch
-	// classification uses the memtable size that a batch will occupy
-	// rather than the length of data slice backing the batch.
-	pebbleMemTableSize = 32 << 20 // 32MB
-
-	// pebbleMemTableStopWritesThreshold is the hard limit on the maximum
-	// number of memtables that could be queued before which writes are
-	// stopped. This value should be at least 2 or writes will stop whenever
-	// a MemTable is being flushed.
-	pebbleMemTableStopWritesThreshold = 2
-
 	// dbCommitThresholdBytes is a soft limit and the batch is committed
 	// to the DB as soon as it crosses this threshold. To make sure that
 	// the commit threshold plays well with the max retained batch size
@@ -121,8 +99,26 @@ func newProcessor(
 			cfg.DatapointLimit,
 			cfg.ExponentialHistogramMaxBuckets,
 		),
-		MemTableSize:                pebbleMemTableSize,
-		MemTableStopWritesThreshold: pebbleMemTableStopWritesThreshold,
+		// MemTableSize defines the max steady state size of a memtable.
+		// There can be more than 1 memtable in memory at a time as it
+		// takes time for old memtable to flush. The memtable size also
+		// defines the size for large batches. A large batch is a batch
+		// which will take atleast half of the memtable size. Note that
+		// the Batch#Len is not the same as the memtable size that the
+		// batch will occupy as data in batches are encoded differently.
+		// In general, the memtable size of the batch will be higher than
+		// the length of the batch data.
+		//
+		// On commit, data in the large batch maybe kept by pebble and
+		// thus large batches will need to be reallocated. Note that large
+		// batch classification uses the memtable size that a batch will
+		// occupy rather than the length of data slice backing the batch.
+		MemTableSize: uint64(cfg.Storage.MemTableSizeOrDefault()),
+		// MemTableStopWritesThreshold is the hard limit on the maximum
+		// number of memtables that could be queued before which writes
+		// are stopped. This value should be at least 2 or writes will
+		// stop whenever a MemTable is being flushed.
+		MemTableStopWritesThreshold: cfg.Storage.MemTableStopWritesThresholdOrDefault(),
 	}
 	writeOpts := pebble.Sync
 	dataDir := cfg.Directory
