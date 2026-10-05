@@ -34,6 +34,8 @@ with db-backed persistence so aggregation state can survive restarts and large b
 | `exponential_histogram_max_buckets` | int | `160` | Maximum buckets for merged exponential histograms. |
 | `storage.memtable_size` | int | `33554432` (32MiB) | Size in bytes of each Pebble memtable. Must be between 16MiB and 4GiB. |
 | `storage.memtable_stop_writes_threshold` | int | `2` | Number of memtables (active plus queued for flush) at which writes stop until a flush completes. Must be at least 2. |
+| `storage.sync_writes` | bool | `true` | Whether each batch commit waits for the write-ahead log to be fsynced. Ignored in in-memory mode. |
+| `storage.wal_bytes_per_sync` | int | `0` (disabled) | Sync the write-ahead log in the background every N bytes. Recommended whenever `sync_writes` is `false`. Ignored in in-memory mode. |
 
 `max_cardinality` values of `0` disable overflow tracking for that level.
 
@@ -102,6 +104,29 @@ processors:
     storage:
       memtable_size: 67108864 # 64MiB
       memtable_stop_writes_threshold: 4
+```
+
+#### Write durability
+
+By default, every batch commit waits for the write-ahead log (WAL) to be fsynced. If the data
+directory is ephemeral (for example a Kubernetes `emptyDir`), aggregation state is lost when the
+pod is rescheduled anyway, and `storage.sync_writes: false` removes fsync from the ingestion path.
+Writes since the last sync can then be lost if the node crashes. A process crash doesn't lose them,
+because the WAL is still written to the OS.
+
+Don't disable `sync_writes` on its own. Without syncing, unsynced WAL data accumulates in the OS page
+cache. When the WAL rotates, Pebble syncs all of it in one burst, and it does so while ingestion is
+blocked. On disks with a throughput cap, such as cloud block storage, this can make ingestion slower
+than syncing every commit. Set `storage.wal_bytes_per_sync` (for example 1MiB) so that the WAL is
+synced incrementally in the background:
+
+```yaml
+processors:
+  lsminterval:
+    directory: /var/lib/otel/lsminterval
+    storage:
+      sync_writes: false
+      wal_bytes_per_sync: 1048576 # 1MiB
 ```
 
 ### Overflow handling

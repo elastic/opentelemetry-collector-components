@@ -77,6 +77,31 @@ func TestConfig(t *testing.T) {
 			expectedErrMsg: "invalid value for storage::memtable_stop_writes_threshold",
 		},
 		{
+			name: "negative_wal_bytes_per_sync",
+			input: map[string]any{
+				"storage": map[string]any{"wal_bytes_per_sync": -1},
+			},
+			expectedErrMsg: "invalid value for storage::wal_bytes_per_sync",
+		},
+		{
+			name: "valid_durability",
+			input: map[string]any{
+				"storage": map[string]any{
+					"sync_writes":        false,
+					"wal_bytes_per_sync": 1 << 20,
+				},
+			},
+			expected: func() *Config {
+				cfg := CreateDefaultConfig().(*Config)
+				syncWrites := false
+				cfg.Storage = StorageConfig{
+					SyncWrites:      &syncWrites,
+					WALBytesPerSync: 1 << 20,
+				}
+				return cfg
+			}(),
+		},
+		{
 			name: "valid_storage",
 			input: map[string]any{
 				"storage": map[string]any{
@@ -132,7 +157,11 @@ func TestStorageConfigDefaults(t *testing.T) {
 	assert.Equal(t, DefaultMemTableSize, c.MemTableSizeOrDefault())
 	assert.Equal(t, DefaultMemTableStopWritesThreshold, c.MemTableStopWritesThresholdOrDefault())
 
-	c = StorageConfig{MemTableSize: 128 << 20, MemTableStopWritesThreshold: 4}
+	assert.True(t, c.SyncWritesOrDefault())
+
+	syncWrites := false
+	c = StorageConfig{MemTableSize: 128 << 20, MemTableStopWritesThreshold: 4, SyncWrites: &syncWrites}
+	assert.False(t, c.SyncWritesOrDefault())
 	assert.Equal(t, int64(128<<20), c.MemTableSizeOrDefault())
 	assert.Equal(t, 4, c.MemTableStopWritesThresholdOrDefault())
 }

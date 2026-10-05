@@ -110,6 +110,29 @@ type StorageConfig struct {
 	// MemTableSize * MemTableStopWritesThreshold. Defaults to 2. When
 	// set, it must be at least 2.
 	MemTableStopWritesThreshold int `mapstructure:"memtable_stop_writes_threshold"`
+
+	// SyncWrites controls whether each batch commit waits for the
+	// write-ahead log to be fsynced. Defaults to true. Disabling it
+	// removes fsync from the ingestion path, but writes since the last
+	// sync can be lost if the node crashes, and on disks with a
+	// throughput cap it can increase stalls unless WALBytesPerSync is
+	// also set. Ignored when directory is empty (in-memory mode).
+	SyncWrites *bool `mapstructure:"sync_writes"`
+
+	// WALBytesPerSync makes Pebble sync the write-ahead log in the
+	// background every WALBytesPerSync bytes. This spreads WAL writeback
+	// evenly instead of leaving it for a single large sync when the WAL
+	// rotates. It is mainly useful with SyncWrites disabled. Defaults
+	// to 0 (disabled). Ignored when directory is empty (in-memory mode).
+	WALBytesPerSync int64 `mapstructure:"wal_bytes_per_sync"`
+}
+
+// SyncWritesOrDefault returns whether batch commits should sync the WAL.
+func (c StorageConfig) SyncWritesOrDefault() bool {
+	if c.SyncWrites == nil {
+		return true
+	}
+	return *c.SyncWrites
 }
 
 // MemTableSizeOrDefault returns the configured memtable size or the default.
@@ -135,6 +158,12 @@ func (c StorageConfig) Validate() error {
 		return fmt.Errorf(
 			"invalid value for storage::memtable_size, must be between %d and %d bytes, current: %d",
 			minMemTableSize, maxMemTableSize, c.MemTableSize,
+		)
+	}
+	if c.WALBytesPerSync < 0 {
+		return fmt.Errorf(
+			"invalid value for storage::wal_bytes_per_sync, must not be negative, current: %d",
+			c.WALBytesPerSync,
 		)
 	}
 	if c.MemTableStopWritesThreshold != 0 && c.MemTableStopWritesThreshold < 2 {

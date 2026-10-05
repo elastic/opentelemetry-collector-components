@@ -16,6 +16,8 @@ elasticapm:
     storage:
       memtable_size: 67108864
       memtable_stop_writes_threshold: 4
+      sync_writes: false
+      wal_bytes_per_sync: 1048576
   custom_resource_attributes:
     - res.1
     - res.2

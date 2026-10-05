@@ -44,6 +44,10 @@ the same options as the [lsmintervalprocessor](../../processor/lsmintervalproces
 - `elasticapm::aggregation::storage::memtable_size`: size in bytes of each memtable (default 32MiB)
 - `elasticapm::aggregation::storage::memtable_stop_writes_threshold`: number of memtables at which
   writes stop until a flush completes (default 2)
+- `elasticapm::aggregation::storage::sync_writes`: whether batch commits wait for the WAL to be
+  fsynced (default true)
+- `elasticapm::aggregation::storage::wal_bytes_per_sync`: sync the WAL in the background every N
+  bytes (default 0, disabled); recommended when `sync_writes` is false
 
 By default, cardinality for aggregated metrics will be limited.
 Each limit defines a `max_cardinality`. There are four limits that can be configured: 

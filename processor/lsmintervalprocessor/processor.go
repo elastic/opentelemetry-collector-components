@@ -121,7 +121,16 @@ func newProcessor(
 		MemTableStopWritesThreshold: cfg.Storage.MemTableStopWritesThresholdOrDefault(),
 	}
 	writeOpts := pebble.Sync
+	if !cfg.Storage.SyncWritesOrDefault() {
+		writeOpts = pebble.NoSync
+	}
+	dbOpts.WALBytesPerSync = int(cfg.Storage.WALBytesPerSync)
 	dataDir := cfg.Directory
+	if dataDir != "" && writeOpts == pebble.NoSync && dbOpts.WALBytesPerSync == 0 {
+		log.Warn("storage::sync_writes is disabled without storage::wal_bytes_per_sync; " +
+			"unsynced WAL data is synced in one burst when the WAL rotates, which can " +
+			"increase write stalls on throughput-limited disks")
+	}
 	if dataDir == "" {
 		log.Info("no directory specified, switching to in-memory mode")
 		dbOpts.FS = vfs.NewMem()
