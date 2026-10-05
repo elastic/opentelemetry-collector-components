@@ -42,6 +42,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap/zaptest/observer"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
@@ -367,20 +368,36 @@ func TestStorageOptions(t *testing.T) {
 		storage           config.StorageConfig
 		expectedSize      uint64
 		expectedThreshold int
+		expectedSync      bool
+		expectedWALBPS    int
+		expectedWarning   bool
 	}{
 		{
 			name:              "defaults",
 			expectedSize:      uint64(config.DefaultMemTableSize),
 			expectedThreshold: config.DefaultMemTableStopWritesThreshold,
+			expectedSync:      true,
 		},
 		{
 			name: "configured",
 			storage: config.StorageConfig{
 				MemTableSize:                128 << 20,
 				MemTableStopWritesThreshold: 4,
+				SyncWrites:                  ptr(false),
+				WALBytesPerSync:             1 << 20,
 			},
 			expectedSize:      128 << 20,
 			expectedThreshold: 4,
+			expectedSync:      false,
+			expectedWALBPS:    1 << 20,
+		},
+		{
+			name:              "nosync_without_wal_bytes_per_sync",
+			storage:           config.StorageConfig{SyncWrites: ptr(false)},
+			expectedSize:      uint64(config.DefaultMemTableSize),
+			expectedThreshold: config.DefaultMemTableStopWritesThreshold,
+			expectedSync:      false,
+			expectedWarning:   true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -389,9 +406,12 @@ func TestStorageOptions(t *testing.T) {
 			cfg.Storage = tc.storage
 			require.NoError(t, cfg.Validate())
 
+			core, logs := observer.New(zapcore.WarnLevel)
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.Logger = zap.New(core)
 			p, err := NewFactory().CreateMetrics(
 				context.Background(),
-				processortest.NewNopSettings(metadata.Type),
+				settings,
 				cfg,
 				consumertest.NewNop(),
 			)
@@ -399,6 +419,9 @@ func TestStorageOptions(t *testing.T) {
 			proc := p.(*Processor)
 			assert.Equal(t, tc.expectedSize, proc.dbOpts.MemTableSize)
 			assert.Equal(t, tc.expectedThreshold, proc.dbOpts.MemTableStopWritesThreshold)
+			assert.Equal(t, tc.expectedSync, proc.wOpts.Sync)
+			assert.Equal(t, tc.expectedWALBPS, proc.dbOpts.WALBytesPerSync)
+			assert.Equal(t, tc.expectedWarning, logs.FilterMessageSnippet("wal_bytes_per_sync").Len() > 0)
 
 			// The database must open and close cleanly with the options.
 			require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
@@ -556,6 +579,76 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 				// and only exported on shutdown.
 				assert.NotEmpty(b, allMetrics)
 			}
+		})
+	}
+}
+
+func ptr[T any](v T) *T { return &v }
+
+// BenchmarkAggregationStorage measures on-disk ingestion under different
+// storage options. Results depend heavily on the disk: on local NVMe fsync
+// is cheap, while on throughput-capped cloud block storage disabling
+// sync_writes without wal_bytes_per_sync can be slower than syncing.
+func BenchmarkAggregationStorage(b *testing.B) {
+	for _, tc := range []struct {
+		name    string
+		storage config.StorageConfig
+	}{
+		{name: "default"},
+		{name: "nosync", storage: config.StorageConfig{SyncWrites: ptr(false)}},
+		{name: "nosync_wal_bytes_per_sync_1MiB", storage: config.StorageConfig{
+			SyncWrites:      ptr(false),
+			WALBytesPerSync: 1 << 20,
+		}},
+		{name: "memtable_64MiBx4", storage: config.StorageConfig{
+			MemTableSize:                64 << 20,
+			MemTableStopWritesThreshold: 4,
+		}},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			cfg := &config.Config{
+				Directory: b.TempDir(),
+				Intervals: []config.IntervalConfig{
+					{Duration: time.Minute},
+					{Duration: 10 * time.Minute},
+					{Duration: time.Hour},
+				},
+				MetadataKeys:                   []string{"tenant"},
+				ExponentialHistogramMaxBuckets: 160,
+				Storage:                        tc.storage,
+			}
+			settings := processortest.NewNopSettings(metadata.Type)
+			settings.Logger = zap.NewNop()
+			mgp, err := NewFactory().CreateMetrics(context.Background(), settings, cfg, &consumertest.MetricsSink{})
+			require.NoError(b, err)
+
+			md, err := golden.ReadMetrics(filepath.Join("testdata", "exphistogram_delta", "input.yaml"))
+			require.NoError(b, err)
+			md.MarkReadOnly()
+
+			require.NoError(b, mgp.Start(context.Background(), componenttest.NewNopHost()))
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				mdCopy := pmetric.NewMetrics()
+				md.CopyTo(mdCopy)
+				prefix := fmt.Sprint("rand_", rand.Int())
+				for i := 0; pb.Next(); i++ {
+					// Spread load over a set of tenants and series so that
+					// merges, flushes and WAL writes resemble a multi-tenant
+					// workload.
+					ctx := client.NewContext(context.Background(), client.Info{
+						Metadata: client.NewMetadata(map[string][]string{
+							"tenant": {fmt.Sprint("tenant-", i%64)},
+						}),
+					})
+					mdCopy.ResourceMetrics().At(0).Resource().Attributes().PutStr("asdf", fmt.Sprintf("%s_%d", prefix, i%4096))
+					if err := mgp.ConsumeMetrics(ctx, mdCopy); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+			b.StopTimer()
+			require.NoError(b, mgp.Shutdown(context.Background()))
 		})
 	}
 }

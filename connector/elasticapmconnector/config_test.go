@@ -90,6 +90,8 @@ func TestConfig(t *testing.T) {
 					Storage: lsmconfig.StorageConfig{
 						MemTableSize:                64 << 20,
 						MemTableStopWritesThreshold: 4,
+						SyncWrites:                  func() *bool { b := false; return &b }(),
+						WALBytesPerSync:             1 << 20,
 					},
 				},
 				CustomResourceAttributes: []CustomResourceAttribute{
