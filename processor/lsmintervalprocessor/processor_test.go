@@ -361,6 +361,52 @@ func TestClientMetadata(t *testing.T) {
 	assert.Equal(t, expected, received)
 }
 
+func TestStorageOptions(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		storage           config.StorageConfig
+		expectedSize      uint64
+		expectedThreshold int
+	}{
+		{
+			name:              "defaults",
+			expectedSize:      uint64(config.DefaultMemTableSize),
+			expectedThreshold: config.DefaultMemTableStopWritesThreshold,
+		},
+		{
+			name: "configured",
+			storage: config.StorageConfig{
+				MemTableSize:                128 << 20,
+				MemTableStopWritesThreshold: 4,
+			},
+			expectedSize:      128 << 20,
+			expectedThreshold: 4,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.CreateDefaultConfig().(*config.Config)
+			cfg.Directory = t.TempDir()
+			cfg.Storage = tc.storage
+			require.NoError(t, cfg.Validate())
+
+			p, err := NewFactory().CreateMetrics(
+				context.Background(),
+				processortest.NewNopSettings(metadata.Type),
+				cfg,
+				consumertest.NewNop(),
+			)
+			require.NoError(t, err)
+			proc := p.(*Processor)
+			assert.Equal(t, tc.expectedSize, proc.dbOpts.MemTableSize)
+			assert.Equal(t, tc.expectedThreshold, proc.dbOpts.MemTableStopWritesThreshold)
+
+			// The database must open and close cleanly with the options.
+			require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+			require.NoError(t, p.Shutdown(context.Background()))
+		})
+	}
+}
+
 func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 	t.Parallel()
 

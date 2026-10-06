@@ -30,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
+	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 func TestConfig(t *testing.T) {
@@ -85,6 +86,10 @@ func TestConfig(t *testing.T) {
 						DatapointLimit: LimitConfig{
 							MaxCardinality: 1,
 						},
+					},
+					Storage: lsmconfig.StorageConfig{
+						MemTableSize:                64 << 20,
+						MemTableStopWritesThreshold: 4,
 					},
 				},
 				CustomResourceAttributes: []CustomResourceAttribute{
@@ -165,4 +170,18 @@ func TestCustomResourceAttributeValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAggregationStorageConfig(t *testing.T) {
+	storage := lsmconfig.StorageConfig{
+		MemTableSize:                128 << 20,
+		MemTableStopWritesThreshold: 4,
+	}
+	cfg := Config{Aggregation: &AggregationConfig{Storage: storage}}
+	require.NoError(t, cfg.Validate())
+	assert.Equal(t, storage, cfg.lsmConfig().Storage)
+
+	// Invalid storage options are rejected by the lsmintervalprocessor validation.
+	cfg.Aggregation.Storage.MemTableStopWritesThreshold = 1
+	assert.ErrorContains(t, cfg.Validate(), "storage::memtable_stop_writes_threshold")
 }

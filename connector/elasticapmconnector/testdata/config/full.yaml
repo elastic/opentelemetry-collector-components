@@ -13,6 +13,9 @@ elasticapm:
         max_cardinality: 1
       datapoint:
         max_cardinality: 1
+    storage:
+      memtable_size: 67108864
+      memtable_stop_writes_threshold: 4
   custom_resource_attributes:
     - res.1
     - res.2

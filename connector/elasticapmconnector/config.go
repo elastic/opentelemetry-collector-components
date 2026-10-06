@@ -123,6 +123,11 @@ type AggregationConfig struct {
 	// aggregation interval. Available OTTL paths: ottldatapoint context.
 	// Client metadata is accessible via otelcol.client.metadata["key"].
 	Statements []string `mapstructure:"statements"`
+
+	// Storage holds optional tuning options for the embedded Pebble
+	// database that stores aggregation state. Zero values select the
+	// defaults. See the lsmintervalprocessor documentation for details.
+	Storage lsmconfig.StorageConfig `mapstructure:"storage"`
 }
 
 type AggregationLimitConfig struct {
@@ -190,6 +195,7 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 	if cfg.Aggregation != nil {
 		lsmConfig.Directory = cfg.Aggregation.Directory
 		lsmConfig.MetadataKeys = cfg.Aggregation.MetadataKeys
+		lsmConfig.Storage = cfg.Aggregation.Storage
 		lsmConfig.ResourceLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limits.ResourceLimit.MaxCardinality,
 			Overflow: lsmconfig.OverflowConfig{
