@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/beatsenco
 go 1.26.0
 
 require (
-	github.com/goccy/go-json v0.11.0
+	github.com/goccy/go-json v0.11.2
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.161.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.161.0
