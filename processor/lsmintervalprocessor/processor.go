@@ -123,6 +123,7 @@ func newProcessor(
 		),
 		MemTableSize:                pebbleMemTableSize,
 		MemTableStopWritesThreshold: pebbleMemTableStopWritesThreshold,
+		EventListener:               newWriteStallListener(telemetryBuilder),
 	}
 	writeOpts := pebble.Sync
 	dataDir := cfg.Directory
@@ -640,6 +641,39 @@ func (p *Processor) exportForInterval(
 		return exportedDPCount, errors.Join(errs...)
 	}
 	return exportedDPCount, nil
+}
+
+// newWriteStallListener returns a pebble event listener that records write
+// stalls as metrics. Pebble does not log write stalls unless a listener is
+// installed, so without this they are invisible.
+func newWriteStallListener(tb *metadata.TelemetryBuilder) *pebble.EventListener {
+	// Pebble invokes WriteStallBegin and WriteStallEnd in pairs and never
+	// concurrently, but the end callback does not carry the reason.
+	var (
+		mu      sync.Mutex
+		reason  string
+		started time.Time
+	)
+	return &pebble.EventListener{
+		WriteStallBegin: func(info pebble.WriteStallBeginInfo) {
+			mu.Lock()
+			reason, started = info.Reason, time.Now()
+			mu.Unlock()
+			tb.LsmintervalPebbleWriteStalls.Add(
+				context.Background(), 1,
+				metric.WithAttributes(attribute.String("reason", info.Reason)),
+			)
+		},
+		WriteStallEnd: func() {
+			mu.Lock()
+			r, d := reason, time.Since(started)
+			mu.Unlock()
+			tb.LsmintervalPebbleWriteStallDuration.Add(
+				context.Background(), d.Seconds(),
+				metric.WithAttributes(attribute.String("reason", r)),
+			)
+		},
+	}
 }
 
 func (p *Processor) registerPebbleMetrics() error {

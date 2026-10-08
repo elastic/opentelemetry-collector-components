@@ -96,6 +96,8 @@ func TestSetupTelemetry(t *testing.T) {
 	tb.LsmintervalExportedBytes.Add(context.Background(), 1)
 	tb.LsmintervalExportedDataPoints.Add(context.Background(), 1)
 	tb.LsmintervalOverflow.Add(context.Background(), 1)
+	tb.LsmintervalPebbleWriteStallDuration.Add(context.Background(), 1)
+	tb.LsmintervalPebbleWriteStalls.Add(context.Background(), 1)
 	tb.LsmintervalProcessedBytes.Add(context.Background(), 1)
 	tb.LsmintervalProcessedDataPoints.Add(context.Background(), 1)
 	AssertEqualLsmintervalExportedBytes(t, testTel,
@@ -147,6 +149,12 @@ func TestSetupTelemetry(t *testing.T) {
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualLsmintervalPebbleTotalMemtableSize(t, testTel,
+		[]metricdata.DataPoint[int64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualLsmintervalPebbleWriteStallDuration(t, testTel,
+		[]metricdata.DataPoint[float64]{{Value: 1}},
+		metricdatatest.IgnoreTimestamp())
+	AssertEqualLsmintervalPebbleWriteStalls(t, testTel,
 		[]metricdata.DataPoint[int64]{{Value: 1}},
 		metricdatatest.IgnoreTimestamp())
 	AssertEqualLsmintervalProcessedBytes(t, testTel,

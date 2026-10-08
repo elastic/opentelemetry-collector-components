@@ -62,6 +62,8 @@ type TelemetryBuilder struct {
 	LsmintervalPebbleSstables                 metric.Int64ObservableGauge
 	LsmintervalPebbleTotalDiskUsage           metric.Int64ObservableGauge
 	LsmintervalPebbleTotalMemtableSize        metric.Int64ObservableGauge
+	LsmintervalPebbleWriteStallDuration       metric.Float64Counter
+	LsmintervalPebbleWriteStalls              metric.Int64Counter
 	LsmintervalProcessedBytes                 metric.Int64Counter
 	LsmintervalProcessedDataPoints            metric.Int64Counter
 }
@@ -415,6 +417,18 @@ func NewTelemetryBuilder(settings component.TelemetrySettings, options ...Teleme
 		"otelcol_lsminterval.pebble_total_memtable_size",
 		metric.WithDescription("The current size in bytes of pebble memtable. [Development]"),
 		metric.WithUnit("By"),
+	)
+	errs = errors.Join(errs, err)
+	builder.LsmintervalPebbleWriteStallDuration, err = builder.meter.Float64Counter(
+		"otelcol_lsminterval.pebble_write_stall_duration",
+		metric.WithDescription("The total time in seconds that pebble stalled writes. [Development]"),
+		metric.WithUnit("s"),
+	)
+	errs = errors.Join(errs, err)
+	builder.LsmintervalPebbleWriteStalls, err = builder.meter.Int64Counter(
+		"otelcol_lsminterval.pebble_write_stalls",
+		metric.WithDescription("The number of times pebble stalled writes, for example because it reached the memtable count limit. [Development]"),
+		metric.WithUnit("1"),
 	)
 	errs = errors.Join(errs, err)
 	builder.LsmintervalProcessedBytes, err = builder.meter.Int64Counter(
