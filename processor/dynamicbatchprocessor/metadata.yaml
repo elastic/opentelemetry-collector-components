@@ -1,0 +1,10 @@
+type: dynamicbatch
+scope_name: github.com/elastic/opentelemetry-collector-components/processor/dynamicbatchprocessor
+
+status:
+  class: processor
+  stability:
+    development: [traces, metrics, logs]
+  distributions: []
+  codeowners:
+    active: []
