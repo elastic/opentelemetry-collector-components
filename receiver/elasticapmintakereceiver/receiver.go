@@ -241,44 +241,60 @@ func (r *elasticAPMIntakeReceiver) newElasticAPMEventsHandler(ctxFunc func(*http
 }
 
 // intakeStatusCodeFromErr maps a processing error to an HTTP status code.
-// Context outcomes are evaluated after invalid-input detection so cancellation
-// and deadline semantics can take precedence in the final mapping.
+// Cancellation and deadline outcomes take precedence over invalid-input
+// detection; other gRPC status codes from downstream consumers are mapped
+// the same way as the OTLP HTTP receiver.
 func intakeStatusCodeFromErr(err error, isRequestContextErr bool) int {
-	code := http.StatusInternalServerError
+	code := grpcCodeFromErr(err)
+	if code == codes.Canceled && isRequestContextErr {
+		return statusClientClosed
+	}
+	if code == codes.Canceled || code == codes.DeadlineExceeded {
+		return http.StatusServiceUnavailable
+	}
 
 	var jsonErr ndjsondecoder.JSONDecodeError
 	var validErr ndjsondecoder.ValidationError
 	if errors.As(err, &jsonErr) || errors.As(err, &validErr) {
-		code = http.StatusBadRequest
-	} else if errors.Is(err, ndjsondecoder.ErrLineTooLong) {
-		code = http.StatusRequestEntityTooLarge
+		return http.StatusBadRequest
 	}
-
-	// Evaluate final context/grpc outcome here (instead of early-returning above)
-	// so request cancellation/deadline can override a provisional invalid-input
-	// status when both signals are present.
-	switch contextCodeFromErr(err) {
-	case codes.Canceled:
-		if isRequestContextErr {
-			return statusClientClosed
-		}
-		return http.StatusServiceUnavailable
-	case codes.DeadlineExceeded:
-		return http.StatusServiceUnavailable
+	if errors.Is(err, ndjsondecoder.ErrLineTooLong) {
+		return http.StatusRequestEntityTooLarge
 	}
-	return code
+	return httpStatusFromGRPCCode(code)
 }
 
-func contextCodeFromErr(err error) codes.Code {
-	// Handles context errors and wrapped context errors.
-	if contextCode := grpcstatus.FromContextError(err).Code(); contextCode == codes.Canceled || contextCode == codes.DeadlineExceeded {
+// grpcCodeFromErr returns the gRPC code carried by err. Context errors,
+// including wrapped ones, map to Canceled or DeadlineExceeded.
+// For errors joined by the batch consumer (one per signal from consumeOTel),
+// this returns the code of the first gRPC status found, not the most severe.
+func grpcCodeFromErr(err error) codes.Code {
+	contextCode := grpcstatus.FromContextError(err).Code()
+	if contextCode == codes.Canceled || contextCode == codes.DeadlineExceeded {
 		return contextCode
 	}
-	// Handles canonical gRPC status errors.
-	if grpcCode := grpcstatus.Code(err); grpcCode == codes.Canceled || grpcCode == codes.DeadlineExceeded {
-		return grpcCode
+	return grpcstatus.Code(err)
+}
+
+// httpStatusFromGRPCCode mirrors GetHTTPStatusCodeFromStatus in the OTLP
+// receiver's internal errors package.
+func httpStatusFromGRPCCode(c codes.Code) int {
+	switch c {
+	case codes.Canceled, codes.DeadlineExceeded, codes.Aborted, codes.OutOfRange, codes.Unavailable, codes.DataLoss:
+		return http.StatusServiceUnavailable
+	case codes.ResourceExhausted:
+		return http.StatusTooManyRequests
+	case codes.InvalidArgument:
+		return http.StatusBadRequest
+	case codes.Unauthenticated:
+		return http.StatusUnauthorized
+	case codes.PermissionDenied:
+		return http.StatusForbidden
+	case codes.Unimplemented:
+		return http.StatusNotFound
+	default:
+		return http.StatusInternalServerError
 	}
-	return codes.OK
 }
 
 // consumeOTel sends the populated pdata structures to downstream consumers.

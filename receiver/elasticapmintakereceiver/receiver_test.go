@@ -44,6 +44,7 @@ import (
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/consumer/consumererror"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
@@ -123,18 +124,22 @@ func (c blockingTracesConsumer) ConsumeTraces(ctx context.Context, _ ptrace.Trac
 	return c.wait(ctx)
 }
 
-type cancelingUnknownTracesConsumer struct {
+// errTracesConsumer returns err; if cancel is set it cancels the request first.
+type errTracesConsumer struct {
+	err    error
 	cancel context.CancelFunc
 }
 
-func (cancelingUnknownTracesConsumer) Capabilities() consumer.Capabilities {
+func (errTracesConsumer) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{}
 }
 
-func (c cancelingUnknownTracesConsumer) ConsumeTraces(ctx context.Context, _ ptrace.Traces) error {
-	c.cancel()
-	<-ctx.Done()
-	return grpcstatus.Error(codes.Unknown, context.Canceled.Error())
+func (c errTracesConsumer) ConsumeTraces(ctx context.Context, _ ptrace.Traces) error {
+	if c.cancel != nil {
+		c.cancel()
+		<-ctx.Done()
+	}
+	return c.err
 }
 
 func TestRootHandler(t *testing.T) {
@@ -897,30 +902,72 @@ func TestEventsHandlerZeroMaxConcurrentDecodersDisablesLimit(t *testing.T) {
 	require.Len(t, nextTraces.AllTraces(), 1)
 }
 
-func TestEventsHandler_ContextCanceledWithUnknownRPCError(t *testing.T) {
+func TestEventsHandler_DownstreamStatus(t *testing.T) {
+	cases := []struct {
+		name          string
+		err           error
+		cancelRequest bool
+		wantStatus    int
+	}{
+		{
+			name:       "resource exhausted",
+			err:        grpcstatus.Error(codes.ResourceExhausted, "load shed"),
+			wantStatus: http.StatusTooManyRequests,
+		},
+		{
+			name:       "permanent invalid argument",
+			err:        consumererror.NewPermanent(grpcstatus.Error(codes.InvalidArgument, "missing metadata")),
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "unavailable",
+			err:        grpcstatus.Error(codes.Unavailable, "unavailable"),
+			wantStatus: http.StatusServiceUnavailable,
+		},
+		{
+			name:       "unknown",
+			err:        grpcstatus.Error(codes.Unknown, "boom"),
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name:          "client canceled with unknown rpc error",
+			err:           grpcstatus.Error(codes.Unknown, context.Canceled.Error()),
+			cancelRequest: true,
+			wantStatus:    statusClientClosed,
+		},
+	}
+
 	cfg := createDefaultConfig().(*Config)
 	cfg.BatchBytes = 1 // flush after every event
 
-	rcvr, err := newElasticAPMIntakeReceiver(
-		func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
-		cfg,
-		receivertest.NewNopSettings(metadata.Type),
-	)
-	require.NoError(t, err)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rcvr, err := newElasticAPMIntakeReceiver(
+				func(context.Context, component.Host) (agentcfg.Fetcher, error) { return nil, nil },
+				cfg,
+				receivertest.NewNopSettings(metadata.Type),
+			)
+			require.NoError(t, err)
 
-	reqCtx, cancelReq := context.WithCancel(context.Background())
-	defer cancelReq()
+			reqCtx, cancelReq := context.WithCancel(context.Background())
+			defer cancelReq()
 
-	rcvr.nextTraces = cancelingUnknownTracesConsumer{cancel: cancelReq}
-	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), false)
-	})
-	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1))).WithContext(reqCtx)
-	rec := httptest.NewRecorder()
+			next := errTracesConsumer{err: tc.err}
+			if tc.cancelRequest {
+				next.cancel = cancelReq
+			}
+			rcvr.nextTraces = next
+			handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
+				return withECSMappingMode(req.Context(), false)
+			})
+			req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1))).WithContext(reqCtx)
+			rec := httptest.NewRecorder()
 
-	handler.ServeHTTP(rec, req)
+			handler.ServeHTTP(rec, req)
 
-	require.Equal(t, statusClientClosed, rec.Code)
+			require.Equal(t, tc.wantStatus, rec.Code)
+		})
+	}
 }
 
 func TestGlobalLabelsMetadataPropagation(t *testing.T) {
