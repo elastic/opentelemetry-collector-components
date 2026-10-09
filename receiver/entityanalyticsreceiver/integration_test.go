@@ -69,12 +69,14 @@ func TestJamfReceiverLifecycle(t *testing.T) {
 	// Phase 1: first sync discovers all computers.
 
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), integConfig(provName, host), sink1)
+	set1, observed1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, integConfig(provName, host), sink1)
 	if err := rcvr1.Start(context.Background(), testHost(provName, store)); err != nil {
 		t.Fatalf("receiver start failed: %v", err)
 	}
 
 	waitForLogs(t, sink1, 3, 10*time.Second)
+	waitForSyncComplete(t, observed1, 1, 10*time.Second)
 
 	if err := rcvr1.Shutdown(context.Background()); err != nil {
 		t.Fatalf("receiver shutdown failed: %v", err)
@@ -176,12 +178,14 @@ func TestJamfReceiverStatePersistence(t *testing.T) {
 	store := newMemoryStore()
 
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), integConfig(provName, host), sink1)
+	set1, observed1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, integConfig(provName, host), sink1)
 	if err := rcvr1.Start(context.Background(), testHost(provName, store)); err != nil {
 		t.Fatalf("first receiver start failed: %v", err)
 	}
 
 	waitForLogs(t, sink1, 1, 10*time.Second)
+	waitForSyncComplete(t, observed1, 1, 10*time.Second)
 
 	if err := rcvr1.Shutdown(context.Background()); err != nil {
 		t.Fatalf("first receiver shutdown failed: %v", err)
@@ -457,6 +461,32 @@ func firstSyncError(observed *observer.ObservedLogs) (observer.LoggedEntry, bool
 		}
 	}
 	return observer.LoggedEntry{}, false
+}
+
+// waitForSyncComplete polls the receiver's logs until at least n syncs
+// have committed their state or the timeout expires. Records reach the
+// sink before the sync that published them commits, so a test that
+// shuts the receiver down and then relies on the persisted state must
+// wait for this; otherwise Shutdown can cancel the sync mid-flight and
+// its state is discarded.
+func waitForSyncComplete(t *testing.T, observed *observer.ObservedLogs, n int, timeout time.Duration) {
+	t.Helper()
+	deadline := time.After(timeout)
+	for {
+		if observed.FilterMessage("sync complete").Len() >= n {
+			return
+		}
+		if entry, ok := firstSyncError(observed); ok {
+			t.Fatalf("receiver reported %q while waiting for %d completed syncs: %v\nreceiver logs:\n%s",
+				entry.Message, n, entry.ContextMap()["error"], formatObservedLogs(observed))
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for %d completed syncs\nreceiver logs:\n%s",
+				n, formatObservedLogs(observed))
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 }
 
 // formatObservedLogs renders observed receiver log entries, one per line,

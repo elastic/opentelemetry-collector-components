@@ -55,12 +55,14 @@ func TestEntraidReceiverLifecycle(t *testing.T) {
 
 	// Phase 1: discover all — 2 users + 1 device = 3 events.
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), entraidIntegConfig(provName, srv.URL), sink1)
+	set1, observed1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, entraidIntegConfig(provName, srv.URL), sink1)
 	err := rcvr1.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("receiver start failed: %v", err)
 	}
 	waitForLogs(t, sink1, 3, 10*time.Second)
+	waitForSyncComplete(t, observed1, 1, 10*time.Second)
 	err = rcvr1.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("receiver shutdown failed: %v", err)
@@ -74,12 +76,14 @@ func TestEntraidReceiverLifecycle(t *testing.T) {
 	}
 
 	sink2 := &consumertest.LogsSink{}
-	rcvr2 := newReceiver(nopSettings(), entraidIntegConfig(provName, srv.URL), sink2)
+	set2, observed2 := observedSettings(t)
+	rcvr2 := newReceiver(set2, entraidIntegConfig(provName, srv.URL), sink2)
 	err = rcvr2.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("second receiver start failed: %v", err)
 	}
 	waitForLogs(t, sink2, 3, 10*time.Second)
+	waitForSyncComplete(t, observed2, 1, 10*time.Second)
 	err = rcvr2.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("second receiver shutdown failed: %v", err)
