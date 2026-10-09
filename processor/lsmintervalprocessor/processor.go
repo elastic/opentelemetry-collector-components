@@ -647,30 +647,28 @@ func (p *Processor) exportForInterval(
 // stalls as metrics. Pebble does not log write stalls unless a listener is
 // installed, so without this they are invisible.
 func newWriteStallListener(tb *metadata.TelemetryBuilder) *pebble.EventListener {
-	// Pebble invokes WriteStallBegin and WriteStallEnd in pairs and never
-	// concurrently, but the end callback does not carry the reason.
+	// Pebble calls WriteStallBegin and WriteStallEnd from makeRoomForWrite,
+	// which runs with its commit pipeline mutex held for the whole stall. A
+	// stall's begin and end therefore run on one goroutine and never overlap
+	// with another stall, so these variables need no lock. This is how Pebble
+	// v1.1.5 behaves, not a documented guarantee of EventListener. The end
+	// callback does not carry the reason, so it is remembered from the begin.
 	var (
-		mu      sync.Mutex
 		reason  string
 		started time.Time
 	)
 	return &pebble.EventListener{
 		WriteStallBegin: func(info pebble.WriteStallBeginInfo) {
-			mu.Lock()
 			reason, started = info.Reason, time.Now()
-			mu.Unlock()
 			tb.LsmintervalPebbleWriteStalls.Add(
 				context.Background(), 1,
 				metric.WithAttributes(attribute.String("reason", info.Reason)),
 			)
 		},
 		WriteStallEnd: func() {
-			mu.Lock()
-			r, d := reason, time.Since(started)
-			mu.Unlock()
 			tb.LsmintervalPebbleWriteStallDuration.Add(
-				context.Background(), d.Seconds(),
-				metric.WithAttributes(attribute.String("reason", r)),
+				context.Background(), time.Since(started).Seconds(),
+				metric.WithAttributes(attribute.String("reason", reason)),
 			)
 		},
 	}
