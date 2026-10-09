@@ -113,7 +113,7 @@ func (r *elasticAPMIntakeReceiver) startHTTPServer(ctx context.Context, host com
 
 	httpMux.HandleFunc("GET /{$}", r.newRootHandler())
 	httpMux.HandleFunc(intakeV2EventsPath, r.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), r.cfg.ServerConfig.IncludeMetadata)
+		return withECSMappingMode(req.Context())
 	}))
 	httpMux.HandleFunc(agentConfigPath, r.newElasticAPMConfigsHandler(ctx, host))
 	// TODO rum v2, v3
@@ -338,16 +338,16 @@ func (r *elasticAPMIntakeReceiver) consumeOTel(ctx context.Context, ld *plog.Log
 	return errs
 }
 
-func withECSMappingMode(ctx context.Context, includeMetadata bool) context.Context {
-	return client.NewContext(ctx, withMappingMode(client.FromContext(ctx), "ecs", includeMetadata))
+func withECSMappingMode(ctx context.Context) context.Context {
+	return client.NewContext(ctx, withMappingMode(client.FromContext(ctx), "ecs"))
 }
 
-func withMappingMode(info client.Info, mode string, includeMetadata bool) client.Info {
+// withMappingMode copies existing client.Metadata and sets x-elastic-mapping-mode.
+// include_metadata is a confighttp option and is not consulted here.
+func withMappingMode(info client.Info, mode string) client.Info {
 	newMeta := make(map[string][]string)
-	if includeMetadata {
-		for k := range info.Metadata.Keys() {
-			newMeta[k] = info.Metadata.Get(k)
-		}
+	for k := range info.Metadata.Keys() {
+		newMeta[k] = info.Metadata.Get(k)
 	}
 	newMeta["x-elastic-mapping-mode"] = []string{mode}
 	return client.Info{
