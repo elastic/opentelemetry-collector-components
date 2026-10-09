@@ -161,6 +161,34 @@ The current size in bytes of pebble memtable.
 | ---- | ----------- | ---------- | --------- |
 | By | Gauge | Int | Development |
 
+### otelcol_lsminterval.pebble_write_stall_duration
+
+The total time in seconds that pebble stalled writes.
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| s | Sum | Double | true | Development |
+
+#### Attributes
+
+| Name | Description | Values | Semantic Convention |
+| ---- | ----------- | ------ | ------------------- |
+| reason | The reason pebble stalled writes, as reported by pebble, for example "memtable count limit reached". | Any Str | - |
+
+### otelcol_lsminterval.pebble_write_stalls
+
+The number of times pebble stalled writes, for example because it reached the memtable count limit.
+
+| Unit | Metric Type | Value Type | Monotonic | Stability |
+| ---- | ----------- | ---------- | --------- | --------- |
+| 1 | Sum | Int | true | Development |
+
+#### Attributes
+
+| Name | Description | Values | Semantic Convention |
+| ---- | ----------- | ------ | ------------------- |
+| reason | The reason pebble stalled writes, as reported by pebble, for example "memtable count limit reached". | Any Str | - |
+
 ### otelcol_lsminterval.processed_bytes
 
 The size in bytes of metric data points processed by the processor.

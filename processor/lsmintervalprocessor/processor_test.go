@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -512,4 +513,29 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 			}
 		})
 	}
+}
+
+func TestWriteStallListener(t *testing.T) {
+	testTel := componenttest.NewTelemetry()
+	tb, err := metadata.NewTelemetryBuilder(testTel.NewTelemetrySettings())
+	require.NoError(t, err)
+
+	l := newWriteStallListener(tb)
+	for range 2 {
+		l.WriteStallBegin(pebble.WriteStallBeginInfo{Reason: "memtable count limit reached"})
+		time.Sleep(5 * time.Millisecond)
+		l.WriteStallEnd()
+	}
+
+	reasonAttr := attribute.NewSet(attribute.String("reason", "memtable count limit reached"))
+	metadatatest.AssertEqualLsmintervalPebbleWriteStalls(t, testTel, []metricdata.DataPoint[int64]{
+		{Value: 2, Attributes: reasonAttr},
+	}, metricdatatest.IgnoreTimestamp())
+
+	m, err := testTel.GetMetric("otelcol_lsminterval.pebble_write_stall_duration")
+	require.NoError(t, err)
+	dps := m.Data.(metricdata.Sum[float64]).DataPoints
+	require.Len(t, dps, 1)
+	assert.Equal(t, reasonAttr, dps[0].Attributes)
+	assert.GreaterOrEqual(t, dps[0].Value, 0.01)
 }
