@@ -126,3 +126,5 @@ require (
 )
 
 replace github.com/elastic/opentelemetry-collector-components/internal/elasticattr => ../../internal/elasticattr
+
+replace github.com/elastic/opentelemetry-collector-components/internal/testutil => ../../internal/testutil
