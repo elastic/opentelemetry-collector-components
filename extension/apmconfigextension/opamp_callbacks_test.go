@@ -127,7 +127,7 @@ func TestOnMessage(t *testing.T) {
 						RemoteConfig: &protobufs.AgentRemoteConfig{
 							ConfigHash: []byte("abcd"),
 							Config: &protobufs.AgentConfigMap{
-								ConfigMap: map[string]*protobufs.AgentConfigFile{
+								ConfigMap: map[string]*protobufs.AgentConfigObject{
 									"elastic": {
 										Body:        []byte(`{"test":"aaa"}`),
 										ContentType: "application/json",
@@ -163,7 +163,7 @@ func TestOnMessage(t *testing.T) {
 								return &protobufs.AgentRemoteConfig{
 									ConfigHash: []byte("abcd"),
 									Config: &protobufs.AgentConfigMap{
-										ConfigMap: map[string]*protobufs.AgentConfigFile{
+										ConfigMap: map[string]*protobufs.AgentConfigObject{
 											"elastic": {
 												ContentType: "application/json",
 												Body:        []byte(`{"test":"aaa"}`),
@@ -242,7 +242,7 @@ func TestOnMessage(t *testing.T) {
 						RemoteConfig: &protobufs.AgentRemoteConfig{
 							ConfigHash: []byte("abcd"),
 							Config: &protobufs.AgentConfigMap{
-								ConfigMap: map[string]*protobufs.AgentConfigFile{
+								ConfigMap: map[string]*protobufs.AgentConfigObject{
 									"elastic": {
 										Body:        []byte(`{"test":"aaa"}`),
 										ContentType: "application/json",
@@ -259,7 +259,7 @@ func TestOnMessage(t *testing.T) {
 						return &protobufs.AgentRemoteConfig{
 							ConfigHash: []byte("abcd"),
 							Config: &protobufs.AgentConfigMap{
-								ConfigMap: map[string]*protobufs.AgentConfigFile{
+								ConfigMap: map[string]*protobufs.AgentConfigObject{
 									"elastic": {
 										ContentType: "application/json",
 										Body:        []byte(`{"test":"aaa"}`),
