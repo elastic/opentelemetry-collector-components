@@ -450,19 +450,6 @@ func waitForLogsOrSyncError(t *testing.T, sink *consumertest.LogsSink, observed 
 	}
 }
 
-// firstSyncError returns the first error-level entry matching one of
-// receiverSyncErrorMessages, if any.
-func firstSyncError(observed *observer.ObservedLogs) (observer.LoggedEntry, bool) {
-	for _, entry := range observed.FilterLevelExact(zapcore.ErrorLevel).All() {
-		for _, msg := range receiverSyncErrorMessages {
-			if entry.Message == msg {
-				return entry, true
-			}
-		}
-	}
-	return observer.LoggedEntry{}, false
-}
-
 // waitForSyncComplete polls the receiver's logs until at least n syncs
 // have committed their state or the timeout expires. Records reach the
 // sink before the sync that published them commits, so a test that
@@ -487,6 +474,19 @@ func waitForSyncComplete(t *testing.T, observed *observer.ObservedLogs, n int, t
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
+}
+
+// firstSyncError returns the first error-level entry matching one of
+// receiverSyncErrorMessages, if any.
+func firstSyncError(observed *observer.ObservedLogs) (observer.LoggedEntry, bool) {
+	for _, entry := range observed.FilterLevelExact(zapcore.ErrorLevel).All() {
+		for _, msg := range receiverSyncErrorMessages {
+			if entry.Message == msg {
+				return entry, true
+			}
+		}
+	}
+	return observer.LoggedEntry{}, false
 }
 
 // formatObservedLogs renders observed receiver log entries, one per line,
