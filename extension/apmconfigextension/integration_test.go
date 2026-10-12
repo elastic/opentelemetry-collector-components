@@ -140,7 +140,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							RemoteConfig: &protobufs.AgentRemoteConfig{
 								ConfigHash: []byte("-"),
 								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
+									ConfigMap: map[string]*protobufs.AgentConfigObject{
 										"elastic": {
 											Body:        []byte(`{}`),
 											ContentType: "application/json",
@@ -187,7 +187,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							RemoteConfig: &protobufs.AgentRemoteConfig{
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
+									ConfigMap: map[string]*protobufs.AgentConfigObject{
 										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"124"}`),
 											ContentType: "application/json",
@@ -237,7 +237,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							RemoteConfig: &protobufs.AgentRemoteConfig{
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
+									ConfigMap: map[string]*protobufs.AgentConfigObject{
 										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"124"}`),
 											ContentType: "application/json",
@@ -287,7 +287,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							RemoteConfig: &protobufs.AgentRemoteConfig{
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
+									ConfigMap: map[string]*protobufs.AgentConfigObject{
 										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"2"}`),
 											ContentType: "application/json",
@@ -330,7 +330,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							RemoteConfig: &protobufs.AgentRemoteConfig{
 								ConfigHash: []byte("-"),
 								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
+									ConfigMap: map[string]*protobufs.AgentConfigObject{
 										"elastic": {
 											Body:        []byte(`{}`),
 											ContentType: "application/json",
@@ -362,7 +362,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							RemoteConfig: &protobufs.AgentRemoteConfig{
 								ConfigHash: []byte("-"),
 								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
+									ConfigMap: map[string]*protobufs.AgentConfigObject{
 										"elastic": {
 											Body:        []byte(`{}`),
 											ContentType: "application/json",
@@ -394,7 +394,7 @@ func apmConfigintegrationTest(name string) func(t *testing.T) {
 							RemoteConfig: &protobufs.AgentRemoteConfig{
 								ConfigHash: []byte("abcd"),
 								Config: &protobufs.AgentConfigMap{
-									ConfigMap: map[string]*protobufs.AgentConfigFile{
+									ConfigMap: map[string]*protobufs.AgentConfigObject{
 										"elastic": {
 											Body:        []byte(`{"transaction_max_spans":"2"}`),
 											ContentType: "application/json",
