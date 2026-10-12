@@ -43,6 +43,10 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # Untagged nested modules: Dependabot resolves them against the parent
+      # repo's tags and fails. Update them manually with `go get <module>@main`.
+      - dependency-name: "github.com/prometheus/client_golang/exp"
+      - dependency-name: "github.com/elastic/metricsgenreceiver/metricsgenreceiver"
     open-pull-requests-limit: 20
 
   - package-ecosystem: "github-actions"

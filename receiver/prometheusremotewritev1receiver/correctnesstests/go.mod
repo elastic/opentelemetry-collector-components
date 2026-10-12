@@ -154,3 +154,5 @@ require (
 )
 
 replace github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver => ../
+
+replace github.com/elastic/opentelemetry-collector-components/internal/testutil => ../../../internal/testutil
