@@ -20,6 +20,9 @@ attributes:
     description: The kind of overflow (resource, scope, metric, or datapoint).
     type: string
     enum: [resource, scope, metric, datapoint]
+  reason:
+    description: The reason pebble stalled writes, as reported by pebble, for example "memtable count limit reached".
+    type: string
 
 telemetry:
   metrics:
@@ -176,6 +179,24 @@ telemetry:
         async: true
         value_type: int
         monotonic: true
+    lsminterval.pebble_write_stall_duration:
+      enabled: true
+      description: The total time in seconds that pebble stalled writes.
+      unit: s
+      stability: development
+      sum:
+        value_type: double
+        monotonic: true
+      attributes: [reason]
+    lsminterval.pebble_write_stalls:
+      enabled: true
+      description: The number of times pebble stalled writes, for example because it reached the memtable count limit.
+      unit: "1"
+      stability: development
+      sum:
+        value_type: int
+        monotonic: true
+      attributes: [reason]
     lsminterval.processed_bytes:
       enabled: true
       description: The size in bytes of metric data points processed by the processor.

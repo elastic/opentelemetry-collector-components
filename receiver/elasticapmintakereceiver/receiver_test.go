@@ -42,9 +42,11 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/configmiddleware"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/extension/extensionmiddleware"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -712,12 +714,12 @@ func TestMetadataPropagation(t *testing.T) {
 		includeMetadata  bool
 		expectedMetadata client.Metadata
 	}{
-		"when include_metadata is disabled only mappinmapping-mode is propagated": {
+		"when include_metadata is disabled HTTP headers are not copied": {
 			expectedMetadata: client.NewMetadata(map[string][]string{
 				"x-elastic-mapping-mode": {"ecs"},
 			}),
 		},
-		"when include_metadata is enabled all request metadata is propagated": {
+		"when include_metadata is enabled HTTP headers are copied into client metadata": {
 			includeMetadata: true,
 			expectedMetadata: client.NewMetadata(map[string][]string{
 				"content-type":           {"application/x-ndjson"},
@@ -760,6 +762,106 @@ func TestMetadataPropagation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWithECSMappingModePreservesExistingMetadata(t *testing.T) {
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{
+			"x-elastic-target-id": {"proj-abc123"},
+		}),
+	})
+
+	got := client.FromContext(withECSMappingMode(ctx))
+
+	require.Equal(t, []string{"proj-abc123"}, got.Metadata.Get("x-elastic-target-id"))
+	require.Equal(t, []string{"ecs"}, got.Metadata.Get("x-elastic-mapping-mode"))
+}
+
+func TestMetadataPropagationWithMiddleware(t *testing.T) {
+	mwID := component.MustNewID("targetid")
+	table := map[string]struct {
+		includeMetadata bool
+		wantUserAgent   bool
+	}{
+		"when include_metadata is disabled middleware keys are kept and HTTP headers are not copied": {
+			includeMetadata: false,
+		},
+		"when include_metadata is enabled middleware keys and HTTP headers are both present": {
+			includeMetadata: true,
+			wantUserAgent:   true,
+		},
+	}
+	for tname, tcase := range table {
+		t.Run(tname, func(t *testing.T) {
+			factory := NewFactory()
+			testEndpoint := testutil.GetAvailableLocalAddress(t)
+			cfg := factory.CreateDefaultConfig().(*Config)
+			cfg.ServerConfig.NetAddr.Endpoint = testEndpoint
+			cfg.ServerConfig.IncludeMetadata = tcase.includeMetadata
+			cfg.ServerConfig.Middlewares = []configmiddleware.Config{{ID: mwID}}
+
+			set := receivertest.NewNopSettings(metadata.Type)
+			nextTrace := new(consumertest.TracesSink)
+			receiver, err := factory.CreateTraces(context.Background(), set, cfg, nextTrace)
+			require.NoError(t, err)
+
+			host := &extensionsHost{
+				Host: componenttest.NewNopHost(),
+				exts: map[component.ID]component.Component{
+					mwID: &targetIDStampMiddleware{},
+				},
+			}
+			require.NoError(t, receiver.Start(context.Background(), host))
+			defer func() {
+				require.NoError(t, receiver.Shutdown(context.Background()))
+			}()
+
+			sendInputWithHeaders(t, "transactions_spans.ndjson", testEndpoint, http.Header{
+				"User-Agent":             {"test-agent/1.0"},
+				"X-Elastic-Mapping-Mode": {"otel-spoof"},
+			})
+
+			ctxs := nextTrace.Contexts()
+			require.GreaterOrEqual(t, len(ctxs), 1)
+			md := client.FromContext(ctxs[0]).Metadata
+			require.Equal(t, []string{"proj-abc123"}, md.Get("x-elastic-target-id"))
+			require.Equal(t, []string{"ecs"}, md.Get("x-elastic-mapping-mode"))
+			if tcase.wantUserAgent {
+				require.Equal(t, []string{"test-agent/1.0"}, md.Get("user-agent"))
+			} else {
+				require.Empty(t, md.Get("user-agent"))
+			}
+		})
+	}
+}
+
+type extensionsHost struct {
+	component.Host
+	exts map[component.ID]component.Component
+}
+
+func (h *extensionsHost) GetExtensions() map[component.ID]component.Component {
+	return h.exts
+}
+
+type targetIDStampMiddleware struct {
+	component.StartFunc
+	component.ShutdownFunc
+}
+
+func (m *targetIDStampMiddleware) GetHTTPHandler(_ context.Context) (extensionmiddleware.WrapHTTPHandlerFunc, error) {
+	return func(_ context.Context, base http.Handler) (http.Handler, error) {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			info := client.FromContext(r.Context())
+			md := make(map[string][]string)
+			for k := range info.Metadata.Keys() {
+				md[k] = info.Metadata.Get(k)
+			}
+			md["x-elastic-target-id"] = []string{"proj-abc123"}
+			info.Metadata = client.NewMetadata(md)
+			base.ServeHTTP(w, r.WithContext(client.NewContext(r.Context(), info)))
+		}), nil
+	}, nil
 }
 
 func TestConsumeOTelConsumesSignalsConcurrently(t *testing.T) {
@@ -854,7 +956,7 @@ func TestEventsHandlerUsesConfiguredBatchBytes(t *testing.T) {
 	rcvr.nextTraces = nextTraces
 
 	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), false)
+		return withECSMappingMode(req.Context())
 	})
 	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(payload))
 	rec := httptest.NewRecorder()
@@ -886,7 +988,7 @@ func TestEventsHandlerZeroMaxConcurrentDecodersDisablesLimit(t *testing.T) {
 	rcvr.nextTraces = nextTraces
 
 	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), false)
+		return withECSMappingMode(req.Context())
 	})
 	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1)))
 	rec := httptest.NewRecorder()
@@ -913,7 +1015,7 @@ func TestEventsHandler_ContextCanceledWithUnknownRPCError(t *testing.T) {
 
 	rcvr.nextTraces = cancelingUnknownTracesConsumer{cancel: cancelReq}
 	handler := rcvr.newElasticAPMEventsHandler(func(req *http.Request) context.Context {
-		return withECSMappingMode(req.Context(), false)
+		return withECSMappingMode(req.Context())
 	})
 	req := httptest.NewRequest(http.MethodPost, intakeV2EventsPath, bytes.NewReader(generateTransactionPayload(1))).WithContext(reqCtx)
 	rec := httptest.NewRecorder()
@@ -1124,12 +1226,28 @@ func expectedStringGlobalLabelAttrsExcept(n int, excludeKey string) []string {
 }
 
 func sendInput(t *testing.T, inputJsonFileName string, testEndpoint string) {
+	sendInputWithHeaders(t, inputJsonFileName, testEndpoint, nil)
+}
+
+func sendInputWithHeaders(t *testing.T, inputJsonFileName string, testEndpoint string, headers http.Header) {
+	t.Helper()
 	data, err := os.ReadFile(filepath.Join(testData, inputJsonFileName))
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
 	}
 
-	resp, err := http.Post("http://"+testEndpoint+intakeV2EventsPath, "application/x-ndjson", bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, "http://"+testEndpoint+intakeV2EventsPath, bytes.NewBuffer(data))
+	if err != nil {
+		t.Fatalf("failed to create HTTP request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/x-ndjson")
+	for k, vs := range headers {
+		for _, v := range vs {
+			req.Header.Set(k, v)
+		}
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("failed to send HTTP request: %v", err)
 	}
