@@ -1,0 +1,85 @@
+resourceLogs:
+  - resource: {}
+    scopeLogs:
+      - logRecords:
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: generic
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: '{"eventName": "a"}'
+                  - key: event
+                    value:
+                      kvlistValue:
+                        values:
+                          - key: dataset
+                            value:
+                              stringValue: generic
+                  - key: data_stream
+                    value:
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: logs
+                          - key: dataset
+                            value:
+                              stringValue: generic
+                          - key: namespace
+                            value:
+                              stringValue: default
+            observedTimeUnixNano: "1791886830637085000"
+            timeUnixNano: "1791886830637085000"
+          - attributes:
+              - key: data_stream.type
+                value:
+                  stringValue: logs
+              - key: data_stream.dataset
+                value:
+                  stringValue: generic
+              - key: data_stream.namespace
+                value:
+                  stringValue: default
+            body:
+              kvlistValue:
+                values:
+                  - key: message
+                    value:
+                      stringValue: '{"eventName": "b"}'
+                  - key: event
+                    value:
+                      kvlistValue:
+                        values:
+                          - key: dataset
+                            value:
+                              stringValue: generic
+                  - key: data_stream
+                    value:
+                      kvlistValue:
+                        values:
+                          - key: type
+                            value:
+                              stringValue: logs
+                          - key: dataset
+                            value:
+                              stringValue: generic
+                          - key: namespace
+                            value:
+                              stringValue: default
+            observedTimeUnixNano: "1791886830637085000"
+            timeUnixNano: "1791886830637085000"
+        scope:
+          attributes:
+            - key: elastic.mapping.mode
+              value:
+                stringValue: bodymap
