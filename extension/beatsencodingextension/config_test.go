@@ -148,3 +148,33 @@ func TestLoadConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigValidate_RootArray(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		unwrap  []string
+		wantErr string
+	}{
+		{name: "root array alone", unwrap: []string{".[]"}},
+		{name: "root array with a key before it", unwrap: []string{"data", ".[]"}, wantErr: `unwrap ".[]" must be the only element`},
+		{name: "root array with a key after it", unwrap: []string{".[]", "items"}, wantErr: `unwrap ".[]" must be the only element`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := createDefaultConfig().(*Config)
+			cfg.Unwrap = tt.unwrap
+			cfg.DataStream.Dataset = "test"
+
+			err := cfg.Validate()
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}

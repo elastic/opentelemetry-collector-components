@@ -166,6 +166,49 @@ func TestUnmarshalLogs(t *testing.T) {
 			goldenFile: "json_nested_complex_expected.yaml",
 			wantLogs:   3,
 		},
+		{
+			name: "json concatenated values without unwrap (ndjson)",
+			config: Config{
+				Format:     FormatJSON,
+				DataStream: DataStreamConfig{Dataset: "generic", Namespace: "default"},
+			},
+			inputFile:  "json_concatenated.json",
+			goldenFile: "json_concatenated_expected.yaml",
+			wantLogs:   3,
+		},
+		{
+			name: "json concatenated values with unwrap",
+			config: Config{
+				Format:     FormatJSON,
+				Unwrap:     []string{"Records"},
+				DataStream: DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
+			},
+			inputFile:  "json_concatenated_unwrap.json",
+			goldenFile: "json_concatenated_unwrap_expected.yaml",
+			wantLogs:   3,
+		},
+		{
+			name: "json root array",
+			config: Config{
+				Format:     FormatJSON,
+				Unwrap:     []string{".[]"},
+				DataStream: DataStreamConfig{Dataset: "generic", Namespace: "default"},
+			},
+			inputFile:  "json_root_array.json",
+			goldenFile: "json_root_array_expected.yaml",
+			wantLogs:   2,
+		},
+		{
+			name: "json keys after the unwrapped array",
+			config: Config{
+				Format:     FormatJSON,
+				Unwrap:     []string{"Records"},
+				DataStream: DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
+			},
+			inputFile:  "json_keys_after_array.json",
+			goldenFile: "json_keys_after_array_expected.yaml",
+			wantLogs:   1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -491,6 +534,69 @@ func TestNewLogsDecoder_SingleRecordResumption(t *testing.T) {
 
 	_, err = decoder2.DecodeLogs()
 	assert.ErrorIs(t, err, io.EOF)
+}
+
+func TestNewLogsDecoder_JSONResumptionAcrossValues(t *testing.T) {
+	ext := newTestExtension(t, &Config{
+		Format:     FormatJSON,
+		Unwrap:     []string{"Records"},
+		DataStream: DataStreamConfig{Dataset: "aws.cloudtrail", Namespace: "default"},
+	})
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "json_concatenated_unwrap.json"))
+	require.NoError(t, err)
+
+	// First run: the two records of the first value, which ends exactly at
+	// the boundary between the two top-level values.
+	decoder1, err := ext.NewLogsDecoder(bytes.NewReader(input), encoding.WithFlushItems(2))
+	require.NoError(t, err)
+
+	logs1, err := decoder1.DecodeLogs()
+	require.NoError(t, err)
+	require.Equal(t, 2, logs1.LogRecordCount())
+	require.Equal(t, int64(2), decoder1.Offset())
+
+	// Resume: the one record of the second value.
+	decoder2, err := ext.NewLogsDecoder(
+		bytes.NewReader(input),
+		encoding.WithFlushItems(2),
+		encoding.WithOffset(decoder1.Offset()),
+	)
+	require.NoError(t, err)
+
+	logs2, err := decoder2.DecodeLogs()
+	require.NoError(t, err)
+	assert.Equal(t, 1, logs2.LogRecordCount())
+	msg, _ := logs2.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().Map().Get("message")
+	assert.JSONEq(t, `{"eventName":"c"}`, msg.Str(), "the record after the boundary is the first of the second value")
+
+	_, err = decoder2.DecodeLogs()
+	assert.ErrorIs(t, err, io.EOF)
+	assert.Equal(t, int64(3), decoder2.Offset())
+}
+
+func TestUnmarshalLogs_MappingsIgnoredWithoutUnwrap(t *testing.T) {
+	ext := newTestExtension(t, &Config{
+		Format: FormatJSON,
+		Mappings: []FieldMapping{
+			{Source: "msg", Destination: "mapped", Type: FieldTypeString},
+		},
+		DataStream: DataStreamConfig{Dataset: "generic", Namespace: "default"},
+	})
+
+	input, err := os.ReadFile(filepath.Join(testDataDir, "json_concatenated.json"))
+	require.NoError(t, err)
+
+	logs, err := ext.UnmarshalLogs(input)
+	require.NoError(t, err)
+	require.Equal(t, 3, logs.LogRecordCount())
+
+	body := logs.ResourceLogs().At(0).ScopeLogs().At(0).LogRecords().At(0).Body().Map()
+	msg, ok := body.Get("message")
+	require.True(t, ok, "without unwrap the record is the message")
+	assert.JSONEq(t, `{"id": 1, "msg": "first"}`, msg.Str())
+	_, ok = body.Get("mapped")
+	assert.False(t, ok, "mappings only apply with unwrap")
 }
 
 // stripEventCreated removes the "event.created" key from all log record
