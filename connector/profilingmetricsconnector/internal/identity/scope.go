@@ -22,8 +22,7 @@ import (
 	"hash"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
-
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
+	"go.opentelemetry.io/collector/pdata/xpdata/xhash"
 )
 
 // Scope represents the identity of an OpenTelemetry instrumentation scope.
@@ -62,6 +61,6 @@ func OfScope(res Resource, scope pcommon.InstrumentationScope) Scope {
 		resource: res,
 		name:     scope.Name(),
 		version:  scope.Version(),
-		attrs:    pdatautil.MapHash(scope.Attributes()),
+		attrs:    xhash.MapHash(scope.Attributes()),
 	}
 }

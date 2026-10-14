@@ -28,8 +28,7 @@ import (
 	"hash/fnv"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
-
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
+	"go.opentelemetry.io/collector/pdata/xpdata/xhash"
 )
 
 type resource = Resource
@@ -46,6 +45,6 @@ func (r Resource) Hash() hash.Hash64 {
 
 func OfResource(r pcommon.Resource) Resource {
 	return Resource{
-		attrs: pdatautil.MapHash(r.Attributes()),
+		attrs: xhash.MapHash(r.Attributes()),
 	}
 }

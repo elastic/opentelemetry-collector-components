@@ -23,8 +23,7 @@ import (
 	"hash/fnv"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
-
-	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatautil"
+	"go.opentelemetry.io/collector/pdata/xpdata/xhash"
 )
 
 // Resource represents the identity of an OpenTelemetry resource defined by the resource attributes.
@@ -48,6 +47,6 @@ func (r Resource) String() string {
 // and is suitable for stable hashing and equality comparisons.
 func OfResource(r pcommon.Resource) Resource {
 	return Resource{
-		attrs: pdatautil.MapHash(r.Attributes()),
+		attrs: xhash.MapHash(r.Attributes()),
 	}
 }
