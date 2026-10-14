@@ -119,7 +119,7 @@ func TestJSONElements(t *testing.T) {
 			name:    "root array, root is object",
 			input:   `{"a": 1}`,
 			unwrap:  []string{".[]"},
-			wantErr: `unwrap .[]: expected '['`,
+			wantErr: `unwrapping root array: expected '['`,
 		},
 		{
 			name:    "unwrap key missing",

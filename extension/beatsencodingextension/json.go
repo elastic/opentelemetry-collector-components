@@ -272,7 +272,7 @@ func (it *jsonElements) read() (json.RawMessage, error) {
 		switch {
 		case it.rootArray:
 			if err := expectDelim(it.dec, '['); err != nil {
-				return nil, fmt.Errorf("unwrap %s: %w", unwrapRootArray, err)
+				return nil, fmt.Errorf("unwrapping root array: %w", err)
 			}
 		case len(it.unwrap) > 0:
 			if err := navigateToArray(it.dec, it.unwrap); err != nil {
