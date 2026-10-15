@@ -8,6 +8,11 @@ updates:
       interval: "daily"
     labels:
       - automation
+    cooldown:
+      exclude:
+        - "go.opentelemetry.io/*"
+        - "github.com/open-telemetry/*"
+        - "github.com/elastic/opentelemetry-lib"
     groups:
       otel:
         patterns:
