@@ -7,3 +7,10 @@ status:
   stability:
     development: [logs]
   distributions: []
+
+sending_queue:
+  support: default
+
+tests:
+  config:
+    endpoint: http://localhost:8080
