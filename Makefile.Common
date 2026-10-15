@@ -99,7 +99,7 @@ lint: misspell
 
 .PHONY: generate
 generate:
-	$(GOCMD) generate ./...
+	PATH="$(dir $(MDATAGEN)):$$PATH" $(GOCMD) generate ./...
 	$(GOIMPORTS) -w ./
 
 .PHONY: moddownload

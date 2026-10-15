@@ -94,6 +94,9 @@ func TestMetricsBuilder(t *testing.T) {
 			mb.RecordSamplesClassificationDataPoint(ts, 1, "classification-val", "frame_type-val", "profile.type_unit-val")
 			if tt.name == "reaggregate_set" {
 				mb.RecordSamplesClassificationDataPoint(ts, 3, "classification-val-2", "frame_type-val-2", "profile.type_unit-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordSamplesClassificationDataPoint(ts+1, 3, "classification-val-2", "frame_type-val-2", "profile.type_unit-val-2")
+				assert.Equal(t, 2, mb.metricSamplesClassification.data.Gauge().DataPoints().Len())
 			}
 			defaultMetricsCount++
 			allMetricsCount++
@@ -103,6 +106,9 @@ func TestMetricsBuilder(t *testing.T) {
 			mb.RecordSamplesCustomAggregationDataPoint(ts, 1, "frame_type-val", "profile.type_unit-val")
 			if tt.name == "reaggregate_set" {
 				mb.RecordSamplesCustomAggregationDataPoint(ts, 3, "frame_type-val-2", "profile.type_unit-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordSamplesCustomAggregationDataPoint(ts+1, 3, "frame_type-val-2", "profile.type_unit-val-2")
+				assert.Equal(t, 2, mb.metricSamplesCustomAggregation.data.Gauge().DataPoints().Len())
 			}
 			defaultMetricsCount++
 			allMetricsCount++
@@ -112,6 +118,9 @@ func TestMetricsBuilder(t *testing.T) {
 			mb.RecordSamplesFrameTypeDataPoint(ts, 1, "frame_type-val", "profile.type_unit-val")
 			if tt.name == "reaggregate_set" {
 				mb.RecordSamplesFrameTypeDataPoint(ts, 3, "frame_type-val-2", "profile.type_unit-val-2")
+				// a different timestamp is a different key: must not merge with the above.
+				mb.RecordSamplesFrameTypeDataPoint(ts+1, 3, "frame_type-val-2", "profile.type_unit-val-2")
+				assert.Equal(t, 2, mb.metricSamplesFrameType.data.Gauge().DataPoints().Len())
 			}
 			defaultMetricsCount++
 			allMetricsCount++
@@ -217,7 +226,9 @@ func TestMetricsBuilder(t *testing.T) {
 						assert.False(t, validatedMetrics["samples.classification"], "Found a duplicate in the metrics slice: samples.classification")
 						validatedMetrics["samples.classification"] = true
 						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
-						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
 						assert.Equal(t, "Number of profiling frames by classification", mi.Description())
 						assert.Equal(t, "1", mi.Unit())
 						dp := mi.Gauge().DataPoints().At(0)
@@ -278,7 +289,9 @@ func TestMetricsBuilder(t *testing.T) {
 						assert.False(t, validatedMetrics["samples.custom_aggregation"], "Found a duplicate in the metrics slice: samples.custom_aggregation")
 						validatedMetrics["samples.custom_aggregation"] = true
 						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
-						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
 						assert.Equal(t, "Number of profiling frames by classification", mi.Description())
 						assert.Equal(t, "1", mi.Unit())
 						dp := mi.Gauge().DataPoints().At(0)
@@ -337,7 +350,9 @@ func TestMetricsBuilder(t *testing.T) {
 						assert.False(t, validatedMetrics["samples.frame_type"], "Found a duplicate in the metrics slice: samples.frame_type")
 						validatedMetrics["samples.frame_type"] = true
 						assert.Equal(t, pmetric.MetricTypeGauge, mi.Type())
-						assert.Equal(t, 1, mi.Gauge().DataPoints().Len())
+						// 2 points: the merged one above, plus one with a different timestamp that must not have merged with it.
+						assert.Equal(t, 2, mi.Gauge().DataPoints().Len())
+						assert.Equal(t, ts+1, mi.Gauge().DataPoints().At(1).Timestamp())
 						assert.Equal(t, "Number of profiles frames by frame type", mi.Description())
 						assert.Equal(t, "1", mi.Unit())
 						dp := mi.Gauge().DataPoints().At(0)
