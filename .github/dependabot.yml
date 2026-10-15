@@ -45,6 +45,22 @@ updates:
         group-by: dependency-name
         patterns:
           - "*"
+        # Must list every pattern from the groups above. Otherwise, the per-dependency
+        # groups created by group-by take precedence and the dependencies are never updated.
+        exclude-patterns:
+          - "go.opentelemetry.io/*"
+          - "github.com/open-telemetry/opentelemetry-collector-contrib/*"
+          - "github.com/elastic/opentelemetry-lib"
+          - "github.com/aws/*"
+          - "github.com/prometheus/*"
+          - "golang.org/x/*"
+          - "k8s.io/*"
+          - "sigs.k8s.io/*"
+          - "github.com/Azure/*"
+          - "github.com/AzureAD/*"
+          - "cloud.google.com/go/*"
+          - "google.golang.org/*"
+          - "github.com/googleapis/*"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
