@@ -55,12 +55,14 @@ func TestOktaReceiverLifecycle(t *testing.T) {
 
 	// Phase 1: discover all — 3 users + 1 device = 4 events.
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), oktaIntegConfig(provName, host), sink1)
+	set1, observed1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, oktaIntegConfig(provName, host), sink1)
 	err := rcvr1.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("receiver start failed: %v", err)
 	}
 	waitForLogs(t, sink1, 4, 10*time.Second)
+	waitForSyncComplete(t, observed1, 1, 10*time.Second)
 	err = rcvr1.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("receiver shutdown failed: %v", err)
@@ -105,12 +107,14 @@ func TestOktaReceiverStatePersistence(t *testing.T) {
 
 	// Phase 1: discover.
 	sink1 := &consumertest.LogsSink{}
-	rcvr1 := newReceiver(nopSettings(), oktaIntegConfig(provName, host), sink1)
+	set1, observed1 := observedSettings(t)
+	rcvr1 := newReceiver(set1, oktaIntegConfig(provName, host), sink1)
 	err := rcvr1.Start(t.Context(), testHost(provName, store))
 	if err != nil {
 		t.Fatalf("first receiver start failed: %v", err)
 	}
 	waitForLogs(t, sink1, 1, 10*time.Second)
+	waitForSyncComplete(t, observed1, 1, 10*time.Second)
 	err = rcvr1.Shutdown(t.Context())
 	if err != nil {
 		t.Fatalf("first receiver shutdown failed: %v", err)
