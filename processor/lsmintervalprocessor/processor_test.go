@@ -151,6 +151,8 @@ var preAggregationModes = []struct {
 	{name: "pre_aggregation=off"},
 	{name: "pre_aggregation=on", cfg: config.PreAggregationConfig{Enabled: true}},
 	{name: "pre_aggregation=flush_every_request", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 1}},
+	{name: "pre_aggregation=on/log", cfg: config.PreAggregationConfig{Enabled: true, Log: config.PreAggregationLogConfig{Enabled: true}}},
+	{name: "pre_aggregation=flush_every_request/log", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 1, Log: config.PreAggregationLogConfig{Enabled: true}}},
 }
 
 func testRunHelperAllModes(t *testing.T, name string, cfg *config.Config) {
@@ -158,6 +160,10 @@ func testRunHelperAllModes(t *testing.T, name string, cfg *config.Config) {
 	for _, mode := range preAggregationModes {
 		c := *cfg
 		c.PreAggregation = mode.cfg
+		if mode.cfg.Log.Enabled && c.Directory == "" {
+			// The log needs a data directory.
+			c.Directory = t.TempDir()
+		}
 		t.Run(mode.name, func(t *testing.T) {
 			testRunHelper(t, name, &c)
 		})
@@ -283,6 +289,9 @@ func testClientMetadata(t *testing.T, preAggregation config.PreAggregationConfig
 		Intervals: []config.IntervalConfig{{
 			Duration: time.Minute,
 		}},
+	}
+	if preAggregation.Log.Enabled {
+		cfg.Directory = t.TempDir()
 	}
 
 	// N is the number of times to send each delta data point,
@@ -588,8 +597,10 @@ func TestPreAggregationConcurrentTotals(t *testing.T) {
 		{},
 		{Enabled: true},
 		{Enabled: true, MaxSize: 16 << 10}, // also exercises size-triggered flushes
+		{Enabled: true, Log: config.PreAggregationLogConfig{Enabled: true}},
+		{Enabled: true, MaxSize: 16 << 10, Log: config.PreAggregationLogConfig{Enabled: true}},
 	} {
-		t.Run(fmt.Sprintf("enabled=%t/max_size=%d", mode.Enabled, mode.MaxSize), func(t *testing.T) {
+		t.Run(fmt.Sprintf("enabled=%t/max_size=%d/log=%t", mode.Enabled, mode.MaxSize, mode.Log.Enabled), func(t *testing.T) {
 			var exported atomic.Int64
 			next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
 				func(_ context.Context, md pmetric.Metrics) error {

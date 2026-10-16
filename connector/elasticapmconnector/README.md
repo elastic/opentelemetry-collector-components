@@ -42,7 +42,9 @@ in `elasticapm::aggregation::metadata_keys`.
 Incoming metrics can be merged in memory before they are written to the aggregation database by
 setting `elasticapm::aggregation::pre_aggregation::enabled: true`. This greatly reduces database
 merge work for busy aggregation keys. `elasticapm::aggregation::pre_aggregation::max_size` bounds
-the buffer (default 32MiB). See the
+the buffer (default 32MiB). Setting `elasticapm::aggregation::pre_aggregation::log::enabled: true`
+also writes every request to an append-only log in the aggregation directory, so the buffer survives
+process restarts. See the
 [lsmintervalprocessor documentation](../../processor/lsmintervalprocessor/README.md#pre-aggregation).
 
 By default, cardinality for aggregated metrics will be limited.

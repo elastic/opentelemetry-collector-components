@@ -18,6 +18,7 @@
 package config // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -100,6 +101,26 @@ type PreAggregationConfig struct {
 	// an upper bound on the memory held by the buffer. When it is reached,
 	// the buffer is flushed to the database. Defaults to 32MiB.
 	MaxSize int64 `mapstructure:"max_size"`
+
+	// Log configures an optional append-only log that makes the buffer
+	// durable across process restarts.
+	Log PreAggregationLogConfig `mapstructure:"log"`
+}
+
+// PreAggregationLogConfig configures the append-only log for the
+// pre-aggregation buffer.
+//
+// Without the log, metrics merged into the buffer but not yet flushed to the
+// database are lost if the process stops without a clean shutdown. With the
+// log enabled, each request is appended to a log segment before it is merged
+// into the buffer. When the buffer is flushed, the database batch also
+// records the last log segment it covers, and the covered segments are
+// deleted. On start, segments that are not covered are replayed into the
+// database.
+type PreAggregationLogConfig struct {
+	// Enabled turns on the log. It requires pre-aggregation to be enabled
+	// and a directory to be configured. Defaults to false.
+	Enabled bool `mapstructure:"enabled"`
 }
 
 // MaxSizeOrDefault returns the configured MaxSize or the default.
@@ -179,6 +200,14 @@ func (cfg *Config) Validate() error {
 			"invalid value for pre_aggregation::max_size, must not be negative, current: %d",
 			cfg.PreAggregation.MaxSize,
 		)
+	}
+	if cfg.PreAggregation.Log.Enabled {
+		if !cfg.PreAggregation.Enabled {
+			return errors.New("pre_aggregation::log::enabled requires pre_aggregation::enabled")
+		}
+		if cfg.Directory == "" {
+			return errors.New("pre_aggregation::log::enabled requires a directory")
+		}
 	}
 	return nil
 }

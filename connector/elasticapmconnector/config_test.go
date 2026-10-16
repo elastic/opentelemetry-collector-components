@@ -90,6 +90,7 @@ func TestConfig(t *testing.T) {
 					PreAggregation: lsmconfig.PreAggregationConfig{
 						Enabled: true,
 						MaxSize: 1 << 20,
+						Log:     lsmconfig.PreAggregationLogConfig{Enabled: true},
 					},
 				},
 				CustomResourceAttributes: []CustomResourceAttribute{
