@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -83,6 +84,12 @@ type Processor struct {
 	// pending since the last flush.
 	pendingSize atomic.Int64
 	sizer       pmetric.ProtoMarshaler
+
+	// preAggLog is the optional append-only log of the requests merged into
+	// pending, and preAggLogCovered is the last log segment whose records
+	// are committed to the database. Both are guarded by mu.
+	preAggLog        *preAggLog
+	preAggLogCovered uint64
 
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -172,6 +179,12 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 			return fmt.Errorf("failed to open database: %w", err)
 		}
 		p.db = db
+	}
+	if p.cfg.PreAggregation.Log.Enabled && p.preAggLog == nil {
+		if err := p.openPreAggLog(); err != nil {
+			p.mu.Unlock()
+			return fmt.Errorf("failed to open pre-aggregation log: %w", err)
+		}
 	}
 
 	if p.exportStopped == nil {
@@ -271,6 +284,11 @@ func (p *Processor) Shutdown(ctx context.Context) error {
 		// All future operations are invalid after db is closed
 		p.db = nil
 	}
+	if p.preAggLog != nil {
+		if err := p.preAggLog.close(); err != nil {
+			return fmt.Errorf("failed to close pre-aggregation log: %w", err)
+		}
+	}
 	if p.telemetryBuilder != nil {
 		p.telemetryBuilder.Shutdown()
 	}
@@ -336,15 +354,25 @@ func (p *Processor) consumePreAggregated(
 	attributes []attribute.KeyValue,
 ) error {
 	size := int64(p.sizer.MetricsSize(md))
+	mapKey := merger.Key{Metadata: clientMetadata}
+	keyBytes, err := mapKey.AppendBinary(nil)
+	if err != nil {
+		return fmt.Errorf("failed to marshal pre-aggregation key: %w", err)
+	}
+	var record []byte
+	if p.preAggLog != nil {
+		// Encode outside of any lock; only the append is serialized.
+		if record, err = p.preAggLog.newRecord(keyBytes, md); err != nil {
+			return fmt.Errorf("failed to encode pre-aggregation log record: %w", err)
+		}
+	}
 	var (
 		nextMD pmetric.Metrics
 		errs   []error
+		logEnd uint64
 	)
 	for {
-		pv, err := p.pendingValueFor(clientMetadata)
-		if err != nil {
-			return err
-		}
+		pv := p.pendingValueFor(keyBytes, clientMetadata)
 		pv.mu.Lock()
 		if pv.flushed {
 			// The value was flushed (for example because the processing
@@ -352,9 +380,25 @@ func (p *Processor) consumePreAggregated(
 			pv.mu.Unlock()
 			continue
 		}
+		if record != nil {
+			// Enqueue while holding the value's lock so that, for each key,
+			// records are logged in the order they are merged. Overflow
+			// handling depends on that order.
+			if logEnd, err = p.preAggLog.enqueue(record, pv.window); err != nil {
+				pv.mu.Unlock()
+				return err
+			}
+		}
 		nextMD, errs = p.mergeMetrics(pv.value, md)
 		pv.mu.Unlock()
 		break
+	}
+	if record != nil {
+		// Wait outside of the value's lock, so concurrent requests for the
+		// same key share a write.
+		if err := p.preAggLog.wait(logEnd); err != nil {
+			return err
+		}
 	}
 
 	p.telemetryBuilder.LsmintervalProcessedDataPoints.Add(
@@ -474,17 +518,14 @@ type pendingValue struct {
 	mu       sync.Mutex
 	flushed  bool
 	metadata []merger.KeyValues
+	window   time.Time
 	value    *merger.Value
 }
 
-// pendingValueFor returns the pending value for the given client metadata
-// in the current processing window, creating it if needed.
-func (p *Processor) pendingValueFor(clientMetadata []merger.KeyValues) (*pendingValue, error) {
-	mapKey := merger.Key{Metadata: clientMetadata}
-	keyBytes, err := mapKey.AppendBinary(nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal pre-aggregation key: %w", err)
-	}
+// pendingValueFor returns the pending value for the given client metadata,
+// whose binary encoding is keyBytes, in the current processing window,
+// creating it if needed.
+func (p *Processor) pendingValueFor(keyBytes []byte, clientMetadata []merger.KeyValues) *pendingValue {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	pv, ok := p.pending[string(keyBytes)]
@@ -494,6 +535,7 @@ func (p *Processor) pendingValueFor(clientMetadata []merger.KeyValues) (*pending
 		}
 		pv = &pendingValue{
 			metadata: clientMetadata,
+			window:   p.processingTime,
 			value: merger.NewValue(
 				p.cfg.ResourceLimit,
 				p.cfg.ScopeLimit,
@@ -504,7 +546,7 @@ func (p *Processor) pendingValueFor(clientMetadata []merger.KeyValues) (*pending
 		}
 		p.pending[string(keyBytes)] = pv
 	}
-	return pv, nil
+	return pv
 }
 
 // flushPending flushes the pending values to the database if the buffer is
@@ -523,10 +565,24 @@ func (p *Processor) flushPending() error {
 // merge operand per interval for the current processing window and resets
 // the buffer. The caller must hold p.mu.
 func (p *Processor) flushPendingLocked() error {
-	p.pendingSize.Store(0)
-	if len(p.pending) == 0 {
+	if len(p.pending) == 0 && (p.preAggLog == nil || p.preAggLogCovered+1 >= p.preAggLog.seq) {
+		p.pendingSize.Store(0)
 		return nil
 	}
+	var (
+		nextSegment    *os.File
+		nextSegmentSeq uint64
+	)
+	if p.preAggLog != nil {
+		// Create the next segment before touching the buffer, so that a
+		// failure leaves the buffer and the log as they were.
+		nextSegmentSeq = p.preAggLog.seq + 1
+		var err error
+		if nextSegment, err = p.preAggLog.createSegment(nextSegmentSeq); err != nil {
+			return err
+		}
+	}
+	p.pendingSize.Store(0)
 	if p.batch == nil {
 		p.batch = newBatch(p.db)
 	}
@@ -545,26 +601,18 @@ func (p *Processor) flushPendingLocked() error {
 			errs = append(errs, fmt.Errorf("failed to marshal pre-aggregated value: %w", err))
 			continue
 		}
-		for _, ivl := range p.intervals {
-			// Truncate so that each interval window maps to one key, as in
-			// mergeToBatch.
-			key := merger.Key{
-				Interval:       ivl.Duration,
-				ProcessingTime: p.processingTime.Truncate(ivl.Duration),
-				Metadata:       pv.metadata,
-			}
-			keyBuf, err = key.AppendBinary(keyBuf[:0])
-			if err != nil {
-				errs = append(errs, fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err))
-				continue
-			}
-			if err := p.batch.Merge(keyBuf, valueBuf, nil); err != nil {
-				errs = append(errs, fmt.Errorf("failed to merge to db: %w", err))
-			}
+		if keyBuf, err = p.mergeValueToBatch(p.batch, pv.window, pv.metadata, valueBuf, keyBuf); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	clear(p.pending)
 
+	if p.preAggLog != nil {
+		if err := p.commitPreAggLogLocked(nextSegment, nextSegmentSeq); err != nil {
+			errs = append(errs, err)
+		}
+		return errors.Join(errs...)
+	}
 	if p.batch.Len() >= dbCommitThresholdBytes {
 		if err := p.batch.Commit(p.wOpts); err != nil {
 			errs = append(errs, fmt.Errorf("failed to commit a batch to db: %w", err))
@@ -575,6 +623,37 @@ func (p *Processor) flushPendingLocked() error {
 		p.batch = nil
 	}
 	return errors.Join(errs...)
+}
+
+// mergeValueToBatch merges the encoded value into b as one operand per
+// interval for the given processing window and metadata. The processing
+// window is truncated to each interval, as in mergeToBatch, so that each
+// interval window maps to one key. keyBuf is reused for encoding keys and
+// returned.
+func (p *Processor) mergeValueToBatch(
+	b *pebble.Batch,
+	processingTime time.Time,
+	metadata []merger.KeyValues,
+	value, keyBuf []byte,
+) ([]byte, error) {
+	var errs []error
+	for _, ivl := range p.intervals {
+		key := merger.Key{
+			Interval:       ivl.Duration,
+			ProcessingTime: processingTime.Truncate(ivl.Duration),
+			Metadata:       metadata,
+		}
+		var err error
+		keyBuf, err = key.AppendBinary(keyBuf[:0])
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err))
+			continue
+		}
+		if err := b.Merge(keyBuf, value, nil); err != nil {
+			errs = append(errs, fmt.Errorf("failed to merge to db: %w", err))
+		}
+	}
+	return keyBuf, errors.Join(errs...)
 }
 
 func (p *Processor) mergeToBatch(mb *mergeBuffer, clientMetadata []merger.KeyValues) (err error) {
