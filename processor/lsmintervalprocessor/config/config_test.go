@@ -74,6 +74,34 @@ func TestConfig(t *testing.T) {
 			}(),
 		},
 		{
+			name: "pre_aggregation_log_without_pre_aggregation",
+			input: map[string]any{
+				"directory":       "/tmp/lsm",
+				"pre_aggregation": map[string]any{"log": map[string]any{"enabled": true}},
+			},
+			expectedErrMsg: "pre_aggregation::log::enabled requires pre_aggregation::enabled",
+		},
+		{
+			name: "pre_aggregation_log_without_directory",
+			input: map[string]any{
+				"pre_aggregation": map[string]any{"enabled": true, "log": map[string]any{"enabled": true}},
+			},
+			expectedErrMsg: "pre_aggregation::log::enabled requires a directory",
+		},
+		{
+			name: "valid_pre_aggregation_log",
+			input: map[string]any{
+				"directory":       "/tmp/lsm",
+				"pre_aggregation": map[string]any{"enabled": true, "log": map[string]any{"enabled": true}},
+			},
+			expected: func() *Config {
+				cfg := CreateDefaultConfig().(*Config)
+				cfg.Directory = "/tmp/lsm"
+				cfg.PreAggregation = PreAggregationConfig{Enabled: true, Log: PreAggregationLogConfig{Enabled: true}}
+				return cfg
+			}(),
+		},
+		{
 			name: "valid_full",
 			input: map[string]any{
 				"metadata_keys":                     []string{"test.1", "test.2"},
