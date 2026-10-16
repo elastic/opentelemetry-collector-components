@@ -22,7 +22,7 @@ require (
 	go.opentelemetry.io/collector/processor v1.69.0
 	go.opentelemetry.io/collector/processor/processortest v0.163.0
 	go.opentelemetry.io/otel v1.47.0
-	go.opentelemetry.io/proto/otlp v1.11.0
+	go.opentelemetry.io/proto/otlp v1.11.1
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.84.0
