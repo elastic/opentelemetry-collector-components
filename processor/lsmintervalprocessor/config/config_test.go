@@ -56,6 +56,24 @@ func TestConfig(t *testing.T) {
 			expectedErrMsg: "invalid value for exponential_histogram_max_buckets",
 		},
 		{
+			name: "negative_pre_aggregation_max_size",
+			input: map[string]any{
+				"pre_aggregation": map[string]any{"enabled": true, "max_size": -1},
+			},
+			expectedErrMsg: "invalid value for pre_aggregation::max_size",
+		},
+		{
+			name: "valid_pre_aggregation",
+			input: map[string]any{
+				"pre_aggregation": map[string]any{"enabled": true, "max_size": 1 << 20},
+			},
+			expected: func() *Config {
+				cfg := CreateDefaultConfig().(*Config)
+				cfg.PreAggregation = PreAggregationConfig{Enabled: true, MaxSize: 1 << 20}
+				return cfg
+			}(),
+		},
+		{
 			name: "valid_full",
 			input: map[string]any{
 				"metadata_keys":                     []string{"test.1", "test.2"},
@@ -87,4 +105,9 @@ func TestConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPreAggregationMaxSizeOrDefault(t *testing.T) {
+	assert.Equal(t, DefaultPreAggregationMaxSize, PreAggregationConfig{}.MaxSizeOrDefault())
+	assert.Equal(t, int64(1<<20), PreAggregationConfig{MaxSize: 1 << 20}.MaxSizeOrDefault())
 }

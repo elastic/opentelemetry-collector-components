@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/pebble"
@@ -94,6 +95,16 @@ type Processor struct {
 	mu             sync.Mutex
 	batch          *pebble.Batch
 	processingTime time.Time
+
+	// pending holds the in-memory pre-aggregated values for the current
+	// processing window, keyed by the binary encoding of the client
+	// metadata. It is only used when pre-aggregation is enabled and is
+	// guarded by mu; each value has its own lock for merging.
+	pending map[string]*pendingValue
+	// pendingSize is the approximate size of the metrics merged into
+	// pending since the last flush.
+	pendingSize atomic.Int64
+	sizer       pmetric.ProtoMarshaler
 
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -184,6 +195,11 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 			}
 
 			p.mu.Lock()
+			// Flush pre-aggregated values for the window being closed so
+			// they are committed with the batch before export.
+			if err := p.flushPendingLocked(); err != nil {
+				p.logger.Warn("failed to flush pre-aggregated values", zap.Error(err))
+			}
 			batch := p.batch
 			p.batch = nil
 			p.processingTime = to
@@ -223,6 +239,9 @@ func (p *Processor) Shutdown(ctx context.Context) error {
 	// Ensure all data in the database is exported
 	if p.db != nil {
 		p.logger.Info("exporting all data before shutting down")
+		if err := p.flushPendingLocked(); err != nil {
+			return fmt.Errorf("failed to flush pre-aggregated values: %w", err)
+		}
 		if p.batch != nil {
 			if err := p.batch.Commit(p.wOpts); err != nil {
 				return fmt.Errorf("failed to commit batch: %w", err)
@@ -265,6 +284,11 @@ func (p *Processor) Capabilities() consumer.Capabilities {
 }
 
 func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	clientMetadata, attributes := p.clientMetadata(ctx)
+	if p.cfg.PreAggregation.Enabled {
+		return p.consumePreAggregated(ctx, md, clientMetadata, attributes)
+	}
+
 	v := merger.NewValue(
 		p.cfg.ResourceLimit,
 		p.cfg.ScopeLimit,
@@ -272,7 +296,123 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		p.cfg.DatapointLimit,
 		p.cfg.ExponentialHistogramMaxBuckets,
 	)
+	nextMD, errs := p.mergeMetrics(v, md)
 
+	mb, ok := p.bufferPool.Get().(*mergeBuffer)
+	if !ok {
+		mb = &mergeBuffer{}
+	}
+	defer p.bufferPool.Put(mb)
+
+	var err error
+	mb.value, err = v.AppendBinary(mb.value[:0])
+	if err != nil {
+		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
+	}
+
+	if err := p.mergeToBatch(mb, clientMetadata); err != nil {
+		return fmt.Errorf("failed to merge the value to batch: %w", err)
+	}
+
+	p.telemetryBuilder.LsmintervalProcessedDataPoints.Add(
+		ctx,
+		int64(md.DataPointCount()),
+		metric.WithAttributes(attributes...),
+	)
+	p.telemetryBuilder.LsmintervalProcessedBytes.Add(
+		ctx,
+		int64(len(mb.value)+len(mb.key)),
+		metric.WithAttributes(attributes...),
+	)
+
+	return p.consumeRemaining(ctx, nextMD, errs)
+}
+
+// consumePreAggregated merges md into the in-memory pending value for the
+// client metadata, flushing the pending values to the database when the
+// configured size is reached.
+func (p *Processor) consumePreAggregated(
+	ctx context.Context,
+	md pmetric.Metrics,
+	clientMetadata []merger.KeyValues,
+	attributes []attribute.KeyValue,
+) error {
+	size := int64(p.sizer.MetricsSize(md))
+	var (
+		nextMD pmetric.Metrics
+		errs   []error
+	)
+	for {
+		pv, err := p.pendingValueFor(clientMetadata)
+		if err != nil {
+			return err
+		}
+		pv.mu.Lock()
+		if pv.flushed {
+			// The value was flushed (for example because the processing
+			// window advanced) after it was looked up; retry with a new one.
+			pv.mu.Unlock()
+			continue
+		}
+		nextMD, errs = p.mergeMetrics(pv.value, md)
+		pv.mu.Unlock()
+		break
+	}
+
+	p.telemetryBuilder.LsmintervalProcessedDataPoints.Add(
+		ctx,
+		int64(md.DataPointCount()),
+		metric.WithAttributes(attributes...),
+	)
+	p.telemetryBuilder.LsmintervalProcessedBytes.Add(
+		ctx,
+		size,
+		metric.WithAttributes(attributes...),
+	)
+
+	if p.pendingSize.Add(size) >= p.cfg.PreAggregation.MaxSizeOrDefault() {
+		if err := p.flushPending(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to flush pre-aggregated values: %w", err))
+		}
+	}
+	return p.consumeRemaining(ctx, nextMD, errs)
+}
+
+// clientMetadata extracts the configured metadata keys from the client info
+// in ctx, along with the corresponding telemetry attributes.
+func (p *Processor) clientMetadata(ctx context.Context) ([]merger.KeyValues, []attribute.KeyValue) {
+	clientInfo := client.FromContext(ctx)
+	clientMetadata := make([]merger.KeyValues, 0, len(p.sortedMetadataKeys))
+	attributes := make([]attribute.KeyValue, 0, len(p.sortedMetadataKeys))
+	for _, k := range p.sortedMetadataKeys {
+		if values := clientInfo.Metadata.Get(k); len(values) != 0 {
+			clientMetadata = append(clientMetadata, merger.KeyValues{
+				Key:    k,
+				Values: values,
+			})
+			attributes = append(attributes, attribute.StringSlice(k, values))
+		}
+	}
+	return clientMetadata, attributes
+}
+
+// consumeRemaining passes the metrics that were not aggregated to the next
+// consumer and joins any errors.
+func (p *Processor) consumeRemaining(ctx context.Context, nextMD pmetric.Metrics, errs []error) error {
+	if nextMD.DataPointCount() > 0 {
+		if err := p.next.ConsumeMetrics(ctx, nextMD); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+
+// mergeMetrics merges the aggregatable metrics in md into v and returns the
+// metrics that must be passed through to the next consumer.
+func (p *Processor) mergeMetrics(v *merger.Value, md pmetric.Metrics) (pmetric.Metrics, []error) {
 	var errs []error
 	nextMD := pmetric.NewMetrics()
 	rms := md.ResourceMetrics()
@@ -327,57 +467,114 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		}
 	}
 
-	mb, ok := p.bufferPool.Get().(*mergeBuffer)
-	if !ok {
-		mb = &mergeBuffer{}
-	}
-	defer p.bufferPool.Put(mb)
+	return nextMD, errs
+}
 
-	var err error
-	mb.value, err = v.AppendBinary(mb.value[:0])
+// pendingValue is an in-memory pre-aggregated value for one aggregation key
+// within the current processing window.
+type pendingValue struct {
+	mu       sync.Mutex
+	flushed  bool
+	metadata []merger.KeyValues
+	value    *merger.Value
+}
+
+// pendingValueFor returns the pending value for the given client metadata
+// in the current processing window, creating it if needed.
+func (p *Processor) pendingValueFor(clientMetadata []merger.KeyValues) (*pendingValue, error) {
+	mapKey := merger.Key{Metadata: clientMetadata}
+	keyBytes, err := mapKey.AppendBinary(nil)
 	if err != nil {
-		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
+		return nil, fmt.Errorf("failed to marshal pre-aggregation key: %w", err)
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	pv, ok := p.pending[string(keyBytes)]
+	if !ok {
+		if p.pending == nil {
+			p.pending = make(map[string]*pendingValue)
+		}
+		pv = &pendingValue{
+			metadata: clientMetadata,
+			value: merger.NewValue(
+				p.cfg.ResourceLimit,
+				p.cfg.ScopeLimit,
+				p.cfg.MetricLimit,
+				p.cfg.DatapointLimit,
+				p.cfg.ExponentialHistogramMaxBuckets,
+			),
+		}
+		p.pending[string(keyBytes)] = pv
+	}
+	return pv, nil
+}
 
-	clientInfo := client.FromContext(ctx)
-	clientMetadata := make([]merger.KeyValues, 0, len(p.sortedMetadataKeys))
-	attributes := make([]attribute.KeyValue, 0, len(p.sortedMetadataKeys))
-	for _, k := range p.sortedMetadataKeys {
-		if values := clientInfo.Metadata.Get(k); len(values) != 0 {
-			clientMetadata = append(clientMetadata, merger.KeyValues{
-				Key:    k,
-				Values: values,
-			})
-			attributes = append(attributes, attribute.StringSlice(k, values))
+// flushPending flushes the pending values to the database if the buffer is
+// still above the configured size; concurrent callers may already have
+// flushed it.
+func (p *Processor) flushPending() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.pendingSize.Load() < p.cfg.PreAggregation.MaxSizeOrDefault() {
+		return nil
+	}
+	return p.flushPendingLocked()
+}
+
+// flushPendingLocked writes every pending value to the batch as a single
+// merge operand per interval for the current processing window and resets
+// the buffer. The caller must hold p.mu.
+func (p *Processor) flushPendingLocked() error {
+	p.pendingSize.Store(0)
+	if len(p.pending) == 0 {
+		return nil
+	}
+	if p.batch == nil {
+		p.batch = newBatch(p.db)
+	}
+	var (
+		errs     []error
+		valueBuf []byte
+		keyBuf   []byte
+	)
+	for _, pv := range p.pending {
+		pv.mu.Lock()
+		pv.flushed = true
+		var err error
+		valueBuf, err = pv.value.AppendBinary(valueBuf[:0])
+		pv.mu.Unlock()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to marshal pre-aggregated value: %w", err))
+			continue
+		}
+		for _, ivl := range p.intervals {
+			key := merger.Key{
+				Interval:       ivl.Duration,
+				ProcessingTime: p.processingTime,
+				Metadata:       pv.metadata,
+			}
+			keyBuf, err = key.AppendBinary(keyBuf[:0])
+			if err != nil {
+				errs = append(errs, fmt.Errorf("failed to marshal key to binary for ivl %s: %w", ivl.Duration, err))
+				continue
+			}
+			if err := p.batch.Merge(keyBuf, valueBuf, nil); err != nil {
+				errs = append(errs, fmt.Errorf("failed to merge to db: %w", err))
+			}
 		}
 	}
+	clear(p.pending)
 
-	if err := p.mergeToBatch(mb, clientMetadata); err != nil {
-		return fmt.Errorf("failed to merge the value to batch: %w", err)
-	}
-
-	p.telemetryBuilder.LsmintervalProcessedDataPoints.Add(
-		ctx,
-		int64(md.DataPointCount()),
-		metric.WithAttributes(attributes...),
-	)
-	p.telemetryBuilder.LsmintervalProcessedBytes.Add(
-		ctx,
-		int64(len(mb.value)+len(mb.key)),
-		metric.WithAttributes(attributes...),
-	)
-
-	// Call next for the metrics remaining in the input if any
-	if nextMD.DataPointCount() > 0 {
-		if err := p.next.ConsumeMetrics(ctx, nextMD); err != nil {
-			errs = append(errs, err)
+	if p.batch.Len() >= dbCommitThresholdBytes {
+		if err := p.batch.Commit(p.wOpts); err != nil {
+			errs = append(errs, fmt.Errorf("failed to commit a batch to db: %w", err))
 		}
+		if err := p.batch.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("failed to close a batch post commit: %w", err))
+		}
+		p.batch = nil
 	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
-	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (p *Processor) mergeToBatch(mb *mergeBuffer, clientMetadata []merger.KeyValues) (err error) {

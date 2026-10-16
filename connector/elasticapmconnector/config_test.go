@@ -30,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
+	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 func TestConfig(t *testing.T) {
@@ -85,6 +86,10 @@ func TestConfig(t *testing.T) {
 						DatapointLimit: LimitConfig{
 							MaxCardinality: 1,
 						},
+					},
+					PreAggregation: lsmconfig.PreAggregationConfig{
+						Enabled: true,
+						MaxSize: 1 << 20,
 					},
 				},
 				CustomResourceAttributes: []CustomResourceAttribute{

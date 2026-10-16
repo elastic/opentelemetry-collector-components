@@ -72,6 +72,42 @@ type Config struct {
 	// precisions ranging in, say, minutes and milliseconds are merged
 	// together. Defaults to 160.
 	ExponentialHistogramMaxBuckets int `mapstructure:"exponential_histogram_max_buckets"`
+
+	// PreAggregation configures an optional in-memory pre-aggregation
+	// buffer in front of the database.
+	PreAggregation PreAggregationConfig `mapstructure:"pre_aggregation"`
+}
+
+// DefaultPreAggregationMaxSize is the default value of
+// PreAggregationConfig.MaxSize.
+const DefaultPreAggregationMaxSize int64 = 32 << 20 // 32MiB
+
+// PreAggregationConfig configures the in-memory pre-aggregation buffer.
+//
+// Without the buffer, every ConsumeMetrics call writes one merge operand per
+// interval to the database, and the database merges those operands again on
+// every flush and compaction. With the buffer enabled, incoming metrics are
+// merged in memory into one value per aggregation key, and the buffer is
+// written to the database as a single merge operand per key when it is
+// flushed: when MaxSize is reached, when the processing window advances, and
+// on shutdown. Aggregated results are identical in both modes.
+type PreAggregationConfig struct {
+	// Enabled turns on the pre-aggregation buffer. Defaults to false.
+	Enabled bool `mapstructure:"enabled"`
+
+	// MaxSize bounds the buffer. It is measured as the total protobuf size
+	// of the metrics merged into the buffer since the last flush, which is
+	// an upper bound on the memory held by the buffer. When it is reached,
+	// the buffer is flushed to the database. Defaults to 32MiB.
+	MaxSize int64 `mapstructure:"max_size"`
+}
+
+// MaxSizeOrDefault returns the configured MaxSize or the default.
+func (c PreAggregationConfig) MaxSizeOrDefault() int64 {
+	if c.MaxSize == 0 {
+		return DefaultPreAggregationMaxSize
+	}
+	return c.MaxSize
 }
 
 // PassThrough determines whether metrics should be passed through as they
@@ -136,6 +172,12 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf(
 			"invalid value for exponential_histogram_max_buckets, must be greater than 0, current: %d",
 			cfg.ExponentialHistogramMaxBuckets,
+		)
+	}
+	if cfg.PreAggregation.MaxSize < 0 {
+		return fmt.Errorf(
+			"invalid value for pre_aggregation::max_size, must not be negative, current: %d",
+			cfg.PreAggregation.MaxSize,
 		)
 	}
 	return nil

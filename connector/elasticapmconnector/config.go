@@ -123,6 +123,11 @@ type AggregationConfig struct {
 	// aggregation interval. Available OTTL paths: ottldatapoint context.
 	// Client metadata is accessible via otelcol.client.metadata["key"].
 	Statements []string `mapstructure:"statements"`
+
+	// PreAggregation configures the optional in-memory pre-aggregation
+	// buffer of the underlying lsmintervalprocessor. See the
+	// lsmintervalprocessor documentation for details.
+	PreAggregation lsmconfig.PreAggregationConfig `mapstructure:"pre_aggregation"`
 }
 
 type AggregationLimitConfig struct {
@@ -190,6 +195,7 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 	if cfg.Aggregation != nil {
 		lsmConfig.Directory = cfg.Aggregation.Directory
 		lsmConfig.MetadataKeys = cfg.Aggregation.MetadataKeys
+		lsmConfig.PreAggregation = cfg.Aggregation.PreAggregation
 		lsmConfig.ResourceLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limits.ResourceLimit.MaxCardinality,
 			Overflow: lsmconfig.OverflowConfig{
