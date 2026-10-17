@@ -19,8 +19,8 @@
   customManagers: [
     {
       customType: 'regex',
-      fileMatch: [
-        'distributions/elastic-components/manifest.yaml$',
+      managerFilePatterns: [
+        '/distributions/elastic-components/manifest.yaml$/',
       ],
       datasourceTemplate: 'go',
       matchStrings: [
