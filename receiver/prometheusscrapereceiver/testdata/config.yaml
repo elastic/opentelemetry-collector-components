@@ -1,0 +1,51 @@
+prometheusscrape:
+  config:
+    global:
+      external_labels:
+        cluster: test
+    scrape_configs:
+      - job_name: static
+        scrape_interval: 15s
+        static_configs:
+          - targets: ["localhost:9100"]
+            labels:
+              team: obs
+
+prometheusscrape/native_histograms:
+  config:
+    scrape_configs:
+      - job_name: nh
+        scrape_native_histograms: true
+        static_configs:
+          - targets: ["localhost:9100"]
+
+prometheusscrape/nhcb:
+  config:
+    scrape_configs:
+      - job_name: nhcb
+        convert_classic_histograms_to_nhcb: true
+        static_configs:
+          - targets: ["localhost:9100"]
+
+prometheusscrape/remote_write:
+  config:
+    scrape_configs:
+      - job_name: rw
+        static_configs:
+          - targets: ["localhost:9100"]
+    remote_write:
+      - url: http://localhost:1234/write
+
+prometheusscrape/rule_files:
+  config:
+    scrape_configs:
+      - job_name: rf
+        static_configs:
+          - targets: ["localhost:9100"]
+    rule_files:
+      - rules.yml
+
+prometheusscrape/empty:
+  config: {}
+
+prometheusscrape/no_config: {}
