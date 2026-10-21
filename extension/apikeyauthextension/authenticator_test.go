@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -1327,4 +1328,75 @@ func newCannedErrorHandler(response types.ElasticsearchError) http.HandlerFunc {
 			panic(err)
 		}
 	})
+}
+
+// newGrantingHasPrivilegesHandler simulates Elasticsearch: it reports each
+// requested privilege as granted if it appears in grants (formatted as
+// "application/resource/privilege"), and counts requests.
+func newGrantingHasPrivilegesHandler(t testing.TB, calls *int, grants ...string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		*calls++
+		var body hasprivileges.Request
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		resp := hasprivileges.Response{
+			Application:     types.ApplicationsPrivileges{},
+			Username:        user,
+			HasAllRequested: true,
+		}
+		for _, check := range body.Application {
+			resources := resp.Application[check.Application]
+			if resources == nil {
+				resources = types.ResourcePrivileges{}
+				resp.Application[check.Application] = resources
+			}
+			for _, resource := range check.Resources {
+				if resources[resource] == nil {
+					resources[resource] = types.Privileges{}
+				}
+				for _, privilege := range check.Privileges {
+					granted := slices.Contains(grants, check.Application+"/"+resource+"/"+privilege)
+					resources[resource][privilege] = granted
+					resp.HasAllRequested = resp.HasAllRequested && granted
+				}
+			}
+		}
+		assert.NoError(t, json.NewEncoder(w).Encode(resp))
+	}
+}
+
+func TestAuthenticator_CacheKeyMetadataMultipleValues(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, "my_app/resource:a/write"))
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, srv, config)
+	authenticate := func(values ...string) error {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{"X-Resource-Name": values}),
+		})
+		_, err := authenticator.Authenticate(ctx, map[string][]string{
+			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+		})
+		return err
+	}
+
+	require.NoError(t, authenticate("a"))
+	require.NoError(t, authenticate("a"))
+	assert.Equal(t, 1, calls)
+
+	// A cached decision for [a] must not authorize [a, b].
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("a", "b")))
+	assert.Equal(t, 2, calls)
+
+	// A single value that looks like a value list must not collide with it.
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate(`a" "b`)))
+	assert.Equal(t, 3, calls)
 }

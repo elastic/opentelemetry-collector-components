@@ -29,6 +29,7 @@ import (
 	mathrand "math/rand/v2"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -331,22 +332,33 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 	if len(a.config.Cache.KeyMetadata) != 0 {
 		clientMetadata = client.FromContext(ctx).Metadata
 	}
-	key := id
+	key := []byte(id)
 	for _, header := range a.config.Cache.KeyHeaders {
 		value, ok := getHeader(headers, header, strings.ToLower(header))
 		if !ok {
 			return "", fmt.Errorf("error computing cache key: missing header %q", header)
 		}
-		key += " " + value
+		key = append(key, ' ')
+		key = append(key, value...)
 	}
 	for _, metadataKey := range a.config.Cache.KeyMetadata {
 		values := clientMetadata.Get(metadataKey)
 		if len(values) == 0 {
 			return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
 		}
-		key += " " + values[0]
+		// Dynamic resources check every metadata value, so the key must
+		// include every value: a decision for [a] must not be reused for
+		// [a, b]. Quoting keeps distinct value lists distinct.
+		key = append(key, " ["...)
+		for i, value := range values {
+			if i > 0 {
+				key = append(key, ' ')
+			}
+			key = strconv.AppendQuote(key, value)
+		}
+		key = append(key, ']')
 	}
-	return key, nil
+	return string(key), nil
 }
 
 // Authenticate validates an ApiKey scheme Authorization header,
