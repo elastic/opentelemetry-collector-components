@@ -94,6 +94,10 @@ type appender struct {
 	metrics pmetric.MetricSlice
 	byKey   map[metricKey]pmetric.Metric
 	points  int
+
+	// Custom bucket native histograms dropped in this scrape, reported once on Commit.
+	droppedCustomBuckets int
+	firstDropped         string
 }
 
 // Append implements storage.AppenderV2.
@@ -144,9 +148,14 @@ func (a *appender) appendNativeHistogram(ls labels.Labels, name string, t int64,
 	case h != nil:
 		schema = h.Schema
 	}
-	// Custom bucket (NHCB) histograms use schema -53 and are not exponential.
+	// Custom bucket (NHCB) histograms use schema -53 and are not exponential, so
+	// they can't be represented as an ExponentialHistogram. They are counted and
+	// reported once per scrape on Commit.
 	if !histogram.IsExponentialSchema(schema) {
-		a.parent.logger.Debug("dropping native histogram with non exponential schema", zap.String("series", ls.String()), zap.Int32("schema", schema))
+		if a.droppedCustomBuckets == 0 {
+			a.firstDropped = ls.String()
+		}
+		a.droppedCustomBuckets++
 		return ref
 	}
 
@@ -319,6 +328,10 @@ func seriesHash(ls labels.Labels) uint64 {
 
 // Commit implements storage.AppenderV2.
 func (a *appender) Commit() error {
+	if a.droppedCustomBuckets > 0 {
+		a.parent.logger.Warn("dropped native histograms with custom buckets (NHCB), only exponential native histograms are supported",
+			zap.Int("dropped", a.droppedCustomBuckets), zap.String("first_series", a.firstDropped))
+	}
 	if a.points == 0 {
 		return nil
 	}
@@ -334,6 +347,8 @@ func (a *appender) Rollback() error {
 	a.metrics = pmetric.NewMetricSlice()
 	a.byKey = nil
 	a.points = 0
+	a.droppedCustomBuckets = 0
+	a.firstDropped = ""
 	return nil
 }
 

@@ -45,6 +45,16 @@ prometheusscrape/rule_files:
     rule_files:
       - rules.yml
 
+prometheusscrape/missing_ca_file:
+  config:
+    scrape_configs:
+      - job_name: tls
+        scheme: https
+        tls_config:
+          ca_file: /does/not/exist/ca.pem
+        static_configs:
+          - targets: ["localhost:9100"]
+
 prometheusscrape/empty:
   config: {}
 

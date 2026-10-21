@@ -199,6 +199,9 @@ func checkFile(fn string) error {
 }
 
 func checkTLSConfig(tlsConfig commonconfig.TLSConfig) error {
+	if err := checkFile(tlsConfig.CAFile); err != nil {
+		return fmt.Errorf("error checking CA file %q: %w", tlsConfig.CAFile, err)
+	}
 	if err := checkFile(tlsConfig.CertFile); err != nil {
 		return fmt.Errorf("error checking client cert file %q: %w", tlsConfig.CertFile, err)
 	}

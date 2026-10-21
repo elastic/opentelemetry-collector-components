@@ -36,6 +36,7 @@ import (
 	"go.opentelemetry.io/collector/receiver/receiverhelper"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 )
 
 func newTestAppendable(t *testing.T, sink *consumertest.MetricsSink, ext labels.Labels) *appendable {
@@ -195,6 +196,54 @@ func TestAppendDrops(t *testing.T) {
 
 	require.NoError(t, app.Commit())
 	assert.Empty(t, sink.AllMetrics(), "nothing to consume when everything was dropped")
+}
+
+func nhcbHistogram() *histogram.Histogram {
+	return &histogram.Histogram{Schema: histogram.CustomBucketsSchema}
+}
+
+func TestAppendCustomBucketHistogramsWarnOncePerScrape(t *testing.T) {
+	core, logs := observer.New(zap.WarnLevel)
+	a := newTestAppendable(t, new(consumertest.MetricsSink), labels.EmptyLabels())
+	a.logger = zap.New(core)
+
+	app := a.AppenderV2(context.Background())
+	for _, name := range []string{"nhcb_a", "nhcb_b", "nhcb_c"} {
+		_, err := app.Append(0, labels.FromStrings("__name__", name), 0, 1, 0, nhcbHistogram(), nil, storage.AppendV2Options{})
+		require.NoError(t, err)
+	}
+	assert.Zero(t, logs.Len(), "nothing is logged per sample")
+	require.NoError(t, app.Commit())
+
+	require.Equal(t, 1, logs.Len(), "one warning per scrape")
+	entry := logs.All()[0]
+	assert.Equal(t, zap.WarnLevel, entry.Level)
+	assert.EqualValues(t, 3, entry.ContextMap()["dropped"])
+	assert.Contains(t, entry.ContextMap()["first_series"], "nhcb_a")
+}
+
+func TestAppendNoWarningWithoutDroppedHistograms(t *testing.T) {
+	core, logs := observer.New(zap.WarnLevel)
+	a := newTestAppendable(t, new(consumertest.MetricsSink), labels.EmptyLabels())
+	a.logger = zap.New(core)
+
+	app := a.AppenderV2(context.Background())
+	_, err := app.Append(0, labels.FromStrings("__name__", "nh"), 0, 1, 0, nativeHistogram(), nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+	assert.Zero(t, logs.Len())
+}
+
+func TestAppendRollbackDiscardsDroppedCount(t *testing.T) {
+	core, logs := observer.New(zap.WarnLevel)
+	a := newTestAppendable(t, new(consumertest.MetricsSink), labels.EmptyLabels())
+	a.logger = zap.New(core)
+
+	app := a.AppenderV2(context.Background())
+	_, err := app.Append(0, labels.FromStrings("__name__", "nhcb"), 0, 1, 0, nhcbHistogram(), nil, storage.AppendV2Options{})
+	require.NoError(t, err)
+	require.NoError(t, app.Rollback())
+	assert.Zero(t, logs.Len())
 }
 
 func TestAppendRollback(t *testing.T) {

@@ -89,6 +89,7 @@ func TestConfigInvalid(t *testing.T) {
 		{"nhcb", "convert_classic_histograms_to_nhcb is not supported"},
 		{"remote_write", "remote_write"},
 		{"rule_files", "rule_files"},
+		{"missing_ca_file", "error checking CA file"},
 		{"empty", "no Prometheus scrape_configs"},
 		{"no_config", ""},
 	}
