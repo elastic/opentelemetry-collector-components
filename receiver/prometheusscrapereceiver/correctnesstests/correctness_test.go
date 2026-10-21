@@ -492,6 +492,13 @@ scrape_configs:
 %s    static_configs:
       - targets: ["%s"]
 `, nativeCfg, addr)
+	return startControlYAML(t, yml, addr)
+}
+
+// startControlYAML is startControl with a full Prometheus configuration (one job
+// named "job" scraping addr).
+func startControlYAML(t *testing.T, yml, addr string) *recordingAppendable {
+	t.Helper()
 	cfg, err := promconfig.Load(yml, slog.Default())
 	require.NoError(t, err)
 
@@ -619,6 +626,12 @@ func runPipeline(t *testing.T, kind receiverKind, addr string, native bool, expo
 // returns the endpoint, which keeps accumulating what it receives.
 func startPipeline(t *testing.T, kind receiverKind, addr string, native bool, exporterCfg func(string) map[string]any) *writeSink {
 	t.Helper()
+	return startPipelineConfig(t, kind, scrapeConfig(addr, native), exporterCfg)
+}
+
+// startPipelineConfig is startPipeline with a full receiver `config` (Prometheus configuration).
+func startPipelineConfig(t *testing.T, kind receiverKind, promCfg map[string]any, exporterCfg func(string) map[string]any) *writeSink {
+	t.Helper()
 	ctx := context.Background()
 	host := componenttest.NewNopHost()
 	sink := newWriteSink(t)
@@ -640,7 +653,7 @@ func startPipeline(t *testing.T, kind receiverKind, addr string, native bool, ex
 		rcvFactory = upstream.NewFactory()
 	}
 	rcvCfg := rcvFactory.CreateDefaultConfig()
-	require.NoError(t, confmap.NewFromStringMap(map[string]any{"config": scrapeConfig(addr, native)}).Unmarshal(rcvCfg))
+	require.NoError(t, confmap.NewFromStringMap(map[string]any{"config": promCfg}).Unmarshal(rcvCfg))
 	require.NoError(t, confmap.Validate(rcvCfg))
 	rcv, err := rcvFactory.CreateMetrics(ctx, receivertest.NewNopSettings(rcvFactory.Type()), rcvCfg, exp)
 	require.NoError(t, err)
@@ -714,20 +727,28 @@ const scrapes = 4
 // explicitBase is the first explicit timestamp (ms) exposed by sequenceTextBody.
 const explicitBase = int64(1_700_000_000_000)
 
+// resetValues is the sequence of reset_total: the counter resets on the third scrape.
+var resetValues = []float64{100, 200, 5, 15}
+
+func resetValue(k int) int { return int(resetValues[(k-1)%len(resetValues)]) }
+
 // sequenceTextBody is what the k-th scrape of the target exposes. The values are a
 // function of k only, so that two targets expose the same sequence:
 //   - ctr_total grows with every scrape (later samples must not be lost),
 //   - ts_gauge carries an explicit timestamp (it must survive unchanged),
 //   - nan_gauge is an ordinary NaN (it must not become a stale marker),
+//   - reset_total is a counter that resets (the raw values must be passed through),
 //   - vanishing disappears from the third scrape on, so Prometheus appends a stale marker.
 func sequenceTextBody(k int) string {
 	body := fmt.Sprintf(`# TYPE ctr_total counter
 ctr_total %d
+# TYPE reset_total counter
+reset_total %d
 # TYPE ts_gauge gauge
 ts_gauge %d %d
 # TYPE nan_gauge gauge
 nan_gauge NaN
-`, k*10, k, explicitBase+int64(k)*1000)
+`, k*10, resetValue(k), k, explicitBase+int64(k)*1000)
 	if k <= 2 {
 		body += fmt.Sprintf("# TYPE vanishing gauge\nvanishing %d\n", k)
 	}
@@ -740,7 +761,15 @@ func sequenceProtoBody(k int) string {
 	reg := prometheus.NewRegistry()
 	c := prometheus.NewCounter(prometheus.CounterOpts{Name: "ctr_total", Help: "Counter."})
 	c.Add(float64(k * 10))
-	reg.MustRegister(c)
+	r := prometheus.NewCounter(prometheus.CounterOpts{Name: "reset_total", Help: "Counter that resets."})
+	r.Add(float64(resetValue(k)))
+	// A native histogram with an explicit timestamp is never marked stale by Prometheus.
+	ts := prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name: "ts_duration", Help: "Durations with an explicit timestamp.",
+		NativeHistogramBucketFactor: 1.1, NativeHistogramMaxBucketNumber: 100,
+	})
+	ts.Observe(float64(k))
+	reg.MustRegister(c, r, ts)
 	if k <= 2 {
 		h := prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "rpc_duration", Help: "RPC durations.",
@@ -755,9 +784,15 @@ func sequenceProtoBody(k int) string {
 	if err != nil {
 		panic(err)
 	}
+	stamp := explicitBase + int64(k)*1000
 	var buf bytes.Buffer
 	enc := expfmt.NewEncoder(&buf, expfmt.NewFormat(expfmt.TypeProtoDelim))
 	for _, mf := range mfs {
+		if mf.GetName() == "ts_duration" {
+			for _, m := range mf.GetMetric() {
+				m.TimestampMs = &stamp
+			}
+		}
 		if err := enc.Encode(mf); err != nil {
 			panic(err)
 		}
@@ -830,7 +865,9 @@ func TestRoundTripSamplesTimestampsAndStaleMarkers(t *testing.T) {
 				15*time.Second, 50*time.Millisecond, "the scrapes and the stale marker were not received")
 
 			want, got := withoutInstance(rec.snapshotAll()), withoutInstance(sink.snapshot())
-			explicitTS := func(lbls map[string]string) bool { return lbls[model.MetricNameLabel] == "ts_gauge" }
+			explicitTS := func(lbls map[string]string) bool {
+				return lbls[model.MetricNameLabel] == "ts_gauge" || lbls[model.MetricNameLabel] == "ts_duration"
+			}
 			assert.Empty(t, diffSamples(want, got, scrapes, explicitTS), "round trip differs from Prometheus")
 
 			// Independent of the control: what must come out.
@@ -841,6 +878,14 @@ func TestRoundTripSamplesTimestampsAndStaleMarkers(t *testing.T) {
 				values = append(values, math.Float64frombits(sm.bits))
 			}
 			assert.Equal(t, []float64{10, 20, 30, 40}, values, "later samples of a series are kept")
+
+			reset, ok := got.find("reset_total")
+			require.True(t, ok)
+			var resets []float64
+			for _, sm := range sortedSamples(reset, scrapes) {
+				resets = append(resets, math.Float64frombits(sm.bits))
+			}
+			assert.Equal(t, resetValues, resets, "a counter reset is passed through, not corrected")
 
 			vanishing, ok := got.find(tt.vanishing)
 			require.True(t, ok)
@@ -856,6 +901,15 @@ func TestRoundTripSamplesTimestampsAndStaleMarkers(t *testing.T) {
 			}
 
 			if tt.native {
+				hist, ok := got.find("ts_duration")
+				require.True(t, ok)
+				var stamps []int64
+				for _, sm := range sortedSamples(hist, scrapes) {
+					require.NotNil(t, sm.hist, "native histogram with an explicit timestamp")
+					stamps = append(stamps, sm.ts)
+				}
+				assert.Equal(t, []int64{explicitBase + 1000, explicitBase + 2000, explicitBase + 3000, explicitBase + 4000}, stamps,
+					"the explicit timestamp of a native histogram is kept")
 				return
 			}
 			ts, ok := got.find("ts_gauge")
@@ -875,4 +929,90 @@ func TestRoundTripSamplesTimestampsAndStaleMarkers(t *testing.T) {
 			}
 		})
 	}
+}
+
+// addExternalLabels applies global.external_labels the way Prometheus does when it
+// writes a series out: a label is added only if the series does not have it.
+func addExternalLabels(s seriesSet, ext map[string]string) seriesSet {
+	out := seriesSet{}
+	for _, sr := range s {
+		lbls := make(map[string]string, len(sr.labels)+len(ext))
+		for k, v := range ext {
+			lbls[k] = v
+		}
+		for k, v := range sr.labels {
+			lbls[k] = v
+		}
+		for _, sm := range sr.samples {
+			out.add(lbls, sm.ts, math.Float64frombits(sm.bits), sm.hist)
+		}
+	}
+	return out
+}
+
+// TestRoundTripExternalAndRoutingLabels covers what the README documents for routing:
+// labels added by relabeling (data_stream_dataset/namespace) and global.external_labels
+// must reach the endpoint, and an external label must not override a label the series has.
+func TestRoundTripExternalAndRoutingLabels(t *testing.T) {
+	addr := target(t, "text/plain; version=0.0.4", `# TYPE routed gauge
+routed 1
+# TYPE own_cluster gauge
+own_cluster{cluster="mine"} 2
+`)
+	ext := map[string]string{"cluster": "c1", "region": "eu"}
+
+	// The control only applies the relabeling: external labels are added when writing out.
+	rec := startControlYAML(t, fmt.Sprintf(`
+global:
+  external_labels: {cluster: c1, region: eu}
+scrape_configs:
+  - job_name: job
+    scrape_interval: 100ms
+    scrape_timeout: 90ms
+    fallback_scrape_protocol: PrometheusText0.0.4
+    relabel_configs:
+      - {target_label: data_stream_dataset, replacement: myapp}
+      - {target_label: data_stream_namespace, replacement: production}
+    static_configs:
+      - targets: ["%s"]
+`, addr), addr)
+	require.Eventually(t, func() bool {
+		rec.mu.Lock()
+		defer rec.mu.Unlock()
+		return rec.first != nil
+	}, 10*time.Second, 20*time.Millisecond)
+	rec.mu.Lock()
+	want := addExternalLabels(rec.first, ext)
+	rec.mu.Unlock()
+
+	sink := startPipelineConfig(t, ourReceiver, map[string]any{
+		"global": map[string]any{"external_labels": map[string]any{"cluster": "c1", "region": "eu"}},
+		"scrape_configs": []any{map[string]any{
+			"job_name":        "job",
+			"scrape_interval": "100ms",
+			"scrape_timeout":  "90ms",
+			"relabel_configs": []any{
+				map[string]any{"target_label": "data_stream_dataset", "replacement": "myapp"},
+				map[string]any{"target_label": "data_stream_namespace", "replacement": "production"},
+			},
+			"static_configs": []any{map[string]any{"targets": []any{addr}}},
+		}},
+	}, requiredExporterConfig)
+	require.Eventually(t, func() bool { return sink.snapshot().hasName("up") }, 10*time.Second, 20*time.Millisecond)
+	got := sink.snapshot()
+
+	assert.Empty(t, diff(want, got), "round trip differs from Prometheus plus external labels")
+
+	routed, ok := got.find("routed")
+	require.True(t, ok)
+	assert.Equal(t, "myapp", routed.labels["data_stream_dataset"])
+	assert.Equal(t, "production", routed.labels["data_stream_namespace"])
+	assert.Equal(t, "c1", routed.labels["cluster"])
+	assert.Equal(t, "eu", routed.labels["region"])
+	own, ok := got.find("own_cluster")
+	require.True(t, ok)
+	assert.Equal(t, "mine", own.labels["cluster"], "an external label does not override the series' own label")
+	up, ok := got.find("up")
+	require.True(t, ok)
+	assert.Equal(t, "myapp", up.labels["data_stream_dataset"], "report series are routed too")
 }
