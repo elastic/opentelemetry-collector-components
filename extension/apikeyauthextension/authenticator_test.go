@@ -1364,6 +1364,114 @@ func newGrantingHasPrivilegesHandler(t testing.TB, calls *int, grants ...string)
 	}
 }
 
+func TestAuthenticator_AnyOf(t *testing.T) {
+	anyOf := []PrivilegeSetConfig{{
+		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
+			Application: "apm",
+			Privileges:  []string{"event:write"},
+			Resources:   []string{"-"},
+		}},
+	}, {
+		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
+			Application: "streams",
+			Privileges:  []string{"write"},
+			Resources:   []string{"source:_default_"},
+		}},
+	}}
+	required := []ApplicationPrivilegesConfig{{
+		Application: "base",
+		Privileges:  []string{"use"},
+		Resources:   []string{"*"},
+	}}
+	for _, tc := range []struct {
+		name     string
+		required []ApplicationPrivilegesConfig
+		grants   []string
+		wantErr  bool
+	}{
+		{name: "first alternative", grants: []string{"apm/-/event:write"}},
+		{name: "second alternative", grants: []string{"streams/source:_default_/write"}},
+		{name: "both alternatives", grants: []string{"apm/-/event:write", "streams/source:_default_/write"}},
+		{name: "no alternative", grants: []string{"streams/source:other/write"}, wantErr: true},
+		{name: "required and alternative", required: required, grants: []string{"base/*/use", "apm/-/event:write"}},
+		{name: "alternative without required", required: required, grants: []string{"apm/-/event:write"}, wantErr: true},
+		{name: "required without alternative", required: required, grants: []string{"base/*/use"}, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, tc.grants...))
+			config := createDefaultConfig().(*Config)
+			config.ApplicationPrivileges = tc.required
+			config.AnyOf = anyOf
+			authenticator := newTestAuthenticator(t, srv, config)
+			_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+				"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+			})
+			if tc.wantErr {
+				assert.Equal(t, codes.PermissionDenied, status.Code(err))
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, 1, calls, "all privileges must be checked in a single request")
+		})
+	}
+}
+
+func TestAuthenticator_AnyOfRequest(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		var body hasprivileges.Request
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, hasprivileges.Request{
+			Application: []types.ApplicationPrivilegesCheck{{
+				Application: "base",
+				Privileges:  []string{"use"},
+				Resources:   []string{"*"},
+			}, {
+				Application: "apm",
+				Privileges:  []string{"event:write"},
+				Resources:   []string{"-"},
+			}, {
+				Application: "streams",
+				Privileges:  []string{"write"},
+				Resources:   []string{"source:my-source"},
+			}},
+		}, body)
+		assert.NoError(t, json.NewEncoder(w).Encode(hasprivileges.Response{Username: user}))
+	})
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "base",
+		Privileges:  []string{"use"},
+		Resources:   []string{"*"},
+	}}
+	config.AnyOf = []PrivilegeSetConfig{{
+		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
+			Application: "apm",
+			Privileges:  []string{"event:write"},
+			Resources:   []string{"-"},
+		}},
+	}, {
+		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
+			Application: "streams",
+			Privileges:  []string{"write"},
+			DynamicResources: []DynamicResource{{
+				Metadata: "X-Source-Id",
+				Format:   "source:%s",
+			}},
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Source-Id"}
+	authenticator := newTestAuthenticator(t, srv, config)
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"X-Source-Id": {"my-source"}}),
+	})
+	// The response grants none of the requested privileges.
+	_, err := authenticator.Authenticate(ctx, map[string][]string{
+		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+	})
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+}
+
 func TestAuthenticator_CacheKeyMetadataMultipleValues(t *testing.T) {
 	var calls int
 	srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, "my_app/resource:a/write"))

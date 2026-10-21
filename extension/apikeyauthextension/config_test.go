@@ -214,6 +214,46 @@ func TestLoadConfig(t *testing.T) {
 			id:                 component.NewIDWithName(metadata.Type, "invalid_client_retry_delay"),
 			expectedErrMessage: `client_retry: invalid retry_delay: 0s, must be greater than 0`,
 		},
+		{
+			id: component.NewIDWithName(metadata.Type, "any_of"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.AnyOf = []PrivilegeSetConfig{{
+					ApplicationPrivileges: []ApplicationPrivilegesConfig{{
+						Application: "apm",
+						Privileges:  []string{"event:write"},
+						Resources:   []string{"-"},
+					}},
+				}, {
+					ApplicationPrivileges: []ApplicationPrivilegesConfig{{
+						Application: "streams",
+						Privileges:  []string{"write"},
+						DynamicResources: []DynamicResource{{
+							Metadata: "X-Source-Id",
+							Format:   "source:%s",
+						}},
+					}},
+				}}
+				config.Cache.KeyMetadata = []string{"X-Source-Id"}
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "any_of_empty_set"),
+			expectedErrMessage: `any_of::0: application_privileges must be non-empty`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_resources"),
+			expectedErrMessage: `any_of::0: application_privileges::0: resources or dynamic_resources must be non-empty`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_privileges"),
+			expectedErrMessage: `any_of::0: application_privileges::0: privileges must be non-empty`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_cache_key_metadata"),
+			expectedErrMessage: `any_of::0::application_privileges::0::dynamic_resources::0: dynamic resource metadata "X-Source-Id" must be included in cache.key_metadata`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.id.String(), func(t *testing.T) {
