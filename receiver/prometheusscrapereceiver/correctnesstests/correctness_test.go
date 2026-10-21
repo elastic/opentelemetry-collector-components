@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -42,6 +43,7 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 	"github.com/prometheus/prometheus/scrape"
 	"github.com/prometheus/prometheus/storage"
@@ -170,12 +172,22 @@ var fixtures = []fixture{
 	nativeHistogramFixture(),
 }
 
+// sample is one remote write sample: a float (bits keep NaN and StaleNaN apart)
+// or a native histogram.
+type sample struct {
+	ts   int64
+	bits uint64
+	hist *nativeHist
+}
+
 // series is a flattened view of a remote write time series, keyed by its sorted labels.
+// value, ts and hist describe the earliest sample, samples holds every sample received.
 type series struct {
-	labels map[string]string
-	value  float64
-	ts     int64
-	hist   *nativeHist // set for native histogram samples
+	labels  map[string]string
+	value   float64
+	ts      int64
+	hist    *nativeHist // set for native histogram samples
+	samples []sample
 }
 
 // nativeHist is a comparable view of a native histogram: sparse buckets are
@@ -248,10 +260,14 @@ func key(lbls map[string]string) string {
 
 func (s seriesSet) add(lbls map[string]string, ts int64, v float64, h *nativeHist) {
 	k := key(lbls)
-	// Keep the earliest sample so that the first scrape is compared.
-	if cur, ok := s[k]; !ok || ts < cur.ts {
-		s[k] = series{labels: lbls, value: v, ts: ts, hist: h}
+	cur, ok := s[k]
+	cur.labels = lbls
+	cur.samples = append(cur.samples, sample{ts: ts, bits: math.Float64bits(v), hist: h})
+	// Keep the earliest sample so that the first scrape is compared by diff.
+	if !ok || ts < cur.ts {
+		cur.value, cur.ts, cur.hist = v, ts, h
 	}
+	s[k] = cur
 }
 
 func (s seriesSet) hasName(name string) bool {
@@ -263,8 +279,10 @@ func (s seriesSet) hasName(name string) bool {
 	return false
 }
 
+// sameValue compares the exact bits, so that an ordinary NaN and Prometheus'
+// StaleNaN (a NaN with a specific payload) are different values.
 func sameValue(a, b float64) bool {
-	return a == b || (math.IsNaN(a) && math.IsNaN(b))
+	return math.Float64bits(a) == math.Float64bits(b)
 }
 
 // volatile series carry values that change between scrapes by design.
@@ -295,11 +313,78 @@ func diff(want, got seriesSet) []string {
 	return out
 }
 
+// sortedSamples returns the first k samples of the series ordered by timestamp.
+func sortedSamples(sr series, k int) []sample {
+	out := append([]sample(nil), sr.samples...)
+	sort.SliceStable(out, func(i, j int) bool { return out[i].ts < out[j].ts })
+	if len(out) > k {
+		out = out[:k]
+	}
+	return out
+}
+
+// diffSamples compares the first k samples of every series, bit exact, so that a lost
+// later sample or a stale marker turned into an ordinary NaN is reported. Timestamps
+// are compared for the series accepted by checkTS (explicit timestamps); the others
+// carry the scrape time, which differs between the two runs.
+func diffSamples(want, got seriesSet, k int, checkTS func(map[string]string) bool) []string {
+	var out []string
+	for key, w := range want {
+		g, ok := got[key]
+		if !ok {
+			out = append(out, "missing:    "+key)
+			continue
+		}
+		ws, gs := sortedSamples(w, k), sortedSamples(g, k)
+		if len(ws) != len(gs) {
+			out = append(out, fmt.Sprintf("samples:    %s want=%d got=%d", key, len(ws), len(gs)))
+			continue
+		}
+		for i := range ws {
+			switch {
+			case checkTS(w.labels) && ws[i].ts != gs[i].ts:
+				out = append(out, fmt.Sprintf("timestamp:  %s sample %d want=%d got=%d", key, i, ws[i].ts, gs[i].ts))
+			case (ws[i].hist != nil || gs[i].hist != nil) && !reflect.DeepEqual(ws[i].hist, gs[i].hist):
+				out = append(out, fmt.Sprintf("histogram:  %s sample %d want=%+v got=%+v", key, i, ws[i].hist, gs[i].hist))
+			case ws[i].hist == nil && !volatile(w.labels) && ws[i].bits != gs[i].bits:
+				out = append(out, fmt.Sprintf("value:      %s sample %d want=%#x got=%#x", key, i, ws[i].bits, gs[i].bits))
+			}
+		}
+	}
+	for key := range got {
+		if _, ok := want[key]; !ok {
+			out = append(out, "unexpected: "+key)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// find returns the series with the given metric name.
+func (s seriesSet) find(name string) (series, bool) {
+	for _, sr := range s {
+		if sr.labels[model.MetricNameLabel] == name {
+			return sr, true
+		}
+	}
+	return series{}, false
+}
+
+func isStale(sm sample) bool { return sm.hist == nil && sm.bits == value.StaleNaN }
+
 func target(t *testing.T, contentType, body string) string {
 	t.Helper()
+	return dynamicTarget(t, contentType, func(int) string { return body })
+}
+
+// dynamicTarget serves body(k) on the k-th request (k starts at 1), so that two
+// independent targets expose the same sequence of scrapes.
+func dynamicTarget(t *testing.T, contentType string, body func(k int) string) string {
+	t.Helper()
+	var requests atomic.Int64
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", contentType)
-		_, _ = w.Write([]byte(body))
+		_, _ = w.Write([]byte(body(int(requests.Add(1)))))
 	}))
 	t.Cleanup(srv.Close)
 	return strings.TrimPrefix(srv.URL, "http://")
@@ -323,7 +408,19 @@ func scrapeConfig(addr string, native bool) map[string]any {
 // hands to a storage for the fixture.
 type recordingAppendable struct {
 	mu    sync.Mutex
-	first seriesSet
+	first seriesSet // the first scrape
+	all   seriesSet // every scrape
+}
+
+func (r *recordingAppendable) snapshotAll() seriesSet {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make(seriesSet, len(r.all))
+	for k, v := range r.all {
+		v.samples = append([]sample(nil), v.samples...)
+		out[k] = v
+	}
+	return out
 }
 
 func (r *recordingAppendable) AppenderV2(context.Context) storage.AppenderV2 {
@@ -350,6 +447,14 @@ func (a *recordingAppender) Commit() error {
 	if a.parent.first == nil {
 		a.parent.first = a.set
 	}
+	if a.parent.all == nil {
+		a.parent.all = seriesSet{}
+	}
+	for _, sr := range a.set {
+		for _, sm := range sr.samples {
+			a.parent.all.add(sr.labels, sm.ts, math.Float64frombits(sm.bits), sm.hist)
+		}
+	}
 	return nil
 }
 
@@ -358,6 +463,21 @@ func (a *recordingAppender) Rollback() error { return nil }
 // controlSeries scrapes addr with the plain Prometheus scrape manager and returns
 // the series of the first scrape.
 func controlSeries(t *testing.T, addr string, native bool) seriesSet {
+	t.Helper()
+	rec := startControl(t, addr, native)
+	require.Eventually(t, func() bool {
+		rec.mu.Lock()
+		defer rec.mu.Unlock()
+		return rec.first != nil
+	}, 10*time.Second, 20*time.Millisecond)
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	return rec.first
+}
+
+// startControl starts the plain Prometheus scrape manager against addr, recording
+// everything its scrape loop hands to a storage.
+func startControl(t *testing.T, addr string, native bool) *recordingAppendable {
 	t.Helper()
 	nativeCfg := ""
 	if native {
@@ -391,15 +511,7 @@ scrape_configs:
 		Targets: []model.LabelSet{{model.AddressLabel: model.LabelValue(addr)}},
 	}}}
 	t.Cleanup(func() { m.Stop(); <-done })
-
-	require.Eventually(t, func() bool {
-		rec.mu.Lock()
-		defer rec.mu.Unlock()
-		return rec.first != nil
-	}, 10*time.Second, 20*time.Millisecond)
-	rec.mu.Lock()
-	defer rec.mu.Unlock()
-	return rec.first
+	return rec
 }
 
 // writeSink is a fake remote write endpoint.
@@ -439,6 +551,12 @@ func newWriteSink(t *testing.T) *writeSink {
 				ws.set.add(lbls, s.Timestamp, s.Value, nil)
 			}
 			for _, h := range ts.Histograms {
+				if value.IsStaleNaN(h.Sum) {
+					// A native histogram with a StaleNaN sum is the stale marker of the series,
+					// which Prometheus itself appends as a float StaleNaN.
+					ws.set.add(lbls, h.Timestamp, math.Float64frombits(value.StaleNaN), nil)
+					continue
+				}
 				ws.set.add(lbls, h.Timestamp, 0, histFromPRW(h))
 			}
 		}
@@ -453,6 +571,7 @@ func (ws *writeSink) snapshot() seriesSet {
 	defer ws.mu.Unlock()
 	out := make(seriesSet, len(ws.set))
 	for k, v := range ws.set {
+		v.samples = append([]sample(nil), v.samples...)
 		out[k] = v
 	}
 	return out
@@ -490,6 +609,16 @@ const (
 // from YAML-like config and goes through Validate, as in a real collector.
 func runPipeline(t *testing.T, kind receiverKind, addr string, native bool, exporterCfg func(string) map[string]any) seriesSet {
 	t.Helper()
+	sink := startPipeline(t, kind, addr, native, exporterCfg)
+	require.Eventually(t, func() bool { return sink.snapshot().hasName("up") }, 10*time.Second, 20*time.Millisecond,
+		"no data reached the remote write endpoint")
+	return sink.snapshot()
+}
+
+// startPipeline starts <receiver> -> prometheusremotewriteexporter -> fake endpoint and
+// returns the endpoint, which keeps accumulating what it receives.
+func startPipeline(t *testing.T, kind receiverKind, addr string, native bool, exporterCfg func(string) map[string]any) *writeSink {
+	t.Helper()
 	ctx := context.Background()
 	host := componenttest.NewNopHost()
 	sink := newWriteSink(t)
@@ -517,10 +646,7 @@ func runPipeline(t *testing.T, kind receiverKind, addr string, native bool, expo
 	require.NoError(t, err)
 	require.NoError(t, rcv.Start(ctx, host))
 	t.Cleanup(func() { require.NoError(t, rcv.Shutdown(ctx)) })
-
-	require.Eventually(t, func() bool { return sink.snapshot().hasName("up") }, 10*time.Second, 20*time.Millisecond,
-		"no data reached the remote write endpoint")
-	return sink.snapshot()
+	return sink
 }
 
 // TestRoundTripMatchesPrometheus: receiver + exporter (documented config) must
@@ -580,4 +706,173 @@ func TestDefaultStrategyBreaksRoundTrip(t *testing.T) {
 	assert.NotEmpty(t, d)
 	assert.True(t, got.hasName("lat_bucket_total"), "expected lat_bucket to be renamed to lat_bucket_total")
 	assert.False(t, got.hasName("lat_bucket"))
+}
+
+// scrapes is the number of samples per series compared by the sequence tests.
+const scrapes = 4
+
+// explicitBase is the first explicit timestamp (ms) exposed by sequenceTextBody.
+const explicitBase = int64(1_700_000_000_000)
+
+// sequenceTextBody is what the k-th scrape of the target exposes. The values are a
+// function of k only, so that two targets expose the same sequence:
+//   - ctr_total grows with every scrape (later samples must not be lost),
+//   - ts_gauge carries an explicit timestamp (it must survive unchanged),
+//   - nan_gauge is an ordinary NaN (it must not become a stale marker),
+//   - vanishing disappears from the third scrape on, so Prometheus appends a stale marker.
+func sequenceTextBody(k int) string {
+	body := fmt.Sprintf(`# TYPE ctr_total counter
+ctr_total %d
+# TYPE ts_gauge gauge
+ts_gauge %d %d
+# TYPE nan_gauge gauge
+nan_gauge NaN
+`, k*10, k, explicitBase+int64(k)*1000)
+	if k <= 2 {
+		body += fmt.Sprintf("# TYPE vanishing gauge\nvanishing %d\n", k)
+	}
+	return body
+}
+
+// sequenceProtoBody is the protobuf equivalent with a native histogram that grows with
+// every scrape and disappears from the third scrape on.
+func sequenceProtoBody(k int) string {
+	reg := prometheus.NewRegistry()
+	c := prometheus.NewCounter(prometheus.CounterOpts{Name: "ctr_total", Help: "Counter."})
+	c.Add(float64(k * 10))
+	reg.MustRegister(c)
+	if k <= 2 {
+		h := prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "rpc_duration", Help: "RPC durations.",
+			NativeHistogramBucketFactor: 1.1, NativeHistogramMaxBucketNumber: 100,
+		})
+		for i := 1; i <= k; i++ {
+			h.Observe(float64(i))
+		}
+		reg.MustRegister(h)
+	}
+	mfs, err := reg.Gather()
+	if err != nil {
+		panic(err)
+	}
+	var buf bytes.Buffer
+	enc := expfmt.NewEncoder(&buf, expfmt.NewFormat(expfmt.TypeProtoDelim))
+	for _, mf := range mfs {
+		if err := enc.Encode(mf); err != nil {
+			panic(err)
+		}
+	}
+	return buf.String()
+}
+
+// withoutInstance drops the instance label, which holds the (different) address of the
+// two targets.
+func withoutInstance(s seriesSet) seriesSet {
+	out := seriesSet{}
+	for _, sr := range s {
+		lbls := make(map[string]string, len(sr.labels))
+		for k, v := range sr.labels {
+			if k != "instance" {
+				lbls[k] = v
+			}
+		}
+		for _, sm := range sr.samples {
+			out.add(lbls, sm.ts, math.Float64frombits(sm.bits), sm.hist)
+		}
+	}
+	return out
+}
+
+// sequenceReady is true once the series of the first scrapes and the stale marker of the
+// vanishing series were received.
+func sequenceReady(vanishing string) func(seriesSet) bool {
+	return func(s seriesSet) bool {
+		c, ok := s.find("ctr_total")
+		if !ok || len(c.samples) < scrapes {
+			return false
+		}
+		v, ok := s.find(vanishing)
+		if !ok {
+			return false
+		}
+		for _, sm := range v.samples {
+			if isStale(sm) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// TestRoundTripSamplesTimestampsAndStaleMarkers compares several samples per series,
+// explicit timestamps and the exact stale markers (bit for bit) between what Prometheus'
+// scrape loop produces and what comes out of the receiver and the exporter.
+func TestRoundTripSamplesTimestampsAndStaleMarkers(t *testing.T) {
+	tests := []struct {
+		name        string
+		contentType string
+		body        func(int) string
+		native      bool
+		vanishing   string
+	}{
+		{"text", "text/plain; version=0.0.4", sequenceTextBody, false, "vanishing"},
+		{"native_histogram", string(expfmt.NewFormat(expfmt.TypeProtoDelim)), sequenceProtoBody, true, "rpc_duration"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Two independent targets, so that both see scrape 1, 2, 3...
+			rec := startControl(t, dynamicTarget(t, tt.contentType, tt.body), tt.native)
+			sink := startPipeline(t, ourReceiver, dynamicTarget(t, tt.contentType, tt.body), tt.native, requiredExporterConfig)
+
+			// On a timeout keep going: the diff below says what is missing or different.
+			ready := sequenceReady(tt.vanishing)
+			assert.Eventually(t, func() bool { return ready(rec.snapshotAll()) && ready(sink.snapshot()) },
+				15*time.Second, 50*time.Millisecond, "the scrapes and the stale marker were not received")
+
+			want, got := withoutInstance(rec.snapshotAll()), withoutInstance(sink.snapshot())
+			explicitTS := func(lbls map[string]string) bool { return lbls[model.MetricNameLabel] == "ts_gauge" }
+			assert.Empty(t, diffSamples(want, got, scrapes, explicitTS), "round trip differs from Prometheus")
+
+			// Independent of the control: what must come out.
+			ctr, ok := got.find("ctr_total")
+			require.True(t, ok)
+			var values []float64
+			for _, sm := range sortedSamples(ctr, scrapes) {
+				values = append(values, math.Float64frombits(sm.bits))
+			}
+			assert.Equal(t, []float64{10, 20, 30, 40}, values, "later samples of a series are kept")
+
+			vanishing, ok := got.find(tt.vanishing)
+			require.True(t, ok)
+			vs := sortedSamples(vanishing, 3)
+			require.Len(t, vs, 3)
+			assert.False(t, isStale(vs[0]) || isStale(vs[1]), "values before the series vanished are not stale")
+			assert.True(t, isStale(vs[2]), "the stale marker keeps the exact StaleNaN bits")
+			if tt.native {
+				require.NotNil(t, vs[0].hist)
+				require.NotNil(t, vs[1].hist)
+				assert.EqualValues(t, 1, vs[0].hist.count)
+				assert.EqualValues(t, 2, vs[1].hist.count)
+			}
+
+			if tt.native {
+				return
+			}
+			ts, ok := got.find("ts_gauge")
+			require.True(t, ok)
+			var stamps []int64
+			for _, sm := range sortedSamples(ts, scrapes) {
+				stamps = append(stamps, sm.ts)
+			}
+			assert.Equal(t, []int64{explicitBase + 1000, explicitBase + 2000, explicitBase + 3000, explicitBase + 4000}, stamps,
+				"explicit timestamps are kept")
+
+			nan, ok := got.find("nan_gauge")
+			require.True(t, ok)
+			for _, sm := range sortedSamples(nan, scrapes) {
+				assert.True(t, math.IsNaN(math.Float64frombits(sm.bits)))
+				assert.False(t, isStale(sm), "an ordinary NaN is not turned into a stale marker")
+			}
+		})
+	}
 }
