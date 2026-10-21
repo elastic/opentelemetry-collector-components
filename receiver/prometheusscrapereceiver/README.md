@@ -87,6 +87,9 @@ mapping.
     as "unknown".
   - The exporter fills gaps between bucket spans with explicit zero buckets. This is
     the same histogram, in a different encoding.
+  - Native histograms are validated before conversion, as the Prometheus TSDB would. Malformed ones (spans that don't match
+    the buckets, negative counts, or an unreasonably large bucket layout) are dropped, and a single warning per scrape reports
+    how many were dropped. The same applies to custom bucket histograms.
   - Staleness of a native histogram is kept as a `StaleNaN` sum, with no flag.
   - Whether Elasticsearch stores native histogram samples written to its
     `/_prometheus` endpoint has not been verified yet.

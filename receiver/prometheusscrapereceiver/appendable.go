@@ -19,6 +19,7 @@ package prometheusscrapereceiver // import "github.com/elastic/opentelemetry-col
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 
@@ -84,6 +85,25 @@ type metricKey struct {
 // is told apart from a stale float series.
 const nativeHistogramRefBit = uint64(1) << 63
 
+// dropped counts the samples dropped for one reason during a scrape.
+type dropped struct {
+	count       int
+	firstSeries string
+	firstErr    error
+}
+
+func (d *dropped) add(ls labels.Labels, err error) {
+	if d.count == 0 {
+		d.firstSeries, d.firstErr = ls.String(), err
+	}
+	d.count++
+}
+
+// maxDenseBuckets bounds the dense bucket layout built from a native histogram.
+// Valid exponential histograms span at most ~2^20 buckets at the highest schema
+// (8), while a hostile target could ask for billions through the span offsets.
+const maxDenseBuckets = 1 << 20
+
 // appender buffers the samples of a single scrape into one pmetric.Metrics.
 // It is not goroutine-safe, as per the storage.AppenderV2 contract.
 type appender struct {
@@ -95,9 +115,9 @@ type appender struct {
 	byKey   map[metricKey]pmetric.Metric
 	points  int
 
-	// Custom bucket native histograms dropped in this scrape, reported once on Commit.
-	droppedCustomBuckets int
-	firstDropped         string
+	// Native histograms dropped in this scrape, reported once on Commit.
+	droppedCustomBuckets dropped
+	droppedInvalid       dropped
 }
 
 // Append implements storage.AppenderV2.
@@ -152,10 +172,15 @@ func (a *appender) appendNativeHistogram(ls labels.Labels, name string, t int64,
 	// they can't be represented as an ExponentialHistogram. They are counted and
 	// reported once per scrape on Commit.
 	if !histogram.IsExponentialSchema(schema) {
-		if a.droppedCustomBuckets == 0 {
-			a.firstDropped = ls.String()
-		}
-		a.droppedCustomBuckets++
+		a.droppedCustomBuckets.add(ls, nil)
+		return ref
+	}
+
+	// Prometheus relies on the TSDB to validate histograms on append. The scrape
+	// parsers don't, so malformed spans (e.g. longer than the bucket slice) must be
+	// rejected here, before they are used as indexes.
+	if err := validateNativeHistogram(h, fh); err != nil {
+		a.droppedInvalid.add(ls, err)
 		return ref
 	}
 
@@ -181,6 +206,43 @@ func (a *appender) appendNativeHistogram(ls labels.Labels, name string, t int64,
 		fillDeltaBuckets(dp.Negative(), h.NegativeSpans, h.NegativeBuckets)
 	}
 	return ref
+}
+
+// validateNativeHistogram checks the consistency of the histogram (as the TSDB
+// would on append) and that its dense bucket layout stays bounded.
+func validateNativeHistogram(h *histogram.Histogram, fh *histogram.FloatHistogram) error {
+	var pos, neg []histogram.Span
+	switch {
+	case fh != nil:
+		if err := fh.Validate(); err != nil {
+			return err
+		}
+		pos, neg = fh.PositiveSpans, fh.NegativeSpans
+	case h != nil:
+		if err := h.Validate(); err != nil {
+			return err
+		}
+		pos, neg = h.PositiveSpans, h.NegativeSpans
+	}
+	for _, spans := range [][]histogram.Span{pos, neg} {
+		if n := denseBuckets(spans); n > maxDenseBuckets {
+			return fmt.Errorf("bucket layout of %d buckets exceeds the limit of %d", n, maxDenseBuckets)
+		}
+	}
+	return nil
+}
+
+// denseBuckets returns the number of buckets of the dense layout of spans, the
+// gaps between the spans included.
+func denseBuckets(spans []histogram.Span) int64 {
+	var n int64
+	for i, sp := range spans {
+		if i > 0 {
+			n += int64(sp.Offset)
+		}
+		n += int64(sp.Length)
+	}
+	return n
 }
 
 // appendNativeHistogramStale emits the staleness marker of a native histogram
@@ -328,9 +390,13 @@ func seriesHash(ls labels.Labels) uint64 {
 
 // Commit implements storage.AppenderV2.
 func (a *appender) Commit() error {
-	if a.droppedCustomBuckets > 0 {
+	if d := a.droppedCustomBuckets; d.count > 0 {
 		a.parent.logger.Warn("dropped native histograms with custom buckets (NHCB), only exponential native histograms are supported",
-			zap.Int("dropped", a.droppedCustomBuckets), zap.String("first_series", a.firstDropped))
+			zap.Int("dropped", d.count), zap.String("first_series", d.firstSeries))
+	}
+	if d := a.droppedInvalid; d.count > 0 {
+		a.parent.logger.Warn("dropped invalid native histograms",
+			zap.Int("dropped", d.count), zap.String("first_series", d.firstSeries), zap.Error(d.firstErr))
 	}
 	if a.points == 0 {
 		return nil
@@ -347,8 +413,8 @@ func (a *appender) Rollback() error {
 	a.metrics = pmetric.NewMetricSlice()
 	a.byKey = nil
 	a.points = 0
-	a.droppedCustomBuckets = 0
-	a.firstDropped = ""
+	a.droppedCustomBuckets = dropped{}
+	a.droppedInvalid = dropped{}
 	return nil
 }
 

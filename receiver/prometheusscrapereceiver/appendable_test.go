@@ -234,6 +234,59 @@ func TestAppendNoWarningWithoutDroppedHistograms(t *testing.T) {
 	assert.Zero(t, logs.Len())
 }
 
+// Spans come straight from the scraped payload and are not validated by the
+// Prometheus parsers, so a span longer than the bucket slice must not panic.
+func TestAppendInvalidNativeHistogramsDroppedNotPanic(t *testing.T) {
+	tests := []struct {
+		name string
+		h    *histogram.Histogram
+		fh   *histogram.FloatHistogram
+		err  string
+	}{
+		{
+			name: "int span longer than buckets",
+			h:    &histogram.Histogram{Schema: 3, Count: 1, PositiveSpans: []histogram.Span{{Offset: 0, Length: 5}}, PositiveBuckets: []int64{1}},
+			err:  "spans need 5 buckets, have 1",
+		},
+		{
+			name: "float span longer than buckets",
+			fh:   &histogram.FloatHistogram{Schema: 3, Count: 1, PositiveSpans: []histogram.Span{{Offset: 0, Length: 5}}, PositiveBuckets: []float64{1}},
+			err:  "spans need 5 buckets, have 1",
+		},
+		{
+			name: "negative bucket count",
+			h:    &histogram.Histogram{Schema: 3, Count: 1, PositiveSpans: []histogram.Span{{Offset: 0, Length: 1}}, PositiveBuckets: []int64{-1}},
+			err:  "observation count",
+		},
+		{
+			name: "huge gap between spans",
+			h:    &histogram.Histogram{Schema: 3, Count: 2, PositiveSpans: []histogram.Span{{Offset: 0, Length: 1}, {Offset: math.MaxInt32, Length: 1}}, PositiveBuckets: []int64{1, 0}},
+			err:  "exceeds the limit",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			core, logs := observer.New(zap.WarnLevel)
+			sink := new(consumertest.MetricsSink)
+			a := newTestAppendable(t, sink, labels.EmptyLabels())
+			a.logger = zap.New(core)
+
+			app := a.AppenderV2(context.Background())
+			require.NotPanics(t, func() {
+				_, err := app.Append(0, labels.FromStrings("__name__", "bad"), 0, 1, 0, tt.h, tt.fh, storage.AppendV2Options{})
+				require.NoError(t, err)
+			})
+			require.NoError(t, app.Commit())
+
+			assert.Empty(t, sink.AllMetrics(), "the invalid histogram is not emitted")
+			require.Equal(t, 1, logs.Len())
+			assert.Equal(t, "dropped invalid native histograms", logs.All()[0].Message)
+			assert.EqualValues(t, 1, logs.All()[0].ContextMap()["dropped"])
+			assert.Contains(t, logs.All()[0].ContextMap()["error"], tt.err)
+		})
+	}
+}
+
 func TestAppendRollbackDiscardsDroppedCount(t *testing.T) {
 	core, logs := observer.New(zap.WarnLevel)
 	a := newTestAppendable(t, new(consumertest.MetricsSink), labels.EmptyLabels())
