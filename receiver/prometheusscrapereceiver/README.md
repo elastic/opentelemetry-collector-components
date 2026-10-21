@@ -42,8 +42,12 @@ allocator and the API server.
 ## Data model
 
 Every Prometheus series becomes its own OTel metric, named exactly as scraped
-(`__name__` is not modified). The resource and the instrumentation scope are
-empty. All labels, including `job` and `instance`, are datapoint attributes.
+(`__name__` is not modified by the receiver). The resource and the instrumentation
+scope are empty. All labels, including `job` and `instance`, are datapoint attributes.
+The names are only preserved end to end for traditional Prometheus metric and label
+names, see [Required exporter configuration](#required-exporter-configuration).
+
+Exemplars are not supported: if the target exposes them they are dropped.
 
 | Prometheus series | OTel metric |
 |---|---|
@@ -121,15 +125,35 @@ Use the `prometheusremotewriteexporter` with remote write 1.0 and:
 exporters:
   prometheusremotewrite:
     endpoint: https://<es>/_prometheus/metrics/<dataset>/<namespace>/api/v1/write
+    protobuf_message: prometheus.WriteRequest
     translation_strategy: UnderscoreEscapingWithoutSuffixes
     disable_scope_info: true
+    target_info:
+      enabled: false
+    send_metadata: false
 ```
 
+- `protobuf_message: prometheus.WriteRequest` selects remote write 1.0, the version used
+  with the Elasticsearch `/_prometheus` endpoint.
 - `translation_strategy: UnderscoreEscapingWithoutSuffixes` is **mandatory**. The
   default (`UnderscoreEscapingWithSuffixes`) renames monotonic Sums, for example
-  `x_bucket` becomes `x_bucket_total`. `NoTranslation` is rejected by the
-  exporter with remote write 1.0.
+  `x_bucket` becomes `x_bucket_total`.
+- `disable_scope_info: true` and `target_info.enabled: false` keep the exporter from adding
+  the `otel_scope_*` labels and a synthesized `target_info` series. The receiver emits an
+  empty resource and scope, so there is nothing for it to build them from; this guards against
+  them being added by other components. A `target_info` series scraped from the target is an
+  ordinary series and is not affected.
+- `send_metadata: false` (the default): Elasticsearch ignores remote write 1.0 metadata.
 - Do not set `namespace` or `resource_to_telemetry_conversion`.
+
+### Metric and label names
+
+The receiver does not change names, but the exporter does. Names are preserved only when
+they are traditional Prometheus names (metric names `[a-zA-Z_:][a-zA-Z0-9_:]*`, label names
+`[a-zA-Z_][a-zA-Z0-9_]*`). Prometheus 3 can also scrape UTF-8 names, and the exporter
+escapes characters outside that set to `_`, which can make different names collide.
+`NoTranslation` would pass names unchanged, but the exporter rejects it (and
+`NoUTF8EscapingWithSuffixes`) with remote write 1.0, because it requires remote write 2.0.
 
 ### Known limitations
 
@@ -138,6 +162,10 @@ Exporter side (remote write 1.0):
 - With the configuration above, labels such as `a__b` and `_foo` are written
   unchanged (covered by a correctness test, which will flag exporter changes).
   Empty label values are dropped by the exporter.
+
+Receiver side:
+
+- Exemplars are dropped. They are not converted and not sent to the exporter.
 
 Elasticsearch side:
 
