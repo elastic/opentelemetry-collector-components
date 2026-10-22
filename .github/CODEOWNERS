@@ -12,6 +12,7 @@ receiver/elasticapmintakereceiver          @elastic/otel-devs @elastic/obs-ds-in
 receiver/akamaisiemreceiver                @elastic/otel-devs @elastic/security-service-integrations
 receiver/entityanalyticsreceiver           @elastic/otel-devs @elastic/security-service-integrations
 receiver/vercelreceiver                    @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
+receiver/prometheusscrapereceiver          @elastic/otel-devs @elastic/obs-signals-integrations-team
 processor/elasticinframetricsprocessor     @elastic/otel-devs @elastic/obs-signals-integrations-team
 processor/elasticapmprocessor              @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/obs-signals-traces-team
 processor/elastictraceprocessor            @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services @elastic/obs-signals-traces-team
