@@ -29,6 +29,8 @@ import (
 	mathrand "math/rand/v2"
 	"net/http"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -274,30 +276,19 @@ func getHeader(headers map[string][]string, titlecase, lowercase string) (string
 // hasPrivileges checks if the API Key is valid and has the required privileges.
 func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue string) (bool, string, error) {
 	clientMetadata := client.FromContext(ctx).Metadata
-	applications := make([]types.ApplicationPrivilegesCheck, len(a.config.ApplicationPrivileges))
-	for i, app := range a.config.ApplicationPrivileges {
-		// Start with static resources
-		resources := make([]string, len(app.Resources))
-		copy(resources, app.Resources)
-
-		// Add dynamic resources from client metadata
-		for _, dr := range app.DynamicResources {
-			values := clientMetadata.Get(dr.Metadata)
-			if len(values) == 0 {
-				return false, "", &metadataValidationError{
-					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
-				}
-			}
-			for _, value := range values {
-				resources = append(resources, fmt.Sprintf(dr.Format, value))
-			}
+	required, err := privilegeChecks(clientMetadata, a.config.ApplicationPrivileges)
+	if err != nil {
+		return false, "", err
+	}
+	// Request the required and alternative privileges together, so any_of
+	// costs no additional round trips.
+	applications := required
+	alternatives := make([][]types.ApplicationPrivilegesCheck, len(a.config.AnyOf))
+	for i, set := range a.config.AnyOf {
+		if alternatives[i], err = privilegeChecks(clientMetadata, set.ApplicationPrivileges); err != nil {
+			return false, "", err
 		}
-
-		applications[i] = types.ApplicationPrivilegesCheck{
-			Application: app.Application,
-			Privileges:  app.Privileges,
-			Resources:   resources,
-		}
+		applications = slices.Concat(applications, alternatives[i])
 	}
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
@@ -322,7 +313,62 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 		}
 		return false, "", err
 	}
-	return resp.HasAllRequested, resp.Username, nil
+	// has_all_requested implies that every alternative is granted.
+	if len(alternatives) == 0 || resp.HasAllRequested {
+		return resp.HasAllRequested, resp.Username, nil
+	}
+	granted := allGranted(resp.Application, required) &&
+		slices.ContainsFunc(alternatives, func(checks []types.ApplicationPrivilegesCheck) bool {
+			return allGranted(resp.Application, checks)
+		})
+	return granted, resp.Username, nil
+}
+
+// privilegeChecks builds the _has_privileges checks for the given application
+// privileges, resolving dynamic resources from client metadata.
+func privilegeChecks(clientMetadata client.Metadata, apps []ApplicationPrivilegesConfig) ([]types.ApplicationPrivilegesCheck, error) {
+	applications := make([]types.ApplicationPrivilegesCheck, len(apps))
+	for i, app := range apps {
+		// Start with static resources
+		resources := make([]string, len(app.Resources))
+		copy(resources, app.Resources)
+
+		// Add dynamic resources from client metadata
+		for _, dr := range app.DynamicResources {
+			values := clientMetadata.Get(dr.Metadata)
+			if len(values) == 0 {
+				return nil, &metadataValidationError{
+					message: fmt.Sprintf("missing client metadata %q required for dynamic resource", dr.Metadata),
+				}
+			}
+			for _, value := range values {
+				resources = append(resources, fmt.Sprintf(dr.Format, value))
+			}
+		}
+
+		applications[i] = types.ApplicationPrivilegesCheck{
+			Application: app.Application,
+			Privileges:  app.Privileges,
+			Resources:   resources,
+		}
+	}
+	return applications, nil
+}
+
+// allGranted reports whether the _has_privileges result grants every privilege
+// on every resource of the given checks. Entries missing from the result are
+// treated as not granted.
+func allGranted(result types.ApplicationsPrivileges, checks []types.ApplicationPrivilegesCheck) bool {
+	for _, check := range checks {
+		for _, resource := range check.Resources {
+			for _, privilege := range check.Privileges {
+				if !result[check.Application][resource][privilege] {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 // getCacheKey computes a cache key for the given API Key ID and headers.
@@ -331,22 +377,33 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 	if len(a.config.Cache.KeyMetadata) != 0 {
 		clientMetadata = client.FromContext(ctx).Metadata
 	}
-	key := id
+	key := []byte(id)
 	for _, header := range a.config.Cache.KeyHeaders {
 		value, ok := getHeader(headers, header, strings.ToLower(header))
 		if !ok {
 			return "", fmt.Errorf("error computing cache key: missing header %q", header)
 		}
-		key += " " + value
+		key = append(key, ' ')
+		key = append(key, value...)
 	}
 	for _, metadataKey := range a.config.Cache.KeyMetadata {
 		values := clientMetadata.Get(metadataKey)
 		if len(values) == 0 {
 			return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
 		}
-		key += " " + values[0]
+		// Dynamic resources check every metadata value, so the key must
+		// include every value: a decision for [a] must not be reused for
+		// [a, b]. Quoting keeps distinct value lists distinct.
+		key = append(key, " ["...)
+		for i, value := range values {
+			if i > 0 {
+				key = append(key, ' ')
+			}
+			key = strconv.AppendQuote(key, value)
+		}
+		key = append(key, ']')
 	}
-	return key, nil
+	return string(key), nil
 }
 
 // Authenticate validates an ApiKey scheme Authorization header,
