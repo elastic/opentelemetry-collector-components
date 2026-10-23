@@ -13,6 +13,9 @@ elasticapm:
         max_cardinality: 1
       datapoint:
         max_cardinality: 1
+    pre_aggregation:
+      enabled: true
+      max_size: 1048576
   custom_resource_attributes:
     - res.1
     - res.2

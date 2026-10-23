@@ -39,6 +39,12 @@ By default, aggregated metrics will be exported without any client metadata. It 
 propagate client metadata from input to exported metrics by specifying a list of metadata keys
 in `elasticapm::aggregation::metadata_keys`.
 
+Incoming metrics can be merged in memory before they are written to the aggregation database by
+setting `elasticapm::aggregation::pre_aggregation::enabled: true`. This greatly reduces database
+merge work for busy aggregation keys. `elasticapm::aggregation::pre_aggregation::max_size` bounds
+the buffer (default 32MiB). See the
+[lsmintervalprocessor documentation](../../processor/lsmintervalprocessor/README.md#pre-aggregation).
+
 By default, cardinality for aggregated metrics will be limited.
 Each limit defines a `max_cardinality`. There are four limits that can be configured: 
 - `elasticapm::aggregation::limits::resource`: configures the max cardinality of resources

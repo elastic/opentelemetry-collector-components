@@ -23,6 +23,7 @@ import (
 	"math/rand"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -89,7 +90,7 @@ func TestAggregation(t *testing.T) {
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			testRunHelper(t, tc.name, config)
+			testRunHelperAllModes(t, tc.name, config)
 		})
 	}
 }
@@ -135,7 +136,30 @@ func TestAggregationOverflow(t *testing.T) {
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			testRunHelper(t, tc.name, config)
+			testRunHelperAllModes(t, tc.name, config)
+		})
+	}
+}
+
+// preAggregationModes runs tests with the pre-aggregation buffer disabled,
+// enabled, and enabled with a size that flushes on every request. All modes
+// must produce identical results.
+var preAggregationModes = []struct {
+	name string
+	cfg  config.PreAggregationConfig
+}{
+	{name: "pre_aggregation=off"},
+	{name: "pre_aggregation=on", cfg: config.PreAggregationConfig{Enabled: true}},
+	{name: "pre_aggregation=flush_every_request", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 1}},
+}
+
+func testRunHelperAllModes(t *testing.T, name string, cfg *config.Config) {
+	t.Helper()
+	for _, mode := range preAggregationModes {
+		c := *cfg
+		c.PreAggregation = mode.cfg
+		t.Run(mode.name, func(t *testing.T) {
+			testRunHelper(t, name, &c)
 		})
 	}
 }
@@ -245,8 +269,17 @@ func assertPebbleMetric(t *testing.T, testTel *componenttest.Telemetry) {
 }
 
 func TestClientMetadata(t *testing.T) {
+	for _, mode := range preAggregationModes {
+		t.Run(mode.name, func(t *testing.T) {
+			testClientMetadata(t, mode.cfg)
+		})
+	}
+}
+
+func testClientMetadata(t *testing.T, preAggregation config.PreAggregationConfig) {
 	cfg := &config.Config{
-		MetadataKeys: []string{"k1", "k2"},
+		PreAggregation: preAggregation,
+		MetadataKeys:   []string{"k1", "k2"},
 		Intervals: []config.IntervalConfig{{
 			Duration: time.Minute,
 		}},
@@ -538,4 +571,89 @@ func TestWriteStallListener(t *testing.T) {
 	require.Len(t, dps, 1)
 	assert.Equal(t, reasonAttr, dps[0].Attributes)
 	assert.GreaterOrEqual(t, dps[0].Value, 0.01)
+}
+
+// TestPreAggregationConcurrentTotals sends delta sums from concurrent callers
+// for several tenants across multiple processing windows and checks that no
+// value is lost or double counted, with and without pre-aggregation.
+func TestPreAggregationConcurrentTotals(t *testing.T) {
+	const (
+		callers           = 8
+		requestsPerCaller = 300
+		dpsPerRequest     = 5
+		tenants           = 4
+	)
+	intervals := []config.IntervalConfig{{Duration: time.Second}, {Duration: 2 * time.Second}}
+	for _, mode := range []config.PreAggregationConfig{
+		{},
+		{Enabled: true},
+		{Enabled: true, MaxSize: 16 << 10}, // also exercises size-triggered flushes
+	} {
+		t.Run(fmt.Sprintf("enabled=%t/max_size=%d", mode.Enabled, mode.MaxSize), func(t *testing.T) {
+			var exported atomic.Int64
+			next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+				func(_ context.Context, md pmetric.Metrics) error {
+					rms := md.ResourceMetrics()
+					for i := 0; i < rms.Len(); i++ {
+						sms := rms.At(i).ScopeMetrics()
+						for j := 0; j < sms.Len(); j++ {
+							ms := sms.At(j).Metrics()
+							for k := 0; k < ms.Len(); k++ {
+								dps := ms.At(k).Sum().DataPoints()
+								for l := 0; l < dps.Len(); l++ {
+									exported.Add(dps.At(l).IntValue())
+								}
+							}
+						}
+					}
+					return nil
+				},
+			))
+			cfg := &config.Config{
+				Directory:                      t.TempDir(),
+				Intervals:                      intervals,
+				MetadataKeys:                   []string{"tenant"},
+				ExponentialHistogramMaxBuckets: 160,
+				PreAggregation:                 mode,
+			}
+			settings := processortest.NewNopSettings(metadata.Type)
+			p, err := NewFactory().CreateMetrics(context.Background(), settings, cfg, next)
+			require.NoError(t, err)
+			require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+			var wg sync.WaitGroup
+			for c := 0; c < callers; c++ {
+				wg.Add(1)
+				go func(c int) {
+					defer wg.Done()
+					for r := 0; r < requestsPerCaller; r++ {
+						md := pmetric.NewMetrics()
+						m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+						m.SetName("requests")
+						sum := m.SetEmptySum()
+						sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+						sum.SetIsMonotonic(true)
+						for d := 0; d < dpsPerRequest; d++ {
+							dp := sum.DataPoints().AppendEmpty()
+							dp.Attributes().PutInt("series", int64(d))
+							dp.SetIntValue(1)
+						}
+						ctx := client.NewContext(context.Background(), client.Info{
+							Metadata: client.NewMetadata(map[string][]string{
+								"tenant": {fmt.Sprint("tenant-", (c+r)%tenants)},
+							}),
+						})
+						assert.NoError(t, p.ConsumeMetrics(ctx, md))
+						// Spread the requests over a few processing windows.
+						time.Sleep(5 * time.Millisecond)
+					}
+				}(c)
+			}
+			wg.Wait()
+			require.NoError(t, p.Shutdown(context.Background()))
+
+			want := int64(callers * requestsPerCaller * dpsPerRequest * len(intervals))
+			assert.Equal(t, want, exported.Load())
+		})
+	}
 }

@@ -32,6 +32,8 @@ with db-backed persistence so aggregation state can survive restarts and large b
 | `metric_limit` | object | `{}` | Metric cardinality limit (`max_cardinality`) and overflow attributes. |
 | `datapoint_limit` | object | `{}` | Datapoint cardinality limit (`max_cardinality`) and overflow attributes. |
 | `exponential_histogram_max_buckets` | int | `160` | Maximum buckets for merged exponential histograms. |
+| `pre_aggregation.enabled` | bool | `false` | Merge incoming metrics in memory before writing them to Pebble. See [Pre-aggregation](#pre-aggregation). |
+| `pre_aggregation.max_size` | int | `33554432` (32MiB) | Size, in bytes of incoming protobuf, after which the pre-aggregation buffer is flushed to Pebble. |
 
 `max_cardinality` values of `0` disable overflow tracking for that level.
 
@@ -73,6 +75,37 @@ processors:
         attributes:
           - key: datapoint_overflow
             value: true
+```
+
+### Pre-aggregation
+
+By default, every `ConsumeMetrics` call writes one merge operand per interval to the Pebble key for
+its interval, processing window and metadata. Pebble then merges those operands again on every
+memtable flush and compaction. For a busy key, that means the accumulated value is decoded and
+re-merged many times, and flushes can fall behind ingestion. When they do, writes stop and
+callers block.
+
+With `pre_aggregation.enabled: true`, incoming metrics are merged in memory into one value per
+key. That value is written to Pebble as a single merge operand per interval when one of these
+happens:
+
+- the buffer reaches `pre_aggregation.max_size`;
+- the processing window advances;
+- the processor shuts down.
+
+Aggregated results are identical in both modes, including overflow handling.
+
+The buffer holds at most `pre_aggregation.max_size` bytes of incoming metrics since its last flush,
+plus the memory of the merged values themselves, which is usually much smaller. Unflushed buffered
+data is lost on a crash, in the same way as the processor's unflushed in-memory batch.
+
+```yaml
+processors:
+  lsminterval:
+    directory: /var/lib/otel/lsminterval
+    pre_aggregation:
+      enabled: true
+      max_size: 33554432 # 32MiB
 ```
 
 ### Overflow handling
