@@ -148,7 +148,7 @@ require (
 	github.com/prometheus/client_golang/exp v0.0.0-20260907100614-57bb367da472 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
-	github.com/prometheus/prometheus v0.315.0 // indirect
+	github.com/prometheus/prometheus v0.315.1 // indirect
 	github.com/prometheus/sigv4 v0.5.0 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.9 // indirect
