@@ -73,8 +73,8 @@ type Config struct {
 	// together. Defaults to 160.
 	ExponentialHistogramMaxBuckets int `mapstructure:"exponential_histogram_max_buckets"`
 
-	// Storage holds optional tuning options for the embedded Pebble
-	// database. Zero values select the built-in defaults.
+	// Storage holds tuning options for the embedded Pebble database.
+	// CreateDefaultConfig fills in the defaults.
 	Storage StorageConfig `mapstructure:"storage"`
 }
 
@@ -96,74 +96,57 @@ const (
 	maxMemTableSize int64 = 4<<30 - 1
 )
 
-// StorageConfig tunes the embedded Pebble database. All fields are
-// optional; zero values select the defaults.
+// StorageConfig tunes the embedded Pebble database. The defaults are
+// those returned by DefaultStorageConfig.
 type StorageConfig struct {
 	// MemTableSize is the size in bytes of each Pebble memtable. Larger
 	// memtables combine more merge operands for the same key in a single
 	// flush, which reduces flush CPU and write stalls under sustained
-	// load at the cost of memory. Defaults to 32MiB. When set, it must be
-	// at least 16MiB and less than 4GiB.
+	// load at the cost of memory. Must be at least 16MiB and less than
+	// 4GiB. Defaults to 32MiB.
 	MemTableSize int64 `mapstructure:"memtable_size"`
 
 	// MemTableStopWritesThreshold is the number of memtables (the active
 	// memtable plus those queued for flushing) at which writes stop until
 	// a flush completes. Raising it absorbs flush latency instead of
 	// stalling ingestion. Peak memtable memory is approximately
-	// MemTableSize * MemTableStopWritesThreshold. Defaults to 2. When
-	// set, it must be at least 2.
+	// MemTableSize * MemTableStopWritesThreshold. Must be at least 2.
+	// Defaults to 2.
 	MemTableStopWritesThreshold int `mapstructure:"memtable_stop_writes_threshold"`
 
 	// MaxConcurrentCompactions is the maximum number of compactions
 	// Pebble runs concurrently. Compactions merge the operands of a key
 	// across on-disk files; running more of them in parallel uses more
 	// CPU and lets the database keep up with higher write rates when
-	// compaction, rather than flushing, is the bottleneck. Defaults to 1.
-	// When set, it must be at least 1.
+	// compaction, rather than flushing, is the bottleneck. Must be at
+	// least 1. Defaults to 1.
 	MaxConcurrentCompactions int `mapstructure:"max_concurrent_compactions"`
 }
 
-// MemTableSizeOrDefault returns the configured memtable size or the default.
-func (c StorageConfig) MemTableSizeOrDefault() int64 {
-	if c.MemTableSize == 0 {
-		return DefaultMemTableSize
+// DefaultStorageConfig returns the default storage configuration.
+func DefaultStorageConfig() StorageConfig {
+	return StorageConfig{
+		MemTableSize:                DefaultMemTableSize,
+		MemTableStopWritesThreshold: DefaultMemTableStopWritesThreshold,
+		MaxConcurrentCompactions:    DefaultMaxConcurrentCompactions,
 	}
-	return c.MemTableSize
-}
-
-// MemTableStopWritesThresholdOrDefault returns the configured threshold or
-// the default.
-func (c StorageConfig) MemTableStopWritesThresholdOrDefault() int {
-	if c.MemTableStopWritesThreshold == 0 {
-		return DefaultMemTableStopWritesThreshold
-	}
-	return c.MemTableStopWritesThreshold
-}
-
-// MaxConcurrentCompactionsOrDefault returns the configured number of
-// concurrent compactions or the default.
-func (c StorageConfig) MaxConcurrentCompactionsOrDefault() int {
-	if c.MaxConcurrentCompactions == 0 {
-		return DefaultMaxConcurrentCompactions
-	}
-	return c.MaxConcurrentCompactions
 }
 
 // Validate validates the storage configuration.
 func (c StorageConfig) Validate() error {
-	if c.MemTableSize != 0 && (c.MemTableSize < minMemTableSize || c.MemTableSize > maxMemTableSize) {
+	if c.MemTableSize < minMemTableSize || c.MemTableSize > maxMemTableSize {
 		return fmt.Errorf(
 			"invalid value for storage::memtable_size, must be between %d and %d bytes, current: %d",
 			minMemTableSize, maxMemTableSize, c.MemTableSize,
 		)
 	}
-	if c.MemTableStopWritesThreshold != 0 && c.MemTableStopWritesThreshold < 2 {
+	if c.MemTableStopWritesThreshold < 2 {
 		return fmt.Errorf(
 			"invalid value for storage::memtable_stop_writes_threshold, must be at least 2, current: %d",
 			c.MemTableStopWritesThreshold,
 		)
 	}
-	if c.MaxConcurrentCompactions < 0 {
+	if c.MaxConcurrentCompactions < 1 {
 		return fmt.Errorf(
 			"invalid value for storage::max_concurrent_compactions, must be at least 1, current: %d",
 			c.MaxConcurrentCompactions,
@@ -245,5 +228,6 @@ func CreateDefaultConfig() component.Config {
 			{Duration: 60 * time.Second},
 		},
 		ExponentialHistogramMaxBuckets: defaultMaxExponentialHistogramBuckets,
+		Storage:                        DefaultStorageConfig(),
 	}
 }

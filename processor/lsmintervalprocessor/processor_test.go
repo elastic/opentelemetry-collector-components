@@ -211,6 +211,11 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 }
 
 func newTestProcessor(t testing.TB, cfg *config.Config, telSettings component.TelemetrySettings, next consumer.Metrics) processor.Metrics {
+	// Tests build configs by hand; fill in the storage defaults that
+	// CreateDefaultConfig would otherwise provide.
+	if cfg.Storage == (config.StorageConfig{}) {
+		cfg.Storage = config.DefaultStorageConfig()
+	}
 	factory := NewFactory()
 	settings := processortest.NewNopSettings(metadata.Type)
 	settings.TelemetrySettings = telSettings
@@ -373,6 +378,7 @@ func TestStorageOptions(t *testing.T) {
 	}{
 		{
 			name:                "defaults",
+			storage:             config.DefaultStorageConfig(),
 			expectedSize:        uint64(config.DefaultMemTableSize),
 			expectedThreshold:   config.DefaultMemTableStopWritesThreshold,
 			expectedCompactions: config.DefaultMaxConcurrentCompactions,
@@ -610,6 +616,7 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 
 	for _, tc := range testCases {
 		config := &config.Config{
+			Storage: config.DefaultStorageConfig(),
 			Intervals: []config.IntervalConfig{
 				{
 					Duration:   time.Hour,

@@ -91,7 +91,7 @@ func newProcessor(
 		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
 	}
 
-	maxConcurrentCompactions := cfg.Storage.MaxConcurrentCompactionsOrDefault()
+	maxConcurrentCompactions := cfg.Storage.MaxConcurrentCompactions
 	dbOpts := &pebble.Options{
 		Merger: merger.NewPebbleMerger(
 			cfg.ResourceLimit,
@@ -114,12 +114,12 @@ func newProcessor(
 		// thus large batches will need to be reallocated. Note that large
 		// batch classification uses the memtable size that a batch will
 		// occupy rather than the length of data slice backing the batch.
-		MemTableSize: uint64(cfg.Storage.MemTableSizeOrDefault()),
+		MemTableSize: uint64(cfg.Storage.MemTableSize),
 		// MemTableStopWritesThreshold is the hard limit on the maximum
 		// number of memtables that could be queued before which writes
 		// are stopped. This value should be at least 2 or writes will
 		// stop whenever a MemTable is being flushed.
-		MemTableStopWritesThreshold: cfg.Storage.MemTableStopWritesThresholdOrDefault(),
+		MemTableStopWritesThreshold: cfg.Storage.MemTableStopWritesThreshold,
 		MaxConcurrentCompactions:    func() int { return maxConcurrentCompactions },
 		EventListener:               newWriteStallListener(telemetryBuilder),
 	}
