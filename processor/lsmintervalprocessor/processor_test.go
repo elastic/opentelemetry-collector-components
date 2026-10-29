@@ -211,6 +211,11 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 }
 
 func newTestProcessor(t testing.TB, cfg *config.Config, telSettings component.TelemetrySettings, next consumer.Metrics) processor.Metrics {
+	// Tests build configs by hand; fill in the storage defaults that
+	// CreateDefaultConfig would otherwise provide.
+	if cfg.Storage == (config.StorageConfig{}) {
+		cfg.Storage = config.DefaultStorageConfig()
+	}
 	factory := NewFactory()
 	settings := processortest.NewNopSettings(metadata.Type)
 	settings.TelemetrySettings = telSettings
@@ -361,6 +366,58 @@ func TestClientMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, expected, received)
+}
+
+func TestStorageOptions(t *testing.T) {
+	for _, tc := range []struct {
+		name                string
+		storage             config.StorageConfig
+		expectedSize        uint64
+		expectedThreshold   int
+		expectedCompactions int
+	}{
+		{
+			name:                "defaults",
+			storage:             config.DefaultStorageConfig(),
+			expectedSize:        uint64(config.DefaultMemTableSize),
+			expectedThreshold:   config.DefaultMemTableStopWritesThreshold,
+			expectedCompactions: config.DefaultMaxConcurrentCompactions,
+		},
+		{
+			name: "configured",
+			storage: config.StorageConfig{
+				MemTableSize:                128 << 20,
+				MemTableStopWritesThreshold: 4,
+				MaxConcurrentCompactions:    2,
+			},
+			expectedSize:        128 << 20,
+			expectedThreshold:   4,
+			expectedCompactions: 2,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := config.CreateDefaultConfig().(*config.Config)
+			cfg.Directory = t.TempDir()
+			cfg.Storage = tc.storage
+			require.NoError(t, cfg.Validate())
+
+			p, err := NewFactory().CreateMetrics(
+				context.Background(),
+				processortest.NewNopSettings(metadata.Type),
+				cfg,
+				consumertest.NewNop(),
+			)
+			require.NoError(t, err)
+			proc := p.(*Processor)
+			assert.Equal(t, tc.expectedSize, proc.dbOpts.MemTableSize)
+			assert.Equal(t, tc.expectedThreshold, proc.dbOpts.MemTableStopWritesThreshold)
+			assert.Equal(t, tc.expectedCompactions, proc.dbOpts.MaxConcurrentCompactions())
+
+			// The database must open and close cleanly with the options.
+			require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+			require.NoError(t, p.Shutdown(context.Background()))
+		})
+	}
 }
 
 func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
@@ -559,6 +616,7 @@ func benchmarkAggregation(b *testing.B, ottlStatements []string) {
 
 	for _, tc := range testCases {
 		config := &config.Config{
+			Storage: config.DefaultStorageConfig(),
 			Intervals: []config.IntervalConfig{
 				{
 					Duration:   time.Hour,

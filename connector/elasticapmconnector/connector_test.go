@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
@@ -179,6 +180,61 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 			allMetrics := nextMetrics.AllMetrics()
 			require.NotEmpty(t, allMetrics)
 			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
+		})
+	}
+}
+
+// TestConnector_AggregationStorage loads the aggregation block the way the
+// collector does, onto the factory default configuration, and reads the
+// options Pebble recorded when the embedded processor opened its database.
+func TestConnector_AggregationStorage(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		storage  map[string]any // nil means no storage block in the config
+		expected []string
+	}{
+		{
+			name: "defaults",
+			expected: []string{
+				"mem_table_size=33554432",
+				"mem_table_stop_writes_threshold=2",
+				"max_concurrent_compactions=1",
+			},
+		},
+		{
+			name: "partial_override",
+			storage: map[string]any{
+				"memtable_size":              64 << 20,
+				"max_concurrent_compactions": 2,
+			},
+			expected: []string{
+				"mem_table_size=67108864",
+				"mem_table_stop_writes_threshold=2", // not overridden, default kept
+				"max_concurrent_compactions=2",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			aggdir := t.TempDir()
+			aggregation := map[string]any{"directory": aggdir}
+			if tc.storage != nil {
+				aggregation["storage"] = tc.storage
+			}
+			cfg := createDefaultConfig()
+			conf := confmap.NewFromStringMap(map[string]any{"aggregation": aggregation})
+			require.NoError(t, conf.Unmarshal(&cfg))
+			require.NoError(t, confmap.Validate(cfg))
+
+			newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg.(*Config), &consumertest.MetricsSink{})
+
+			matches, err := filepath.Glob(filepath.Join(aggdir, "OPTIONS-*"))
+			require.NoError(t, err)
+			require.Len(t, matches, 1)
+			options, err := os.ReadFile(matches[0])
+			require.NoError(t, err)
+			for _, want := range tc.expected {
+				assert.Contains(t, string(options), want)
+			}
 		})
 	}
 }

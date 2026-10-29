@@ -66,6 +66,7 @@ func createDefaultConfig() component.Config {
 					MaxCardinality: 4000,
 				},
 			},
+			Storage: defaultStorageConfig(),
 		},
 	}
 }

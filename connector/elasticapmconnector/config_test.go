@@ -30,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 
 	"github.com/elastic/opentelemetry-collector-components/connector/elasticapmconnector/internal/metadata"
+	lsmconfig "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 func TestConfig(t *testing.T) {
@@ -85,6 +86,11 @@ func TestConfig(t *testing.T) {
 						DatapointLimit: LimitConfig{
 							MaxCardinality: 1,
 						},
+					},
+					Storage: &lsmconfig.StorageConfig{
+						MemTableSize:                64 << 20,
+						MemTableStopWritesThreshold: 4,
+						MaxConcurrentCompactions:    2,
 					},
 				},
 				CustomResourceAttributes: []CustomResourceAttribute{
@@ -165,4 +171,39 @@ func TestCustomResourceAttributeValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAggregationStorageConfig(t *testing.T) {
+	// The default configuration carries the processor defaults, and so
+	// does a configuration without a storage block.
+	defaults := lsmconfig.DefaultStorageConfig()
+	assert.Equal(t, &defaults, createDefaultConfig().(*Config).Aggregation.Storage)
+	assert.Equal(t, defaults, (Config{}).lsmConfig().Storage)
+	assert.Equal(t, defaults, (Config{Aggregation: &AggregationConfig{}}).lsmConfig().Storage)
+
+	// A partial storage block keeps the defaults for the other keys.
+	partial := createDefaultConfig()
+	conf := confmap.NewFromStringMap(map[string]any{
+		"aggregation": map[string]any{
+			"storage": map[string]any{"memtable_stop_writes_threshold": 4},
+		},
+	})
+	require.NoError(t, conf.Unmarshal(&partial))
+	require.NoError(t, confmap.Validate(partial))
+	expected := defaults
+	expected.MemTableStopWritesThreshold = 4
+	assert.Equal(t, expected, partial.(*Config).lsmConfig().Storage)
+
+	storage := lsmconfig.StorageConfig{
+		MemTableSize:                128 << 20,
+		MemTableStopWritesThreshold: 4,
+		MaxConcurrentCompactions:    2,
+	}
+	cfg := Config{Aggregation: &AggregationConfig{Storage: &storage}}
+	require.NoError(t, cfg.Validate())
+	assert.Equal(t, storage, cfg.lsmConfig().Storage)
+
+	// Invalid storage options are rejected by the lsmintervalprocessor validation.
+	cfg.Aggregation.Storage.MemTableStopWritesThreshold = 1
+	assert.ErrorContains(t, cfg.Validate(), "storage::memtable_stop_writes_threshold")
 }

@@ -33,6 +33,9 @@ with db-backed persistence so aggregation state can survive restarts and large b
 | `metric_limit` | object | `{}` | Metric cardinality limit (`max_cardinality`) and overflow attributes. |
 | `datapoint_limit` | object | `{}` | Datapoint cardinality limit (`max_cardinality`) and overflow attributes. |
 | `exponential_histogram_max_buckets` | int | `160` | Maximum buckets for merged exponential histograms. |
+| `storage.memtable_size` | int | `33554432` (32MiB) | Size in bytes of each Pebble memtable. Must be between 16MiB and 4GiB. |
+| `storage.memtable_stop_writes_threshold` | int | `2` | Number of memtables (active plus queued for flush) at which writes stop until a flush completes. Must be at least 2. |
+| `storage.max_concurrent_compactions` | int | `1` | Maximum number of Pebble compactions run concurrently. Must be at least 1. |
 
 `max_cardinality` values of `0` disable overflow tracking for that level.
 
@@ -74,6 +77,39 @@ processors:
         attributes:
           - key: datapoint_overflow
             value: true
+```
+
+### Storage tuning
+
+Every `ConsumeMetrics` call appends a merge operand per interval to the Pebble key for its
+interval, processing window and metadata. When a memtable flushes, Pebble merges the operands
+that share a key. If flushes can't keep up with ingestion, writes stop once
+`storage.memtable_stop_writes_threshold` memtables are full. While writes are stopped, the
+processor holds its mutex, so every `ConsumeMetrics` caller waits.
+
+Raising `storage.memtable_size` and `storage.memtable_stop_writes_threshold` reduces these stalls in
+two ways. Each flush merges more operands per key, and more flush latency can be absorbed before
+writes stop. The cost is memory:
+
+- The memtables themselves need about `memtable_size * memtable_stop_writes_threshold` bytes.
+- In practice, resident memory grows by several times that amount, because flushing larger
+  memtables allocates more while merging.
+
+Size the memory limit with headroom and measure before rolling out. The defaults are unchanged.
+
+Compactions merge the operands of a key across on-disk files after they have been flushed.
+`storage.max_concurrent_compactions` lets Pebble run more of them in parallel, which costs CPU and
+only helps when compaction, not flushing, falls behind (Pebble reports those stalls with a
+different reason than memtable stalls).
+
+```yaml
+processors:
+  lsminterval:
+    directory: /var/lib/otel/lsminterval
+    storage:
+      memtable_size: 67108864 # 64MiB
+      memtable_stop_writes_threshold: 4
+      max_concurrent_compactions: 2
 ```
 
 ### Overflow handling

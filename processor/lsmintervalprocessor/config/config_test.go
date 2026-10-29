@@ -56,6 +56,53 @@ func TestConfig(t *testing.T) {
 			expectedErrMsg: "invalid value for exponential_histogram_max_buckets",
 		},
 		{
+			name: "memtable_size_too_small",
+			input: map[string]any{
+				"storage": map[string]any{"memtable_size": 1 << 20},
+			},
+			expectedErrMsg: "invalid value for storage::memtable_size",
+		},
+		{
+			name: "memtable_size_too_large",
+			input: map[string]any{
+				"storage": map[string]any{"memtable_size": int64(4 << 30)},
+			},
+			expectedErrMsg: "invalid value for storage::memtable_size",
+		},
+		{
+			name: "memtable_stop_writes_threshold_too_small",
+			input: map[string]any{
+				"storage": map[string]any{"memtable_stop_writes_threshold": 1},
+			},
+			expectedErrMsg: "invalid value for storage::memtable_stop_writes_threshold",
+		},
+		{
+			name: "max_concurrent_compactions_too_small",
+			input: map[string]any{
+				"storage": map[string]any{"max_concurrent_compactions": 0},
+			},
+			expectedErrMsg: "invalid value for storage::max_concurrent_compactions",
+		},
+		{
+			name: "valid_storage",
+			input: map[string]any{
+				"storage": map[string]any{
+					"memtable_size":                  64 << 20,
+					"memtable_stop_writes_threshold": 4,
+					"max_concurrent_compactions":     2,
+				},
+			},
+			expected: func() *Config {
+				cfg := CreateDefaultConfig().(*Config)
+				cfg.Storage = StorageConfig{
+					MemTableSize:                64 << 20,
+					MemTableStopWritesThreshold: 4,
+					MaxConcurrentCompactions:    2,
+				}
+				return cfg
+			}(),
+		},
+		{
 			name: "valid_full",
 			input: map[string]any{
 				"metadata_keys":                     []string{"test.1", "test.2"},
@@ -87,4 +134,17 @@ func TestConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStorageConfigDefaults(t *testing.T) {
+	expected := StorageConfig{
+		MemTableSize:                DefaultMemTableSize,
+		MemTableStopWritesThreshold: DefaultMemTableStopWritesThreshold,
+		MaxConcurrentCompactions:    DefaultMaxConcurrentCompactions,
+	}
+	assert.Equal(t, expected, DefaultStorageConfig())
+	assert.Equal(t, expected, CreateDefaultConfig().(*Config).Storage)
+	assert.NoError(t, DefaultStorageConfig().Validate())
+	// Defaults come from CreateDefaultConfig, not from zero values.
+	assert.Error(t, StorageConfig{}.Validate())
 }
