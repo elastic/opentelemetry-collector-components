@@ -215,6 +215,10 @@ func TestLoadConfig(t *testing.T) {
 			expectedErrMessage: `client_retry: invalid retry_delay: 0s, must be greater than 0`,
 		},
 		{
+			id:                 component.NewIDWithName(metadata.Type, "application_privileges_missing_resources"),
+			expectedErrMessage: `application_privileges::0: resources or dynamic_resources must be non-empty`,
+		},
+		{
 			id: component.NewIDWithName(metadata.Type, "any_of"),
 			expected: func() *Config {
 				config := createDefaultConfig().(*Config)
@@ -244,11 +248,11 @@ func TestLoadConfig(t *testing.T) {
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_resources"),
-			expectedErrMessage: `any_of::0: application_privileges::0: resources or dynamic_resources must be non-empty`,
+			expectedErrMessage: `any_of::0::application_privileges::0: resources or dynamic_resources must be non-empty`,
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_privileges"),
-			expectedErrMessage: `any_of::0: application_privileges::0: privileges must be non-empty`,
+			expectedErrMessage: `any_of::0::application_privileges::0: privileges must be non-empty`,
 		},
 		{
 			id:                 component.NewIDWithName(metadata.Type, "any_of_missing_cache_key_metadata"),

@@ -282,13 +282,18 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 	}
 	// Request the required and alternative privileges together, so any_of
 	// costs no additional round trips.
-	applications := required
 	alternatives := make([][]types.ApplicationPrivilegesCheck, len(a.config.AnyOf))
+	n := len(required)
 	for i, set := range a.config.AnyOf {
 		if alternatives[i], err = privilegeChecks(clientMetadata, set.ApplicationPrivileges); err != nil {
 			return false, "", err
 		}
-		applications = slices.Concat(applications, alternatives[i])
+		n += len(alternatives[i])
+	}
+	applications := make([]types.ApplicationPrivilegesCheck, 0, n)
+	applications = append(applications, required...)
+	for _, checks := range alternatives {
+		applications = append(applications, checks...)
 	}
 	req := a.esClient.Security.HasPrivileges()
 	req.Header(authorizationHeader, authHeaderValue)
@@ -377,14 +382,16 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 	if len(a.config.Cache.KeyMetadata) != 0 {
 		clientMetadata = client.FromContext(ctx).Metadata
 	}
-	key := []byte(id)
+	// Quote every component, so a space inside the ID or a header value
+	// cannot make two different requests share a key.
+	key := strconv.AppendQuote(nil, id)
 	for _, header := range a.config.Cache.KeyHeaders {
 		value, ok := getHeader(headers, header, strings.ToLower(header))
 		if !ok {
 			return "", fmt.Errorf("error computing cache key: missing header %q", header)
 		}
 		key = append(key, ' ')
-		key = append(key, value...)
+		key = strconv.AppendQuote(key, value)
 	}
 	for _, metadataKey := range a.config.Cache.KeyMetadata {
 		values := clientMetadata.Get(metadataKey)
@@ -393,7 +400,7 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 		}
 		// Dynamic resources check every metadata value, so the key must
 		// include every value: a decision for [a] must not be reused for
-		// [a, b]. Quoting keeps distinct value lists distinct.
+		// [a, b].
 		key = append(key, " ["...)
 		for i, value := range values {
 			if i > 0 {

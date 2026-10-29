@@ -160,3 +160,8 @@ apikeyauth/any_of_missing_cache_key_metadata:
           privileges: [write]
           dynamic_resources:
             - metadata: X-Source-Id
+
+apikeyauth/application_privileges_missing_resources:
+  application_privileges:
+    - application: my_app
+      privileges: [write]

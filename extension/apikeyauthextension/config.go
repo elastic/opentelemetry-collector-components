@@ -48,6 +48,10 @@ type Config struct {
 	// non-empty, an API Key is valid only if it has all ApplicationPrivileges
 	// and all privileges of at least one AnyOf entry. Every privilege is
 	// checked with a single _has_privileges request.
+	//
+	// Dynamic resources in an AnyOf entry resolve before the check, like
+	// those in ApplicationPrivileges: a request missing their metadata is
+	// rejected, even if another entry would be satisfied.
 	AnyOf []PrivilegeSetConfig `mapstructure:"any_of,omitempty"`
 
 	// Cache holds configuration related to caching
@@ -138,22 +142,25 @@ type PrivilegeSetConfig struct {
 	ApplicationPrivileges []ApplicationPrivilegesConfig `mapstructure:"application_privileges"`
 }
 
+// Validate validates the ApplicationPrivilegesConfig. Elasticsearch rejects
+// a privilege check without an application, privileges or resources.
+func (cfg *ApplicationPrivilegesConfig) Validate() error {
+	switch {
+	case cfg.Application == "":
+		return errors.New("application must be non-empty")
+	case len(cfg.Privileges) == 0:
+		return errors.New("privileges must be non-empty")
+	case len(cfg.Resources) == 0 && len(cfg.DynamicResources) == 0:
+		return errors.New("resources or dynamic_resources must be non-empty")
+	}
+	return nil
+}
+
 // Validate validates the PrivilegeSetConfig. An alternative without
-// privileges, or with privileges that check no resource, would be
-// satisfied by any valid API Key.
+// privileges would be satisfied by any valid API Key.
 func (cfg *PrivilegeSetConfig) Validate() error {
 	if len(cfg.ApplicationPrivileges) == 0 {
 		return errors.New("application_privileges must be non-empty")
-	}
-	for i, app := range cfg.ApplicationPrivileges {
-		switch {
-		case app.Application == "":
-			return fmt.Errorf("application_privileges::%d: application must be non-empty", i)
-		case len(app.Privileges) == 0:
-			return fmt.Errorf("application_privileges::%d: privileges must be non-empty", i)
-		case len(app.Resources) == 0 && len(app.DynamicResources) == 0:
-			return fmt.Errorf("application_privileges::%d: resources or dynamic_resources must be non-empty", i)
-		}
 	}
 	return nil
 }
