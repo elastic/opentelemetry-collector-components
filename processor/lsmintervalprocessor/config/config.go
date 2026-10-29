@@ -84,6 +84,9 @@ const (
 	// DefaultMemTableStopWritesThreshold is the default number of
 	// memtables at which writes are stopped until a flush completes.
 	DefaultMemTableStopWritesThreshold = 2
+	// DefaultMaxConcurrentCompactions is the default number of
+	// compactions Pebble runs concurrently.
+	DefaultMaxConcurrentCompactions = 1
 
 	// minMemTableSize is twice the processor's batch commit threshold
 	// (8MiB) so that regular batch commits are never classified as
@@ -110,6 +113,14 @@ type StorageConfig struct {
 	// MemTableSize * MemTableStopWritesThreshold. Defaults to 2. When
 	// set, it must be at least 2.
 	MemTableStopWritesThreshold int `mapstructure:"memtable_stop_writes_threshold"`
+
+	// MaxConcurrentCompactions is the maximum number of compactions
+	// Pebble runs concurrently. Compactions merge the operands of a key
+	// across on-disk files; running more of them in parallel uses more
+	// CPU and lets the database keep up with higher write rates when
+	// compaction, rather than flushing, is the bottleneck. Defaults to 1.
+	// When set, it must be at least 1.
+	MaxConcurrentCompactions int `mapstructure:"max_concurrent_compactions"`
 }
 
 // MemTableSizeOrDefault returns the configured memtable size or the default.
@@ -129,6 +140,15 @@ func (c StorageConfig) MemTableStopWritesThresholdOrDefault() int {
 	return c.MemTableStopWritesThreshold
 }
 
+// MaxConcurrentCompactionsOrDefault returns the configured number of
+// concurrent compactions or the default.
+func (c StorageConfig) MaxConcurrentCompactionsOrDefault() int {
+	if c.MaxConcurrentCompactions == 0 {
+		return DefaultMaxConcurrentCompactions
+	}
+	return c.MaxConcurrentCompactions
+}
+
 // Validate validates the storage configuration.
 func (c StorageConfig) Validate() error {
 	if c.MemTableSize != 0 && (c.MemTableSize < minMemTableSize || c.MemTableSize > maxMemTableSize) {
@@ -141,6 +161,12 @@ func (c StorageConfig) Validate() error {
 		return fmt.Errorf(
 			"invalid value for storage::memtable_stop_writes_threshold, must be at least 2, current: %d",
 			c.MemTableStopWritesThreshold,
+		)
+	}
+	if c.MaxConcurrentCompactions < 0 {
+		return fmt.Errorf(
+			"invalid value for storage::max_concurrent_compactions, must be at least 1, current: %d",
+			c.MaxConcurrentCompactions,
 		)
 	}
 	return nil

@@ -34,6 +34,7 @@ with db-backed persistence so aggregation state can survive restarts and large b
 | `exponential_histogram_max_buckets` | int | `160` | Maximum buckets for merged exponential histograms. |
 | `storage.memtable_size` | int | `33554432` (32MiB) | Size in bytes of each Pebble memtable. Must be between 16MiB and 4GiB. |
 | `storage.memtable_stop_writes_threshold` | int | `2` | Number of memtables (active plus queued for flush) at which writes stop until a flush completes. Must be at least 2. |
+| `storage.max_concurrent_compactions` | int | `1` | Maximum number of Pebble compactions run concurrently. Must be at least 1. |
 
 `max_cardinality` values of `0` disable overflow tracking for that level.
 
@@ -95,6 +96,11 @@ writes stop. The cost is memory:
 
 Size the memory limit with headroom and measure before rolling out. The defaults are unchanged.
 
+Compactions merge the operands of a key across on-disk files after they have been flushed.
+`storage.max_concurrent_compactions` lets Pebble run more of them in parallel, which costs CPU and
+only helps when compaction, not flushing, falls behind (Pebble reports those stalls with a
+different reason than memtable stalls).
+
 ```yaml
 processors:
   lsminterval:
@@ -102,6 +108,7 @@ processors:
     storage:
       memtable_size: 67108864 # 64MiB
       memtable_stop_writes_threshold: 4
+      max_concurrent_compactions: 2
 ```
 
 ### Overflow handling

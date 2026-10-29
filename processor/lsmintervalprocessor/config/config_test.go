@@ -77,11 +77,19 @@ func TestConfig(t *testing.T) {
 			expectedErrMsg: "invalid value for storage::memtable_stop_writes_threshold",
 		},
 		{
+			name: "max_concurrent_compactions_negative",
+			input: map[string]any{
+				"storage": map[string]any{"max_concurrent_compactions": -1},
+			},
+			expectedErrMsg: "invalid value for storage::max_concurrent_compactions",
+		},
+		{
 			name: "valid_storage",
 			input: map[string]any{
 				"storage": map[string]any{
 					"memtable_size":                  64 << 20,
 					"memtable_stop_writes_threshold": 4,
+					"max_concurrent_compactions":     2,
 				},
 			},
 			expected: func() *Config {
@@ -89,6 +97,7 @@ func TestConfig(t *testing.T) {
 				cfg.Storage = StorageConfig{
 					MemTableSize:                64 << 20,
 					MemTableStopWritesThreshold: 4,
+					MaxConcurrentCompactions:    2,
 				}
 				return cfg
 			}(),
@@ -131,8 +140,10 @@ func TestStorageConfigDefaults(t *testing.T) {
 	var c StorageConfig
 	assert.Equal(t, DefaultMemTableSize, c.MemTableSizeOrDefault())
 	assert.Equal(t, DefaultMemTableStopWritesThreshold, c.MemTableStopWritesThresholdOrDefault())
+	assert.Equal(t, DefaultMaxConcurrentCompactions, c.MaxConcurrentCompactionsOrDefault())
 
-	c = StorageConfig{MemTableSize: 128 << 20, MemTableStopWritesThreshold: 4}
+	c = StorageConfig{MemTableSize: 128 << 20, MemTableStopWritesThreshold: 4, MaxConcurrentCompactions: 2}
 	assert.Equal(t, int64(128<<20), c.MemTableSizeOrDefault())
 	assert.Equal(t, 4, c.MemTableStopWritesThresholdOrDefault())
+	assert.Equal(t, 2, c.MaxConcurrentCompactionsOrDefault())
 }

@@ -363,24 +363,28 @@ func TestClientMetadata(t *testing.T) {
 
 func TestStorageOptions(t *testing.T) {
 	for _, tc := range []struct {
-		name              string
-		storage           config.StorageConfig
-		expectedSize      uint64
-		expectedThreshold int
+		name                string
+		storage             config.StorageConfig
+		expectedSize        uint64
+		expectedThreshold   int
+		expectedCompactions int
 	}{
 		{
-			name:              "defaults",
-			expectedSize:      uint64(config.DefaultMemTableSize),
-			expectedThreshold: config.DefaultMemTableStopWritesThreshold,
+			name:                "defaults",
+			expectedSize:        uint64(config.DefaultMemTableSize),
+			expectedThreshold:   config.DefaultMemTableStopWritesThreshold,
+			expectedCompactions: config.DefaultMaxConcurrentCompactions,
 		},
 		{
 			name: "configured",
 			storage: config.StorageConfig{
 				MemTableSize:                128 << 20,
 				MemTableStopWritesThreshold: 4,
+				MaxConcurrentCompactions:    2,
 			},
-			expectedSize:      128 << 20,
-			expectedThreshold: 4,
+			expectedSize:        128 << 20,
+			expectedThreshold:   4,
+			expectedCompactions: 2,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -399,6 +403,7 @@ func TestStorageOptions(t *testing.T) {
 			proc := p.(*Processor)
 			assert.Equal(t, tc.expectedSize, proc.dbOpts.MemTableSize)
 			assert.Equal(t, tc.expectedThreshold, proc.dbOpts.MemTableStopWritesThreshold)
+			assert.Equal(t, tc.expectedCompactions, proc.dbOpts.MaxConcurrentCompactions())
 
 			// The database must open and close cleanly with the options.
 			require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))

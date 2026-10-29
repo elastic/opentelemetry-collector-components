@@ -90,6 +90,7 @@ func TestConfig(t *testing.T) {
 					Storage: lsmconfig.StorageConfig{
 						MemTableSize:                64 << 20,
 						MemTableStopWritesThreshold: 4,
+						MaxConcurrentCompactions:    2,
 					},
 				},
 				CustomResourceAttributes: []CustomResourceAttribute{
@@ -176,6 +177,7 @@ func TestAggregationStorageConfig(t *testing.T) {
 	storage := lsmconfig.StorageConfig{
 		MemTableSize:                128 << 20,
 		MemTableStopWritesThreshold: 4,
+		MaxConcurrentCompactions:    2,
 	}
 	cfg := Config{Aggregation: &AggregationConfig{Storage: storage}}
 	require.NoError(t, cfg.Validate())

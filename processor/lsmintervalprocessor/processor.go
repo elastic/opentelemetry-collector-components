@@ -91,6 +91,7 @@ func newProcessor(
 		return nil, fmt.Errorf("failed to create telemetry builder: %w", err)
 	}
 
+	maxConcurrentCompactions := cfg.Storage.MaxConcurrentCompactionsOrDefault()
 	dbOpts := &pebble.Options{
 		Merger: merger.NewPebbleMerger(
 			cfg.ResourceLimit,
@@ -119,6 +120,7 @@ func newProcessor(
 		// are stopped. This value should be at least 2 or writes will
 		// stop whenever a MemTable is being flushed.
 		MemTableStopWritesThreshold: cfg.Storage.MemTableStopWritesThresholdOrDefault(),
+		MaxConcurrentCompactions:    func() int { return maxConcurrentCompactions },
 	}
 	writeOpts := pebble.Sync
 	dataDir := cfg.Directory

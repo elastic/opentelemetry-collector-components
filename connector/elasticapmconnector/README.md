@@ -44,6 +44,8 @@ the same options as the [lsmintervalprocessor](../../processor/lsmintervalproces
 - `elasticapm::aggregation::storage::memtable_size`: size in bytes of each memtable (default 32MiB)
 - `elasticapm::aggregation::storage::memtable_stop_writes_threshold`: number of memtables at which
   writes stop until a flush completes (default 2)
+- `elasticapm::aggregation::storage::max_concurrent_compactions`: maximum number of compactions run
+  concurrently (default 1)
 
 By default, cardinality for aggregated metrics will be limited.
 Each limit defines a `max_cardinality`. There are four limits that can be configured: 
