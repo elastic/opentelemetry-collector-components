@@ -49,9 +49,10 @@ type Config struct {
 	// and all privileges of at least one AnyOf entry. Every privilege is
 	// checked with a single _has_privileges request.
 	//
-	// Dynamic resources in an AnyOf entry resolve before the check, like
-	// those in ApplicationPrivileges: a request missing their metadata is
-	// rejected, even if another entry would be satisfied.
+	// An AnyOf entry whose dynamic resources need metadata the request does
+	// not have is not satisfied; the other entries are still checked. If no
+	// entry can be checked, the request is denied without calling
+	// Elasticsearch.
 	AnyOf []PrivilegeSetConfig `mapstructure:"any_of,omitempty"`
 
 	// Cache holds configuration related to caching
@@ -186,7 +187,8 @@ type CacheConfig struct {
 	// KeyMetadata holds an optional set of client metadata keys to
 	// include in the cache key, for partitioning the API Key space.
 	// If any keys are missing from the client metadata, an error
-	// will be returned.
+	// will be returned, except for keys used only by any_of dynamic
+	// resources: those are recorded as absent in the cache key.
 	KeyMetadata []string `mapstructure:"key_metadata,omitempty"`
 
 	// PBKDF2Iterations defines the iteration count for PBKDF2

@@ -72,6 +72,10 @@ var (
 
 // metadataValidationError represents a client error related to metadata validation
 // for dynamic resources. This is used to distinguish client errors from server errors.
+// errNoAlternative is returned when any_of is configured but no entry can be
+// checked, because each one needs client metadata the request does not have.
+var errNoAlternative = errors.New("no any_of privilege set applies to the request")
+
 type metadataValidationError struct {
 	message string
 }
@@ -133,6 +137,11 @@ type authenticator struct {
 	esClient *elasticsearch.TypedClient
 	cache    freelru.Cache[string, *cacheEntry]
 	salt     [16]byte // used for deriving keys from API Keys
+
+	// optionalKeyMetadata holds the cache.key_metadata keys that only any_of
+	// dynamic resources use. A request may omit them: the entries that need
+	// them are not satisfied, and the cache key records the key as absent.
+	optionalKeyMetadata map[string]bool
 }
 
 func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, error) {
@@ -155,10 +164,11 @@ func newAuthenticator(cfg *Config, set extension.Settings) (*authenticator, erro
 	)
 
 	authenticator := &authenticator{
-		config:            cfg,
-		telemetrySettings: set.TelemetrySettings,
-		userAgent:         userAgent,
-		cache:             cache,
+		config:              cfg,
+		telemetrySettings:   set.TelemetrySettings,
+		userAgent:           userAgent,
+		cache:               cache,
+		optionalKeyMetadata: optionalKeyMetadata(cfg),
 	}
 	if _, err := rand.Read(authenticator.salt[:]); err != nil {
 		return nil, err
@@ -281,14 +291,24 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 		return false, "", err
 	}
 	// Request the required and alternative privileges together, so any_of
-	// costs no additional round trips.
-	alternatives := make([][]types.ApplicationPrivilegesCheck, len(a.config.AnyOf))
+	// costs no additional round trips. An alternative whose dynamic resources
+	// need missing metadata cannot be granted, so it is left out.
+	alternatives := make([][]types.ApplicationPrivilegesCheck, 0, len(a.config.AnyOf))
 	n := len(required)
-	for i, set := range a.config.AnyOf {
-		if alternatives[i], err = privilegeChecks(clientMetadata, set.ApplicationPrivileges); err != nil {
+	for _, set := range a.config.AnyOf {
+		checks, err := privilegeChecks(clientMetadata, set.ApplicationPrivileges)
+		if err != nil {
+			var metadataErr *metadataValidationError
+			if errors.As(err, &metadataErr) {
+				continue
+			}
 			return false, "", err
 		}
-		n += len(alternatives[i])
+		alternatives = append(alternatives, checks)
+		n += len(checks)
+	}
+	if len(a.config.AnyOf) != 0 && len(alternatives) == 0 {
+		return false, "", errNoAlternative
 	}
 	applications := make([]types.ApplicationPrivilegesCheck, 0, n)
 	applications = append(applications, required...)
@@ -376,6 +396,26 @@ func allGranted(result types.ApplicationsPrivileges, checks []types.ApplicationP
 	return true
 }
 
+// optionalKeyMetadata returns the cache.key_metadata keys used only by any_of
+// dynamic resources. Keys used by application_privileges, or by no dynamic
+// resource (for example to partition the cache), stay required.
+func optionalKeyMetadata(cfg *Config) map[string]bool {
+	optional := make(map[string]bool)
+	for _, set := range cfg.AnyOf {
+		for _, app := range set.ApplicationPrivileges {
+			for _, dr := range app.DynamicResources {
+				optional[dr.Metadata] = true
+			}
+		}
+	}
+	for _, app := range cfg.ApplicationPrivileges {
+		for _, dr := range app.DynamicResources {
+			delete(optional, dr.Metadata)
+		}
+	}
+	return optional
+}
+
 // getCacheKey computes a cache key for the given API Key ID and headers.
 func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[string][]string) (string, error) {
 	var clientMetadata client.Metadata
@@ -396,7 +436,12 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 	for _, metadataKey := range a.config.Cache.KeyMetadata {
 		values := clientMetadata.Get(metadataKey)
 		if len(values) == 0 {
-			return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
+			if !a.optionalKeyMetadata[metadataKey] {
+				return "", fmt.Errorf("error computing cache key: missing client metadata %q", metadataKey)
+			}
+			// Unquoted, so it cannot match any value list.
+			key = append(key, " -"...)
+			continue
 		}
 		// Dynamic resources check every metadata value, so the key must
 		// include every value: a decision for [a] must not be reused for
@@ -510,6 +555,14 @@ func (a *authenticator) Authenticate(ctx context.Context, headers map[string][]s
 			default:
 				return ctx, status.Errorf(codes.Internal, "error checking privileges: %v", err)
 			}
+		}
+		if errors.Is(err, errNoAlternative) {
+			// Not cached: Elasticsearch was not called, so the API Key
+			// was not verified, and a cached entry would hold an
+			// unverified secret for this key ID.
+			return ctx, errorWithDetails(status.New(
+				codes.PermissionDenied, "unauthorized",
+			), id, 0)
 		}
 		// Check if this is a metadata validation error (client error)
 		var metadataErr *metadataValidationError
