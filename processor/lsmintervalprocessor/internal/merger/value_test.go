@@ -59,13 +59,22 @@ func TestMergeMetric(t *testing.T) {
 			v = getTestValue(t)
 			require.NoError(t, v.Unmarshal(vb))
 
+			// Merging the value into an empty value, as the pebble merger does
+			// with stored operands, must not change the result: overflow
+			// buckets carried by the operand are neither counted against the
+			// limits nor estimated as overflows.
+			merged := getTestValue(t)
+			require.NoError(t, merged.Merge(v))
+
 			// Compare the final metric with the expected metric
 			expected, err := golden.ReadMetrics(filepath.Join(dir, "output.yaml"))
 			require.NoError(t, err)
-			actual, overflowStats, err := v.Finalize()
-			require.NoError(t, err)
-			assert.NoError(t, pmetrictest.CompareMetrics(expected, actual))
-			assert.Equal(t, tc.expectedOverflows, overflowStats)
+			for name, v := range map[string]*Value{"unmarshaled": v, "merged": merged} {
+				actual, overflowStats, err := v.Finalize()
+				require.NoError(t, err, name)
+				assert.NoError(t, pmetrictest.CompareMetrics(expected, actual), name)
+				assert.Equal(t, tc.expectedOverflows, overflowStats, name)
+			}
 		})
 	}
 }

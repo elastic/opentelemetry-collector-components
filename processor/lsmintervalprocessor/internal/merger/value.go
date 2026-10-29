@@ -71,6 +71,15 @@ type Value struct {
 	source   pmetric.Metrics
 	trackers *limits.Trackers
 
+	// Overflow bucket identities, built once per value and used to
+	// recognise overflow buckets carried by merged operands so that
+	// they are neither counted against the limits nor estimated as
+	// overflows. overflowScope is a prototype; its identity depends
+	// on the resource it belongs to.
+	overflowIdentitiesInit bool
+	overflowResID          identity.Resource
+	overflowScope          pcommon.InstrumentationScope
+
 	// Lookup tables created from source
 	lookupsInitialized bool
 	resLookup          map[identity.Resource]pdataResourceMetrics
@@ -480,12 +489,12 @@ func (s *Value) addResourceMetrics(
 			uint64(s.datapointLimitCfg.MaxCardinality),
 		)
 	}
-	if s.trackers.GetResourceTracker().CheckOverflow(resID.Hash) {
+	overflowResID, err := s.getOverflowResourceIdentity()
+	if err != nil {
+		return identity.Resource{}, pdataResourceMetrics{}, err
+	}
+	if resID == overflowResID || s.trackers.GetResourceTracker().CheckOverflow(resID.Hash) {
 		// Overflow, get/prepare an overflow bucket
-		overflowResID, err := s.getOverflowResourceIdentity()
-		if err != nil {
-			return identity.Resource{}, pdataResourceMetrics{}, err
-		}
 		if rm, ok := s.resLookup[overflowResID]; ok {
 			return overflowResID, rm, nil
 		}
@@ -529,12 +538,12 @@ func (s *Value) addScopeMetrics(
 	if sm, ok := s.scopeLookup[scopeID]; ok {
 		return scopeID, sm, nil
 	}
-	if rm.scopeTracker.CheckOverflow(scopeID.Hash) {
+	overflowScopeID, err := s.getOverflowScopeIdentity(resID)
+	if err != nil {
+		return identity.Scope{}, pdataScopeMetrics{}, err
+	}
+	if scopeID == overflowScopeID || rm.scopeTracker.CheckOverflow(scopeID.Hash) {
 		// Overflow, get/prepare an overflow bucket
-		overflowScopeID, err := s.getOverflowScopeIdentity(resID)
-		if err != nil {
-			return identity.Scope{}, pdataScopeMetrics{}, err
-		}
 		if sm, ok := s.scopeLookup[overflowScopeID]; ok {
 			return overflowScopeID, sm, nil
 		}
@@ -799,28 +808,44 @@ func (v *Value) mergeMetric(
 	}
 }
 
-func (s *Value) getOverflowResourceIdentity() (identity.Resource, error) {
+func (s *Value) initOverflowIdentities() error {
+	if s.overflowIdentitiesInit {
+		return nil
+	}
 	r := pcommon.NewResource()
 	if err := decorate(
 		r.Attributes(),
 		s.resourceLimitCfg.Overflow.Attributes,
 	); err != nil {
-		return identity.Resource{}, fmt.Errorf("failed to create overflow bucket: %w", err)
+		return fmt.Errorf("failed to create overflow bucket: %w", err)
 	}
-	return identity.OfResource(r), nil
-}
-
-func (s *Value) getOverflowScopeIdentity(
-	res identity.Resource,
-) (identity.Scope, error) {
 	scope := pcommon.NewInstrumentationScope()
 	if err := decorate(
 		scope.Attributes(),
 		s.scopeLimitCfg.Overflow.Attributes,
 	); err != nil {
-		return identity.Scope{}, fmt.Errorf("failed to create overflow bucket: %w", err)
+		return fmt.Errorf("failed to create overflow bucket: %w", err)
 	}
-	return identity.OfScope(res, scope), nil
+	s.overflowResID = identity.OfResource(r)
+	s.overflowScope = scope
+	s.overflowIdentitiesInit = true
+	return nil
+}
+
+func (s *Value) getOverflowResourceIdentity() (identity.Resource, error) {
+	if err := s.initOverflowIdentities(); err != nil {
+		return identity.Resource{}, err
+	}
+	return s.overflowResID, nil
+}
+
+func (s *Value) getOverflowScopeIdentity(
+	res identity.Resource,
+) (identity.Scope, error) {
+	if err := s.initOverflowIdentities(); err != nil {
+		return identity.Scope{}, err
+	}
+	return identity.OfScope(res, s.overflowScope), nil
 }
 
 func fillOverflowMetric(
