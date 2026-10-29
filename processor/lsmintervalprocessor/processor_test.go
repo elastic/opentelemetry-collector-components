@@ -456,7 +456,7 @@ func TestKeyProcessingTimeTruncatedToInterval(t *testing.T) {
 
 	iter, err := p.db.NewIter(nil)
 	require.NoError(t, err)
-	defer iter.Close()
+	defer func() { _ = iter.Close() }()
 
 	got := make(map[time.Duration]time.Time)
 	for iter.First(); iter.Valid(); iter.Next() {
@@ -472,14 +472,14 @@ func TestKeyProcessingTimeTruncatedToInterval(t *testing.T) {
 	assert.Equal(t, expected, got)
 }
 
-// TestMultiIntervalAggregation verifies that a larger interval exports merged
-// windows instead of re-exporting the windows of the smaller interval, without
-// losing or duplicating any data.
+// TestMultiIntervalAggregation verifies that a larger interval exports one
+// merged window instead of re-exporting the windows of the smaller interval,
+// without losing or duplicating any data. The export ticks are driven
+// directly, so the test doesn't depend on timers.
 func TestMultiIntervalAggregation(t *testing.T) {
 	t.Parallel()
 
-	var mu sync.Mutex
-	sums, counts := map[string]int64{}, map[string]int{} // by interval
+	exports := make(map[string][]int64) // by interval
 	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
 		func(_ context.Context, metrics pmetric.Metrics) error {
 			if metrics.MetricCount() == 0 {
@@ -487,23 +487,25 @@ func TestMultiIntervalAggregation(t *testing.T) {
 			}
 			dp := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0)
 			ivl, ok := dp.Attributes().Get("ivl")
-			require.True(t, ok)
-			mu.Lock()
-			defer mu.Unlock()
-			sums[ivl.Str()] += dp.IntValue()
-			counts[ivl.Str()]++
+			assert.True(t, ok)
+			exports[ivl.Str()] = append(exports[ivl.Str()], dp.IntValue())
 			return nil
 		},
 	))
 	cfg := &config.Config{Intervals: []config.IntervalConfig{
-		{Duration: time.Second, Statements: []string{`set(attributes["ivl"], "1s")`}},
-		{Duration: 3 * time.Second, Statements: []string{`set(attributes["ivl"], "3s")`}},
+		{Duration: time.Minute, Statements: []string{`set(attributes["ivl"], "1m")`}},
+		{Duration: 3 * time.Minute, Statements: []string{`set(attributes["ivl"], "3m")`}},
 	}}
-	p := newTestProcessor(t, cfg, componenttest.NewNopTelemetrySettings(), next)
-	require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+	p := newTestProcessor(t, cfg, componenttest.NewNopTelemetrySettings(), next).(*Processor)
+	// Open the database without starting the export goroutine, which would
+	// race with the test advancing the processing time, and drive the export
+	// ticks directly instead.
+	p.processingTime = time.Date(2100, 1, 1, 12, 0, 0, 0, time.UTC)
+	db, err := pebble.Open(p.dataDir, p.dbOpts)
+	require.NoError(t, err)
+	p.db = db
 
-	var sent int64
-	for start := time.Now(); time.Since(start) < 7*time.Second; time.Sleep(20 * time.Millisecond) {
+	for range 3 {
 		md := pmetric.NewMetrics()
 		m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
 		m.SetName("metric_name")
@@ -511,16 +513,20 @@ func TestMultiIntervalAggregation(t *testing.T) {
 		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
 		sum.DataPoints().AppendEmpty().SetIntValue(1)
 		require.NoError(t, p.ConsumeMetrics(context.Background(), md))
-		sent++
-	}
-	// Shutdown exports the remaining partial windows.
-	require.NoError(t, p.Shutdown(context.Background()))
 
-	mu.Lock()
-	defer mu.Unlock()
-	assert.Equal(t, sent, sums["1s"])
-	assert.Equal(t, sent, sums["3s"])
-	assert.Less(t, counts["3s"], counts["1s"])
+		// Same as the export timer: swap the batch, advance the processing
+		// time, then commit and export.
+		p.mu.Lock()
+		batch := p.batch
+		p.batch = nil
+		p.processingTime = p.processingTime.Add(time.Minute)
+		end := p.processingTime
+		p.mu.Unlock()
+		require.NoError(t, p.commitAndExport(context.Background(), batch, end))
+	}
+
+	// 1m exports each minute; 3m exports once, with the whole window merged.
+	assert.Equal(t, map[string][]int64{"1m": {1, 1, 1}, "3m": {3}}, exports)
 }
 
 func BenchmarkAggregation(b *testing.B) {
