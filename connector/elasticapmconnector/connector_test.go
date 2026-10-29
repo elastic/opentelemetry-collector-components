@@ -33,6 +33,7 @@ import (
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/confmap"
 	"go.opentelemetry.io/collector/confmap/confmaptest"
 	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/connector/connectortest"
@@ -180,6 +181,41 @@ func TestConnector_TracesToMetrics(t *testing.T) {
 			require.NotEmpty(t, allMetrics)
 			compareAggregatedMetrics(t, expectedMetricsFile, allMetrics)
 		})
+	}
+}
+
+// TestConnector_AggregationStorageOverride loads a partial storage override
+// the way the collector does, onto the factory default configuration, and
+// reads the options Pebble recorded when the embedded processor opened its
+// database.
+func TestConnector_AggregationStorageOverride(t *testing.T) {
+	aggdir := t.TempDir()
+	cfg := createDefaultConfig()
+	conf := confmap.NewFromStringMap(map[string]any{
+		"aggregation": map[string]any{
+			"directory": aggdir,
+			"storage": map[string]any{
+				"memtable_size":              64 << 20,
+				"max_concurrent_compactions": 2,
+			},
+		},
+	})
+	require.NoError(t, conf.Unmarshal(&cfg))
+	require.NoError(t, confmap.Validate(cfg))
+
+	newLogsToMetrics(t, connectortest.NewNopSettings(metadata.Type), cfg.(*Config), &consumertest.MetricsSink{})
+
+	matches, err := filepath.Glob(filepath.Join(aggdir, "OPTIONS-*"))
+	require.NoError(t, err)
+	require.Len(t, matches, 1)
+	options, err := os.ReadFile(matches[0])
+	require.NoError(t, err)
+	for _, want := range []string{
+		"mem_table_size=67108864",
+		"mem_table_stop_writes_threshold=2", // not overridden, default kept
+		"max_concurrent_compactions=2",
+	} {
+		assert.Contains(t, string(options), want)
 	}
 }
 
