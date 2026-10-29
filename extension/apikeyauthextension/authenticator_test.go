@@ -1583,3 +1583,87 @@ func TestAuthenticator_AnyOfDynamicResources(t *testing.T) {
 		assert.EqualError(t, err, `error computing cache key: missing client metadata "X-Source-Id"`)
 	})
 }
+
+func TestAuthenticator_AnyOfCacheScopedByKeyMetadata(t *testing.T) {
+	var calls int
+	grants := []string{"apm/-/event:write"}
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		newGrantingHasPrivilegesHandler(t, &calls, grants...)(w, r)
+	})
+	config := createDefaultConfig().(*Config)
+	config.AnyOf = []PrivilegeSetConfig{{
+		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
+			Application: "apm",
+			Privileges:  []string{"event:write"},
+			Resources:   []string{"-"},
+		}},
+	}, {
+		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
+			Application: "streams",
+			Privileges:  []string{"write"},
+			Resources:   []string{"source:_default_"},
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Target-Id"}
+	authenticator := newTestAuthenticator(t, srv, config)
+	authenticate := func(target string) error {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{"X-Target-Id": {target}}),
+		})
+		_, err := authenticator.Authenticate(ctx, map[string][]string{
+			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+		})
+		return err
+	}
+
+	require.NoError(t, authenticate("t1"))
+	assert.Equal(t, 1, calls)
+
+	// The same API Key on another target must be checked again, not served
+	// from t1's cached decision.
+	grants = nil
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("t2")))
+	assert.Equal(t, 2, calls)
+
+	// Each target keeps its own decision.
+	assert.NoError(t, authenticate("t1"))
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("t2")))
+	assert.Equal(t, 2, calls)
+}
+
+func TestAuthenticator_DynamicResourceEmptyValue(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, "my_app/resource:a/write"))
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, srv, config)
+	authenticate := func(values ...string) error {
+		ctx := client.NewContext(context.Background(), client.Info{
+			Metadata: client.NewMetadata(map[string][]string{"X-Resource-Name": values}),
+		})
+		_, err := authenticator.Authenticate(ctx, map[string][]string{
+			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
+		})
+		return err
+	}
+
+	// An empty value is present, not missing: it is checked as the
+	// resource "resource:", which this key is not granted.
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("")))
+	assert.Equal(t, 1, calls)
+
+	// It has its own cache key, so it neither reuses nor poisons the
+	// decision for a real value.
+	require.NoError(t, authenticate("a"))
+	assert.Equal(t, 2, calls)
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("")))
+	assert.Equal(t, 2, calls)
+}
