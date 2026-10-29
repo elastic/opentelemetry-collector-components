@@ -546,9 +546,11 @@ func (p *Processor) flushPendingLocked() error {
 			continue
 		}
 		for _, ivl := range p.intervals {
+			// Truncate so that each interval window maps to one key, as in
+			// mergeToBatch.
 			key := merger.Key{
 				Interval:       ivl.Duration,
-				ProcessingTime: p.processingTime,
+				ProcessingTime: p.processingTime.Truncate(ivl.Duration),
 				Metadata:       pv.metadata,
 			}
 			keyBuf, err = key.AppendBinary(keyBuf[:0])

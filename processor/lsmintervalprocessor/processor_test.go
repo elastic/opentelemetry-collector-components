@@ -565,10 +565,19 @@ func TestKeyProcessingTimeTruncatedToInterval(t *testing.T) {
 // TestMultiIntervalAggregation verifies that a larger interval exports one
 // merged window instead of re-exporting the windows of the smaller interval,
 // without losing or duplicating any data. The export ticks are driven
-// directly, so the test doesn't depend on timers.
+// directly, so the test doesn't depend on timers. It runs in every
+// pre-aggregation mode, since flushed buffers must be keyed the same way.
 func TestMultiIntervalAggregation(t *testing.T) {
 	t.Parallel()
+	for _, mode := range preAggregationModes {
+		t.Run(mode.name, func(t *testing.T) {
+			t.Parallel()
+			testMultiIntervalAggregation(t, mode.cfg)
+		})
+	}
+}
 
+func testMultiIntervalAggregation(t *testing.T, preAggregation config.PreAggregationConfig) {
 	exports := make(map[string][]int64) // by interval
 	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
 		func(_ context.Context, metrics pmetric.Metrics) error {
@@ -582,10 +591,13 @@ func TestMultiIntervalAggregation(t *testing.T) {
 			return nil
 		},
 	))
-	cfg := &config.Config{Intervals: []config.IntervalConfig{
-		{Duration: time.Minute, Statements: []string{`set(attributes["ivl"], "1m")`}},
-		{Duration: 3 * time.Minute, Statements: []string{`set(attributes["ivl"], "3m")`}},
-	}}
+	cfg := &config.Config{
+		Intervals: []config.IntervalConfig{
+			{Duration: time.Minute, Statements: []string{`set(attributes["ivl"], "1m")`}},
+			{Duration: 3 * time.Minute, Statements: []string{`set(attributes["ivl"], "3m")`}},
+		},
+		PreAggregation: preAggregation,
+	}
 	p := newTestProcessor(t, cfg, componenttest.NewNopTelemetrySettings(), next).(*Processor)
 	// Open the database without starting the export goroutine, which would
 	// race with the test advancing the processing time, and drive the export
@@ -604,9 +616,10 @@ func TestMultiIntervalAggregation(t *testing.T) {
 		sum.DataPoints().AppendEmpty().SetIntValue(1)
 		require.NoError(t, p.ConsumeMetrics(context.Background(), md))
 
-		// Same as the export timer: swap the batch, advance the processing
-		// time, then commit and export.
+		// Same as the export timer: flush the pre-aggregation buffer, swap
+		// the batch, advance the processing time, then commit and export.
 		p.mu.Lock()
+		require.NoError(t, p.flushPendingLocked())
 		batch := p.batch
 		p.batch = nil
 		p.processingTime = p.processingTime.Add(time.Minute)
