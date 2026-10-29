@@ -1,0 +1,65 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - exponentialHistogram:
+              aggregationTemporality: 2
+              dataPoints:
+                - attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                  count: "59"
+                  negative:
+                    bucketCounts:
+                      - "8"
+                      - "3"
+                      - "9"
+                      - "1"
+                    offset: 7
+                  positive:
+                    bucketCounts:
+                      - "2"
+                      - "3"
+                      - "7"
+                      - "4"
+                      - "20"
+                    offset: 2
+                  scale: 4
+                  sum: -1.5
+                  timeUnixNano: "1000000"
+                  zeroCount: "2"
+            name: cumulative.exphistogram.test.1
+          - description: Overflow metric count due to metric limit
+            name: _overflow_metric
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: metric_overflow
+                      value:
+                        boolValue: true
+          - description: Overflow datapoint count due to datapoint limit
+            name: _overflow_datapoints
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: dp_overflow
+                      value:
+                        boolValue: true
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3

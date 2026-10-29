@@ -94,7 +94,9 @@ func (m *Merger) mergeOperand(value []byte) error {
 		m.datapointLimitCfg,
 		m.maxExponentialHistogramBuckets,
 	)
-	if err := op.Unmarshal(value); err != nil {
+	// Values retain the bytes they are unmarshaled from, and Pebble keeps
+	// ownership of value and may reuse it before Finish.
+	if err := op.Unmarshal(slices.Clone(value)); err != nil {
 		return err
 	}
 	return m.current.Merge(op)

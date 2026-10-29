@@ -18,6 +18,21 @@ with db-backed persistence so aggregation state can survive restarts and large b
 5. Gauge metrics are passed through unchanged; summary metrics are aggregated unless
    `pass_through.summary` is enabled.
 
+### Storage format
+
+Each value stored in Pebble holds one entry per resource, scope, metric, and datapoint stream, in
+the order they were first seen. Every entry keeps its identity hash, its attributes in encoded form,
+and its cardinality limit tracker; every stream also keeps its datapoint, encoded without
+attributes. When Pebble merges two values, during memtable flushes and compactions, the merger
+matches entries by their stored hashes: streams present in only one value are copied without being
+decoded, and only the datapoints of streams present in both are decoded and merged. Attributes are
+decoded only when a window is exported.
+
+This is the second version of the format. Values written in the first version, which stored the
+pmetric protobuf, are still read, and are rewritten in the new format when Pebble next combines
+them with another value, so existing databases keep working after an upgrade. Versions of the processor before this format
+cannot read it: to downgrade, start with an empty `directory`.
+
 ### Configuration
 
 | Option | Type | Default | Description |

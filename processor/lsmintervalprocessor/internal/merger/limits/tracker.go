@@ -37,6 +37,11 @@ type Tracker struct {
 	overflowCounts *hyperloglog.Sketch
 }
 
+// NewTracker returns a tracker for the given maximum cardinality.
+func NewTracker(maxCardinality uint64) *Tracker {
+	return newTracker(maxCardinality)
+}
+
 func newTracker(maxCardinality uint64) *Tracker {
 	return &Tracker{maxCardinality: maxCardinality}
 }

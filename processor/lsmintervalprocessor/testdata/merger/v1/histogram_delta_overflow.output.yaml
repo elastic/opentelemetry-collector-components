@@ -1,0 +1,61 @@
+resourceMetrics:
+  - resource:
+      attributes:
+        - key: asdf
+          value:
+            stringValue: foo
+    schemaUrl: https://test-res-schema.com/schema
+    scopeMetrics:
+      - metrics:
+          - histogram:
+              aggregationTemporality: 1
+              dataPoints:
+                - attributes:
+                    - key: aaa
+                      value:
+                        stringValue: bbb
+                  bucketCounts:
+                    - "14"
+                    - "6"
+                    - "10"
+                    - "16"
+                    - "10"
+                    - "45"
+                  count: "101"
+                  explicitBounds:
+                    - 0.01
+                    - 0.1
+                    - 1
+                    - 10
+                    - 100
+                  sum: 4780
+                  timeUnixNano: "1000000"
+            name: delta.histogram.test.1
+          - description: Overflow metric count due to metric limit
+            name: _overflow_metric
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: metric_overflow
+                      value:
+                        boolValue: true
+          - description: Overflow datapoint count due to datapoint limit
+            name: _overflow_datapoints
+            sum:
+              aggregationTemporality: 1
+              dataPoints:
+                - asInt: "1"
+                  attributes:
+                    - key: dp_overflow
+                      value:
+                        boolValue: true
+        schemaUrl: https://test-scope-schema.com/schema
+        scope:
+          attributes:
+            - key: foo
+              value:
+                stringValue: bar
+          name: MyTestInstrument
+          version: 1.2.3
