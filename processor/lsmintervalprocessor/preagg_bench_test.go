@@ -43,9 +43,14 @@ import (
 
 // BenchmarkPreAggregation measures sustained ingestion with APM-shaped
 // metrics on an on-disk database, with pre-aggregation off, on, and on with
-// the log. Run it with a long benchtime, for example:
+// the log. It also reports the bytes written to disk, relative to the
+// protobuf size of the input.
 //
-//	go test -run '^$' -bench BenchmarkPreAggregation -benchtime 20s .
+// Time is compressed twelvefold: the intervals are 5s, 50s, and 5m instead
+// of 1m, 10m, and 60m, so a run of a few seconds crosses several window
+// boundaries. For example:
+//
+//	go test -run '^$' -bench BenchmarkPreAggregation -benchtime 15s .
 func BenchmarkPreAggregation(b *testing.B) {
 	modes := []struct {
 		name string
@@ -53,11 +58,11 @@ func BenchmarkPreAggregation(b *testing.B) {
 	}{
 		{name: "pre_aggregation=off"},
 		{name: "pre_aggregation=on", cfg: config.PreAggregationConfig{Enabled: true}},
-		{name: "pre_aggregation=on/max_size=256MiB", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 256 << 20}},
-		{name: "pre_aggregation=on/max_size=1GiB", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 1 << 30}},
-		{name: "pre_aggregation=on/log", cfg: config.PreAggregationConfig{Enabled: true, Log: config.PreAggregationLogConfig{Enabled: true}}},
-		{name: "pre_aggregation=on/log/max_size=256MiB", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 256 << 20, Log: config.PreAggregationLogConfig{Enabled: true}}},
-		{name: "pre_aggregation=on/log/max_size=1GiB", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 1 << 30, Log: config.PreAggregationLogConfig{Enabled: true}}},
+		{name: "pre_aggregation=on,max_size=256MiB", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 256 << 20}},
+		{name: "pre_aggregation=on,max_size=1GiB", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 1 << 30}},
+		{name: "pre_aggregation=on,log", cfg: config.PreAggregationConfig{Enabled: true, Log: config.PreAggregationLogConfig{Enabled: true}}},
+		{name: "pre_aggregation=on,log,max_size=256MiB", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 256 << 20, Log: config.PreAggregationLogConfig{Enabled: true}}},
+		{name: "pre_aggregation=on,log,max_size=1GiB", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 1 << 30, Log: config.PreAggregationLogConfig{Enabled: true}}},
 	}
 	cardinalities := []struct {
 		name string
@@ -85,7 +90,7 @@ func benchmarkPreAggregation(b *testing.B, preAgg config.PreAggregationConfig, r
 	cfg := &config.Config{
 		Directory: b.TempDir(),
 		Intervals: []config.IntervalConfig{
-			{Duration: time.Minute}, {Duration: 10 * time.Minute}, {Duration: time.Hour},
+			{Duration: 5 * time.Second}, {Duration: 50 * time.Second}, {Duration: 5 * time.Minute},
 		},
 		MetadataKeys:                   []string{"tenant"},
 		ResourceLimit:                  config.LimitConfig{MaxCardinality: 8000},
@@ -94,6 +99,7 @@ func benchmarkPreAggregation(b *testing.B, preAgg config.PreAggregationConfig, r
 		DatapointLimit:                 config.LimitConfig{MaxCardinality: 4000},
 		ExponentialHistogramMaxBuckets: 160,
 		PreAggregation:                 preAgg,
+		Storage:                        config.DefaultStorageConfig(),
 	}
 	p, err := NewFactory().CreateMetrics(context.Background(), processortest.NewNopSettings(metadata.Type), cfg, consumertest.NewNop())
 	if err != nil {
@@ -108,9 +114,11 @@ func benchmarkPreAggregation(b *testing.B, preAgg config.PreAggregationConfig, r
 			Metadata: client.NewMetadata(map[string][]string{"tenant": {fmt.Sprint("tenant-", i)}}),
 		})
 	}
-	var dpsPerRequest int64
+	var dpsPerRequest, bytesPerRequests int64
+	var sizer pmetric.ProtoMarshaler
 	for _, md := range requests {
 		dpsPerRequest += int64(md.DataPointCount())
+		bytesPerRequests += int64(sizer.MetricsSize(md))
 	}
 
 	var next atomic.Int64
@@ -165,6 +173,7 @@ func benchmarkPreAggregation(b *testing.B, preAgg config.PreAggregationConfig, r
 	b.ReportMetric(dps/elapsed.Seconds(), "datapoints/s")
 	b.ReportMetric(dps/cpu.Seconds(), "datapoints/cpu-s")
 	b.ReportMetric(float64(dirSize(cfg.Directory))/(1<<20), "disk-MiB")
+	reportBytesWritten(b, p.(*Processor), float64(b.N)*float64(bytesPerRequests)/float64(len(requests)))
 	b.ReportMetric(float64(peakHeap.Load())/(1<<20), "peak-heap-MiB")
 	if err := p.Shutdown(context.Background()); err != nil {
 		b.Fatal(err)
@@ -287,4 +296,30 @@ func (s apmBenchShape) generate(n int) []pmetric.Metrics {
 		out[i] = md
 	}
 	return out
+}
+
+// reportBytesWritten reports the bytes written by Pebble (write-ahead log,
+// flushes, and compactions) and by the pre-aggregation log, and their sum
+// relative to the input size.
+func reportBytesWritten(b *testing.B, p *Processor, inputBytes float64) {
+	m := p.db.Metrics()
+	var flushed, compacted uint64
+	for _, l := range m.Levels {
+		flushed += l.BytesFlushed
+		compacted += l.BytesCompacted
+	}
+	var logBytes uint64
+	if p.preAggLog != nil {
+		p.preAggLog.mu.Lock()
+		logBytes = p.preAggLog.written
+		p.preAggLog.mu.Unlock()
+	}
+	const mib = 1 << 20
+	total := float64(m.WAL.BytesWritten + flushed + compacted + logBytes)
+	b.ReportMetric(inputBytes/mib, "in-MiB")
+	b.ReportMetric(float64(m.WAL.BytesWritten)/mib, "wal-MiB")
+	b.ReportMetric(float64(flushed)/mib, "flush-MiB")
+	b.ReportMetric(float64(compacted)/mib, "compact-MiB")
+	b.ReportMetric(float64(logBytes)/mib, "log-MiB")
+	b.ReportMetric(total/inputBytes, "write-amp")
 }
