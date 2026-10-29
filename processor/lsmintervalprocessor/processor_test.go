@@ -48,6 +48,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadatatest"
 )
@@ -415,6 +416,117 @@ func TestConcurrentShutdownConsumeMetrics(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+// TestKeyProcessingTimeTruncatedToInterval verifies that each interval
+// stores its data under a key whose processing time is truncated to that
+// interval, so that a window of any interval maps to a single key.
+func TestKeyProcessingTimeTruncatedToInterval(t *testing.T) {
+	t.Parallel()
+
+	intervals := []time.Duration{time.Hour, 2 * time.Hour, 7 * time.Hour}
+	cfg := &config.Config{}
+	for _, ivl := range intervals {
+		cfg.Intervals = append(cfg.Intervals, config.IntervalConfig{Duration: ivl})
+	}
+	p := newTestProcessor(t, cfg, componenttest.NewNopTelemetrySettings(), &consumertest.MetricsSink{}).(*Processor)
+	// Use a fixed processing time far in the future to ensure that the
+	// export tick doesn't interfere with the test.
+	processingTime := time.Date(2100, 1, 1, 13, 0, 0, 0, time.UTC)
+	p.processingTime = processingTime
+	require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+	md := pmetric.NewMetrics()
+	m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+	m.SetName("metric_name")
+	sum := m.SetEmptySum()
+	sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	sum.DataPoints().AppendEmpty().SetIntValue(1)
+	require.NoError(t, p.ConsumeMetrics(context.Background(), md))
+
+	func() {
+		// Commit the pending batch so that the keys can be read back.
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		require.NotNil(t, p.batch)
+		require.NoError(t, p.batch.Commit(p.wOpts))
+		require.NoError(t, p.batch.Close())
+		p.batch = nil
+	}()
+
+	iter, err := p.db.NewIter(nil)
+	require.NoError(t, err)
+	defer func() { _ = iter.Close() }()
+
+	got := make(map[time.Duration]time.Time)
+	for iter.First(); iter.Valid(); iter.Next() {
+		var key merger.Key
+		require.NoError(t, key.Unmarshal(iter.Key()))
+		got[key.Interval] = key.ProcessingTime.UTC()
+	}
+
+	expected := make(map[time.Duration]time.Time)
+	for _, ivl := range intervals {
+		expected[ivl] = processingTime.Truncate(ivl)
+	}
+	assert.Equal(t, expected, got)
+}
+
+// TestMultiIntervalAggregation verifies that a larger interval exports one
+// merged window instead of re-exporting the windows of the smaller interval,
+// without losing or duplicating any data. The export ticks are driven
+// directly, so the test doesn't depend on timers.
+func TestMultiIntervalAggregation(t *testing.T) {
+	t.Parallel()
+
+	exports := make(map[string][]int64) // by interval
+	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+		func(_ context.Context, metrics pmetric.Metrics) error {
+			if metrics.MetricCount() == 0 {
+				return nil
+			}
+			dp := metrics.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0)
+			ivl, ok := dp.Attributes().Get("ivl")
+			assert.True(t, ok)
+			exports[ivl.Str()] = append(exports[ivl.Str()], dp.IntValue())
+			return nil
+		},
+	))
+	cfg := &config.Config{Intervals: []config.IntervalConfig{
+		{Duration: time.Minute, Statements: []string{`set(attributes["ivl"], "1m")`}},
+		{Duration: 3 * time.Minute, Statements: []string{`set(attributes["ivl"], "3m")`}},
+	}}
+	p := newTestProcessor(t, cfg, componenttest.NewNopTelemetrySettings(), next).(*Processor)
+	// Open the database without starting the export goroutine, which would
+	// race with the test advancing the processing time, and drive the export
+	// ticks directly instead.
+	p.processingTime = time.Date(2100, 1, 1, 12, 0, 0, 0, time.UTC)
+	db, err := pebble.Open(p.dataDir, p.dbOpts)
+	require.NoError(t, err)
+	p.db = db
+
+	for range 3 {
+		md := pmetric.NewMetrics()
+		m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+		m.SetName("metric_name")
+		sum := m.SetEmptySum()
+		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		sum.DataPoints().AppendEmpty().SetIntValue(1)
+		require.NoError(t, p.ConsumeMetrics(context.Background(), md))
+
+		// Same as the export timer: swap the batch, advance the processing
+		// time, then commit and export.
+		p.mu.Lock()
+		batch := p.batch
+		p.batch = nil
+		p.processingTime = p.processingTime.Add(time.Minute)
+		end := p.processingTime
+		p.mu.Unlock()
+		require.NoError(t, p.commitAndExport(context.Background(), batch, end))
+	}
+
+	// 1m exports each minute; 3m exports once, with the whole window merged.
+	assert.Equal(t, map[string][]int64{"1m": {1, 1, 1}, "3m": {3}}, exports)
 }
 
 func BenchmarkAggregation(b *testing.B) {

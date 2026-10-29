@@ -389,9 +389,11 @@ func (p *Processor) mergeToBatch(mb *mergeBuffer, clientMetadata []merger.KeyVal
 	}
 
 	for _, ivl := range p.intervals {
+		// Truncate so that each interval window maps to one key, which
+		// exportForInterval reads as [end-ivl, end).
 		key := merger.Key{
 			Interval:       ivl.Duration,
-			ProcessingTime: p.processingTime,
+			ProcessingTime: p.processingTime.Truncate(ivl.Duration),
 			Metadata:       clientMetadata,
 		}
 		var err error
