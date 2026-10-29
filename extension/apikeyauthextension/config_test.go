@@ -222,22 +222,7 @@ func TestLoadConfig(t *testing.T) {
 			id: component.NewIDWithName(metadata.Type, "any_of"),
 			expected: func() *Config {
 				config := createDefaultConfig().(*Config)
-				config.AnyOf = []PrivilegeSetConfig{{
-					ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-						Application: "apm",
-						Privileges:  []string{"event:write"},
-						Resources:   []string{"-"},
-					}},
-				}, {
-					ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-						Application: "streams",
-						Privileges:  []string{"write"},
-						DynamicResources: []DynamicResource{{
-							Metadata: "X-Source-Id",
-							Format:   "source:%s",
-						}},
-					}},
-				}}
+				config.AnyOf = apmOrDynamicSource()
 				config.Cache.KeyMetadata = []string{"X-Source-Id"}
 				return config
 			}(),

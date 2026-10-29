@@ -858,6 +858,70 @@ func TestAuthenticator_CacheKeyMetadata(t *testing.T) {
 	assert.Equal(t, 2, calls)
 }
 
+func TestAuthenticator_CacheKeyMetadataMultipleValues(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, "my_app/resource:a/write"))
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, srv, config)
+	authenticate := func(values ...string) error {
+		return authenticateWithMetadata(authenticator, map[string][]string{"X-Resource-Name": values})
+	}
+
+	require.NoError(t, authenticate("a"))
+	require.NoError(t, authenticate("a"))
+	assert.Equal(t, 1, calls)
+
+	// A cached decision for [a] must not authorize [a, b].
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("a", "b")))
+	assert.Equal(t, 2, calls)
+
+	// A single value that looks like a value list must not collide with it.
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate(`a" "b`)))
+	assert.Equal(t, 3, calls)
+}
+
+func TestAuthenticator_CacheKeyQuoted(t *testing.T) {
+	// Each pair joins to the same space-separated string: "a b c d".
+	for _, tc := range []struct {
+		name          string
+		first, second [3]string // API Key ID, X-A, X-B
+	}{
+		{name: "header values", first: [3]string{"a", "b c", "d"}, second: [3]string{"a", "b", "c d"}},
+		{name: "id and header value", first: [3]string{"a b", "c", "d"}, second: [3]string{"a", "b c", "d"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				newCannedHasPrivilegesHandler(successfulResponse).ServeHTTP(w, r)
+			})
+			config := createDefaultConfig().(*Config)
+			config.Cache.KeyHeaders = []string{"X-A", "X-B"}
+			authenticator := newTestAuthenticator(t, srv, config)
+			for _, req := range [][3]string{tc.first, tc.second} {
+				_, err := authenticator.Authenticate(context.Background(), map[string][]string{
+					"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte(req[0]+":secret"))},
+					"X-A":           {req[1]},
+					"X-B":           {req[2]},
+				})
+				// A shared key would fail the second request: its API Key
+				// would not match the cached one.
+				require.NoError(t, err)
+			}
+			assert.Equal(t, 2, calls)
+		})
+	}
+}
+
 func TestAuthenticator_CacheTTL(t *testing.T) {
 	var calls int
 	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
@@ -1097,6 +1161,37 @@ func TestAuthenticator_DynamicResourcesMissingMetadataInHasPrivileges(t *testing
 	assert.Equal(t, st.Message(), `missing client metadata "X-Resource-Name" required for dynamic resource`)
 }
 
+func TestAuthenticator_DynamicResourcesEmptyValue(t *testing.T) {
+	var calls int
+	srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, "my_app/resource:a/write"))
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "my_app",
+		Privileges:  []string{"write"},
+		DynamicResources: []DynamicResource{{
+			Metadata: "X-Resource-Name",
+			Format:   "resource:%s",
+		}},
+	}}
+	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
+	authenticator := newTestAuthenticator(t, srv, config)
+	authenticate := func(value string) error {
+		return authenticateWithMetadata(authenticator, map[string][]string{"X-Resource-Name": {value}})
+	}
+
+	// An empty value is present, not missing: it is checked as the
+	// resource "resource:", which this key is not granted.
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("")))
+	assert.Equal(t, 1, calls)
+
+	// It has its own cache key, so it neither reuses nor poisons the
+	// decision for a real value.
+	require.NoError(t, authenticate("a"))
+	assert.Equal(t, 2, calls)
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("")))
+	assert.Equal(t, 2, calls)
+}
+
 func TestRetryBackoff(t *testing.T) {
 	for name, tc := range map[string]struct {
 		cfg      RetryConfig
@@ -1266,6 +1361,152 @@ func TestAuthenticator_RetryDisabled(t *testing.T) {
 	}
 }
 
+func TestAuthenticator_AnyOf(t *testing.T) {
+	required := []ApplicationPrivilegesConfig{{
+		Application: "base",
+		Privileges:  []string{"use"},
+		Resources:   []string{"*"},
+	}}
+	for _, tc := range []struct {
+		name     string
+		required []ApplicationPrivilegesConfig
+		grants   []string
+		wantCode codes.Code
+	}{
+		{name: "first alternative", grants: []string{"apm/-/event:write"}},
+		{name: "second alternative", grants: []string{"streams/source:_default_/write"}},
+		{name: "both alternatives", grants: []string{"apm/-/event:write", "streams/source:_default_/write"}},
+		{name: "no alternative", grants: []string{"streams/source:other/write"}, wantCode: codes.PermissionDenied},
+		{name: "required and alternative", required: required, grants: []string{"base/*/use", "apm/-/event:write"}},
+		{name: "alternative without required", required: required, grants: []string{"apm/-/event:write"}, wantCode: codes.PermissionDenied},
+		{name: "required without alternative", required: required, grants: []string{"base/*/use"}, wantCode: codes.PermissionDenied},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, tc.grants...))
+			config := createDefaultConfig().(*Config)
+			config.ApplicationPrivileges = tc.required
+			config.AnyOf = apmOrDefaultSource()
+			authenticator := newTestAuthenticator(t, srv, config)
+			err := authenticateWithMetadata(authenticator, nil)
+			assert.Equal(t, tc.wantCode, status.Code(err))
+			assert.Equal(t, 1, calls, "all privileges must be checked in a single request")
+		})
+	}
+}
+
+func TestAuthenticator_AnyOfRequest(t *testing.T) {
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		var body hasprivileges.Request
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, hasprivileges.Request{
+			Application: []types.ApplicationPrivilegesCheck{{
+				Application: "base",
+				Privileges:  []string{"use"},
+				Resources:   []string{"*"},
+			}, {
+				Application: "apm",
+				Privileges:  []string{"event:write"},
+				Resources:   []string{"-"},
+			}, {
+				Application: "streams",
+				Privileges:  []string{"write"},
+				Resources:   []string{"source:my-source"},
+			}},
+		}, body)
+		assert.NoError(t, json.NewEncoder(w).Encode(hasprivileges.Response{Username: user}))
+	})
+	config := createDefaultConfig().(*Config)
+	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
+		Application: "base",
+		Privileges:  []string{"use"},
+		Resources:   []string{"*"},
+	}}
+	config.AnyOf = apmOrDynamicSource()
+	config.Cache.KeyMetadata = []string{"X-Source-Id"}
+	authenticator := newTestAuthenticator(t, srv, config)
+	// The response grants none of the requested privileges.
+	err := authenticateWithMetadata(authenticator, map[string][]string{"X-Source-Id": {"my-source"}})
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+}
+
+func TestAuthenticator_AnyOfDynamicResources(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		grants    []string
+		metadata  map[string][]string
+		wantCode  codes.Code
+		wantErr   string
+		wantCalls int
+	}{{
+		name:      "every value granted",
+		grants:    []string{"streams/source:a/write", "streams/source:b/write"},
+		metadata:  map[string][]string{"X-Source-Id": {"a", "b"}},
+		wantCalls: 1,
+	}, {
+		// An alternative is satisfied only if every resolved resource is granted.
+		name:      "one value granted",
+		grants:    []string{"streams/source:a/write"},
+		metadata:  map[string][]string{"X-Source-Id": {"a", "b"}},
+		wantCode:  codes.PermissionDenied,
+		wantCalls: 1,
+	}, {
+		// Dynamic resources resolve before the check, so the request is
+		// rejected even though the apm alternative is granted.
+		name:    "missing metadata",
+		grants:  []string{"apm/-/event:write"},
+		wantErr: `missing client metadata "X-Source-Id"`,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			var calls int
+			srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, tc.grants...))
+			config := createDefaultConfig().(*Config)
+			config.AnyOf = apmOrDynamicSource()
+			config.Cache.KeyMetadata = []string{"X-Source-Id"}
+			authenticator := newTestAuthenticator(t, srv, config)
+			err := authenticateWithMetadata(authenticator, tc.metadata)
+			if tc.wantErr != "" {
+				assert.ErrorContains(t, err, tc.wantErr)
+			} else {
+				assert.Equal(t, tc.wantCode, status.Code(err))
+			}
+			assert.Equal(t, tc.wantCalls, calls)
+		})
+	}
+}
+
+func TestAuthenticator_AnyOfCacheScopedByKeyMetadata(t *testing.T) {
+	var calls int
+	// Elasticsearch never sees the target, so the test changes the grants
+	// between targets. Each HTTP round trip orders these writes before the
+	// handler reads them.
+	grants := []string{"apm/-/event:write"}
+	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+		newGrantingHasPrivilegesHandler(t, &calls, grants...)(w, r)
+	})
+	config := createDefaultConfig().(*Config)
+	config.AnyOf = apmOrDefaultSource()
+	config.Cache.KeyMetadata = []string{"X-Target-Id"}
+	authenticator := newTestAuthenticator(t, srv, config)
+	authenticate := func(target string) error {
+		return authenticateWithMetadata(authenticator, map[string][]string{"X-Target-Id": {target}})
+	}
+
+	require.NoError(t, authenticate("t1"))
+	assert.Equal(t, 1, calls)
+
+	// The same API Key on another target must be checked again, not served
+	// from t1's cached decision.
+	grants = nil
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("t2")))
+	assert.Equal(t, 2, calls)
+
+	// Each target keeps its own decision.
+	assert.NoError(t, authenticate("t1"))
+	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("t2")))
+	assert.Equal(t, 2, calls)
+}
+
 func BenchmarkAuthenticator(b *testing.B) {
 	for _, iters := range []int{1, 10, 100, 1000} {
 		b.Run(fmt.Sprintf("iters_%d", iters), func(b *testing.B) {
@@ -1364,306 +1605,50 @@ func newGrantingHasPrivilegesHandler(t testing.TB, calls *int, grants ...string)
 	}
 }
 
-func TestAuthenticator_AnyOf(t *testing.T) {
-	anyOf := []PrivilegeSetConfig{{
-		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-			Application: "apm",
-			Privileges:  []string{"event:write"},
-			Resources:   []string{"-"},
-		}},
-	}, {
-		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-			Application: "streams",
-			Privileges:  []string{"write"},
-			Resources:   []string{"source:_default_"},
-		}},
-	}}
-	required := []ApplicationPrivilegesConfig{{
-		Application: "base",
-		Privileges:  []string{"use"},
-		Resources:   []string{"*"},
-	}}
-	for _, tc := range []struct {
-		name     string
-		required []ApplicationPrivilegesConfig
-		grants   []string
-		wantErr  bool
-	}{
-		{name: "first alternative", grants: []string{"apm/-/event:write"}},
-		{name: "second alternative", grants: []string{"streams/source:_default_/write"}},
-		{name: "both alternatives", grants: []string{"apm/-/event:write", "streams/source:_default_/write"}},
-		{name: "no alternative", grants: []string{"streams/source:other/write"}, wantErr: true},
-		{name: "required and alternative", required: required, grants: []string{"base/*/use", "apm/-/event:write"}},
-		{name: "alternative without required", required: required, grants: []string{"apm/-/event:write"}, wantErr: true},
-		{name: "required without alternative", required: required, grants: []string{"base/*/use"}, wantErr: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			var calls int
-			srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, tc.grants...))
-			config := createDefaultConfig().(*Config)
-			config.ApplicationPrivileges = tc.required
-			config.AnyOf = anyOf
-			authenticator := newTestAuthenticator(t, srv, config)
-			_, err := authenticator.Authenticate(context.Background(), map[string][]string{
-				"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-			})
-			if tc.wantErr {
-				assert.Equal(t, codes.PermissionDenied, status.Code(err))
-			} else {
-				assert.NoError(t, err)
-			}
-			assert.Equal(t, 1, calls, "all privileges must be checked in a single request")
-		})
-	}
-}
-
-func TestAuthenticator_AnyOfRequest(t *testing.T) {
-	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		var body hasprivileges.Request
-		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		assert.Equal(t, hasprivileges.Request{
-			Application: []types.ApplicationPrivilegesCheck{{
-				Application: "base",
-				Privileges:  []string{"use"},
-				Resources:   []string{"*"},
-			}, {
-				Application: "apm",
-				Privileges:  []string{"event:write"},
-				Resources:   []string{"-"},
-			}, {
-				Application: "streams",
-				Privileges:  []string{"write"},
-				Resources:   []string{"source:my-source"},
-			}},
-		}, body)
-		assert.NoError(t, json.NewEncoder(w).Encode(hasprivileges.Response{Username: user}))
-	})
-	config := createDefaultConfig().(*Config)
-	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
-		Application: "base",
-		Privileges:  []string{"use"},
-		Resources:   []string{"*"},
-	}}
-	config.AnyOf = []PrivilegeSetConfig{{
-		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-			Application: "apm",
-			Privileges:  []string{"event:write"},
-			Resources:   []string{"-"},
-		}},
-	}, {
-		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-			Application: "streams",
-			Privileges:  []string{"write"},
-			DynamicResources: []DynamicResource{{
-				Metadata: "X-Source-Id",
-				Format:   "source:%s",
-			}},
-		}},
-	}}
-	config.Cache.KeyMetadata = []string{"X-Source-Id"}
-	authenticator := newTestAuthenticator(t, srv, config)
+// authenticateWithMetadata authenticates the API Key "id:secret" with the
+// given client metadata.
+func authenticateWithMetadata(a *authenticator, metadata map[string][]string) error {
 	ctx := client.NewContext(context.Background(), client.Info{
-		Metadata: client.NewMetadata(map[string][]string{"X-Source-Id": {"my-source"}}),
+		Metadata: client.NewMetadata(metadata),
 	})
-	// The response grants none of the requested privileges.
-	_, err := authenticator.Authenticate(ctx, map[string][]string{
+	_, err := a.Authenticate(ctx, map[string][]string{
 		"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
 	})
-	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+	return err
 }
 
-func TestAuthenticator_CacheKeyMetadataMultipleValues(t *testing.T) {
-	var calls int
-	srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, "my_app/resource:a/write"))
-	config := createDefaultConfig().(*Config)
-	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
-		Application: "my_app",
+// apmOrDefaultSource returns any_of alternatives accepting the APM event:write
+// privilege or the Streams write privilege on the default source.
+func apmOrDefaultSource() []PrivilegeSetConfig {
+	return apmOr(ApplicationPrivilegesConfig{
+		Application: "streams",
+		Privileges:  []string{"write"},
+		Resources:   []string{"source:_default_"},
+	})
+}
+
+// apmOrDynamicSource returns any_of alternatives accepting the APM event:write
+// privilege or the Streams write privilege on the source named by the
+// X-Source-Id metadata.
+func apmOrDynamicSource() []PrivilegeSetConfig {
+	return apmOr(ApplicationPrivilegesConfig{
+		Application: "streams",
 		Privileges:  []string{"write"},
 		DynamicResources: []DynamicResource{{
-			Metadata: "X-Resource-Name",
-			Format:   "resource:%s",
+			Metadata: "X-Source-Id",
+			Format:   "source:%s",
 		}},
-	}}
-	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
-	authenticator := newTestAuthenticator(t, srv, config)
-	authenticate := func(values ...string) error {
-		ctx := client.NewContext(context.Background(), client.Info{
-			Metadata: client.NewMetadata(map[string][]string{"X-Resource-Name": values}),
-		})
-		_, err := authenticator.Authenticate(ctx, map[string][]string{
-			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-		})
-		return err
-	}
-
-	require.NoError(t, authenticate("a"))
-	require.NoError(t, authenticate("a"))
-	assert.Equal(t, 1, calls)
-
-	// A cached decision for [a] must not authorize [a, b].
-	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("a", "b")))
-	assert.Equal(t, 2, calls)
-
-	// A single value that looks like a value list must not collide with it.
-	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate(`a" "b`)))
-	assert.Equal(t, 3, calls)
-}
-
-func TestAuthenticator_CacheKeyHeadersQuoted(t *testing.T) {
-	var calls int
-	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		calls++
-		newCannedHasPrivilegesHandler(successfulResponse).ServeHTTP(w, r)
 	})
-	config := createDefaultConfig().(*Config)
-	config.Cache.KeyHeaders = []string{"X-A", "X-B"}
-	authenticator := newTestAuthenticator(t, srv, config)
-	authenticate := func(a, b string) {
-		_, err := authenticator.Authenticate(context.Background(), map[string][]string{
-			"X-A":           {a},
-			"X-B":           {b},
-			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-		})
-		require.NoError(t, err)
-	}
-
-	authenticate("x y", "z")
-	// Header values that join to the same string must not share a key.
-	authenticate("x", "y z")
-	assert.Equal(t, 2, calls)
 }
 
-func TestAuthenticator_AnyOfDynamicResources(t *testing.T) {
-	config := createDefaultConfig().(*Config)
-	config.AnyOf = []PrivilegeSetConfig{{
+func apmOr(streams ApplicationPrivilegesConfig) []PrivilegeSetConfig {
+	return []PrivilegeSetConfig{{
 		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
 			Application: "apm",
 			Privileges:  []string{"event:write"},
 			Resources:   []string{"-"},
 		}},
 	}, {
-		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-			Application: "streams",
-			Privileges:  []string{"write"},
-			DynamicResources: []DynamicResource{{
-				Metadata: "X-Source-Id",
-				Format:   "source:%s",
-			}},
-		}},
+		ApplicationPrivileges: []ApplicationPrivilegesConfig{streams},
 	}}
-	config.Cache.KeyMetadata = []string{"X-Source-Id"}
-	authenticate := func(t *testing.T, grants []string, sourceIDs ...string) error {
-		var calls int
-		srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, grants...))
-		authenticator := newTestAuthenticator(t, srv, config)
-		ctx := context.Background()
-		if len(sourceIDs) != 0 {
-			ctx = client.NewContext(ctx, client.Info{
-				Metadata: client.NewMetadata(map[string][]string{"X-Source-Id": sourceIDs}),
-			})
-		}
-		_, err := authenticator.Authenticate(ctx, map[string][]string{
-			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-		})
-		return err
-	}
-
-	t.Run("every value granted", func(t *testing.T) {
-		assert.NoError(t, authenticate(t, []string{"streams/source:a/write", "streams/source:b/write"}, "a", "b"))
-	})
-	t.Run("one value granted", func(t *testing.T) {
-		// An alternative is satisfied only if every resolved resource is granted.
-		err := authenticate(t, []string{"streams/source:a/write"}, "a", "b")
-		assert.Equal(t, codes.PermissionDenied, status.Code(err))
-	})
-	t.Run("missing metadata", func(t *testing.T) {
-		// Dynamic resources resolve before the check, so the request is
-		// rejected even though the apm alternative is granted.
-		err := authenticate(t, []string{"apm/-/event:write"})
-		assert.EqualError(t, err, `error computing cache key: missing client metadata "X-Source-Id"`)
-	})
-}
-
-func TestAuthenticator_AnyOfCacheScopedByKeyMetadata(t *testing.T) {
-	var calls int
-	grants := []string{"apm/-/event:write"}
-	srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
-		newGrantingHasPrivilegesHandler(t, &calls, grants...)(w, r)
-	})
-	config := createDefaultConfig().(*Config)
-	config.AnyOf = []PrivilegeSetConfig{{
-		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-			Application: "apm",
-			Privileges:  []string{"event:write"},
-			Resources:   []string{"-"},
-		}},
-	}, {
-		ApplicationPrivileges: []ApplicationPrivilegesConfig{{
-			Application: "streams",
-			Privileges:  []string{"write"},
-			Resources:   []string{"source:_default_"},
-		}},
-	}}
-	config.Cache.KeyMetadata = []string{"X-Target-Id"}
-	authenticator := newTestAuthenticator(t, srv, config)
-	authenticate := func(target string) error {
-		ctx := client.NewContext(context.Background(), client.Info{
-			Metadata: client.NewMetadata(map[string][]string{"X-Target-Id": {target}}),
-		})
-		_, err := authenticator.Authenticate(ctx, map[string][]string{
-			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-		})
-		return err
-	}
-
-	require.NoError(t, authenticate("t1"))
-	assert.Equal(t, 1, calls)
-
-	// The same API Key on another target must be checked again, not served
-	// from t1's cached decision.
-	grants = nil
-	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("t2")))
-	assert.Equal(t, 2, calls)
-
-	// Each target keeps its own decision.
-	assert.NoError(t, authenticate("t1"))
-	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("t2")))
-	assert.Equal(t, 2, calls)
-}
-
-func TestAuthenticator_DynamicResourceEmptyValue(t *testing.T) {
-	var calls int
-	srv := newMockElasticsearch(t, newGrantingHasPrivilegesHandler(t, &calls, "my_app/resource:a/write"))
-	config := createDefaultConfig().(*Config)
-	config.ApplicationPrivileges = []ApplicationPrivilegesConfig{{
-		Application: "my_app",
-		Privileges:  []string{"write"},
-		DynamicResources: []DynamicResource{{
-			Metadata: "X-Resource-Name",
-			Format:   "resource:%s",
-		}},
-	}}
-	config.Cache.KeyMetadata = []string{"X-Resource-Name"}
-	authenticator := newTestAuthenticator(t, srv, config)
-	authenticate := func(values ...string) error {
-		ctx := client.NewContext(context.Background(), client.Info{
-			Metadata: client.NewMetadata(map[string][]string{"X-Resource-Name": values}),
-		})
-		_, err := authenticator.Authenticate(ctx, map[string][]string{
-			"Authorization": {"ApiKey " + base64.StdEncoding.EncodeToString([]byte("id:secret"))},
-		})
-		return err
-	}
-
-	// An empty value is present, not missing: it is checked as the
-	// resource "resource:", which this key is not granted.
-	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("")))
-	assert.Equal(t, 1, calls)
-
-	// It has its own cache key, so it neither reuses nor poisons the
-	// decision for a real value.
-	require.NoError(t, authenticate("a"))
-	assert.Equal(t, 2, calls)
-	assert.Equal(t, codes.PermissionDenied, status.Code(authenticate("")))
-	assert.Equal(t, 2, calls)
 }
