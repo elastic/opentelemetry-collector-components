@@ -9,8 +9,9 @@ with db-backed persistence so aggregation state can survive restarts and large b
 
 1. Incoming metrics are merged into a Pebble database using a custom merger that aggregates by
    resource, scope, metric, and datapoint identity.
-2. Each aggregation key includes the interval duration, the current processing window, and optional
-   `metadata_keys` from the client context so different tenants can be isolated.
+2. Each aggregation key includes the interval duration, the current processing window (the
+   processing time truncated to the interval), and optional `metadata_keys` from the client context
+   so different tenants can be isolated.
 3. A timer runs on the smallest configured interval. When it fires, the processor commits pending
    batches and exports aggregated metrics for every interval that has reached its boundary.
 4. Optional OTTL statements on each interval run after a metric has matured for that interval.

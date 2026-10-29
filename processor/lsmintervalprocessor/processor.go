@@ -121,6 +121,7 @@ func newProcessor(
 		// stop whenever a MemTable is being flushed.
 		MemTableStopWritesThreshold: cfg.Storage.MemTableStopWritesThresholdOrDefault(),
 		MaxConcurrentCompactions:    func() int { return maxConcurrentCompactions },
+		EventListener:               newWriteStallListener(telemetryBuilder),
 	}
 	writeOpts := pebble.Sync
 	dataDir := cfg.Directory
@@ -386,9 +387,11 @@ func (p *Processor) mergeToBatch(mb *mergeBuffer, clientMetadata []merger.KeyVal
 	}
 
 	for _, ivl := range p.intervals {
+		// Truncate so that each interval window maps to one key, which
+		// exportForInterval reads as [end-ivl, end).
 		key := merger.Key{
 			Interval:       ivl.Duration,
-			ProcessingTime: p.processingTime,
+			ProcessingTime: p.processingTime.Truncate(ivl.Duration),
 			Metadata:       clientMetadata,
 		}
 		var err error
@@ -638,6 +641,37 @@ func (p *Processor) exportForInterval(
 		return exportedDPCount, errors.Join(errs...)
 	}
 	return exportedDPCount, nil
+}
+
+// newWriteStallListener returns a pebble event listener that records write
+// stalls as metrics. Pebble does not log write stalls unless a listener is
+// installed, so without this they are invisible.
+func newWriteStallListener(tb *metadata.TelemetryBuilder) *pebble.EventListener {
+	// Pebble calls WriteStallBegin and WriteStallEnd from makeRoomForWrite,
+	// which runs with its commit pipeline mutex held for the whole stall. A
+	// stall's begin and end therefore run on one goroutine and never overlap
+	// with another stall, so these variables need no lock. This is how Pebble
+	// v1.1.5 behaves, not a documented guarantee of EventListener. The end
+	// callback does not carry the reason, so it is remembered from the begin.
+	var (
+		reason  string
+		started time.Time
+	)
+	return &pebble.EventListener{
+		WriteStallBegin: func(info pebble.WriteStallBeginInfo) {
+			reason, started = info.Reason, time.Now()
+			tb.LsmintervalPebbleWriteStalls.Add(
+				context.Background(), 1,
+				metric.WithAttributes(attribute.String("reason", info.Reason)),
+			)
+		},
+		WriteStallEnd: func() {
+			tb.LsmintervalPebbleWriteStallDuration.Add(
+				context.Background(), time.Since(started).Seconds(),
+				metric.WithAttributes(attribute.String("reason", reason)),
+			)
+		},
+	}
 }
 
 func (p *Processor) registerPebbleMetrics() error {
