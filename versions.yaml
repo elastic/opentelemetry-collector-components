@@ -5,6 +5,7 @@ module-sets:
       - github.com/elastic/opentelemetry-collector-components/receiver/elasticapmintakereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver
+      - github.com/elastic/opentelemetry-collector-components/receiver/prometheusscrapereceiver
       - github.com/elastic/opentelemetry-collector-components/receiver/vercelreceiver
       - github.com/elastic/opentelemetry-collector-components/processor/elasticinframetricsprocessor
       - github.com/elastic/opentelemetry-collector-components/processor/elasticapmprocessor
@@ -37,6 +38,7 @@ excluded-modules:
   - github.com/elastic/opentelemetry-collector-components/processor/partitioningprocessor
   - github.com/elastic/opentelemetry-collector-components/loadgen
   - github.com/elastic/opentelemetry-collector-components/receiver/prometheusremotewritev1receiver/correctnesstests
+  - github.com/elastic/opentelemetry-collector-components/receiver/prometheusscrapereceiver/correctnesstests
   - github.com/elastic/opentelemetry-collector-components/receiver/akamaisiemreceiver
   - github.com/elastic/opentelemetry-collector-components/exporter/httpexporter
   - github.com/elastic/opentelemetry-collector-components/receiver/entityanalyticsreceiver
