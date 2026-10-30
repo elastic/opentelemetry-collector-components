@@ -23,6 +23,7 @@ import (
 	"math/rand"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -90,7 +91,7 @@ func TestAggregation(t *testing.T) {
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			testRunHelper(t, tc.name, config)
+			testRunHelperAllModes(t, tc.name, config)
 		})
 	}
 }
@@ -136,7 +137,30 @@ func TestAggregationOverflow(t *testing.T) {
 		}
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			testRunHelper(t, tc.name, config)
+			testRunHelperAllModes(t, tc.name, config)
+		})
+	}
+}
+
+// preAggregationModes runs tests with the pre-aggregation buffer disabled,
+// enabled, and enabled with a size that flushes on every request. All modes
+// must produce identical results.
+var preAggregationModes = []struct {
+	name string
+	cfg  config.PreAggregationConfig
+}{
+	{name: "pre_aggregation=off"},
+	{name: "pre_aggregation=on", cfg: config.PreAggregationConfig{Enabled: true}},
+	{name: "pre_aggregation=flush_every_request", cfg: config.PreAggregationConfig{Enabled: true, MaxSize: 1}},
+}
+
+func testRunHelperAllModes(t *testing.T, name string, cfg *config.Config) {
+	t.Helper()
+	for _, mode := range preAggregationModes {
+		c := *cfg
+		c.PreAggregation = mode.cfg
+		t.Run(mode.name, func(t *testing.T) {
+			testRunHelper(t, name, &c)
 		})
 	}
 }
@@ -251,8 +275,17 @@ func assertPebbleMetric(t *testing.T, testTel *componenttest.Telemetry) {
 }
 
 func TestClientMetadata(t *testing.T) {
+	for _, mode := range preAggregationModes {
+		t.Run(mode.name, func(t *testing.T) {
+			testClientMetadata(t, mode.cfg)
+		})
+	}
+}
+
+func testClientMetadata(t *testing.T, preAggregation config.PreAggregationConfig) {
 	cfg := &config.Config{
-		MetadataKeys: []string{"k1", "k2"},
+		PreAggregation: preAggregation,
+		MetadataKeys:   []string{"k1", "k2"},
 		Intervals: []config.IntervalConfig{{
 			Duration: time.Minute,
 		}},
@@ -532,10 +565,19 @@ func TestKeyProcessingTimeTruncatedToInterval(t *testing.T) {
 // TestMultiIntervalAggregation verifies that a larger interval exports one
 // merged window instead of re-exporting the windows of the smaller interval,
 // without losing or duplicating any data. The export ticks are driven
-// directly, so the test doesn't depend on timers.
+// directly, so the test doesn't depend on timers. It runs in every
+// pre-aggregation mode, since flushed buffers must be keyed the same way.
 func TestMultiIntervalAggregation(t *testing.T) {
 	t.Parallel()
+	for _, mode := range preAggregationModes {
+		t.Run(mode.name, func(t *testing.T) {
+			t.Parallel()
+			testMultiIntervalAggregation(t, mode.cfg)
+		})
+	}
+}
 
+func testMultiIntervalAggregation(t *testing.T, preAggregation config.PreAggregationConfig) {
 	exports := make(map[string][]int64) // by interval
 	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
 		func(_ context.Context, metrics pmetric.Metrics) error {
@@ -549,10 +591,13 @@ func TestMultiIntervalAggregation(t *testing.T) {
 			return nil
 		},
 	))
-	cfg := &config.Config{Intervals: []config.IntervalConfig{
-		{Duration: time.Minute, Statements: []string{`set(attributes["ivl"], "1m")`}},
-		{Duration: 3 * time.Minute, Statements: []string{`set(attributes["ivl"], "3m")`}},
-	}}
+	cfg := &config.Config{
+		Intervals: []config.IntervalConfig{
+			{Duration: time.Minute, Statements: []string{`set(attributes["ivl"], "1m")`}},
+			{Duration: 3 * time.Minute, Statements: []string{`set(attributes["ivl"], "3m")`}},
+		},
+		PreAggregation: preAggregation,
+	}
 	p := newTestProcessor(t, cfg, componenttest.NewNopTelemetrySettings(), next).(*Processor)
 	// Open the database without starting the export goroutine, which would
 	// race with the test advancing the processing time, and drive the export
@@ -571,9 +616,10 @@ func TestMultiIntervalAggregation(t *testing.T) {
 		sum.DataPoints().AppendEmpty().SetIntValue(1)
 		require.NoError(t, p.ConsumeMetrics(context.Background(), md))
 
-		// Same as the export timer: swap the batch, advance the processing
-		// time, then commit and export.
+		// Same as the export timer: flush the pre-aggregation buffer, swap
+		// the batch, advance the processing time, then commit and export.
 		p.mu.Lock()
+		require.NoError(t, p.flushPendingLocked())
 		batch := p.batch
 		p.batch = nil
 		p.processingTime = p.processingTime.Add(time.Minute)
@@ -708,4 +754,120 @@ func TestWriteStallListener(t *testing.T) {
 	require.Len(t, dps, 1)
 	assert.Equal(t, reasonAttr, dps[0].Attributes)
 	assert.GreaterOrEqual(t, dps[0].Value, 0.01)
+}
+
+// TestPreAggregationConcurrentTotals sends delta sums from concurrent callers
+// for several tenants across multiple processing windows and checks that no
+// value is lost or double counted, with and without pre-aggregation.
+func TestPreAggregationConcurrentTotals(t *testing.T) {
+	const (
+		callers           = 8
+		requestsPerCaller = 300
+		dpsPerRequest     = 5
+		tenants           = 4
+	)
+	intervals := []config.IntervalConfig{{Duration: time.Second}, {Duration: 2 * time.Second}}
+	for _, mode := range []config.PreAggregationConfig{
+		{},
+		{Enabled: true},
+		{Enabled: true, MaxSize: 16 << 10}, // also exercises size-triggered flushes
+	} {
+		t.Run(fmt.Sprintf("enabled=%t/max_size=%d", mode.Enabled, mode.MaxSize), func(t *testing.T) {
+			var exported atomic.Int64
+			next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+				func(_ context.Context, md pmetric.Metrics) error {
+					rms := md.ResourceMetrics()
+					for i := 0; i < rms.Len(); i++ {
+						sms := rms.At(i).ScopeMetrics()
+						for j := 0; j < sms.Len(); j++ {
+							ms := sms.At(j).Metrics()
+							for k := 0; k < ms.Len(); k++ {
+								dps := ms.At(k).Sum().DataPoints()
+								for l := 0; l < dps.Len(); l++ {
+									exported.Add(dps.At(l).IntValue())
+								}
+							}
+						}
+					}
+					return nil
+				},
+			))
+			cfg := &config.Config{
+				Directory:                      t.TempDir(),
+				Intervals:                      intervals,
+				MetadataKeys:                   []string{"tenant"},
+				ExponentialHistogramMaxBuckets: 160,
+				PreAggregation:                 mode,
+			}
+			settings := processortest.NewNopSettings(metadata.Type)
+			p, err := NewFactory().CreateMetrics(context.Background(), settings, cfg, next)
+			require.NoError(t, err)
+			require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+			var wg sync.WaitGroup
+			for c := 0; c < callers; c++ {
+				wg.Add(1)
+				go func(c int) {
+					defer wg.Done()
+					for r := 0; r < requestsPerCaller; r++ {
+						md := pmetric.NewMetrics()
+						m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+						m.SetName("requests")
+						sum := m.SetEmptySum()
+						sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+						sum.SetIsMonotonic(true)
+						for d := 0; d < dpsPerRequest; d++ {
+							dp := sum.DataPoints().AppendEmpty()
+							dp.Attributes().PutInt("series", int64(d))
+							dp.SetIntValue(1)
+						}
+						ctx := client.NewContext(context.Background(), client.Info{
+							Metadata: client.NewMetadata(map[string][]string{
+								"tenant": {fmt.Sprint("tenant-", (c+r)%tenants)},
+							}),
+						})
+						assert.NoError(t, p.ConsumeMetrics(ctx, md))
+						// Spread the requests over a few processing windows.
+						time.Sleep(5 * time.Millisecond)
+					}
+				}(c)
+			}
+			wg.Wait()
+			require.NoError(t, p.Shutdown(context.Background()))
+
+			want := int64(callers * requestsPerCaller * dpsPerRequest * len(intervals))
+			assert.Equal(t, want, exported.Load())
+		})
+	}
+}
+
+// Equal-timestamp conflicts must not depend on the number of Pebble operands.
+func TestPreAggregationCumulativeTie(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		for _, mode := range []config.PreAggregationConfig{{}, {Enabled: true}, {Enabled: true, MaxSize: 1}} {
+			cfg := &config.Config{Intervals: []config.IntervalConfig{{Duration: time.Hour}}, PreAggregation: mode, Storage: config.DefaultStorageConfig()}
+			sink := new(consumertest.MetricsSink)
+			proc, err := NewFactory().CreateMetrics(context.Background(), processortest.NewNopSettings(metadata.Type), cfg, sink)
+			require.NoError(t, err)
+			require.NoError(t, proc.Start(context.Background(), componenttest.NewNopHost()))
+			values := []int64{1, 2}
+			if reverse {
+				values = []int64{2, 1}
+			}
+			for _, value := range values {
+				md := pmetric.NewMetrics()
+				m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+				m.SetName("cumulative")
+				sum := m.SetEmptySum()
+				sum.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
+				dp := sum.DataPoints().AppendEmpty()
+				dp.SetTimestamp(100)
+				dp.SetIntValue(value)
+				require.NoError(t, proc.ConsumeMetrics(context.Background(), md))
+			}
+			require.NoError(t, proc.Shutdown(context.Background()))
+			require.Len(t, sink.AllMetrics(), 1)
+			require.Equal(t, int64(2), sink.AllMetrics()[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0).IntValue())
+		}
+	}
 }

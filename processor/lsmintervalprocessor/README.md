@@ -36,6 +36,8 @@ with db-backed persistence so aggregation state can survive restarts and large b
 | `storage.memtable_size` | int | `33554432` (32MiB) | Size in bytes of each Pebble memtable. Must be between 16MiB and 4GiB. |
 | `storage.memtable_stop_writes_threshold` | int | `2` | Number of memtables (active plus queued for flush) at which writes stop until a flush completes. Must be at least 2. |
 | `storage.max_concurrent_compactions` | int | `1` | Maximum number of Pebble compactions run concurrently. Must be at least 1. |
+| `pre_aggregation.enabled` | bool | `false` | Merge incoming metrics in memory before writing them to Pebble. See [Pre-aggregation](#pre-aggregation). |
+| `pre_aggregation.max_size` | int | `33554432` (32MiB) | Size, in bytes of incoming protobuf, after which the pre-aggregation buffer is flushed to Pebble. |
 
 `max_cardinality` values of `0` disable overflow tracking for that level.
 
@@ -112,6 +114,39 @@ processors:
       max_concurrent_compactions: 2
 ```
 
+### Pre-aggregation
+
+By default, every `ConsumeMetrics` call writes one merge operand per interval to the Pebble key for
+its interval, processing window and metadata. Pebble then merges those operands again on every
+memtable flush and compaction. For a busy key, that means the accumulated value is decoded and
+re-merged many times, and flushes can fall behind ingestion. When they do, writes stop and
+callers block.
+
+With `pre_aggregation.enabled: true`, incoming metrics are merged in memory into one value per
+key. That value is written to Pebble as a single merge operand per interval when one of these
+happens:
+
+- the buffer reaches `pre_aggregation.max_size`;
+- the processing window advances;
+- the processor shuts down.
+
+Both modes share the aggregation rules. Cardinality admission and floating-point
+rounding can depend on operand grouping; see [conflicting cumulative samples](#conflicting-cumulative-samples).
+
+The buffer flushes after approximately `pre_aggregation.max_size` bytes of incoming metrics;
+concurrent requests can overshoot this soft threshold. This is not a heap-memory cap: the
+merged object graph, indexes, and temporary encoding buffers also consume memory. Unflushed buffered
+data is lost on a crash, in the same way as the processor's unflushed in-memory batch.
+
+```yaml
+processors:
+  lsminterval:
+    directory: /var/lib/otel/lsminterval
+    pre_aggregation:
+      enabled: true
+      max_size: 33554432 # 32MiB
+```
+
 ### Overflow handling
 
 Overflow caps cardinality at the resource, scope, metric, and datapoint levels to protect the
@@ -129,3 +164,17 @@ collector from unbounded aggregation growth. When a `max_cardinality` limit is r
 
 Overflow counts are approximate. The processor uses a HyperLogLog estimator to track the unique
 identities that exceeded each limit.
+
+### Conflicting cumulative samples
+
+For cumulative samples, the largest timestamp wins. Conflicting samples with
+an equal timestamp use the lexicographically greater canonical OTLP datapoint
+encoding (excluding stream attributes, with exemplar attribute maps sorted).
+This deterministic tie-breaker applies with and without pre-aggregation, so
+buffering, compaction, and replay cannot change the selected sample. This
+replaces the previously merge-order-dependent tie behavior.
+
+Cardinality admission remains order-sensitive: pre-aggregation can change
+which identities survive a limit, and floating-point addition can change
+rounding when operands are regrouped. Identical output across all modes is
+not a general guarantee under these conditions.
