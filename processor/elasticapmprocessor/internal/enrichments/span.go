@@ -79,7 +79,7 @@ func EnrichSpan(
 }
 
 type spanEnrichmentContext struct {
-	urlFull *url.URL
+	urlFull string // the host[:port] extracted from url.full (see extractURLHost)
 
 	processorEvent           string
 	eventOutcome             string
@@ -222,8 +222,7 @@ func (s *spanEnrichmentContext) capture(span ptrace.Span) {
 		case string(semconv25.URLFullKey),
 			string(semconv25.HTTPURLKey):
 			s.isHTTP = true
-			// ignoring error as if parse fails then we don't want the url anyway
-			s.urlFull, _ = url.Parse(v.Str())
+			s.urlFull = extractURLHost(v.Str())
 		case string(semconv25.URLSchemeKey):
 			s.isHTTP = true
 			s.urlScheme = v.Str()
@@ -1059,12 +1058,12 @@ func isElasticTransaction(span ptrace.Span, processorEvent string) bool {
 }
 
 func getHostPort(
-	urlFull *url.URL, urlDomain string, urlPort int64,
+	urlFull string, urlDomain string, urlPort int64,
 	fallbackServerAddress string, fallbackServerPort int64,
 ) string {
 	switch {
-	case urlFull != nil:
-		return urlFull.Host
+	case urlFull != "":
+		return urlFull
 	case urlDomain != "":
 		if urlPort == 0 {
 			return urlDomain
@@ -1095,4 +1094,62 @@ var standardStatusCodeResults = [...]string{
 	"HTTP 3xx",
 	"HTTP 4xx",
 	"HTTP 5xx",
+}
+
+// extractURLHost extracts the host[:port] from a raw URL string without a full url.Parse.
+// It handles the common case of http/https URLs efficiently.
+// Falls back to url.Parse for URLs with userinfo (user:pass@host) or unusual schemes.
+// The returned host is lowercased per RFC 3986.
+func extractURLHost(rawURL string) string {
+	n := len(rawURL)
+
+	// Fast path for the most common cases: detect "://" at known positions
+	// for 4-char schemes (http, grpc, amqp) and 5-char schemes (https, redis).
+	// This avoids the full strings.Index scan for these common schemes.
+	var authorityStart int
+	switch {
+	case n > 7 && rawURL[4] == ':' && rawURL[5] == '/' && rawURL[6] == '/':
+		authorityStart = 7 // 4-char scheme: http://, grpc://, etc.
+	case n > 8 && rawURL[5] == ':' && rawURL[6] == '/' && rawURL[7] == '/':
+		authorityStart = 8 // 5-char scheme: https://, redis://, etc.
+	default:
+		i := strings.Index(rawURL, "://")
+		if i < 0 {
+			return ""
+		}
+		authorityStart = i + 3
+	}
+
+	s := rawURL[authorityStart:]
+
+	// Single pass: scan for authority boundary (/?#) and userinfo (@),
+	// while tracking uppercase chars to avoid a separate strings.ToLower scan.
+	hasUpper := false
+	for j := 0; j < len(s); j++ {
+		c := s[j]
+		switch {
+		case c == '/' || c == '?' || c == '#':
+			// Authority ends here.
+			host := s[:j]
+			if hasUpper {
+				return strings.ToLower(host)
+			}
+			return host
+		case c == '@':
+			// Userinfo present — fall back to url.Parse for correctness.
+			u, err := url.Parse(rawURL)
+			if err != nil || u == nil {
+				return ""
+			}
+			return u.Host
+		case c >= 'A' && c <= 'Z':
+			hasUpper = true
+		}
+	}
+
+	// No path separator — whole remainder is the authority (e.g. "http://hostname").
+	if hasUpper {
+		return strings.ToLower(s)
+	}
+	return s
 }
