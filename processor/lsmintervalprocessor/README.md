@@ -130,10 +130,12 @@ happens:
 - the processing window advances;
 - the processor shuts down.
 
-Aggregated results are identical in both modes, including overflow handling.
+Both modes share the aggregation rules. Cardinality admission and floating-point
+rounding can depend on operand grouping; see [conflicting cumulative samples](#conflicting-cumulative-samples).
 
-The buffer holds at most `pre_aggregation.max_size` bytes of incoming metrics since its last flush,
-plus the memory of the merged values themselves, which is usually much smaller. Unflushed buffered
+The buffer flushes after approximately `pre_aggregation.max_size` bytes of incoming metrics;
+concurrent requests can overshoot this soft threshold. This is not a heap-memory cap: the
+merged object graph, indexes, and temporary encoding buffers also consume memory. Unflushed buffered
 data is lost on a crash, in the same way as the processor's unflushed in-memory batch.
 
 ```yaml
