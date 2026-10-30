@@ -20,6 +20,8 @@ elasticapm:
     pre_aggregation:
       enabled: true
       max_size: 1048576
+      log:
+        enabled: true
   custom_resource_attributes:
     - res.1
     - res.2
