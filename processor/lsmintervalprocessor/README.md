@@ -162,3 +162,17 @@ collector from unbounded aggregation growth. When a `max_cardinality` limit is r
 
 Overflow counts are approximate. The processor uses a HyperLogLog estimator to track the unique
 identities that exceeded each limit.
+
+### Conflicting cumulative samples
+
+For cumulative samples, the largest timestamp wins. Conflicting samples with
+an equal timestamp use the lexicographically greater canonical OTLP datapoint
+encoding (excluding stream attributes, with exemplar attribute maps sorted).
+This deterministic tie-breaker applies with and without pre-aggregation, so
+buffering, compaction, and replay cannot change the selected sample. This
+replaces the previously merge-order-dependent tie behavior.
+
+Cardinality admission remains order-sensitive: pre-aggregation can change
+which identities survive a limit, and floating-point addition can change
+rounding when operands are regrouped. Identical output across all modes is
+not a general guarantee under these conditions.

@@ -840,3 +840,34 @@ func TestPreAggregationConcurrentTotals(t *testing.T) {
 		})
 	}
 }
+
+// Equal-timestamp conflicts must not depend on the number of Pebble operands.
+func TestPreAggregationCumulativeTie(t *testing.T) {
+	for _, reverse := range []bool{false, true} {
+		for _, mode := range []config.PreAggregationConfig{{}, {Enabled: true}, {Enabled: true, MaxSize: 1}} {
+			cfg := &config.Config{Intervals: []config.IntervalConfig{{Duration: time.Hour}}, PreAggregation: mode, Storage: config.DefaultStorageConfig()}
+			sink := new(consumertest.MetricsSink)
+			proc, err := NewFactory().CreateMetrics(context.Background(), processortest.NewNopSettings(metadata.Type), cfg, sink)
+			require.NoError(t, err)
+			require.NoError(t, proc.Start(context.Background(), componenttest.NewNopHost()))
+			values := []int64{1, 2}
+			if reverse {
+				values = []int64{2, 1}
+			}
+			for _, value := range values {
+				md := pmetric.NewMetrics()
+				m := md.ResourceMetrics().AppendEmpty().ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+				m.SetName("cumulative")
+				sum := m.SetEmptySum()
+				sum.SetAggregationTemporality(pmetric.AggregationTemporalityCumulative)
+				dp := sum.DataPoints().AppendEmpty()
+				dp.SetTimestamp(100)
+				dp.SetIntValue(value)
+				require.NoError(t, proc.ConsumeMetrics(context.Background(), md))
+			}
+			require.NoError(t, proc.Shutdown(context.Background()))
+			require.Len(t, sink.AllMetrics(), 1)
+			require.Equal(t, int64(2), sink.AllMetrics()[0].ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0).IntValue())
+		}
+	}
+}
