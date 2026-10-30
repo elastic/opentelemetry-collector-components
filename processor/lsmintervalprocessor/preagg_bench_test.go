@@ -32,7 +32,7 @@ import (
 
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/component/componenttest"
-	"go.opentelemetry.io/collector/consumer/consumertest"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/processor/processortest"
@@ -42,15 +42,10 @@ import (
 )
 
 // BenchmarkPreAggregation measures sustained ingestion with APM-shaped
-// metrics on an on-disk database, with pre-aggregation off, on, and on with
-// the log. It also reports the bytes written to disk, relative to the
-// protobuf size of the input.
+// metrics on an on-disk database using 1s/2s/4s windows, with pre-aggregation off, on, and on with
+// the log. Run it with a long benchtime, for example:
 //
-// Time is compressed twelvefold: the intervals are 5s, 50s, and 5m instead
-// of 1m, 10m, and 60m, so a run of a few seconds crosses several window
-// boundaries. For example:
-//
-//	go test -run '^$' -bench BenchmarkPreAggregation -benchtime 15s .
+//	go test -run '^$' -bench BenchmarkPreAggregation -benchtime 24s -count 3 .
 func BenchmarkPreAggregation(b *testing.B) {
 	modes := []struct {
 		name string
@@ -90,7 +85,7 @@ func benchmarkPreAggregation(b *testing.B, preAgg config.PreAggregationConfig, r
 	cfg := &config.Config{
 		Directory: b.TempDir(),
 		Intervals: []config.IntervalConfig{
-			{Duration: 5 * time.Second}, {Duration: 50 * time.Second}, {Duration: 5 * time.Minute},
+			{Duration: time.Second}, {Duration: 2 * time.Second}, {Duration: 4 * time.Second},
 		},
 		MetadataKeys:                   []string{"tenant"},
 		ResourceLimit:                  config.LimitConfig{MaxCardinality: 8000},
@@ -101,7 +96,12 @@ func benchmarkPreAggregation(b *testing.B, preAgg config.PreAggregationConfig, r
 		PreAggregation:                 preAgg,
 		Storage:                        config.DefaultStorageConfig(),
 	}
-	p, err := NewFactory().CreateMetrics(context.Background(), processortest.NewNopSettings(metadata.Type), cfg, consumertest.NewNop())
+	var exported atomic.Int64
+	sink, err := consumer.NewMetrics(func(_ context.Context, md pmetric.Metrics) error { exported.Add(benchSummary(md)); return nil })
+	if err != nil {
+		b.Fatal(err)
+	}
+	p, err := NewFactory().CreateMetrics(context.Background(), processortest.NewNopSettings(metadata.Type), cfg, sink)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -114,12 +114,7 @@ func benchmarkPreAggregation(b *testing.B, preAgg config.PreAggregationConfig, r
 			Metadata: client.NewMetadata(map[string][]string{"tenant": {fmt.Sprint("tenant-", i)}}),
 		})
 	}
-	var dpsPerRequest, bytesPerRequests int64
 	var sizer pmetric.ProtoMarshaler
-	for _, md := range requests {
-		dpsPerRequest += int64(md.DataPointCount())
-		bytesPerRequests += int64(sizer.MetricsSize(md))
-	}
 
 	var next atomic.Int64
 	var peakHeap atomic.Uint64
@@ -163,21 +158,69 @@ func benchmarkPreAggregation(b *testing.B, preAgg config.PreAggregationConfig, r
 		}()
 	}
 	wg.Wait()
+	intakeElapsed := time.Since(start)
+	intakeCPU := processCPU() - cpuBefore
+	proc := p.(*Processor)
+	// Stop intake/export races, drain every partial interval, then force
+	// outstanding memtable/compaction work to finish before final accounting.
+	proc.cancel()
+	<-proc.exportStopped
+	if err := proc.flushPendingLocked(); err != nil {
+		b.Fatal(err)
+	}
+	if proc.batch != nil {
+		if err := proc.batch.Commit(proc.wOpts); err != nil {
+			b.Fatal(err)
+		}
+		if err := proc.batch.Close(); err != nil {
+			b.Fatal(err)
+		}
+		proc.batch = nil
+	}
+	for _, ivl := range proc.intervals {
+		if err := proc.export(context.Background(), proc.processingTime.Truncate(ivl.Duration).Add(ivl.Duration)); err != nil {
+			b.Fatal(err)
+		}
+	}
+	if err := proc.db.Flush(); err != nil {
+		b.Fatal(err)
+	}
+	if err := proc.db.Compact([]byte{0}, []byte{255, 255, 255, 255}, true); err != nil {
+		b.Fatal(err)
+	}
 	elapsed := time.Since(start)
 	cpu := processCPU() - cpuBefore
 	b.StopTimer()
 	close(stopSampling)
 	<-samplingDone
 
-	dps := float64(b.N) * float64(dpsPerRequest) / float64(len(requests))
-	b.ReportMetric(dps/elapsed.Seconds(), "datapoints/s")
-	b.ReportMetric(dps/cpu.Seconds(), "datapoints/cpu-s")
+	// Account for the actual request sequence, including the partial cycle.
+	var dps, inputBytes, wantSummary int64
+	for i, md := range requests {
+		n := int64(b.N / len(requests))
+		if i < b.N%len(requests) {
+			n++
+		}
+		dps += n * int64(md.DataPointCount())
+		inputBytes += n * int64(sizer.MetricsSize(md))
+		wantSummary += n * benchSummary(md) * int64(len(cfg.Intervals))
+	}
+	if got := exported.Load(); got != wantSummary {
+		b.Fatalf("exported service_summary=%d, want %d", got, wantSummary)
+	}
+	b.ReportMetric(float64(dps)/intakeElapsed.Seconds(), "intake-dps/s")
+	b.ReportMetric(float64(dps)/intakeCPU.Seconds(), "intake-dps/cpu-s")
+	b.ReportMetric(float64(dps)/elapsed.Seconds(), "completed-dps/s")
+	b.ReportMetric(float64(dps)/cpu.Seconds(), "completed-dps/cpu-s")
+	b.ReportMetric((elapsed - intakeElapsed).Seconds(), "drain-s")
+	b.ReportMetric(intakeElapsed.Seconds()/4, "longest-windows")
 	b.ReportMetric(float64(dirSize(cfg.Directory))/(1<<20), "disk-MiB")
-	reportBytesWritten(b, p.(*Processor), float64(b.N)*float64(bytesPerRequests)/float64(len(requests)))
+	reportBytesWritten(b, proc, float64(inputBytes))
 	b.ReportMetric(float64(peakHeap.Load())/(1<<20), "peak-heap-MiB")
 	if err := p.Shutdown(context.Background()); err != nil {
 		b.Fatal(err)
 	}
+
 }
 
 func processCPU() time.Duration {
@@ -298,9 +341,29 @@ func (s apmBenchShape) generate(n int) []pmetric.Metrics {
 	return out
 }
 
-// reportBytesWritten reports the bytes written by Pebble (write-ahead log,
-// flushes, and compactions) and by the pre-aggregation log, and their sum
-// relative to the input size.
+func benchSummary(md pmetric.Metrics) int64 {
+	var n int64
+	rms := md.ResourceMetrics()
+	for i := 0; i < rms.Len(); i++ {
+		sms := rms.At(i).ScopeMetrics()
+		for j := 0; j < sms.Len(); j++ {
+			ms := sms.At(j).Metrics()
+			for k := 0; k < ms.Len(); k++ {
+				m := ms.At(k)
+				if m.Name() == "service_summary" {
+					dps := m.Sum().DataPoints()
+					for d := 0; d < dps.Len(); d++ {
+						n += dps.At(d).IntValue()
+					}
+				}
+			}
+		}
+	}
+	return n
+}
+
+// Includes the final flush, export tombstones, and forced compaction. This is
+// settled processor work, not total filesystem/device write amplification.
 func reportBytesWritten(b *testing.B, p *Processor, inputBytes float64) {
 	m := p.db.Metrics()
 	var flushed, compacted uint64
@@ -314,12 +377,6 @@ func reportBytesWritten(b *testing.B, p *Processor, inputBytes float64) {
 		logBytes = p.preAggLog.written
 		p.preAggLog.mu.Unlock()
 	}
-	const mib = 1 << 20
-	total := float64(m.WAL.BytesWritten + flushed + compacted + logBytes)
-	b.ReportMetric(inputBytes/mib, "in-MiB")
-	b.ReportMetric(float64(m.WAL.BytesWritten)/mib, "wal-MiB")
-	b.ReportMetric(float64(flushed)/mib, "flush-MiB")
-	b.ReportMetric(float64(compacted)/mib, "compact-MiB")
-	b.ReportMetric(float64(logBytes)/mib, "log-MiB")
-	b.ReportMetric(total/inputBytes, "write-amp")
+	b.ReportMetric(float64(m.WAL.BytesWritten+flushed+compacted+logBytes)/inputBytes, "write-amp")
+	b.ReportMetric(inputBytes/(1<<20), "in-MiB")
 }

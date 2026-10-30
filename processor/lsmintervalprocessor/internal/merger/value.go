@@ -26,13 +26,14 @@ import (
 	"go.opentelemetry.io/collector/pdata/pmetric"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/data"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/identity"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/limits"
 )
 
 const (
 	// versionV1 values hold the pmetric protobuf and the limit trackers. They
-	// are still read, but no longer written.
+	// remain the production write format during the reader-first rollout.
 	versionV1 = uint8(1)
 	// versionV2 values hold one entry per resource, scope, metric, and
 	// stream, each with its identity hash, its attributes as opaque bytes,
@@ -178,6 +179,13 @@ func (v *Value) newDatapointTracker() *limits.Tracker {
 // AppendBinary marshals the value into its binary representation,
 // and appends it to b.
 func (v *Value) AppendBinary(b []byte) ([]byte, error) {
+	// Reader-first release: do not persist v2 until the previous supported
+	// release can read it. There is deliberately no production config bypass.
+	return v.appendBinaryV1(b)
+}
+
+// appendBinaryV2 is exercised by compatibility tests; production writes v1.
+func (v *Value) appendBinaryV2(b []byte) ([]byte, error) {
 	b = append(b, versionV2)
 	if v.streamCount == 0 {
 		// Nothing to marshal
@@ -418,6 +426,10 @@ func (v *Value) MergeMetric(
 // harvest. It also returns the estimated overflow counts at each level.
 // This method must be called only once for harvest.
 func (v *Value) Finalize() (pmetric.Metrics, OverflowStats, error) {
+	return v.finalize(true)
+}
+
+func (v *Value) finalize(includeOverflow bool) (pmetric.Metrics, OverflowStats, error) {
 	md := pmetric.NewMetrics()
 	var stats OverflowStats
 	if v.resourceTracker != nil {
@@ -446,7 +458,7 @@ func (v *Value) Finalize() (pmetric.Metrics, OverflowStats, error) {
 					return pmetric.Metrics{}, OverflowStats{}, fmt.Errorf("failed to finalize merged metric: %w", err)
 				}
 			}
-			if se.metricTracker.HasOverflow() {
+			if includeOverflow && se.metricTracker.HasOverflow() {
 				overflowCount := se.metricTracker.EstimateOverflow()
 				stats.Metrics += overflowCount
 				// Add overflow metric due to metric limit breached
@@ -461,7 +473,7 @@ func (v *Value) Finalize() (pmetric.Metrics, OverflowStats, error) {
 				}
 			}
 			for _, me := range se.metrics {
-				if !me.dpTracker.HasOverflow() {
+				if !includeOverflow || !me.dpTracker.HasOverflow() {
 					continue
 				}
 				overflowCount := me.dpTracker.EstimateOverflow()
@@ -744,7 +756,19 @@ func (v *Value) mergeStreams(me *metricEntry, ome *metricEntry) error {
 			if err != nil {
 				return err
 			}
-			if fromTS > toTS {
+			wins := fromTS > toTS
+			if fromTS == toTS {
+				from, err := ost.decodedType(me.id.Type())
+				if err != nil {
+					return err
+				}
+				to, err := st.decodedType(me.id.Type())
+				if err != nil {
+					return err
+				}
+				wins = data.PreferCumulative(from, to)
+			}
+			if wins {
 				st.payload, st.dp = ost.payload, cloneDP(ost.dp)
 			}
 			continue
@@ -775,7 +799,15 @@ func (v *Value) mergeIntoStream(st *streamEntry, from any, temporality pmetric.A
 		if err != nil {
 			return err
 		}
-		if dpTimestamp(from) > toTS {
+		wins := dpTimestamp(from) > toTS
+		if dpTimestamp(from) == toTS {
+			to, err := st.decoded(from)
+			if err != nil {
+				return err
+			}
+			wins = data.PreferCumulative(from, to)
+		}
+		if wins {
 			st.payload, st.dp = nil, cloneDP(from)
 		}
 		return nil
@@ -899,4 +931,16 @@ func metricDPsCount(m pmetric.Metric) uint64 {
 		// Includes non supported metric types
 		return 0
 	}
+}
+
+func (st *streamEntry) decodedType(ty pmetric.MetricType) (any, error) {
+	if st.dp != nil {
+		return st.dp, nil
+	}
+	dp, err := decodeNewDP(ty, st.payload)
+	if err != nil {
+		return nil, err
+	}
+	st.dp, st.payload = dp, nil
+	return dp, nil
 }

@@ -20,18 +20,13 @@ with db-backed persistence so aggregation state can survive restarts and large b
 
 ### Storage format
 
-Each value stored in Pebble holds one entry per resource, scope, metric, and datapoint stream, in
-the order they were first seen. Every entry keeps its identity hash, its attributes in encoded form,
-and its cardinality limit tracker; every stream also keeps its datapoint, encoded without
-attributes. When Pebble merges two values, during memtable flushes and compactions, the merger
-matches entries by their stored hashes: streams present in only one value are copied without being
-decoded, and only the datapoints of streams present in both are decoded and merged. Attributes are
-decoded only when a window is exported.
-
-This is the second version of the format. Values written in the first version, which stored the
-pmetric protobuf, are still read, and are rewritten in the new format when Pebble next combines
-them with another value, so existing databases keep working after an upgrade. Versions of the processor before this format
-cannot read it: to downgrade, start with an empty `directory`.
+This is a reader-first release: it reads both v1 and v2, and writes v1.
+The v1 format stores pmetric protobuf and positional cardinality trackers.
+The v2 reader represents resources, scopes, metrics, and streams using stored
+identity hashes and encoded attributes. Shared streams are decoded for merging;
+attributes are materialized for v1 output or final export. Enabling v2 writes
+requires a later release after rollback compatibility is established; see
+[the rollout policy](#reader-first-v2-rollout).
 
 ### Configuration
 
@@ -167,15 +162,15 @@ processors:
 With `pre_aggregation.log.enabled: true`, every request is appended to a log segment in
 `<directory>/preagg-log/` before it is merged into the buffer, and `ConsumeMetrics` returns only
 after the record is written to the operating system. A process that stops without a clean
-shutdown, for example after a container restart, loses nothing that was written: on start, the
-processor replays the segments that are not yet reflected in Pebble.
+shutdown, for example after a container restart, replays logged aggregated input that is
+not yet reflected in Pebble, including overdue windows. See [delivery boundaries](#recovery-and-delivery-boundaries).
 
 - **Flush:** a flush starts a new segment and writes the buffer to Pebble together with the number
   of the last segment it covers, in the same synced batch. The covered segments are then deleted.
   A crash between the commit and the deletion is safe, because replay skips covered segments.
 - **Failed flush:** if the commit fails, the segments are kept, and the next flush reads them back.
 - **Torn writes:** each record has a length and a CRC-32C checksum. Replay stops at the first
-  incomplete record, which can only be the last one written before the process stopped.
+  incomplete record, at the tail of a segment. Corruption is not a guarantee of lossless recovery.
 - **Host failures:** records reach the page cache on every write and are fsynced every 8MiB, which
   matches the batch commit threshold without the log.
 - **Write errors:** a failed write is sticky, and the processor rejects further data until it
@@ -186,7 +181,7 @@ Records are written in groups: concurrent requests share a single write, and rec
 aggregation key are written in the order they are merged, which keeps overflow handling identical
 on replay. Each record holds the S2-compressed request and its client metadata, so the log grows
 by the compressed size of the incoming metrics until the next flush. `pre_aggregation.max_size`
-therefore bounds the log size as well as the buffer.
+bounds normal flush size, but failed flushes can retain multiple segments and grow disk usage.
 
 Because the log makes the buffer durable, `max_size` no longer limits how much data a crash can
 lose, only memory and log size. A larger value means fewer flushes and fewer merge operands per key
@@ -220,3 +215,48 @@ collector from unbounded aggregation growth. When a `max_cardinality` limit is r
 
 Overflow counts are approximate. The processor uses a HyperLogLog estimator to track the unique
 identities that exceeded each limit.
+
+### Conflicting cumulative samples
+
+For cumulative samples, the largest timestamp wins. Conflicting samples with
+an equal timestamp use the lexicographically greater canonical OTLP datapoint
+encoding (excluding stream attributes, with exemplar attribute maps sorted).
+This deterministic tie-breaker applies with and without pre-aggregation, so
+buffering, compaction, and replay cannot change the selected sample. This
+replaces the previously merge-order-dependent tie behavior.
+
+Cardinality admission remains order-sensitive: pre-aggregation can change
+which identities survive a limit, and floating-point addition can change
+rounding when operands are regrouped. Identical output across all modes is
+not a general guarantee under these conditions.
+
+### Recovery and delivery boundaries
+
+With the log enabled, exports include overdue persisted windows after a
+restart. A failed buffer flush retries the same boundary before exporting it.
+Replay preserves segment boundaries and writes older processing windows before
+newer ones, including when retrying failed flushes. Decoded replay state is released between segments; the encoded Pebble batch
+can still grow with the retained log.
+
+The log protects accepted aggregated input across process crashes; it does
+not provide exactly-once downstream delivery. Export failures retain the
+window for retry, which can redeliver tenants that already succeeded. A crash
+between downstream acceptance and deleting the exported window can also
+redeliver it. Passthrough metrics are not recovered by this log. Host failure
+can lose writes since the last successful fsync.
+
+### Reader-first v2 rollout
+
+This release reads v1 and v2 but **always writes v1**, including after merging
+or reading a v2 operand. No configuration flag enables v2 writes. A later PR
+may enable them only after the supported rollback release reads v2 and real
+profiles justify the change. Consequently, the old v2-write benchmark figures
+do not describe this reader-first release.
+
+Format version 2 pins the identity hash algorithm used by this release's
+pdata `xhash.MapHash`. Before changing that algorithm, add a new format version
+and a reader migration that recomputes old identities from attributes; never
+silently interpret stored hashes under a different algorithm. The checked-in
+hash-contract fixture guards this dependency.
+
+Design rationale: [recovery and format rollout](docs/recovery-and-format-rollout.md).

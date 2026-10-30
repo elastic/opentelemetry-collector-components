@@ -19,6 +19,7 @@ package lsmintervalprocessor // import "github.com/elastic/opentelemetry-collect
 
 import (
 	"bufio"
+	"cmp"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -446,9 +447,9 @@ func (p *Processor) replayPreAggLog(l *preAggLog, batch *pebble.Batch, seqs []ui
 		processingTime int64
 		metaKey        string
 	}
-	values := make(map[replayKey]*pendingValue)
 	var records int
 	for _, seq := range seqs {
+		values := make(map[replayKey]*pendingValue)
 		err := l.replay(seq, func(processingTime time.Time, metaKey []byte, md pmetric.Metrics) error {
 			records++
 			k := replayKey{processingTime: processingTime.Unix(), metaKey: string(metaKey)}
@@ -479,16 +480,28 @@ func (p *Processor) replayPreAggLog(l *preAggLog, batch *pebble.Batch, seqs []ui
 		if err != nil {
 			return records, err
 		}
-	}
-	var valueBuf, keyBuf []byte
-	for _, pv := range values {
-		var err error
-		valueBuf, err = pv.value.AppendBinary(valueBuf[:0])
-		if err != nil {
-			return records, fmt.Errorf("failed to marshal replayed value: %w", err)
+
+		var keys []replayKey
+		for k := range values {
+			keys = append(keys, k)
 		}
-		if keyBuf, err = p.mergeValueToBatch(batch, pv.window, pv.metadata, valueBuf, keyBuf); err != nil {
-			return records, err
+		slices.SortFunc(keys, func(a, b replayKey) int {
+			if c := cmp.Compare(a.processingTime, b.processingTime); c != 0 {
+				return c
+			}
+			return cmp.Compare(a.metaKey, b.metaKey)
+		})
+		var valueBuf, keyBuf []byte
+		for _, k := range keys {
+			pv := values[k]
+			var err error
+			valueBuf, err = pv.value.AppendBinary(valueBuf[:0])
+			if err != nil {
+				return records, fmt.Errorf("failed to marshal replayed value: %w", err)
+			}
+			if keyBuf, err = p.mergeValueToBatch(batch, pv.window, pv.metadata, valueBuf, keyBuf); err != nil {
+				return records, err
+			}
 		}
 	}
 	return records, nil
@@ -508,8 +521,10 @@ func (p *Processor) commitPreAggLogLocked(next *os.File, nextSeq uint64) error {
 	if p.batch == nil {
 		p.batch = newBatch(p.db)
 	}
-	batch := p.batch
+	current := p.batch
 	p.batch = nil
+	defer func() { _ = current.Close() }()
+	batch := p.db.NewBatch()
 	defer func() { _ = batch.Close() }()
 
 	// Segments between the covered one and the one just closed belong to
@@ -523,6 +538,9 @@ func (p *Processor) commitPreAggLogLocked(next *os.File, nextSeq uint64) error {
 		if _, err := p.replayPreAggLog(p.preAggLog, batch, retry); err != nil {
 			return fmt.Errorf("failed to replay pre-aggregation log segments of failed flushes: %w", err)
 		}
+	}
+	if err := batch.Apply(current, nil); err != nil {
+		return err
 	}
 	if err := p.setPreAggLogMarker(batch, closed); err != nil {
 		return err

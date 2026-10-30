@@ -145,3 +145,41 @@ func addV1Streams[DPS dataPointSlice[DP], DP dataPoint[DP]](v *Value, me *metric
 		v.insertStream(me, id, st)
 	}
 }
+
+// appendBinaryV1 preserves the positional trackers without materializing
+// overflow metrics: overflow must be finalized exactly once, at export.
+func (v *Value) appendBinaryV1(b []byte) ([]byte, error) {
+	b = append(b, versionV1)
+	if v.streamCount == 0 {
+		return b, nil
+	}
+	md, _, err := v.finalize(false)
+	if err != nil {
+		return nil, err
+	}
+	trackers := limits.NewTrackers(uint64(v.resourceLimitCfg.MaxCardinality), uint64(v.scopeLimitCfg.MaxCardinality), uint64(v.metricLimitCfg.MaxCardinality), uint64(v.datapointLimitCfg.MaxCardinality))
+	*trackers.GetResourceTracker() = *v.resourceTracker
+	for _, re := range v.resources {
+		rt := trackers.NewScopeTracker()
+		rt.Tracker = re.scopeTracker
+		for _, se := range re.scopes {
+			st := rt.NewMetricTracker()
+			st.Tracker = se.metricTracker
+			for _, me := range se.metrics {
+				*st.NewDatapointTracker() = *me.dpTracker
+			}
+		}
+	}
+	offset := len(b)
+	b = append(b, 0, 0, 0, 0)
+	b, err = trackers.AppendBinary(b)
+	if err != nil {
+		return nil, err
+	}
+	binary.BigEndian.PutUint32(b[offset:offset+4], uint32(len(b)-offset-4))
+	raw, err := (&pmetric.ProtoMarshaler{}).MarshalMetrics(md)
+	if err != nil {
+		return nil, err
+	}
+	return append(b, raw...), nil
+}

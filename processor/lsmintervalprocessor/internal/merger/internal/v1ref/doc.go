@@ -16,6 +16,6 @@
 // under the License.
 
 // Package v1ref holds the pmetric-based value implementation that wrote the
-// v1 format, unchanged. It is used only by tests, as the reference that the
+// v1 format, including the deterministic cumulative tie policy from #1483. It is used only by tests, as the reference that the
 // v2 value must behave identically to, and to produce v1 encoded values.
 package v1ref // import "github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger/internal/v1ref"

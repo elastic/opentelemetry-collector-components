@@ -124,7 +124,13 @@ func (m *Merger) ensureUnmarshaled() error {
 
 func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
 	if m.current == nil {
-		return m.raw, nil, nil
+		// Do not pass a lone v2 operand through in a reader-first release.
+		if len(m.raw) == 0 || m.raw[0] != versionV2 {
+			return m.raw, nil, nil
+		}
+		if err := m.ensureUnmarshaled(); err != nil {
+			return nil, nil, err
+		}
 	}
 	buf, err := m.current.AppendBinary(nil)
 	if err != nil {

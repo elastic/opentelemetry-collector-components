@@ -313,7 +313,7 @@ func TestValueMatchesV1Reference(t *testing.T) {
 			require.NoError(t, err)
 			refOps = append(refOps, b)
 			v1Ops = append(v1Ops, b)
-			b, err = op.AppendBinary(nil)
+			b, err = op.appendBinaryV2(nil)
 			require.NoError(t, err)
 			ops = append(ops, b)
 		}
@@ -388,7 +388,7 @@ func pick(cond bool, a, b []byte) []byte {
 
 func roundTrip(t *testing.T, limits diffLimits, v *Value) *Value {
 	t.Helper()
-	b, err := v.AppendBinary(nil)
+	b, err := v.appendBinaryV2(nil)
 	require.NoError(t, err)
 	out := limits.newValue()
 	require.NoError(t, out.Unmarshal(b))
@@ -422,7 +422,7 @@ func TestValueReadsV1Fixtures(t *testing.T) {
 			v := getTestValue(t)
 			require.NoError(t, v.Unmarshal(b))
 			// Re-encoding as v2 must not change the result either.
-			v2b, err := v.AppendBinary(nil)
+			v2b, err := v.appendBinaryV2(nil)
 			require.NoError(t, err)
 			v2 := getTestValue(t)
 			require.NoError(t, v2.Unmarshal(v2b))
@@ -447,7 +447,7 @@ func jsonUnmarshal(b []byte, v any) error { return json.Unmarshal(b, v) }
 
 // TestValueCumulativeTie merges encoded operands holding the same cumulative
 // stream at the same timestamp, which random metrics rarely produce: the
-// value merged into is kept, as in v1.
+// canonical tie-breaker is used in both formats.
 func TestValueCumulativeTie(t *testing.T) {
 	batch := func(value int64) pmetric.Metrics {
 		md := pmetric.NewMetrics()
@@ -462,7 +462,13 @@ func TestValueCumulativeTie(t *testing.T) {
 	}
 	var limits diffLimits
 	encode := func(v interface{ AppendBinary([]byte) ([]byte, error) }) []byte {
-		b, err := v.AppendBinary(nil)
+		var b []byte
+		var err error
+		if current, ok := v.(*Value); ok {
+			b, err = current.appendBinaryV2(nil)
+		} else {
+			b, err = v.AppendBinary(nil)
+		}
 		require.NoError(t, err)
 		return b
 	}
@@ -524,4 +530,50 @@ func TestValueKeepsResourceEntityRefs(t *testing.T) {
 	assert.Equal(t, "https://schema/entity", got.SchemaUrl())
 	assert.Equal(t, []string{"service.name"}, got.IdKeys().AsRaw())
 	assert.Equal(t, []string{"service.version"}, got.DescriptionKeys().AsRaw())
+}
+
+// The reader-first release must produce bytes readable by the previous
+// implementation, including all overflow estimators, even after reading v2.
+func TestValueReaderFirstWritesV1(t *testing.T) {
+	for seed := int64(0); seed < diffSeeds; seed++ {
+		r := rand.New(rand.NewSource(seed))
+		limits := randomLimits(r)
+		original := limits.newValue()
+		var ts pcommon.Timestamp
+		for i := 0; i < 5; i++ {
+			mergeAll(t, original, randomBatch(r, &ts))
+		}
+		v2, err := original.appendBinaryV2(nil)
+		require.NoError(t, err)
+		restored := limits.newValue()
+		require.NoError(t, restored.Unmarshal(v2))
+		v1, err := restored.AppendBinary(nil)
+		require.NoError(t, err)
+		require.Equal(t, byte(1), v1[0])
+		old := limits.newRef()
+		require.NoError(t, old.Unmarshal(v1))
+		assertSameFinal(t, old, original, fmt.Sprint("reader-first seed ", seed))
+	}
+}
+
+func TestPebbleReaderFirstRewritesLoneV2(t *testing.T) {
+	var limits diffLimits
+	v := limits.newValue()
+	r := rand.New(rand.NewSource(42))
+	var ts pcommon.Timestamp
+	mergeAll(t, v, randomBatch(r, &ts))
+	encoded, err := v.appendBinaryV2(nil)
+	require.NoError(t, err)
+	pm := NewPebbleMerger(limits.res, limits.scope, limits.metric, limits.dp, 16)
+	vm, err := pm.Merge(nil, encoded)
+	require.NoError(t, err)
+	output, closer, err := vm.Finish(true)
+	require.NoError(t, err)
+	if closer != nil {
+		require.NoError(t, closer.Close())
+	}
+	require.Equal(t, byte(1), output[0])
+	old := limits.newRef()
+	require.NoError(t, old.Unmarshal(output))
+	assertSameFinal(t, old, v, "lone v2 operand")
 }
