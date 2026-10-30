@@ -152,15 +152,15 @@ processors:
 With `pre_aggregation.log.enabled: true`, every request is appended to a log segment in
 `<directory>/preagg-log/` before it is merged into the buffer, and `ConsumeMetrics` returns only
 after the record is written to the operating system. A process that stops without a clean
-shutdown, for example after a container restart, loses nothing that was written: on start, the
-processor replays the segments that are not yet reflected in Pebble.
+shutdown, for example after a container restart, replays logged aggregated input that is
+not yet reflected in Pebble, including overdue windows. See [delivery boundaries](#recovery-and-delivery-boundaries).
 
 - **Flush:** a flush starts a new segment and writes the buffer to Pebble together with the number
   of the last segment it covers, in the same synced batch. The covered segments are then deleted.
   A crash between the commit and the deletion is safe, because replay skips covered segments.
 - **Failed flush:** if the commit fails, the segments are kept, and the next flush reads them back.
 - **Torn writes:** each record has a length and a CRC-32C checksum. Replay stops at the first
-  incomplete record, which can only be the last one written before the process stopped.
+  incomplete record, at the tail of a segment. Corruption is not a guarantee of lossless recovery.
 - **Host failures:** records reach the page cache on every write and are fsynced every 8MiB, which
   matches the batch commit threshold without the log.
 - **Write errors:** a failed write is sticky, and the processor rejects further data until it
@@ -171,7 +171,7 @@ Records are written in groups: concurrent requests share a single write, and rec
 aggregation key are written in the order they are merged, which keeps overflow handling identical
 on replay. Each record holds the S2-compressed request and its client metadata, so the log grows
 by the compressed size of the incoming metrics until the next flush. `pre_aggregation.max_size`
-therefore bounds the log size as well as the buffer.
+bounds normal flush size, but failed flushes can retain multiple segments and grow disk usage.
 
 Because the log makes the buffer durable, `max_size` no longer limits how much data a crash can
 lose, only memory and log size. A larger value means fewer flushes and fewer merge operands per key
@@ -219,3 +219,18 @@ Cardinality admission remains order-sensitive: pre-aggregation can change
 which identities survive a limit, and floating-point addition can change
 rounding when operands are regrouped. Identical output across all modes is
 not a general guarantee under these conditions.
+
+### Recovery and delivery boundaries
+
+With the log enabled, exports include overdue persisted windows after a
+restart. A failed buffer flush retries the same boundary before exporting it.
+Replay preserves segment boundaries and writes older processing windows before
+newer ones, including when retrying failed flushes. Decoded replay state is released between segments; the encoded Pebble batch
+can still grow with the retained log.
+
+The log protects accepted aggregated input across process crashes; it does
+not provide exactly-once downstream delivery. Export failures retain the
+window for retry, which can redeliver tenants that already succeeded. A crash
+between downstream acceptance and deleting the exported window can also
+redeliver it. Passthrough metrics are not recovered by this log. Host failure
+can lose writes since the last successful fsync.

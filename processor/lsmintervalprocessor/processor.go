@@ -176,6 +176,7 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 	if p.db == nil {
 		db, err := pebble.Open(p.dataDir, p.dbOpts)
 		if err != nil {
+			p.mu.Unlock()
 			return fmt.Errorf("failed to open database: %w", err)
 		}
 		p.db = db
@@ -210,6 +211,13 @@ func (p *Processor) Start(ctx context.Context, host component.Host) error {
 			// they are committed with the batch before export.
 			if err := p.flushPendingLocked(); err != nil {
 				p.logger.Warn("failed to flush pre-aggregated values", zap.Error(err))
+				if p.preAggLog != nil {
+					// Do not export a partial window or advance past data that is
+					// still only in the log. Retry the same boundary after recovery.
+					p.mu.Unlock()
+					timer.Reset(time.Second)
+					continue
+				}
 			}
 			batch := p.batch
 			p.batch = nil
@@ -727,6 +735,9 @@ func (p *Processor) export(ctx context.Context, end time.Time) error {
 		_ = snap.Close()
 	}()
 
+	if p.cfg.PreAggregation.Log.Enabled {
+		return p.exportRecoveredWindows(ctx, snap, end)
+	}
 	var errs []error
 	for _, ivl := range p.intervals {
 		// Check if the given aggregation interval needs to be exported now
@@ -743,6 +754,58 @@ func (p *Processor) export(ctx context.Context, end time.Time) error {
 				zap.Time("exported_till(exclusive)", end),
 				zap.Error(err),
 			)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// exportRecoveredWindows also visits overdue persisted windows. A restart
+// or failed flush must not strand records behind the current processing time.
+// Enumerate existing keys rather than ticking through potentially years of
+// empty windows. The snapshot keeps discovery and export consistent.
+func (p *Processor) exportRecoveredWindows(ctx context.Context, snap *pebble.Snapshot, end time.Time) error {
+	iter, err := snap.NewIter(nil)
+	if err != nil {
+		return err
+	}
+	type window struct {
+		interval time.Duration
+		start    time.Time
+	}
+	windows := make(map[window]intervalDef)
+	for iter.First(); iter.Valid(); iter.Next() {
+		if string(iter.Key()) == string(preAggLogMarkerKey) {
+			continue
+		}
+		var key merger.Key
+		if err := key.Unmarshal(iter.Key()); err != nil {
+			_ = iter.Close()
+			return err
+		}
+		for _, ivl := range p.intervals {
+			if key.Interval == ivl.Duration && !key.ProcessingTime.Add(ivl.Duration).After(end) {
+				windows[window{ivl.Duration, key.ProcessingTime}] = ivl
+			}
+		}
+	}
+	err = errors.Join(iter.Error(), iter.Close())
+	if err != nil {
+		return err
+	}
+	ordered := make([]window, 0, len(windows))
+	for w := range windows {
+		ordered = append(ordered, w)
+	}
+	sort.Slice(ordered, func(i, j int) bool {
+		if ordered[i].interval != ordered[j].interval {
+			return ordered[i].interval < ordered[j].interval
+		}
+		return ordered[i].start.Before(ordered[j].start)
+	})
+	var errs []error
+	for _, w := range ordered {
+		if _, err := p.exportForInterval(ctx, snap, w.start, w.start.Add(w.interval), windows[w]); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
@@ -910,7 +973,10 @@ func (p *Processor) exportForInterval(
 			metric.WithAttributes(attributes...),
 		)
 	}
-	if rangeHasData {
+	if err := iter.Error(); err != nil {
+		errs = append(errs, err)
+	}
+	if rangeHasData && (!p.cfg.PreAggregation.Log.Enabled || len(errs) == 0) {
 		if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
 			errs = append(errs, fmt.Errorf("failed to delete exported entries: %w", err))
 		}

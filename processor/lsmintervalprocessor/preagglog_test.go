@@ -35,6 +35,7 @@ import (
 	"go.opentelemetry.io/collector/processor/processortest"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/merger"
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/internal/metadata"
 )
 
@@ -53,12 +54,6 @@ type logTestHarness struct {
 }
 
 func newLogTestHarness(t *testing.T, cfg config.PreAggregationConfig) *logTestHarness {
-	// Recovered values keep their original processing window, which a final
-	// export only covers if it is still the current window. Avoid starting
-	// right before a window boundary.
-	if untilNext := time.Until(time.Now().Truncate(time.Minute).Add(time.Minute)); untilNext < 15*time.Second {
-		time.Sleep(untilNext + 100*time.Millisecond)
-	}
 	return &logTestHarness{t: t, dir: t.TempDir(), cfg: cfg}
 }
 
@@ -82,7 +77,11 @@ func (h *logTestHarness) start() *Processor {
 	p, err := NewFactory().CreateMetrics(context.Background(), processortest.NewNopSettings(metadata.Type), cfg, next)
 	require.NoError(h.t, err)
 	require.NoError(h.t, p.Start(context.Background(), componenttest.NewNopHost()))
-	return p.(*Processor)
+	proc := p.(*Processor)
+	proc.cancel()
+	<-proc.exportStopped
+	proc.processingTime = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	return proc
 }
 
 // send consumes n requests spread over the test tenants and returns the
@@ -278,4 +277,64 @@ func TestPreAggregationLogRetriesFailedFlush(t *testing.T) {
 	segments, err := os.ReadDir(h.logDir())
 	require.NoError(t, err)
 	assert.Len(t, segments, 1, "only the empty active segment should remain")
+}
+
+func TestPreAggregationLogRecoversExpiredWindows(t *testing.T) {
+	h := newLogTestHarness(t, config.PreAggregationConfig{Enabled: true, Log: config.PreAggregationLogConfig{Enabled: true}})
+	p := h.start()
+	sent := h.send(p, 10)
+	h.crash(t, p)
+	p = h.start()
+	p.processingTime = p.processingTime.Add(2 * time.Minute)
+	require.NoError(t, p.Shutdown(context.Background()))
+	assert.Equal(t, sent, h.exported.Load())
+}
+
+// Multiple processing windows collapse to the same longer-interval key.
+// Replay must preserve both chronological operand order and segment boundaries.
+func TestPreAggregationLogReplayOrder(t *testing.T) {
+	h := newLogTestHarness(t, config.PreAggregationConfig{Enabled: true, Log: config.PreAggregationLogConfig{Enabled: true}})
+	p := h.start()
+	longer := p.intervals[0]
+	longer.Duration = 10 * time.Minute
+	p.intervals = append(p.intervals, longer)
+	var seqs []uint64
+	for i := 0; i < 3; i++ {
+		seqs = append(seqs, p.preAggLog.seq)
+		// Distinguishable operands, including two segments in the same window.
+		h.send(p, (i+1)*3)
+		f, err := p.preAggLog.createSegment(p.preAggLog.seq + 1)
+		require.NoError(t, err)
+		_, err = p.preAggLog.activate(f, p.preAggLog.seq+1)
+		require.NoError(t, err)
+		clear(p.pending)
+		if i == 1 {
+			p.processingTime = p.processingTime.Add(time.Minute)
+		}
+	}
+	b := p.db.NewBatch()
+	_, err := p.replayPreAggLog(p.preAggLog, b, seqs)
+	require.NoError(t, err)
+	reader := b.Reader()
+	var got []int64
+	for {
+		_, key, value, ok, err := reader.Next()
+		require.NoError(t, err)
+		if !ok {
+			break
+		}
+		var k merger.Key
+		require.NoError(t, k.Unmarshal(key))
+		if k.Interval != 10*time.Minute {
+			continue
+		}
+		v := merger.NewValue(config.LimitConfig{}, config.LimitConfig{}, config.LimitConfig{}, config.LimitConfig{}, 160)
+		require.NoError(t, v.Unmarshal(value))
+		md, _, err := v.Finalize()
+		require.NoError(t, err)
+		got = append(got, sumIntValues(md))
+	}
+	require.Equal(t, []int64{4, 4, 4, 8, 8, 8, 12, 12, 12}, got)
+	require.NoError(t, b.Close())
+	h.crash(t, p)
 }
