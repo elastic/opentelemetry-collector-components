@@ -260,3 +260,4 @@ silently interpret stored hashes under a different algorithm. The checked-in
 hash-contract fixture guards this dependency.
 
 Design rationale: [recovery and format rollout](docs/recovery-and-format-rollout.md).
+Benchmark methodology and repeated results: [completed-work benchmark](docs/benchmarks/preaggregation-2026-10-29.md).
