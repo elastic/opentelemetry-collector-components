@@ -27,7 +27,11 @@ require (
 	go.uber.org/zap v1.28.0
 )
 
-require go.opentelemetry.io/otel/log v1.47.0 // indirect
+require (
+	github.com/hashicorp/go-uuid v1.0.3 // indirect
+	github.com/pandatix/go-abnf v0.5.1 // indirect
+	go.opentelemetry.io/otel/log v1.47.0 // indirect
+)
 
 require (
 	github.com/DataDog/zstd v1.5.6 // indirect
@@ -74,10 +78,10 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/coreinternal v0.164.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/prometheus/client_golang v1.23.2 // indirect
+	github.com/prometheus/client_golang v1.25.0 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
-	github.com/prometheus/common v0.72.1 // indirect
-	github.com/prometheus/procfs v0.21.0 // indirect
+	github.com/prometheus/common v0.73.0 // indirect
+	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/twmb/murmur3 v1.2.1 // indirect
 	github.com/ua-parser/uap-go v0.0.0-20251207011819-db9adb27a0b8 // indirect
