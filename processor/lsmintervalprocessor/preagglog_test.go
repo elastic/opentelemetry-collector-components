@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -47,10 +48,12 @@ const (
 // logTestHarness creates processors that share a data directory, so a test
 // can stop one without a clean shutdown and start another in its place.
 type logTestHarness struct {
-	t        *testing.T
-	dir      string
-	cfg      config.PreAggregationConfig
-	exported atomic.Int64
+	t             *testing.T
+	dir           string
+	cfg           config.PreAggregationConfig
+	exported      atomic.Int64
+	resourceLimit config.LimitConfig
+	intervals     []config.IntervalConfig
 }
 
 func newLogTestHarness(t *testing.T, cfg config.PreAggregationConfig) *logTestHarness {
@@ -71,7 +74,11 @@ func (h *logTestHarness) start() *Processor {
 		MetadataKeys:                   []string{"tenant"},
 		ExponentialHistogramMaxBuckets: 160,
 		PreAggregation:                 h.cfg,
+		ResourceLimit:                  h.resourceLimit,
 		Storage:                        config.DefaultStorageConfig(),
+	}
+	if h.intervals != nil {
+		cfg.Intervals = h.intervals
 	}
 	require.NoError(h.t, cfg.Validate())
 	p, err := NewFactory().CreateMetrics(context.Background(), processortest.NewNopSettings(metadata.Type), cfg, next)
@@ -337,4 +344,72 @@ func TestPreAggregationLogReplayOrder(t *testing.T) {
 	require.Equal(t, []int64{4, 4, 4, 8, 8, 8, 12, 12, 12}, got)
 	require.NoError(t, b.Close())
 	h.crash(t, p)
+}
+
+func TestPreAggregationLogRetainsFailedExport(t *testing.T) {
+	h := newLogTestHarness(t, config.PreAggregationConfig{Enabled: true, Log: config.PreAggregationLogConfig{Enabled: true}})
+	p := h.start()
+	sent := h.send(p, 30)
+	require.NoError(t, p.flushPendingLocked())
+	original := p.next
+	p.next, _ = consumer.NewMetrics(func(context.Context, pmetric.Metrics) error { return fmt.Errorf("downstream unavailable") })
+	boundary := p.processingTime.Add(time.Minute)
+	require.Error(t, p.export(context.Background(), boundary))
+	p.next = original
+	require.NoError(t, p.export(context.Background(), boundary))
+	require.Equal(t, sent, h.exported.Load())
+	require.NoError(t, p.export(context.Background(), boundary))
+	require.Equal(t, sent, h.exported.Load(), "successfully exported window must be deleted")
+	require.NoError(t, p.Shutdown(context.Background()))
+}
+
+func TestPreAggregationLogReplayOverflowMatchesLive(t *testing.T) {
+	var results []pmetric.Metrics
+	for _, recoverLog := range []bool{false, true} {
+		h := newLogTestHarness(t, config.PreAggregationConfig{Enabled: true, Log: config.PreAggregationLogConfig{Enabled: true}})
+		h.resourceLimit = config.LimitConfig{MaxCardinality: 1, Overflow: config.OverflowConfig{Attributes: []config.Attribute{{Key: "overflow", Value: true}}}}
+		h.intervals = []config.IntervalConfig{{Duration: time.Minute}, {Duration: 10 * time.Minute}}
+		p := h.start()
+		for window := 0; window < 3; window++ {
+			md := pmetric.NewMetrics()
+			for i := 0; i < 3; i++ {
+				rm := md.ResourceMetrics().AppendEmpty()
+				rm.Resource().Attributes().PutInt("service", int64(window+i))
+				m := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+				m.SetName("count")
+				sum := m.SetEmptySum()
+				sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+				dp := sum.DataPoints().AppendEmpty()
+				dp.SetIntValue(int64(window + i + 1))
+			}
+			require.NoError(t, p.ConsumeMetrics(context.Background(), md))
+			if recoverLog {
+				f, err := p.preAggLog.createSegment(p.preAggLog.seq + 1)
+				require.NoError(t, err)
+				_, err = p.preAggLog.activate(f, p.preAggLog.seq+1)
+				require.NoError(t, err)
+				clear(p.pending)
+			} else {
+				require.NoError(t, p.flushPendingLocked())
+			}
+			p.processingTime = p.processingTime.Add(time.Minute)
+		}
+		if recoverLog {
+			// Reopen with both intervals before replay; the harness defaults to one.
+			h.crash(t, p)
+			p = h.start()
+		}
+		result := pmetric.NewMetrics()
+		p.next, _ = consumer.NewMetrics(func(_ context.Context, md pmetric.Metrics) error {
+			rms := md.ResourceMetrics()
+			for i := 0; i < rms.Len(); i++ {
+				rms.At(i).CopyTo(result.ResourceMetrics().AppendEmpty())
+			}
+			return nil
+		})
+		p.processingTime = p.processingTime.Add(10 * time.Minute)
+		require.NoError(t, p.Shutdown(context.Background()))
+		results = append(results, result)
+	}
+	require.NoError(t, pmetrictest.CompareMetrics(results[0], results[1], pmetrictest.IgnoreMetricsOrder()))
 }

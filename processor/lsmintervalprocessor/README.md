@@ -234,3 +234,5 @@ window for retry, which can redeliver tenants that already succeeded. A crash
 between downstream acceptance and deleting the exported window can also
 redeliver it. Passthrough metrics are not recovered by this log. Host failure
 can lose writes since the last successful fsync.
+
+Benchmark methodology and repeated results: [completed-work benchmark](docs/benchmarks/preaggregation-2026-10-29.md).
