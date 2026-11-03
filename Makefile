@@ -94,10 +94,18 @@ remove-toolchain:
 genelasticcol:
 	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) --config ./distributions/elastic-components/manifest.yaml
 
+.PHONY: genotelsoak
+genotelsoak:
+	GOTOOLCHAIN=${GOTOOLCHAIN} GOOS=${TARGET_GOOS} GOARCH=${TARGET_GOARCH} $(BUILDER) --config ./distributions/otelsoak/manifest.yaml
+
 # Validate that the Elastic components collector can run with the example configuration.
 .PHONY: elasticcol-validate
 elasticcol-validate: genelasticcol
 	./_build/elastic-collector-components validate --config ./distributions/elastic-components/config.yaml
+
+.PHONY: otelsoak-image-validate
+otelsoak-image-validate: genotelsoak
+	ELASTIC_APM_SERVER_URL=http://localhost:8200 ELASTIC_APM_API_KEY=foobar ./_build/otelsoak validate --config ./distributions/otelsoak/config.yaml
 
 .PHONY: builddocker
 builddocker:
@@ -114,6 +122,20 @@ builddocker:
 		IMAGE_NAME=elastic-collector-components:$(TAG); \
 	fi; \
 	docker build -t $$IMAGE_NAME -f distributions/elastic-components/Dockerfile .
+
+.PHONY: buildotelsoakdocker
+buildotelsoakdocker:
+	@if [ -z "$(TAG)" ]; then \
+		echo "TAG is not set. Please provide a tag using 'make buildotelsoakdocker TAG=<tag>'"; \
+		exit 1; \
+	fi
+	TARGET_GOOS=linux CGO_ENABLED=0 $(MAKE) genotelsoak
+	@if [ -n "$(USERNAME)" ]; then \
+		IMAGE_NAME=$(USERNAME)/otelsoak:$(TAG); \
+	else \
+		IMAGE_NAME=otelsoak:$(TAG); \
+	fi; \
+	docker build -t $$IMAGE_NAME -f distributions/otelsoak/Dockerfile .
 
 # Validate that the Elastic components collector can run with the example otelsoak configuration.
 .PHONY: otelsoak-validate
