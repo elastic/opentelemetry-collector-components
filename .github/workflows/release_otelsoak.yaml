@@ -20,7 +20,7 @@ on:
     branches:
       - main
     paths:
-      - distributions/otelsoak/Makefile
+      - distributions/otelsoak/manifest.yaml
 
 permissions:
   contents: read
@@ -47,14 +47,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          version_file=distributions/otelsoak/Makefile
+          version_file=distributions/otelsoak/manifest.yaml
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             new_version="$INPUT_VERSION"
             previous_version="$(make -C distributions/otelsoak get-version)"
           else
             new_version="$(make -C distributions/otelsoak get-version)"
             if git cat-file -e "HEAD^:${version_file}" 2>/dev/null; then
-              previous_version="$(git show "HEAD^:${version_file}" | sed -n 's/^VERSION := //p')"
+              previous_version="$(git show "HEAD^:${version_file}" | sed -n 's/^  version: /v/p')"
             else
               previous_version="v0.0.0"
             fi
@@ -110,9 +110,10 @@ jobs:
           set -euo pipefail
 
           branch="update-otelsoak-version-${OTELSOAK_VERSION}-${GITHUB_RUN_ID}"
-          sed -i "s/^VERSION := .*/VERSION := ${OTELSOAK_VERSION}/" distributions/otelsoak/Makefile
+          manifest_version="${OTELSOAK_VERSION#v}"
+          sed -i "s/^  version: .*/  version: ${manifest_version}/" distributions/otelsoak/manifest.yaml
           git checkout -b "$branch"
-          git add distributions/otelsoak/Makefile
+          git add distributions/otelsoak/manifest.yaml
           git commit -m "Update otelsoak image version to ${OTELSOAK_VERSION}"
           git push origin "$branch"
           gh pr create \
