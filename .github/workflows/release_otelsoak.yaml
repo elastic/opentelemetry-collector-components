@@ -50,9 +50,9 @@ jobs:
           version_file=distributions/otelsoak/manifest.yaml
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             new_version="$INPUT_VERSION"
-            previous_version="$(make -C distributions/otelsoak get-version)"
+            previous_version="$(make --no-print-directory -C distributions/otelsoak get-version)"
           else
-            new_version="$(make -C distributions/otelsoak get-version)"
+            new_version="$(make --no-print-directory -C distributions/otelsoak get-version)"
             if git cat-file -e "HEAD^:${version_file}" 2>/dev/null; then
               previous_version="$(git show "HEAD^:${version_file}" | sed -n 's/^  version: /v/p')"
             else
