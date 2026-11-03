@@ -10,4 +10,4 @@ make buildotelsoakdocker TAG=dev
 
 The image runs as a non-root user and reads `/etc/otelsoak/config.yaml` by default. Override the config by mounting a file at that path. Set `ELASTIC_APM_SERVER_URL` and `ELASTIC_APM_API_KEY` to target an Elastic APM Server.
 
-The intended release image is `docker.elastic.co/observability-ci/otelsoak`, alongside otelbench. This spike's workflow builds and validates the image without publishing it to the registry or creating a release tag.
+The release workflow publishes versioned `linux/amd64` and `linux/arm64` images to `docker.elastic.co/observability-ci/otelsoak`, alongside otelbench. Changing `VERSION` in this directory's Makefile on `main` triggers the release; the pull request workflow only builds and validates the image.
