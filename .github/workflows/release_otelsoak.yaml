@@ -97,30 +97,27 @@ jobs:
         with:
           token: ${{ steps.get_token.outputs.token }}
 
-      - uses: elastic/oblt-actions/git/setup@208d03b3c3dfec874e5f2d73b2c938e493fc6953
-        with:
-          github-token: ${{ steps.get_token.outputs.token }}
-
-      - name: Update version and open PR
+      - name: Update version
         shell: bash
         env:
-          GH_TOKEN: ${{ steps.get_token.outputs.token }}
           OTELSOAK_VERSION: ${{ needs.check-release.outputs.version }}
         run: |
           set -euo pipefail
 
-          branch="update-otelsoak-version-${OTELSOAK_VERSION}-${GITHUB_RUN_ID}"
           manifest_version="${OTELSOAK_VERSION#v}"
           sed -i "s/^  version: .*/  version: ${manifest_version}/" distributions/otelsoak/manifest.yaml
-          git checkout -b "$branch"
-          git add distributions/otelsoak/manifest.yaml
-          git commit -m "Update otelsoak image version to ${OTELSOAK_VERSION}"
-          git push origin "$branch"
-          gh pr create \
-            --title "[distributions/otelsoak] Release ${OTELSOAK_VERSION}" \
-            --base main \
-            --head "$branch" \
-            --body "Bump the otelsoak image version to ${OTELSOAK_VERSION}. Merging this PR publishes the image to the Elastic container registry."
+
+      - name: Create version bump PR
+        uses: peter-evans/create-pull-request@3afad46a91e1234a4e2800ffa47bd6c2a6b66b6c
+        with:
+          token: ${{ steps.get_token.outputs.token }}
+          add-paths: distributions/otelsoak/manifest.yaml
+          commit-message: "Update otelsoak image version to ${{ needs.check-release.outputs.version }}"
+          branch: update-otelsoak-version-${{ needs.check-release.outputs.version }}
+          delete-branch: true
+          title: "[distributions/otelsoak] Release ${{ needs.check-release.outputs.version }}"
+          base: main
+          body: "Bump the otelsoak image version to ${{ needs.check-release.outputs.version }}. Merging this PR publishes the image to the Elastic container registry."
 
   validate:
     if: github.event_name != 'workflow_dispatch'
