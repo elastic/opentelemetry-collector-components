@@ -1,0 +1,54 @@
+receivers:
+  loadgen:
+
+exporters:
+  otlp:
+    endpoint: "${env:ELASTIC_APM_SERVER_URL:-localhost:8200}"
+    headers:
+      Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
+    sending_queue:
+      enabled: false
+    timeout: 60s
+  otlphttp:
+    endpoint: "${env:ELASTIC_APM_SERVER_URL:-http://localhost:8200}"
+    headers:
+      Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
+    sending_queue:
+      enabled: false
+    timeout: 60s
+  debug:
+
+processors:
+  transform/rewrite:
+    trace_statements:
+      - context: span
+        statements:
+          - set(trace_id.string, Substring(MD5(UUID()), 0, 32))
+  ratelimit:
+    strategy: records
+    rate: 5000
+    burst: 5000
+    throttle_behavior: delay
+
+service:
+  pipelines:
+    logs:
+      receivers: [loadgen]
+      processors: [ratelimit, transform/rewrite]
+      exporters: [otlp, debug]
+    metrics:
+      receivers: [loadgen]
+      processors: [ratelimit, transform/rewrite]
+      exporters: [otlp, debug]
+    traces:
+      receivers: [loadgen]
+      processors: [ratelimit, transform/rewrite]
+      exporters: [otlp, debug]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '127.0.0.1'
+                port: 8888

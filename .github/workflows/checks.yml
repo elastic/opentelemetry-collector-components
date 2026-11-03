@@ -227,6 +227,8 @@ jobs:
         run: make elasticcol-validate
       - name: Validate otelsoak example config
         run: make otelsoak-validate
+      - name: Build and validate the otelsoak image distribution
+        run: make otelsoak-image-validate
 
   integration-tests-matrix:
     strategy:
