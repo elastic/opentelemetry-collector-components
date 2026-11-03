@@ -2,6 +2,11 @@ name: otelsoak-image
 run-name: Build or release otelsoak Docker image
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version of the otelsoak image to release, following "vN.N.N".
+        required: true
   pull_request:
     paths:
       - .github/workflows/release_otelsoak.yaml
@@ -21,7 +26,103 @@ permissions:
   contents: read
 
 jobs:
+  check-release:
+    if: github.event_name != 'pull_request'
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check-version.outputs.version }}
+      release_required: ${{ steps.check-version.outputs.release_required }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check whether an otelsoak release is required
+        id: check-version
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+
+          version_file=distributions/otelsoak/Makefile
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            new_version="$INPUT_VERSION"
+            previous_version="$(make -C distributions/otelsoak get-version)"
+          else
+            new_version="$(make -C distributions/otelsoak get-version)"
+            if git cat-file -e "HEAD^:${version_file}" 2>/dev/null; then
+              previous_version="$(git show "HEAD^:${version_file}" | sed -n 's/^VERSION := //p')"
+            else
+              previous_version="v0.0.0"
+            fi
+          fi
+
+          if [[ ! "$new_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid otelsoak version: $new_version (expected vN.N.N)." >&2
+            exit 1
+          fi
+
+          latest_version="$(printf '%s\n%s\n' "$previous_version" "$new_version" | sort -V | tail -n 1)"
+          if [[ "$latest_version" == "$new_version" && "$new_version" != "$previous_version" ]]; then
+            release_required=true
+          else
+            release_required=false
+          fi
+
+          echo "Previous version: $previous_version"
+          echo "New version: $new_version"
+          echo "Release required: $release_required"
+          echo "version=$new_version" >> "$GITHUB_OUTPUT"
+          echo "release_required=$release_required" >> "$GITHUB_OUTPUT"
+
+  create-version-pr:
+    if: github.event_name == 'workflow_dispatch' && needs.check-release.outputs.release_required == 'true'
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    needs: [check-release]
+    steps:
+      - name: Get token to checkout and create a PR
+        id: get_token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.OBS_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.OBS_AUTOMATION_APP_PEM }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.get_token.outputs.token }}
+
+      - uses: elastic/oblt-actions/git/setup@208d03b3c3dfec874e5f2d73b2c938e493fc6953
+        with:
+          github-token: ${{ steps.get_token.outputs.token }}
+
+      - name: Update version and open PR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.get_token.outputs.token }}
+          OTELSOAK_VERSION: ${{ needs.check-release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          branch="update-otelsoak-version-${OTELSOAK_VERSION}-${GITHUB_RUN_ID}"
+          sed -i "s/^VERSION := .*/VERSION := ${OTELSOAK_VERSION}/" distributions/otelsoak/Makefile
+          git checkout -b "$branch"
+          git add distributions/otelsoak/Makefile
+          git commit -m "Update otelsoak image version to ${OTELSOAK_VERSION}"
+          git push origin "$branch"
+          gh pr create \
+            --title "[distributions/otelsoak] Release ${OTELSOAK_VERSION}" \
+            --base main \
+            --head "$branch" \
+            --body "Bump the otelsoak image version to ${OTELSOAK_VERSION}. Merging this PR publishes the image to the Elastic container registry."
+
   validate:
+    if: github.event_name != 'workflow_dispatch'
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
@@ -46,15 +147,16 @@ jobs:
             otelsoak:ci validate --config /etc/otelsoak/config.yaml
 
   build-and-push:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && needs.check-release.outputs.release_required == 'true'
     timeout-minutes: 30
     runs-on: ubuntu-latest
-    needs: [validate]
+    needs: [check-release, validate]
     strategy:
       matrix:
         arch: [amd64, arm64]
     env:
       ELASTIC_REGISTRY: "docker.elastic.co/observability-ci/otelsoak"
+      OTELSOAK_VERSION: ${{ needs.check-release.outputs.version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -65,10 +167,6 @@ jobs:
 
       - name: Install tools
         run: make install-tools
-
-      - name: Get otelsoak version
-        working-directory: ./distributions/otelsoak
-        run: echo "OTELOSOAK_VERSION=$(make get-version)" >> $GITHUB_ENV
 
       - uses: docker/setup-qemu-action@v3
 
@@ -91,22 +189,17 @@ jobs:
           file: distributions/otelsoak/Dockerfile
           platforms: linux/${{ matrix.arch }}
           push: true
-          tags: ${{ env.ELASTIC_REGISTRY }}:${{ env.OTELOSOAK_VERSION }}-${{ matrix.arch }}
+          tags: ${{ env.ELASTIC_REGISTRY }}:${{ env.OTELSOAK_VERSION }}-${{ matrix.arch }}
 
   create-multiarch-tag:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && needs.check-release.outputs.release_required == 'true'
     timeout-minutes: 15
     runs-on: ubuntu-latest
-    needs: [build-and-push]
+    needs: [check-release, build-and-push]
     env:
       ELASTIC_REGISTRY: "docker.elastic.co/observability-ci/otelsoak"
+      OTELSOAK_VERSION: ${{ needs.check-release.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
-
-      - name: Get otelsoak version
-        working-directory: ./distributions/otelsoak
-        run: echo "OTELOSOAK_VERSION=$(make get-version)" >> $GITHUB_ENV
-
       - uses: docker/setup-buildx-action@v3
 
       - name: Login to Elastic container registry
@@ -119,6 +212,6 @@ jobs:
       - name: Create multi-platform image tag
         run: |
           docker buildx imagetools create \
-            --tag "${ELASTIC_REGISTRY}:${OTELOSOAK_VERSION}" \
-            "${ELASTIC_REGISTRY}:${OTELOSOAK_VERSION}-amd64" \
-            "${ELASTIC_REGISTRY}:${OTELOSOAK_VERSION}-arm64"
+            --tag "${ELASTIC_REGISTRY}:${OTELSOAK_VERSION}" \
+            "${ELASTIC_REGISTRY}:${OTELSOAK_VERSION}-amd64" \
+            "${ELASTIC_REGISTRY}:${OTELSOAK_VERSION}-arm64"
