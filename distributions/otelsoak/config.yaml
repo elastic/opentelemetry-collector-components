@@ -9,15 +9,6 @@ exporters:
     sending_queue:
       enabled: false
     timeout: 60s
-  otlphttp:
-    endpoint: "${env:ELASTIC_APM_SERVER_URL:-http://localhost:8200}"
-    headers:
-      Authorization: "ApiKey ${env:ELASTIC_APM_API_KEY}"
-    sending_queue:
-      enabled: false
-    timeout: 60s
-  debug:
-
 processors:
   transform/rewrite:
     trace_statements:
@@ -35,15 +26,15 @@ service:
     logs:
       receivers: [loadgen]
       processors: [ratelimit, transform/rewrite]
-      exporters: [otlp, debug]
+      exporters: [otlp]
     metrics:
       receivers: [loadgen]
       processors: [ratelimit, transform/rewrite]
-      exporters: [otlp, debug]
+      exporters: [otlp]
     traces:
       receivers: [loadgen]
       processors: [ratelimit, transform/rewrite]
-      exporters: [otlp, debug]
+      exporters: [otlp]
   telemetry:
     metrics:
       readers:
