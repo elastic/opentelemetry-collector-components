@@ -168,7 +168,7 @@ jobs:
 
       - uses: docker/setup-qemu-action@v3
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Login to Elastic container registry
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
@@ -198,7 +198,7 @@ jobs:
       ELASTIC_REGISTRY: "docker.elastic.co/observability-ci/otelsoak"
       OTELSOAK_VERSION: ${{ needs.check-release.outputs.version }}
     steps:
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Login to Elastic container registry
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
