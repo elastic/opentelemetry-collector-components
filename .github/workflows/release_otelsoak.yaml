@@ -181,7 +181,7 @@ jobs:
         run: TARGET_GOOS=linux TARGET_GOARCH=${{ matrix.arch }} CGO_ENABLED=0 make genotelsoak
 
       - name: Build and push architecture image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: distributions/otelsoak/Dockerfile
