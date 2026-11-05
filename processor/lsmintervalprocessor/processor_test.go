@@ -709,3 +709,185 @@ func TestWriteStallListener(t *testing.T) {
 	assert.Equal(t, reasonAttr, dps[0].Attributes)
 	assert.GreaterOrEqual(t, dps[0].Value, 0.01)
 }
+
+// TestBudgetWithoutLimits asserts that budget keys are ignored when no
+// limit is configured, keeping such deployments on the single-budget
+// stored format.
+func TestBudgetWithoutLimits(t *testing.T) {
+	md := client.NewMetadata(map[string][]string{"partition": {"0"}})
+	for _, tc := range []struct {
+		name  string
+		limit int64
+		want  string
+	}{
+		{name: "no_limits", limit: 0, want: ""},
+		{name: "datapoint_limit", limit: 1, want: "0\x00"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{
+				BudgetMetadataKeys:             []string{"partition"},
+				Intervals:                      []config.IntervalConfig{{Duration: time.Minute}},
+				DatapointLimit:                 config.LimitConfig{MaxCardinality: tc.limit},
+				ExponentialHistogramMaxBuckets: 160,
+			}
+			p := newTestProcessor(t, cfg, processortest.NewNopSettings(metadata.Type).TelemetrySettings, consumertest.NewNop())
+			assert.Equal(t, tc.want, p.(*Processor).budget(md))
+		})
+	}
+}
+
+// TestBudgetMetadataKeys asserts that cardinality limits apply per distinct
+// value of budget_metadata_keys while every budget still aggregates into the
+// same stored value: one export, budget keys absent from the export context.
+func TestBudgetMetadataKeys(t *testing.T) {
+	t.Parallel()
+
+	// record is one ConsumeMetrics call carrying one resource with a single
+	// delta sum datapoint of value 1.
+	type record struct {
+		metadata map[string][]string
+		resource string
+	}
+	p0 := map[string][]string{"partition": {"0"}}
+	p1 := map[string][]string{"partition": {"1"}}
+	for _, tc := range []struct {
+		name         string
+		budgetKeys   []string
+		records      []record
+		wantAdmitted int              // resources exported outside the overflow bucket
+		wantValues   map[string]int64 // optional exact datapoint sum per admitted resource
+		wantOverflow int64            // datapoint sum of the overflow bucket
+	}{
+		{
+			name: "no_budget_keys_single_budget",
+			records: []record{
+				{p0, "A"}, {p0, "B"}, {p1, "C"},
+			},
+			wantAdmitted: 2,
+			wantOverflow: 1,
+		},
+		{
+			name:       "capacity_per_budget",
+			budgetKeys: []string{"partition"},
+			records: []record{
+				{p0, "A"}, {p0, "B"}, {p0, "C"},
+				{p1, "D"}, {p1, "E"},
+			},
+			wantAdmitted: 4,
+			wantOverflow: 1,
+		},
+		{
+			name:       "shared_resource_takes_one_slot",
+			budgetKeys: []string{"partition"},
+			records: []record{
+				{p0, "A"}, {p0, "B"},
+				{p1, "A"}, {p1, "C"},
+			},
+			wantAdmitted: 3,
+			wantValues:   map[string]int64{"A": 2, "B": 1, "C": 1},
+		},
+		{
+			name:       "missing_budget_metadata_shares_default_budget",
+			budgetKeys: []string{"partition"},
+			records: []record{
+				{nil, "A"}, {nil, "B"}, {nil, "C"},
+				{p0, "D"},
+			},
+			wantAdmitted: 3,
+			wantOverflow: 1,
+		},
+		{
+			name:       "budget_is_tuple_of_all_keys",
+			budgetKeys: []string{"topic", "partition"},
+			records: []record{
+				{map[string][]string{"topic": {"t1"}, "partition": {"0"}}, "A"},
+				{map[string][]string{"topic": {"t1"}, "partition": {"0"}}, "B"},
+				{map[string][]string{"topic": {"t1"}, "partition": {"0"}}, "C"},
+				{map[string][]string{"topic": {"t2"}, "partition": {"0"}}, "D"},
+				{map[string][]string{"topic": {"t2"}, "partition": {"0"}}, "E"},
+				{map[string][]string{"topic": {"t2"}, "partition": {"0"}}, "F"},
+			},
+			wantAdmitted: 4,
+			wantOverflow: 2,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &config.Config{
+				MetadataKeys:       []string{"tenant"},
+				BudgetMetadataKeys: tc.budgetKeys,
+				Intervals:          []config.IntervalConfig{{Duration: time.Minute}},
+				ResourceLimit: config.LimitConfig{
+					MaxCardinality: 2,
+					Overflow: config.OverflowConfig{
+						Attributes: []config.Attribute{{Key: "overflow", Value: true}},
+					},
+				},
+				ExponentialHistogramMaxBuckets: 160,
+			}
+
+			var mu sync.Mutex
+			var exports []pmetric.Metrics
+			var exportMetadata []client.Metadata
+			next, err := consumer.NewMetrics(func(ctx context.Context, md pmetric.Metrics) error {
+				mu.Lock()
+				defer mu.Unlock()
+				exports = append(exports, md)
+				exportMetadata = append(exportMetadata, client.FromContext(ctx).Metadata)
+				return nil
+			})
+			require.NoError(t, err)
+			settings := processortest.NewNopSettings(metadata.Type)
+			p := newTestProcessor(t, cfg, settings.TelemetrySettings, next)
+			require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+			for _, r := range tc.records {
+				md := map[string][]string{"tenant": {"t1"}}
+				for k, v := range r.metadata {
+					md[k] = v
+				}
+				ctx := client.NewContext(context.Background(), client.Info{Metadata: client.NewMetadata(md)})
+
+				metrics := pmetric.NewMetrics()
+				rm := metrics.ResourceMetrics().AppendEmpty()
+				rm.Resource().Attributes().PutStr("service.name", r.resource)
+				m := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+				m.SetName("m")
+				sum := m.SetEmptySum()
+				sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+				sum.DataPoints().AppendEmpty().SetIntValue(1)
+				require.NoError(t, p.ConsumeMetrics(ctx, metrics))
+			}
+			// Shutdown forces all consumed data to be immediately finalised.
+			require.NoError(t, p.Shutdown(context.Background()))
+
+			mu.Lock()
+			defer mu.Unlock()
+			// Budget keys do not partition storage: one export, carrying
+			// only the configured metadata keys.
+			require.Len(t, exports, 1)
+			assert.Equal(t, []string{"t1"}, exportMetadata[0].Get("tenant"))
+			for _, k := range tc.budgetKeys {
+				assert.Nil(t, exportMetadata[0].Get(k))
+			}
+
+			admitted := map[string]int64{}
+			var overflow int64
+			for _, rm := range exports[0].ResourceMetrics().All() {
+				dp := rm.ScopeMetrics().At(0).Metrics().At(0).Sum().DataPoints().At(0)
+				if _, ok := rm.Resource().Attributes().Get("overflow"); ok {
+					overflow += dp.IntValue()
+					continue
+				}
+				name, _ := rm.Resource().Attributes().Get("service.name")
+				admitted[name.Str()] += dp.IntValue()
+			}
+			assert.Len(t, admitted, tc.wantAdmitted)
+			if tc.wantValues != nil {
+				assert.Equal(t, tc.wantValues, admitted)
+			}
+			assert.Equal(t, tc.wantOverflow, overflow)
+		})
+	}
+}

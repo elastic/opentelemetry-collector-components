@@ -28,6 +28,7 @@ with db-backed persistence so aggregation state can survive restarts and large b
 | `intervals[].duration` | duration | required | Aggregation window for the interval. |
 | `intervals[].statements` | list | `[]` | OTTL datapoint statements applied after aggregation for this interval. |
 | `metadata_keys` | list | `[]` | Client metadata keys to partition aggregation. Keys are case-insensitive and must be unique. |
+| `budget_metadata_keys` | list | `[]` | Client metadata keys whose values select the cardinality budget. Each limit applies per distinct combination of values. Keys are case-insensitive and must be unique. |
 | `resource_limit` | object | `{}` | Resource cardinality limit (`max_cardinality`) and overflow attributes. |
 | `scope_limit` | object | `{}` | Scope cardinality limit (`max_cardinality`) and overflow attributes. |
 | `metric_limit` | object | `{}` | Metric cardinality limit (`max_cardinality`) and overflow attributes. |
@@ -129,3 +130,28 @@ collector from unbounded aggregation growth. When a `max_cardinality` limit is r
 
 Overflow counts are approximate. The processor uses a HyperLogLog estimator to track the unique
 identities that exceeded each limit.
+
+#### Cardinality budgets
+
+By default every limit applies once per aggregated value, so a tenant whose data reaches the
+processor through several sources (for example several Kafka partitions) shares one budget when
+the sources land on the same instance and gets one budget per instance otherwise.
+`budget_metadata_keys` makes the limits apply per distinct combination of the named client
+metadata values instead, independent of how the sources are placed:
+
+- A new resource, scope, metric or datapoint takes one slot in the budget that delivered it.
+  An entity delivered through several budgets takes a single slot, in the budget that delivered it
+  first. Once a budget is full its new entities overflow as described above.
+- Budget keys do not split the aggregation and are not propagated: data from every budget merges
+  into the same aggregate and the exported metrics are unchanged. Requests without any of the keys
+  share one default budget.
+- The stored format only changes for values that hold a budget other than the default, so leaving
+  the option unset, or setting it without any `max_cardinality`, keeps the on-disk format identical.
+
+```yaml
+processors:
+  lsminterval:
+    budget_metadata_keys: [kafka.partition]
+    resource_limit:
+      max_cardinality: 8000 # per partition
+```

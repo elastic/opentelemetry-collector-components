@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -59,6 +60,7 @@ type Processor struct {
 	telemetryBuilder   *metadata.TelemetryBuilder
 	cfg                *config.Config
 	sortedMetadataKeys []string
+	budgetKeys         []string
 
 	db      *pebble.DB
 	dataDir string
@@ -135,12 +137,21 @@ func newProcessor(
 
 	sortedMetadataKeys := append([]string{}, cfg.MetadataKeys...)
 	sort.Strings(sortedMetadataKeys)
+	// Without any limit nothing can overflow, so budgets would only add
+	// bookkeeping and a v2 stored format; every request then shares the
+	// default budget.
+	var budgetKeys []string
+	if cfg.ResourceLimit.MaxCardinality > 0 || cfg.ScopeLimit.MaxCardinality > 0 ||
+		cfg.MetricLimit.MaxCardinality > 0 || cfg.DatapointLimit.MaxCardinality > 0 {
+		budgetKeys = cfg.BudgetMetadataKeys
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Processor{
 		telemetryBuilder:   telemetryBuilder,
 		cfg:                cfg,
 		sortedMetadataKeys: sortedMetadataKeys,
+		budgetKeys:         budgetKeys,
 		dataDir:            dataDir,
 		dbOpts:             dbOpts,
 		wOpts:              writeOpts,
@@ -270,6 +281,8 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		p.cfg.DatapointLimit,
 		p.cfg.ExponentialHistogramMaxBuckets,
 	)
+	clientInfo := client.FromContext(ctx)
+	budget := p.budget(clientInfo.Metadata)
 
 	var errs []error
 	nextMD := pmetric.NewMetrics()
@@ -295,12 +308,12 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 						// Copy across to nextMD below.
 						break
 					}
-					if err := v.MergeMetric(rm, sm, m); err != nil {
+					if err := v.MergeMetric(rm, sm, m, budget); err != nil {
 						errs = append(errs, err)
 					}
 					continue
 				case pmetric.MetricTypeSum, pmetric.MetricTypeHistogram, pmetric.MetricTypeExponentialHistogram:
-					if err := v.MergeMetric(rm, sm, m); err != nil {
+					if err := v.MergeMetric(rm, sm, m, budget); err != nil {
 						errs = append(errs, err)
 					}
 					continue
@@ -337,7 +350,6 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		return errors.Join(append(errs, fmt.Errorf("failed to marshal value to proto binary: %w", err))...)
 	}
 
-	clientInfo := client.FromContext(ctx)
 	clientMetadata := make([]merger.KeyValues, 0, len(p.sortedMetadataKeys))
 	attributes := make([]attribute.KeyValue, 0, len(p.sortedMetadataKeys))
 	for _, k := range p.sortedMetadataKeys {
@@ -376,6 +388,22 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+// budget names the cardinality budget for a request from the values of the
+// configured budget metadata keys. Requests carrying none of the keys share
+// the default budget.
+func (p *Processor) budget(md client.Metadata) string {
+	var b strings.Builder
+	for _, k := range p.budgetKeys {
+		b.WriteString(strings.Join(md.Get(k), ","))
+		b.WriteByte(0)
+	}
+	if b.Len() == len(p.budgetKeys) {
+		// Only separators written: none of the keys is present.
+		return ""
+	}
+	return b.String()
 }
 
 func (p *Processor) mergeToBatch(mb *mergeBuffer, clientMetadata []merger.KeyValues) (err error) {
