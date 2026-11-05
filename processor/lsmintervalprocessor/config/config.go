@@ -60,6 +60,14 @@ type Config struct {
 	// trigger a validation error.
 	MetadataKeys []string `mapstructure:"metadata_keys"`
 
+	// BudgetMetadataKeys is a list of client.Metadata keys whose values
+	// select the cardinality budget: each max_cardinality applies per
+	// distinct combination of values (for example per Kafka partition).
+	// Unlike MetadataKeys, budget keys neither split the aggregation nor
+	// propagate. Entries are case-insensitive. Duplicated entries will
+	// trigger a validation error.
+	BudgetMetadataKeys []string `mapstructure:"budget_metadata_keys"`
+
 	ResourceLimit  LimitConfig `mapstructure:"resource_limit"`
 	ScopeLimit     LimitConfig `mapstructure:"scope_limit"`
 	MetricLimit    LimitConfig `mapstructure:"metric_limit"`
@@ -204,13 +212,11 @@ type Attribute struct {
 
 func (cfg *Config) Validate() error {
 	// TODO (lahsivjar): Add validation for interval duration
-	uniq := map[string]bool{}
-	for _, k := range cfg.MetadataKeys {
-		l := strings.ToLower(k)
-		if _, has := uniq[l]; has {
-			return fmt.Errorf("duplicate entry in metadata_keys: %q (case-insensitive)", l)
-		}
-		uniq[l] = true
+	if err := validateUniqueKeys("metadata_keys", cfg.MetadataKeys); err != nil {
+		return err
+	}
+	if err := validateUniqueKeys("budget_metadata_keys", cfg.BudgetMetadataKeys); err != nil {
+		return err
 	}
 
 	if cfg.ExponentialHistogramMaxBuckets <= 0 {
@@ -220,6 +226,18 @@ func (cfg *Config) Validate() error {
 		)
 	}
 	return cfg.Storage.Validate()
+}
+
+func validateUniqueKeys(field string, keys []string) error {
+	uniq := map[string]bool{}
+	for _, k := range keys {
+		l := strings.ToLower(k)
+		if _, has := uniq[l]; has {
+			return fmt.Errorf("duplicate entry in %s: %q (case-insensitive)", field, l)
+		}
+		uniq[l] = true
+	}
+	return nil
 }
 
 func CreateDefaultConfig() component.Config {
