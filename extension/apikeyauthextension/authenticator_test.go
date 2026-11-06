@@ -1054,6 +1054,15 @@ func TestAuthenticator_CustomHeader(t *testing.T) {
 			headers:     map[string][]string{"X-Api-Key": {"ApiKey " + encoded}},
 			expectedErr: "rpc error: code = Unauthenticated desc = Bearer prefix not found, expected Bearer <value>",
 		},
+		"raw_key_surrounding_whitespace": {
+			header:  "X-Amz-Firehose-Access-Key",
+			headers: map[string][]string{"X-Amz-Firehose-Access-Key": {"  " + encoded + " \n"}},
+		},
+		"custom_scheme_surrounding_whitespace": {
+			header:  "X-Api-Key",
+			scheme:  "Bearer",
+			headers: map[string][]string{"X-Api-Key": {" Bearer " + encoded + "\t"}},
+		},
 		"raw_key_missing_header": {
 			header:      "X-Amz-Firehose-Access-Key",
 			headers:     map[string][]string{},

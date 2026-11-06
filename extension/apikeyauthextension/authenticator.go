@@ -239,6 +239,8 @@ func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (s
 		return "", "", fmt.Errorf("missing header %q, expected %q", header, strings.TrimSpace(scheme+" <value>"))
 	}
 
+	orig = strings.TrimSpace(orig)
+
 	// The expected format of the header is, by default:
 	//
 	//     Authorization: ApiKey base64(ID:APIKey)
