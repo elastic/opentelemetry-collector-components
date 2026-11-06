@@ -23,7 +23,33 @@ The receiver generates telemetry as quickly as possible. Any rate limiting shoul
 
 ## Telemetry cardinality
 
-The receiver only rewrites timestamps to Now, and does not modify any other fields. Therefore, it will have the same cardinality as the original canned data. To simulate higher cardinality (e.g. trace ID, service name), use `transform` processor with OTTL to rewrite fields. 
+The receiver only rewrites timestamps to Now, and does not modify any other fields by default. Therefore, it will have the same cardinality as the original canned data. To simulate higher cardinality (e.g. service name), use `transform` processor with OTTL to rewrite fields. For trace IDs, prefer `traces::rewrite_ids` below: an OTTL per-span rewrite breaks span grouping, and replaying without any rewrite re-sends the same trace IDs on every pass.
+
+## Tail-based sampling testing
+
+Two traces options exist to exercise tail-based sampling backends:
+
+```yaml
+receivers:
+  loadgen:
+    traces:
+      # rewrite_ids deterministically remaps trace/span IDs per replay pass:
+      # spans sharing a trace ID keep sharing one (even across JSONL lines
+      # within a pass, parent-child and link IDs included), while every pass
+      # and every run produces globally new trace IDs with the same
+      # statistical shape.
+      rewrite_ids: true
+      # late_spans holds back spans from emitted payloads and re-emits them
+      # after a wall-clock delay, exercising late-arrival paths (partial trace
+      # at decision time, decision cache hits, re-decision after eviction).
+      late_spans:
+        fraction: 0.05 # probability a payload gets spans held back
+        spans: 1       # max spans held back per selected payload
+        delay_min: 10s
+        delay_max: 60s
+```
+
+Payloads whose span count does not exceed `spans` are never split, since delaying a whole payload does not make any span late relative to the rest of its trace.
 
 ## Config
 
