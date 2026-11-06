@@ -28,6 +28,15 @@ import (
 	"go.opentelemetry.io/collector/confmap"
 )
 
+const (
+	// defaultHeader is the header that holds the API Key by default.
+	defaultHeader = "Authorization"
+
+	// defaultScheme is the authentication scheme that precedes the API Key
+	// by default.
+	defaultScheme = "ApiKey"
+)
+
 var defaultElasticsearchRetryConfig = RetryConfig{
 	Enabled:         true,
 	MaxRetries:      3,
@@ -39,6 +48,15 @@ type Config struct {
 	// ClientConfig configures the outbound Elasticsearch HTTP client.
 	// In this extension, timeout > 0 bounds the privilege-check request.
 	ClientConfig confighttp.ClientConfig `mapstructure:",squash"`
+
+	// Header is the request header that holds the API Key.
+	// Defaults to "Authorization".
+	Header string `mapstructure:"header"`
+
+	// Scheme is the authentication scheme that precedes the API Key in
+	// the header, matched case-insensitively. Defaults to "ApiKey".
+	// If empty, the header value is the raw API Key.
+	Scheme string `mapstructure:"scheme"`
 
 	// ApplicationPrivileges defines the application privileges
 	// that are queried when verifying API Keys.
@@ -210,6 +228,8 @@ func createDefaultConfig() component.Config {
 
 	return &Config{
 		ClientConfig: clientConfig,
+		Header:       defaultHeader,
+		Scheme:       defaultScheme,
 		Cache: CacheConfig{
 			Capacity:         1000,
 			PBKDF2Iterations: 1000,
@@ -306,6 +326,9 @@ func (dr *DynamicResource) Validate() error {
 
 // Validate validates the Config.
 func (cfg *Config) Validate() error {
+	if cfg.Header == "" {
+		return errors.New("header must be non-empty")
+	}
 	// Build a set of metadata keys in cache.key_metadata for quick lookup
 	keyMetadataSet := make(map[string]bool)
 	for _, key := range cfg.Cache.KeyMetadata {

@@ -54,17 +54,16 @@ import (
 )
 
 const (
-	// authorizationHeader is the name of the header that contains the API Key Authorization.
-	authorizationHeader = "Authorization"
-
-	// lowerAuthorizationHeader is the lowercase version of the authorization header.
-	lowerAuthorizationHeader = "authorization"
+	// elasticsearchAuthHeader and elasticsearchAuthScheme are the header and
+	// scheme used to send the API Key to Elasticsearch, regardless of how the
+	// client sent it to the collector.
+	elasticsearchAuthHeader = "Authorization"
+	elasticsearchAuthScheme = "ApiKey"
 )
 
 var (
-	errAuthorizationHeaderWrongScheme = errors.New("ApiKey prefix not found, expected ApiKey <value>")
-	errAuthorizationHeaderInvalid     = errors.New("invalid API Key")
-	errHasPrivilegesTimeout           = errors.New("has privileges request timed out")
+	errAuthorizationHeaderInvalid = errors.New("invalid API Key")
+	errHasPrivilegesTimeout       = errors.New("has privileges request timed out")
 
 	_ client.AuthData      = (*authData)(nil)
 	_ extensionauth.Server = (*authenticator)(nil)
@@ -231,22 +230,28 @@ func (a *authenticator) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// parseAuthorizationHeader checks that the Authorization header follows the expected format,
-// and returns the canonical header value and the API Key ID.
+// parseAuthorizationHeader checks that the configured header follows the expected format,
+// and returns the canonical Authorization header value and the API Key ID.
 func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (string, string, error) {
-	orig, ok := getHeader(headers, authorizationHeader, lowerAuthorizationHeader)
+	header, scheme := a.config.Header, a.config.Scheme
+	orig, ok := getHeader(headers, header, strings.ToLower(header))
 	if !ok {
-		return "", "", fmt.Errorf("missing header %q, expected %q", authorizationHeader, "ApiKey <value>")
+		return "", "", fmt.Errorf("missing header %q, expected %q", header, strings.TrimSpace(scheme+" <value>"))
 	}
 
-	// The expected format of the Authorization header is:
+	// The expected format of the header is, by default:
 	//
 	//     Authorization: ApiKey base64(ID:APIKey)
 	//
 	// The scheme name is matched case-insensitively per RFC 7235.
-	scheme, encoded, found := strings.Cut(orig, " ")
-	if !found || !strings.EqualFold(scheme, "ApiKey") {
-		return "", "", errAuthorizationHeaderWrongScheme
+	// If no scheme is configured, the header holds base64(ID:APIKey) alone.
+	encoded := orig
+	if scheme != "" {
+		gotScheme, rest, found := strings.Cut(orig, " ")
+		if !found || !strings.EqualFold(gotScheme, scheme) {
+			return "", "", fmt.Errorf("%s prefix not found, expected %s <value>", scheme, scheme)
+		}
+		encoded = rest
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(encoded)
@@ -261,7 +266,7 @@ func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (s
 	// Normalize equivalent representations before forwarding the header and deriving
 	// the cache fingerprint. Otherwise, scheme casing is mistaken for a colliding
 	// API key secret when another representation has already populated the cache.
-	return "ApiKey " + base64.StdEncoding.EncodeToString(decoded), id, nil
+	return elasticsearchAuthScheme + " " + base64.StdEncoding.EncodeToString(decoded), id, nil
 }
 
 func getHeader(headers map[string][]string, titlecase, lowercase string) (string, bool) {
@@ -316,7 +321,7 @@ func (a *authenticator) hasPrivileges(ctx context.Context, authHeaderValue strin
 		applications = append(applications, checks...)
 	}
 	req := a.esClient.Security.HasPrivileges()
-	req.Header(authorizationHeader, authHeaderValue)
+	req.Header(elasticsearchAuthHeader, authHeaderValue)
 	req.Request(&hasprivileges.Request{Application: applications})
 	privCtx := ctx
 	cancel := func() {}
@@ -458,7 +463,7 @@ func (a *authenticator) getCacheKey(ctx context.Context, id string, headers map[
 	return string(key), nil
 }
 
-// Authenticate validates an ApiKey scheme Authorization header,
+// Authenticate validates the API Key in the configured header,
 // passing it to Elasticsearch for checking privileges.
 //
 // Callers can use status.FromError(err) to get the status code
