@@ -61,11 +61,11 @@ func TestTracker(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tracker := newTracker(tc.maxCardinality)
+			tracker := newTracker(tc.maxCardinality, 0)
 			assert.False(t, tracker.HasOverflow())
 			assert.Zero(t, tracker.EstimateOverflow())
 			for _, h := range tc.inputHashes {
-				tracker.CheckOverflow(testHash(h).Hash)
+				tracker.CheckOverflow(0, testHash(h).Hash)
 			}
 			if tc.expectedOverflow > 0 {
 				assert.True(t, tracker.HasOverflow())
@@ -75,10 +75,10 @@ func TestTracker(t *testing.T) {
 				assert.Zero(t, tracker.EstimateOverflow())
 			}
 
-			b, err := tracker.AppendBinary(nil)
+			b, err := tracker.AppendBinary(nil, false)
 			require.NoError(t, err)
-			newTracker := newTracker(tc.maxCardinality)
-			_, err = newTracker.Unmarshal(b)
+			newTracker := newTracker(tc.maxCardinality, 0)
+			_, err = newTracker.Unmarshal(b, false)
 			require.NoError(t, err)
 			assert.True(t, tracker.Equal(newTracker))
 		})
@@ -95,29 +95,29 @@ func TestTracker_Merge(t *testing.T) {
 		{
 			name: "empty",
 			to: func() *Tracker {
-				return newTracker(0)
+				return newTracker(0, 0)
 			}(),
 			from: func() *Tracker {
-				return newTracker(0)
+				return newTracker(0, 0)
 			}(),
 			expectedOverflow: 0,
 		},
 		{
 			name: "estimator_overflow",
 			to: func() *Tracker {
-				t := newTracker(1)
+				t := newTracker(1, 0)
 				// 2 overflow, 0x0002 and 0x0003 will overflow
-				t.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				t.CheckOverflow(testHash(0x00020fffffffffff).Hash)
-				t.CheckOverflow(testHash(0x00030fffffffffff).Hash)
+				t.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				t.CheckOverflow(0, testHash(0x00020fffffffffff).Hash)
+				t.CheckOverflow(0, testHash(0x00030fffffffffff).Hash)
 				return t
 			}(),
 			from: func() *Tracker {
-				t := newTracker(1)
+				t := newTracker(1, 0)
 				// 2 overflow, 0x0004 and 0x0005 will overflow
-				t.CheckOverflow(testHash(0x00030fffffffffff).Hash)
-				t.CheckOverflow(testHash(0x00040fffffffffff).Hash)
-				t.CheckOverflow(testHash(0x00050fffffffffff).Hash)
+				t.CheckOverflow(0, testHash(0x00030fffffffffff).Hash)
+				t.CheckOverflow(0, testHash(0x00040fffffffffff).Hash)
+				t.CheckOverflow(0, testHash(0x00050fffffffffff).Hash)
 				return t
 			}(),
 			expectedOverflow: 4,
@@ -152,16 +152,16 @@ func TestTrackers(t *testing.T) {
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
 				tr := trackers.GetResourceTracker()
-				tr.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tr.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
 
-				ts := trackers.NewScopeTracker()
-				ts.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				ts := trackers.NewScopeTracker(0)
+				ts.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
 
-				tm := ts.NewMetricTracker()
-				tm.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tm := ts.NewMetricTracker(0)
+				tm.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
 
-				tdps := tm.NewDatapointTracker()
-				tdps.CheckOverflow(testHash(0x00010fffffffffff).Hash)
+				tdps := tm.NewDatapointTracker(0)
+				tdps.CheckOverflow(0, 0, testHash(0x00010fffffffffff).Hash)
 				return trackers
 			}(),
 		},
@@ -170,20 +170,20 @@ func TestTrackers(t *testing.T) {
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
 				tr := trackers.GetResourceTracker()
-				tr.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				tr.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+				tr.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				tr.CheckOverflow(0, testHash(0x00020fffffffffff).Hash) // will overflow
 
-				ts := trackers.NewScopeTracker()
-				ts.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				ts.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+				ts := trackers.NewScopeTracker(0)
+				ts.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				ts.CheckOverflow(0, testHash(0x00020fffffffffff).Hash) // will overflow
 
-				tm := ts.NewMetricTracker()
-				tm.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				tm.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+				tm := ts.NewMetricTracker(0)
+				tm.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				tm.CheckOverflow(0, testHash(0x00020fffffffffff).Hash) // will overflow
 
-				tdps := tm.NewDatapointTracker()
-				tdps.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				tdps.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+				tdps := tm.NewDatapointTracker(0)
+				tdps.CheckOverflow(0, 0, testHash(0x00010fffffffffff).Hash)
+				tdps.CheckOverflow(1, 0, testHash(0x00020fffffffffff).Hash) // will overflow
 				return trackers
 			}(),
 		},
@@ -192,48 +192,50 @@ func TestTrackers(t *testing.T) {
 			trackers: func() *Trackers {
 				trackers := getTestTrackers()
 				tr := trackers.GetResourceTracker()
-				tr.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				tr.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
+				tr.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				tr.CheckOverflow(0, testHash(0x00020fffffffffff).Hash) // will overflow
 
-				ts1 := trackers.NewScopeTracker()
-				ts1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				ts1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
-				ts1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
-				ts2 := trackers.NewScopeTracker()
-				ts2.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				ts3 := trackers.NewScopeTracker()
-				ts3.CheckOverflow(testHash(0x00030fffffffffff).Hash)
-				trackers.NewScopeTracker() // empty tracker
+				ts1 := trackers.NewScopeTracker(0)
+				ts1.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				ts1.CheckOverflow(0, testHash(0x00020fffffffffff).Hash) // will overflow
+				ts1.CheckOverflow(0, testHash(0x00030fffffffffff).Hash) // will overflow
+				ts2 := trackers.NewScopeTracker(0)
+				ts2.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				ts3 := trackers.NewScopeTracker(0)
+				ts3.CheckOverflow(0, testHash(0x00030fffffffffff).Hash)
+				trackers.NewScopeTracker(0) // empty tracker
 
-				tm1 := ts1.NewMetricTracker()
-				tm1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				tm1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
-				tm1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
-				tm2 := ts2.NewMetricTracker()
-				tm2.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				tm3 := ts3.NewMetricTracker()
-				tm3.CheckOverflow(testHash(0x00030fffffffffff).Hash)
+				tm1 := ts1.NewMetricTracker(0)
+				tm1.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				tm1.CheckOverflow(0, testHash(0x00020fffffffffff).Hash) // will overflow
+				tm1.CheckOverflow(0, testHash(0x00030fffffffffff).Hash) // will overflow
+				tm2 := ts2.NewMetricTracker(0)
+				tm2.CheckOverflow(0, testHash(0x00010fffffffffff).Hash)
+				tm3 := ts3.NewMetricTracker(0)
+				tm3.CheckOverflow(0, testHash(0x00030fffffffffff).Hash)
 
-				tdps1 := tm1.NewDatapointTracker()
-				tdps1.CheckOverflow(testHash(0x00010fffffffffff).Hash)
-				tdps1.CheckOverflow(testHash(0x00020fffffffffff).Hash) // will overflow
-				tdps1.CheckOverflow(testHash(0x00030fffffffffff).Hash) // will overflow
-				tdps2 := tm2.NewDatapointTracker()
-				tdps2.CheckOverflow(testHash(0x00040fffffffffff).Hash)
-				tdps3 := tm3.NewDatapointTracker()
-				tdps3.CheckOverflow(testHash(0x00050fffffffffff).Hash)
+				tdps1 := tm1.NewDatapointTracker(0)
+				tdps1.CheckOverflow(0, 0, testHash(0x00010fffffffffff).Hash)
+				tdps1.CheckOverflow(1, 0, testHash(0x00020fffffffffff).Hash) // will overflow
+				tdps1.CheckOverflow(1, 0, testHash(0x00030fffffffffff).Hash) // will overflow
+				tdps2 := tm2.NewDatapointTracker(0)
+				tdps2.CheckOverflow(0, 0, testHash(0x00040fffffffffff).Hash)
+				tdps3 := tm3.NewDatapointTracker(0)
+				tdps3.CheckOverflow(0, 0, testHash(0x00050fffffffffff).Hash)
 				return trackers
 			}(),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			b, err := tc.trackers.AppendBinary(nil)
+			b, err := tc.trackers.AppendBinary(nil, false)
 			require.NoError(t, err)
 
 			newTrackers := getTestTrackers()
-			require.NoError(t, newTrackers.Unmarshal(b))
+			require.NoError(t, newTrackers.Unmarshal(b, false))
 			// Assert decoded trackers to be equal to the original
 			assertTrackers(t, tc.trackers, newTrackers)
+			// Everything stored without budgets is charged to the default budget.
+			assert.Equal(t, []string{""}, newTrackers.Budgets())
 		})
 	}
 }
@@ -294,4 +296,114 @@ func (h testHash) Size() int {
 
 func (h testHash) BlockSize() int {
 	panic("not implemented")
+}
+
+func TestTracker_Budgets(t *testing.T) {
+	type check struct {
+		budget       uint32
+		hash         uint64
+		wantOverflow bool
+	}
+	for _, tc := range []struct {
+		name           string
+		maxCardinality uint64
+		checks         []check
+		wantEstimate   uint64
+	}{
+		{
+			name:           "limit_applies_per_budget",
+			maxCardinality: 1,
+			checks: []check{
+				{0, 0x1, false},
+				{0, 0x2, true},
+				{1, 0x3, false},
+				{1, 0x4, true},
+				{5, 0x5, false}, // budgets need not be contiguous
+			},
+			wantEstimate: 2,
+		},
+		{
+			name:           "no_budget_overflows_without_counting",
+			maxCardinality: 1,
+			checks: []check{
+				{NoBudget, 0x1, true},
+				{0, 0x2, false},
+				{NoBudget, 0x3, true},
+			},
+			wantEstimate: 0,
+		},
+		{
+			name:           "unlimited",
+			maxCardinality: 0,
+			checks: []check{
+				{0, 0x1, false},
+				{7, 0x2, false},
+				{NoBudget, 0x3, true},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tracker := newTracker(tc.maxCardinality, 0)
+			for _, c := range tc.checks {
+				assert.Equal(t, c.wantOverflow, tracker.CheckOverflow(c.budget, testHash(c.hash).Hash), "hash %x", c.hash)
+			}
+			assert.Equal(t, tc.wantEstimate, tracker.EstimateOverflow())
+
+			for _, withBudgets := range []bool{true, false} {
+				b, err := tracker.AppendBinary(nil, withBudgets)
+				require.NoError(t, err)
+				decoded := newTracker(tc.maxCardinality, 0)
+				n, err := decoded.Unmarshal(b, withBudgets)
+				require.NoError(t, err)
+				assert.Equal(t, len(b), n)
+				if withBudgets {
+					assert.True(t, tracker.Equal(decoded))
+				} else {
+					// Counts beyond budget 0 are not stored.
+					assert.Equal(t, tracker.observedCount, decoded.observedCount)
+					assert.Empty(t, decoded.extraCounts)
+				}
+			}
+		})
+	}
+}
+
+func TestTrackers_Budgets(t *testing.T) {
+	trackers := NewTrackers(2, 2, 2, 2)
+	p0, p1 := trackers.Budget("p0"), trackers.Budget("p1")
+	require.Equal(t, p0, trackers.Budget("p0"))
+	require.Equal(t, []string{"p0", "p1"}, trackers.Budgets())
+	assert.False(t, trackers.DefaultBudgetOnly())
+
+	tr := trackers.GetResourceTracker()
+	tr.CheckOverflow(p0, testHash(0x1).Hash)
+	tr.CheckOverflow(p1, testHash(0x2).Hash)
+	trackers.NewScopeTracker(p0)
+	ts1 := trackers.NewScopeTracker(p1)
+	ts1.CheckOverflow(p1, testHash(0x3).Hash)
+	tm := ts1.NewMetricTracker(p1)
+	tm.CheckOverflow(p0, testHash(0x4).Hash)
+	tdp := tm.NewDatapointTracker(p0)
+	// Datapoint budgets stay unrecorded until a datapoint lands on a
+	// budget other than 0, then earlier datapoints are padded.
+	tdp.CheckOverflow(0, p0, testHash(0x5).Hash)
+	assert.Nil(t, tdp.budgets)
+	tdp.CheckOverflow(1, p1, testHash(0x6).Hash)
+	tdp.CheckOverflow(2, p1, testHash(0x7).Hash)
+	tdp.CheckOverflow(3, p1, testHash(0x8).Hash) // overflow, not recorded
+	assert.Equal(t, []uint32{p0, p1, p1}, tdp.budgets)
+	trackers.NewScopeTracker(NoBudget)
+
+	b, err := trackers.AppendBinary(nil, true)
+	require.NoError(t, err)
+	decoded := NewTrackers(2, 2, 2, 2)
+	require.NoError(t, decoded.Unmarshal(b, true))
+	assertTrackers(t, trackers, decoded)
+	assert.Equal(t, trackers.Budgets(), decoded.Budgets())
+	assert.Equal(t, NoBudget, decoded.GetScopeTracker(2).Budget())
+	dtdp := decoded.GetScopeTracker(1).GetMetricTracker(0).GetDatapointTracker(0)
+	assert.Equal(t, p0, dtdp.DatapointBudget(0))
+	assert.Equal(t, p1, dtdp.DatapointBudget(1))
+	assert.Equal(t, p1, dtdp.DatapointBudget(2))
+	assert.Equal(t, uint32(0), dtdp.DatapointBudget(3))
 }

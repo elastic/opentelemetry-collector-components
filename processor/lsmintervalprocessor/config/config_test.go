@@ -49,6 +49,13 @@ func TestConfig(t *testing.T) {
 			expectedErrMsg: "duplicate entry in metadata_keys",
 		},
 		{
+			name: "duplicate_budget_metadata",
+			input: map[string]any{
+				"budget_metadata_keys": []string{"kafka.partition", "Kafka.Partition"},
+			},
+			expectedErrMsg: "duplicate entry in budget_metadata_keys",
+		},
+		{
 			name: "invalid_max_buckets",
 			input: map[string]any{
 				"exponential_histogram_max_buckets": -8,
@@ -106,11 +113,13 @@ func TestConfig(t *testing.T) {
 			name: "valid_full",
 			input: map[string]any{
 				"metadata_keys":                     []string{"test.1", "test.2"},
+				"budget_metadata_keys":              []string{"kafka.topic", "kafka.partition"},
 				"exponential_histogram_max_buckets": 256,
 			},
 			expected: func() *Config {
 				cfg := CreateDefaultConfig().(*Config)
 				cfg.MetadataKeys = []string{"test.1", "test.2"}
+				cfg.BudgetMetadataKeys = []string{"kafka.topic", "kafka.partition"}
 				cfg.ExponentialHistogramMaxBuckets = 256
 				return cfg
 			}(),

@@ -42,35 +42,39 @@ type dataPoint[Self any] interface {
 	CopyTo(dest Self)
 }
 
+// mergeDataPoints merges from into toMetric. budgetOf returns the budget
+// charged for datapoint i of from when it is new to toMetric.
 func mergeDataPoints[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
 	toMetricID identity.Metric,
 	toMetric pdataMetric,
-	addDP func(identity.Metric, pdataMetric, DP) (DP, bool),
+	addDP addDPFunc[DP],
+	budgetOf func(i int) uint32,
 	temporality pmetric.AggregationTemporality,
 	maxExponentialHistogramBuckets int,
 ) error {
 	switch temporality {
 	case pmetric.AggregationTemporalityCumulative:
-		return mergeCumulative(from, toMetricID, toMetric, addDP)
+		return mergeCumulative(from, toMetricID, toMetric, addDP, budgetOf)
 	case pmetric.AggregationTemporalityDelta:
-		return mergeDelta(from, toMetricID, toMetric, addDP, maxExponentialHistogramBuckets)
+		return mergeDelta(from, toMetricID, toMetric, addDP, budgetOf, maxExponentialHistogramBuckets)
 	default:
 		return fmt.Errorf("unsupported aggregation temporality: %s", temporality)
 	}
 }
 
-type addDPFunc[DP dataPoint[DP]] func(identity.Metric, pdataMetric, DP) (DP, bool)
+type addDPFunc[DP dataPoint[DP]] func(identity.Metric, pdataMetric, DP, uint32) (DP, bool)
 
 func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	from DPS,
 	toMetricID identity.Metric,
 	toMetric pdataMetric,
 	addDP addDPFunc[DP],
+	budgetOf func(i int) uint32,
 ) error {
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
-		toDP, exists := addDP(toMetricID, toMetric, fromDP)
+		toDP, exists := addDP(toMetricID, toMetric, fromDP, budgetOf(i))
 		if exists && fromDP.Timestamp() > toDP.Timestamp() {
 			fromDP.CopyTo(toDP)
 		}
@@ -83,13 +87,14 @@ func mergeDelta[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	toMetricID identity.Metric,
 	toMetric pdataMetric,
 	addDP addDPFunc[DP],
+	budgetOf func(i int) uint32,
 	maxExponentialHistogramBuckets int,
 ) error {
 	var errs []error
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
 		var err error
-		if toDP, exists := addDP(toMetricID, toMetric, fromDP); exists {
+		if toDP, exists := addDP(toMetricID, toMetric, fromDP, budgetOf(i)); exists {
 			switch fromDP := any(fromDP).(type) {
 			case pmetric.NumberDataPoint:
 				err = mergeDeltaSumDP(fromDP, any(toDP).(pmetric.NumberDataPoint))

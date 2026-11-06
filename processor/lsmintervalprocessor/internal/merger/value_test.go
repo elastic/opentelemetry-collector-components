@@ -18,8 +18,10 @@
 package merger
 
 import (
+	"fmt"
 	"math"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
@@ -51,7 +53,7 @@ func TestMergeMetric(t *testing.T) {
 			dir := filepath.Join("../../testdata/merger", tc.name)
 			md, err := golden.ReadMetrics(filepath.Join(dir, "input.yaml"))
 			require.NoError(t, err)
-			mergeMetrics(t, v, md)
+			mergeMetrics(t, v, md, "")
 
 			// Do a binary<>merger#Value conversion to assert the binary marshaling logic
 			vb, err := v.AppendBinary(nil)
@@ -111,7 +113,7 @@ func getTestValue(t *testing.T) *Value {
 	)
 }
 
-func mergeMetrics(t *testing.T, v *Value, md pmetric.Metrics) {
+func mergeMetrics(t *testing.T, v *Value, md pmetric.Metrics, budget string) {
 	t.Helper()
 
 	rms := md.ResourceMetrics()
@@ -122,7 +124,7 @@ func mergeMetrics(t *testing.T, v *Value, md pmetric.Metrics) {
 			sm := sms.At(j)
 			ms := sm.Metrics()
 			for k := 0; k < ms.Len(); k++ {
-				require.NoError(t, v.MergeMetric(rm, sm, ms.At(k)))
+				require.NoError(t, v.MergeMetric(rm, sm, ms.At(k), budget))
 			}
 		}
 	}
@@ -243,11 +245,240 @@ func updateValueWithPMetrics(m pmetric.Metrics, v *Value) error {
 			sm := sms.At(j)
 			ms := sm.Metrics()
 			for k := 0; k < ms.Len(); k++ {
-				if err := v.MergeMetric(rm, sm, ms.At(k)); err != nil {
+				if err := v.MergeMetric(rm, sm, ms.At(k), ""); err != nil {
 					return err
 				}
 			}
 		}
 	}
 	return nil
+}
+
+// TestMergeBudgets asserts the admission rule with cardinality budgets: an
+// entity already in the value is merged for free, a new entity takes one slot
+// in the budget that delivered it, and a full budget sends it to overflow.
+// Every op is built as its own value, round-tripped through binary and merged
+// into the accumulated value, which mirrors the pebble merge operator.
+func TestMergeBudgets(t *testing.T) {
+	// entity is one datapoint of value 1 at path resource/scope/metric/datapoint,
+	// charged to budget when new to the value.
+	type entity struct {
+		budget string
+		path   string
+	}
+	for _, tc := range []struct {
+		name         string
+		limit        int64 // max cardinality at every level
+		ops          [][]entity
+		wantAdmitted map[string]int64
+		wantOverflow OverflowStats
+	}{
+		{
+			name:  "single_budget_overflows_at_limit",
+			limit: 2,
+			ops: [][]entity{
+				{{"", "A/s/m/d"}}, {{"", "B/s/m/d"}}, {{"", "C/s/m/d"}},
+			},
+			wantAdmitted: map[string]int64{"A/s/m/d": 1, "B/s/m/d": 1},
+			wantOverflow: OverflowStats{Resources: 1},
+		},
+		{
+			name:  "capacity_per_budget",
+			limit: 2,
+			ops: [][]entity{
+				{{"p0", "A/s/m/d"}}, {{"p0", "B/s/m/d"}}, {{"p0", "C/s/m/d"}},
+				{{"p1", "D/s/m/d"}}, {{"p1", "E/s/m/d"}}, {{"p1", "F/s/m/d"}},
+			},
+			wantAdmitted: map[string]int64{"A/s/m/d": 1, "B/s/m/d": 1, "D/s/m/d": 1, "E/s/m/d": 1},
+			wantOverflow: OverflowStats{Resources: 2},
+		},
+		{
+			name:  "shared_entity_takes_one_slot",
+			limit: 2,
+			ops: [][]entity{
+				{{"p0", "A/s/m/d"}}, {{"p0", "B/s/m/d"}},
+				{{"p1", "A/s/m/d"}}, {{"p1", "C/s/m/d"}},
+			},
+			wantAdmitted: map[string]int64{"A/s/m/d": 2, "B/s/m/d": 1, "C/s/m/d": 1},
+		},
+		{
+			name:  "slot_charged_to_first_deliverer",
+			limit: 2,
+			ops: [][]entity{
+				{{"p0", "A/s/m/d"}},
+				{{"p1", "A/s/m/d"}}, {{"p1", "B/s/m/d"}}, {{"p1", "C/s/m/d"}},
+			},
+			wantAdmitted: map[string]int64{"A/s/m/d": 2, "B/s/m/d": 1, "C/s/m/d": 1},
+		},
+		{
+			name:  "stored_operand_keeps_attribution",
+			limit: 2,
+			ops: [][]entity{
+				{{"p0", "C/s/m/d"}, {"p0", "D/s/m/d"}},
+				// A was charged to p0 and B to p1 when this operand was built.
+				// p0 is full in the accumulated value, p1 is empty.
+				{{"p0", "A/s/m/d"}, {"p1", "B/s/m/d"}},
+			},
+			wantAdmitted: map[string]int64{"B/s/m/d": 1, "C/s/m/d": 1, "D/s/m/d": 1},
+			wantOverflow: OverflowStats{Resources: 1},
+		},
+		{
+			name:  "overflow_bucket_is_never_charged",
+			limit: 2,
+			ops: [][]entity{
+				{{"p1", "A/s/m/d"}},
+				// This operand holds A, B and an overflow bucket for C. On
+				// merge A already exists, so p0 has one free slot that the
+				// replayed overflow bucket must not take.
+				{{"p0", "A/s/m/d"}, {"p0", "B/s/m/d"}, {"p0", "C/s/m/d"}},
+				{{"p0", "D/s/m/d"}},
+			},
+			wantAdmitted: map[string]int64{"A/s/m/d": 2, "B/s/m/d": 1, "D/s/m/d": 1},
+			wantOverflow: OverflowStats{Resources: 1},
+		},
+		{
+			// Overflowed resources merge into one bucket whose scope tracker
+			// charges scopes to the delivering budget like any resource.
+			name:  "scope_overflow_inside_resource_overflow_bucket",
+			limit: 1,
+			ops: [][]entity{
+				{{"p0", "A/s1/m1/d1"}},
+				{{"p0", "B/s1/m1/d1"}}, // B overflows, s1 admitted under _other on p0
+				{{"p0", "C/s2/m1/d1"}}, // C overflows, s2 overflows under _other, p0 full
+				{{"p1", "D/s3/m1/d1"}},
+				{{"p1", "E/s4/m1/d1"}}, // E overflows, s4 admitted under _other on p1
+				{{"p1", "F/s5/m1/d1"}}, // F overflows, s5 overflows under _other, p1 full
+			},
+			wantAdmitted: map[string]int64{"A/s1/m1/d1": 1, "D/s3/m1/d1": 1},
+			wantOverflow: OverflowStats{Resources: 4, Scopes: 2},
+		},
+		{
+			name:  "budgets_apply_at_every_level",
+			limit: 1,
+			ops: [][]entity{
+				{{"p0", "A/s1/m1/d1"}},
+				{{"p1", "A/s1/m1/d2"}}, {{"p1", "A/s1/m1/d3"}},
+				{{"p1", "A/s1/m2/d1"}}, {{"p1", "A/s1/m3/d1"}},
+				{{"p1", "A/s2/m1/d1"}}, {{"p1", "A/s3/m1/d1"}},
+				{{"p1", "B/s1/m1/d1"}}, {{"p1", "C/s1/m1/d1"}},
+			},
+			wantAdmitted: map[string]int64{
+				"A/s1/m1/d1": 1, "A/s1/m1/d2": 1,
+				"A/s1/m2/d1": 1,
+				"A/s2/m1/d1": 1,
+				"B/s1/m1/d1": 1,
+			},
+			wantOverflow: OverflowStats{Resources: 1, Scopes: 1, Metrics: 1, Datapoints: 1},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := budgetTestValue(tc.limit)
+			for _, op := range tc.ops {
+				o := budgetTestValue(tc.limit)
+				for _, e := range op {
+					mergeMetrics(t, o, pathMetrics(e.path), e.budget)
+				}
+				require.NoError(t, v.Merge(roundtripValue(t, o, tc.limit)))
+			}
+			md, stats, err := roundtripValue(t, v, tc.limit).Finalize()
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantAdmitted, admittedPaths(md))
+			assert.Equal(t, tc.wantOverflow, stats)
+		})
+	}
+}
+
+// TestAppendBinaryVersion asserts that the stored format only changes when a
+// value carries a budget other than the default, so rollback stays clean for
+// deployments that do not configure budgets.
+func TestAppendBinaryVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		budgets []string
+		want    byte
+	}{
+		{name: "default_budget", budgets: []string{""}, want: 1},
+		{name: "single_named_budget", budgets: []string{"p0"}, want: 2},
+		{name: "default_and_named_budget", budgets: []string{"", "p0"}, want: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := budgetTestValue(0)
+			for i, b := range tc.budgets {
+				mergeMetrics(t, v, pathMetrics(fmt.Sprintf("R%d/s/m/d", i)), b)
+			}
+			b, err := v.AppendBinary(nil)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, b[0])
+		})
+	}
+}
+
+func budgetTestValue(limit int64) *Value {
+	lc := func(key string) config.LimitConfig {
+		return config.LimitConfig{
+			MaxCardinality: limit,
+			Overflow: config.OverflowConfig{
+				Attributes: []config.Attribute{{Key: key, Value: true}},
+			},
+		}
+	}
+	return NewValue(
+		lc("resource_overflow"), lc("scope_overflow"), lc("metric_overflow"), lc("dp_overflow"),
+		defaultMaxBuckets,
+	)
+}
+
+func roundtripValue(t *testing.T, v *Value, limit int64) *Value {
+	t.Helper()
+	b, err := v.AppendBinary(nil)
+	require.NoError(t, err)
+	out := budgetTestValue(limit)
+	require.NoError(t, out.Unmarshal(b))
+	return out
+}
+
+// pathMetrics builds one delta sum datapoint of value 1 at
+// resource/scope/metric/datapoint, each segment naming its entity.
+func pathMetrics(path string) pmetric.Metrics {
+	parts := strings.Split(path, "/")
+	md := pmetric.NewMetrics()
+	rm := md.ResourceMetrics().AppendEmpty()
+	rm.Resource().Attributes().PutStr("name", parts[0])
+	sm := rm.ScopeMetrics().AppendEmpty()
+	sm.Scope().SetName(parts[1])
+	m := sm.Metrics().AppendEmpty()
+	m.SetName(parts[2])
+	sum := m.SetEmptySum()
+	sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+	dp := sum.DataPoints().AppendEmpty()
+	dp.Attributes().PutStr("name", parts[3])
+	dp.SetIntValue(1)
+	return md
+}
+
+// admittedPaths sums datapoint values per path, skipping overflow buckets and
+// overflow metrics, which carry no entity name.
+func admittedPaths(md pmetric.Metrics) map[string]int64 {
+	out := map[string]int64{}
+	for _, rm := range md.ResourceMetrics().All() {
+		res, ok := rm.Resource().Attributes().Get("name")
+		if !ok {
+			continue
+		}
+		for _, sm := range rm.ScopeMetrics().All() {
+			if sm.Scope().Name() == "" {
+				continue
+			}
+			for _, m := range sm.Metrics().All() {
+				for _, dp := range m.Sum().DataPoints().All() {
+					d, ok := dp.Attributes().Get("name")
+					if !ok {
+						continue
+					}
+					out[res.Str()+"/"+sm.Scope().Name()+"/"+m.Name()+"/"+d.Str()] += dp.IntValue()
+				}
+			}
+		}
+	}
+	return out
 }
