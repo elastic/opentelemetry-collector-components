@@ -329,6 +329,12 @@ func (cfg *Config) Validate() error {
 	if cfg.Header == "" {
 		return errors.New("header must be non-empty")
 	}
+	if h := cfg.Header; strings.TrimSpace(h) != h || strings.ContainsAny(h, " \t:") {
+		return fmt.Errorf("header %q must be a valid HTTP header name without whitespace or colons", h)
+	}
+	if strings.ContainsAny(cfg.Scheme, " \t") {
+		return fmt.Errorf("scheme %q must not contain whitespace", cfg.Scheme)
+	}
 	// Build a set of metadata keys in cache.key_metadata for quick lookup
 	keyMetadataSet := make(map[string]bool)
 	for _, key := range cfg.Cache.KeyMetadata {
