@@ -249,7 +249,7 @@ func (a *authenticator) parseAuthorizationHeader(headers map[string][]string) (s
 	if scheme != "" {
 		gotScheme, rest, found := strings.Cut(orig, " ")
 		if !found || !strings.EqualFold(gotScheme, scheme) {
-			return "", "", fmt.Errorf("%s prefix not found, expected %s <value>", scheme, scheme)
+			return "", "", fmt.Errorf("%q prefix not found, expected %q <value>", scheme, scheme)
 		}
 		encoded = rest
 	}
