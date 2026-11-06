@@ -45,6 +45,31 @@ func TestLoadConfig(t *testing.T) {
 			expected: createDefaultConfig().(*Config),
 		},
 		{
+			id: component.NewIDWithName(metadata.Type, "custom_header"),
+			expected: func() *Config {
+				config := createDefaultConfig().(*Config)
+				config.Header = "X-Amz-Firehose-Access-Key"
+				config.Scheme = ""
+				return config
+			}(),
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "empty_header"),
+			expectedErrMessage: "header must be non-empty",
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "header_with_space"),
+			expectedErrMessage: `header "Foo Bar" must be a valid HTTP header name without whitespace or colons`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "header_with_colon"),
+			expectedErrMessage: `header "Authorization:" must be a valid HTTP header name without whitespace or colons`,
+		},
+		{
+			id:                 component.NewIDWithName(metadata.Type, "scheme_with_space"),
+			expectedErrMessage: `scheme "Api Key" must not contain whitespace`,
+		},
+		{
 			id: component.NewIDWithName(metadata.Type, "application_privileges"),
 			expected: func() *Config {
 				config := createDefaultConfig().(*Config)

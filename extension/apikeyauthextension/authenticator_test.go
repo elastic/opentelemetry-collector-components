@@ -473,7 +473,7 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			handler:  newCannedHasPrivilegesHandler(successfulResponse),
 			auth:     "Bearer invalid",
 			wantCode: codes.Unauthenticated,
-			wantMsg:  "ApiKey prefix not found, expected ApiKey <value>",
+			wantMsg:  "\"ApiKey\" prefix not found, expected \"ApiKey\" <value>",
 			wantMetadata: map[string]string{
 				"component": metadata.Type.String(),
 				"api_key":   "unknown",
@@ -998,7 +998,7 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 					"Bearer " + base64.StdEncoding.EncodeToString([]byte("id:secret")),
 				},
 			},
-			expectedErr: `rpc error: code = Unauthenticated desc = ApiKey prefix not found, expected ApiKey <value>`,
+			expectedErr: `rpc error: code = Unauthenticated desc = "ApiKey" prefix not found, expected "ApiKey" <value>`,
 		},
 		"invalid_base64": {
 			headers: map[string][]string{
@@ -1017,6 +1017,78 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			authenticator := newTestAuthenticator(t, srv, createDefaultConfig().(*Config))
+			_, err := authenticator.Authenticate(context.Background(), testcase.headers)
+			if testcase.expectedErr != "" {
+				assert.EqualError(t, err, testcase.expectedErr)
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestAuthenticator_CustomHeader(t *testing.T) {
+	encoded := base64.StdEncoding.EncodeToString([]byte("id:secret"))
+	for name, testcase := range map[string]struct {
+		header      string
+		scheme      string
+		headers     map[string][]string
+		expectedErr string
+	}{
+		"raw_key": {
+			header:  "X-Amz-Firehose-Access-Key",
+			headers: map[string][]string{"X-Amz-Firehose-Access-Key": {encoded}},
+		},
+		"raw_key_lowercase_header": {
+			header:  "X-Amz-Firehose-Access-Key",
+			headers: map[string][]string{"x-amz-firehose-access-key": {encoded}},
+		},
+		"custom_scheme": {
+			header:  "X-Api-Key",
+			scheme:  "Bearer",
+			headers: map[string][]string{"X-Api-Key": {"bearer " + encoded}},
+		},
+		"custom_scheme_wrong_scheme": {
+			header:      "X-Api-Key",
+			scheme:      "Bearer",
+			headers:     map[string][]string{"X-Api-Key": {"ApiKey " + encoded}},
+			expectedErr: "rpc error: code = Unauthenticated desc = \"Bearer\" prefix not found, expected \"Bearer\" <value>",
+		},
+		"raw_key_surrounding_whitespace": {
+			header:  "X-Amz-Firehose-Access-Key",
+			headers: map[string][]string{"X-Amz-Firehose-Access-Key": {"  " + encoded + " \n"}},
+		},
+		"custom_scheme_surrounding_whitespace": {
+			header:  "X-Api-Key",
+			scheme:  "Bearer",
+			headers: map[string][]string{"X-Api-Key": {" Bearer " + encoded + "\t"}},
+		},
+		"raw_key_missing_header": {
+			header:      "X-Amz-Firehose-Access-Key",
+			headers:     map[string][]string{},
+			expectedErr: `rpc error: code = Unauthenticated desc = missing header "X-Amz-Firehose-Access-Key", expected "<value>"`,
+		},
+		"raw_key_ignores_authorization_header": {
+			header:      "X-Amz-Firehose-Access-Key",
+			headers:     map[string][]string{"Authorization": {"ApiKey " + encoded}},
+			expectedErr: `rpc error: code = Unauthenticated desc = missing header "X-Amz-Firehose-Access-Key", expected "<value>"`,
+		},
+		"raw_key_with_scheme_prefix": {
+			header:      "X-Amz-Firehose-Access-Key",
+			headers:     map[string][]string{"X-Amz-Firehose-Access-Key": {"ApiKey " + encoded}},
+			expectedErr: "rpc error: code = Unauthenticated desc = illegal base64 data at input byte 6",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			// Elasticsearch must always receive the key as "Authorization: ApiKey <value>".
+			srv := newMockElasticsearch(t, func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "ApiKey "+encoded, r.Header.Get("Authorization"))
+				assert.NoError(t, json.NewEncoder(w).Encode(successfulResponse))
+			})
+			config := createDefaultConfig().(*Config)
+			config.Header = testcase.header
+			config.Scheme = testcase.scheme
+			authenticator := newTestAuthenticator(t, srv, config)
 			_, err := authenticator.Authenticate(context.Background(), testcase.headers)
 			if testcase.expectedErr != "" {
 				assert.EqualError(t, err, testcase.expectedErr)
