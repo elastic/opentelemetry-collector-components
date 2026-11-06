@@ -473,7 +473,7 @@ func TestAuthenticator_ErrorWithDetails(t *testing.T) {
 			handler:  newCannedHasPrivilegesHandler(successfulResponse),
 			auth:     "Bearer invalid",
 			wantCode: codes.Unauthenticated,
-			wantMsg:  "ApiKey prefix not found, expected ApiKey <value>",
+			wantMsg:  "\"ApiKey\" prefix not found, expected \"ApiKey\" <value>",
 			wantMetadata: map[string]string{
 				"component": metadata.Type.String(),
 				"api_key":   "unknown",
@@ -998,7 +998,7 @@ func TestAuthenticator_AuthorizationHeader(t *testing.T) {
 					"Bearer " + base64.StdEncoding.EncodeToString([]byte("id:secret")),
 				},
 			},
-			expectedErr: `rpc error: code = Unauthenticated desc = ApiKey prefix not found, expected ApiKey <value>`,
+			expectedErr: `rpc error: code = Unauthenticated desc = "ApiKey" prefix not found, expected "ApiKey" <value>`,
 		},
 		"invalid_base64": {
 			headers: map[string][]string{
@@ -1052,7 +1052,7 @@ func TestAuthenticator_CustomHeader(t *testing.T) {
 			header:      "X-Api-Key",
 			scheme:      "Bearer",
 			headers:     map[string][]string{"X-Api-Key": {"ApiKey " + encoded}},
-			expectedErr: "rpc error: code = Unauthenticated desc = Bearer prefix not found, expected Bearer <value>",
+			expectedErr: "rpc error: code = Unauthenticated desc = \"Bearer\" prefix not found, expected \"Bearer\" <value>",
 		},
 		"raw_key_surrounding_whitespace": {
 			header:  "X-Amz-Firehose-Access-Key",
