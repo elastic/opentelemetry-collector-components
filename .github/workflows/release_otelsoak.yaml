@@ -108,7 +108,7 @@ jobs:
           sed -i "s/^  version: .*/  version: ${manifest_version}/" distributions/otelsoak/manifest.yaml
 
       - name: Create version bump PR
-        uses: peter-evans/create-pull-request@3afad46a91e1234a4e2800ffa47bd6c2a6b66b6c
+        uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8
         with:
           token: ${{ steps.get_token.outputs.token }}
           add-paths: distributions/otelsoak/manifest.yaml
