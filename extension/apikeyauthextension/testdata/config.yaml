@@ -1,4 +1,15 @@
 apikeyauth: {}
+apikeyauth/custom_header:
+  header: X-Amz-Firehose-Access-Key
+  scheme: ""
+apikeyauth/empty_header:
+  header: ""
+apikeyauth/header_with_space:
+  header: "Foo Bar"
+apikeyauth/header_with_colon:
+  header: "Authorization:"
+apikeyauth/scheme_with_space:
+  scheme: "Api Key"
 apikeyauth/application_privileges:
   application_privileges:
     - application: my_app
