@@ -16,4 +16,4 @@
 // under the License.
 
 //go:generate mdatagen metadata.yaml
-package compressedotlpencodingextension
+package compressedotlpencodingextension // import "github.com/elastic/opentelemetry-collector-components/extension/compressedotlpencodingextension"

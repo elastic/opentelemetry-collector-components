@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package compressedotlpencodingextension
+package compressedotlpencodingextension // import "github.com/elastic/opentelemetry-collector-components/extension/compressedotlpencodingextension"
 
 import (
 	"fmt"

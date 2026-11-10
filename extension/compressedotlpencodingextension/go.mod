@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/extension/compresse
 go 1.26.0
 
 require (
-	github.com/klauspost/compress v1.18.4
+	github.com/klauspost/compress v1.20.3
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.164.1
 	github.com/pierrec/lz4/v4 v4.1.25
 	github.com/stretchr/testify v1.12.1
