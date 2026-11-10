@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/elastic/opentelemetry-collector-components/internal/sharedcomponent v0.0.0
 	github.com/elastic/opentelemetry-collector-components/internal/vercel v0.0.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.165.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.165.1
 	github.com/stretchr/testify v1.12.1
 	go.opentelemetry.io/collector/component v1.71.0
 	go.opentelemetry.io/collector/component/componenttest v0.165.0

@@ -7,9 +7,9 @@ require (
 	github.com/elastic/apm-data v1.23.0
 	github.com/elastic/opentelemetry-collector-components/internal/elasticattr v0.40.0
 	github.com/google/go-cmp v0.7.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.165.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.165.0
-	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.165.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/golden v0.165.1
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest v0.165.1
+	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/sampling v0.165.1
 	github.com/stretchr/testify v1.12.1
 	github.com/ua-parser/uap-go v0.0.0-20250213224047-9c035f085b90
 	go.opentelemetry.io/collector/client v1.71.0

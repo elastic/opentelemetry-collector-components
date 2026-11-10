@@ -3,7 +3,7 @@ module github.com/elastic/opentelemetry-collector-components/internal/vercel
 go 1.26.0
 
 require (
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.165.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.165.1
 	go.opentelemetry.io/collector/extension v1.71.0
 	go.opentelemetry.io/collector/pdata v1.71.0
 )

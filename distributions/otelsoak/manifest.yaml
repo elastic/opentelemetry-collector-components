@@ -10,7 +10,7 @@ receivers:
 
 processors:
   - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.68.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.165.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.165.1
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.165.0
