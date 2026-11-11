@@ -75,7 +75,7 @@ func TestTracker(t *testing.T) {
 				assert.Zero(t, tracker.EstimateOverflow())
 			}
 
-			b, err := tracker.AppendBinary(nil, false)
+			b, err := tracker.AppendBinary(nil)
 			require.NoError(t, err)
 			newTracker := newTracker(tc.maxCardinality, 0)
 			_, err = newTracker.Unmarshal(b, false)
@@ -227,15 +227,13 @@ func TestTrackers(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			b, err := tc.trackers.AppendBinary(nil, false)
+			b, err := tc.trackers.AppendBinary(nil)
 			require.NoError(t, err)
 
 			newTrackers := getTestTrackers()
 			require.NoError(t, newTrackers.Unmarshal(b, false))
 			// Assert decoded trackers to be equal to the original
 			assertTrackers(t, tc.trackers, newTrackers)
-			// Everything stored without budgets is charged to the default budget.
-			assert.Equal(t, []string{""}, newTrackers.Budgets())
 		})
 	}
 }
@@ -338,10 +336,10 @@ func TestTracker_Budgets(t *testing.T) {
 			}
 			assert.Equal(t, tc.wantEstimate, tracker.EstimateOverflow())
 
-			b, err := tracker.AppendBinary(nil, true)
+			b, err := tracker.AppendBinary(nil)
 			require.NoError(t, err)
 			decoded := newTracker(tc.maxCardinality, 0)
-			n, err := decoded.Unmarshal(b, true)
+			n, err := decoded.Unmarshal(b, false)
 			require.NoError(t, err)
 			assert.Equal(t, len(b), n)
 			assert.True(t, tracker.Equal(decoded))
@@ -354,7 +352,6 @@ func TestTrackers_Budgets(t *testing.T) {
 	p0, p1 := trackers.BudgetIdx("p0"), trackers.BudgetIdx("p1")
 	require.Equal(t, p0, trackers.BudgetIdx("p0"))
 	require.Equal(t, []string{"p0", "p1"}, trackers.Budgets())
-	assert.False(t, trackers.DefaultBudgetOnly())
 
 	tr := trackers.GetResourceTracker()
 	tr.CheckOverflow(p0, testHash(0x1).Hash)
@@ -376,10 +373,10 @@ func TestTrackers_Budgets(t *testing.T) {
 	assert.Equal(t, []uint32{p0, p1, p1}, tdp.datapointBudgetIdx)
 	assert.Equal(t, p0, tdp.DatapointBudgetIdx(3))
 
-	b, err := trackers.AppendBinary(nil, true)
+	b, err := trackers.AppendBinary(nil)
 	require.NoError(t, err)
 	decoded := NewTrackers(2, 2, 2, 2)
-	require.NoError(t, decoded.Unmarshal(b, true))
+	require.NoError(t, decoded.Unmarshal(b, false))
 	assertTrackers(t, trackers, decoded)
 	assert.Equal(t, trackers.Budgets(), decoded.Budgets())
 	dtdp := decoded.GetScopeTracker(1).GetMetricTracker(0).GetDatapointTracker(0)
@@ -387,4 +384,25 @@ func TestTrackers_Budgets(t *testing.T) {
 	assert.Equal(t, p1, dtdp.DatapointBudgetIdx(1))
 	assert.Equal(t, p1, dtdp.DatapointBudgetIdx(2))
 	assert.Equal(t, uint32(0), dtdp.DatapointBudgetIdx(3))
+}
+
+// TestTrackers_UnmarshalV1 reads trackers as written before budgets existed:
+// type, count and an empty sketch per tracker, no budget table.
+func TestTrackers_UnmarshalV1(t *testing.T) {
+	var b []byte
+	for _, rec := range []struct {
+		typ   trackerType
+		count byte
+	}{{resourceTrackerType, 2}, {scopeTrackerType, 1}, {metricTrackerType, 1}, {dpTrackerType, 3}} {
+		b = append(b, byte(rec.typ), rec.count, 0, 0)
+	}
+
+	trackers := NewTrackers(2, 2, 2, 4)
+	require.NoError(t, trackers.Unmarshal(b, true))
+	assert.Equal(t, []string{""}, trackers.Budgets())
+	assert.Equal(t, uint64(2), trackers.GetResourceTracker().budget0Count)
+	tdp := trackers.GetScopeTracker(0).GetMetricTracker(0).GetDatapointTracker(0)
+	assert.Equal(t, uint64(3), tdp.budget0Count)
+	assert.Nil(t, tdp.datapointBudgetIdx)
+	assert.Equal(t, uint32(0), tdp.DatapointBudgetIdx(2))
 }

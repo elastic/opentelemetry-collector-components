@@ -145,8 +145,9 @@ metadata values instead, independent of how the sources are placed:
 - Budget keys do not split the aggregation and are not propagated: data from every budget merges
   into the same aggregate and the exported metrics are unchanged. Requests without any of the keys
   share one default budget.
-- The stored format only changes for values that hold a budget other than the default, so leaving
-  the option unset, or setting it without any `max_cardinality`, keeps the on-disk format identical.
+- The stored format version moves from 1 to 2 to carry the budgets. Values written by earlier
+  versions are still read, with everything on the default budget. Rolling back to a version that
+  predates budgets leaves version 2 entries unreadable until their windows expire.
 - Budgets are meant for a bounded number of pools per aggregated value, such as the partitions a
   tenant's topics have on one instance. Every tracker keeps one count per budget, 8 bytes in memory
   and about 1 byte on disk, so hundreds of budgets are fine while a key with thousands of distinct

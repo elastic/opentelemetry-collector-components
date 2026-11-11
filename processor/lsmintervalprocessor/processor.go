@@ -138,8 +138,7 @@ func newProcessor(
 	sortedMetadataKeys := append([]string{}, cfg.MetadataKeys...)
 	sort.Strings(sortedMetadataKeys)
 	// Without any limit nothing can overflow, so budgets would only add
-	// bookkeeping and a v2 stored format; every request then shares the
-	// default budget.
+	// bookkeeping; every request then shares the default budget.
 	var budgetKeys []string
 	if cfg.ResourceLimit.MaxCardinality > 0 || cfg.ScopeLimit.MaxCardinality > 0 ||
 		cfg.MetricLimit.MaxCardinality > 0 || cfg.DatapointLimit.MaxCardinality > 0 {

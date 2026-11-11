@@ -32,11 +32,11 @@ import (
 )
 
 const (
-	// versionSingleBudget stores trackers without budgets: every entity is
-	// charged to the default budget. versionBudgets adds the budget table
-	// and the budget charged for each entity.
-	versionSingleBudget = uint8(1)
-	versionBudgets      = uint8(2)
+	// version is the stored format. versionV1, written before budgets
+	// existed, is still read: its trackers carry a count and a sketch only,
+	// and everything in it lands on the default budget.
+	version   = uint8(2)
+	versionV1 = uint8(1)
 
 	overflowMetricName = "_overflow_metric"
 	overflowMetricDesc = "Overflow metric count due to metric limit"
@@ -146,15 +146,11 @@ func NewValue(
 // Limit trackers and pmetric are marshaled into the same binary
 // representation.
 func (s *Value) AppendBinary(b []byte) ([]byte, error) {
+	b = append(b, version)
+
 	if s.source.DataPointCount() == 0 {
 		// Nothing to marshal
-		return append(b, versionSingleBudget), nil
-	}
-	withBudgets := !s.trackers.DefaultBudgetOnly()
-	if withBudgets {
-		b = append(b, versionBudgets)
-	} else {
-		b = append(b, versionSingleBudget)
+		return b, nil
 	}
 
 	var marshaler pmetric.ProtoMarshaler
@@ -167,7 +163,7 @@ func (s *Value) AppendBinary(b []byte) ([]byte, error) {
 	b = slices.Grow(b, 4)
 	b = b[:lenOffset+4] // leave space for the length of encoded trackers
 
-	b, err = s.trackers.AppendBinary(b, withBudgets)
+	b, err = s.trackers.AppendBinary(b)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal trackers: %w", err)
 	}
@@ -185,10 +181,10 @@ func (s *Value) Unmarshal(data []byte) error {
 	if len(data) == 0 {
 		return errors.New("failed to unmarshal value, invalid length")
 	}
-	if data[0] != versionSingleBudget && data[0] != versionBudgets {
+	if data[0] != version && data[0] != versionV1 {
 		return fmt.Errorf("unsupported version: %d", data[0])
 	}
-	withBudgets := data[0] == versionBudgets
+	v1 := data[0] == versionV1
 	data = data[1:]
 
 	if len(data) == 0 {
@@ -202,7 +198,7 @@ func (s *Value) Unmarshal(data []byte) error {
 	data = data[4:]
 	if trackersLen > 0 {
 		s.ensureTrackers()
-		err := s.trackers.Unmarshal(data[:trackersLen], withBudgets)
+		err := s.trackers.Unmarshal(data[:trackersLen], v1)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal limits: %w", err)
 		}

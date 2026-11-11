@@ -18,7 +18,7 @@
 package merger
 
 import (
-	"fmt"
+	"encoding/binary"
 	"math"
 	"path/filepath"
 	"strings"
@@ -388,29 +388,38 @@ func TestMergeBudgets(t *testing.T) {
 	}
 }
 
-// TestAppendBinaryVersion asserts that the stored format only changes when a
-// value carries a budget other than the default, so rollback stays clean for
-// deployments that do not configure budgets.
-func TestAppendBinaryVersion(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		budgets []string
-		want    byte
-	}{
-		{name: "default_budget", budgets: []string{""}, want: 1},
-		{name: "single_named_budget", budgets: []string{"p0"}, want: 2},
-		{name: "default_and_named_budget", budgets: []string{"", "p0"}, want: 2},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			v := budgetTestValue(0)
-			for i, b := range tc.budgets {
-				mergeMetrics(t, v, pathMetrics(fmt.Sprintf("R%d/s/m/d", i)), b)
-			}
-			b, err := v.AppendBinary(nil)
-			require.NoError(t, err)
-			assert.Equal(t, tc.want, b[0])
-		})
+// TestUnmarshalV1 reads a value written before budgets existed. Everything
+// in it lands on the default budget and it is written back in the current
+// format.
+func TestUnmarshalV1(t *testing.T) {
+	md := pathMetrics("A/s/m/d")
+	pmb, err := (&pmetric.ProtoMarshaler{}).MarshalMetrics(md)
+	require.NoError(t, err)
+	// One tracker per level, each: type byte, count 1, sketch length 0.
+	var trackers []byte
+	for typ := byte(0); typ < 4; typ++ {
+		trackers = append(trackers, typ, 1, 0, 0)
 	}
+	b := []byte{1}
+	b = binary.BigEndian.AppendUint32(b, uint32(len(trackers)))
+	b = append(append(b, trackers...), pmb...)
+
+	v := budgetTestValue(2)
+	require.NoError(t, v.Unmarshal(b))
+	require.Equal(t, []string{""}, v.trackers.Budgets())
+
+	// A holds one of the two default-budget slots, so one more resource
+	// fits on "" and the next one overflows, while p0 has its own pool.
+	mergeMetrics(t, v, pathMetrics("B/s/m/d"), "")
+	mergeMetrics(t, v, pathMetrics("C/s/m/d"), "")
+	mergeMetrics(t, v, pathMetrics("D/s/m/d"), "p0")
+	out, err := v.AppendBinary(nil)
+	require.NoError(t, err)
+	assert.Equal(t, byte(2), out[0])
+	md, stats, err := roundtripValue(t, v, 2).Finalize()
+	require.NoError(t, err)
+	assert.Equal(t, map[string]int64{"A/s/m/d": 1, "B/s/m/d": 1, "D/s/m/d": 1}, admittedPaths(md))
+	assert.Equal(t, OverflowStats{Resources: 1}, stats)
 }
 
 func budgetTestValue(limit int64) *Value {

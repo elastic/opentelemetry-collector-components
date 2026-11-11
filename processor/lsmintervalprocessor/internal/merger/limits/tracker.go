@@ -122,16 +122,13 @@ func (t *Tracker) MergeEstimators(other *Tracker) error {
 	return t.overflowCounts.Merge(other.overflowCounts)
 }
 
-// AppendBinary marshals the tracker and appends the result to b. The budget
-// and the counts beyond budget 0 are only written when withBudgets is set.
-func (t *Tracker) AppendBinary(b []byte, withBudgets bool) ([]byte, error) {
+// AppendBinary marshals the tracker and appends the result to b.
+func (t *Tracker) AppendBinary(b []byte) ([]byte, error) {
 	b = binary.AppendUvarint(b, t.budget0Count)
-	if withBudgets {
-		b = binary.AppendUvarint(b, uint64(t.budgetIdx))
-		b = binary.AppendUvarint(b, uint64(len(t.budgetCounts)))
-		for _, c := range t.budgetCounts {
-			b = binary.AppendUvarint(b, c)
-		}
+	b = binary.AppendUvarint(b, uint64(t.budgetIdx))
+	b = binary.AppendUvarint(b, uint64(len(t.budgetCounts)))
+	for _, c := range t.budgetCounts {
+		b = binary.AppendUvarint(b, c)
 	}
 
 	// Make space for the sketch length. We reserve 2 bytes, which is sufficient
@@ -151,7 +148,8 @@ func (t *Tracker) AppendBinary(b []byte, withBudgets bool) ([]byte, error) {
 }
 
 // Unmarshal unmarshals the encoded limits into t, and returns the number of
-// bytes consumed. withBudgets must match the value passed to AppendBinary.
+// bytes consumed. v1 reads the layout written before budgets existed: a
+// count and a sketch only, with everything on budget 0.
 //
 // Example usage:
 //
@@ -161,14 +159,14 @@ func (t *Tracker) AppendBinary(b []byte, withBudgets bool) ([]byte, error) {
 //	    panic(err)
 //	}
 //	data = data[n:]
-func (t *Tracker) Unmarshal(d []byte, withBudgets bool) (int, error) {
+func (t *Tracker) Unmarshal(d []byte, v1 bool) (int, error) {
 	var offset int
 	budget0Count, err := readUvarint(d, &offset)
 	if err != nil {
 		return 0, fmt.Errorf("failed to unmarshal tracker: %w", err)
 	}
 	t.budget0Count = budget0Count
-	if withBudgets {
+	if !v1 {
 		budgetIdx, err := readUvarint(d, &offset)
 		if err != nil {
 			return 0, fmt.Errorf("failed to unmarshal tracker budget index: %w", err)
@@ -366,12 +364,6 @@ func (t *Trackers) Budgets() []string {
 	return t.budgets
 }
 
-// DefaultBudgetOnly reports whether every entity is charged to the default
-// budget, in which case the trackers can be stored without budgets.
-func (t *Trackers) DefaultBudgetOnly() bool {
-	return t == nil || len(t.budgets) == 0 || (len(t.budgets) == 1 && t.budgets[0] == "")
-}
-
 // GetResourceTracker returns the resource tracker.
 func (t *Trackers) GetResourceTracker() *Tracker {
 	return t.resource
@@ -399,9 +391,8 @@ func (t *Trackers) NewScopeTracker(budgetIdx uint32) *ScopeTracker {
 	return scopeTracker
 }
 
-// AppendBinary marshals the trackers and appends the result to b. With
-// withBudgets the budget table and per-entity budgets are written too.
-func (t *Trackers) AppendBinary(b []byte, withBudgets bool) ([]byte, error) {
+// AppendBinary marshals the trackers and appends the result to b.
+func (t *Trackers) AppendBinary(b []byte) ([]byte, error) {
 	if t == nil || t.resource == nil {
 		// if trackers is nil then nothing to marshal
 		return b, nil
@@ -417,37 +408,33 @@ func (t *Trackers) AppendBinary(b []byte, withBudgets bool) ([]byte, error) {
 	// minimum 4 bytes per tracker (type=1, count=1+, sketch length=2)
 	b = slices.Grow(b, n*4)
 
-	if withBudgets {
-		b = binary.AppendUvarint(b, uint64(len(t.budgets)))
-		for _, name := range t.budgets {
-			b = binary.AppendUvarint(b, uint64(len(name)))
-			b = append(b, name...)
-		}
+	b = binary.AppendUvarint(b, uint64(len(t.budgets)))
+	for _, name := range t.budgets {
+		b = binary.AppendUvarint(b, uint64(len(name)))
+		b = append(b, name...)
 	}
-	b, err := marshalTracker(resourceTrackerType, t.resource, b, withBudgets)
+	b, err := marshalTracker(resourceTrackerType, t.resource, b)
 	if err != nil {
 		return nil, err
 	}
 	for _, st := range t.scope {
-		b, err = marshalTracker(scopeTrackerType, st.Tracker, b, withBudgets)
+		b, err = marshalTracker(scopeTrackerType, st.Tracker, b)
 		if err != nil {
 			return nil, err
 		}
 		for _, mt := range st.metrics {
-			b, err = marshalTracker(metricTrackerType, mt.Tracker, b, withBudgets)
+			b, err = marshalTracker(metricTrackerType, mt.Tracker, b)
 			if err != nil {
 				return nil, err
 			}
 			for _, dpt := range mt.datapoints {
-				b, err = marshalTracker(dpTrackerType, dpt.Tracker, b, withBudgets)
+				b, err = marshalTracker(dpTrackerType, dpt.Tracker, b)
 				if err != nil {
 					return nil, err
 				}
-				if withBudgets {
-					b = binary.AppendUvarint(b, uint64(len(dpt.datapointBudgetIdx)))
-					for _, budgetIdx := range dpt.datapointBudgetIdx {
-						b = binary.AppendUvarint(b, uint64(budgetIdx))
-					}
+				b = binary.AppendUvarint(b, uint64(len(dpt.datapointBudgetIdx)))
+				for _, budgetIdx := range dpt.datapointBudgetIdx {
+					b = binary.AppendUvarint(b, uint64(budgetIdx))
 				}
 			}
 		}
@@ -455,15 +442,15 @@ func (t *Trackers) AppendBinary(b []byte, withBudgets bool) ([]byte, error) {
 	return b, nil
 }
 
-// Unmarshal unmarshals the trackers. withBudgets must match the value passed
-// to AppendBinary; without it every entity is charged to the default budget.
-func (t *Trackers) Unmarshal(d []byte, withBudgets bool) error {
+// Unmarshal unmarshals the trackers. v1 reads the layout written before
+// budgets existed, charging every entity to the default budget.
+func (t *Trackers) Unmarshal(d []byte, v1 bool) error {
 	if len(d) == 0 {
 		return nil
 	}
 
 	var offset int
-	if withBudgets {
+	if !v1 {
 		n, err := readUvarint(d, &offset)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal budgets: %w", err)
@@ -513,12 +500,12 @@ func (t *Trackers) Unmarshal(d []byte, withBudgets bool) error {
 		default:
 			return errors.New("invalid tracker found")
 		}
-		n, err := tracker.Unmarshal(d[offset:], withBudgets)
+		n, err := tracker.Unmarshal(d[offset:], v1)
 		if err != nil {
 			return err
 		}
 		offset += n
-		if dpTracker != nil && withBudgets {
+		if dpTracker != nil && !v1 {
 			n, err := readUvarint(d, &offset)
 			if err != nil {
 				return fmt.Errorf("failed to unmarshal datapoint budget indexes: %w", err)
@@ -535,9 +522,9 @@ func (t *Trackers) Unmarshal(d []byte, withBudgets bool) error {
 	return nil
 }
 
-func marshalTracker(typ trackerType, tracker *Tracker, result []byte, withBudgets bool) ([]byte, error) {
+func marshalTracker(typ trackerType, tracker *Tracker, result []byte) ([]byte, error) {
 	result = append(result, byte(typ))
-	return tracker.AppendBinary(result, withBudgets)
+	return tracker.AppendBinary(result)
 }
 
 // readUvarint decodes the uvarint at *offset and advances it.

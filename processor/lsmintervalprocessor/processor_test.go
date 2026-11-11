@@ -711,8 +711,7 @@ func TestWriteStallListener(t *testing.T) {
 }
 
 // TestBudgetWithoutLimits asserts that budget keys are ignored when no
-// limit is configured, keeping such deployments on the single-budget
-// stored format.
+// limit is configured.
 func TestBudgetWithoutLimits(t *testing.T) {
 	md := client.NewMetadata(map[string][]string{"partition": {"0"}})
 	for _, tc := range []struct {
