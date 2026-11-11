@@ -65,6 +65,8 @@ type Config struct {
 	// distinct combination of values (for example per Kafka partition).
 	// Unlike MetadataKeys, budget keys neither split the aggregation nor
 	// propagate, and they are ignored unless a max_cardinality is set.
+	// Keep the number of distinct values bounded (hundreds are fine,
+	// thousands are not): every tracker holds one count per budget.
 	// Entries are case-insensitive. Duplicated entries will trigger a
 	// validation error.
 	BudgetMetadataKeys []string `mapstructure:"budget_metadata_keys"`

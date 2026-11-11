@@ -147,6 +147,10 @@ metadata values instead, independent of how the sources are placed:
   share one default budget.
 - The stored format only changes for values that hold a budget other than the default, so leaving
   the option unset, or setting it without any `max_cardinality`, keeps the on-disk format identical.
+- Budgets are meant for a bounded number of pools per aggregated value, such as the partitions a
+  tenant's topics have on one instance. Every tracker keeps one count per budget, 8 bytes in memory
+  and about 1 byte on disk, so hundreds of budgets are fine while a key with thousands of distinct
+  values (a tenant or user id, for example) multiplies the size of every value accordingly.
 
 ```yaml
 processors:
