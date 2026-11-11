@@ -258,7 +258,8 @@ func updateValueWithPMetrics(m pmetric.Metrics, v *Value) error {
 // entity already in the value is merged for free, a new entity takes one slot
 // in the budget that delivered it, and a full budget sends it to overflow.
 // Every op is built as its own value, round-tripped through binary and merged
-// into the accumulated value, which mirrors the pebble merge operator.
+// into the accumulated value, oldest first, which is the order the pebble
+// merger folds in regardless of how pebble hands the operands over.
 func TestMergeBudgets(t *testing.T) {
 	// entity is one datapoint of value 1 at path resource/scope/metric/datapoint,
 	// charged to budget when new to the value.
@@ -302,7 +303,7 @@ func TestMergeBudgets(t *testing.T) {
 			wantAdmitted: map[string]int64{"A/s/m/d": 2, "B/s/m/d": 1, "C/s/m/d": 1},
 		},
 		{
-			name:  "slot_charged_to_first_deliverer",
+			name:  "slot_charged_to_oldest_operand",
 			limit: 2,
 			ops: [][]entity{
 				{{"p0", "A/s/m/d"}},
@@ -422,7 +423,7 @@ func TestUnmarshalV1(t *testing.T) {
 	assert.Equal(t, OverflowStats{Resources: 1}, stats)
 }
 
-func budgetTestValue(limit int64) *Value {
+func budgetTestLimits(limit int64) (resource, scope, metric, datapoint config.LimitConfig) {
 	lc := func(key string) config.LimitConfig {
 		return config.LimitConfig{
 			MaxCardinality: limit,
@@ -431,10 +432,12 @@ func budgetTestValue(limit int64) *Value {
 			},
 		}
 	}
-	return NewValue(
-		lc("resource_overflow"), lc("scope_overflow"), lc("metric_overflow"), lc("dp_overflow"),
-		defaultMaxBuckets,
-	)
+	return lc("resource_overflow"), lc("scope_overflow"), lc("metric_overflow"), lc("dp_overflow")
+}
+
+func budgetTestValue(limit int64) *Value {
+	r, s, m, d := budgetTestLimits(limit)
+	return NewValue(r, s, m, d, defaultMaxBuckets)
 }
 
 func roundtripValue(t *testing.T, v *Value, limit int64) *Value {

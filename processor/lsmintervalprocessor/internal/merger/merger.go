@@ -73,38 +73,34 @@ type Merger struct {
 
 // MergeNewer implements pebble.ValueMerger.
 func (m *Merger) MergeNewer(value []byte) error {
-	return m.mergeOperand(value)
-}
-
-// MergeOlder implements pebble.ValueMerger.
-func (m *Merger) MergeOlder(value []byte) error {
-	return m.mergeOperand(value)
-}
-
-// mergeOperand unmarshals the first operand if needed, unmarshals value,
-// and merges the two Values.
-func (m *Merger) mergeOperand(value []byte) error {
 	if err := m.ensureUnmarshaled(); err != nil {
 		return err
 	}
-	op := NewValue(
-		m.resourceLimitCfg,
-		m.scopeLimitCfg,
-		m.metricLimitCfg,
-		m.datapointLimitCfg,
-		m.maxExponentialHistogramBuckets,
-	)
-	if err := op.Unmarshal(value); err != nil {
+	newer, err := m.unmarshal(value)
+	if err != nil {
 		return err
 	}
-	return m.current.Merge(op)
+	return m.current.Merge(newer)
 }
 
-// ensureUnmarshaled unmarshals raw into current. A second call is a no-op.
-func (m *Merger) ensureUnmarshaled() error {
-	if m.current != nil {
-		return nil
+// MergeOlder implements pebble.ValueMerger. Newer is always folded into
+// older; see "Merge order" in the README.
+func (m *Merger) MergeOlder(value []byte) error {
+	if err := m.ensureUnmarshaled(); err != nil {
+		return err
 	}
+	older, err := m.unmarshal(value)
+	if err != nil {
+		return err
+	}
+	if err := older.Merge(m.current); err != nil {
+		return err
+	}
+	m.current = older
+	return nil
+}
+
+func (m *Merger) unmarshal(value []byte) (*Value, error) {
 	v := NewValue(
 		m.resourceLimitCfg,
 		m.scopeLimitCfg,
@@ -112,7 +108,19 @@ func (m *Merger) ensureUnmarshaled() error {
 		m.datapointLimitCfg,
 		m.maxExponentialHistogramBuckets,
 	)
-	if err := v.Unmarshal(m.raw); err != nil {
+	if err := v.Unmarshal(value); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// ensureUnmarshaled unmarshals raw into current. A second call is a no-op.
+func (m *Merger) ensureUnmarshaled() error {
+	if m.current != nil {
+		return nil
+	}
+	v, err := m.unmarshal(m.raw)
+	if err != nil {
 		return fmt.Errorf("failed to unmarshal value from db: %w", err)
 	}
 	m.current = v
