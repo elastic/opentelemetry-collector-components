@@ -659,6 +659,11 @@ func (p *Processor) exportForInterval(
 			metric.WithAttributes(attributes...),
 		)
 	}
+	if err := iter.Error(); err != nil {
+		// Pebble applies pending merges inside the iterator; a merge error
+		// ends the iteration early instead of surfacing on Value.
+		errs = append(errs, fmt.Errorf("failed to iterate exported entries: %w", err))
+	}
 	if rangeHasData {
 		if err := p.db.DeleteRange(lb, ub, p.wOpts); err != nil {
 			errs = append(errs, fmt.Errorf("failed to delete exported entries: %w", err))
