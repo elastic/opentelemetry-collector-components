@@ -19,10 +19,10 @@ package lsmintervalprocessor // import "github.com/elastic/opentelemetry-collect
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -142,7 +142,8 @@ func newProcessor(
 	var budgetKeys []string
 	if cfg.ResourceLimit.MaxCardinality > 0 || cfg.ScopeLimit.MaxCardinality > 0 ||
 		cfg.MetricLimit.MaxCardinality > 0 || cfg.DatapointLimit.MaxCardinality > 0 {
-		budgetKeys = cfg.BudgetMetadataKeys
+		budgetKeys = append([]string{}, cfg.BudgetMetadataKeys...)
+		sort.Strings(budgetKeys)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -390,19 +391,26 @@ func (p *Processor) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) erro
 }
 
 // budget names the cardinality budget for a request from the values of the
-// configured budget metadata keys. Requests carrying none of the keys share
-// the default budget.
+// configured budget metadata keys. Keys are sorted at construction and values
+// are length-prefixed, so neither key order nor separators inside a value can
+// make two different combinations share a name. Requests carrying none of the
+// keys share the default budget, the empty string.
 func (p *Processor) budget(md client.Metadata) string {
-	var b strings.Builder
+	var b []byte
+	present := false
 	for _, k := range p.budgetKeys {
-		b.WriteString(strings.Join(md.Get(k), ","))
-		b.WriteByte(0)
+		values := md.Get(k)
+		present = present || len(values) != 0
+		b = binary.AppendUvarint(b, uint64(len(values)))
+		for _, v := range values {
+			b = binary.AppendUvarint(b, uint64(len(v)))
+			b = append(b, v...)
+		}
 	}
-	if b.Len() == len(p.budgetKeys) {
-		// Only separators written: none of the keys is present.
+	if !present {
 		return ""
 	}
-	return b.String()
+	return string(b)
 }
 
 func (p *Processor) mergeToBatch(mb *mergeBuffer, clientMetadata []merger.KeyValues) (err error) {
