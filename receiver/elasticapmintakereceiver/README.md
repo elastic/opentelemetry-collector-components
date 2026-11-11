@@ -38,6 +38,8 @@ The elasticapmintake receiver embeds the [confighttp.ServerConfig](https://githu
 
 `batch_flush_interval` bounds how long buffered events may wait for their batch to fill on a slow stream. The bound is checked as events arrive; an idle stream's buffered tail is processed on the next event or at end of stream, matching intake v2 semantics in apm-server. Set to `0` to disable the bound. The default is `1s`.
 
+`mapping_mode` controls the `x-elastic-mapping-mode` client metadata the receiver sets on every intake v2 request. Downstream Elastic components (the `elasticapm` processor and connector, and the `elasticsearch` exporter) use this value to decide how data is enriched, aggregated and encoded. Supported values are `ecs` (default, classic APM data streams) and `otel` (OTel-native data streams). Any `X-Elastic-Mapping-Mode` header sent by the client is always overwritten. Storing APM agent data in `otel` mode is experimental: some Elastic-specific attributes produced by this receiver (for example `transaction.name` or `labels.*`) are indexed as-is in OTel mode, and Kibana APM UI support should be validated before enabling it.
+
 ### TLS and mTLS settings
 
 You can enable TLS or mutual TLS to encrypt data in transit between Elastic APM agents and the receiver.
@@ -130,4 +132,4 @@ The next component needed is the `elasticapm` processor, which takes care of enr
 
 And then finally the `elasticsearch` exporter stores the data in Elasticsearch.
 
-Currently, the whole pipeline will automatically store data in classic APM data streams. This is different from a fully OTel native pipeline with the OTLP receiver (as opposed to the `elasticapmintake` receiver), which by default stores data in [the OTel native data streams](https://github.com/elastic/opentelemetry-dev/blob/main/docs/design-decisions/ingest/routing.md). We still have the option to extend the components described above and add a config to potentially store data from classic Elastic APM Agents in OTel native data streams in a later iteration.
+By default (`mapping_mode: ecs`), the whole pipeline stores data in classic APM data streams. This is different from a fully OTel native pipeline with the OTLP receiver (as opposed to the `elasticapmintake` receiver), which by default stores data in [the OTel native data streams](https://github.com/elastic/opentelemetry-dev/blob/main/docs/design-decisions/ingest/routing.md). Set `mapping_mode: otel` to store data from classic Elastic APM Agents in the OTel native data streams instead.
