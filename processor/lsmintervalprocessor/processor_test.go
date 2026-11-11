@@ -710,44 +710,33 @@ func TestWriteStallListener(t *testing.T) {
 	assert.GreaterOrEqual(t, dps[0].Value, 0.01)
 }
 
-// TestBudgetWithoutLimits asserts that budget keys are ignored when no
-// limit is configured.
-func TestBudgetWithoutLimits(t *testing.T) {
-	md := client.NewMetadata(map[string][]string{"partition": {"0"}})
+// TestBudgetName asserts how the budget name is derived from client
+// metadata: ignored without a limit, keys in sorted order, values
+// length-prefixed so separators inside a value cannot collide.
+func TestBudgetName(t *testing.T) {
 	for _, tc := range []struct {
-		name  string
-		limit int64
-		want  string
+		name     string
+		limit    int64
+		metadata map[string][]string
+		want     string
 	}{
-		{name: "no_limits", limit: 0, want: ""},
-		{name: "datapoint_limit", limit: 1, want: "\x01\x010"},
+		{name: "no_limits", limit: 0, metadata: map[string][]string{"a": {"1"}}, want: ""},
+		{name: "no_keys_present", limit: 1, metadata: map[string][]string{"c": {"1"}}, want: ""},
+		{name: "single_value", limit: 1, metadata: map[string][]string{"a": {"1"}}, want: "\x01\x011\x00"},
+		{name: "keys_sorted", limit: 1, metadata: map[string][]string{"b": {"x", "y"}, "a": {"1"}}, want: "\x01\x011\x02\x01x\x01y"},
+		{name: "separator_inside_value", limit: 1, metadata: map[string][]string{"b": {"x,y"}}, want: "\x00\x01\x03x,y"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := &config.Config{
-				BudgetMetadataKeys:             []string{"partition"},
+				BudgetMetadataKeys:             []string{"b", "a"},
 				Intervals:                      []config.IntervalConfig{{Duration: time.Minute}},
 				DatapointLimit:                 config.LimitConfig{MaxCardinality: tc.limit},
 				ExponentialHistogramMaxBuckets: 160,
 			}
 			p := newTestProcessor(t, cfg, processortest.NewNopSettings(metadata.Type).TelemetrySettings, consumertest.NewNop())
-			assert.Equal(t, tc.want, p.(*Processor).budget(md))
+			assert.Equal(t, tc.want, p.(*Processor).budget(client.NewMetadata(tc.metadata)))
 		})
 	}
-}
-
-// TestBudgetName asserts that the budget name depends neither on the order
-// of the configured keys nor on separators inside a value.
-func TestBudgetName(t *testing.T) {
-	cfg := &config.Config{
-		BudgetMetadataKeys:             []string{"b", "a"},
-		Intervals:                      []config.IntervalConfig{{Duration: time.Minute}},
-		DatapointLimit:                 config.LimitConfig{MaxCardinality: 1},
-		ExponentialHistogramMaxBuckets: 160,
-	}
-	p := newTestProcessor(t, cfg, processortest.NewNopSettings(metadata.Type).TelemetrySettings, consumertest.NewNop()).(*Processor)
-	name := func(md map[string][]string) string { return p.budget(client.NewMetadata(md)) }
-	assert.Equal(t, "\x01\x011\x02\x01x\x01y", name(map[string][]string{"a": {"1"}, "b": {"x", "y"}}))
-	assert.NotEqual(t, name(map[string][]string{"b": {"x,y"}}), name(map[string][]string{"b": {"x", "y"}}))
 }
 
 // TestBudgetMetadataKeys asserts that cardinality limits apply per distinct

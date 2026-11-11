@@ -169,7 +169,11 @@ By default every limit applies once per aggregated value, so a tenant whose data
 processor through several sources (for example several Kafka partitions) shares one budget when
 the sources land on the same instance and gets one budget per instance otherwise.
 `budget_metadata_keys` makes the limits apply per distinct combination of the named client
-metadata values instead, independent of how the sources are placed:
+metadata values instead, so a source keeps its own budget whether or not it shares an instance
+with others. Placement still shows near a limit: an entity that several sources on one instance
+deliver takes one slot in one budget, where sources on separate instances each pay for it, and a
+source that moves to another instance mid-window starts a fresh budget there while its old counts
+stay in the value it left. Budgets reduce the dependence on placement; they do not remove it:
 
 - A new resource, scope, metric or datapoint takes one slot in the budget that delivered it.
   An entity delivered through several budgets takes a single slot, in the budget of the oldest

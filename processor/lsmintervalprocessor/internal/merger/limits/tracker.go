@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"math"
 	"slices"
 
 	"github.com/axiomhq/hyperloglog"
@@ -168,8 +169,8 @@ func (t *Tracker) Unmarshal(d []byte, v1 bool) (int, error) {
 	t.budget0Count = budget0Count
 	if !v1 {
 		budgetIdx, err := readUvarint(d, &offset)
-		if err != nil {
-			return 0, fmt.Errorf("failed to unmarshal tracker budget index: %w", err)
+		if err != nil || budgetIdx > math.MaxUint32 {
+			return 0, errors.New("failed to unmarshal tracker, invalid budget index")
 		}
 		t.budgetIdx = uint32(budgetIdx)
 		n, err := readUvarint(d, &offset)
@@ -452,13 +453,13 @@ func (t *Trackers) Unmarshal(d []byte, v1 bool) error {
 	var offset int
 	if !v1 {
 		n, err := readUvarint(d, &offset)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal budgets: %w", err)
+		if err != nil || n > uint64(len(d)-offset) {
+			return errors.New("failed to unmarshal budgets, invalid count")
 		}
 		t.budgets = make([]string, 0, n)
 		for range n {
 			l, err := readUvarint(d, &offset)
-			if err != nil || len(d) < offset+int(l) {
+			if err != nil || l > uint64(len(d)-offset) {
 				return errors.New("failed to unmarshal budgets, invalid length")
 			}
 			t.budgets = append(t.budgets, string(d[offset:offset+int(l)]))
@@ -476,10 +477,6 @@ func (t *Trackers) Unmarshal(d []byte, v1 bool) error {
 		trackerTyp := trackerType(d[offset])
 		offset += 1
 
-		// The below code will panic with NPE if the binary encoding is
-		// unexpected. The expected binary encoding must have one resource
-		// tracker then scope tracker followed by metric tracker followed by
-		// datapoint tracker.
 		var tracker *Tracker
 		var dpTracker *DatapointTracker
 		switch trackerTyp {
@@ -492,9 +489,15 @@ func (t *Trackers) Unmarshal(d []byte, v1 bool) error {
 			// tracker for the new scope.
 			latestMetricTracker = nil
 		case metricTrackerType:
+			if latestScopeTracker == nil {
+				return errors.New("failed to unmarshal trackers, metric tracker without scope tracker")
+			}
 			latestMetricTracker = latestScopeTracker.NewMetricTracker(0)
 			tracker = latestMetricTracker.Tracker
 		case dpTrackerType:
+			if latestMetricTracker == nil {
+				return errors.New("failed to unmarshal trackers, datapoint tracker without metric tracker")
+			}
 			dpTracker = latestMetricTracker.NewDatapointTracker(0)
 			tracker = dpTracker.Tracker
 		default:
@@ -505,6 +508,10 @@ func (t *Trackers) Unmarshal(d []byte, v1 bool) error {
 			return err
 		}
 		offset += n
+		// Trackers are only created for registered budgets, see BudgetIdx.
+		if int(tracker.budgetIdx) >= len(t.budgets) || len(tracker.budgetCounts) >= len(t.budgets) {
+			return errors.New("failed to unmarshal tracker, budget index out of range")
+		}
 		if dpTracker != nil && !v1 {
 			n, err := readUvarint(d, &offset)
 			if err != nil {
@@ -512,8 +519,8 @@ func (t *Trackers) Unmarshal(d []byte, v1 bool) error {
 			}
 			for range n {
 				budgetIdx, err := readUvarint(d, &offset)
-				if err != nil {
-					return fmt.Errorf("failed to unmarshal datapoint budget indexes: %w", err)
+				if err != nil || budgetIdx >= uint64(len(t.budgets)) {
+					return errors.New("failed to unmarshal datapoint budget indexes, index out of range")
 				}
 				dpTracker.datapointBudgetIdx = append(dpTracker.datapointBudgetIdx, uint32(budgetIdx))
 			}

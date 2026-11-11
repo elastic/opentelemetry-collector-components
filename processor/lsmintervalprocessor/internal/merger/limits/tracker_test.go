@@ -18,7 +18,9 @@
 package limits
 
 import (
+	"encoding/binary"
 	"hash"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -137,7 +139,9 @@ func TestTracker_Merge(t *testing.T) {
 
 func TestTrackers(t *testing.T) {
 	getTestTrackers := func() *Trackers {
-		return NewTrackers(1, 1, 1, 1)
+		t := NewTrackers(1, 1, 1, 1)
+		t.BudgetIdx("")
+		return t
 	}
 	for _, tc := range []struct {
 		name     string
@@ -405,4 +409,50 @@ func TestTrackers_UnmarshalV1(t *testing.T) {
 	assert.Equal(t, uint64(3), tdp.budget0Count)
 	assert.Nil(t, tdp.datapointBudgetIdx)
 	assert.Equal(t, uint32(0), tdp.DatapointBudgetIdx(2))
+}
+
+// TestTrackers_UnmarshalCorrupt asserts that malformed version 2 trackers
+// are rejected with an error rather than a panic.
+func TestTrackers_UnmarshalCorrupt(t *testing.T) {
+	uv := func(b []byte, v ...uint64) []byte {
+		for _, x := range v {
+			b = binary.AppendUvarint(b, x)
+		}
+		return b
+	}
+	// A tracker is its type, count on budget 0, budget index, number of
+	// extra counts and a zero sketch length.
+	tracker := func(typ trackerType, budgetIdx uint64) []byte {
+		return append(uv([]byte{byte(typ)}, 1, budgetIdx, 0), 0, 0)
+	}
+	budgets := append(uv(nil, 2, 0, 2), "p1"...)
+	path := func(dpBudgetIdx uint64) []byte {
+		b := slices.Concat(budgets, tracker(resourceTrackerType, 0), tracker(scopeTrackerType, 1),
+			tracker(metricTrackerType, 1), tracker(dpTrackerType, 1))
+		return uv(b, 1, dpBudgetIdx)
+	}
+	for _, tc := range []struct {
+		name    string
+		data    []byte
+		wantErr bool
+	}{
+		{name: "valid", data: path(1)},
+		{name: "budget_count_oversized", data: uv(nil, 1<<40), wantErr: true},
+		{name: "budget_name_oversized", data: uv(nil, 1, 1<<40), wantErr: true},
+		{name: "budget_index_out_of_range", data: slices.Concat(budgets, tracker(resourceTrackerType, 2)), wantErr: true},
+		{name: "budget_index_truncated", data: slices.Concat(budgets, tracker(resourceTrackerType, 1<<32)), wantErr: true},
+		{name: "too_many_counts", data: slices.Concat(budgets, append(uv([]byte{byte(resourceTrackerType)}, 1, 0, 2, 0, 0), 0, 0)), wantErr: true},
+		{name: "datapoint_index_out_of_range", data: path(2), wantErr: true},
+		{name: "metric_without_scope", data: slices.Concat(budgets, tracker(resourceTrackerType, 0), tracker(metricTrackerType, 0)), wantErr: true},
+		{name: "datapoint_without_metric", data: slices.Concat(budgets, tracker(resourceTrackerType, 0), tracker(scopeTrackerType, 0), tracker(dpTrackerType, 0)), wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := NewTrackers(2, 2, 2, 2).Unmarshal(tc.data, false)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
