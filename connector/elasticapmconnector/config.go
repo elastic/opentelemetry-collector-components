@@ -129,6 +129,11 @@ type AggregationConfig struct {
 	// the lsmintervalprocessor defaults; nil keeps them. See the
 	// lsmintervalprocessor documentation for details.
 	Storage *lsmconfig.StorageConfig `mapstructure:"storage"`
+
+	// PreAggregation configures the optional in-memory pre-aggregation
+	// buffer of the underlying lsmintervalprocessor. See the
+	// lsmintervalprocessor documentation for details.
+	PreAggregation lsmconfig.PreAggregationConfig `mapstructure:"pre_aggregation"`
 }
 
 type AggregationLimitConfig struct {
@@ -204,6 +209,7 @@ func (cfg Config) lsmConfig() *lsmconfig.Config {
 		if cfg.Aggregation.Storage != nil {
 			lsmConfig.Storage = *cfg.Aggregation.Storage
 		}
+		lsmConfig.PreAggregation = cfg.Aggregation.PreAggregation
 		lsmConfig.ResourceLimit = lsmconfig.LimitConfig{
 			MaxCardinality: cfg.Aggregation.Limits.ResourceLimit.MaxCardinality,
 			Overflow: lsmconfig.OverflowConfig{
