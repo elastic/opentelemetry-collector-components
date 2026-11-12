@@ -22,7 +22,7 @@ require (
 require (
 	go.opentelemetry.io/collector/internal/telemetry v0.165.0 // indirect
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
 )
 
 require (
