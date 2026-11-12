@@ -1,0 +1,13 @@
+compressedotlpencoding:
+  encoding_enabled: true
+  protocol: otlp_json
+  compression: lz4
+
+compressedotlpencoding/encoding_enabled_false:
+  encoding_enabled: false
+
+compressedotlpencoding/invalid_protocol:
+  protocol: foo
+
+compressedotlpencoding/invalid_compression:
+  compression: foo

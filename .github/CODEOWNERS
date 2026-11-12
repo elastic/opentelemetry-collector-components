@@ -24,5 +24,6 @@ extension/apikeyauthextension              @elastic/otel-devs @elastic/obs-ds-in
 extension/apmconfigextension               @elastic/otel-devs @elastic/obs-signals-traces-team
 extension/fileintegrationextension         @elastic/otel-devs @elastic/ecosystem
 extension/vercelencodingextension          @elastic/otel-devs @elastic/obs-signals-integrations-team
+extension/compressedotlpencodingextension  @elastic/otel-devs @elastic/obs-ds-intake-services @elastic/obs-ds-hosted-services
 pkg/integrations                           @elastic/otel-devs @elastic/ecosystem
 extension/awscredentialsproviderextension  @elastic/otel-devs @elastic/obs-signals-integrations-team
