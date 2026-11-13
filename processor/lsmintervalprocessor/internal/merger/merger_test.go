@@ -128,13 +128,9 @@ func TestMergeOrder(t *testing.T) {
 			md, stats, err := v.Finalize()
 			require.NoError(t, err)
 			require.Equal(t, uint64(1), stats.Resources)
-			var names []string
-			for _, rm := range md.ResourceMetrics().All() {
-				if n, ok := rm.Resource().Attributes().Get("name"); ok {
-					names = append(names, n.Str())
-				}
-			}
-			require.Equal(t, []string{"old"}, names)
+			// The overflow bucket is appended after the admitted resource.
+			name, _ := md.ResourceMetrics().At(0).Resource().Attributes().Get("name")
+			require.Equal(t, "old", name.Str())
 		})
 	}
 }

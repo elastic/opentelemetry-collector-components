@@ -313,11 +313,7 @@ func TestTrackers_UnmarshalCorrupt(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := NewTrackers(2, 2, 2, 2).Unmarshal(tc.data)
-			if tc.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+			require.Equal(t, tc.wantErr, err != nil, "%v", err)
 		})
 	}
 }

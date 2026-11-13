@@ -268,11 +268,7 @@ func TestUnmarshalHeader(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := peakValue().Unmarshal(tc.data)
-			if tc.wantErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+			require.Equal(t, tc.wantErr, err != nil, "%v", err)
 		})
 	}
 }

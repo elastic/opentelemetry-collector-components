@@ -33,9 +33,6 @@ const pebbleMergerName = "pmetrics_merger"
 
 // NewPebbleMerger returns the Pebble merger used by the processor during
 // compact and memtable combine.
-//
-// Operands are cloned as they arrive and decoded at Finish. A lone operand
-// is returned as is, skipping Unmarshal and AppendBinary.
 func NewPebbleMerger(
 	resourceLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig,
 	maxExponentialHistogramBuckets int,
@@ -60,7 +57,7 @@ func NewPebbleMerger(
 //
 // Operands are buffered as pebble delivers them and folded at Finish from the
 // oldest, so each is decoded once and the stored value is merged into; see
-// "Merge order" in the README.
+// "Merge order" in the README. A lone operand is returned as is.
 type Merger struct {
 	// operands holds a copy of every operand, newest first unless
 	// oldestFirst is set. Pebble uses a single direction per merge.
