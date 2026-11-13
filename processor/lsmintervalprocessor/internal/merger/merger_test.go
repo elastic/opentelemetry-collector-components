@@ -83,12 +83,10 @@ func expoHistogramCount(md pmetric.Metrics) uint64 {
 	return n
 }
 
-// TestMergeOrder pins admission across merge directions. Newer is always
-// folded into older, so without budgets the older operand keeps its slot
-// whichever way pebble feeds them. With budgets it is "oldest visible operand
-// wins": an overflow decided inside a group of operands is final, so fed
-// newest first, as pebble does, B stays in overflow although p1 has room once
-// the oldest operand is seen; fed oldest first, B is admitted.
+// TestMergeOrder pins admission across merge directions. Operands are folded
+// oldest first at Finish whichever direction pebble delivers them, so within
+// one merge the older resource keeps its slot, and with budgets B is admitted
+// on p1 because the oldest operand charged A to p0.
 func TestMergeOrder(t *testing.T) {
 	operand := func(budget, path string) []byte {
 		v := budgetTestValue(1)
@@ -128,8 +126,7 @@ func TestMergeOrder(t *testing.T) {
 				require.NoError(t, vm.MergeOlder(p1A))
 				require.NoError(t, vm.MergeOlder(p0A))
 			},
-			wantAdmitted: map[string]int64{"A/s/m/d": 2},
-			wantOverflow: 1,
+			wantAdmitted: map[string]int64{"A/s/m/d": 2, "B/s/m/d": 1},
 		},
 		{
 			name:  "budgets_oldest_first",

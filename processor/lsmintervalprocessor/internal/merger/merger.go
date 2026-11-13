@@ -34,9 +34,8 @@ const pebbleMergerName = "pmetrics_merger"
 // NewPebbleMerger returns the Pebble merger used by the processor during
 // compact and memtable combine.
 //
-// Merge clones the first operand and does not unmarshal it. Unmarshal
-// runs when a sibling operand arrives. Finish returns the clone when no
-// sibling arrived. That skips Unmarshal and AppendBinary on a lone MERGE.
+// Operands are cloned as they arrive and decoded at Finish. A lone operand
+// is returned as is, skipping Unmarshal and AppendBinary.
 func NewPebbleMerger(
 	resourceLimit, scopeLimit, metricLimit, datapointLimit config.LimitConfig,
 	maxExponentialHistogramBuckets int,
@@ -46,7 +45,7 @@ func NewPebbleMerger(
 		Merge: func(_ []byte, value []byte) (pebble.ValueMerger, error) {
 			// Pebble keeps ownership of value and may reuse it before Finish.
 			return &Merger{
-				raw:                            slices.Clone(value),
+				operands:                       [][]byte{slices.Clone(value)},
 				resourceLimitCfg:               resourceLimit,
 				scopeLimitCfg:                  scopeLimit,
 				metricLimitCfg:                 metricLimit,
@@ -58,11 +57,18 @@ func NewPebbleMerger(
 }
 
 // Merger implements pebble.ValueMerger for pmetric values in the LSM.
+//
+// Operands are buffered newest first, the order pebble delivers them in, and
+// folded at Finish from the back, oldest first, into the oldest value. Every
+// operand is decoded and replayed once, the large stored value is merged into
+// rather than copied, and admission within one merge is first come, first
+// served by write order whichever direction pebble delivers the operands in.
+// See "Merge order" in the README.
 type Merger struct {
-	current *Value
-	// raw is a copy of the first merge operand. Merge sets it.
-	// ensureUnmarshaled clears it. Finish returns it when current is nil.
-	raw []byte
+	// operands holds a copy of every operand, newest first unless
+	// oldestFirst is set. Pebble uses a single direction per merge.
+	operands    [][]byte
+	oldestFirst bool
 
 	resourceLimitCfg               config.LimitConfig
 	scopeLimitCfg                  config.LimitConfig
@@ -71,33 +77,46 @@ type Merger struct {
 	maxExponentialHistogramBuckets int
 }
 
-// MergeNewer implements pebble.ValueMerger.
+// MergeNewer implements pebble.ValueMerger. Pebble only calls it during
+// reverse iteration, which the processor never does.
 func (m *Merger) MergeNewer(value []byte) error {
-	if err := m.ensureUnmarshaled(); err != nil {
-		return err
-	}
-	newer, err := m.unmarshal(value)
-	if err != nil {
-		return err
-	}
-	return m.current.Merge(newer)
+	m.operands = append(m.operands, slices.Clone(value))
+	m.oldestFirst = true
+	return nil
 }
 
-// MergeOlder implements pebble.ValueMerger. Newer is always folded into
-// older; see "Merge order" in the README.
+// MergeOlder implements pebble.ValueMerger.
 func (m *Merger) MergeOlder(value []byte) error {
-	if err := m.ensureUnmarshaled(); err != nil {
-		return err
-	}
-	older, err := m.unmarshal(value)
-	if err != nil {
-		return err
-	}
-	if err := older.Merge(m.current); err != nil {
-		return err
-	}
-	m.current = older
+	m.operands = append(m.operands, slices.Clone(value))
 	return nil
+}
+
+func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
+	last := len(m.operands) - 1
+	if last == 0 {
+		return m.operands[0], nil, nil
+	}
+	if m.oldestFirst {
+		slices.Reverse(m.operands)
+	}
+	acc, err := m.unmarshal(m.operands[last])
+	if err != nil {
+		return nil, nil, err
+	}
+	for i := last - 1; i >= 0; i-- {
+		op, err := m.unmarshal(m.operands[i])
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := acc.Merge(op); err != nil {
+			return nil, nil, err
+		}
+	}
+	buf, err := acc.AppendBinary(nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return buf, nil, nil
 }
 
 func (m *Merger) unmarshal(value []byte) (*Value, error) {
@@ -109,32 +128,7 @@ func (m *Merger) unmarshal(value []byte) (*Value, error) {
 		m.maxExponentialHistogramBuckets,
 	)
 	if err := v.Unmarshal(value); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal value from db: %w", err)
 	}
 	return v, nil
-}
-
-// ensureUnmarshaled unmarshals raw into current. A second call is a no-op.
-func (m *Merger) ensureUnmarshaled() error {
-	if m.current != nil {
-		return nil
-	}
-	v, err := m.unmarshal(m.raw)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal value from db: %w", err)
-	}
-	m.current = v
-	m.raw = nil
-	return nil
-}
-
-func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
-	if m.current == nil {
-		return m.raw, nil, nil
-	}
-	buf, err := m.current.AppendBinary(nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	return buf, nil, nil
 }

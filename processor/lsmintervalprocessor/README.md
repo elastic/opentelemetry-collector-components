@@ -131,37 +131,63 @@ collector from unbounded aggregation growth. When a `max_cardinality` limit is r
 Overflow counts are approximate. The processor uses a HyperLogLog estimator to track the unique
 identities that exceeded each limit.
 
-Overflow is best effort. The limits bound how many entities a stored value holds; they do not
-define which entities those are:
+Overflow is best effort and not deterministic. The limits bound how many entities a stored value
+holds; they do not define which entities those are, and the same input can produce a different
+overflow set on another run:
 
-- Admission favours older data: of two values being merged, the older one is merged into, so what
-  it already admitted keeps its slots and the newer entities overflow. Without budgets this is first
+- Admission favours older data: inside one merge the operands are folded oldest first, so what
+  older data admitted keeps its slots and newer entities overflow. Within one merge this is first
   come, first served by write order.
-- A request is capped on its own before anything is known about the stored value, and so is every
-  intermediate that compaction builds from a group of operands. An overflow decided there is final.
-  A later contribution to an entity that was admitted elsewhere lands in the overflow bucket, and
-  with budgets a newer entity can stay in overflow although its budget turns out to have room,
-  because the group charged a shared entity to a different budget than older data does. The rule is
-  therefore "oldest visible operand wins". Near a limit this is the expected best-effort behaviour;
-  keep limits well above the size of one request so a single record never triggers it on its own.
-- Which entities end up in overflow near a limit therefore depends on how data is batched into
-  requests and on how Pebble groups operands during compaction. The same input can yield a
-  different overflow set on another run. The bound itself always holds.
+- Not everything is one merge. A request is capped on its own in `ConsumeMetrics`, before anything
+  is known about the stored value, and so is every compaction that combines only part of a key's
+  records: a memtable flush, an L0 compaction, a compaction between two lower levels that has not
+  reached the oldest record. Each of them writes a capped intermediate that later merges see as a
+  single operand, and an overflow decided in one of them is final. Across merges the rule is
+  therefore "oldest visible operand wins", not write order.
+- The visible effect is an entity split between its own series and the overflow bucket. Take a
+  resource `Z` admitted by an early request and a flush that combines only later requests: if that
+  flush hits the limit, `Z`'s later data is folded into `_other` with its identity gone, and the
+  next merge cannot move it back even though `Z` is admitted there. With budgets the same split can
+  leave a newer entity in overflow although its budget turns out to have room, because the
+  intermediate charged a shared entity to a different budget than older data does.
+- Which intermediates exist depends on write volume and on Pebble's compaction choices, and which
+  entities overflow near a limit depends on how data is batched into requests. The bound itself
+  always holds, per budget. Keep limits well above the size of one request and of what one key
+  accumulates between flushes, so a single record or flush never triggers overflow on its own.
 
 #### Merge order
 
-Pebble hands the merge operator the newest operand first and then every older operand, the stored
-value last, on all the paths this processor uses (forward iteration during export, compaction). The
-merger always folds the newer of the two values into the older one, so the accumulator switches to
-each older value as it arrives and the stored value ends up being merged into. Preferring the
-newest value instead would be just as deterministic, but it would rewrite the admitted set of a
-full value on every new request, pushing series that were present since the start of the window
-into the overflow bucket to make room for newcomers. Preferring the older value keeps the admitted
-set stable once it is full, matches the meaning of overflow above, and is cheaper, since the small
-new operand is copied into the large stored value rather than the other way round.
+What Pebble does, verified against v1.1.5:
 
-The merger also handles `MergeNewer`, which Pebble only calls during reverse iteration. The
-processor never iterates backwards; the path exists so a reverse scan would see the same policy.
+- A merge runs through one `pebble.ValueMerger` per key and read. Pebble creates it with one
+  operand and submits the rest with either `MergeNewer` or `MergeOlder`, never both in the same
+  merge, and the merger may buffer the operands until `Finish`
+  ([`internal/base/merger.go`](https://github.com/cockroachdb/pebble/blob/v1.1.5/internal/base/merger.go#L13-L60)).
+- Compaction visits a key newest first: it creates the merger with the newest MERGE record and
+  calls `MergeOlder` for every older MERGE and for the SET the chain ends on
+  ([`compaction_iter.go`](https://github.com/cockroachdb/pebble/blob/v1.1.5/compaction_iter.go#L843-L910)).
+  A memtable flush is a compaction and takes the same path
+  ([`compaction.go`](https://github.com/cockroachdb/pebble/blob/v1.1.5/compaction.go#L2875-L3019)).
+  `Finish` gets `includesBase=true` only when the chain ended on a SET; otherwise the result is
+  stored as a MERGE record that later merges see as one operand
+  ([`compaction_iter.go`](https://github.com/cockroachdb/pebble/blob/v1.1.5/compaction_iter.go#L525-L548)).
+- Forward iteration, which is what the export path uses, does the same on read: newest first,
+  `MergeOlder` down to the SET, `Finish(true)`
+  ([`iterator.go`](https://github.com/cockroachdb/pebble/blob/v1.1.5/iterator.go#L704-L743),
+  [`iterator.go`](https://github.com/cockroachdb/pebble/blob/v1.1.5/iterator.go#L1144-L1195)).
+- Only reverse iteration submits operands oldest first, with `MergeNewer`
+  ([`iterator.go`](https://github.com/cockroachdb/pebble/blob/v1.1.5/iterator.go#L1060-L1090)).
+  The processor never iterates backwards.
+
+So on every path this processor uses, the stored value is the oldest operand and arrives last. The
+merger buffers the operands as they arrive and folds them at `Finish`, oldest first, into the
+oldest value. Every operand is decoded and replayed once, and the large stored value is merged
+into rather than copied, so a long run of small requests costs their size, not the size of the
+growing aggregate. Folding on arrival instead would either copy the growing aggregate into every
+older operand, quadratic in the number of requests, or merge into the newest value, which rewrites
+the admitted set of a full value on every new request and pushes series present since the start
+of the window into the overflow bucket. `MergeNewer` is handled with the same fold so a reverse
+scan would see the same policy.
 
 #### Cardinality budgets
 
