@@ -21,8 +21,11 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+
+	"github.com/elastic/opentelemetry-collector-components/processor/lsmintervalprocessor/config"
 )
 
 func TestMergeFinishLone(t *testing.T) {
@@ -80,4 +83,58 @@ func expoHistogramCount(md pmetric.Metrics) uint64 {
 		}
 	}
 	return n
+}
+
+// TestMergeOrder pins admission across merge directions: operands are folded
+// oldest first at Finish whichever direction pebble delivers them, so at a
+// resource limit of 1 the older resource keeps its slot and the newer one
+// overflows.
+func TestMergeOrder(t *testing.T) {
+	limit := config.LimitConfig{
+		MaxCardinality: 1,
+		Overflow:       config.OverflowConfig{Attributes: []config.Attribute{{Key: "overflow", Value: true}}},
+	}
+	operand := func(name string) []byte {
+		md := pmetric.NewMetrics()
+		rm := md.ResourceMetrics().AppendEmpty()
+		rm.Resource().Attributes().PutStr("name", name)
+		m := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+		m.SetEmptySum().SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		m.Sum().DataPoints().AppendEmpty().SetIntValue(1)
+		v := NewValue(limit, limit, limit, limit, defaultMaxBuckets)
+		require.NoError(t, updateValueWithPMetrics(md, v))
+		b, err := v.AppendBinary(nil)
+		require.NoError(t, err)
+		return b
+	}
+	older, newer := operand("old"), operand("new")
+
+	for _, tc := range []struct {
+		name  string
+		first []byte
+		run   func(vm pebble.ValueMerger)
+	}{
+		{name: "older_arrives_second", first: newer, run: func(vm pebble.ValueMerger) { require.NoError(t, vm.MergeOlder(older)) }},
+		{name: "newer_arrives_second", first: older, run: func(vm pebble.ValueMerger) { require.NoError(t, vm.MergeNewer(newer)) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			vm, err := NewPebbleMerger(limit, limit, limit, limit, defaultMaxBuckets).Merge(nil, tc.first)
+			require.NoError(t, err)
+			tc.run(vm)
+			out, _, err := vm.Finish(true)
+			require.NoError(t, err)
+			v := NewValue(limit, limit, limit, limit, defaultMaxBuckets)
+			require.NoError(t, v.Unmarshal(out))
+			md, stats, err := v.Finalize()
+			require.NoError(t, err)
+			require.Equal(t, uint64(1), stats.Resources)
+			var names []string
+			for _, rm := range md.ResourceMetrics().All() {
+				if n, ok := rm.Resource().Attributes().Get("name"); ok {
+					names = append(names, n.Str())
+				}
+			}
+			require.Equal(t, []string{"old"}, names)
+		})
+	}
 }
