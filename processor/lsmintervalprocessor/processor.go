@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -142,7 +143,11 @@ func newProcessor(
 	var budgetKeys []string
 	if cfg.ResourceLimit.MaxCardinality > 0 || cfg.ScopeLimit.MaxCardinality > 0 ||
 		cfg.MetricLimit.MaxCardinality > 0 || cfg.DatapointLimit.MaxCardinality > 0 {
-		budgetKeys = append([]string{}, cfg.BudgetMetadataKeys...)
+		// Metadata lookups are case-insensitive; lower-case before sorting
+		// so a change of casing in the config keeps every budget name.
+		for _, k := range cfg.BudgetMetadataKeys {
+			budgetKeys = append(budgetKeys, strings.ToLower(k))
+		}
 		sort.Strings(budgetKeys)
 	}
 

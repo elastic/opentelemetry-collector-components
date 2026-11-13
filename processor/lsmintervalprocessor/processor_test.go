@@ -711,7 +711,7 @@ func TestWriteStallListener(t *testing.T) {
 }
 
 // TestBudgetName asserts how the budget name is derived from client
-// metadata: ignored without a limit, keys in sorted order, values
+// metadata: ignored without a limit, keys lower-cased and sorted, values
 // length-prefixed so separators inside a value cannot collide.
 func TestBudgetName(t *testing.T) {
 	for _, tc := range []struct {
@@ -728,7 +728,7 @@ func TestBudgetName(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := &config.Config{
-				BudgetMetadataKeys:             []string{"b", "a"},
+				BudgetMetadataKeys:             []string{"B", "a"}, // "B" sorts before "a" unless lower-cased
 				Intervals:                      []config.IntervalConfig{{Duration: time.Minute}},
 				DatapointLimit:                 config.LimitConfig{MaxCardinality: tc.limit},
 				ExponentialHistogramMaxBuckets: 160,
