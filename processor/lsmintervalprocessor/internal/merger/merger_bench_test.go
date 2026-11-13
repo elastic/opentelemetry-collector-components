@@ -48,8 +48,7 @@ type fatLSMShape struct {
 // Finish calls Merge/MergeOlder/Finish only. PebbleCompact writes the same
 // bytes, flushes each operand to its own sstable, then Compacts that key.
 func BenchmarkCompactPeak(b *testing.B) {
-	const base64Resources = 64
-	base := mustFatLSMOperand(b, fatLSMShape{resources: base64Resources, dps: 16})
+	base := mustFatLSMOperand(b, fatLSMShape{resources: 64, dps: 16})
 	// Sibling overlaps the first 16 resources so MergeOlder combines
 	// histogram streams instead of only appending new identities.
 	sibling := mustFatLSMOperand(b, fatLSMShape{resources: 16, dps: 16})
@@ -72,7 +71,7 @@ func BenchmarkCompactPeak(b *testing.B) {
 	// first as pebble does during compaction and export.
 	chain := make([][]byte, 32)
 	for i := range chain {
-		chain[i] = mustFatLSMOperand(b, fatLSMShape{resources: 1, dps: 16, offset: base64Resources + i})
+		chain[i] = mustFatLSMOperand(b, fatLSMShape{resources: 1, dps: 16, offset: 64 + i})
 	}
 	slices.Reverse(chain)
 	b.Run(fmt.Sprintf("chain/Finish/%dx%dKiB+%dKiB", len(chain), len(chain[0])/1024, len(base)/1024), func(b *testing.B) {

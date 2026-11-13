@@ -58,12 +58,9 @@ func NewPebbleMerger(
 
 // Merger implements pebble.ValueMerger for pmetric values in the LSM.
 //
-// Operands are buffered newest first, the order pebble delivers them in, and
-// folded at Finish from the back, oldest first, into the oldest value. Every
-// operand is decoded and replayed once, the large stored value is merged into
-// rather than copied, and admission within one merge is first come, first
-// served by write order whichever direction pebble delivers the operands in.
-// See "Merge order" in the README.
+// Operands are buffered as pebble delivers them and folded at Finish from the
+// oldest, so each is decoded once and the stored value is merged into; see
+// "Merge order" in the README.
 type Merger struct {
 	// operands holds a copy of every operand, newest first unless
 	// oldestFirst is set. Pebble uses a single direction per merge.
@@ -113,10 +110,7 @@ func (m *Merger) Finish(includesBase bool) ([]byte, io.Closer, error) {
 		}
 	}
 	buf, err := acc.AppendBinary(nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	return buf, nil, nil
+	return buf, nil, err
 }
 
 func (m *Merger) unmarshal(value []byte) (*Value, error) {
