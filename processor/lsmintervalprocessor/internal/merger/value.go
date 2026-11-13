@@ -191,6 +191,9 @@ func (s *Value) Unmarshal(data []byte) error {
 	}
 	trackersLen := int(binary.BigEndian.Uint32(data[:4]))
 	data = data[4:]
+	if trackersLen > len(data) {
+		return errors.New("failed to unmarshal value, invalid trackers length")
+	}
 	if trackersLen > 0 {
 		// Unmarshal trackers
 		s.trackers = limits.NewTrackers(

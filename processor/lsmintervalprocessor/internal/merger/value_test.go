@@ -251,3 +251,28 @@ func updateValueWithPMetrics(m pmetric.Metrics, v *Value) error {
 	}
 	return nil
 }
+
+// TestUnmarshalHeader asserts the checks on the version byte and the
+// trackers length before any payload is decoded.
+func TestUnmarshalHeader(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		data    []byte
+		wantErr bool
+	}{
+		{name: "empty_value", data: []byte{version}},
+		{name: "no_data", data: nil, wantErr: true},
+		{name: "unknown_version", data: []byte{version + 1}, wantErr: true},
+		{name: "short_trackers_length", data: []byte{version, 0, 0}, wantErr: true},
+		{name: "trackers_length_beyond_payload", data: []byte{version, 0, 0, 0, 9, 1}, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := peakValue().Unmarshal(tc.data)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

@@ -19,6 +19,7 @@ package limits
 
 import (
 	"hash"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -294,4 +295,29 @@ func (h testHash) Size() int {
 
 func (h testHash) BlockSize() int {
 	panic("not implemented")
+}
+
+// TestTrackers_UnmarshalCorrupt asserts that a malformed tracker hierarchy
+// is rejected with an error rather than a panic.
+func TestTrackers_UnmarshalCorrupt(t *testing.T) {
+	// A tracker is its type, a count of 1 and a zero sketch length.
+	tracker := func(typ trackerType) []byte { return []byte{byte(typ), 1, 0, 0} }
+	for _, tc := range []struct {
+		name    string
+		data    []byte
+		wantErr bool
+	}{
+		{name: "valid", data: slices.Concat(tracker(resourceTrackerType), tracker(scopeTrackerType), tracker(metricTrackerType), tracker(dpTrackerType))},
+		{name: "metric_without_scope", data: slices.Concat(tracker(resourceTrackerType), tracker(metricTrackerType)), wantErr: true},
+		{name: "datapoint_without_metric", data: slices.Concat(tracker(resourceTrackerType), tracker(scopeTrackerType), tracker(dpTrackerType)), wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := NewTrackers(2, 2, 2, 2).Unmarshal(tc.data)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
