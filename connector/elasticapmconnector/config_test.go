@@ -92,6 +92,10 @@ func TestConfig(t *testing.T) {
 						MemTableStopWritesThreshold: 4,
 						MaxConcurrentCompactions:    2,
 					},
+					PreAggregation: lsmconfig.PreAggregationConfig{
+						Enabled: true,
+						MaxSize: 1 << 20,
+					},
 				},
 				CustomResourceAttributes: []CustomResourceAttribute{
 					{Key: "res.1"},
