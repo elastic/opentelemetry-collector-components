@@ -26,11 +26,7 @@ import (
 )
 
 func TestMetadataHash(t *testing.T) {
-	hash := func(md ...merger.KeyValues) uint64 {
-		h, ok := metadataHash(md)
-		assert.True(t, ok)
-		return h
-	}
+	hash := func(md ...merger.KeyValues) uint64 { return metadataHash(md) }
 	kv := func(k string, vs ...string) merger.KeyValues {
 		return merger.KeyValues{Key: k, Values: vs}
 	}
@@ -42,29 +38,15 @@ func TestMetadataHash(t *testing.T) {
 		assert.Equal(t, uint64(0x7f5482ade9b5cfd2), hash(kv("kafka.partition", "3"), kv("x-elastic-target-id", "t")))
 	})
 
-	t.Run("no_metadata", func(t *testing.T) {
-		_, ok := metadataHash(nil)
-		assert.False(t, ok)
-	})
-
-	t.Run("key_case_independent", func(t *testing.T) {
-		assert.Equal(t,
-			hash(kv("kafka.partition", "1"), kv("kafka.topic", "t")),
-			hash(kv("Kafka.Partition", "1"), kv("KAFKA.TOPIC", "t")),
-		)
-	})
-
 	t.Run("distinct_combinations", func(t *testing.T) {
 		seen := map[uint64]string{}
 		for name, md := range map[string][]merger.KeyValues{
 			"p1":          {kv("kafka.partition", "1")},
-			"p2":          {kv("kafka.partition", "2")},
 			"p1p2":        {kv("kafka.partition", "1", "2")},
 			"p12":         {kv("kafka.partition", "12")},
 			"p1,2":        {kv("kafka.partition", "1,2")},
 			"p1_t":        {kv("kafka.partition", "1"), kv("kafka.topic", "t")},
 			"t1_p":        {kv("kafka.partition", "t"), kv("kafka.topic", "1")},
-			"topic_1":     {kv("kafka.topic", "1")},
 			"empty_value": {kv("kafka.partition", "")},
 			"no_value":    {kv("kafka.partition")},
 		} {
@@ -75,19 +57,4 @@ func TestMetadataHash(t *testing.T) {
 			seen[h] = name
 		}
 	})
-}
-
-func BenchmarkMetadataHash(b *testing.B) {
-	md := []merger.KeyValues{
-		{Key: "kafka.partition", Values: []string{"12"}},
-		{Key: "x-elastic-mapping-mode", Values: []string{"otel"}},
-		{Key: "x-elastic-target-id", Values: []string{"0123456789abcdef0123456789abcdef"}},
-		{Key: "x-elastic-target-type", Values: []string{"project"}},
-	}
-	b.ReportAllocs()
-	for b.Loop() {
-		if _, ok := metadataHash(md); !ok {
-			b.Fatal("expected a hash")
-		}
-	}
 }

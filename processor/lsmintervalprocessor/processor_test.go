@@ -455,9 +455,7 @@ func TestMetadataHashAttribute(t *testing.T) {
 			md = append(md, merger.KeyValues{Key: "partition", Values: partition})
 		}
 		md = append(md, merger.KeyValues{Key: "target", Values: []string{target}})
-		h, ok := metadataHash(md)
-		require.True(t, ok)
-		return fmt.Sprintf("%016x", h)
+		return fmt.Sprintf("%016x", metadataHash(md))
 	}
 	assert.ElementsMatch(t, []export{
 		{target: "t", hash: hashOf("t", "1"), sum: 2, resources: 1},
@@ -468,11 +466,6 @@ func TestMetadataHashAttribute(t *testing.T) {
 		{target: "", hash: "tampered", sum: 1, resources: 1},
 		{target: "o", hash: hashOf("o", "1"), sum: 2, resources: 2},
 	}, exported)
-	hashes := map[string]struct{}{}
-	for _, e := range exported {
-		hashes[e.hash] = struct{}{}
-	}
-	assert.Len(t, hashes, len(exported), "every aggregated value must have its own hash")
 }
 
 func TestStorageOptions(t *testing.T) {

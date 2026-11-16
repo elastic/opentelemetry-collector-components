@@ -19,7 +19,6 @@ package lsmintervalprocessor // import "github.com/elastic/opentelemetry-collect
 
 import (
 	"encoding/binary"
-	"strings"
 
 	"github.com/cespare/xxhash/v2"
 
@@ -27,31 +26,27 @@ import (
 )
 
 // metadataHash returns the hash of the client metadata of an aggregation
-// key and true, or false if there is none.
+// key.
 //
 // The value is part of the identity of the exported streams, so the
-// algorithm and the encoding must not change. Keys are lower-cased, and
-// keys and values are length-prefixed so that no two different combinations
-// share an encoding. The entries are hashed in the given order, which the
-// processor keeps sorted by key.
-func metadataHash(md []merger.KeyValues) (uint64, bool) {
-	if len(md) == 0 {
-		return 0, false
-	}
+// algorithm and the encoding must not change. Keys and values are
+// length-prefixed so that no two different combinations share an encoding.
+// The entries are hashed in the given order, which the processor keeps
+// sorted by key.
+func metadataHash(md []merger.KeyValues) uint64 {
 	var (
 		d       xxhash.Digest
 		scratch [binary.MaxVarintLen64]byte
 	)
 	d.Reset()
 	for _, kvs := range md {
-		k := strings.ToLower(kvs.Key)
-		_, _ = d.Write(binary.AppendUvarint(scratch[:0], uint64(len(k))))
-		_, _ = d.WriteString(k)
+		_, _ = d.Write(binary.AppendUvarint(scratch[:0], uint64(len(kvs.Key))))
+		_, _ = d.WriteString(kvs.Key)
 		_, _ = d.Write(binary.AppendUvarint(scratch[:0], uint64(len(kvs.Values))))
 		for _, v := range kvs.Values {
 			_, _ = d.Write(binary.AppendUvarint(scratch[:0], uint64(len(v))))
 			_, _ = d.WriteString(v)
 		}
 	}
-	return d.Sum64(), true
+	return d.Sum64()
 }
