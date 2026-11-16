@@ -37,7 +37,10 @@ dedicated to this purpose.
 
 By default, aggregated metrics will be exported without any client metadata. It is possible to
 propagate client metadata from input to exported metrics by specifying a list of metadata keys
-in `elasticapm::aggregation::metadata_keys`.
+in `elasticapm::aggregation::metadata_keys`. Every distinct combination of their values is aggregated
+separately, and their hash is added to the aggregated metrics as the `lsminterval.metadata.hash`
+resource attribute to keep one writer per metric stream. See
+[Metadata keys and single writer](../../processor/lsmintervalprocessor/README.md#metadata-keys-and-single-writer).
 
 The embedded Pebble database can be tuned with `elasticapm::aggregation::storage`, which accepts
 the same options as the [lsmintervalprocessor](../../processor/lsmintervalprocessor/README.md#storage-tuning):

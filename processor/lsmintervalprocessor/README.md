@@ -27,7 +27,7 @@ with db-backed persistence so aggregation state can survive restarts and large b
 | `intervals` | list | `[60s]` | Interval configurations. Durations must be increasing and a factor of the smallest interval. |
 | `intervals[].duration` | duration | required | Aggregation window for the interval. |
 | `intervals[].statements` | list | `[]` | OTTL datapoint statements applied after aggregation for this interval. |
-| `metadata_keys` | list | `[]` | Client metadata keys to partition aggregation. Keys are case-insensitive and must be unique. |
+| `metadata_keys` | list | `[]` | Client metadata keys to partition aggregation. Their hash is added to the exported resources, see [Metadata keys and single writer](#metadata-keys-and-single-writer). Keys are case-insensitive and must be unique. |
 | `resource_limit` | object | `{}` | Resource cardinality limit (`max_cardinality`) and overflow attributes. |
 | `scope_limit` | object | `{}` | Scope cardinality limit (`max_cardinality`) and overflow attributes. |
 | `metric_limit` | object | `{}` | Metric cardinality limit (`max_cardinality`) and overflow attributes. |
@@ -78,6 +78,33 @@ processors:
           - key: datapoint_overflow
             value: true
 ```
+
+### Metadata keys and single writer
+
+Every distinct combination of `metadata_keys` values is aggregated separately. The processor
+assumes that the metrics it receives obey the
+[single-writer principle](https://opentelemetry.io/docs/specs/otel/metrics/data-model/#single-writer),
+and it only aggregates them, so the only way it can export one stream from more than one writer
+is through this option. That happens when a key splits the aggregation without changing the
+identity of the exported streams. For example, with a key such as `kafka.partition` the same
+stream seen on two partitions is aggregated in two separate values, and both would export it
+with the same identity.
+
+Since the processor can remove single writer, it enforces it back, in the same way as the
+[signal to metrics connector](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/connector/signaltometricsconnector#single-writer):
+the configured metadata keys and their values are hashed together (xxhash64) and the hash is
+added to every exported resource as `lsminterval.metadata.hash`. The statements of an interval
+run before the attribute is added, so they cannot remove or replace it. Data that carries none
+of the configured keys is exported without the attribute.
+
+Notes:
+
+- The hash is part of the identity of the exported streams, so its algorithm and encoding are
+  fixed. It does not depend on the order of the keys in the config, and the raw values are not
+  exposed.
+- Values aggregated separately behave as if they were aggregated by different collectors: each
+  has its own cardinality limits, and a stream seen under N combinations of metadata values is
+  exported N times per window, so queries must sum across them.
 
 ### Storage tuning
 

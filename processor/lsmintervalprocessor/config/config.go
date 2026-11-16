@@ -27,6 +27,11 @@ import (
 
 var _ component.Config = (*Config)(nil)
 
+// MetadataHashAttribute is the resource attribute that carries the hash of
+// the client metadata that the exported metrics were aggregated for. It is
+// only added when at least one of the configured metadata keys is present.
+const MetadataHashAttribute = "lsminterval.metadata.hash"
+
 const (
 	// Based on the defaults suggested in https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#base2-exponential-bucket-histogram-aggregation
 	defaultMaxExponentialHistogramBuckets = 160
@@ -55,6 +60,11 @@ type Config struct {
 	//
 	// Only the listed metadata keys will be propagated to the
 	// resulting metrics.
+	//
+	// Every distinct combination of values is aggregated separately. A
+	// key may split the data of one metric stream over several aggregated
+	// values, so the hash of the keys and values is added to the exported
+	// resources as MetadataHashAttribute to keep one writer per stream.
 	//
 	// Entries are case-insensitive. Duplicated entries will
 	// trigger a validation error.
