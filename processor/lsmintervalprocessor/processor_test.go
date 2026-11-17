@@ -371,12 +371,7 @@ func TestClientMetadata(t *testing.T) {
 func TestMetadataHashAttribute(t *testing.T) {
 	cfg := &config.Config{
 		MetadataKeys: []string{"target", "partition"},
-		Intervals: []config.IntervalConfig{{
-			Duration: time.Minute,
-			// Statements run before the hash is added and must not be able
-			// to remove or replace it.
-			Statements: []string{`set(resource.attributes["lsminterval.metadata.hash"], "tampered")`},
-		}},
+		Intervals:    []config.IntervalConfig{{Duration: time.Minute}},
 		ResourceLimit: config.LimitConfig{
 			MaxCardinality: 1,
 			Overflow: config.OverflowConfig{
@@ -455,16 +450,58 @@ func TestMetadataHashAttribute(t *testing.T) {
 			md = append(md, merger.KeyValues{Key: "partition", Values: partition})
 		}
 		md = append(md, merger.KeyValues{Key: "target", Values: []string{target}})
-		return fmt.Sprintf("%016x", metadataHash(md))
+		return fmt.Sprintf("%016x", metadataHash(md, ""))
 	}
 	assert.ElementsMatch(t, []export{
 		{target: "t", hash: hashOf("t", "1"), sum: 2, resources: 1},
 		{target: "t", hash: hashOf("t", "2"), sum: 1, resources: 1},
 		{target: "t", hash: hashOf("t"), sum: 1, resources: 1},
-		// Without any metadata the processor does not touch the attribute,
-		// so what the statement set stays.
-		{target: "", hash: "tampered", sum: 1, resources: 1},
+		// Without any metadata the attribute is not added.
+		{target: "", hash: "", sum: 1, resources: 1},
 		{target: "o", hash: hashOf("o", "1"), sum: 2, resources: 2},
+	}, exported)
+}
+
+// TestMetadataHashAttributeExisting covers resources that already carry the
+// hash attribute: those differing only in it are different streams and must
+// stay different.
+func TestMetadataHashAttributeExisting(t *testing.T) {
+	cfg := &config.Config{
+		MetadataKeys: []string{"k"},
+		Intervals:    []config.IntervalConfig{{Duration: time.Minute}},
+	}
+	var exported []string
+	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+		func(_ context.Context, metrics pmetric.Metrics) error {
+			for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
+				v, _ := metrics.ResourceMetrics().At(i).Resource().Attributes().Get(config.MetadataHashAttribute)
+				exported = append(exported, v.Str())
+			}
+			return nil
+		},
+	))
+	settings := processortest.NewNopSettings(metadata.Type)
+	p := newTestProcessor(t, cfg, settings.TelemetrySettings, next)
+	require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"k": {"v"}}),
+	})
+	for _, existing := range []string{"aaaa", "bbbb"} {
+		metrics := pmetric.NewMetrics()
+		rm := metrics.ResourceMetrics().AppendEmpty()
+		rm.Resource().Attributes().PutStr(config.MetadataHashAttribute, existing)
+		sum := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty().SetEmptySum()
+		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		sum.DataPoints().AppendEmpty().SetIntValue(1)
+		require.NoError(t, p.ConsumeMetrics(ctx, metrics))
+	}
+	require.NoError(t, p.Shutdown(context.Background()))
+
+	md := []merger.KeyValues{{Key: "k", Values: []string{"v"}}}
+	assert.ElementsMatch(t, []string{
+		fmt.Sprintf("%016x", metadataHash(md, "aaaa")),
+		fmt.Sprintf("%016x", metadataHash(md, "bbbb")),
 	}, exported)
 }
 

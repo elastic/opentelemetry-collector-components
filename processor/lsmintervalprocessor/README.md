@@ -94,8 +94,12 @@ Since the processor can remove single writer, it enforces it back, in the same w
 [signal to metrics connector](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/connector/signaltometricsconnector#single-writer):
 the configured metadata keys and their values are hashed together (xxhash64) and the hash is
 added to every exported resource as `lsminterval.metadata.hash`. The statements of an interval
-run before the attribute is added, so they cannot remove or replace it. Data that carries none
-of the configured keys is exported without the attribute.
+run before the attribute is added, so they cannot remove it. Data that carries none of the
+configured keys is exported unchanged.
+
+A resource may already carry the attribute, for example when it comes from an upstream
+`lsminterval` processor. Resources that differ only in it are different streams, so the existing
+value is hashed into the new one instead of being replaced.
 
 Notes:
 

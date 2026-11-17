@@ -26,7 +26,7 @@ import (
 )
 
 func TestMetadataHash(t *testing.T) {
-	hash := func(md ...merger.KeyValues) uint64 { return metadataHash(md) }
+	hash := func(md ...merger.KeyValues) uint64 { return metadataHash(md, "") }
 	kv := func(k string, vs ...string) merger.KeyValues {
 		return merger.KeyValues{Key: k, Values: vs}
 	}
@@ -36,6 +36,12 @@ func TestMetadataHash(t *testing.T) {
 		// values have to change then existing series are split on upgrade.
 		assert.Equal(t, uint64(0xdc13440679d9d55c), hash(kv("kafka.partition", "3")))
 		assert.Equal(t, uint64(0x7f5482ade9b5cfd2), hash(kv("kafka.partition", "3"), kv("x-elastic-target-id", "t")))
+	})
+
+	t.Run("existing", func(t *testing.T) {
+		md := []merger.KeyValues{kv("kafka.partition", "3")}
+		assert.Equal(t, uint64(0x952763bece17ddf9), metadataHash(md, "aaaa"))
+		assert.NotEqual(t, metadataHash(md, "aaaa"), metadataHash(md, "bbbb"))
 	})
 
 	t.Run("distinct_combinations", func(t *testing.T) {

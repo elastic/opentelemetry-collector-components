@@ -598,12 +598,17 @@ func (p *Processor) exportForInterval(
 			}
 		}
 		// The hash is added after the statements so that they cannot remove
-		// or change it: it is what keeps the streams exported from
-		// separately aggregated values apart.
+		// it: it is what keeps the streams exported from separately
+		// aggregated values apart.
 		if len(key.Metadata) != 0 {
-			hash := hex.EncodeToString(binary.BigEndian.AppendUint64(nil, metadataHash(key.Metadata)))
+			hash := hex.EncodeToString(binary.BigEndian.AppendUint64(nil, metadataHash(key.Metadata, "")))
 			for i := 0; i < resourceMetrics.Len(); i++ {
-				resourceMetrics.At(i).Resource().Attributes().PutStr(config.MetadataHashAttribute, hash)
+				v, exists := resourceMetrics.At(i).Resource().Attributes().GetOrPutEmpty(config.MetadataHashAttribute)
+				if exists {
+					v.SetStr(hex.EncodeToString(binary.BigEndian.AppendUint64(nil, metadataHash(key.Metadata, v.AsString()))))
+				} else {
+					v.SetStr(hash)
+				}
 			}
 		}
 		attributes = append(attributes, attribute.String("interval", ivl.Duration.String()))

@@ -33,7 +33,11 @@ import (
 // length-prefixed so that no two different combinations share an encoding.
 // The entries are hashed in the given order, which the processor keeps
 // sorted by key.
-func metadataHash(md []merger.KeyValues) uint64 {
+//
+// existing is the hash that a resource already carries, if any, for example
+// from an upstream lsminterval processor. Resources that differ only in it
+// are different streams, so it is hashed too instead of being replaced.
+func metadataHash(md []merger.KeyValues, existing string) uint64 {
 	var (
 		d       xxhash.Digest
 		scratch [binary.MaxVarintLen64]byte
@@ -48,5 +52,6 @@ func metadataHash(md []merger.KeyValues) uint64 {
 			_, _ = d.WriteString(v)
 		}
 	}
+	_, _ = d.WriteString(existing)
 	return d.Sum64()
 }
