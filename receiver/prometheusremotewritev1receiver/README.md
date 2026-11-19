@@ -4,7 +4,7 @@ This receiver implements the [Prometheus Remote Write 1.0 specification](https:/
 
 | Status      |                                                     |
 |-------------|-----------------------------------------------------|
-| Stability   | alpha: metrics                                      |
+| Stability   | beta: metrics                                       |
 | Pipelines   | metrics                                             |
 
 ## Overview

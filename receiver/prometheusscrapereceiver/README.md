@@ -2,9 +2,9 @@
 
 | Status        |           |
 | ------------- |-----------|
-| Stability     | [development]: metrics |
+| Stability     | [alpha]: metrics |
 
-[development]: https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md#development
+[alpha]: https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md#alpha
 
 The `prometheusscrape` receiver scrapes Prometheus endpoints and keeps the
 data in the **native Prometheus schema**. It does not translate samples into
