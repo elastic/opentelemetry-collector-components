@@ -70,6 +70,7 @@ func createDefaultConfig() component.Config {
 		BatchFlushInterval:    defaultBatchFlushInterval,
 		MaxConcurrentDecoders: defaultMaxConcurrentDecoders,
 		MaxEventSize:          defaultMaxEventSize,
+		MappingMode:           MappingModeECS,
 		AgentConfig: AgentConfig{
 			Enabled:       false,
 			Elasticsearch: defaultESClientConfig,

@@ -100,6 +100,7 @@ func TestLoadConfig(t *testing.T) {
 			BatchFlushInterval:    defaultBatchFlushInterval,
 			MaxConcurrentDecoders: int(defaultMaxConcurrentDecoders),
 			MaxEventSize:          defaultMaxEventSize,
+			MappingMode:           MappingModeECS,
 			AgentConfig: AgentConfig{
 				Enabled:       false,
 				CacheDuration: 30 * time.Second,
@@ -169,6 +170,18 @@ func TestLoadConfig(t *testing.T) {
 				cfg.MaxEventSize = 2048
 				return cfg
 			}(),
+		},
+		{
+			id: component.NewIDWithName(metadata.Type, "otel_mapping_mode"),
+			expected: func() *Config {
+				cfg := expectedDefaultConfig()
+				cfg.MappingMode = MappingModeOTel
+				return cfg
+			}(),
+		},
+		{
+			id:                   component.NewIDWithName(metadata.Type, "invalid_mapping_mode"),
+			validateErrorMessage: "mapping_mode must be one of",
 		},
 		{
 			id:                   component.NewIDWithName(metadata.Type, "invalid_batch_bytes"),
