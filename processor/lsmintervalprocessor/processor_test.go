@@ -368,6 +368,143 @@ func TestClientMetadata(t *testing.T) {
 	assert.Equal(t, expected, received)
 }
 
+func TestMetadataHashAttribute(t *testing.T) {
+	cfg := &config.Config{
+		MetadataKeys: []string{"target", "partition"},
+		Intervals:    []config.IntervalConfig{{Duration: time.Minute}},
+		ResourceLimit: config.LimitConfig{
+			MaxCardinality: 1,
+			Overflow: config.OverflowConfig{
+				Attributes: []config.Attribute{{Key: "overflow", Value: "resource"}},
+			},
+		},
+	}
+
+	type export struct {
+		target, hash string
+		sum          int64
+		resources    int
+	}
+	var exported []export
+	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+		func(ctx context.Context, metrics pmetric.Metrics) error {
+			if metrics.MetricCount() == 0 {
+				return nil
+			}
+			e := export{resources: metrics.ResourceMetrics().Len()}
+			if v := client.FromContext(ctx).Metadata.Get("target"); len(v) > 0 {
+				e.target = v[0]
+			}
+			for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
+				rm := metrics.ResourceMetrics().At(i)
+				if v, ok := rm.Resource().Attributes().Get(config.MetadataHashAttribute); ok {
+					if e.hash != "" {
+						require.Equal(t, e.hash, v.Str(), "all resources of a value must carry the same hash")
+					}
+					e.hash = v.Str()
+				} else {
+					require.Empty(t, e.hash, "either all or no resources carry the hash")
+				}
+				m := rm.ScopeMetrics().At(0).Metrics().At(0)
+				e.sum += m.Sum().DataPoints().At(0).IntValue()
+			}
+			exported = append(exported, e)
+			return nil
+		},
+	))
+	settings := processortest.NewNopSettings(metadata.Type)
+	p := newTestProcessor(t, cfg, settings.TelemetrySettings, next)
+	require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+	send := func(md map[string][]string, resourceName string) {
+		ctx := client.NewContext(context.Background(), client.Info{Metadata: client.NewMetadata(md)})
+		metrics := pmetric.NewMetrics()
+		rm := metrics.ResourceMetrics().AppendEmpty()
+		rm.Resource().Attributes().PutStr("name", resourceName)
+		m := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty()
+		m.SetName("metric_name")
+		sum := m.SetEmptySum()
+		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		sum.DataPoints().AppendEmpty().SetIntValue(1)
+		require.NoError(t, p.ConsumeMetrics(ctx, metrics))
+	}
+	// The same stream of one target seen on two partitions, with a repeat
+	// of partition 1 to be merged, then without a partition and without
+	// any metadata.
+	send(map[string][]string{"target": {"t"}, "partition": {"1"}}, "svc")
+	send(map[string][]string{"target": {"t"}, "partition": {"1"}}, "svc")
+	send(map[string][]string{"target": {"t"}, "partition": {"2"}}, "svc")
+	send(map[string][]string{"target": {"t"}}, "svc")
+	send(nil, "svc")
+	// The resource limit is 1: a second resource overflows within its own
+	// value, and the overflow resource must carry the hash too.
+	send(map[string][]string{"target": {"o"}, "partition": {"1"}}, "a")
+	send(map[string][]string{"target": {"o"}, "partition": {"1"}}, "b")
+
+	require.NoError(t, p.Shutdown(context.Background()))
+
+	hashOf := func(target string, partition ...string) string {
+		// In the order of the aggregation key: sorted by metadata key.
+		var md []merger.KeyValues
+		if len(partition) > 0 {
+			md = append(md, merger.KeyValues{Key: "partition", Values: partition})
+		}
+		md = append(md, merger.KeyValues{Key: "target", Values: []string{target}})
+		return fmt.Sprintf("%016x", metadataHash(md, ""))
+	}
+	assert.ElementsMatch(t, []export{
+		{target: "t", hash: hashOf("t", "1"), sum: 2, resources: 1},
+		{target: "t", hash: hashOf("t", "2"), sum: 1, resources: 1},
+		{target: "t", hash: hashOf("t"), sum: 1, resources: 1},
+		// Without any metadata the attribute is not added.
+		{target: "", hash: "", sum: 1, resources: 1},
+		{target: "o", hash: hashOf("o", "1"), sum: 2, resources: 2},
+	}, exported)
+}
+
+// TestMetadataHashAttributeExisting covers resources that already carry the
+// hash attribute: those differing only in it are different streams and must
+// stay different.
+func TestMetadataHashAttributeExisting(t *testing.T) {
+	cfg := &config.Config{
+		MetadataKeys: []string{"k"},
+		Intervals:    []config.IntervalConfig{{Duration: time.Minute}},
+	}
+	var exported []string
+	next, _ := consumer.NewMetrics(consumer.ConsumeMetricsFunc(
+		func(_ context.Context, metrics pmetric.Metrics) error {
+			for i := 0; i < metrics.ResourceMetrics().Len(); i++ {
+				v, _ := metrics.ResourceMetrics().At(i).Resource().Attributes().Get(config.MetadataHashAttribute)
+				exported = append(exported, v.Str())
+			}
+			return nil
+		},
+	))
+	settings := processortest.NewNopSettings(metadata.Type)
+	p := newTestProcessor(t, cfg, settings.TelemetrySettings, next)
+	require.NoError(t, p.Start(context.Background(), componenttest.NewNopHost()))
+
+	ctx := client.NewContext(context.Background(), client.Info{
+		Metadata: client.NewMetadata(map[string][]string{"k": {"v"}}),
+	})
+	for _, existing := range []string{"aaaa", "bbbb"} {
+		metrics := pmetric.NewMetrics()
+		rm := metrics.ResourceMetrics().AppendEmpty()
+		rm.Resource().Attributes().PutStr(config.MetadataHashAttribute, existing)
+		sum := rm.ScopeMetrics().AppendEmpty().Metrics().AppendEmpty().SetEmptySum()
+		sum.SetAggregationTemporality(pmetric.AggregationTemporalityDelta)
+		sum.DataPoints().AppendEmpty().SetIntValue(1)
+		require.NoError(t, p.ConsumeMetrics(ctx, metrics))
+	}
+	require.NoError(t, p.Shutdown(context.Background()))
+
+	md := []merger.KeyValues{{Key: "k", Values: []string{"v"}}}
+	assert.ElementsMatch(t, []string{
+		fmt.Sprintf("%016x", metadataHash(md, "aaaa")),
+		fmt.Sprintf("%016x", metadataHash(md, "bbbb")),
+	}, exported)
+}
+
 func TestStorageOptions(t *testing.T) {
 	for _, tc := range []struct {
 		name                string
