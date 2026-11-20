@@ -71,7 +71,8 @@ func mergeCumulative[DPS dataPointSlice[DP], DP dataPoint[DP]](
 	for i := 0; i < from.Len(); i++ {
 		fromDP := from.At(i)
 		toDP, exists := addDP(toMetricID, toMetric, fromDP)
-		if exists && fromDP.Timestamp() > toDP.Timestamp() {
+		if exists && (fromDP.Timestamp() > toDP.Timestamp() ||
+			(fromDP.Timestamp() == toDP.Timestamp() && data.PreferCumulative(fromDP, toDP))) {
 			fromDP.CopyTo(toDP)
 		}
 	}
