@@ -42,9 +42,9 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/collector/featuregate v1.72.0 // indirect
-	go.opentelemetry.io/collector/internal/componentalias v0.166.0
-	go.opentelemetry.io/collector/pdata/pprofile v0.166.0
-	go.opentelemetry.io/collector/pdata/xpdata v0.166.0
+	go.opentelemetry.io/collector/internal/componentalias v0.166.0 // indirect
+	go.opentelemetry.io/collector/pdata/pprofile v0.166.0 // indirect
+	go.opentelemetry.io/collector/pdata/xpdata v0.166.0 // indirect
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.47.0 // indirect
@@ -53,7 +53,6 @@ require (
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/elastic/opentelemetry-collector-components/internal/vercel v0.0.0 => ../../internal/vercel

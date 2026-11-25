@@ -48,15 +48,15 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/collector/component/componentstatus v0.166.0
-	go.opentelemetry.io/collector/consumer/xconsumer v0.166.0
+	go.opentelemetry.io/collector/component/componentstatus v0.166.0 // indirect
+	go.opentelemetry.io/collector/consumer/xconsumer v0.166.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.72.0 // indirect
-	go.opentelemetry.io/collector/internal/componentalias v0.166.0
-	go.opentelemetry.io/collector/pdata/pprofile v0.166.0
-	go.opentelemetry.io/collector/pdata/testdata v0.166.0
-	go.opentelemetry.io/collector/pdata/xpdata v0.166.0
+	go.opentelemetry.io/collector/internal/componentalias v0.166.0 // indirect
+	go.opentelemetry.io/collector/pdata/pprofile v0.166.0 // indirect
+	go.opentelemetry.io/collector/pdata/testdata v0.166.0 // indirect
+	go.opentelemetry.io/collector/pdata/xpdata v0.166.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.72.0 // indirect
-	go.opentelemetry.io/collector/processor/xprocessor v0.166.0
+	go.opentelemetry.io/collector/processor/xprocessor v0.166.0 // indirect
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.47.0 // indirect
@@ -66,7 +66,6 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/elastic/opentelemetry-collector-components/internal/elasticattr => ../../internal/elasticattr
