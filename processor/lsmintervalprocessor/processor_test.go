@@ -156,7 +156,13 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 	require.NoError(t, err)
 
 	// Start the processor and feed the metrics
-	next := &consumertest.MetricsSink{}
+	nextSink := &consumertest.MetricsSink{}
+	next, err := consumer.NewMetrics(consumer.ConsumeMetricsFunc(func(ctx context.Context, md pmetric.Metrics) error {
+		moved := pmetric.NewMetrics()
+		md.MoveTo(moved)
+		return nextSink.ConsumeMetrics(ctx, moved)
+	}))
+	require.NoError(t, err)
 	mgp := newTestProcessor(t, config, telSettings, next)
 	err = mgp.Start(context.Background(), componenttest.NewNopHost())
 	require.NoError(t, err)
@@ -171,7 +177,7 @@ func testRunHelper(t *testing.T, name string, config *config.Config) {
 		// next will be called only for cases when the input has not aggregated
 		// all the datapoints. We check if the expected next has non-zero datapoint
 		// and assert based on that.
-		allMetrics = next.AllMetrics()
+		allMetrics = nextSink.AllMetrics()
 		if expectedNextData.DataPointCount() > 0 {
 			return len(allMetrics) == 2
 		}

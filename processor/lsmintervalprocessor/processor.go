@@ -631,11 +631,11 @@ func (p *Processor) exportForInterval(
 				)
 			}
 		}
+		cnt := finalMetrics.DataPointCount()
 		if err := p.next.ConsumeMetrics(exportCtx, finalMetrics); err != nil {
 			errs = append(errs, fmt.Errorf("failed to consume the decoded value: %w", err))
 			continue
 		}
-		cnt := finalMetrics.DataPointCount()
 		exportedDPCount += cnt
 		p.telemetryBuilder.LsmintervalExportedDataPoints.Add(
 			exportCtx,
