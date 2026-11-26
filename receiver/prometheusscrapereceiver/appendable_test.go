@@ -261,7 +261,7 @@ func TestAppendInvalidNativeHistogramsDroppedNotPanic(t *testing.T) {
 		{
 			name: "huge gap between spans",
 			h:    &histogram.Histogram{Schema: 3, Count: 2, PositiveSpans: []histogram.Span{{Offset: 0, Length: 1}, {Offset: math.MaxInt32, Length: 1}}, PositiveBuckets: []int64{1, 0}},
-			err:  "exceeds the limit",
+			err:  "bucket index is out of range",
 		},
 	}
 	for _, tt := range tests {
