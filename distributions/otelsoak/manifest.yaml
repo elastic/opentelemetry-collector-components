@@ -6,10 +6,10 @@ dist:
   output_path: ./_build
 
 receivers:
-  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.68.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/receiver/loadgenreceiver v0.0.0
 
 processors:
-  - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.68.0
+  - gomod: github.com/elastic/opentelemetry-collector-components/processor/ratelimitprocessor v0.0.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.166.0
 
 exporters:
